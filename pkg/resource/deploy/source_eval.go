@@ -3,379 +3,250 @@
 package deploy
 
 import (
-	"github.com/golang/glog"
-	goerr "github.com/pkg/errors"
+	"strconv"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/eval"
-	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/golang/glog"
+	"github.com/pkg/errors"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
-	"github.com/pulumi/pulumi-fabric/pkg/util/rendezvous"
+	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
+	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
-// NewEvalSource returns a planning source that fetches resources by evaluating a package pkg with a set of args args
-// and a confgiuration map config.  This evaluation is performed using the given context ctx and may optionally use the
+// EvalRunInfo provides information required to execute and deploy resources within a package.
+type EvalRunInfo struct {
+	Pkg     *pack.Package     `json:"pkg"`              // the full package metadata that instructs us how to run it.
+	Pwd     string            `json:"pwd"`              // the root working directory where the package was found.
+	Program string            `json:"program"`          // the path to the program we are executing.
+	Args    []string          `json:"args,omitempty"`   // any arguments to pass to the package.
+	Config  map[string]string `json:"config,omitempty"` // any configuration to pass to the program.
+}
+
+// NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
+// a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
 //
 // If destroy is true, then all of the usual initialization will take place, but the state will be presented to the
 // planning engine as if no new resources exist.  This will cause it to forcibly remove them.
-func NewEvalSource(plugctx *plugin.Context, bindctx *binder.Context,
-	pkg *symbols.Package, args core.Args, config resource.ConfigMap, destroy bool) Source {
+func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo, destroy bool, dryRun bool) Source {
 	return &evalSource{
 		plugctx: plugctx,
-		bindctx: bindctx,
-		pkg:     pkg,
-		args:    args,
-		config:  config,
+		runinfo: runinfo,
 		destroy: destroy,
+		dryRun:  dryRun,
 	}
 }
 
 type evalSource struct {
-	plugctx *plugin.Context    // the plugin context (for plugin communication, e.g. interpreter state).
-	bindctx *binder.Context    // the binder context (for compiler operations).
-	pkg     *symbols.Package   // the package to evaluate.
-	args    core.Args          // the arguments used to compile this package.
-	config  resource.ConfigMap // the configuration variables for this package.
-	destroy bool               // true if this source will trigger total destruction.
+	plugctx *plugin.Context // the plugin context.
+	runinfo *EvalRunInfo    // the directives to use when running the program.
+	destroy bool            // true if this source will trigger total destruction.
+	dryRun  bool            // true if this is a dry-run operation only.
 }
-
-const (
-	evalParty = rendezvous.PartyA // the evaluator's rendezvous party (it goes first).
-	planParty = rendezvous.PartyB // the planner's rendezvous party (it goes second).
-)
 
 func (src *evalSource) Close() error {
 	return nil
 }
 
-func (src *evalSource) Info() interface{} {
-	return &evalSourceInfo{
-		Pkg:  src.pkg.Tok,
-		Args: src.args,
-	}
+func (src *evalSource) Pkg() tokens.PackageName {
+	return src.runinfo.Pkg.Name
 }
 
-// evalSourceInfo contains unique information about what source package plus arguments led to the resources.
-type evalSourceInfo struct {
-	Pkg  tokens.Package `json:"pkg"`
-	Args core.Args      `json:"args"`
+func (src *evalSource) Info() interface{} {
+	return src.runinfo
 }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate() (SourceIterator, error) {
-	// Create a new rendezvous object used to orchestrate the planning and evaluation as coroutines.
-	rz := rendezvous.New()
-
-	// Now fire up a new interpreter.
-	e := eval.New(src.bindctx, &evalHooks{rz: rz})
-
-	// Populate the configuration variables.
-	if err := InitEvalConfig(src.bindctx, e, src.config); err != nil {
-		return nil, err
+	// First, fire up a resource monitor that will watch for and record resource creation.
+	mon, err := newResourceMonitor()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
 
-	// Set the current context iterator; we will relinqush this in Close.
-	src.plugctx.SetCurrentInterpreter(e)
-
-	// Now create the evaluator coroutine and prepare it to take its first step.
-	if err := forkEval(src, rz, e); err != nil {
-		return nil, err
+	// Next fire up the language plugin.
+	// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
+	langhost, err := src.plugctx.Host.LanguageRuntime(src.runinfo.Pkg.Runtime)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to launch language host for '%v'", src.runinfo.Pkg.Runtime)
 	}
 
-	// Finally, return the fresh iterator that can take things from here.
-	return &evalSourceIterator{
-		src: src,
-		e:   e,
-		rz:  rz,
-	}, nil
+	// Create a new iterator with appropriate channels, and gear up to go!
+	iter := &evalSourceIterator{
+		mon:      mon,
+		langhost: langhost,
+		src:      src,
+		finchan:  make(chan error),
+		reschan:  make(chan *evalSourceGoal),
+	}
+
+	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
+	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
+	iter.forkRun()
+
+	// Finally, return the fresh iterator that the caller can use to take things from here.
+	return iter, nil
 }
 
 type evalSourceIterator struct {
-	src *evalSource            // the owning eval source object.
-	e   eval.Interpreter       // the interpreter used to compute the new state.
-	res *resource.Object       // a resource to publish during the next rendezvous.
-	rz  *rendezvous.Rendezvous // the rendezvous where planning and evaluator coroutines meet.
+	mon      *resmon                // the resource monitor, per iterator.
+	langhost plugin.LanguageRuntime // the language host to use for program interactions.
+	src      *evalSource            // the owning eval source object.
+	finchan  chan error             // the channel that communicates completion.
+	reschan  chan *evalSourceGoal   // the channel that contains resource elements.
+	done     bool                   // set to true when the evaluation is done.
 }
 
 func (iter *evalSourceIterator) Close() error {
-	iter.rz.Done(nil)
-	iter.src.plugctx.SetCurrentInterpreter(nil)
-	return nil
+	// Cancel the monitor and reclaim any resources associated with it.
+	// TODO: we need to cancel the runtime execution if this happens before it has completed.
+	return iter.mon.Cancel()
 }
 
-func (iter *evalSourceIterator) Produce(res *resource.Object) {
-	iter.res = res
-}
+func (iter *evalSourceIterator) Next() (SourceGoal, error) {
+	// If we are done, quit.
+	if iter.done {
+		return nil, nil
+	}
 
-func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
 	// If we are destroying, we simply return nothing.
 	if iter.src.destroy {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	// Kick the interpreter to compute some more and then inspect what it has to say.
-	var data interface{}
-	if res := iter.res; res != nil {
-		data = rt.NewReturnUnwind(res.Obj())
-		iter.res = nil // reset the state so we don't return things more than once.
-	}
-	obj, done, err := iter.rz.Meet(planParty, data)
-	if err != nil {
-		return nil, nil, err
-	} else if done {
-		glog.V(5).Infof("EvalSourceIterator is done")
-		return nil, nil, nil
-	}
-	contract.Assert(obj != nil)
-
-	// See what the interpreter came up with.  It's either an allocation or a query operation.
-	if alloc, isalloc := obj.(*AllocRendezvous); isalloc {
-		glog.V(5).Infof("EvalSourceIterator produced a new object: obj=%v, ctx=%v", alloc.Obj, alloc.Mod.Tok)
-		return &SourceAllocation{
-			Loc: alloc.Loc,
-			Obj: resource.NewObject(alloc.Obj),
-			Ctx: alloc.Mod.Tok,
-		}, nil, nil
-	} else if query, isquery := obj.(*QueryRendezvous); isquery {
-		glog.V(5).Infof("EvalSourceIterator produced a new query: fnc=%v, #args=%v", query.Meth, len(query.Args))
-		meth := query.Meth
-		args := query.Args
-		t := meth.Parent
-		switch meth.Name() {
-		case specialResourceGetFunction:
-			if len(args) == 0 {
-				return nil, nil,
-					goerr.Errorf("Missing required argument 'id' for method %v", meth)
-			} else if !args[0].IsString() {
-				return nil, nil,
-					goerr.Errorf("Expected method %v argument 'id' to be a string; got %v", meth, args[0])
-			}
-			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
-		case specialResourceQueryFunction:
-			contract.Failf("TODO[pulumi/pulumi-fabric#83]: query not yet implemented")
-		default:
-			contract.Failf("Unrecognized query rendezvous function name: %v", meth.Name())
+	// Await the program to compute some more state and then inspect what it has to say.
+	select {
+	case err := <-iter.finchan:
+		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
+		// that the language runtime has exited and so calling Close on the plugin is fine.
+		iter.done = true
+		if err != nil {
+			glog.V(5).Infof("EvalSourceIterator ended with an error: %v", err)
 		}
+		return nil, err
+	case res := <-iter.reschan:
+		contract.Assert(res != nil)
+		goal := res.Resource()
+		glog.V(5).Infof("EvalSourceIterator produced a new object: t=%v,name=%v,#props=%v",
+			goal.Type, goal.Name, len(goal.Properties))
+		return res, nil
 	}
-
-	contract.Failf("Unexpected rendezvous object: %v (expected alloc or query)", obj)
-	return nil, nil, nil
 }
 
-// InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens,
-// which must be globally settable variables (module properties or static class properties), to serializable constant
-// values.  The routine simply walks these tokens in sorted order, and assigns the constant objects.  Note that, because
-// we are accessing module and class members, this routine will also trigger the relevant initialization routines.
-func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.ConfigMap) error {
-	if config == nil {
-		return nil
-	}
-
-	// For each config entry, bind the token to its symbol, and then attempt to assign to it.
-	glog.V(5).Infof("Applying %v configuration values: %v", len(config), config)
-	var err error
-	for _, tok := range config.StableKeys() {
-		glog.V(5).Infof("Applying configuration value for token '%v'", tok)
-
-		// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
-		var tree diag.Diagable // there is no source info for this; eventually we may assign one.
-		if sym := ctx.LookupSymbol(tree, tok, true); sym != nil {
-			var ok bool
-			switch s := sym.(type) {
-			case *symbols.ModuleProperty:
-				ok = true
-			case *symbols.ClassProperty:
-				// class properties are ok, so long as they are static.
-				ok = s.Static()
-			default:
-				ok = false
-			}
-			if !ok {
-				ctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
-			} else {
-				// Load up the location as an l-value; because we don't support instance properties, this is nil.
-				loc, uw := e.LoadLocation(tree, sym, nil, true)
-				if uw != nil {
-					// If an error was thrown, print it and keep going.
-					contract.Assert(uw.Throw())
-					e.UnhandledException(tree, uw.Thrown())
-					ok = false
-				} else if loc != nil {
-					// Allocate a new constant for the value we are about to assign, and assign it to the location.
-					v := config[tok]
-					obj := rt.NewConstantObject(v)
-					loc.Set(tree, obj)
-				}
-			}
-			if !ok && err == nil {
-				err = goerr.New("Configuration variables could not be applied; stopping")
-			}
-		}
-	}
-
-	return err
-}
-
-// forkEval performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
-func forkEval(src *evalSource, rz *rendezvous.Rendezvous, e eval.Interpreter) error {
-	if src.destroy {
+// forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
+func (iter *evalSourceIterator) forkRun() {
+	if iter.src.destroy {
 		// If we are destroying, no need to perform any evaluation beyond the config initialization.
 	} else {
-		// Fire up the goroutine.
+		// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
+		// to queue things up in the resource channel will occur, and we will serve them concurrently.
+		// FIXME: we need to ensure that out of order calls won't deadlock us.  In particular, we need to ensure: 1)
+		//    gRPC won't block the dispatching of calls, and 2) that the channel's fixed size won't cause troubles.
 		go func() {
-			e.EvaluatePackage(src.pkg, src.args)
-		}()
-
-		// Let the other party run and only resume when it's our turn.
-		ret, done, err := rz.Let(planParty)
-		if err != nil {
-			return err
-		} else if done {
-			return goerr.New("Failure running the program before it even began executing")
-		}
-		contract.Assertf(ret == nil, "unexpected rendezvous return: %v", ret)
-	}
-
-	return nil
-}
-
-// AllocRendezvous is used when an object is allocated, and tracks the context in which it was allocated.
-type AllocRendezvous struct {
-	Obj *rt.Object       // the object itself.
-	Loc diag.Diagable    // the location information for the allocation.
-	Pkg *symbols.Package // the package being evaluated when the allocation happened.
-	Mod *symbols.Module  // the module being evaluated when the allocation happened.
-	Fnc symbols.Function // the function being evaluated when the allocation happened.
-}
-
-// QueryRendezvous is used when the interpreter hits a query routine that needs to be evaluated by the planner.
-type QueryRendezvous struct {
-	Meth *symbols.ClassMethod // the resource method that triggered the need to rendezvous.
-	Args []*rt.Object         // the arguments supplied, if any.
-}
-
-// evalHooks are the interpreter hooks that synchronize between planner and evaluator in the appropriate ways.
-type evalHooks struct {
-	rz      *rendezvous.Rendezvous // the rendezvous object.
-	currpkg *symbols.Package       // the current package being executed.
-	currmod *symbols.Module        // the current module being executed.
-	currfnc symbols.Function       // the current function being executed.
-}
-
-// OnStart ensures that, before starting, we wait our turn.
-func (h *evalHooks) OnStart() *rt.Unwind {
-	ret, done, err := h.rz.Meet(evalParty, nil)
-	contract.Assert(err == nil)
-	if done {
-		return rt.NewCancelUnwind()
-	}
-	contract.Assert(ret == nil)
-	return nil
-}
-
-// OnDone ensures that, after completion, we tell the other party that we're done.
-func (h *evalHooks) OnDone(uw *rt.Unwind) *rt.Unwind {
-	var err error
-	if uw != nil {
-		if uw.Throw() {
-			err = goerr.New("Planning resulted in an unhandled exception; cannot proceed with the plan")
-		} else {
-			contract.Assert(uw.Return() || uw.Cancel())
-		}
-	}
-	h.rz.Done(err)
-	return nil
-}
-
-// OnObjectInit ensures that, for every resource object created, we tell the planner about it.
-func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
-	glog.V(9).Infof("EvalSource OnObjectInit %v (IsResource=%v)", obj, resource.IsResourceObject(obj))
-	if resource.IsResourceObject(obj) {
-		// Communicate the full allocation context: AST node, package, module, and function.
-		alloc := &AllocRendezvous{
-			Obj: obj,
-			Loc: tree,
-			Pkg: h.currpkg,
-			Mod: h.currmod,
-			Fnc: h.currfnc,
-		}
-		ret, done, err := h.rz.Meet(evalParty, alloc)
-		contract.Assert(err == nil)
-		if done {
-			return rt.NewCancelUnwind()
-		}
-		contract.Assert(ret == nil)
-	}
-	return nil
-}
-
-// OnEnterPackage is invoked whenever we enter a new package.
-func (h *evalHooks) OnEnterPackage(pkg *symbols.Package) (*rt.Unwind, func()) {
-	glog.V(9).Infof("EvalSource OnEnterPackage %v", pkg)
-	prevpkg := h.currpkg
-	h.currpkg = pkg
-	return nil, func() {
-		glog.V(9).Infof("EvalSource OnLeavePackage %v", pkg)
-		h.currpkg = prevpkg
-	}
-}
-
-// OnEnterModule is invoked whenever we enter a new module.
-func (h *evalHooks) OnEnterModule(mod *symbols.Module) (*rt.Unwind, func()) {
-	glog.V(9).Infof("EvalSource OnEnterModule %v", mod)
-	prevmod := h.currmod
-	h.currmod = mod
-	return nil, func() {
-		glog.V(9).Infof("EvalSource OnLeaveModule %v", mod)
-		h.currmod = prevmod
-	}
-}
-
-const (
-	specialResourceGetFunction   = "get"   // gets a single resource by ID.
-	specialResourceQueryFunction = "query" // queries 0-to-many resources using arbitrary filters.
-)
-
-// OnEnterFunction is invoked whenever we enter a new function.  If it returns a non-nil unwind object, it will be used
-// in place of the actual function call, effectively monkey patching it on the fly.
-func (h *evalHooks) OnEnterFunction(fnc symbols.Function, args []*rt.Object) (*rt.Unwind, func()) {
-	glog.V(9).Infof("EvalSource OnEnterFunction %v", fnc)
-	prevfnc := h.currfnc
-	h.currfnc = fnc
-
-	// If this is one of the "special" resource functions, we need to essentially monkey patch it on the fly.
-	var uw *rt.Unwind
-	if meth, ismeth := fnc.(*symbols.ClassMethod); ismeth {
-		if predef.IsResourceType(meth.Parent) {
-			switch meth.Name() {
-			case specialResourceGetFunction, specialResourceQueryFunction:
-				// For any of these functions, we must defer to the planning side to do its thing.  After awaiting our
-				// turn, we will be given an opportunity to resume with the object and/or unwind in hand.
-				ret, done, err := h.rz.Meet(evalParty, &QueryRendezvous{
-					Meth: meth,
-					Args: args,
-				})
-				contract.Assert(err == nil)
-				if done {
-					return rt.NewCancelUnwind(), nil
-				}
-				contract.Assertf(ret != nil, "Expecting unwind instructions from the planning goroutine")
-				uw = ret.(*rt.Unwind)
+			progerr, err := iter.langhost.Run(plugin.RunInfo{
+				Pwd:     iter.src.runinfo.Pwd,
+				Program: iter.src.runinfo.Program,
+				Args:    iter.src.runinfo.Args,
+				Config:  iter.src.runinfo.Config,
+				DryRun:  iter.src.dryRun,
+			})
+			if err != nil || progerr == "" {
+				// Communicate the error, if it exists, or nil if the program exited cleanly.
+				iter.finchan <- err
+			} else {
+				// Otherwise, the program had an unhandled error; propagate it to the caller.
+				iter.finchan <- errors.Errorf("an unhandled error occurred: %v", progerr)
 			}
-		}
+		}()
+	}
+}
+
+// resmon implements the lumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
+// evaluation of a program and the internal resource planning and deployment logic.
+type resmon struct {
+	port   int        // the port the host is listening on.
+	cancel chan bool  // a channel that can cancel the server.
+	done   chan error // a channel that resolves when the server completes.
+}
+
+// newResourceMonitor creates a new resource monitor RPC server.
+func newResourceMonitor() (*resmon, error) {
+	// New up an engine RPC server.
+	resmon := &resmon{
+		cancel: make(chan bool),
 	}
 
-	return uw, func() {
-		glog.V(9).Infof("EvalSource OnLeaveFunction %v", fnc)
-		h.currfnc = prevfnc
+	// Fire up a gRPC server and start listening for incomings.
+	port, done, err := rpcutil.Serve(0, resmon.cancel, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			lumirpc.RegisterResourceMonitorServer(srv, resmon)
+			return nil
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
+
+	resmon.port = port
+	resmon.done = done
+
+	return resmon, nil
+}
+
+// Address returns the address at which the monitor's RPC server may be reached.
+func (rm *resmon) Address() string {
+	return ":" + strconv.Itoa(rm.port)
+}
+
+// Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
+func (rm *resmon) Cancel() error {
+	rm.cancel <- true
+	return <-rm.done
+}
+
+// NewResource is invoked by a language process when a new resource has been allocated.
+func (rm *resmon) NewResource(ctx context.Context,
+	req *lumirpc.NewResourceRequest) (*lumirpc.NewResourceResponse, error) {
+
+	// Communicate the type, name, and object information to the iterator that is awaiting us.
+	goal := &evalSourceGoal{
+		goal: resource.NewGoal(
+			tokens.Type(req.GetType()),
+			tokens.QName(req.GetName()),
+			plugin.UnmarshalProperties(req.GetObject(), plugin.MarshalOptions{}),
+		),
+		done: make(chan *resource.State),
+	}
+
+	// Now block waiting for the operation to finish.
+	// FIXME: we probably need some way to cancel this in case of catastrophe.
+	state := <-goal.done
+
+	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
+	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
+	return &lumirpc.NewResourceResponse{
+		Id:     string(state.ID),
+		Urn:    string(state.URN),
+		Object: plugin.MarshalProperties(state.Synthesized(), plugin.MarshalOptions{}),
+	}, nil
+}
+
+type evalSourceGoal struct {
+	goal *resource.Goal       // the resource goal state produced by the iterator.
+	done chan *resource.State // the channel to communicate with after the resource state is available.
+}
+
+func (g *evalSourceGoal) Resource() *resource.Goal {
+	return g.goal
+}
+
+func (g *evalSourceGoal) Done(state *resource.State) {
+	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
+	g.done <- state
 }

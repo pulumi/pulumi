@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (

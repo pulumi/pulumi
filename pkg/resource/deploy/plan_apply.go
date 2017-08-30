@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -74,7 +75,7 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 // Iterate initializes and returns an iterator that can be used to step through a plan's individual steps.
 func (p *Plan) Iterate() (*PlanIterator, error) {
 	// Ask the source for its iterator.
-	src, err := p.new.Iterate()
+	src, err := p.source.Iterate()
 	if err != nil {
 		return nil, err
 	}
@@ -144,11 +145,6 @@ func (iter *PlanIterator) Close() error {
 	return iter.src.Close()
 }
 
-// Produce is used to indicate that a new resource state has been read from a live environment.
-func (iter *PlanIterator) Produce(res *resource.Object) {
-	iter.src.Produce(res)
-}
-
 // Next advances the plan by a single step, and returns the next step to be performed.  In doing so, it will perform
 // evaluation of the program as much as necessary to determine the next step.  If there is no further action to be
 // taken, Next will return a nil step pointer.
@@ -158,13 +154,12 @@ func (iter *PlanIterator) Next() (Step, error) {
 			step := iter.stepqueue[0]
 			iter.stepqueue = iter.stepqueue[1:]
 			return step, nil
-		}
-		if !iter.srcdone {
-			res, q, err := iter.src.Next()
+		} else if !iter.srcdone {
+			goal, err := iter.src.Next()
 			if err != nil {
 				return nil, err
-			} else if res != nil {
-				steps, err := iter.nextResourceSteps(res)
+			} else if goal != nil {
+				steps, err := iter.nextResourceSteps(goal)
 				if err != nil {
 					return nil, err
 				}
@@ -173,13 +168,6 @@ func (iter *PlanIterator) Next() (Step, error) {
 					iter.stepqueue = steps[1:]
 				}
 				return steps[0], nil
-			} else if q != nil {
-				step, err := iter.nextQueryStep(q)
-				if err != nil {
-					return nil, err
-				}
-				contract.Assert(step != nil)
-				return step, nil
 			}
 
 			// If all returns are nil, the source is done, note it, and don't go back for more.  Add any deletions to be
@@ -200,32 +188,31 @@ func (iter *PlanIterator) Next() (Step, error) {
 	return nil, nil
 }
 
-// nextResourceSteps produces a new step for a given resource or nil if there isn't one to perform.  It is possible to
-// return multiple steps if the current resource state necessitates it.
-func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, error) {
-	// Take a moment in time snapshot of the live object's properties.
-	obj := res.Obj
-	new := obj.State()
-
+// nextResourceSteps produces one or more steps required to achieve the desired resource goal state, or nil if there
+// aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
+// possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
+func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 	// Fetch the provider for this resource type.
-	prov, err := iter.Provider(obj)
+	res := goal.Resource()
+	prov, err := iter.Provider(res.Type)
 	if err != nil {
 		return nil, err
 	}
 
 	var invalid bool // will be set to true if this object fails validation.
 
-	// Fetch the resource's name from its provider, and use it to construct a URN.
-	name, err := prov.Name(new.T, new.Inputs)
-	if err != nil {
-		return nil, err
-	}
-	urn := resource.NewURN(iter.p.Target().Name, res.Ctx, new.T, name)
+	// Use the resource goal state name to produce a globally unique URN.
+	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Type, tokens.QName(res.Name))
 	if iter.urns[urn] {
 		invalid = true
-		iter.p.Diag().Errorf(errors.ErrorDuplicateResourceURN.At(res.Loc), urn)
+		// TODO[pulumi/pulumi-framework#19]: improve this error message!
+		iter.p.Diag().Errorf(errors.ErrorDuplicateResourceURN, urn)
 	}
 	iter.urns[urn] = true
+
+	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
+	// Ultimately, this is what will get serialized into the checkpoint file.
+	new := resource.NewState(res.Type, urn, "", res.Properties, nil, nil)
 
 	// If there is an old resource, apply its default properties before going any further.
 	old, hasold := iter.p.Olds()[urn]
@@ -240,7 +227,7 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 
 	// Ensure the provider is okay with this resource and see if it has any new defaults to contribute.
 	inputs := new.AllInputs()
-	defaults, failures, err := prov.Check(new.Type(), inputs)
+	defaults, failures, err := prov.Check(new.Type, inputs)
 	if err != nil {
 		return nil, err
 	} else if iter.issueCheckErrors(new, urn, failures) {
@@ -259,7 +246,7 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 		if err != nil {
 			return nil, err
 		}
-		failures, err := analyzer.Analyze(new.T, inputs)
+		failures, err := analyzer.Analyze(new.Type, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -284,7 +271,7 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 	//     * If the URN does not exist in the old snapshot, create the resource anew.
 	//
 	if hasold {
-		contract.Assert(old != nil && old.Type() == new.Type())
+		contract.Assert(old != nil && old.Type == new.Type)
 
 		// The resource exists in both new and old; it could be an update.  This constitutes an update if the old
 		// and new properties don't match exactly.  It is also possible we'll need to replace the resource if the
@@ -293,7 +280,7 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 		oldinputs := old.AllInputs()
 		if !oldinputs.DeepEquals(inputs) {
 			// The properties changed; we need to figure out whether to do an update or replacement.
-			diff, err := prov.Diff(old.T, old.ID, oldinputs, inputs)
+			diff, err := prov.Diff(old.Type, old.ID, oldinputs, inputs)
 			if err != nil {
 				return nil, err
 			}
@@ -302,7 +289,7 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 				iter.replaces[urn] = true
 				// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 				// had assumed that we were going to carry them over from the old resource, which is no longer true.
-				defaults, failures, err := prov.Check(new.Type(), new.Inputs)
+				defaults, failures, err := prov.Check(new.Type, new.Inputs)
 				if err != nil {
 					return nil, err
 				} else if iter.issueCheckErrors(new, urn, failures) {
@@ -314,8 +301,8 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 						urn, oldinputs, new.AllInputs())
 				}
 				return []Step{
-					NewCreateReplacementStep(iter, old, obj, new, diff.ReplaceKeys),
-					NewReplaceStep(iter, old, obj, new, diff.ReplaceKeys),
+					NewCreateReplacementStep(iter, goal, old, new, diff.ReplaceKeys),
+					NewReplaceStep(iter, old, new, diff.ReplaceKeys),
 				}, nil
 			}
 			iter.updates[urn] = true
@@ -323,7 +310,7 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
 					urn, oldinputs, new.AllInputs())
 			}
-			return []Step{NewUpdateStep(iter, old, obj, new)}, nil
+			return []Step{NewUpdateStep(iter, goal, old, new)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -331,13 +318,13 @@ func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, erro
 		if glog.V(7) {
 			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.AllInputs())
 		}
-		return []Step{NewSameStep(iter, old, obj, new)}, nil
+		return []Step{NewSameStep(iter, goal, old, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.AllInputs())
-	return []Step{NewCreateStep(iter, urn, obj, new)}, nil
+	return []Step{NewCreateStep(iter, goal, new)}, nil
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
@@ -350,22 +337,12 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	for _, failure := range failures {
 		if failure.Property != "" {
 			iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue,
-				new.Type(), urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			iter.p.Diag().Errorf(errors.ErrorResourceInvalid, new.Type(), urn.Name(), failure.Reason)
+			iter.p.Diag().Errorf(errors.ErrorResourceInvalid, new.Type, urn.Name(), failure.Reason)
 		}
 	}
 	return true
-}
-
-// nextQueryStep produces a new query step that looks up a resource in some manner.
-func (iter *PlanIterator) nextQueryStep(q *SourceQuery) (Step, error) {
-	if id := q.GetID; id != "" {
-		return NewGetStep(iter, q.Type, id, nil), nil
-	}
-	contract.Assert(q.QueryFilter != nil)
-	contract.Failf("TODO[pulumi/pulumi-fabric#83]: querying not yet supported")
-	return nil, nil
 }
 
 // nextDeleteStep produces a new step that deletes a resource if necessary.
@@ -373,7 +350,7 @@ func (iter *PlanIterator) nextDeleteStep() Step {
 	if len(iter.delqueue) > 0 {
 		del := iter.delqueue[0]
 		iter.delqueue = iter.delqueue[1:]
-		urn := del.URN()
+		urn := del.URN
 		iter.deletes[urn] = true
 		if iter.replaces[urn] {
 			glog.V(7).Infof("Planner decided to delete '%v' due to replacement", urn)
@@ -395,7 +372,7 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 	if prev := iter.p.prev; prev != nil {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
 			res := prev.Resources[i]
-			urn := res.URN()
+			urn := res.URN
 			contract.Assert(!iter.creates[urn])
 			if (!iter.sames[urn] && !iter.updates[urn]) || iter.replaces[urn] {
 				dels = append(dels, res)
@@ -425,7 +402,7 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	// Always add the new resoures afterwards that got produced during the evaluation of the current plan.
 	resources = append(resources, iter.resources...)
 
-	return NewSnapshot(iter.p.Target().Name, resources, iter.p.new.Info())
+	return NewSnapshot(iter.p.Target().Name, resources, iter.p.source.Info())
 }
 
 // MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway
@@ -439,10 +416,9 @@ func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
 	iter.resources = append(iter.resources, state)
 }
 
-// Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider
-// could not be found, or an error occurred while creating it, a non-nil error is returned.
-func (iter *PlanIterator) Provider(res resource.Resource) (plugin.Provider, error) {
-	t := res.Type()
+// Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
+// provider could not be found, or an error occurred while creating it, a non-nil error is returned.
+func (iter *PlanIterator) Provider(t tokens.Type) (plugin.Provider, error) {
 	pkg := t.Package()
 	return iter.p.ctx.Host.Provider(pkg)
 }

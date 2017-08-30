@@ -282,17 +282,16 @@ function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<s
                     cfgmap.set(cfgkey, opts.config[cfgkey]);
                 }
             }
-            (dryrun ? langHostClient.runPlan : langHostClient.runDeploy).call(
-                langHostClient, runReq, (err: Error, res: any) => {
-                    if (err) {
-                        reject(err);
-                    }
-                    else {
-                        // The response has a single field, the error, if any, that occurred (blank means success).
-                        resolve(res.getError());
-                    }
+            runReq.setDryrun(dryrun);
+            langHostClient.run(runReq, (err: Error, res: any) => {
+                if (err) {
+                    reject(err);
                 }
-            );
+                else {
+                    // The response has a single field, the error, if any, that occurred (blank means success).
+                    resolve(res.getError());
+                }
+            });
         }
     );
 }

@@ -70,7 +70,8 @@ proto.lumirpc.RunRequest.toObject = function(includeInstance, msg) {
     pwd: jspb.Message.getFieldWithDefault(msg, 1, ""),
     program: jspb.Message.getFieldWithDefault(msg, 2, ""),
     argsList: jspb.Message.getField(msg, 3),
-    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : []
+    configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
+    dryrun: jspb.Message.getFieldWithDefault(msg, 5, false)
   };
 
   if (includeInstance) {
@@ -125,6 +126,10 @@ proto.lumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
          });
       break;
+    case 5:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setDryrun(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -177,6 +182,13 @@ proto.lumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   f = message.getConfigMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getDryrun();
+  if (f) {
+    writer.writeBool(
+      5,
+      f
+    );
   }
 };
 
@@ -257,6 +269,23 @@ proto.lumirpc.RunRequest.prototype.getConfigMap = function(opt_noLazyCreate) {
 
 proto.lumirpc.RunRequest.prototype.clearConfigMap = function() {
   this.getConfigMap().clear();
+};
+
+
+/**
+ * optional bool dryRun = 5;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.lumirpc.RunRequest.prototype.getDryrun = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 5, false));
+};
+
+
+/** @param {boolean} value */
+proto.lumirpc.RunRequest.prototype.setDryrun = function(value) {
+  jspb.Message.setField(this, 5, value);
 };
 
 

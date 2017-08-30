@@ -6,15 +6,13 @@ import (
 	"strconv"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
+	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
 // hostServer is the server side of the host RPC machinery.
@@ -81,27 +79,4 @@ func (eng *hostServer) Log(ctx context.Context,
 	}
 	eng.host.Log(sev, req.Message)
 	return &pbempty.Empty{}, nil
-}
-
-// ReadLocation reads the value from a location identified by a token in the current program.
-func (eng *hostServer) ReadLocation(ctx context.Context,
-	req *lumirpc.ReadLocationRequest) (*pbstruct.Value, error) {
-	tok := tokens.Token(req.Token)
-	v, err := eng.host.ReadLocation(tok)
-	if err != nil {
-		return nil, err
-	}
-	return MarshalPropertyValue(v, MarshalOptions{}), nil
-}
-
-// ReadLocations reads takes a class or module token and reads all (static) properties belonging to it.
-func (eng *hostServer) ReadLocations(ctx context.Context,
-	req *lumirpc.ReadLocationsRequest) (*lumirpc.ReadLocationsResponse, error) {
-	tok := tokens.Token(req.Token)
-	locs, err := eng.host.ReadLocations(tok)
-	if err != nil {
-		return nil, err
-	}
-	props := MarshalProperties(locs, MarshalOptions{})
-	return &lumirpc.ReadLocationsResponse{Properties: props}, nil
 }

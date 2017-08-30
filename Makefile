@@ -10,7 +10,7 @@ GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
 .PHONY: default
-all: banner_all core lumijs sdk/nodejs integrationtest
+all: banner_all core sdk/nodejs integrationtest
 
 .PHONY: nightly
 nightly: default gocover
@@ -73,10 +73,6 @@ test:
 integrationtest:
 	@$(ECHO) "\033[0;32mINTEGRATION TEST:\033[0m"
 	go test -cover -parallel ${TESTPARALLELISM} ./examples
-
-.PHONY: lumijs
-lumijs:
-	@cd ./cmd/lumijs && $(MAKE)
 
 sdk/nodejs:
 	@cd ./sdk/nodejs && $(MAKE)

@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
@@ -13,7 +15,7 @@ func (eng *Engine) DeleteConfig(envName string, key string) error {
 	config := info.Target.Config
 
 	if config != nil {
-		delete(config, tokens.Token(key))
+		delete(config, key)
 
 		if err = eng.Environment.SaveEnvironment(info.Target, info.Snapshot); err != nil {
 			return errors.Wrap(err, "could not save configuration value")

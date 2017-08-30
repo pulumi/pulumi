@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
@@ -23,7 +25,6 @@ type PlanOptions struct {
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Debug                bool     // true to enable resource debugging output.
 	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReads            bool     // true to show the read-only steps in the plan.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
@@ -46,7 +47,6 @@ func (eng *Engine) Plan(opts PlanOptions) error {
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,
 		ShowConfig:           opts.ShowConfig,
-		ShowReads:            opts.ShowReads,
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
@@ -75,19 +75,24 @@ func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, erro
 		return nil, err
 	}
 
-	// First, compile the package, in preparatin for interpreting it and creating resources.
-	result := eng.compile(info.PackageArg)
-	if result == nil || !result.B.Ctx().Diag.Success() {
-		return nil, fmt.Errorf("Errors during compilation: %v", result.B.Ctx().Diag.Errors())
+	// First, load the package metadata, in preparation for executing it and creating resources.
+	pkginfo, err := eng.readPackageFromArg(info.PackageArg)
+	if err != nil {
+		return nil, errors.Errorf("Error loading package: %v", err)
 	}
+	contract.Assert(pkginfo != nil)
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi-fabric#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
-	source := deploy.NewEvalSource(ctx, result.B.Ctx(), result.Pkg, nil, info.Target.Config, opts.Destroy)
+	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
+		Pkg:    pkginfo.Pkg,
+		Pwd:    pkginfo.Root,
+		Config: info.Target.Config,
+	}, opts.Destroy, opts.DryRun)
 
 	// If there are any analyzers in the project file, add them.
 	var analyzers []tokens.QName
-	if as := result.Pkg.Node.Analyzers; as != nil {
+	if as := pkginfo.Pkg.Analyzers; as != nil {
 		for _, a := range *as {
 			analyzers = append(analyzers, a)
 		}
@@ -177,9 +182,7 @@ func (eng *Engine) printPlan(result *planResult, opts deployOptions) error {
 // shouldShow returns true if a step should show in the output.
 func shouldShow(step deploy.Step, opts deployOptions) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
-	if _, isrd := step.(deploy.ReadStep); isrd {
-		return opts.ShowReads
-	} else if step.Op() == deploy.OpSame {
+	if step.Op() == deploy.OpSame {
 		return opts.ShowSames
 	} else if step.Op() == deploy.OpCreateReplacement || step.Op() == deploy.OpDeleteReplaced {
 		return opts.ShowReplacementSteps
@@ -196,16 +199,16 @@ func printPrelude(b *bytes.Buffer, result *planResult, opts deployOptions, plann
 	}
 }
 
-func printConfig(b *bytes.Buffer, config resource.ConfigMap) {
+func printConfig(b *bytes.Buffer, config map[string]string) {
 	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
 	if config != nil {
-		var toks []string
-		for tok := range config {
-			toks = append(toks, string(tok))
+		var keys []string
+		for key := range config {
+			keys = append(keys, key)
 		}
-		sort.Strings(toks)
-		for _, tok := range toks {
-			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, tok, config[tokens.Token(tok)]))
+		sort.Strings(keys)
+		for _, key := range keys {
+			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, key, config[key]))
 		}
 	}
 }
@@ -286,10 +289,6 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 			replaces = step.(*deploy.ReplaceStep).Keys()
 		}
 		printResourceProperties(b, mut.URN(), mut.Old(), mut.New(), replaces, summary, planning, indent)
-	} else if rd, isrd := step.(deploy.ReadStep); isrd {
-		for _, res := range rd.Resources() {
-			printResourceProperties(b, "", nil, res.State(), nil, summary, planning, indent)
-		}
 	} else {
 		contract.Failf("Expected each step to either be mutating or read-only")
 	}

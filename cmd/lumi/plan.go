@@ -16,7 +16,6 @@ func newPlanCmd() *cobra.Command {
 	var dotOutput bool
 	var env string
 	var showConfig bool
-	var showReads bool
 	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
@@ -43,7 +42,6 @@ func newPlanCmd() *cobra.Command {
 				Environment:          env,
 				Analyzers:            analyzers,
 				ShowConfig:           showConfig,
-				ShowReads:            showReads,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
@@ -66,9 +64,6 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
-	cmd.PersistentFlags().BoolVar(
-		&showReads, "show-reads", false,
-		"Show resources that will be read, in addition to those that will be modified")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")

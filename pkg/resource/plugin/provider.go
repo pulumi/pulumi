@@ -24,10 +24,6 @@ type Provider interface {
 	io.Closer
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
-	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
-	// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
-	// In any case, resources with the same name must be safe to use interchangeably with one another.
-	Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error)
 	// Check validates that the given property bag is valid for a resource of the given type.
 	Check(t tokens.Type, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.

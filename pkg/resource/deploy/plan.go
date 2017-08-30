@@ -21,7 +21,7 @@ type Plan struct {
 	target    *Target                          // the deployment target.
 	prev      *Snapshot                        // the old resource snapshot for comparison.
 	olds      map[resource.URN]*resource.State // a map of all old resources.
-	new       Source                           // the source of new resources.
+	source    Source                           // the source of new resources.
 	analyzers []tokens.QName                   // the analyzers to run during this plan's generation.
 }
 
@@ -34,16 +34,16 @@ type Plan struct {
 //
 // Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
 // a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
-func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, new Source, analyzers []tokens.QName) *Plan {
+func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName) *Plan {
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
-	contract.Assert(new != nil)
+	contract.Assert(source != nil)
 
 	// Produce a map of all old resources for fast resources.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		for _, oldres := range prev.Resources {
-			urn := oldres.URN()
+			urn := oldres.URN
 			contract.Assert(olds[urn] == nil)
 			olds[urn] = oldres
 		}
@@ -54,7 +54,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, new Source, an
 		target:    target,
 		prev:      prev,
 		olds:      olds,
-		new:       new,
+		source:    source,
 		analyzers: analyzers,
 	}
 }
@@ -64,17 +64,11 @@ func (p *Plan) Target() *Target                        { return p.target }
 func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
 func (p *Plan) Prev() *Snapshot                        { return p.prev }
 func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
-func (p *Plan) New() Source                            { return p.new }
+func (p *Plan) Source() Source                         { return p.source }
 
-// Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider
-// could not be found, or an error occurred while creating it, a non-nil error is returned.
-func (p *Plan) Provider(res resource.Resource) (plugin.Provider, error) {
-	return p.ProviderT(res.Type())
-}
-
-// ProviderT fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
+// Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
 // provider could not be found, or an error occurred while creating it, a non-nil error is returned.
-func (p *Plan) ProviderT(t tokens.Type) (plugin.Provider, error) {
+func (p *Plan) Provider(t tokens.Type) (plugin.Provider, error) {
 	pkg := t.Package()
 	return p.ctx.Host.Provider(pkg)
 }

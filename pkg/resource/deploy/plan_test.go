@@ -8,12 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
 	"github.com/pulumi/pulumi-fabric/pkg/pack"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
@@ -89,6 +84,10 @@ func (src *errorSource) Close() error {
 	return nil // nothing to do.
 }
 
+func (src *errorSource) Pkg() tokens.PackageName {
+	return ""
+}
+
 func (src *errorSource) Info() interface{} {
 	return nil
 }
@@ -108,12 +107,8 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Produce(res *resource.Object) {
-	// nothing to do.
-}
-
-func (iter *errorSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
-	return nil, nil, iter.src.err
+func (iter *errorSourceIterator) Next() (SourceGoal, error) {
+	return nil, iter.src.err
 }
 
 // TestBasicCRUDPlan creates a plan with numerous C(R)UD operations.
@@ -136,12 +131,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 				check: func(t tokens.Type,
 					props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, nil // accept all changes.
-				},
-				name: func(_ tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
-					name, has := props["name"]
-					assert.True(t, has)
-					assert.True(t, name.IsString())
-					return tokens.QName(name.StringValue()), nil
 				},
 				diff: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
 					news resource.PropertyMap) (plugin.DiffResult, error) {
@@ -386,6 +375,7 @@ func fakeTestResources(pkgnm tokens.PackageName,
 type testProviderHost struct {
 	analyzer func(nm tokens.QName) (plugin.Analyzer, error)
 	provider func(pkg tokens.Package) (plugin.Provider, error)
+	langhost func(runtime string) (plugin.LanguageRuntime, error)
 }
 
 func (host *testProviderHost) Close() error {
@@ -410,11 +400,13 @@ func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error)
 func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, error) {
 	return host.provider(pkg)
 }
+func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+	return host.langhost(runtime)
+}
 
 type testProvider struct {
 	pkg    tokens.Package
 	check  func(tokens.Type, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	name   func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
 	create func(tokens.Type, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	get    func(tokens.Type, resource.ID) (resource.PropertyMap, error)
 	diff   func(tokens.Type, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
@@ -432,9 +424,6 @@ func (prov *testProvider) Pkg() tokens.Package {
 func (prov *testProvider) Check(t tokens.Type,
 	props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.check(t, props)
-}
-func (prov *testProvider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
-	return prov.name(t, props)
 }
 func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {

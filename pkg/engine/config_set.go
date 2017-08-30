@@ -1,8 +1,9 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
@@ -14,11 +15,11 @@ func (eng *Engine) SetConfig(envName string, key string, value string) error {
 	config := info.Target.Config
 
 	if config == nil {
-		config = make(resource.ConfigMap)
+		config = make(map[string]string)
 		info.Target.Config = config
 	}
 
-	config[tokens.Token(key)] = value
+	config[key] = value
 
 	if err = eng.Environment.SaveEnvironment(info.Target, info.Snapshot); err != nil {
 		return errors.Wrap(err, "could not save configuration value")
@@ -35,10 +36,10 @@ func (eng *Engine) ReplaceConfig(envName string, newConfig map[string]string) er
 	if err != nil {
 		return err
 	}
-	config := make(resource.ConfigMap)
 
-	for k, v := range newConfig {
-		config[tokens.Token(k)] = v
+	config := make(map[string]string)
+	for key, v := range newConfig {
+		config[key] = v
 	}
 
 	info.Target.Config = config

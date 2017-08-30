@@ -1,3 +1,0 @@
-pythonparser>=1.0.0
-pyyaml>=3.12
-

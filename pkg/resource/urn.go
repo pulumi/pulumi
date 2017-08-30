@@ -18,14 +18,14 @@ import (
 //
 // Each resource URN is of the form:
 //
-//     urn:lumi:<Namespace>::<AllocModule>::<Type>::<Name>
+//     urn:lumi:<Namespace>::<PkgToken>::<Type>::<Name>
 //
 // wherein each element is the following:
 //
-//     <Namespace>      The namespace being deployed into
-//     <AllocModule>    The module token in which the object was allocated
-//     <Type>           The object type's full type token
-//     <Name>           The human-friendly name identifier assigned by the developer or provider
+//     <Namespace>   The namespace being deployed into
+//     <AllocPkg>    The package in which the object was allocated
+//     <Type>        The object type's full type token
+//     <Name>        The human-friendly name identifier assigned by the developer or provider
 //
 // In the future, we may add elements to the URN; it is more important that it is unique than it is human-typable.
 type URN string
@@ -37,7 +37,7 @@ const (
 )
 
 // NewURN creates a unique resource URN for the given resource object.
-func NewURN(ns tokens.QName, alloc tokens.Module, t tokens.Type, name tokens.QName) URN {
+func NewURN(ns tokens.QName, alloc tokens.PackageName, t tokens.Type, name tokens.QName) URN {
 	return URN(
 		URNPrefix +
 			string(ns) +
@@ -60,8 +60,8 @@ func (urn URN) Namespace() tokens.QName {
 }
 
 // Alloc returns the resource allocation context part of a URN.
-func (urn URN) Alloc() tokens.Module {
-	return tokens.Module(strings.Split(urn.URNName(), URNNameDelimiter)[1])
+func (urn URN) Alloc() tokens.PackageName {
+	return tokens.PackageName(strings.Split(urn.URNName(), URNNameDelimiter)[1])
 }
 
 // Type returns the resource type part of a URN.

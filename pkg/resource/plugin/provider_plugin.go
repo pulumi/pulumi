@@ -14,7 +14,7 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 	"github.com/pulumi/pulumi-fabric/pkg/workspace"
-	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
+	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
 const ProviderPluginPrefix = "lumi-resource-"
@@ -53,27 +53,6 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) 
 }
 
 func (p *provider) Pkg() tokens.Package { return p.pkg }
-
-// Name names a given resource.
-func (p *provider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
-	contract.Assert(t != "")
-	contract.Assert(props != nil)
-	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &lumirpc.NameRequest{
-		Type:       string(t),
-		Properties: MarshalProperties(props, MarshalOptions{}),
-	}
-
-	resp, err := p.client.Name(p.ctx.Request(), req)
-	if err != nil {
-		glog.V(7).Infof("resource[%v].Name(t=%v,...) failed: err=%v", p.pkg, t, err)
-		return "", err
-	}
-
-	name := tokens.QName(resp.GetName())
-	glog.V(7).Infof("resource[%v].Name(t=%v,...) success: name=%v", p.pkg, t, name)
-	return name, nil
-}
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(t tokens.Type, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {

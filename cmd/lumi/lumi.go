@@ -39,7 +39,6 @@ func NewLumiCmd() *cobra.Command {
 	cmd.AddCommand(newDeployCmd())
 	cmd.AddCommand(newDestroyCmd())
 	cmd.AddCommand(newEnvCmd())
-	cmd.AddCommand(newPackCmd())
 	cmd.AddCommand(newPlanCmd())
 	cmd.AddCommand(newVersionCmd())
 

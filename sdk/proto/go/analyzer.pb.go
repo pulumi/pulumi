@@ -15,17 +15,11 @@ It has these top-level messages:
 	AnalyzeRequest
 	AnalyzeResponse
 	AnalyzeFailure
-	QueryResourcesResponse
 	LogRequest
-	ReadLocationRequest
-	ReadLocationsRequest
-	ReadLocationsResponse
 	RunRequest
 	RunResponse
 	NewResourceRequest
 	NewResourceResponse
-	NameRequest
-	NameResponse
 	CheckRequest
 	CheckResponse
 	CheckFailure

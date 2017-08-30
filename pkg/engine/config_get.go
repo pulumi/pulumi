@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
@@ -15,7 +17,7 @@ func (eng *Engine) GetConfig(envName string, key string) error {
 	config := info.Target.Config
 
 	if config != nil {
-		if v, has := config[tokens.Token(key)]; has {
+		if v, has := config[key]; has {
 			fmt.Fprintf(eng.Stdout, "%v\n", v)
 			return nil
 		}

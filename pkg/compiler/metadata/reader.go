@@ -5,7 +5,6 @@ package metadata
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
 	"github.com/pulumi/pulumi-fabric/pkg/encoding"
@@ -15,23 +14,21 @@ import (
 
 // Reader reads a document by decoding/parsing it into its AST form.
 type Reader interface {
-	core.Phase
-
 	// ReadPackage parses a LumiPack from the given document.  If an error occurs, the return value will be nil.  It
 	// is expected that errors are conveyed using the diag.Sink interface.
 	ReadPackage(doc *diag.Document) *pack.Package
 }
 
-func NewReader(ctx *core.Context) Reader {
-	return &reader{ctx}
+func NewReader(diag diag.Sink) Reader {
+	return &reader{diag}
 }
 
 type reader struct {
-	ctx *core.Context
+	diag diag.Sink
 }
 
 func (r *reader) Diag() diag.Sink {
-	return r.ctx.Diag
+	return r.diag
 }
 
 func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
