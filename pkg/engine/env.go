@@ -8,6 +8,8 @@ import (
 
 	goerr "github.com/pkg/errors"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
@@ -140,7 +142,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		eng.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		glog.Errorf("Resource deserialization failed; illegal markup extension: '%v'", ext)
 		return nil, nil, nil
 	}
 
@@ -148,9 +150,9 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			eng.Diag().Errorf(errors.ErrorInvalidEnvName, name)
+			glog.Errorf("Environment '%v' could not be found in the current workspace", name)
 		} else {
-			eng.Diag().Errorf(errors.ErrorIO, err)
+			glog.Errorf("An IO error occurred during the current operation: %v", err)
 		}
 		return nil, nil, nil
 	}
@@ -158,7 +160,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		eng.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
+		glog.Errorf("Could not read deployment file '%v': %v", file, err)
 		return nil, nil, nil
 	}
 
@@ -166,7 +168,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
-		eng.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
+		glog.Errorf("Could not read deployment file '%v': %v", file, err)
 		return nil, nil, nil
 	}
 
@@ -178,7 +180,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	md := mapper.New(nil)
 	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
-		eng.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
+		glog.Errorf("Could not read deployment file '%v': %v", file, err)
 		return nil, nil, nil
 	}
 
@@ -197,7 +199,7 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot, file strin
 	// Make a serializable LumiGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		eng.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		glog.Errorf("Resource serialization failed; illegal markup extension: '%v'", ext)
 		return false
 	}
 	if filepath.Ext(file) == "" {
@@ -206,14 +208,14 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot, file strin
 	dep := environment.SerializeCheckpoint(env, snap)
 	b, err := m.Marshal(dep)
 	if err != nil {
-		eng.Diag().Errorf(errors.ErrorIO, err)
+		glog.Errorf("An IO error occurred during the current operation: %v", err)
 		return false
 	}
 
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
 		if _, staterr := os.Stat(file); staterr == nil {
-			eng.Diag().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
+			glog.Errorf("An IO error occurred during the current operation: %v", goerr.Errorf("file '%v' already exists", file))
 			return false
 		}
 	}
@@ -223,13 +225,13 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot, file strin
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		eng.Diag().Errorf(errors.ErrorIO, err)
+		glog.Errorf("An IO error occurred during the current operation: %v", err)
 		return false
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = ioutil.WriteFile(file, b, 0600); err != nil {
-		eng.Diag().Errorf(errors.ErrorIO, err)
+		glog.Errorf("An IO error occurred during the current operation: %v", err)
 		return false
 	}
 
