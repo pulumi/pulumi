@@ -11,9 +11,10 @@ import (
 )
 
 type Engine struct {
-	Stdout io.Writer
-	Stderr io.Writer
-	snk    diag.Sink
+	Stdout      io.Writer
+	Stderr      io.Writer
+	snk         diag.Sink
+	Environment EnvironmentProvider
 }
 
 func (e *Engine) Diag() diag.Sink {

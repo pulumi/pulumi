@@ -104,7 +104,7 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			// Now save the updated snapshot Notee that if a failure has occurred, the Apply routine above will
 			// have returned a safe checkpoint.
 			targ := result.Info.Target
-			_ = eng.saveEnv(targ, summary.Snap())
+			_ = eng.Environment.SaveEnvironment(targ, summary.Snap())
 
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			return err

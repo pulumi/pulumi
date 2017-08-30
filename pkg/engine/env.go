@@ -2,23 +2,17 @@ package engine
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	goerr "github.com/pkg/errors"
-
-	"github.com/golang/glog"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
-	"github.com/pulumi/pulumi-fabric/pkg/encoding"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
-	"github.com/pulumi/pulumi-fabric/pkg/util/mapper"
 	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 )
 
@@ -36,7 +30,7 @@ func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	target, snapshot, checkpoint, err := eng.readEnv(name)
+	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(name)
 	if err != nil {
 		return nil, goerr.Errorf("could not read environment information")
 	}
@@ -61,7 +55,7 @@ type envCmdInfo struct {
 // createEnv just creates a new empty environment without deploying anything into it.
 func (eng *Engine) createEnv(name tokens.QName) {
 	env := &deploy.Target{Name: name}
-	if err := eng.saveEnv(env, nil); err == nil {
+	if err := eng.Environment.SaveEnvironment(env, nil); err == nil {
 		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
 		eng.setCurrentEnv(name, false)
 	}
@@ -93,7 +87,7 @@ func (eng *Engine) getCurrentEnv() tokens.QName {
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
 func (eng *Engine) setCurrentEnv(name tokens.QName, verify bool) {
 	if verify {
-		if _, _, _, err := eng.readEnv(name); err != nil {
+		if _, _, _, err := eng.Environment.GetEnvironment(name); err != nil {
 			return // no environment by this name exists, bail out.
 		}
 	}
@@ -111,123 +105,11 @@ func (eng *Engine) setCurrentEnv(name tokens.QName, verify bool) {
 
 // removeTarget permanently deletes the environment's information from the local workstation.
 func (eng *Engine) removeTarget(env *deploy.Target) error {
-	if err := deleteTarget(env); err != nil {
+	if err := eng.Environment.RemoveEnvironment(env); err != nil {
 		return err
 	}
 	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
 		colors.SpecAttention, env.Name, colors.Reset)
 	fmt.Fprint(eng.Stdout, colors.ColorizeText(msg))
-	return nil
-}
-
-// backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
-// simply renames the file, which is simpler, more efficient, etc.
-func backupTarget(file string) {
-	contract.Require(file != "", "file")
-	err := os.Rename(file, file+".bak")
-	contract.IgnoreError(err) // ignore errors.
-	// IDEA: consider multiple backups (.bak.bak.bak...etc).
-}
-
-// deleteTarget removes an existing snapshot file, leaving behind a backup.
-func deleteTarget(env *deploy.Target) error {
-	contract.Require(env != nil, "env")
-	// Just make a backup of the file and don't write out anything new.
-	file := workspace.EnvPath(env.Name)
-	backupTarget(file)
-	return nil
-}
-
-// readEnv reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.Checkpoint, error) {
-	contract.Require(name != "", "name")
-	file := workspace.EnvPath(name)
-
-	// Detect the encoding of the file so we can do our initial unmarshaling.
-	m, ext := encoding.Detect(file)
-	if m == nil {
-		glog.Errorf("Resource deserialization failed; illegal markup extension: '%v'", ext)
-		return nil, nil, nil, fmt.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
-	}
-
-	// Now read the whole file into a byte blob.
-	b, err := ioutil.ReadFile(file)
-	if err != nil {
-		if os.IsNotExist(err) {
-			glog.Errorf("Environment '%v' could not be found in the current workspace", name)
-		} else {
-			glog.Errorf("An IO error occurred during the current operation: %v", err)
-		}
-		return nil, nil, nil, err
-	}
-
-	// Unmarshal the contents into a checkpoint structure.
-	var checkpoint environment.Checkpoint
-	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil, err
-	}
-
-	// Next, use the mapping infrastructure to validate the contents.
-	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
-	var obj map[string]interface{}
-	if err = m.Unmarshal(b, &obj); err != nil {
-		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil, err
-	}
-
-	if obj["latest"] != nil {
-		if latest, islatest := obj["latest"].(map[string]interface{}); islatest {
-			delete(latest, "resources") // remove the resources, since they require custom marshaling.
-		}
-	}
-	md := mapper.New(nil)
-	var ignore environment.Checkpoint // just for errors.
-	if err = md.Decode(obj, &ignore); err != nil {
-		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil, err
-	}
-
-	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
-	contract.Assert(target != nil)
-	return target, snapshot, &checkpoint, nil
-}
-
-// saveEnv saves a new snapshot at the given location, backing up any existing ones.
-func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) error {
-	contract.Require(env != nil, "env")
-	file := workspace.EnvPath(env.Name)
-
-	// Make a serializable LumiGL data structure and then use the encoder to encode it.
-	m, ext := encoding.Detect(file)
-	if m == nil {
-		glog.Errorf("Resource serialization failed; illegal markup extension: '%v'", ext)
-		return fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
-	}
-	if filepath.Ext(file) == "" {
-		file = file + ext
-	}
-	dep := environment.SerializeCheckpoint(env, snap)
-	b, err := m.Marshal(dep)
-	if err != nil {
-		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return err
-	}
-
-	// Back up the existing file if it already exists.
-	backupTarget(file)
-
-	// Ensure the directory exists.
-	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return err
-	}
-
-	// And now write out the new snapshot file, overwriting that location.
-	if err = ioutil.WriteFile(file, b, 0600); err != nil {
-		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return err
-	}
-
 	return nil
 }

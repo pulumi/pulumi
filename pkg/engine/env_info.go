@@ -17,7 +17,7 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 	}
 	fmt.Fprintf(eng.Stdout, "Current environment is %v\n", curr)
 	fmt.Fprintf(eng.Stdout, "    (use `lumi env select` to change environments; `lumi env ls` lists known ones)\n")
-	target, snapshot, checkpoint, err := eng.readEnv(curr)
+	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(curr)
 	if err != nil {
 		return err
 	}
