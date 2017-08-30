@@ -4,6 +4,9 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -29,4 +32,10 @@ func (e *Engine) InitDiag(opts diag.FormatOptions) {
 	opts.Stderr = e.Stderr
 
 	e.snk = diag.DefaultSink(opts)
+}
+
+type EnvironmentProvider interface {
+	GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.Checkpoint, error)
+	SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error
+	RemoveEnvironment(env *deploy.Target) error
 }
