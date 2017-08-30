@@ -17,7 +17,6 @@ type DeployOptions struct {
 	Environment          string   // the environment we are deploying into
 	Package              string   // the package we are deploying (or "" to use the default)
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Output               string   // the place to store the output, if any.
 	Debug                bool     // true to enable resource debugging output.
 	DryRun               bool     // true if we should just print the plan without performing it.
 	ShowConfig           bool     // true to show the configuration variables being used.
@@ -42,7 +41,6 @@ func (eng *Engine) Deploy(opts DeployOptions) error {
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
-		Output:               opts.Output,
 	})
 }
 
@@ -58,7 +56,6 @@ type deployOptions struct {
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
 	DOT                  bool     // true if we should print the DOT file for this plan.
-	Output               string   // the place to store the output, if any.
 }
 
 func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
@@ -104,10 +101,10 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 					colors.SpecAttention, colors.Reset))
 			}
 
-			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
-			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
+			// Now save the updated snapshot Notee that if a failure has occurred, the Apply routine above will
+			// have returned a safe checkpoint.
 			targ := result.Info.Target
-			eng.saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
+			eng.saveEnv(targ, summary.Snap(), true /*overwrite*/)
 
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			return err

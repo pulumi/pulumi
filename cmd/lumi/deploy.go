@@ -19,7 +19,6 @@ func newDeployCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
-	var output string
 	var cmd = &cobra.Command{
 		Use:     "deploy [<package>] [-- [<args>]]",
 		Aliases: []string{"run", "up", "update"},
@@ -47,7 +46,6 @@ func newDeployCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-				Output:               output,
 			})
 		}),
 	}
@@ -79,9 +77,6 @@ func newDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Only display summarization of resources and plan operations")
-	cmd.PersistentFlags().StringVarP(
-		&output, "output", "o", "",
-		"Serialize the resulting checkpoint to a specific file, instead of overwriting the existing one")
 
 	return cmd
 }
