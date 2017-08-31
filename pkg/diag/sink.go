@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 
 	"github.com/golang/glog"
 
@@ -111,15 +112,17 @@ const DefaultSinkIDPrefix = "LUMI"
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
 	opts    FormatOptions          // a set of options that control output style and content.
-	counts  map[Severity]int       // the number of messages that have been issued per severity.
 	writers map[Severity]io.Writer // the writers to use for each kind of diagnostic severity.
+
+	counts map[Severity]int // the number of messages that have been issued per severity.
+	mutex  sync.RWMutex     // a mutex for guarding updates to the counts map
 }
 
 func (d *defaultSink) Count() int    { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
-func (d *defaultSink) Debugs() int   { return d.counts[Debug] }
-func (d *defaultSink) Infos() int    { return d.counts[Info] }
-func (d *defaultSink) Errors() int   { return d.counts[Error] }
-func (d *defaultSink) Warnings() int { return d.counts[Warning] }
+func (d *defaultSink) Debugs() int   { return d.getCount(Debug) }
+func (d *defaultSink) Infos() int    { return d.getCount(Info) }
+func (d *defaultSink) Errors() int   { return d.getCount(Error) }
+func (d *defaultSink) Warnings() int { return d.getCount(Warning) }
 func (d *defaultSink) Success() bool { return d.Errors() == 0 }
 
 func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
@@ -145,7 +148,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 		glog.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Debug], msg)
-	d.counts[Debug]++
+	d.incrementCount(Debug)
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
@@ -154,7 +157,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Info], msg)
-	d.counts[Info]++
+	d.incrementCount(Info)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
@@ -163,7 +166,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Error], msg)
-	d.counts[Error]++
+	d.incrementCount(Error)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
@@ -172,7 +175,19 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Warning], msg)
-	d.counts[Warning]++
+	d.incrementCount(Warning)
+}
+
+func (d *defaultSink) incrementCount(sev Severity) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	d.counts[sev]++
+}
+
+func (d *defaultSink) getCount(sev Severity) int {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+	return d.counts[sev]
 }
 
 func (d *defaultSink) useColor(sev Severity) bool {
