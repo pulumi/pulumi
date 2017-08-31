@@ -3,12 +3,11 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/encoding"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
@@ -29,34 +28,29 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		glog.Errorf("Resource deserialization failed; illegal markup extension: '%v'", ext)
-		return nil, nil, nil, fmt.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
+		return nil, nil, nil, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
 	}
 
 	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			glog.Errorf("Environment '%v' could not be found in the current workspace", name)
-		} else {
-			glog.Errorf("An IO error occurred during the current operation: %v", err)
+			return nil, nil, nil, errors.Errorf("Environment '%v' could not be found in the current workspace", name)
 		}
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.Wrapf(err, "An IO error occurred during the current operation")
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
 	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
-		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
 	}
 
 	if obj["latest"] != nil {
@@ -67,8 +61,7 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
 	md := mapper.New(nil)
 	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
-		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
 	}
 
 	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
@@ -83,8 +76,7 @@ func (p localEnvProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snaps
 	// Make a serializable LumiGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		glog.Errorf("Resource serialization failed; illegal markup extension: '%v'", ext)
-		return fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
+		return errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
@@ -92,8 +84,7 @@ func (p localEnvProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snaps
 	dep := environment.SerializeCheckpoint(env, snap)
 	b, err := m.Marshal(dep)
 	if err != nil {
-		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return err
+		return errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
 	// Back up the existing file if it already exists.

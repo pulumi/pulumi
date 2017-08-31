@@ -16,7 +16,7 @@ func (eng *Engine) DeleteConfig(envName string, key string) error {
 		delete(config, tokens.Token(key))
 
 		if err = eng.Environment.SaveEnvironment(info.Target, info.Snapshot); err != nil {
-			return errors.Errorf("could not save configuration value")
+			return errors.Wrap(err, "could not save configuration value")
 		}
 	}
 
