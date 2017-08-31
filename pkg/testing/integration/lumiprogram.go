@@ -29,7 +29,7 @@ const (
 type LumiProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
-	// Array of NPM packages which must be `yarn linked` (e.g. {"@lumi/lumi", "@lumi/aws"})
+	// Array of NPM packages which must be `yarn linked` (e.g. {"@pulumi/pulumi-fabric", "@pulumi/aws"})
 	Dependencies []string
 	// Map of config keys and values to set on the Lumi environment (e.g. {"aws:config:region": "us-east-2"})
 	Config map[string]string
@@ -72,6 +72,7 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 // LumiProgramTest runs a lifecylce of Lumi commands in a Lumi program working directory.
 // Uses the `lumi` and `yarn` binaries available on PATH. Executes the following
 // workflow:
+//   yarn install
 //   yarn link <each opts.Depencies>
 //   yarn run build
 //   lumi env init integrationtesting
@@ -123,6 +124,7 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "lumi: %v\n", opts.LumiBin)
 	contract.IgnoreError(err)
 	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
+	runCmd(t, []string{opts.YarnBin, "version"}, dir, opts)
 	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .lumi directory.
@@ -232,6 +234,7 @@ func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgra
 	}
 
 	// Now ensure dependencies are present.
+	runCmd(t, []string{opts.YarnBin, "install", "--verbose"}, dir, opts)
 	for _, dependency := range opts.Dependencies {
 		runCmd(t, []string{opts.YarnBin, "link", dependency}, dir, opts)
 	}
