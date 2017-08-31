@@ -20,10 +20,9 @@ cache:
     yarn: true
 install:
     - dep ensure -v
-    - pushd cmd/lumijs/ && yarn install && popd
-    - pushd lib/lumi/ && yarn install && popd
+    - pushd sdk/nodejs/ && yarn install && popd
 before_script:
-    - export PATH=$TRAVIS_BUILD_DIR/cmd/lumijs:$PATH
+    - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/:$PATH
     - export LUMIROOT=~/.lumi
 script:
     - if [ $TRAVIS_EVENT_TYPE = "cron" ]; then make nightly; else make; fi
