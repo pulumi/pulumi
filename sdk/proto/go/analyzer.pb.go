@@ -27,8 +27,6 @@ It has these top-level messages:
 	DiffResponse
 	CreateRequest
 	CreateResponse
-	GetRequest
-	GetResponse
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest

@@ -17,8 +17,6 @@ service ResourceProvider {
     // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
     // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
     rpc Create(CreateRequest) returns (CreateResponse) {}
-    // Get reads the instance state identified by ID, returning a populated resource object, or nil if not found.
-    rpc Get(GetRequest) returns (GetResponse) {}
     // Update updates an existing resource with new values.
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -26,7 +24,7 @@ service ResourceProvider {
 }
 
 message CheckRequest {
-    string type = 1;                       // the type token of the resource.
+    string urn = 1;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
 }
 
@@ -42,7 +40,7 @@ message CheckFailure {
 
 message DiffRequest {
     string id = 1;                   // the ID of the resource to diff.
-    string type = 2;                 // the type token of the resource to diff.
+    string urn = 2;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3; // the old values of properties to diff.
     google.protobuf.Struct news = 4; // the new values of properties to diff.
 }
@@ -52,7 +50,7 @@ message DiffResponse {
 }
 
 message CreateRequest {
-    string type = 1;                       // the type token of the resource.
+    string urn = 1;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 2; // the properties to set during creation.
 }
 
@@ -61,18 +59,9 @@ message CreateResponse {
     google.protobuf.Struct properties = 2; // any properties that were computed during creation.
 }
 
-message GetRequest {
-    string id = 1;   // the ID of the resource to read.
-    string type = 2; // the type token of the resource.
-}
-
-message GetResponse {
-    google.protobuf.Struct properties = 1; // the properties read from the resource.
-}
-
 message UpdateRequest {
     string id = 1;                   // the ID of the resource to update.
-    string type = 2;                 // the type token of the resource to update.
+    string urn = 2;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3; // the old values of properties to update.
     google.protobuf.Struct news = 4; // the new values of properties to update.
 }
@@ -83,7 +72,7 @@ message UpdateResponse {
 
 message DeleteRequest {
     string id = 1;                         // the ID of the resource to delete.
-    string type = 2;                       // the type token of the resource to update.
+    string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
 }
 

@@ -148,25 +148,16 @@ func (s *CreateStep) Pre() error {
 }
 
 func (s *CreateStep) Apply() (resource.Status, error) {
-	t := s.Type()
-
 	// Invoke the Create RPC function for this provider:
 	prov, err := getProvider(s)
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	id, outs, rst, err := prov.Create(t, s.new.AllInputs())
+	id, outs, rst, err := prov.Create(s.URN(), s.new.AllInputs())
 	if err != nil {
 		return rst, err
 	}
 	contract.Assert(id != "")
-
-	// If Create returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
-	if outs == nil {
-		if outs, err = prov.Get(t, id); err != nil {
-			return resource.StatusUnknown, err
-		}
-	}
 
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
@@ -226,7 +217,7 @@ func (s *DeleteStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	if rst, err := prov.Delete(s.old.Type, s.old.ID, s.old.All()); err != nil {
+	if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
 		return rst, err
 	}
 	s.iter.MarkStateSnapshot(s.old)
@@ -278,28 +269,18 @@ func (s *UpdateStep) Pre() error {
 }
 
 func (s *UpdateStep) Apply() (resource.Status, error) {
-	t := s.Type()
-	id := s.old.ID
-
 	// Invoke the Update RPC function for this provider:
 	prov, err := getProvider(s)
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	outs, rst, upderr := prov.Update(t, id, s.old.AllInputs(), s.new.AllInputs())
+	outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.AllInputs(), s.new.AllInputs())
 	if upderr != nil {
 		return rst, upderr
 	}
 
-	// If Update returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
-	if outs == nil {
-		if outs, err = prov.Get(t, id); err != nil {
-			return resource.StatusUnknown, err
-		}
-	}
-
 	// Now copy any output state back in case the update triggered cascading updates to other properties.
-	s.new.ID = id
+	s.new.ID = s.old.ID
 	s.new.Outputs = outs
 	s.goal.Done(s.new)
 	s.iter.MarkStateSnapshot(s.old)

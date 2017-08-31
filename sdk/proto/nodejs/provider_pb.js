@@ -19,8 +19,6 @@ goog.exportSymbol('proto.lumirpc.CreateResponse', null, global);
 goog.exportSymbol('proto.lumirpc.DeleteRequest', null, global);
 goog.exportSymbol('proto.lumirpc.DiffRequest', null, global);
 goog.exportSymbol('proto.lumirpc.DiffResponse', null, global);
-goog.exportSymbol('proto.lumirpc.GetRequest', null, global);
-goog.exportSymbol('proto.lumirpc.GetResponse', null, global);
 goog.exportSymbol('proto.lumirpc.UpdateRequest', null, global);
 goog.exportSymbol('proto.lumirpc.UpdateResponse', null, global);
 
@@ -69,7 +67,7 @@ proto.lumirpc.CheckRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.lumirpc.CheckRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -109,7 +107,7 @@ proto.lumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader) {
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setType(value);
+      msg.setUrn(value);
       break;
     case 2:
       var value = new google_protobuf_struct_pb.Struct;
@@ -144,7 +142,7 @@ proto.lumirpc.CheckRequest.prototype.serializeBinary = function() {
  */
 proto.lumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getType();
+  f = message.getUrn();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -163,16 +161,16 @@ proto.lumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional string type = 1;
+ * optional string urn = 1;
  * @return {string}
  */
-proto.lumirpc.CheckRequest.prototype.getType = function() {
+proto.lumirpc.CheckRequest.prototype.getUrn = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.lumirpc.CheckRequest.prototype.setType = function(value) {
+proto.lumirpc.CheckRequest.prototype.setUrn = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
@@ -633,7 +631,7 @@ proto.lumirpc.DiffRequest.prototype.toObject = function(opt_includeInstance) {
 proto.lumirpc.DiffRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
@@ -678,7 +676,7 @@ proto.lumirpc.DiffRequest.deserializeBinaryFromReader = function(msg, reader) {
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setType(value);
+      msg.setUrn(value);
       break;
     case 3:
       var value = new google_protobuf_struct_pb.Struct;
@@ -725,7 +723,7 @@ proto.lumirpc.DiffRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getType();
+  f = message.getUrn();
   if (f.length > 0) {
     writer.writeString(
       2,
@@ -767,16 +765,16 @@ proto.lumirpc.DiffRequest.prototype.setId = function(value) {
 
 
 /**
- * optional string type = 2;
+ * optional string urn = 2;
  * @return {string}
  */
-proto.lumirpc.DiffRequest.prototype.getType = function() {
+proto.lumirpc.DiffRequest.prototype.getUrn = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.lumirpc.DiffRequest.prototype.setType = function(value) {
+proto.lumirpc.DiffRequest.prototype.setUrn = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
@@ -1050,7 +1048,7 @@ proto.lumirpc.CreateRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.lumirpc.CreateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -1090,7 +1088,7 @@ proto.lumirpc.CreateRequest.deserializeBinaryFromReader = function(msg, reader) 
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setType(value);
+      msg.setUrn(value);
       break;
     case 2:
       var value = new google_protobuf_struct_pb.Struct;
@@ -1125,7 +1123,7 @@ proto.lumirpc.CreateRequest.prototype.serializeBinary = function() {
  */
 proto.lumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getType();
+  f = message.getUrn();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -1144,16 +1142,16 @@ proto.lumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer) 
 
 
 /**
- * optional string type = 1;
+ * optional string urn = 1;
  * @return {string}
  */
-proto.lumirpc.CreateRequest.prototype.getType = function() {
+proto.lumirpc.CreateRequest.prototype.getUrn = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.lumirpc.CreateRequest.prototype.setType = function(value) {
+proto.lumirpc.CreateRequest.prototype.setUrn = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
@@ -1383,330 +1381,6 @@ proto.lumirpc.CreateResponse.prototype.hasProperties = function() {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.lumirpc.GetRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.lumirpc.GetRequest, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  proto.lumirpc.GetRequest.displayName = 'proto.lumirpc.GetRequest';
-}
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto suitable for use in Soy templates.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
- * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
- *     for transitional soy proto support: http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.lumirpc.GetRequest.prototype.toObject = function(opt_includeInstance) {
-  return proto.lumirpc.GetRequest.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Whether to include the JSPB
- *     instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.lumirpc.GetRequest} msg The msg instance to transform.
- * @return {!Object}
- */
-proto.lumirpc.GetRequest.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.lumirpc.GetRequest}
- */
-proto.lumirpc.GetRequest.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.lumirpc.GetRequest;
-  return proto.lumirpc.GetRequest.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.lumirpc.GetRequest} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.lumirpc.GetRequest}
- */
-proto.lumirpc.GetRequest.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setId(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setType(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.lumirpc.GetRequest.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.lumirpc.GetRequest.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.lumirpc.GetRequest} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.lumirpc.GetRequest.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getId();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getType();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string id = 1;
- * @return {string}
- */
-proto.lumirpc.GetRequest.prototype.getId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/** @param {string} value */
-proto.lumirpc.GetRequest.prototype.setId = function(value) {
-  jspb.Message.setField(this, 1, value);
-};
-
-
-/**
- * optional string type = 2;
- * @return {string}
- */
-proto.lumirpc.GetRequest.prototype.getType = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/** @param {string} value */
-proto.lumirpc.GetRequest.prototype.setType = function(value) {
-  jspb.Message.setField(this, 2, value);
-};
-
-
-
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.lumirpc.GetResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.lumirpc.GetResponse, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  proto.lumirpc.GetResponse.displayName = 'proto.lumirpc.GetResponse';
-}
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto suitable for use in Soy templates.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
- * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
- *     for transitional soy proto support: http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.lumirpc.GetResponse.prototype.toObject = function(opt_includeInstance) {
-  return proto.lumirpc.GetResponse.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Whether to include the JSPB
- *     instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.lumirpc.GetResponse} msg The msg instance to transform.
- * @return {!Object}
- */
-proto.lumirpc.GetResponse.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.lumirpc.GetResponse}
- */
-proto.lumirpc.GetResponse.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.lumirpc.GetResponse;
-  return proto.lumirpc.GetResponse.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.lumirpc.GetResponse} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.lumirpc.GetResponse}
- */
-proto.lumirpc.GetResponse.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setProperties(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.lumirpc.GetResponse.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.lumirpc.GetResponse.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.lumirpc.GetResponse} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.lumirpc.GetResponse.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getProperties();
-  if (f != null) {
-    writer.writeMessage(
-      1,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-};
-
-
-/**
- * optional google.protobuf.Struct properties = 1;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.lumirpc.GetResponse.prototype.getProperties = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 1));
-};
-
-
-/** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.lumirpc.GetResponse.prototype.setProperties = function(value) {
-  jspb.Message.setWrapperField(this, 1, value);
-};
-
-
-proto.lumirpc.GetResponse.prototype.clearProperties = function() {
-  this.setProperties(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {!boolean}
- */
-proto.lumirpc.GetResponse.prototype.hasProperties = function() {
-  return jspb.Message.getField(this, 1) != null;
-};
-
-
-
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
 proto.lumirpc.UpdateRequest = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
@@ -1743,7 +1417,7 @@ proto.lumirpc.UpdateRequest.prototype.toObject = function(opt_includeInstance) {
 proto.lumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
@@ -1788,7 +1462,7 @@ proto.lumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader) 
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setType(value);
+      msg.setUrn(value);
       break;
     case 3:
       var value = new google_protobuf_struct_pb.Struct;
@@ -1835,7 +1509,7 @@ proto.lumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getType();
+  f = message.getUrn();
   if (f.length > 0) {
     writer.writeString(
       2,
@@ -1877,16 +1551,16 @@ proto.lumirpc.UpdateRequest.prototype.setId = function(value) {
 
 
 /**
- * optional string type = 2;
+ * optional string urn = 2;
  * @return {string}
  */
-proto.lumirpc.UpdateRequest.prototype.getType = function() {
+proto.lumirpc.UpdateRequest.prototype.getUrn = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.lumirpc.UpdateRequest.prototype.setType = function(value) {
+proto.lumirpc.UpdateRequest.prototype.setUrn = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
@@ -2155,7 +1829,7 @@ proto.lumirpc.DeleteRequest.prototype.toObject = function(opt_includeInstance) {
 proto.lumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -2199,7 +1873,7 @@ proto.lumirpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader) 
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setType(value);
+      msg.setUrn(value);
       break;
     case 3:
       var value = new google_protobuf_struct_pb.Struct;
@@ -2241,7 +1915,7 @@ proto.lumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getType();
+  f = message.getUrn();
   if (f.length > 0) {
     writer.writeString(
       2,
@@ -2275,16 +1949,16 @@ proto.lumirpc.DeleteRequest.prototype.setId = function(value) {
 
 
 /**
- * optional string type = 2;
+ * optional string urn = 2;
  * @return {string}
  */
-proto.lumirpc.DeleteRequest.prototype.getType = function() {
+proto.lumirpc.DeleteRequest.prototype.getUrn = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.lumirpc.DeleteRequest.prototype.setType = function(value) {
+proto.lumirpc.DeleteRequest.prototype.setUrn = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 

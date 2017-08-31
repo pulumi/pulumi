@@ -25,18 +25,16 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 	// Check validates that the given property bag is valid for a resource of the given type.
-	Check(t tokens.Type, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	Check(urn resource.URN, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
-	Diff(t tokens.Type, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap) (DiffResult, error)
+	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
-	// Get reads the instance state identified by res and returns it.
-	Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error)
+	Create(urn resource.URN, props resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	// Update updates an existing resource with new values.
-	Update(t tokens.Type, id resource.ID,
+	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
-	Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error)
+	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.Status, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

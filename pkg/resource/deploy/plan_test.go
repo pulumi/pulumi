@@ -122,11 +122,11 @@ func TestBasicCRUDPlan(t *testing.T) {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
 			}
 			return &testProvider{
-				check: func(t tokens.Type,
+				check: func(urn resource.URN,
 					props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, nil // accept all changes.
 				},
-				diff: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
+				diff: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
 					news resource.PropertyMap) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil // accept all changes.
 				},
@@ -376,13 +376,12 @@ func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRu
 
 type testProvider struct {
 	pkg    tokens.Package
-	check  func(tokens.Type, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	create func(tokens.Type, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
-	get    func(tokens.Type, resource.ID) (resource.PropertyMap, error)
-	diff   func(tokens.Type, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
-	update func(tokens.Type, resource.ID,
+	check  func(resource.URN, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	create func(resource.URN, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
+	diff   func(resource.URN, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
+	update func(resource.URN, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
-	delete func(tokens.Type, resource.ID, resource.PropertyMap) (resource.Status, error)
+	delete func(resource.URN, resource.ID, resource.PropertyMap) (resource.Status, error)
 }
 
 func (prov *testProvider) Close() error {
@@ -391,25 +390,23 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
-func (prov *testProvider) Check(t tokens.Type,
+func (prov *testProvider) Check(urn resource.URN,
 	props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return prov.check(t, props)
+	return prov.check(urn, props)
 }
-func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID,
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
-	return prov.create(t, props)
+	return prov.create(urn, props)
 }
-func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error) {
-	return prov.get(t, id)
-}
-func (prov *testProvider) Diff(t tokens.Type, id resource.ID,
+func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (plugin.DiffResult, error) {
-	return prov.diff(t, id, olds, news)
+	return prov.diff(urn, id, olds, news)
 }
-func (prov *testProvider) Update(t tokens.Type, id resource.ID,
+func (prov *testProvider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
-	return prov.update(t, id, olds, news)
+	return prov.update(urn, id, olds, news)
 }
-func (prov *testProvider) Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
-	return prov.delete(t, id, props)
+func (prov *testProvider) Delete(urn resource.URN,
+	id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	return prov.delete(urn, id, props)
 }

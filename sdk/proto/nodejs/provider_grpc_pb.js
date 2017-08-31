@@ -97,28 +97,6 @@ function deserialize_lumirpc_DiffResponse(buffer_arg) {
   return provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_GetRequest(arg) {
-  if (!(arg instanceof provider_pb.GetRequest)) {
-    throw new Error('Expected argument of type lumirpc.GetRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_GetRequest(buffer_arg) {
-  return provider_pb.GetRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_lumirpc_GetResponse(arg) {
-  if (!(arg instanceof provider_pb.GetResponse)) {
-    throw new Error('Expected argument of type lumirpc.GetResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_GetResponse(buffer_arg) {
-  return provider_pb.GetResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_lumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type lumirpc.UpdateRequest');
@@ -181,18 +159,6 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestDeserialize: deserialize_lumirpc_CreateRequest,
     responseSerialize: serialize_lumirpc_CreateResponse,
     responseDeserialize: deserialize_lumirpc_CreateResponse,
-  },
-  // Get reads the instance state identified by ID, returning a populated resource object, or nil if not found.
-  get: {
-    path: '/lumirpc.ResourceProvider/Get',
-    requestStream: false,
-    responseStream: false,
-    requestType: provider_pb.GetRequest,
-    responseType: provider_pb.GetResponse,
-    requestSerialize: serialize_lumirpc_GetRequest,
-    requestDeserialize: deserialize_lumirpc_GetRequest,
-    responseSerialize: serialize_lumirpc_GetResponse,
-    responseDeserialize: deserialize_lumirpc_GetResponse,
   },
   // Update updates an existing resource with new values.
   update: {

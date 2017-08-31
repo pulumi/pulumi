@@ -227,7 +227,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 
 	// Ensure the provider is okay with this resource and see if it has any new defaults to contribute.
 	inputs := new.AllInputs()
-	defaults, failures, err := prov.Check(new.Type, inputs)
+	defaults, failures, err := prov.Check(urn, inputs)
 	if err != nil {
 		return nil, err
 	} else if iter.issueCheckErrors(new, urn, failures) {
@@ -280,7 +280,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 		oldinputs := old.AllInputs()
 		if !oldinputs.DeepEquals(inputs) {
 			// The properties changed; we need to figure out whether to do an update or replacement.
-			diff, err := prov.Diff(old.Type, old.ID, oldinputs, inputs)
+			diff, err := prov.Diff(urn, old.ID, oldinputs, inputs)
 			if err != nil {
 				return nil, err
 			}
@@ -289,7 +289,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 				iter.replaces[urn] = true
 				// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 				// had assumed that we were going to carry them over from the old resource, which is no longer true.
-				defaults, failures, err := prov.Check(new.Type, new.Inputs)
+				defaults, failures, err := prov.Check(urn, new.Inputs)
 				if err != nil {
 					return nil, err
 				} else if iter.issueCheckErrors(new, urn, failures) {
