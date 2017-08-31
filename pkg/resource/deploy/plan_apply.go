@@ -202,7 +202,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	// Use the resource goal state name to produce a globally unique URN.
-	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Type, tokens.QName(res.Name))
+	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Type, res.Name)
 	if iter.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!

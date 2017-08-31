@@ -119,28 +119,6 @@ function deserialize_lumirpc_GetResponse(buffer_arg) {
   return provider_pb.GetResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_NameRequest(arg) {
-  if (!(arg instanceof provider_pb.NameRequest)) {
-    throw new Error('Expected argument of type lumirpc.NameRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_NameRequest(buffer_arg) {
-  return provider_pb.NameRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_lumirpc_NameResponse(arg) {
-  if (!(arg instanceof provider_pb.NameResponse)) {
-    throw new Error('Expected argument of type lumirpc.NameResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_NameResponse(buffer_arg) {
-  return provider_pb.NameResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_lumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type lumirpc.UpdateRequest');
@@ -167,20 +145,6 @@ function deserialize_lumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
-  // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
-  // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
-  // In any case, resources with the same name must be safe to use interchangeably with one another.
-  name: {
-    path: '/lumirpc.ResourceProvider/Name',
-    requestStream: false,
-    responseStream: false,
-    requestType: provider_pb.NameRequest,
-    responseType: provider_pb.NameResponse,
-    requestSerialize: serialize_lumirpc_NameRequest,
-    requestDeserialize: deserialize_lumirpc_NameRequest,
-    responseSerialize: serialize_lumirpc_NameResponse,
-    responseDeserialize: deserialize_lumirpc_NameResponse,
-  },
   // Check validates that the given property bag is valid for a resource of the given type.
   check: {
     path: '/lumirpc.ResourceProvider/Check',

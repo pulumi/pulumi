@@ -56,13 +56,8 @@ func (h *langhost) Runtime() string { return h.runtime }
 func (h *langhost) Run(info RunInfo) (string, error) {
 	glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), len(info.Config), info.DryRun)
-	resp, err := h.client.Run(h.ctx.Request(), &lumirpc.RunRequest{
-		Pwd:     info.Pwd,
-		Program: info.Program,
-		Args:    info.Args,
-		Config:  info.Config,
-		DryRun:  info.DryRun,
-	})
+	req := lumirpc.RunRequest(info)
+	resp, err := h.client.Run(h.ctx.Request(), &req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			info.Pwd, info.Program, info.DryRun, err)
