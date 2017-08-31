@@ -38,8 +38,8 @@ func (eng *Engine) ListEnvs() error {
 
 		// Read in this environment's information.
 		name := tokens.QName(envfn[:len(envfn)-len(ext)])
-		target, snapshot, checkpoint := eng.readEnv(name)
-		if checkpoint == nil {
+		target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(name)
+		if err != nil {
 			continue // failure reading the environment information.
 		}
 

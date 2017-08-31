@@ -20,6 +20,5 @@ func (eng *Engine) RemoveEnv(envName string, force bool) error {
 			"'%v' still has resources; removal rejected; pass --force to override", info.Target.Name)
 	}
 
-	eng.removeTarget(info.Target)
-	return nil
+	return eng.removeTarget(info.Target)
 }

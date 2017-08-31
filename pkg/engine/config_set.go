@@ -20,8 +20,8 @@ func (eng *Engine) SetConfig(envName string, key string, value string) error {
 
 	config[tokens.Token(key)] = value
 
-	if !eng.saveEnv(info.Target, info.Snapshot, "", true) {
-		return errors.Errorf("could not save configuration value")
+	if err = eng.Environment.SaveEnvironment(info.Target, info.Snapshot); err != nil {
+		return errors.Wrap(err, "could not save configuration value")
 	}
 
 	return nil
@@ -43,8 +43,8 @@ func (eng *Engine) ReplaceConfig(envName string, newConfig map[string]string) er
 
 	info.Target.Config = config
 
-	if !eng.saveEnv(info.Target, info.Snapshot, "", true) {
-		return errors.Errorf("could not save configuration value")
+	if err = eng.Environment.SaveEnvironment(info.Target, info.Snapshot); err != nil {
+		return errors.Wrap(err, "could not save configuration value")
 	}
 
 	return nil

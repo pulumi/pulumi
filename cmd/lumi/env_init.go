@@ -4,6 +4,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"os"
+
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 
 	"github.com/spf13/cobra"
 
@@ -23,6 +28,10 @@ func newEnvInitCmd() *cobra.Command {
 			// Read in the name of the environment to use.
 			if len(args) == 0 {
 				return errors.New("missing required environment name")
+			}
+
+			if _, staterr := os.Stat(workspace.EnvPath(tokens.QName(args[0]))); staterr == nil {
+				return fmt.Errorf("environment '%v' already exists", args[0])
 			}
 
 			return lumiEngine.InitEnv(args[0])

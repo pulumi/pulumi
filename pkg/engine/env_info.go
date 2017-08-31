@@ -17,9 +17,9 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 	}
 	fmt.Fprintf(eng.Stdout, "Current environment is %v\n", curr)
 	fmt.Fprintf(eng.Stdout, "    (use `lumi env select` to change environments; `lumi env ls` lists known ones)\n")
-	target, snapshot, checkpoint := eng.readEnv(curr)
-	if checkpoint == nil {
-		return errors.Errorf("could not read environment information")
+	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(curr)
+	if err != nil {
+		return err
 	}
 	if checkpoint.Latest != nil {
 		fmt.Fprintf(eng.Stdout, "Last deployment at %v\n", checkpoint.Latest.Time)
