@@ -4,7 +4,6 @@ package plugin
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/golang/glog"
@@ -13,7 +12,6 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
-	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
@@ -30,16 +28,9 @@ type provider struct {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
-	// Setup the search paths; first, the naked name (found on the PATH); next, the fully qualified name.
+	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := ProviderPluginPrefix + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
-	paths := []string{
-		srvexe, // naked PATH.
-		filepath.Join(
-			workspace.InstallRoot(), workspace.InstallRootLibdir, string(pkg), srvexe), // qualified name.
-	}
-
-	// Now go ahead and attempt to load the plugin.
-	plug, err := newPlugin(host, ctx, paths, fmt.Sprintf("resource[%v]", pkg))
+	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("resource[%v]", pkg))
 	if err != nil {
 		return nil, err
 	}

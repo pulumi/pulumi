@@ -40,7 +40,7 @@ func (eng *Engine) readPackageFromArg(arg string) (*pkginfo, error) {
 		if err != nil {
 			return nil, errors.Errorf("could not locate a package to load: %v", err)
 		} else if pkgpath == "" {
-			return nil, errors.Errorf("no package found at: %v", err)
+			return nil, errors.Errorf("no package found by searching upwards from '%v'", path)
 		}
 		path = pkgpath
 	} else {

@@ -4,13 +4,11 @@ package plugin
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/golang/glog"
 
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
@@ -27,15 +25,9 @@ type langhost struct {
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime string) (LanguageRuntime, error) {
-	// Setup the search paths; first, the naked name (found on the PATH); next, the fully qualified name.
+	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	paths := []string{
-		srvexe, // naked PATH.
-		filepath.Join(workspace.InstallRoot(), srvexe), // qualified name.
-	}
-
-	// Now go ahead and attempt to load the plugin.
-	plug, err := newPlugin(host, ctx, paths, fmt.Sprintf("langhost[%v]", runtime))
+	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("langhost[%v]", runtime))
 	if err != nil {
 		return nil, err
 	}
