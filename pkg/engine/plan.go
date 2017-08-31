@@ -131,7 +131,7 @@ func (eng *Engine) printPlan(result *planResult, opts deployOptions) error {
 	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
-	iter, err := result.Plan.Iterate()
+	iter, err := result.Plan.Start()
 	if err != nil {
 		return errors.Errorf("An error occurred while preparing the plan: %v", err)
 	}
@@ -199,16 +199,16 @@ func printPrelude(b *bytes.Buffer, result *planResult, opts deployOptions, plann
 	}
 }
 
-func printConfig(b *bytes.Buffer, config map[string]string) {
+func printConfig(b *bytes.Buffer, config map[tokens.ModuleMember]string) {
 	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
 	if config != nil {
 		var keys []string
 		for key := range config {
-			keys = append(keys, key)
+			keys = append(keys, string(key))
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, key, config[key]))
+			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, key, config[tokens.ModuleMember(key)]))
 		}
 	}
 }

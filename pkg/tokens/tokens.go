@@ -6,6 +6,8 @@ package tokens
 import (
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -171,6 +173,14 @@ type ModuleMember Token
 func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
 	contract.Assertf(IsName(string(nm)), "Module '%v' member name '%v' is not a legal name", mod, nm)
 	return ModuleMember(string(mod) + TokenDelimiter + string(nm))
+}
+
+// ParseModuleMember attempts to turn the string s into a module member, returning an error if it isn't a valid one.
+func ParseModuleMember(s string) (ModuleMember, error) {
+	if !Token(s).HasModuleMember() {
+		return "", errors.Errorf("String '%v' is not a valid module member", s)
+	}
+	return ModuleMember(s), nil
 }
 
 func (tok ModuleMember) Package() Package {

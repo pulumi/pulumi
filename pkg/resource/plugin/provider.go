@@ -24,6 +24,8 @@ type Provider interface {
 	io.Closer
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
+	// Configure configures the resource provider with "globals" that control its behavior.
+	Configure(vars map[tokens.ModuleMember]string) error
 	// Check validates that the given property bag is valid for a resource of the given type.
 	Check(urn resource.URN, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.

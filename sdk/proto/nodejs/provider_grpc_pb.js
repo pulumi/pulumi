@@ -42,6 +42,17 @@ function deserialize_lumirpc_CheckResponse(buffer_arg) {
   return provider_pb.CheckResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_lumirpc_ConfigureRequest(arg) {
+  if (!(arg instanceof provider_pb.ConfigureRequest)) {
+    throw new Error('Expected argument of type lumirpc.ConfigureRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_lumirpc_ConfigureRequest(buffer_arg) {
+  return provider_pb.ConfigureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_lumirpc_CreateRequest(arg) {
   if (!(arg instanceof provider_pb.CreateRequest)) {
     throw new Error('Expected argument of type lumirpc.CreateRequest');
@@ -123,6 +134,18 @@ function deserialize_lumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
+  // Configure configures the resource provider with "globals" that control its behavior.
+  configure: {
+    path: '/lumirpc.ResourceProvider/Configure',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.ConfigureRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_lumirpc_ConfigureRequest,
+    requestDeserialize: deserialize_lumirpc_ConfigureRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // Check validates that the given property bag is valid for a resource of the given type.
   check: {
     path: '/lumirpc.ResourceProvider/Check',

@@ -3,6 +3,8 @@
 package deploy
 
 import (
+	"sort"
+
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
@@ -20,7 +22,7 @@ import (
 // that failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
 func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) {
 	// Fetch a plan iterator and keep walking it until we are done.
-	iter, err := p.Iterate()
+	iter, err := p.Start()
 	if err != nil {
 		return nil, nil, resource.StatusOK, err
 	}
@@ -72,9 +74,14 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 	return iter, nil, resource.StatusOK, iter.Close()
 }
 
-// Iterate initializes and returns an iterator that can be used to step through a plan's individual steps.
-func (p *Plan) Iterate() (*PlanIterator, error) {
-	// Ask the source for its iterator.
+// Start initializes and returns an iterator that can be used to step through a plan's individual steps.
+func (p *Plan) Start() (*PlanIterator, error) {
+	// First, configure all providers based on the target configuration map.
+	if err := p.configure(); err != nil {
+		return nil, err
+	}
+
+	// Next, ask the source for its iterator.
 	src, err := p.source.Iterate()
 	if err != nil {
 		return nil, err
@@ -92,6 +99,36 @@ func (p *Plan) Iterate() (*PlanIterator, error) {
 		sames:    make(map[resource.URN]bool),
 		dones:    make(map[*resource.State]bool),
 	}, nil
+}
+
+func (p *Plan) configure() error {
+	var pkgs []string
+	pkgconfigs := make(map[tokens.Package]map[tokens.ModuleMember]string)
+	for k, v := range p.target.Config {
+		pkg := k.Package()
+		pkgs = append(pkgs, string(pkg))
+		pkgconfig, has := pkgconfigs[pkg]
+		if !has {
+			pkgconfig = make(map[tokens.ModuleMember]string)
+			pkgconfigs[pkg] = pkgconfig
+		}
+		pkgconfig[k] = v
+	}
+	sort.Strings(pkgs)
+	for _, pkg := range pkgs {
+		pkgt := tokens.Package(pkg)
+		prov, err := p.Provider(pkgt)
+		if err != nil {
+			return goerr.Wrapf(err, "failed to get pkg '%v' resource provider", pkg)
+		} else if prov != nil {
+			// Note that it's legal for a provider to be missing for this package.  This simply indicates that
+			// the configuration variable affects the program/package, and not a Go provider.
+			if err = prov.Configure(pkgconfigs[pkgt]); err != nil {
+				return goerr.Wrapf(err, "failed to configure pkg '%v' resource provider", pkg)
+			}
+		}
+	}
+	return nil
 }
 
 // PlanSummary is an interface for summarizing the progress of a plan.
@@ -245,6 +282,8 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 		analyzer, err := iter.p.ctx.Host.Analyzer(a)
 		if err != nil {
 			return nil, err
+		} else if analyzer == nil {
+			return nil, goerr.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
 		failures, err := analyzer.Analyze(new.Type, inputs)
 		if err != nil {
@@ -420,5 +459,11 @@ func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
 // provider could not be found, or an error occurred while creating it, a non-nil error is returned.
 func (iter *PlanIterator) Provider(t tokens.Type) (plugin.Provider, error) {
 	pkg := t.Package()
-	return iter.p.ctx.Host.Provider(pkg)
+	prov, err := iter.p.ctx.Host.Provider(pkg)
+	if err != nil {
+		return nil, err
+	} else if prov == nil {
+		return nil, goerr.Errorf("could not load resource provider for package '%v' from $PATH", pkg)
+	}
+	return prov, nil
 }

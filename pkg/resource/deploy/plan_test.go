@@ -25,7 +25,7 @@ func TestNullPlan(t *testing.T) {
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, nil, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
-	iter, err := plan.Iterate()
+	iter, err := plan.Start()
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
 	next, err := iter.Next()
@@ -46,7 +46,7 @@ func TestErrorPlan(t *testing.T) {
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
-		iter, err := plan.Iterate()
+		iter, err := plan.Start()
 		assert.Nil(t, iter)
 		assert.NotNil(t, err)
 		assert.Equal(t, "ITERATE", err.Error())
@@ -61,7 +61,7 @@ func TestErrorPlan(t *testing.T) {
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
-		iter, err := plan.Iterate()
+		iter, err := plan.Start()
 		assert.Nil(t, err)
 		assert.NotNil(t, iter)
 		next, err := iter.Next()
@@ -217,7 +217,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	// Next, validate the steps and ensure that we see all of the expected ones.  Note that there aren't any
 	// dependencies between the steps, so we must validate it in a way that's insensitive of order.
 	seen := make(map[StepOp]int)
-	iter, err := plan.Iterate()
+	iter, err := plan.Start()
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
 	for {
@@ -376,6 +376,7 @@ func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRu
 
 type testProvider struct {
 	pkg    tokens.Package
+	config func(map[tokens.ModuleMember]string) error
 	check  func(resource.URN, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	create func(resource.URN, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	diff   func(resource.URN, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
@@ -389,6 +390,9 @@ func (prov *testProvider) Close() error {
 }
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
+}
+func (prov *testProvider) Configure(vars map[tokens.ModuleMember]string) error {
+	return prov.config(vars)
 }
 func (prov *testProvider) Check(urn resource.URN,
 	props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {

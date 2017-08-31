@@ -77,7 +77,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 
 	// If not, try to load and bind to a plugin.
 	plug, err := NewAnalyzer(host, host.ctx, name)
-	if err == nil {
+	if err == nil && plug != nil {
 		host.analyzers[name] = plug // memoize the result.
 	}
 	return plug, err
@@ -92,7 +92,7 @@ func (host *defaultHost) Provider(pkg tokens.Package) (Provider, error) {
 
 	// If not, try to load and bind to a plugin.
 	plug, err := NewProvider(host, host.ctx, pkg)
-	if err == nil {
+	if err == nil && plug != nil {
 		host.providers[pkg] = plug // memoize the result.
 	}
 	return plug, err
@@ -107,7 +107,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 
 	// If not, try to load and bind to a plugin.
 	plug, err := NewLanguageRuntime(host, host.ctx, runtime)
-	if err == nil {
+	if err == nil && plug != nil {
 		host.langhosts[runtime] = plug // memoize the result.
 	}
 	return plug, err

@@ -7,15 +7,15 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
-func (eng *Engine) SetConfig(envName string, key string, value string) error {
+func (eng *Engine) SetConfig(envName string, key tokens.ModuleMember, value string) error {
 	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
 	if err != nil {
 		return err
 	}
-	config := info.Target.Config
 
+	config := info.Target.Config
 	if config == nil {
-		config = make(map[string]string)
+		config = make(map[tokens.ModuleMember]string)
 		info.Target.Config = config
 	}
 
@@ -31,13 +31,13 @@ func (eng *Engine) SetConfig(envName string, key string, value string) error {
 // ReplaceConfig sets the config for an environment to match `newConfig` and then saves
 // the environment. Note that config values that were present in the old environment but are
 // not present in `newConfig` will be removed from the environment
-func (eng *Engine) ReplaceConfig(envName string, newConfig map[string]string) error {
+func (eng *Engine) ReplaceConfig(envName string, newConfig map[tokens.ModuleMember]string) error {
 	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
 	if err != nil {
 		return err
 	}
 
-	config := make(map[string]string)
+	config := make(map[tokens.ModuleMember]string)
 	for key, v := range newConfig {
 		config[key] = v
 	}

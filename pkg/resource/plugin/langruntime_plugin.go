@@ -27,9 +27,11 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, runtime string) (LanguageRuntime, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("langhost[%v]", runtime))
+	plug, err := newPlugin(host, ctx, srvexe, fmt.Sprintf("langhost[%v]", runtime))
 	if err != nil {
 		return nil, err
+	} else if plug == nil {
+		return nil, nil
 	}
 
 	return &langhost{
@@ -48,8 +50,17 @@ func (h *langhost) Runtime() string { return h.runtime }
 func (h *langhost) Run(info RunInfo) (string, error) {
 	glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), len(info.Config), info.DryRun)
-	req := lumirpc.RunRequest(info)
-	resp, err := h.client.Run(h.ctx.Request(), &req)
+	config := make(map[string]string)
+	for k, v := range info.Config {
+		config[string(k)] = v
+	}
+	resp, err := h.client.Run(h.ctx.Request(), &lumirpc.RunRequest{
+		Pwd:     info.Pwd,
+		Program: info.Program,
+		Args:    info.Args,
+		Config:  config,
+		DryRun:  info.DryRun,
+	})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			info.Pwd, info.Program, info.DryRun, err)

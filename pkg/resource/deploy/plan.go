@@ -68,7 +68,6 @@ func (p *Plan) Source() Source                         { return p.source }
 
 // Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
 // provider could not be found, or an error occurred while creating it, a non-nil error is returned.
-func (p *Plan) Provider(t tokens.Type) (plugin.Provider, error) {
-	pkg := t.Package()
+func (p *Plan) Provider(pkg tokens.Package) (plugin.Provider, error) {
 	return p.ctx.Host.Provider(pkg)
 }

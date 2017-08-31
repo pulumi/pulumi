@@ -30,9 +30,11 @@ type provider struct {
 func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := ProviderPluginPrefix + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("resource[%v]", pkg))
+	plug, err := newPlugin(host, ctx, srvexe, fmt.Sprintf("resource[%v]", pkg))
 	if err != nil {
 		return nil, err
+	} else if plug == nil {
+		return nil, nil
 	}
 
 	return &provider{
@@ -44,6 +46,21 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) 
 }
 
 func (p *provider) Pkg() tokens.Package { return p.pkg }
+
+// Configure configures the resource provider with "globals" that control its behavior.
+func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
+	glog.V(7).Infof("resource[%v].Configure(#vars=%v) executing", len(vars))
+	config := make(map[string]string)
+	for k, v := range vars {
+		config[string(k)] = v
+	}
+	_, err := p.client.Configure(p.ctx.Request(), &lumirpc.ConfigureRequest{Variables: config})
+	if err != nil {
+		glog.V(7).Infof("resource[%v].Configure(#vars=%v,...) failed: err=%v", len(vars))
+		return err
+	}
+	return nil
+}
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {

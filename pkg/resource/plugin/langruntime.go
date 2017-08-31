@@ -4,6 +4,8 @@ package plugin
 
 import (
 	"io"
+
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // LanguageRuntime is a convenient interface for interacting with language runtime plugins.  These tend to be
@@ -19,9 +21,9 @@ type LanguageRuntime interface {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	Pwd     string            // the program's working directory.
-	Program string            // the path to the program to execute.
-	Args    []string          // any arguments to pass to the program.
-	Config  map[string]string // the configuration variables to apply before running.
-	DryRun  bool              // true if we are performing a dry-run (plan).
+	Pwd     string                         // the program's working directory.
+	Program string                         // the path to the program to execute.
+	Args    []string                       // any arguments to pass to the program.
+	Config  map[tokens.ModuleMember]string // the configuration variables to apply before running.
+	DryRun  bool                           // true if we are performing a dry-run (plan).
 }

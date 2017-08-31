@@ -10,6 +10,8 @@ package lumirpc;
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
+    // Configure configures the resource provider with "globals" that control its behavior.
+    rpc Configure(ConfigureRequest) returns (google.protobuf.Empty){}
     // Check validates that the given property bag is valid for a resource of the given type.
     rpc Check(CheckRequest) returns (CheckResponse) {}
     // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -21,6 +23,10 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+}
+
+message ConfigureRequest {
+    map<string, string> variables = 1; // a map of configuration keys to values.
 }
 
 message CheckRequest {

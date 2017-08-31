@@ -42,6 +42,17 @@ function deserialize_lumirpc_CheckResponse(buffer_arg) {
   return provider_pb.CheckResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_lumirpc_ConfigureRequest(arg) {
+  if (!(arg instanceof provider_pb.ConfigureRequest)) {
+    throw new Error('Expected argument of type lumirpc.ConfigureRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_lumirpc_ConfigureRequest(buffer_arg) {
+  return provider_pb.ConfigureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_lumirpc_CreateRequest(arg) {
   if (!(arg instanceof provider_pb.CreateRequest)) {
     throw new Error('Expected argument of type lumirpc.CreateRequest');
@@ -97,28 +108,6 @@ function deserialize_lumirpc_DiffResponse(buffer_arg) {
   return provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_GetRequest(arg) {
-  if (!(arg instanceof provider_pb.GetRequest)) {
-    throw new Error('Expected argument of type lumirpc.GetRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_GetRequest(buffer_arg) {
-  return provider_pb.GetRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_lumirpc_GetResponse(arg) {
-  if (!(arg instanceof provider_pb.GetResponse)) {
-    throw new Error('Expected argument of type lumirpc.GetResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_GetResponse(buffer_arg) {
-  return provider_pb.GetResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_lumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type lumirpc.UpdateRequest');
@@ -145,6 +134,18 @@ function deserialize_lumirpc_UpdateResponse(buffer_arg) {
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 var ResourceProviderService = exports.ResourceProviderService = {
+  // Configure configures the resource provider with "globals" that control its behavior.
+  configure: {
+    path: '/lumirpc.ResourceProvider/Configure',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.ConfigureRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_lumirpc_ConfigureRequest,
+    requestDeserialize: deserialize_lumirpc_ConfigureRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // Check validates that the given property bag is valid for a resource of the given type.
   check: {
     path: '/lumirpc.ResourceProvider/Check',
@@ -181,18 +182,6 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestDeserialize: deserialize_lumirpc_CreateRequest,
     responseSerialize: serialize_lumirpc_CreateResponse,
     responseDeserialize: deserialize_lumirpc_CreateResponse,
-  },
-  // Get reads the instance state identified by ID, returning a populated resource object, or nil if not found.
-  get: {
-    path: '/lumirpc.ResourceProvider/Get',
-    requestStream: false,
-    responseStream: false,
-    requestType: provider_pb.GetRequest,
-    responseType: provider_pb.GetResponse,
-    requestSerialize: serialize_lumirpc_GetRequest,
-    requestDeserialize: deserialize_lumirpc_GetRequest,
-    responseSerialize: serialize_lumirpc_GetResponse,
-    responseDeserialize: deserialize_lumirpc_GetResponse,
   },
   // Update updates an existing resource with new values.
   update: {

@@ -3,8 +3,10 @@
 package main
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -17,13 +19,21 @@ func newConfigCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return lumiEngine.ListConfig(env)
-			} else if len(args) == 1 && !unset {
-				return lumiEngine.GetConfig(env, args[0])
-			} else if len(args) == 1 {
-				return lumiEngine.DeleteConfig(env, args[0])
 			}
 
-			return lumiEngine.SetConfig(env, args[0], args[1])
+			key, err := tokens.ParseModuleMember(args[0])
+			if err != nil {
+				return errors.Wrap(err, "invalid configuration key")
+			}
+
+			if len(args) == 1 {
+				if !unset {
+					return lumiEngine.GetConfig(env, key)
+				}
+				return lumiEngine.DeleteConfig(env, key)
+			}
+
+			return lumiEngine.SetConfig(env, key, args[1])
 		}),
 	}
 

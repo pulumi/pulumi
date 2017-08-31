@@ -344,7 +344,7 @@ func (s *ReplaceStep) Skip() error {
 
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
-	return s.Plan().Provider(s.Type())
+	return s.Plan().Provider(s.Type().Package())
 }
 
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.

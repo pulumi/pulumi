@@ -21,11 +21,11 @@ import (
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Pkg     *pack.Package     `json:"pkg"`              // the full package metadata that instructs us how to run it.
-	Pwd     string            `json:"pwd"`              // the root working directory where the package was found.
-	Program string            `json:"program"`          // the path to the program we are executing.
-	Args    []string          `json:"args,omitempty"`   // any arguments to pass to the package.
-	Config  map[string]string `json:"config,omitempty"` // any configuration to pass to the program.
+	Pkg     *pack.Package                  `json:"pkg"`              // the package metadata.
+	Pwd     string                         `json:"pwd"`              // the package's working directory.
+	Program string                         `json:"program"`          // the path to the program we are executing.
+	Args    []string                       `json:"args,omitempty"`   // any arguments to pass to the package.
+	Config  map[tokens.ModuleMember]string `json:"config,omitempty"` // any configuration to pass to the program.
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -72,9 +72,12 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 
 	// Next fire up the language plugin.
 	// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
-	langhost, err := src.plugctx.Host.LanguageRuntime(src.runinfo.Pkg.Runtime)
+	rt := src.runinfo.Pkg.Runtime
+	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to launch language host for '%v'", src.runinfo.Pkg.Runtime)
+	} else if langhost == nil {
+		return nil, errors.Errorf("could not load language plugin for '%v' from $PATH", rt)
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!

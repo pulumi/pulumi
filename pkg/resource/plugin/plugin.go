@@ -26,31 +26,18 @@ type plugin struct {
 	Stderr io.ReadCloser
 }
 
-func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, error) {
-	// Try all of the search paths given in the bin argument, either until we find something, or until we've exhausted
-	// all available options, whichever comes first.
-	var plug *plugin
-	var err error
-	var foundbin string
-	for _, bin := range bins {
-		// Try to execute the binary.
-		if plug, err = execPlugin(host, bin); err == nil {
-			// Great!  Break out, we're ready to go.
-			foundbin = bin
-			break
-		} else {
-			// If that failed, and it was simply a missing file error, keep searching the paths.
-			if execerr, isexecerr := err.(*exec.Error); !isexecerr || execerr.Err != exec.ErrNotFound {
-				return nil, errors.Wrapf(err, "plugin [%v] failed to load", bin)
-			}
+func newPlugin(host Host, ctx *Context, bin string, prefix string) (*plugin, error) {
+	// Try to execute the binary.
+	plug, err := execPlugin(host, bin)
+	if err != nil {
+		// If we failed simply because we couldn't load the binary, return nil rather than an error.
+		if execerr, isexecerr := err.(*exec.Error); isexecerr && execerr.Err == exec.ErrNotFound {
+			return nil, nil
 		}
-	}
 
-	// If we didn't find anything, we're done.
-	if plug == nil {
-		contract.Assert(err != nil)
-		return nil, err
+		return nil, errors.Wrapf(err, "plugin [%v] failed to load", bin)
 	}
+	contract.Assert(plug != nil)
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	// TODO[pulumi/pulumi-fabric#143]: eventually we want real progress reporting, etc., out of band
@@ -87,9 +74,9 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 			killerr := plug.Proc.Kill()
 			contract.IgnoreError(killerr) // we are ignoring because the readerr trumps it.
 			if port == "" {
-				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", foundbin)
+				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
 			}
-			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')", foundbin, port)
+			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')", bin, port)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -102,7 +89,7 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 		killerr := plug.Proc.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
-			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, foundbin, port)
+			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, bin, port)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
@@ -111,7 +98,7 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", foundbin)
+		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
 	plug.Conn = conn
 	return plug, nil

@@ -20,6 +20,7 @@ It has these top-level messages:
 	RunResponse
 	NewResourceRequest
 	NewResourceResponse
+	ConfigureRequest
 	CheckRequest
 	CheckResponse
 	CheckFailure
