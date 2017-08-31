@@ -18,9 +18,9 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 )
 
-type fileSystemEnvironmentProvider struct{}
+type localEnvProvider struct{}
 
-func (p fileSystemEnvironmentProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
+func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
 	*deploy.Snapshot, *environment.Checkpoint, error) {
 
 	contract.Require(name != "", "name")
@@ -76,7 +76,7 @@ func (p fileSystemEnvironmentProvider) GetEnvironment(name tokens.QName) (*deplo
 	return target, snapshot, &checkpoint, nil
 }
 
-func (p fileSystemEnvironmentProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
+func (p localEnvProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
 	contract.Require(env != nil, "env")
 	file := workspace.EnvPath(env.Name)
 
@@ -101,20 +101,18 @@ func (p fileSystemEnvironmentProvider) SaveEnvironment(env *deploy.Target, snap 
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return err
+		return errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = ioutil.WriteFile(file, b, 0600); err != nil {
-		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return err
+		return errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
 	return nil
 }
 
-func (p fileSystemEnvironmentProvider) RemoveEnvironment(env *deploy.Target) error {
+func (p localEnvProvider) RemoveEnvironment(env *deploy.Target) error {
 	contract.Require(env != nil, "env")
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.EnvPath(env.Name)

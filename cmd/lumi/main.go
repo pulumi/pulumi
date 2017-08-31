@@ -17,7 +17,7 @@ var (
 )
 
 func init() {
-	lumiEngine = engine.Engine{Stdout: os.Stdout, Stderr: os.Stderr, Environment: fileSystemEnvironmentProvider{}}
+	lumiEngine = engine.Engine{Stdout: os.Stdout, Stderr: os.Stderr, Environment: localEnvProvider{}}
 }
 
 func main() {
