@@ -124,7 +124,6 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "lumi: %v\n", opts.LumiBin)
 	contract.IgnoreError(err)
 	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
-	runCmd(t, []string{opts.YarnBin, "version"}, dir, opts)
 	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .lumi directory.
