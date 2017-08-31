@@ -29,7 +29,7 @@
         "lib/runtime/resource.ts",
         "lib/runtime/langhost.ts",
 
-        "cmd/langhost/host.ts",
+        "cmd/langhost/index.ts",
         "cmd/langhost/run.ts",
 
         "tests/init.spec.ts",

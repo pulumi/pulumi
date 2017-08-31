@@ -45,8 +45,6 @@ type LumiProgramTestOptions struct {
 
 	// LumiBin is a location of a `lumi` executable to be run.  Taken from the $PATH if missing.
 	LumiBin string
-	// LumiJSBin is a location of a `lumi` executable to be run.  Taken from the $PATH if missing.
-	LumiJSBin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
 }
@@ -72,10 +70,10 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 }
 
 // LumiProgramTest runs a lifecylce of Lumi commands in a Lumi program working directory.
-// Uses the `lumijs`, `lumi`, and `yarn` binaries available on PATH. Executes the following
+// Uses the `lumi` and `yarn` binaries available on PATH. Executes the following
 // workflow:
 //   yarn link <each opts.Depencies>
-//   lumijs --verbose
+//   yarn run build
 //   lumi env init integrationtesting
 //   lumi config <each opts.Config>
 //   lumi plan
@@ -95,13 +93,6 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 			return
 		}
 		opts.LumiBin = lumi
-	}
-	if opts.LumiJSBin == "" {
-		lumijs, err := exec.LookPath("lumijs")
-		if !assert.NoError(t, err, "Expected to find `lumijs` binary on $PATH: %v", err) {
-			return
-		}
-		opts.LumiJSBin = lumijs
 	}
 	if opts.YarnBin == "" {
 		yarn, err := exec.LookPath("yarn")
@@ -130,8 +121,6 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
 	contract.IgnoreError(err)
 	_, err = fmt.Fprintf(opts.Stdout, "lumi: %v\n", opts.LumiBin)
-	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "lumijs: %v\n", opts.LumiJSBin)
 	contract.IgnoreError(err)
 	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 	contract.IgnoreError(err)
@@ -247,8 +236,8 @@ func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgra
 		runCmd(t, []string{opts.YarnBin, "link", dependency}, dir, opts)
 	}
 
-	// And finally compile it.
-	runCmd(t, []string{opts.LumiJSBin, "--verbose"}, dir, opts)
+	// And finally compile it using whatever build steps are in the package.json file.
+	runCmd(t, []string{opts.YarnBin, "run", "build"}, dir, opts)
 
 	return dir, nil
 }

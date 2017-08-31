@@ -4,6 +4,8 @@
 package pack
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
@@ -25,8 +27,18 @@ type Package struct {
 
 var _ diag.Diagable = (*Package)(nil)
 
-func (s *Package) Where() (*diag.Document, *diag.Location) {
-	return s.Doc, nil
+func (pkg *Package) Where() (*diag.Document, *diag.Location) {
+	return pkg.Doc, nil
+}
+
+func (pkg *Package) Validate() error {
+	if pkg.Name == "" {
+		return errors.New("package is missing a 'name' attribute")
+	}
+	if pkg.Runtime == "" {
+		return errors.New("package is missing a 'runtime' attribute")
+	}
+	return nil
 }
 
 // Analyzers is a list of analyzers to run on this project.

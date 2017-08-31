@@ -12,24 +12,20 @@ let langrpc = require("../../lib/proto/nodejs/languages_grpc_pb");
 let monitorAddr: string | undefined;
 
 // serveLanguageHost spawns a language host that connects to the resource monitor and listens on port.
-export function serveLanguageHost(monitor: string, port?: number): { server: any, addr: string } {
+export function serveLanguageHost(monitor: string): { server: any, port: number } {
     if (monitorAddr) {
         throw new Error("Already connected to a resource monitor; cannot serve two hosts in one process");
     }
     monitorAddr = monitor;
 
-    if (port === undefined) {
-        port = 0; // default to port 0 to let the kernel choose one for us.
-    }
-
     // Now fire up the gRPC server and begin serving!
     let server = new grpc.Server();
     server.addService(langrpc.LanguageRuntimeService, { run: runRPC });
-    port = server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
+    let port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 
     // Now we're done: the server is started, and gRPC keeps the even loop alive.
     server.start();
-    return { server: server, addr: `0.0.0.0:${port}` }; // return the port for callers.
+    return { server: server, port: port }; // return the port for callers.
 }
 
 // runRPC implements the core "run" logic for both planning and deploying.
@@ -71,10 +67,12 @@ function runRPC(call: any, callback: any): void {
         }
         args.push(monitorAddr);
 
-        // Now get a path to the program.  It must be an absolute path.
+        // Now get a path to the program.
         let program: string | undefined = req.getProgram();
         if (!program) {
-            throw new Error("Expected a non-empty path to the program to run");
+            // If the program path is empty, just use "."; this will cause Node to try to load the default module
+            // file, by default ./index.js, but possibly overridden in the "main" element inside of package.json.
+            program = ".";
         }
         args.push(program);
 

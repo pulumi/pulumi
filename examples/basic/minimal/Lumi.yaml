@@ -1,5 +1,4 @@
 name: minimal
 description: A minimal Lumi program.
-dependencies:
-    lumirt: "*"
+runtime: nodejs
 

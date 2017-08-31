@@ -65,6 +65,10 @@ func (eng *Engine) readPackageFromStdin() (*pkginfo, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "a problem occurred when unmarshaling stdin into a package")
 	}
+	if err = pkg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &pkginfo{
 		Pkg:  pkg,
 		Root: "",
@@ -99,6 +103,10 @@ func (eng *Engine) readPackage(path string) (*pkginfo, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "a problem occurred when unmarshaling file '%v'", path)
 	}
+	if err = pkg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &pkginfo{
 		Pkg:  pkg,
 		Root: filepath.Dir(path),
