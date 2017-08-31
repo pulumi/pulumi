@@ -19,10 +19,10 @@ func TestExamples(t *testing.T) {
 	}
 	examples := []integration.LumiProgramTestOptions{
 		{
-			Dir: path.Join(cwd, "basic/minimal"),
-			Dependencies: []string{
-				"@lumi/lumirt",
-				"@lumi/lumi",
+			Dir:          path.Join(cwd, "basic/minimal"),
+			Dependencies: []string{"@pulumi/pulumi-fabric"},
+			Config: map[string]string{
+				"minimal:config:name": "Pulumi",
 			},
 		},
 	}

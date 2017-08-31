@@ -1,5 +1,5 @@
 {
-    "name": "@lumi/pulumi-fabric",
+    "name": "@pulumi/pulumi-fabric",
     "version": "0.0.1",
     "description": "Pulumi's Fabric Node.js SDK",
     "repository": "https://github.com/pulumi/pulumi-fabric/sdk/nodejs",
