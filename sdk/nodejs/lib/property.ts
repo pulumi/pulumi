@@ -98,5 +98,5 @@ export class Property<T> {
 }
 
 // PropertyValue is either a T, a "property value" of T (whose value may not yet be known), or a promise of T.
-export type PropertyValue<T> = T | Property<T> | Promise<T> | undefined;
+export type PropertyValue<T> = T | Property<T> | Promise<T>;
 

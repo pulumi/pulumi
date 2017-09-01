@@ -11,7 +11,7 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
-        res: Resource, t: string, name: string, props?: {[key: string]: PropertyValue<any>}): void {
+        res: Resource, t: string, name: string, props?: {[key: string]: PropertyValue<any> | undefined}): void {
     let monitor: any = getMonitor();
 
     // Create a resource URN and an ID that will get populated after deployment.
