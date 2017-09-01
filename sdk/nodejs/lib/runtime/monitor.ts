@@ -3,8 +3,12 @@
 // monitor is a live connection to the resource monitor connection.
 // IDEA: it would be nice to mirror the Protobuf structures as TypeScript interfaces.
 let monitor: any;
+
 // dryRun tells us whether we're performing a plan (true) versus a real deployment (false).
-let dryRun: boolean;
+export let dryRun: boolean;
+
+// warnAboutMissingMonitor is true, by default, but gets set to false (or can be manually), so we only warn once.
+export let warnAboutMissingMonitor: boolean = true;
 
 // hasMonitor returns true if we are currently connected to a resource monitoring service.
 export function hasMonitor(): boolean {
@@ -18,8 +22,9 @@ export function isDryRun(): boolean {
 
 // getMonitor returns the current resource monitoring service client for RPC communications.
 export function getMonitor(): any {
-    if (!monitor) {
-        throw new Error("Resource monitor is not initialized");
+    if (!monitor && warnAboutMissingMonitor) {
+        warnAboutMissingMonitor = false;
+        console.warn("warning: Pulumi Fabric monitor is missing; no resources will be created");
     }
     return monitor;
 }

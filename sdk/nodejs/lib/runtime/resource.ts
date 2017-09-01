@@ -12,8 +12,12 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
-        res: Resource, t: string, name: string, props: {[key: string]: PropertyValue<any> | undefined}): void {
+    res: Resource, t: string, name: string, props: {[key: string]: PropertyValue<any> | undefined}): void {
+    // Fetch the monitor; if it doesn't exist, bail right away.
     let monitor: any = getMonitor();
+    if (!monitor) {
+        return;
+    }
 
     // Create a resource URN and an ID that will get populated after deployment.
     let urn = new Property<URN>();
@@ -59,7 +63,7 @@ export function registerResource(
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
 function transferProperties(
-        res: Resource, props: {[key: string]: PropertyValue<any> | undefined}): Promise<any> {
+    res: Resource, props: {[key: string]: PropertyValue<any> | undefined}): Promise<any> {
     let obj: any = {}; // this will eventually hold the serialized object properties.
     let eventuals: Promise<void>[] = []; // this contains all promises outstanding for assignments.
     if (props) {
