@@ -8,7 +8,7 @@
 // such as during planning, so forward progress must not depend on resolution.
 export class Property<T> {
     private v?: T; // the value, if it exists.
-    private link: Promise<T>; // non-undefined if this is linked to another property or promise.
+    private link: Property<T> | Promise<T>; // non-undefined if this is linked to another property or promise.
     private promise: Promise<T>; // the underlying promises, for unresolved values.
     private resolver: ((v?: T | PromiseLike<T>) => void) | undefined; // the resolver used to resolve values.
 
@@ -22,11 +22,14 @@ export class Property<T> {
         );
 
         // If this is linked to another Property or Promise, record this fact.
+        let promise: Promise<T> | undefined;
         if (value !== undefined) {
             if (value instanceof Property) {
-                this.link = value.promise;
+                promise = value.promise;
+                this.link = value;
             }
             else if (value instanceof Promise) {
+                promise = value;
                 this.link = value;
             }
             else {
@@ -35,8 +38,8 @@ export class Property<T> {
         }
 
         // Now ensure that we automatically propagate values for linked properties.
-        if (this.link) {
-            this.link.then((v: T) => {
+        if (promise) {
+            promise.then((v: T) => {
                 // Only propagate the value if another final value hasn't already been recorded.
                 if (this.resolver) {
                     this.resolve(v);
@@ -46,7 +49,7 @@ export class Property<T> {
     }
 
     // linked returns the underlying promise this value is linked to, if any.
-    public linked(): Promise<T> | undefined {
+    public linked(): PropertyValue<T> | Promise<T> | undefined {
         return this.link;
     }
 

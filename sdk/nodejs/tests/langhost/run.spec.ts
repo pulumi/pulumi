@@ -19,7 +19,7 @@ let langproto = require("../../lib/proto/nodejs/languages_pb");
 
 interface RunCase {
     pwd?: string;
-    program: string;
+    program?: string;
     args?: string[];
     config?: {[key: string]: string};
     expectError?: string;
@@ -191,6 +191,33 @@ describe("rpc", () => {
                         assert.fail(`Unrecognized resource type ${t}`);
                         throw new Error();
                 }
+            },
+        },
+        "input_output": {
+            pwd: path.join(base, "006.asset"),
+            expectResourceCount: 1,
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:FileResource");
+                assert.strictEqual(name, "file1");
+                assert.deepEqual(res, {
+                    data: {
+                        [runtime.specialSigKey]: runtime.specialAssetSig,
+                        path: "./testdata.txt",
+                    },
+                });
+                return { id: undefined, urn: undefined, props: undefined };
+            },
+        },
+        "promises_io": {
+            pwd: path.join(base, "007.promises_io"),
+            expectResourceCount: 1,
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:FileResource");
+                assert.strictEqual(name, "file1");
+                assert.deepEqual(res, {
+                    data: "The test worked!\n\nIf you can see some data!\n\n",
+                });
+                return { id: undefined, urn: undefined, props: undefined };
             },
         },
     };

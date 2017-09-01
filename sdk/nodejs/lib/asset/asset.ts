@@ -13,18 +13,6 @@ export class Blob extends Asset {
 }
 */
 
-// Code is an asset made out of an existing code artifact.  This is a compiler trick and is up to individual Lumi
-// language compilers to implement.  At compile-time, the code argument must be a piece of code that can be transformed
-// into a standalone asset.  The details of this complicated process are explained elsewhere.
-export class Code extends Asset {
-    public readonly code: any; // the code, serialized at runtime into an asset.
-
-    constructor(code: any) {
-        super();
-        this.code = code;
-    }
-}
-
 // File is a kind of asset produced from a given path to a file on the local filesystem.
 export class File extends Asset {
     public readonly path: string; // the path to the asset file.
