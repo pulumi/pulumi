@@ -32,6 +32,7 @@
         "cmd/langhost/index.ts",
         "cmd/langhost/run.ts",
 
+        "tests/config.spec.ts",
         "tests/init.spec.ts",
         "tests/util.ts",
         "tests/langhost/run.spec.ts"

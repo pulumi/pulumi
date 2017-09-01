@@ -309,8 +309,7 @@ function createMockResourceMonitor(
 function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // Spawn the language host in a separate process so that each test case gets an isolated heap, globals, etc.
     let proc = childProcess.spawn(process.argv[0], [
-        path.join(__filename, "..", "..", "..", "cmd", "langhost", "host.js"),
-        "--monitor",
+        path.join(__filename, "..", "..", "..", "cmd", "langhost", "index.js"),
         monitorAddr,
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
@@ -321,7 +320,7 @@ function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.Chi
         let dataString: string = stripEOL(data);
         if (addrResolve) {
             // The first line is the address; strip off the newline and resolve the promise.
-            addrResolve(dataString);
+            addrResolve(`0.0.0.0:${dataString}`);
             addrResolve = undefined;
         }
         console.log(`langhost.stdout: ${dataString}`);

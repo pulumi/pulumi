@@ -20,9 +20,77 @@ export class Config {
         return runtime.getConfig(this.fullKey(key));
     }
 
+    // getBoolean loads an optional configuration value, as a boolean, by its key, or undefined if it doesn't exist.
+    // If the configuration value isn't a legal boolean, this function will throw an error.
+    public getBoolean(key: string): boolean | undefined {
+        let v: string | undefined = this.get(key);
+        if (v === undefined) {
+            return undefined;
+        } else if (v === "true") {
+            return true;
+        } else if (v === "false") {
+            return false;
+        }
+        throw new Error(`Configuration '${key}' value '${v}' is not a valid boolean`);
+    }
+
+    // getNumber loads an optional configuration value, as a number, by its key, or undefined if it doesn't exist.
+    // If the configuration value isn't a legal number, this function will throw an error.
+    public getNumber(key: string): number | undefined {
+        let v: string | undefined = this.get(key);
+        if (v === undefined) {
+            return undefined;
+        }
+        let f: number = parseFloat(v);
+        if (isNaN(f)) {
+            throw new Error(`Configuration '${key}' value '${v}' is not a valid number`);
+        }
+        return f;
+    }
+
+    // getObject loads an optional configuration value, as an object, by its key, or undefined if it doesn't exist.
+    // This routine simply JSON parses and doesn't validate the shape of the contents.
+    public getObject<T>(key: string): T | undefined {
+        let v: string | undefined = this.get(key);
+        if (v === undefined) {
+            return undefined;
+        }
+        return <T>JSON.parse(v);
+    }
+
     // require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
     public require(key: string): string {
         let v: string | undefined = this.get(key);
+        if (v === undefined) {
+            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+        }
+        return v;
+    }
+
+    // requireBoolean loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
+    // configuration value is not a legal boolean, an error is thrown.
+    public requireBoolean(key: string): boolean {
+        let v: boolean | undefined = this.getBoolean(key);
+        if (v === undefined) {
+            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+        }
+        return v;
+    }
+
+    // requireNumber loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+    // configuration value is not a legal number, an error is thrown.
+    public requireNumber(key: string): number {
+        let v: number | undefined = this.getNumber(key);
+        if (v === undefined) {
+            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+        }
+        return v;
+    }
+
+    // requireObject loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
+    // configuration value is not a legal number, an error is thrown.
+    public requireObject<T>(key: string): T {
+        let v: T | undefined = this.getObject<T>(key);
         if (v === undefined) {
             throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
         }
