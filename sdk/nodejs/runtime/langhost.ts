@@ -5,8 +5,8 @@ import * as os from "os";
 import * as path from "path";
 
 let grpc = require("grpc");
-let langproto = require("../../lib/proto/nodejs/languages_pb");
-let langrpc = require("../../lib/proto/nodejs/languages_grpc_pb");
+let langproto = require("../../proto/nodejs/languages_pb");
+let langrpc = require("../../proto/nodejs/languages_grpc_pb");
 
 // monitorAddr is the current resource monitor address.
 let monitorAddr: string | undefined;
@@ -37,7 +37,7 @@ function runRPC(call: any, callback: any): void {
     try {
         // Create an args array to pass to spawn, starting with just the run.js program.
         let args: string[] = [
-            path.join(__filename, "..", "..", "..", "cmd", "langhost", "run.js"),
+            path.join(__filename, "..", "..", "cmd", "langhost", "run.js"),
         ];
 
         // Serialize the config args using [ "--config.k", "v" ] pairs.

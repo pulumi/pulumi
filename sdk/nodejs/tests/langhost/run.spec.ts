@@ -1,11 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// Ensure we run the top-level module initializer so we get source-maps, etc.
-import "../../lib";
-
-import { ID, URN } from "../../lib";
-import * as runtime from "../../lib/runtime";
-
+import { ID, runtime, URN } from "../../";
 import { asyncTest } from "../util";
 import * as assert from "assert";
 import * as childProcess from "child_process";
@@ -14,8 +9,8 @@ import * as os from "os";
 
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 let grpc = require("grpc");
-let langrpc = require("../../lib/proto/nodejs/languages_grpc_pb");
-let langproto = require("../../lib/proto/nodejs/languages_pb");
+let langrpc = require("../../proto/nodejs/languages_grpc_pb");
+let langproto = require("../../proto/nodejs/languages_pb");
 
 interface RunCase {
     pwd?: string;

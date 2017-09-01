@@ -3,11 +3,11 @@
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 
 import * as path from "path";
-import * as runtime from "../../lib/runtime";
+import * as runtime from "../../runtime";
 
 let grpc = require("grpc");
-let langproto = require("../../lib/proto/nodejs/languages_pb");
-let langrpc = require("../../lib/proto/nodejs/languages_grpc_pb");
+let langproto = require("../../proto/nodejs/languages_pb");
+let langrpc = require("../../proto/nodejs/languages_grpc_pb");
 
 export function main(args: string[]): void {
     // The format of this program is as follows:

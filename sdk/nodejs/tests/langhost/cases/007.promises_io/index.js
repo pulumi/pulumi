@@ -1,6 +1,6 @@
 // This tests the ability to use promises for resource properties.
 
-let fabric = require("../../../../lib");
+let fabric = require("../../../../");
 let fs = require("fs");
 
 class FileResource extends fabric.Resource {

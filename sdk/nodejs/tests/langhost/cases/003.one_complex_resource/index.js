@@ -2,7 +2,7 @@
 // In particular, there aren't any fancy dataflow linked properties.
 
 let assert = require("assert");
-let fabric = require("../../../../lib");
+let fabric = require("../../../../");
 
 class MyResource extends fabric.Resource {
     constructor(name) {

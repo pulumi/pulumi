@@ -1,4 +1,4 @@
-let fabric = require("../../../../lib");
+let fabric = require("../../../../");
 
 exports.MyResource = class MyResource extends fabric.Resource {
     constructor(name, seq) {

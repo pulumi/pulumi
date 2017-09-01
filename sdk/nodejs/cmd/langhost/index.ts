@@ -5,7 +5,7 @@
 // and drives execution of a Node.js program, communicating back as required to track all resource allocations.
 
 import * as minimist from "minimist";
-import * as runtime from "../../lib/runtime";
+import * as runtime from "../../runtime";
 
 export function main(args: string[]): void {
     // The monitor requires a single argument: the address of the RPC endpoint for the resource monitor.

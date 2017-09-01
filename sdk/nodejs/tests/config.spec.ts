@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { Config, runtime } from "../lib";
+import { Config, runtime } from "../";
 
 describe("config", () => {
     it("works, basically", () => {
