@@ -1,5 +1,5 @@
 language: go
-go: 1.8.2
+go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
     # Dep for Go dependency management.
