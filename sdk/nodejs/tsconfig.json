@@ -24,6 +24,7 @@
         "asset/asset.ts",
         "asset/archive.ts",
         "runtime/index.ts",
+        "runtime/closure.ts",
         "runtime/config.ts",
         "runtime/monitor.ts",
         "runtime/resource.ts",

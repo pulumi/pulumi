@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { ID, runtime, URN } from "../../";
+import { ID, runtime, URN } from "../../index";
 import { asyncTest } from "../util";
 import * as assert from "assert";
 import * as childProcess from "child_process";

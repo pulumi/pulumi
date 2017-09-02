@@ -6,13 +6,14 @@
     "main": "bin/index.js",
     "typings": "bin/index.d.ts",
     "scripts": {
-        "clean": "rm -rf bin/",
+        "clean": "rm -rf bin/ && rm -rf runtime/native/build",
         "build": "npm run copyprotos && tsc && npm run binplace && npm run lint",
         "lint": "tslint '*.ts' 'cmd/**/*.ts' 'asset/**/*.ts' 'runtime/**/*.ts' 'test/**/*.ts'",
         "copyprotos": "cp -r ../proto/nodejs proto/",
         "binplaceprotos": "cp -r proto/ bin/proto/",
+        "binplacenative": "mkdir -p bin/runtime/native/build/ && cp -r runtime/native/build/ bin/runtime/native/build/",
         "binplacetestdata": "mkdir -p bin/tests/langhost/cases/ && find tests/langhost/cases/* -type d -exec cp -R {} bin/tests/langhost/cases/ \\;",
-        "binplace": "npm run binplaceprotos && npm run binplacetestdata",
+        "binplace": "npm run binplaceprotos && npm run binplacenative && npm run binplacetestdata",
         "test": "npm run cov && npm run covreport",
         "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --timeout 15000 'bin/tests/**/*.spec.js'",
         "covreport": "istanbul report text-summary && istanbul report text"
