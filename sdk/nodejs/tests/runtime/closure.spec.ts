@@ -225,4 +225,3 @@ describe("closure", () => {
     };
 });
 
-

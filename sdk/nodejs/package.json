@@ -8,7 +8,7 @@
     "scripts": {
         "clean": "rm -rf bin/ && rm -rf runtime/native/build",
         "build": "npm run copyprotos && npm run buildnative && tsc && npm run binplace && npm run lint",
-        "buildnative": "pushd runtime/native/ && node-gyp build && popd",
+        "buildnative": "cd runtime/native/ && node-gyp build",
         "lint": "tslint '*.ts' 'cmd/**/*.ts' 'asset/**/*.ts' 'runtime/**/*.ts' 'test/**/*.ts'",
         "copyprotos": "cp -r ../proto/nodejs proto/",
         "binplaceprotos": "cp -r proto/ bin/proto/",
@@ -25,6 +25,7 @@
         "@types/node": "^8.0.25",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
+        "node-gyp": "^3.6.2",
         "tslint": "^5.6.0",
         "typescript": "^2.1.4"
     },
@@ -34,7 +35,6 @@
         "google-protobuf": "^3.4.0",
         "grpc": "^1.4.1",
         "minimist": "^1.2.0",
-        "node-gyp": "^3.6.2",
         "source-map-support": "^0.4.16"
     }
 }
