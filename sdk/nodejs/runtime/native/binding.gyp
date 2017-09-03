@@ -6,7 +6,7 @@
                 "closure.cc"
             ],
             "include_dirs": [
-                "<!(node -e \"console.log(\`third_party/node/\${process.version.substring(1)}/deps/v8\`)\")"
+                "<!(node -e \"console.log(\`third_party/node/node-\${process.version}/deps/v8\`)\")"
             ]
         }
     ]
