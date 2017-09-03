@@ -1,7 +1,7 @@
 // This test case links one resource's property to another.
 
 let assert = require("assert");
-let fabric = require("../../../../");
+let fabric = require("../../../../../");
 
 class ResourceA extends fabric.Resource {
     constructor(name) {

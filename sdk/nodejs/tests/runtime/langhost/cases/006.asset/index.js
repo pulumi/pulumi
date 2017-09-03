@@ -1,6 +1,6 @@
 // This tests simple creation of assets.
 
-let fabric = require("../../../../");
+let fabric = require("../../../../../");
 
 class FileResource extends fabric.Resource {
     constructor(name, data) {

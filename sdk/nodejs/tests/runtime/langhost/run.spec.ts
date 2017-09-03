@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { ID, runtime, URN } from "../../index";
-import { asyncTest } from "../util";
+import { ID, runtime, URN } from "../../../index";
+import { asyncTest } from "../../util";
 import * as assert from "assert";
 import * as childProcess from "child_process";
 import * as path from "path";
@@ -9,8 +9,8 @@ import * as os from "os";
 
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 let grpc = require("grpc");
-let langrpc = require("../../proto/nodejs/languages_grpc_pb");
-let langproto = require("../../proto/nodejs/languages_pb");
+let langrpc = require("../../../proto/nodejs/languages_grpc_pb");
+let langproto = require("../../../proto/nodejs/languages_pb");
 
 interface RunCase {
     pwd?: string;
@@ -331,7 +331,7 @@ function createMockResourceMonitor(
 function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // Spawn the language host in a separate process so that each test case gets an isolated heap, globals, etc.
     let proc = childProcess.spawn(process.argv[0], [
-        path.join(__filename, "..", "..", "..", "cmd", "langhost", "index.js"),
+        path.join(__filename, "..", "..", "..", "..", "cmd", "langhost", "index.js"),
         monitorAddr,
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and

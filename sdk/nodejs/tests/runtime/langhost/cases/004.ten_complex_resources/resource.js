@@ -1,4 +1,6 @@
-let fabric = require("../../../../");
+// Define and export a resource class that can be used by index.js.
+
+let fabric = require("../../../../../");
 
 exports.MyResource = class MyResource extends fabric.Resource {
     constructor(name, seq) {

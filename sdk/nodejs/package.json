@@ -7,12 +7,13 @@
     "typings": "bin/index.d.ts",
     "scripts": {
         "clean": "rm -rf bin/ && rm -rf runtime/native/build",
-        "build": "npm run copyprotos && tsc && npm run binplace && npm run lint",
+        "build": "npm run copyprotos && npm run buildnative && tsc && npm run binplace && npm run lint",
+        "buildnative": "pushd runtime/native/ && node-gyp build && popd",
         "lint": "tslint '*.ts' 'cmd/**/*.ts' 'asset/**/*.ts' 'runtime/**/*.ts' 'test/**/*.ts'",
         "copyprotos": "cp -r ../proto/nodejs proto/",
         "binplaceprotos": "cp -r proto/ bin/proto/",
         "binplacenative": "mkdir -p bin/runtime/native/build/ && cp -r runtime/native/build/ bin/runtime/native/build/",
-        "binplacetestdata": "mkdir -p bin/tests/langhost/cases/ && find tests/langhost/cases/* -type d -exec cp -R {} bin/tests/langhost/cases/ \\;",
+        "binplacetestdata": "mkdir -p bin/tests/runtime/langhost/cases/ && find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \\;",
         "binplace": "npm run binplaceprotos && npm run binplacenative && npm run binplacetestdata",
         "test": "npm run cov && npm run covreport",
         "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --timeout 15000 'bin/tests/**/*.spec.js'",
@@ -28,9 +29,12 @@
         "typescript": "^2.1.4"
     },
     "dependencies": {
+        "@types/acorn": "^4.0.2",
+        "acorn": "^5.1.1",
         "google-protobuf": "^3.4.0",
         "grpc": "^1.4.1",
         "minimist": "^1.2.0",
+        "node-gyp": "^3.6.2",
         "source-map-support": "^0.4.16"
     }
 }

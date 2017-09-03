@@ -1,6 +1,6 @@
 // This tests the creation of ten propertyless resources.
 
-let fabric = require("../../../../");
+let fabric = require("../../../../../");
 
 class MyResource extends fabric.Resource {
     constructor(name) {

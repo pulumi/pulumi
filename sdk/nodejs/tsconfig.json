@@ -36,7 +36,8 @@
         "tests/config.spec.ts",
         "tests/init.spec.ts",
         "tests/util.ts",
-        "tests/langhost/run.spec.ts"
+        "tests/runtime/closure.spec.ts",
+        "tests/runtime/langhost/run.spec.ts"
     ]
 }
 
