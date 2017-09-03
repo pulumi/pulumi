@@ -26,7 +26,7 @@ type Host interface {
 	Provider(pkg tokens.Package) (Provider, error)
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(runtime string) (LanguageRuntime, error)
+	LanguageRuntime(runtime string, monitorAddr string) (LanguageRuntime, error)
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -38,7 +38,6 @@ func NewDefaultHost(ctx *Context) (Host, error) {
 		ctx:       ctx,
 		analyzers: make(map[tokens.QName]Analyzer),
 		providers: make(map[tokens.Package]Provider),
-		langhosts: make(map[string]LanguageRuntime),
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -56,7 +55,6 @@ type defaultHost struct {
 	ctx       *Context                    // the shared context for this host.
 	analyzers map[tokens.QName]Analyzer   // a cache of analyzer plugins and their processes.
 	providers map[tokens.Package]Provider // a cache of provider plugins and their processes.
-	langhosts map[string]LanguageRuntime  // a cache of language runtime plugins and their processes.
 	server    *hostServer                 // the server's RPC machinery.
 }
 
@@ -98,19 +96,9 @@ func (host *defaultHost) Provider(pkg tokens.Package) (Provider, error) {
 	return plug, err
 }
 
-func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
-	// First see if we already loaded this plugin.
-	if plug, has := host.langhosts[runtime]; has {
-		contract.Assert(plug != nil)
-		return plug, nil
-	}
-
-	// If not, try to load and bind to a plugin.
-	plug, err := NewLanguageRuntime(host, host.ctx, runtime)
-	if err == nil && plug != nil {
-		host.langhosts[runtime] = plug // memoize the result.
-	}
-	return plug, err
+func (host *defaultHost) LanguageRuntime(runtime string, monitorAddr string) (LanguageRuntime, error) {
+	// Always load a fresh language runtime, since each has a unique resource monitor session.
+	return NewLanguageRuntime(host.ctx, runtime, monitorAddr)
 }
 
 func (host *defaultHost) Close() error {

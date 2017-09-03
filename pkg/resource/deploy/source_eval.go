@@ -73,7 +73,7 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 	// Next fire up the language plugin.
 	// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
 	rt := src.runinfo.Pkg.Runtime
-	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
+	langhost, err := src.plugctx.Host.LanguageRuntime(rt, mon.Address())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to launch language host for '%v'", src.runinfo.Pkg.Runtime)
 	} else if langhost == nil {

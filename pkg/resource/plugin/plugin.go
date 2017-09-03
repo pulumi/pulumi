@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
@@ -26,9 +27,17 @@ type plugin struct {
 	Stderr io.ReadCloser
 }
 
-func newPlugin(host Host, ctx *Context, bin string, prefix string) (*plugin, error) {
+func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin, error) {
+	if glog.V(9) {
+		var argstr string
+		for _, arg := range args {
+			argstr += " " + arg
+		}
+		glog.V(9).Infof("Launching plugin '%v' from '%v' with args '%v'", prefix, bin, argstr)
+	}
+
 	// Try to execute the binary.
-	plug, err := execPlugin(host, bin)
+	plug, err := execPlugin(bin, args)
 	if err != nil {
 		// If we failed simply because we couldn't load the binary, return nil rather than an error.
 		if execerr, isexecerr := err.(*exec.Error); isexecerr && execerr.Err == exec.ErrNotFound {
@@ -104,13 +113,8 @@ func newPlugin(host Host, ctx *Context, bin string, prefix string) (*plugin, err
 	return plug, nil
 }
 
-func execPlugin(host Host, bin string) (*plugin, error) {
+func execPlugin(bin string, args []string) (*plugin, error) {
 	// Flow the logging information if set.
-	var args []string
-
-	// Append the argument that tells the plugin the address for the engine.
-	args = append(args, host.ServerAddr())
-
 	if cmdutil.LogFlow {
 		if cmdutil.LogToStderr {
 			args = append(args, "--logtostderr")

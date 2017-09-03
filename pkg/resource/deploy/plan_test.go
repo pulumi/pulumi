@@ -345,7 +345,7 @@ func (g *testSourceGoal) Done(state *resource.State) {
 type testProviderHost struct {
 	analyzer func(nm tokens.QName) (plugin.Analyzer, error)
 	provider func(pkg tokens.Package) (plugin.Provider, error)
-	langhost func(runtime string) (plugin.LanguageRuntime, error)
+	langhost func(runtime string, monitorAddr string) (plugin.LanguageRuntime, error)
 }
 
 func (host *testProviderHost) Close() error {
@@ -370,8 +370,8 @@ func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error)
 func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, error) {
 	return host.provider(pkg)
 }
-func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
-	return host.langhost(runtime)
+func (host *testProviderHost) LanguageRuntime(runtime string, monitorAddr string) (plugin.LanguageRuntime, error) {
+	return host.langhost(runtime, monitorAddr)
 }
 
 type testProvider struct {

@@ -28,7 +28,7 @@ type analyzer struct {
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := AnalyzerPluginPrefix + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(host, ctx, srvexe, fmt.Sprintf("analyzer[%v]", name))
+	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("analyzer[%v]", name), []string{host.ServerAddr()})
 	if err != nil {
 		return nil, err
 	} else if plug == nil {

@@ -24,10 +24,10 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime string) (LanguageRuntime, error) {
+func NewLanguageRuntime(ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(host, ctx, srvexe, fmt.Sprintf("langhost[%v]", runtime))
+	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("langhost[%v]", runtime), []string{monitorAddr})
 	if err != nil {
 		return nil, err
 	} else if plug == nil {
