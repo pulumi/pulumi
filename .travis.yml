@@ -19,8 +19,7 @@ before_install:
 cache:
     yarn: true
 install:
-    - dep ensure -v
-    - pushd sdk/nodejs/ && yarn install && popd
+    - make configure
 before_script:
     - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/:$PATH
     - export LUMIROOT=~/.lumi

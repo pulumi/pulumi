@@ -32,6 +32,13 @@ banner_all:
 	@$(ECHO) "\033[1;37mPulumi Fabric (Full)\033[0m"
 	@$(ECHO) "\033[1;37m====================\033[0m"
 
+.PHONY: configure
+configure:
+	dep ensure -v
+	cd sdk/nodejs && yarn install
+	cd sdk/nodejs/runtime/native && ./ensure_node_v8.sh
+	cd sdk/nodejs/runtime/native && node-gyp configure
+
 .PHONY: install
 install:
 	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
