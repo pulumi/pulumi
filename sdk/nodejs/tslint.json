@@ -14,6 +14,10 @@
         ],
         "curly": true,
         "eofline": true,
+        "file-header": [
+            true,
+            "Copyright 2016-2017, Pulumi Corporation.  All rights reserved."
+        ],
         "forin": true,
         "indent": [
             true,
@@ -59,7 +63,7 @@
         "no-switch-case-fall-through": true,
         "no-trailing-whitespace": true,
         "no-unused-expression": true,
-        "no-use-before-declare": true,
+        "no-use-before-declare": false,
         "no-var-keyword": true,
         "no-var-requires": false,
         "object-literal-sort-keys": false,

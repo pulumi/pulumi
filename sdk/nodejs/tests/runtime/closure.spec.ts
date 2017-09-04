@@ -16,6 +16,7 @@ describe("closure", () => {
     // A few simple positive cases for functions/arrows (no captures).
     cases.push({
         title: "Empty function closure",
+        // tslint:disable-next-line
         func: function () { },
         expect: {
             code: "(function () { })",
@@ -25,6 +26,7 @@ describe("closure", () => {
     });
     cases.push({
         title: "Empty arrow closure",
+        // tslint:disable-next-line
         func: () => { },
         expect: {
             code: "(() => { })",
@@ -34,6 +36,7 @@ describe("closure", () => {
     });
     cases.push({
         title: "Empty function closure w/ args",
+        // tslint:disable-next-line
         func: function (x: any, y: any, z: any) { },
         expect: {
             code: "(function (x, y, z) { })",
@@ -43,6 +46,7 @@ describe("closure", () => {
     });
     cases.push({
         title: "Empty arrow closure w/ args",
+        // tslint:disable-next-line
         func: (x: any, y: any, z: any) => { },
         expect: {
             code: "((x, y, z) => { })",
@@ -53,7 +57,8 @@ describe("closure", () => {
 
     // Ensure we reject function declarations.
     class C {
-        public m(): void {}
+        // tslint:disable-next-line
+        public m(): void { }
     }
     cases.push({
         title: "Reject non-expression function objects",
@@ -81,6 +86,7 @@ describe("closure", () => {
         };
         cases.push({
             title: "Serializes basic captures",
+            // tslint:disable-next-line
             func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); },
             expect: {
                 code: "(() => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); })",
@@ -89,7 +95,7 @@ describe("closure", () => {
                         json: "foo",
                     },
                     xcap: {
-                        json: 97
+                        json: 97,
                     },
                     ycap: {
                         arr: [
@@ -138,6 +144,7 @@ describe("closure", () => {
 })`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",
+            // tslint:disable-next-line
             func: eval(functext),
             expect: {
                 code: functext,
@@ -170,6 +177,7 @@ describe("closure", () => {
 })`;
         cases.push({
             title: "Serializes recursive function captures",
+            // tslint:disable-next-line
             func: eval(functext),
             expect: {
                 code: functext,
@@ -204,7 +212,7 @@ describe("closure", () => {
                                         ],
                                     },
                                 },
-                            }
+                            },
                         },
                     },
                 },
@@ -222,6 +230,6 @@ describe("closure", () => {
                 assert.throws(() => runtime.serializeClosure(test.func));
             }
         });
-    };
+    }
 });
 

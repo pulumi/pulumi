@@ -1,11 +1,11 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { ID, runtime, URN } from "../../../index";
-import { asyncTest } from "../../util";
 import * as assert from "assert";
 import * as childProcess from "child_process";
-import * as path from "path";
 import * as os from "os";
+import * as path from "path";
+import { ID, runtime, URN } from "../../../index";
+import { asyncTest } from "../../util";
 
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 let grpc = require("grpc");
@@ -61,17 +61,17 @@ describe("rpc", () => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
-                        `Got multiple resources with same name ${name}`);
+                           `Got multiple resources with same name ${name}`);
                 }
                 else {
                     ctx.seen = {};
                 }
                 const prefix = "testResource";
                 assert.strictEqual(name.substring(0, prefix.length), prefix,
-                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-                let seqnum = parseInt(name.substring(prefix.length));
+                                   `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                let seqnum = parseInt(name.substring(prefix.length), 10);
                 assert(!isNaN(seqnum),
-                    `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                       `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
                 return { id: undefined, urn: undefined, props: undefined };
             },
@@ -116,17 +116,17 @@ describe("rpc", () => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
-                        `Got multiple resources with same name ${name}`);
+                           `Got multiple resources with same name ${name}`);
                 }
                 else {
                     ctx.seen = {};
                 }
                 const prefix = "testResource";
                 assert.strictEqual(name.substring(0, prefix.length), prefix,
-                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-                let seqnum = parseInt(name.substring(prefix.length));
+                                   `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                let seqnum = parseInt(name.substring(prefix.length), 10);
                 assert(!isNaN(seqnum),
-                    `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                       `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
                 assert.deepEqual(res, {
                     inseq: seqnum,
@@ -258,14 +258,14 @@ describe("rpc", () => {
                     expectError = "";
                 }
                 assert.strictEqual(runError, expectError,
-                    `Expected an error of "${expectError}"; got "${runError}"`);
+                                   `Expected an error of "${expectError}"; got "${runError}"`);
 
                 let expectResourceCount: number | undefined = opts.expectResourceCount;
                 if (expectResourceCount === undefined) {
                     expectResourceCount = 0;
                 }
                 assert.strictEqual(rescnt, expectResourceCount,
-                    `Expected exactly ${expectResourceCount} resources; got ${rescnt}`);
+                                   `Expected exactly ${expectResourceCount} resources; got ${rescnt}`);
 
                 // Finally, tear down everything so each test case starts anew.
                 await new Promise<void>((resolve, reject) => {
@@ -314,7 +314,7 @@ function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<s
                     resolve(res.getError());
                 }
             });
-        }
+        },
     );
 }
 
@@ -337,7 +337,7 @@ function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.Chi
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.
     let addrResolve: ((addr: string) => void) | undefined;
-    let addr = new Promise<string>((resolve) => { addrResolve = resolve })
+    let addr = new Promise<string>((resolve) => { addrResolve = resolve; });
     proc.stdout.on("data", (data) => {
         let dataString: string = stripEOL(data);
         if (addrResolve) {

@@ -9,7 +9,7 @@
         "clean": "rm -rf bin/ && rm -rf runtime/native/build",
         "build": "npm run copyprotos && npm run buildnative && tsc && npm run binplace && npm run lint",
         "buildnative": "cd runtime/native/ && node-gyp build",
-        "lint": "tslint '*.ts' 'cmd/**/*.ts' 'asset/**/*.ts' 'runtime/**/*.ts' 'test/**/*.ts'",
+        "lint": "tslint '{,!(/node_modules/|/bin/)/**/}*.ts'",
         "copyprotos": "cp -r ../proto/nodejs proto/",
         "binplaceprotos": "cp -r proto/ bin/proto/",
         "binplacenative": "mkdir -p bin/runtime/native/build/ && cp -r runtime/native/build/ bin/runtime/native/build/",
