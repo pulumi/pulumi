@@ -65,7 +65,8 @@ func (src *evalSource) Info() interface{} {
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate() (SourceIterator, error) {
 	// First, fire up a resource monitor that will watch for and record resource creation.
-	mon, err := newResourceMonitor()
+	reschan := make(chan *evalSourceGoal)
+	mon, err := newResourceMonitor(reschan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
@@ -86,7 +87,7 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 		langhost: langhost,
 		src:      src,
 		finchan:  make(chan error),
-		reschan:  make(chan *evalSourceGoal),
+		reschan:  reschan,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -173,16 +174,18 @@ func (iter *evalSourceIterator) forkRun() {
 // resmon implements the lumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	port   int        // the port the host is listening on.
-	cancel chan bool  // a channel that can cancel the server.
-	done   chan error // a channel that resolves when the server completes.
+	reschan chan *evalSourceGoal // the channel to send resources to.
+	port    int                  // the port the host is listening on.
+	cancel  chan bool            // a channel that can cancel the server.
+	done    chan error           // a channel that resolves when the server completes.
 }
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor() (*resmon, error) {
+func newResourceMonitor(reschan chan *evalSourceGoal) (*resmon, error) {
 	// New up an engine RPC server.
 	resmon := &resmon{
-		cancel: make(chan bool),
+		reschan: reschan,
+		cancel:  make(chan bool),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -226,17 +229,23 @@ func (rm *resmon) NewResource(ctx context.Context,
 		),
 		done: make(chan *resource.State),
 	}
+	glog.V(5).Infof("ResourceMonitor.NewResource received: t=%v, name=%v, #props=%v",
+		goal.goal.Type, goal.goal.Name, len(goal.goal.Properties))
+	rm.reschan <- goal
 
 	// Now block waiting for the operation to finish.
 	// FIXME: we probably need some way to cancel this in case of catastrophe.
 	state := <-goal.done
+	outs := state.Synthesized()
+	glog.V(5).Infof("ResourceMonitor.NewResource operation finished: t=%v, urn=%v (name=%v), #outs=%v",
+		state.Type, state.URN, goal.goal.Name, len(outs))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
 	return &lumirpc.NewResourceResponse{
 		Id:     string(state.ID),
 		Urn:    string(state.URN),
-		Object: plugin.MarshalProperties(state.Synthesized(), plugin.MarshalOptions{}),
+		Object: plugin.MarshalProperties(outs, plugin.MarshalOptions{}),
 	}, nil
 }
 
