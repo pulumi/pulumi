@@ -12,7 +12,7 @@ import (
 	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
-const LanguagePluginPrefix = "lumi-langhost-"
+const LanguagePluginPrefix = "pulumi-langhost-"
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
 type langhost struct {

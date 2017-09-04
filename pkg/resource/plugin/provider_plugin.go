@@ -15,7 +15,7 @@ import (
 	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
-const ProviderPluginPrefix = "lumi-resource-"
+const ProviderPluginPrefix = "pulumi-provider-"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
@@ -49,14 +49,14 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
-	glog.V(7).Infof("resource[%v].Configure(#vars=%v) executing", len(vars))
+	glog.V(7).Infof("resource[%v].Configure(#vars=%v) executing", p.pkg, len(vars))
 	config := make(map[string]string)
 	for k, v := range vars {
 		config[string(k)] = v
 	}
 	_, err := p.client.Configure(p.ctx.Request(), &lumirpc.ConfigureRequest{Variables: config})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Configure(#vars=%v,...) failed: err=%v", len(vars))
+		glog.V(7).Infof("resource[%v].Configure(#vars=%v,...) failed: err=%v", p.pkg, len(vars), err)
 		return err
 	}
 	return nil

@@ -13,7 +13,7 @@ import (
 	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
-const AnalyzerPluginPrefix = "lumi-analyzer-"
+const AnalyzerPluginPrefix = "pulumi-analyzer-"
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
