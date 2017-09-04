@@ -59,7 +59,7 @@ export function registerResource(
                 }
                 let newProperties: any = resp.getObject();
                 if (newProperties) {
-                    resolveProperties(newProperties, res);
+                    resolveProperties(res, newProperties);
                 }
             }
         });
@@ -74,6 +74,11 @@ function transferProperties(
     let eventuals: Promise<void>[] = []; // this contains all promises outstanding for assignments.
     if (props) {
         for (let k of Object.keys(props)) {
+            // Skip "id" and "urn", since we handle those specially.
+            if (k === "id" || k === "urn") {
+                continue;
+            }
+
             // Create a property to wrap the value and store it on the resource.
             let p = new Property<any>(props[k]);
             if ((<any>res)[k]) {
@@ -106,15 +111,31 @@ function transferProperties(
 
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
 // resource's matching properties to the values inside.
-function resolveProperties(struct: any, res: Resource): void {
+function resolveProperties(res: Resource, propsStruct: any): void {
     // First set any properties present in the output object.
-    let props: any = struct.toJavaScript();
+    let props: any = propsStruct.toJavaScript();
     for (let k of Object.keys(props)) {
+        // Skip "id" and "urn", since we handle those specially.
+        if (k === "id" || k === "urn") {
+            continue;
+        }
+
+        // Otherwise, unmarshal the value, and store it on the resource object.
         let p: any = (<any>res)[k];
-        if (!(p instanceof Property)) {
+        if (p === undefined) {
+            // If there is no property yet, zero initialize it.  This ensures unexpected properties are
+            // still made available on the object.  This isn't ideal, because any code running prior to the actual
+            // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
+            (<any>res)[k] = p = new Property<any>();
+        } else if (!(p instanceof Property)) {
             throw new Error(`Unable to set resource property '${k}' because it is not a Property<T>`);
         }
-        p.resolve(deserializeProperty(props[k]));
+        try {
+            p.resolve(deserializeProperty(props[k]));
+        }
+        catch (err) {
+            throw new Error(`Unable to set resource property '${k}'; error: ${err}`);
+        }
     }
     // Now latch any other properties to their final values, in case they aren't set.
     for (let k of Object.keys(res)) {

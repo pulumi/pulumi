@@ -42,7 +42,7 @@ export class Property<T> {
             promise.then((v: T) => {
                 // Only propagate the value if another final value hasn't already been recorded.
                 if (this.resolver) {
-                    this.resolve(v);
+                    this.v = v;
                 }
             });
         }
@@ -78,7 +78,7 @@ export class Property<T> {
     // resolve resolves the value of a property that was created out of thin air.
     public resolve(value: T): void {
         if (!this.resolver) {
-            throw new Error("Illegal attempt to resolve a property value with a different origin");
+            throw new Error(`Illegal attempt to resolve a property value with a different origin (${value})`);
         }
         this.v = value;
         this.resolver(value);
