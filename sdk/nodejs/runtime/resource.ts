@@ -230,11 +230,11 @@ function deserializeProperty(prop: any): any {
             switch (sig) {
                 case specialAssetSig:
                     if (prop["path"]) {
-                        return new asset.File(<string>prop["path"]);
+                        return new asset.FileAsset(<string>prop["path"]);
                     } else if (prop["text"]) {
-                        return new asset.String(<string>prop["text"]);
+                        return new asset.StringAsset(<string>prop["text"]);
                     } else if (prop["uri"]) {
-                        return new asset.Remote(<string>prop["uri"]);
+                        return new asset.RemoteAsset(<string>prop["uri"]);
                     } else {
                         throw new Error("Invalid asset encountered when unmarshaling resource property");
                     }

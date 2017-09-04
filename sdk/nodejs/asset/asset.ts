@@ -13,8 +13,8 @@ export class Blob extends Asset {
 }
 */
 
-// File is a kind of asset produced from a given path to a file on the local filesystem.
-export class File extends Asset {
+// FileAsset is a kind of asset produced from a given path to a file on the local filesystem.
+export class FileAsset extends Asset {
     public readonly path: string; // the path to the asset file.
 
     constructor(path: string) {
@@ -23,8 +23,8 @@ export class File extends Asset {
     }
 }
 
-// String is a kind of asset produced from an in-memory UTF8-encoded string.
-export class String extends Asset {
+// StringAsset is a kind of asset produced from an in-memory UTF8-encoded string.
+export class StringAsset extends Asset {
     public readonly text: string; // the string contents.
 
     constructor(text: string) {
@@ -33,10 +33,10 @@ export class String extends Asset {
     }
 }
 
-// Remote is a kind of asset produced from a given URI string.  The URI's scheme dictates the protocol for fetching
+// RemoteAsset is a kind of asset produced from a given URI string.  The URI's scheme dictates the protocol for fetching
 // contents: `file://` specifies a local file, `http://` and `https://` specify HTTP and HTTPS, respectively.  Note that
 // specific providers may recognize alternative schemes; this is merely the base-most set that all providers support.
-export class Remote extends Asset {
+export class RemoteAsset extends Asset {
     public readonly uri: string; // the URI where the asset lives.
 
     constructor(uri: string) {

@@ -10,5 +10,5 @@ class FileResource extends fabric.Resource {
     }
 }
 
-new FileResource("file1", new fabric.asset.File("./testdata.txt"));
+new FileResource("file1", new fabric.asset.FileAsset("./testdata.txt"));
 
