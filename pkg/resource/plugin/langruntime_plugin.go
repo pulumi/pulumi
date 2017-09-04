@@ -24,10 +24,11 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
+func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("langhost[%v]", runtime), []string{monitorAddr})
+	plug, err := newPlugin(ctx, srvexe,
+		fmt.Sprintf("langhost[%v]", runtime), []string{monitorAddr, host.ServerAddr()})
 	if err != nil {
 		return nil, err
 	} else if plug == nil {
@@ -63,13 +64,13 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 	})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
-			info.Pwd, info.Program, info.DryRun, err)
+			h.runtime, info.Pwd, info.Program, info.DryRun, err)
 		return "", err
 	}
 
 	progerr := resp.GetError()
 	glog.V(7).Infof("resource[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
-		info.Pwd, info.Program, info.DryRun, progerr)
+		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
 	return progerr, nil
 }
 

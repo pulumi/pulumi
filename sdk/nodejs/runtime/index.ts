@@ -3,6 +3,7 @@
 export * from "./closure";
 export * from "./config";
 export * from "./langhost";
+export * from "./log";
 export * from "./resource";
-export * from "./monitor";
+export * from "./settings";
 

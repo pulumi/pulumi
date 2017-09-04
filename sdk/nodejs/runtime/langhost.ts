@@ -10,13 +10,16 @@ let langrpc = require("../../proto/nodejs/languages_grpc_pb");
 
 // monitorAddr is the current resource monitor address.
 let monitorAddr: string | undefined;
+// engineAddr is the current resource engine address, if any.
+let engineAddr: string | undefined;
 
 // serveLanguageHost spawns a language host that connects to the resource monitor and listens on port.
-export function serveLanguageHost(monitor: string): { server: any, port: number } {
+export function serveLanguageHost(monitor: string, engine: string | undefined): { server: any, port: number } {
     if (monitorAddr) {
         throw new Error("Already connected to a resource monitor; cannot serve two hosts in one process");
     }
     monitorAddr = monitor;
+    engineAddr = engine;
 
     // Now fire up the gRPC server and begin serving!
     let server = new grpc.Server();
@@ -31,6 +34,7 @@ export function serveLanguageHost(monitor: string): { server: any, port: number 
 // runRPC implements the core "run" logic for both planning and deploying.
 function runRPC(call: any, callback: any): void {
     // Unpack the request and fire up the program.
+    // IDEA: stick the monitor address in Run's RPC so that it's per invocation.
     let req: any = call.request;
     let resp = new langproto.RunResponse();
     let proc: childprocess.ChildProcess | undefined;
@@ -40,12 +44,11 @@ function runRPC(call: any, callback: any): void {
             path.join(__filename, "..", "..", "cmd", "langhost", "run.js"),
         ];
 
-        // Serialize the config args using [ "--config.k", "v" ] pairs.
+        // Serialize the config args using "--config.k=v" flags.
         let config: any = req.getConfigMap();
         if (config) {
             for (let entry of config.entries()) {
-                args.push(`--config.${entry[0]}`);
-                args.push(entry[1]);
+                args.push(`--config.${entry[0]}=${entry[1]}`);
             }
         }
 
@@ -65,7 +68,14 @@ function runRPC(call: any, callback: any): void {
         if (!monitorAddr) {
             throw new Error("No resource monitor known; please ensure the language host is alive");
         }
+        args.push("--monitor");
         args.push(monitorAddr);
+
+        // Push the resource engine address, for logging, etc., if there is one.
+        if (engineAddr) {
+            args.push("--engine");
+            args.push(engineAddr);
+        }
 
         // Now get a path to the program.
         let program: string | undefined = req.getProgram();

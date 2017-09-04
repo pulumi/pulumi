@@ -55,7 +55,12 @@ export class Config {
         if (v === undefined) {
             return undefined;
         }
-        return <T>JSON.parse(v);
+        try {
+            return <T>JSON.parse(v);
+        }
+        catch (err) {
+            throw new Error(`Configuration key '${key}' is not a valid JSON object: ${err}`);
+        }
     }
 
     // require loads a configuration value by its given key.  If it doesn't exist, an error is thrown.

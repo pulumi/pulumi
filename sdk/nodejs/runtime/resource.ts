@@ -3,7 +3,8 @@
 import * as asset from "../asset";
 import { Property, PropertyValue } from "../property";
 import { Resource, URN } from "../resource";
-import { getMonitor, isDryRun } from "./monitor";
+import { Log } from "./log";
+import { getMonitor, isDryRun } from "./settings";
 
 let langproto = require("../proto/nodejs/languages_pb");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -13,6 +14,8 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
     res: Resource, t: string, name: string, props: {[key: string]: PropertyValue<any> | undefined}): void {
+    Log.debug(`Registering resource: t=${t}, name=${name}, props=${props}`);
+
     // Fetch the monitor; if it doesn't exist, bail right away.
     let monitor: any = getMonitor();
     if (!monitor) {
@@ -33,12 +36,15 @@ export function registerResource(
     // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
     // time, we want to give the illusion of non-blocking code, so we return immediately.
     transfer.then((obj: any) => {
+        Log.debug(`Resource RPC prepared: t=${t}, name=${name}, obj=${obj}`);
+
         // Fire off an RPC to the monitor to register the resource.  If/when it resolves, we will blit the properties.
         let req = new langproto.NewResourceRequest();
         req.setType(t);
         req.setName(name);
         req.setObject(obj);
         monitor.newResource(req, (err: Error, resp: any) => {
+            Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
             if (err) {
                 throw new Error(`Failed to register new resource with monitor: ${err}`);
             }

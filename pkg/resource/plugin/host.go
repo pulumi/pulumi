@@ -98,7 +98,7 @@ func (host *defaultHost) Provider(pkg tokens.Package) (Provider, error) {
 
 func (host *defaultHost) LanguageRuntime(runtime string, monitorAddr string) (LanguageRuntime, error) {
 	// Always load a fresh language runtime, since each has a unique resource monitor session.
-	return NewLanguageRuntime(host.ctx, runtime, monitorAddr)
+	return NewLanguageRuntime(host, host.ctx, runtime, monitorAddr)
 }
 
 func (host *defaultHost) Close() error {

@@ -8,15 +8,21 @@ import * as minimist from "minimist";
 import * as runtime from "../../runtime";
 
 export function main(args: string[]): void {
-    // The monitor requires a single argument: the address of the RPC endpoint for the resource monitor.
+    // The program requires a single argument: the address of the RPC endpoint for the resource monitor.  It
+    // optionally also takes a second argument, a reference back to the engine, but this may be missing.
     if (args.length === 0) {
         console.error("fatal: Missing <monitor> address");
         process.exit(-1);
         return;
     }
+    let monitorAddr: string = args[0];
+    let serverAddr: string | undefined;
+    if (args.length > 1) {
+        serverAddr = args[1];
+    }
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    let { server, port } = runtime.serveLanguageHost(args[0]);
+    let { server, port } = runtime.serveLanguageHost(monitorAddr, serverAddr);
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
     console.log(port);
