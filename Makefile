@@ -37,7 +37,7 @@ configure:
 	dep ensure -v
 	cd sdk/nodejs && yarn install
 	cd sdk/nodejs/runtime/native && ./ensure_node_v8.sh
-	cd sdk/nodejs/runtime/native && node-gyp configure
+	cd sdk/nodejs/runtime/native && ../../node_modules/.bin/node-gyp configure
 
 .PHONY: install
 install:
