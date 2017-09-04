@@ -86,7 +86,6 @@ func (s *SameStep) Skip() error {
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
 	iter      *PlanIterator          // the current plan iteration.
-	urn       resource.URN           // the resource URN being created.
 	goal      SourceGoal             // the goal state for the resource.
 	old       *resource.State        // the state of the existing resource (only for replacements).
 	new       *resource.State        // the state of the resource after this step.
@@ -137,7 +136,7 @@ func (s *CreateStep) Op() StepOp {
 func (s *CreateStep) Plan() *Plan                  { return s.iter.p }
 func (s *CreateStep) Iterator() *PlanIterator      { return s.iter }
 func (s *CreateStep) Type() tokens.Type            { return s.new.Type }
-func (s *CreateStep) URN() resource.URN            { return s.urn }
+func (s *CreateStep) URN() resource.URN            { return s.new.URN }
 func (s *CreateStep) Old() *resource.State         { return s.old }
 func (s *CreateStep) New() *resource.State         { return s.new }
 func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
