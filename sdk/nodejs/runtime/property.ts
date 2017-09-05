@@ -92,6 +92,14 @@ export class Property<T> implements Computed<T> {
         }
     }
 
+    // toString overrides the standard toString to provide a "helpful" message.  Most likely this was a mistake,
+    // and perhaps the message will help to indicate this, although sometimes it is helpful.
+    public toString(): string {
+        return `[pulumi-fabric Property: ` +
+            `input=${this.input} output=${this.output} ` +
+            `resolved=${this.resolveOutput === undefined}]`;
+    }
+
     // setInput resolves the initial input value of a property.
     private setInput(value: T | undefined): void {
         if (this.resolveInput === undefined) {
