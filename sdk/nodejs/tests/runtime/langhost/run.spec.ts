@@ -9,8 +9,8 @@ import { asyncTest } from "../../util";
 
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 let grpc = require("grpc");
-let langrpc = require("../../../proto/nodejs/languages_grpc_pb");
-let langproto = require("../../../proto/nodejs/languages_pb");
+let langrpc = require("../../../proto/languages_grpc_pb.js");
+let langproto = require("../../../proto/languages_pb.js");
 
 interface RunCase {
     pwd?: string;

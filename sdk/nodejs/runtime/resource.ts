@@ -7,7 +7,7 @@ import { Log } from "./log";
 import { Property } from "./property";
 import { getMonitor, isDryRun } from "./settings";
 
-let langproto = require("../proto/nodejs/languages_pb");
+let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 // registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN

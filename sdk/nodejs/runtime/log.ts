@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import { getEngine } from "./settings";
-let engproto = require("../proto/nodejs/engine_pb");
+let engproto = require("../proto/engine_pb.js");
 
 // Log offers the ability to log messages in a way that integrate tightly with the resource engine's interface.
 export class Log {
