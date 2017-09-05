@@ -61,7 +61,7 @@ export function registerResource(
                 }
 
                 // Finally propagate any other properties that were given to us as outputs.
-                resolveProperties(res, resp.getObject());
+                resolveProperties(res, resp.getObject(), resp.getStable());
             }
         });
     });
@@ -113,7 +113,7 @@ function transferProperties(
 
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
 // resource's matching properties to the values inside.
-function resolveProperties(res: Resource, propsStruct: any): void {
+function resolveProperties(res: Resource, propsStruct: any, stable: boolean): void {
     // First set any properties present in the output object.
     if (propsStruct) {
         let resany: any = <any>res;
@@ -137,7 +137,7 @@ function resolveProperties(res: Resource, propsStruct: any): void {
             }
             try {
                 internalGetState(p as Property<any>).setOutput(
-                    deserializeProperty(props[k]), !isDryRun(), false);
+                    deserializeProperty(props[k]), !isDryRun() || stable, false);
             }
             catch (err) {
                 throw new Error(`Unable to set resource property '${k}'; error: ${err}`);

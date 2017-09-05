@@ -71,7 +71,7 @@ func (s *SameStep) Pre() error {
 
 func (s *SameStep) Apply() (resource.Status, error) {
 	// Just propagate the ID and output state to the live object and append to the snapshot.
-	s.goal.Done(s.old)
+	s.goal.Done(s.old, true)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(s.old)
 	return resource.StatusOK, nil
@@ -79,7 +79,7 @@ func (s *SameStep) Apply() (resource.Status, error) {
 
 func (s *SameStep) Skip() error {
 	// In the case of a same, both ID and outputs are identical.
-	s.goal.Done(s.old)
+	s.goal.Done(s.old, true)
 	return nil
 }
 
@@ -161,14 +161,14 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
-	s.goal.Done(s.new)
+	s.goal.Done(s.new, false)
 	s.iter.AppendStateSnapshot(s.new)
 	return resource.StatusOK, nil
 }
 
 func (s *CreateStep) Skip() error {
 	// In the case of a create, we don't know the ID or output properties.  But we do know the defaults and URN.
-	s.goal.Done(s.new)
+	s.goal.Done(s.new, false)
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 	// Now copy any output state back in case the update triggered cascading updates to other properties.
 	s.new.ID = s.old.ID
 	s.new.Outputs = outs
-	s.goal.Done(s.new)
+	s.goal.Done(s.new, false)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(s.new)
 	return resource.StatusOK, nil
@@ -290,7 +290,7 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 func (s *UpdateStep) Skip() error {
 	// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
 	s.new.ID = s.old.ID
-	s.goal.Done(s.new)
+	s.goal.Done(s.new, false)
 	return nil
 }
 

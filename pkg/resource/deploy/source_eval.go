@@ -227,7 +227,7 @@ func (rm *resmon) NewResource(ctx context.Context,
 			tokens.QName(req.GetName()),
 			plugin.UnmarshalProperties(req.GetObject(), plugin.MarshalOptions{}),
 		),
-		done: make(chan *resource.State),
+		done: make(chan *evalState),
 	}
 	glog.V(5).Infof("ResourceMonitor.NewResource received: t=%v, name=%v, #props=%v",
 		goal.goal.Type, goal.goal.Name, len(goal.goal.Properties))
@@ -235,30 +235,38 @@ func (rm *resmon) NewResource(ctx context.Context,
 
 	// Now block waiting for the operation to finish.
 	// FIXME: we probably need some way to cancel this in case of catastrophe.
-	state := <-goal.done
-	outs := state.Synthesized()
-	glog.V(5).Infof("ResourceMonitor.NewResource operation finished: t=%v, urn=%v (name=%v), #outs=%v",
-		state.Type, state.URN, goal.goal.Name, len(outs))
+	done := <-goal.done
+	state := done.State
+	outprops := state.Synthesized()
+	stable := done.Stable
+	glog.V(5).Infof("ResourceMonitor.NewResource operation finished: t=%v, urn=%v (name=%v), stable=%v, #outs=%v",
+		state.Type, state.URN, goal.goal.Name, stable, len(outprops))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
 	return &lumirpc.NewResourceResponse{
 		Id:     string(state.ID),
 		Urn:    string(state.URN),
-		Object: plugin.MarshalProperties(outs, plugin.MarshalOptions{}),
+		Object: plugin.MarshalProperties(outprops, plugin.MarshalOptions{}),
+		Stable: stable,
 	}, nil
 }
 
+type evalState struct {
+	State  *resource.State // the resource state.
+	Stable bool            // if true, the resource state is stable and may be trusted.
+}
+
 type evalSourceGoal struct {
-	goal *resource.Goal       // the resource goal state produced by the iterator.
-	done chan *resource.State // the channel to communicate with after the resource state is available.
+	goal *resource.Goal  // the resource goal state produced by the iterator.
+	done chan *evalState // the channel to communicate with after the resource state is available.
 }
 
 func (g *evalSourceGoal) Resource() *resource.Goal {
 	return g.goal
 }
 
-func (g *evalSourceGoal) Done(state *resource.State) {
+func (g *evalSourceGoal) Done(state *resource.State, stable bool) {
 	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
-	g.done <- state
+	g.done <- &evalState{State: state, Stable: stable}
 }

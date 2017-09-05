@@ -688,7 +688,8 @@ proto.lumirpc.NewResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    stable: jspb.Message.getFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -738,6 +739,10 @@ proto.lumirpc.NewResourceResponse.deserializeBinaryFromReader = function(msg, re
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setObject(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setStable(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -786,6 +791,13 @@ proto.lumirpc.NewResourceResponse.serializeBinaryToWriter = function(message, wr
       3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getStable();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
     );
   }
 };
@@ -848,6 +860,23 @@ proto.lumirpc.NewResourceResponse.prototype.clearObject = function() {
  */
 proto.lumirpc.NewResourceResponse.prototype.hasObject = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional bool stable = 4;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.lumirpc.NewResourceResponse.prototype.getStable = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 4, false));
+};
+
+
+/** @param {boolean} value */
+proto.lumirpc.NewResourceResponse.prototype.setStable = function(value) {
+  jspb.Message.setField(this, 4, value);
 };
 
 

@@ -337,7 +337,7 @@ func (g *testSourceGoal) Resource() *resource.Goal {
 	return g.Goal
 }
 
-func (g *testSourceGoal) Done(state *resource.State) {
+func (g *testSourceGoal) Done(state *resource.State, stable bool) {
 	contract.Assertf(g.State == nil, "Attempt to invoke testSourceGoal.Done more than once")
 	g.State = state
 }
