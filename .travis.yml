@@ -9,8 +9,8 @@ before_install:
     - gometalinter --install
     # gocovmerge for Go code coverage.
     - go get -v github.com/wadey/gocovmerge
-    # Node.js 7.x for LumiJS and associated JS code.
-    - nvm install v7
+    # Node.js 6.10.2 for all JavaScript code (to match AWS Lambda).
+    - nvm install v6.10.2
     # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
     - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 0.24.6
     - export PATH=$HOME/.yarn/bin:$PATH
