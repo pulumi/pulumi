@@ -158,6 +158,26 @@ describe("closure", () => {
             },
         });
     }
+    cases.push({
+        title: "Don't capture built-ins",
+        // tslint:disable-next-line
+        func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
+        expect: {
+            code: `(() => { let x = eval("undefined + null + NaN + Infinity + filename"); require("os"); })`,
+            environment: {},
+            runtime: "nodejs",
+        },
+    });
+    cases.push({
+        title: "Don't capture catch variables",
+        // tslint:disable-next-line
+        func: eval(`() => { try { } catch (err) { console.log(err); } }`),
+        expect: {
+            code: `(() => { try { } catch (err) { console.log(err); } })`,
+            environment: {},
+            runtime: "nodejs",
+        },
+    });
 
     // Recursive function serialization.
     {

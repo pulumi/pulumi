@@ -55,10 +55,25 @@ function computeFreeVariables(funcstr: string): string[] {
 
 type walkCallback = (node: estree.BaseNode, state: any) => void;
 
+const nodeModuleGlobals: {[key: string]: boolean} = {
+    "__dirname": true,
+    "__filename": true,
+    "exports": true,
+    "module": true,
+    "require": true,
+};
+
 class FreeVariableComputer {
     private frees: {[key: string]: boolean};   // the in-progress list of free variables.
     private scope: {[key: string]: boolean}[]; // a chain of current scopes and variables.
     private functionVars: string[];            // list of function-scoped variables (vars).
+
+    private static isBuiltIn(ident: string): boolean {
+        // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
+        // note that these only exist in the scope of modules, and so are not truly global in the usual sense.
+        // See https://nodejs.org/api/globals.html for more details.
+        return global.hasOwnProperty(ident) || nodeModuleGlobals[ident];
+    }
 
     public compute(program: estree.Program): string[] {
         // Reset the state.
@@ -70,7 +85,8 @@ class FreeVariableComputer {
         acornwalk.recursive(program, {}, {
             Identifier: this.visitIdentifier.bind(this),
             BlockStatement: this.visitBlockStatement.bind(this),
-            FunctionDeclaration: this.visitBaseFunction.bind(this),
+            CatchClause: this.visitCatchClause.bind(this),
+            FunctionDeclaration: this.visitFunctionDeclaration.bind(this),
             FunctionExpression: this.visitBaseFunction.bind(this),
             ArrowFunctionExpression: this.visitBaseFunction.bind(this),
             VariableDeclaration: this.visitVariableDeclaration.bind(this),
@@ -80,7 +96,7 @@ class FreeVariableComputer {
         // Node.js global object, however, since those are implicitly availble on the other side of serialization.
         let freeVars: string[] = [];
         for (let key of Object.keys(this.frees)) {
-            if (this.frees[key] && (<any>global)[key] === undefined) {
+            if (this.frees[key] && !FreeVariableComputer.isBuiltIn(key)) {
                 freeVars.push(key);
             }
         }
@@ -89,14 +105,14 @@ class FreeVariableComputer {
 
     private visitIdentifier(node: estree.Identifier, state: any, cb: walkCallback): void {
         // Remember undeclared identifiers during the walk, as they are possibly free.
-        let v: string = node.name;
+        let name: string = node.name;
         for (let i = this.scope.length - 1; i >= 0; i--) {
-            if (this.scope[i][v]) {
+            if (this.scope[i][name]) {
                 // This is currently known in the scope chain, so do not add it as free.
                 break;
             } else if (i === 0) {
                 // We reached the top of the scope chain and this wasn't found; it's free.
-                this.frees[v] = true;
+                this.frees[name] = true;
             }
         }
     }
@@ -108,6 +124,13 @@ class FreeVariableComputer {
             cb(stmt, state);
         }
         this.scope.pop();
+    }
+
+    private visitFunctionDeclaration(node: estree.FunctionDeclaration, state: any, cb: walkCallback): void {
+        // A function declaration is special in one way: its identifier is added to the current function's
+        // var-style variables, so that its name is in scope no matter the order of surrounding references to it.
+        this.functionVars.push(node.id.name);
+        this.visitBaseFunction(node, state, cb);
     }
 
     private visitBaseFunction(node: estree.BaseFunction, state: any, cb: walkCallback): void {
@@ -147,6 +170,26 @@ class FreeVariableComputer {
             }
         }
         this.frees = oldFrees;
+    }
+
+    private visitCatchClause(node: estree.CatchClause, state: any, cb: walkCallback): void {
+        // Add the catch pattern to the scope as a variable.
+        let oldFrees: {[key: string]: boolean} = this.frees;
+        this.frees = {};
+        this.scope.push({});
+        cb(node.param, state);
+        for (let param of Object.keys(this.frees)) {
+            if (this.frees[param]) {
+                this.scope[this.scope.length-1][param] = true;
+            }
+        }
+        this.frees = oldFrees;
+
+        // And then visit the block without adding them as free variables.
+        cb(node.body, state);
+
+        // Relinquish the scope so the error patterns aren't available beyond the catch.
+        this.scope.pop();
     }
 
     private visitVariableDeclaration(node: estree.VariableDeclaration, state: any, cb: walkCallback): void {

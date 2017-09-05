@@ -80,7 +80,7 @@ func (w *workspace) init() error {
 				// A lumi directory delimits the root of the workspace.
 				lumidir := filepath.Join(root, file.Name())
 				if IsLumiDir(lumidir) {
-					glog.V(3).Infof("Lumi workspace detected; setting root to %v", w.root)
+					glog.V(3).Infof("Lumi workspace detected; setting root to %v", root)
 					w.root = root                      // remember the root.
 					w.settings, err = w.readSettings() // load up optional settings.
 					if err != nil {

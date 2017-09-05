@@ -74,7 +74,7 @@ Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context
         String::NewFromUtf8(isolate, "Unexpected missing variable in closure environment: "),
             String::NewFromUtf8(isolate, namestr));
     isolate->ThrowException(Exception::Error(errormsg));
-    return Undefined(isolate);
+    return Local<Value>();
 }
 
 Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Function> freevarsFunc);
@@ -97,13 +97,20 @@ Local<Value> SerializeClosureEnvEntry(Isolate* isolate, Local<Value> v, Local<Fu
         Local<Array> newarr = Array::New(isolate, arr->Length());
         for (uint32_t i = 0; i < arr->Length(); i++) {
             Local<Integer> index = Integer::New(isolate, i);
-            newarr->Set(index, SerializeClosureEnvEntry(isolate, arr->Get(index), freevarsFunc));
+            Local<Value> entry = SerializeClosureEnvEntry(isolate, arr->Get(index), freevarsFunc);
+            if (entry.IsEmpty()) {
+                return Local<Value>();
+            }
+            newarr->Set(index, entry);
         }
         entry->Set(String::NewFromUtf8(isolate, "arr"), newarr);
     } else if (v->IsFunction()) {
         // Serialize functions recursively, and store them in a closure property.
-        entry->Set(String::NewFromUtf8(isolate, "closure"),
-                SerializeFunction(isolate, Local<Function>::Cast(v), freevarsFunc));
+        Local<Value> closure = SerializeFunction(isolate, Local<Function>::Cast(v), freevarsFunc);
+        if (closure.IsEmpty()) {
+            return Local<Value>();
+        }
+        entry->Set(String::NewFromUtf8(isolate, "closure"), closure);
     } else if (v->IsObject()) {
         // For all other objects, recursively serialize all of its properties.
         Local<Object> obj = Local<Object>::Cast(v);
@@ -111,7 +118,11 @@ Local<Value> SerializeClosureEnvEntry(Isolate* isolate, Local<Value> v, Local<Fu
         Local<Array> props = obj->GetPropertyNames(isolate->GetCurrentContext()).ToLocalChecked();
         for (uint32_t i = 0; i < props->Length(); i++) {
             Local<Value> propname = props->Get(Integer::New(isolate, i));
-            newobj->Set(propname, SerializeClosureEnvEntry(isolate, obj->Get(propname), freevarsFunc));
+            Local<Value> entry = SerializeClosureEnvEntry(isolate, obj->Get(propname), freevarsFunc);
+            if (entry.IsEmpty()) {
+                return Local<Value>();
+            }
+            newobj->Set(propname, entry);
         }
         entry->Set(String::NewFromUtf8(isolate, "obj"), newobj);
     } else {
@@ -159,25 +170,30 @@ Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Fun
     Local<String> code = SerializeFunctionObjectText(isolate, func);
 
     // Compute the free variables by invoking the callback.
-    std::vector<Local<String>> freevars;
     const unsigned freevarsArgc = 1;
     Local<Value> freevarsArgv[freevarsArgc] = { code };
     Local<Value> freevarsRet = freevarsFunc->Call(Null(isolate), freevarsArgc, freevarsArgv);
-    if (freevarsRet.IsEmpty() || !freevarsRet->IsArray()) {
+    if (freevarsRet.IsEmpty()) {
+        // Only empty if the function threw an exception.  Return early to propagate it.
+        return Local<Value>();
+    } else if (!freevarsRet->IsArray()) {
         isolate->ThrowException(Exception::TypeError(
             String::NewFromUtf8(isolate, "Free variables return expected to be an Array")));
-    } else {
-        Local<Array> freevarsArray = Local<Array>::Cast(freevarsRet);
-        for (uint32_t i = 0; i < freevarsArray->Length(); i++) {
-            Local<Integer> index = Integer::New(isolate, i);
-            Local<Value> elem = freevarsArray->Get(index);
-            if (elem.IsEmpty() || !elem->IsString()) {
-                isolate->ThrowException(Exception::TypeError(
-                    String::NewFromUtf8(isolate, "Free variable Array must contain only String elements")));
-            } else {
-                freevars.push_back(Local<String>::Cast(elem));
-            }
+        return Local<Value>();
+    }
+
+    // Now check all elements and produce a vector we can use below.
+    std::vector<Local<String>> freevars;
+    Local<Array> freevarsArray = Local<Array>::Cast(freevarsRet);
+    for (uint32_t i = 0; i < freevarsArray->Length(); i++) {
+        Local<Integer> index = Integer::New(isolate, i);
+        Local<Value> elem = freevarsArray->Get(index);
+        if (elem.IsEmpty() || !elem->IsString()) {
+            isolate->ThrowException(Exception::TypeError(
+                String::NewFromUtf8(isolate, "Free variable Array must contain only String elements")));
+            return Local<Value>();
         }
+        freevars.push_back(Local<String>::Cast(elem));
     }
 
     // Next, serialize all free variables as they exist in the function's original lexical environment.
@@ -186,7 +202,15 @@ Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Fun
         // Look up the variable in the lexical closure of the function and then serialize it.
         Local<String> freevar = *it;
         Local<Value> v = Lookup(isolate, lexical, freevar);
-        environment->Set(freevar, SerializeClosureEnvEntry(isolate, v, freevarsFunc));
+        if (v.IsEmpty()) {
+            // Only empty if an error was thrown; bail eagerly to propagate it.
+            return Local<Value>();
+        }
+        Local<Value> entry = SerializeClosureEnvEntry(isolate, v, freevarsFunc);
+        if (entry.IsEmpty()) {
+            return Local<Value>();
+        }
+        environment->Set(freevar, entry);
     }
 
     // Finally, produce a closure object with all the appropriate records, and return it.
@@ -225,7 +249,9 @@ void SerializeClosure(const FunctionCallbackInfo<Value>& args) {
 
     // Now go ahead and serialize it, and return the result.
     Local<Value> closure = SerializeFunction(isolate, func, freevarsFunc);
-    args.GetReturnValue().Set(closure);
+    if (!closure.IsEmpty()) {
+        args.GetReturnValue().Set(closure);
+    }
 }
 
 void init(Local<Object> exports) {
