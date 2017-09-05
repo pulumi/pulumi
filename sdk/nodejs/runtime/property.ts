@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as asset from "../asset";
-import { Computed } from "../computed";
-import { PropertyValue, Resource, URN } from "../resource";
+import { Computed, MaybeComputed } from "../computed";
+import { Resource, URN } from "../resource";
 import { Log } from "./log";
 import { getMonitor, isDryRun } from "./settings";
 
@@ -17,7 +17,7 @@ export class Property<T> implements Computed<T> {
     private resolveInput: ((v: T | undefined) => void) | undefined; // the resolver used to resolve input values.
     private resolveOutput: ((v: T | undefined) => void) | undefined; // the resolver used to resolve output values.
 
-    constructor(value?: PropertyValue<T>) {
+    constructor(value?: MaybeComputed<T>) {
         // Either link to a property or promise to resolve the input, or do it immediately, if it's available.
         if (value !== undefined) {
             this.inputPromise = new Promise<T | undefined>(

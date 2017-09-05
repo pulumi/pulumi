@@ -11,3 +11,6 @@ export interface Computed<T> {
     mapValue<U>(callback: (v: T) => U): Computed<U>;
 }
 
+// MaybeComputed is one of: a T, a computed of T (whose value may not yet be known), or a promise of T.
+export type MaybeComputed<T> = T | Computed<T> | Promise<T>;
+

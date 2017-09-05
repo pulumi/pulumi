@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Computed } from "./computed";
+import { Computed, MaybeComputed } from "./computed";
 import * as runtime from "./runtime";
 
 export type ID = string;  // a provider-assigned ID.
@@ -15,7 +15,7 @@ export abstract class Resource {
 
     // creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
     // to use in creating a stable and globally unique URN for the object.
-    constructor(t: string, name: string, props: {[key: string]: PropertyValue<any> | undefined}) {
+    constructor(t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}) {
         if (t === undefined || t === "") {
             throw new Error("Missing resource type argument");
         }
@@ -29,7 +29,4 @@ export abstract class Resource {
         runtime.registerResource(this, t, name, props);
     }
 }
-
-// PropertyValue is either a T, a computed of T (whose value may not yet be known), or a promise of T.
-export type PropertyValue<T> = T | Computed<T> | Promise<T>;
 

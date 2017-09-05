@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as asset from "../asset";
-import { Computed } from "../computed";
-import { PropertyValue, Resource, URN } from "../resource";
+import { Computed, MaybeComputed } from "../computed";
+import { Resource, URN } from "../resource";
 import { Log } from "./log";
 import { Property } from "./property";
 import { getMonitor, isDryRun } from "./settings";
@@ -14,7 +14,7 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
-    res: Resource, t: string, name: string, props: {[key: string]: PropertyValue<any> | undefined}): void {
+    res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): void {
     Log.debug(`Registering resource: t=${t}, name=${name}, props=${props}`);
 
     // Fetch the monitor; if it doesn't exist, bail right away.
@@ -70,7 +70,7 @@ export function registerResource(
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
 function transferProperties(
-    res: Resource, props: {[key: string]: PropertyValue<any> | undefined}): Promise<any> {
+    res: Resource, props: {[key: string]: MaybeComputed<any> | undefined}): Promise<any> {
     let resbag: any = res;
     let obj: any = {}; // this will eventually hold the serialized object properties.
     let eventuals: Promise<void>[] = []; // this contains all promises outstanding for assignments.
