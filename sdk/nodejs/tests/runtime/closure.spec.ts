@@ -117,7 +117,7 @@ describe("closure", () => {
         });
     }
     {
-        let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5;
+        let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5, nocap6 = 6, nocap7 = 7;
         let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400;
         let functext = `((nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
@@ -141,6 +141,11 @@ describe("closure", () => {
             yy = 0;
         }
     });
+    let www = nocap7(); // not a capture; it is defined below
+    if (true) {
+        function nocap7() {
+        }
+    }
 })`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",
@@ -163,7 +168,7 @@ describe("closure", () => {
         // tslint:disable-next-line
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
         expect: {
-            code: `(() => { let x = eval("undefined + null + NaN + Infinity + filename"); require("os"); })`,
+            code: `(() => { let x = eval("undefined + null + NaN + Infinity + __filename"); require("os"); })`,
             environment: {},
             runtime: "nodejs",
         },
