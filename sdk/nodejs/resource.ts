@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Property, PropertyValue } from "./property";
+import { Computed } from "./computed";
 import * as runtime from "./runtime";
 
 export type ID = string;  // a provider-assigned ID.
@@ -9,9 +9,9 @@ export type URN = string; // an automatically generated logical URN, used to sta
 // Resource represents a class whose CRUD operations are implemented by a provider plugin.
 export abstract class Resource {
     // id is the provider-assigned unique ID for this object.  It is set during deployments.
-    public readonly id: Property<ID>;
+    public readonly id: Computed<ID>;
     // urn is the stable logical URN used to distinctly address an object, both before and after deployments.
-    public readonly urn: Property<URN>;
+    public readonly urn: Computed<URN>;
 
     // creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
     // to use in creating a stable and globally unique URN for the object.
@@ -29,4 +29,7 @@ export abstract class Resource {
         runtime.registerResource(this, t, name, props);
     }
 }
+
+// PropertyValue is either a T, a computed of T (whose value may not yet be known), or a promise of T.
+export type PropertyValue<T> = T | Computed<T> | Promise<T>;
 

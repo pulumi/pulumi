@@ -23,38 +23,38 @@ class ResourceB extends fabric.Resource {
 
 // First create and validate a simple resource A with an input and output.
 let a = new ResourceA("resourceA");
-a.id.then(id => {
+a.id.mapValue(id => {
     console.log(`A.ID: ${id}`);
     assert.equal(id, "resourceA");
 });
-a.urn.then(urn => {
+a.urn.mapValue(urn => {
     console.log(`A.URN: ${urn}`);
     assert.equal(urn, "test:index:ResourceA::resourceA");
 });
-a.inprop.then(prop => {
+a.inprop.mapValue(prop => {
     console.log(`A.InProp: ${prop}`);
     assert.equal(prop, 777);
 });
-a.outprop.then(prop => {
+a.outprop.mapValue(prop => {
     console.log(`A.OutProp: ${prop}`);
     assert.equal(prop, "output yeah");
 });
 
 // Next, create and validate another resource B which depends upon resource A.
 let b = new ResourceB("resourceB", a);
-b.id.then(id => {
+b.id.mapValue(id => {
     console.log(`B.ID: ${id}`);
     assert.equal(id, "resourceB");
 });
-b.urn.then(urn => {
+b.urn.mapValue(urn => {
     console.log(`B.URN: ${urn}`);
     assert.equal(urn, "test:index:ResourceB::resourceB");
 });
-b.otherIn.then(prop => {
+b.otherIn.mapValue(prop => {
     console.log(`B.OtherIn: ${prop}`);
     assert.equal(prop, 777);
 });
-b.otherOut.then(prop => {
+b.otherOut.mapValue(prop => {
     console.log(`B.OtherOut: ${prop}`);
     assert.equal(prop, "output yeah");
 });

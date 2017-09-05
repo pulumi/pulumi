@@ -1,19 +1,14 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as asset from "../asset";
-import { Property, PropertyValue } from "../property";
-import { Resource, URN } from "../resource";
+import { Computed } from "../computed";
+import { PropertyValue, Resource, URN } from "../resource";
 import { Log } from "./log";
 import { getMonitor, isDryRun } from "./settings";
 
-// internalGetState fetches the internal state of a property for purposes of runtime use.
-export function internalGetState<T>(property: Property<T>): PropertyState<T> {
-    return (<any>property).state as PropertyState<T>;
-}
-
-// PropertyState is the internal representation of a resource's property state.  It is used by the runtime
+// Property is the internal representation of a resource's property state.  It is used by the runtime
 // to resolve to final values and hook into important lifecycle states.
-export class PropertyState<T> {
+export class Property<T> implements Computed<T> {
     public readonly inputPromise: Promise<T | undefined> | undefined; // a promise for this property's final input.
     public readonly outputPromise: Promise<T | undefined>; // a promise for this property's final output.
 
@@ -28,14 +23,20 @@ export class PropertyState<T> {
             this.inputPromise = new Promise<T | undefined>(
                 (resolve: (v: T | undefined) => void) => { this.resolveInput = resolve; },
             );
-            if (value instanceof Property) {
-                internalGetState(value).outputPromise.then((v: T | undefined) => { this.setInput(v); });
-            }
-            else if (value instanceof Promise) {
+            if (value instanceof Promise) {
                 value.then((v: T) => { this.setInput(v); });
             }
+            else if (value instanceof Property) {
+                // For properties specifically, we want to intercept the value resolution and go straight
+                // to the output promise because the implementation of map for property will propagate unknowns.
+                value.outputPromise.then((v: T | undefined) => { this.setInput(v); });
+            }
+            else if ((value as Computed<T>).mapValue !== undefined) {
+                // For all other computed properties, simply wire up the map and propagate the values.
+                (value as Computed<T>).mapValue((v: T | undefined) => { this.setInput(v); });
+            }
             else {
-                this.setInput(value);
+                this.setInput(value as T);
             }
         }
 
@@ -45,19 +46,9 @@ export class PropertyState<T> {
         );
     }
 
-    // inputValue returns the input value associated with this property, or undefined if it doesn't exist yet.
-    public inputValue(): T | undefined {
-        return this.input;
-    }
-
-    // outputValue returns the output value associated with this property, or undefined if it doesn't exist yet.
-    public outputValue(): T | undefined {
-        return this.output;
-    }
-
-    // then attaches a callback for the resolution of a computed value, and returns a newly computed value.
-    public then<U>(callback: (v: T) => U): PropertyState<U> {
-        let result = new PropertyState<U>();
+    // mapValue attaches a callback for the resolution of a computed value, and returns a newly computed value.
+    public mapValue<U>(callback: (v: T) => U): Computed<U> {
+        let result = new Property<U>();
         this.outputPromise.then((value: T | undefined) => {
             // If the value is unknown, propagate an unknown.  Otherwise, use the callback to compute something new.
             if (value === undefined) {

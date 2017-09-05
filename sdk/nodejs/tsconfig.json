@@ -17,8 +17,8 @@
     },
     "files": [
         "index.ts",
+        "computed.ts",
         "config.ts",
-        "property.ts",
         "resource.ts",
 
         "asset/index.ts",

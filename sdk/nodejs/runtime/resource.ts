@@ -1,10 +1,10 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as asset from "../asset";
-import { Property, PropertyValue } from "../property";
-import { Resource, URN } from "../resource";
+import { Computed } from "../computed";
+import { PropertyValue, Resource, URN } from "../resource";
 import { Log } from "./log";
-import { internalGetState, PropertyState } from "./property";
+import { Property } from "./property";
 import { getMonitor, isDryRun } from "./settings";
 
 let langproto = require("../proto/nodejs/languages_pb");
@@ -51,13 +51,13 @@ export function registerResource(
             }
             else {
                 // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
-                internalGetState(urn).setOutput(resp.getUrn(), true, false);
+                urn.setOutput(resp.getUrn(), true, false);
 
                 // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
                 // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
                 let idOutput: string | undefined = resp.getId();
                 if (idOutput) {
-                    internalGetState(id).setOutput(idOutput, true, false);
+                    id.setOutput(idOutput, true, false);
                 }
 
                 // Finally propagate any other properties that were given to us as outputs.
@@ -89,9 +89,8 @@ function transferProperties(
 
             // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
             // after all properties have settled, and we may need to wait for them before this transfer finishes.
-            let input: Promise<any> | undefined = internalGetState(p).inputPromise;
-            if (input !== undefined) {
-                let serval: Promise<any> = serializeProperty(input);
+            if (p.inputPromise !== undefined) {
+                let serval: Promise<any> = serializeProperty(p.inputPromise);
                 let assigned: Promise<void> = serval.then((v: any) => { obj[k] = v; });
                 eventuals.push(assigned);
             }
@@ -136,7 +135,7 @@ function resolveProperties(res: Resource, propsStruct: any, stable: boolean): vo
                 throw new Error(`Unable to set resource property '${k}' because it is not a Property<T>`);
             }
             try {
-                internalGetState(p as Property<any>).setOutput(
+                (p as Property<any>).setOutput(
                     deserializeProperty(props[k]), !isDryRun() || stable, false);
             }
             catch (err) {
@@ -150,7 +149,7 @@ function resolveProperties(res: Resource, propsStruct: any, stable: boolean): vo
     for (let k of Object.keys(res)) {
         let p: Object = (<any>res)[k];
         if (p instanceof Property) {
-            internalGetState(p as Property<any>).done(isDryRun());
+            (p as Property<any>).done(isDryRun());
         }
     }
 }
@@ -206,7 +205,14 @@ async function serializeProperty(prop: any): Promise<any> {
     }
     else if (prop instanceof Property) {
         // For properties, wait for the output values to become available, and then serialize them.
-        return serializeProperty(internalGetState(prop).outputPromise);
+        return serializeProperty(prop.outputPromise);
+    }
+    else if ((prop as Computed<any>).mapValue !== undefined) {
+        // For arbitrary computed values, wire up a handler to await their resolution and then serialize the value.
+        let value: any = await new Promise<any>((resolve) => {
+            (prop as Computed<any>).mapValue((v: any) => { resolve(v); });
+        });
+        return serializeProperty(value);
     }
     else {
         let obj: any = {};
