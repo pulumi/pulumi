@@ -77,62 +77,7 @@ Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context
     return Local<Value>();
 }
 
-Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Function> freevarsFunc);
-
-// SerializeClosureEnvEntry serializes a JavaScript object as JSON so that it can be serialized and uploaded.
-Local<Value> SerializeClosureEnvEntry(Isolate* isolate, Local<Value> v, Local<Function> freevarsFunc) {
-    if (v.IsEmpty()) {
-        // If the slot is empty, just return undefined.
-        return Undefined(isolate);
-    }
-
-    Local<Object> entry = Object::New(isolate);
-    if (v->IsUndefined() || v->IsNull() ||
-            v->IsBoolean() || v->IsString() || v->IsNumber()) {
-        // Serialize primitives as-is.
-        entry->Set(String::NewFromUtf8(isolate, "json"), v);
-    } else if (v->IsArray()) {
-        // For arrays and objects, we must recursively serialize every element.
-        Local<Array> arr = Local<Array>::Cast(v);
-        Local<Array> newarr = Array::New(isolate, arr->Length());
-        for (uint32_t i = 0; i < arr->Length(); i++) {
-            Local<Integer> index = Integer::New(isolate, i);
-            Local<Value> entry = SerializeClosureEnvEntry(isolate, arr->Get(index), freevarsFunc);
-            if (entry.IsEmpty()) {
-                return Local<Value>();
-            }
-            newarr->Set(index, entry);
-        }
-        entry->Set(String::NewFromUtf8(isolate, "arr"), newarr);
-    } else if (v->IsFunction()) {
-        // Serialize functions recursively, and store them in a closure property.
-        Local<Value> closure = SerializeFunction(isolate, Local<Function>::Cast(v), freevarsFunc);
-        if (closure.IsEmpty()) {
-            return Local<Value>();
-        }
-        entry->Set(String::NewFromUtf8(isolate, "closure"), closure);
-    } else if (v->IsObject()) {
-        // For all other objects, recursively serialize all of its properties.
-        Local<Object> obj = Local<Object>::Cast(v);
-        Local<Object> newobj = Object::New(isolate);
-        Local<Array> props = obj->GetPropertyNames(isolate->GetCurrentContext()).ToLocalChecked();
-        for (uint32_t i = 0; i < props->Length(); i++) {
-            Local<Value> propname = props->Get(Integer::New(isolate, i));
-            Local<Value> entry = SerializeClosureEnvEntry(isolate, obj->Get(propname), freevarsFunc);
-            if (entry.IsEmpty()) {
-                return Local<Value>();
-            }
-            newobj->Set(propname, entry);
-        }
-        entry->Set(String::NewFromUtf8(isolate, "obj"), newobj);
-    } else {
-        isolate->ThrowException(Exception::TypeError(
-            String::NewFromUtf8(isolate, "Unsuported serialization closure entry")));
-    }
-    return entry;
-}
-
-Local<String> SerializeFunctionObjectText(Isolate *isolate, Local<Function> func) {
+Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
     // Serialize the code simply by calling toString on the Function.
     Local<Function> toString = Local<Function>::Cast(
             func->Get(String::NewFromUtf8(isolate, "toString")));
@@ -158,7 +103,8 @@ Local<String> SerializeFunctionObjectText(Isolate *isolate, Local<Function> func
 }
 
 // SerializeFunction serializes a JavaScript function expression and its associated closure environment.
-Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Function> freevarsFunc) {
+Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
+        Local<Function> freeVarsFunc, Local<Function> envEntryFunc) {
     // Get at the innards of the function.  Unfortunately, we need to use internal V8 APIs to do this,
     // as the closest public function, CreationContext, intentionally returns the non-closure Context for
     // Function objects (it returns the constructor context, which is not what we want).
@@ -167,38 +113,38 @@ Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Fun
     v8::internal::Handle<v8::internal::Context> lexical(hackfunc->context());
 
     // Get the code as a string.
-    Local<String> code = SerializeFunctionObjectText(isolate, func);
+    Local<String> code = SerializeFunctionCode(isolate, func);
 
     // Compute the free variables by invoking the callback.
-    const unsigned freevarsArgc = 1;
-    Local<Value> freevarsArgv[freevarsArgc] = { code };
-    Local<Value> freevarsRet = freevarsFunc->Call(Null(isolate), freevarsArgc, freevarsArgv);
-    if (freevarsRet.IsEmpty()) {
+    const unsigned freeVarsArgc = 1;
+    Local<Value> freeVarsArgv[freeVarsArgc] = { code };
+    Local<Value> freeVarsRet = freeVarsFunc->Call(Null(isolate), freeVarsArgc, freeVarsArgv);
+    if (freeVarsRet.IsEmpty()) {
         // Only empty if the function threw an exception.  Return early to propagate it.
         return Local<Value>();
-    } else if (!freevarsRet->IsArray()) {
+    } else if (!freeVarsRet->IsArray()) {
         isolate->ThrowException(Exception::TypeError(
             String::NewFromUtf8(isolate, "Free variables return expected to be an Array")));
         return Local<Value>();
     }
 
     // Now check all elements and produce a vector we can use below.
-    std::vector<Local<String>> freevars;
-    Local<Array> freevarsArray = Local<Array>::Cast(freevarsRet);
-    for (uint32_t i = 0; i < freevarsArray->Length(); i++) {
+    std::vector<Local<String>> freeVars;
+    Local<Array> freeVarsArray = Local<Array>::Cast(freeVarsRet);
+    for (uint32_t i = 0; i < freeVarsArray->Length(); i++) {
         Local<Integer> index = Integer::New(isolate, i);
-        Local<Value> elem = freevarsArray->Get(index);
+        Local<Value> elem = freeVarsArray->Get(index);
         if (elem.IsEmpty() || !elem->IsString()) {
             isolate->ThrowException(Exception::TypeError(
                 String::NewFromUtf8(isolate, "Free variable Array must contain only String elements")));
             return Local<Value>();
         }
-        freevars.push_back(Local<String>::Cast(elem));
+        freeVars.push_back(Local<String>::Cast(elem));
     }
 
     // Next, serialize all free variables as they exist in the function's original lexical environment.
     Local<Object> environment = Object::New(isolate);
-    for (std::vector<Local<String>>::iterator it = freevars.begin(); it != freevars.end(); ++it) {
+    for (std::vector<Local<String>>::iterator it = freeVars.begin(); it != freeVars.end(); ++it) {
         // Look up the variable in the lexical closure of the function and then serialize it.
         Local<String> freevar = *it;
         Local<Value> v = Lookup(isolate, lexical, freevar);
@@ -206,11 +152,13 @@ Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func, Local<Fun
             // Only empty if an error was thrown; bail eagerly to propagate it.
             return Local<Value>();
         }
-        Local<Value> entry = SerializeClosureEnvEntry(isolate, v, freevarsFunc);
-        if (entry.IsEmpty()) {
+        const unsigned envEntryArgc = 1;
+        Local<Value> envEntryArgv[envEntryArgc] = { v };
+        Local<Value> envEntry = envEntryFunc->Call(Null(isolate), envEntryArgc, envEntryArgv);
+        if (envEntry.IsEmpty()) {
             return Local<Value>();
         }
-        environment->Set(freevar, entry);
+        environment->Set(freevar, envEntry);
     }
 
     // Finally, produce a closure object with all the appropriate records, and return it.
@@ -245,10 +193,22 @@ void SerializeClosure(const FunctionCallbackInfo<Value>& args) {
             String::NewFromUtf8(isolate, "Free variables argument must be a Function object")));
         return;
     }
-    Local<Function> freevarsFunc = Local<Function>::Cast(args[1]);
+    Local<Function> freeVarsFunc = Local<Function>::Cast(args[1]);
+
+    // And that the third is a callback we can use to serialize environment entries.
+    if (args.Length() < 3 || args[2]->IsUndefined()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "Missing required env-entry serializer function")));
+        return;
+    } else if (!args[2]->IsFunction()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "Env-entry serializer argument must be a Function object")));
+        return;
+    }
+    Local<Function> envEntryFunc = Local<Function>::Cast(args[2]);
 
     // Now go ahead and serialize it, and return the result.
-    Local<Value> closure = SerializeFunction(isolate, func, freevarsFunc);
+    Local<Value> closure = SerializeFunction(isolate, func, freeVarsFunc, envEntryFunc);
     if (!closure.IsEmpty()) {
         args.GetReturnValue().Set(closure);
     }

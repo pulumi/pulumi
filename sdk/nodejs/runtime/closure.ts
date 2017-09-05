@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { Log } from "./log";
 import * as acorn from "acorn";
 import * as estree from "estree";
 
@@ -35,12 +36,43 @@ export function serializeClosure(func: Function): Closure {
     // V8 and Acorn (three if you include optional TypeScript), but has the significant advantage that V8's parser
     // isn't designed to be stable for 3rd party consumtpion.  Hence it would be brittle and a maintenance challenge.
     // This approach also avoids needing to write a big hunk of complex code in C++, which is nice.
-    return <Closure>nativeruntime.serializeClosure(func, computeFreeVariables);
+    return <Closure>nativeruntime.serializeClosure(func, computeFreeVariables, serializeCapturedObject);
+}
+
+// serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
+function serializeCapturedObject(obj: any): EnvEntry {
+    if (obj === undefined || obj === null ||
+            typeof obj === "boolean" || typeof obj === "number" || typeof obj === "number") {
+        // Serialize primitives as-is.
+        return { json: obj };
+    }
+    else if (obj instanceof Array) {
+        // Recursively serialize elements of an array.
+        let arr: any[] = [];
+        for (let elem of obj) {
+            arr.push(serializeCapturedObject(elem));
+        }
+        return { arr: arr };
+    }
+    else if (obj instanceof Function) {
+        // Serialize functions recursively, and store them in a closure property.
+        return { closure: serializeClosure(obj) };
+    }
+    else {
+        // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
+        let envobj: EnvObj = {};
+        for (let key of Object.keys(obj)) {
+            envobj[key] = serializeCapturedObject(obj[key]);
+        }
+        return envobj;
+    }
 }
 
 // computeFreeVariables computes the set of free variables in a given function string.  Note that this string is
 // expected to be the usual V8-serialized function expression text.
 function computeFreeVariables(funcstr: string): string[] {
+    Log.debug(`Computing free variables for function: ${funcstr}`);
+
     let opts: acorn.Options = {
         ecmaVersion: 8,
         sourceType: "script",
