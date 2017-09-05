@@ -7,6 +7,10 @@
 #include <src/objects.h>  // v8 internal APIs
 #include <src/contexts.h> // v8 internal APIs
 
+#if NODE_MAJOR_VERSION != 6 || NODE_MINOR_VERSION != 10
+#error "The Pulumi Fabric SDK only supports Node.js 6.10.x at the moment"
+#endif
+
 namespace nativeruntime {
 
 using v8::Array;
