@@ -103,20 +103,31 @@ function runRPC(call: any, callback: any): void {
         proc.stderr.on("data", (data: string | Buffer) => {
             console.error(stripEOL(data));
         });
+
+        // If we got this far, make sure to communicate completion when the process terminates.
+        proc.on("close", (code: number, signal: string) => {
+            if (callback !== undefined) {
+                if (code !== 0) {
+                    if (signal) {
+                        resp.setError(`Program exited due to a signal: ${signal}`);
+                    }
+                    else {
+                        resp.setError(`Program exited with non-zero exit code: ${code}`);
+                    }
+                }
+                callback(undefined, resp);
+                callback = undefined;
+            }
+        });
+
     }
     catch (err) {
-        resp.setError(err.message);
-        callback(undefined, resp);
-        return;
-    }
-
-    // If we got this far, make sure to communicate completion when the process terminates.
-    proc.on("close", (code: number) => {
-        if (code !== 0) {
-            resp.setError(`Program exited with non-zero exit code: ${code}`);
+        if (callback !== undefined) {
+            resp.setError(err.message);
+            callback(undefined, resp);
+            callback = undefined;
         }
-        callback(undefined, resp);
-    });
+    }
 }
 
 function stripEOL(data: string | Buffer): string {
