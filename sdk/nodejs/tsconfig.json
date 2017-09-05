@@ -20,14 +20,17 @@
         "config.ts",
         "property.ts",
         "resource.ts",
+
         "asset/index.ts",
         "asset/asset.ts",
         "asset/archive.ts",
+
         "runtime/index.ts",
         "runtime/closure.ts",
         "runtime/config.ts",
         "runtime/langhost.ts",
         "runtime/log.ts",
+        "runtime/property.ts",
         "runtime/resource.ts",
         "runtime/settings.ts",
 

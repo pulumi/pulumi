@@ -4,6 +4,7 @@ import * as asset from "../asset";
 import { Property, PropertyValue } from "../property";
 import { Resource, URN } from "../resource";
 import { Log } from "./log";
+import { internalGetState, PropertyState } from "./property";
 import { getMonitor, isDryRun } from "./settings";
 
 let langproto = require("../proto/nodejs/languages_pb");
@@ -49,18 +50,18 @@ export function registerResource(
                 throw new Error(`Failed to register new resource with monitor: ${err}`);
             }
             else {
-                // The resolution will always have a valid URN, even during planning.
-                urn.resolve(resp.getUrn());
+                // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
+                internalGetState(urn).setOutput(resp.getUrn(), true, false);
 
-                // The ID and properties, on the other hand, are only resolved to values during deployments.
-                let newID: any = resp.getId();
-                if (newID) {
-                    id.resolve(newID);
+                // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
+                // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
+                let idOutput: string | undefined = resp.getId();
+                if (idOutput) {
+                    internalGetState(id).setOutput(idOutput, true, false);
                 }
-                let newProperties: any = resp.getObject();
-                if (newProperties) {
-                    resolveProperties(res, newProperties);
-                }
+
+                // Finally propagate any other properties that were given to us as outputs.
+                resolveProperties(res, resp.getObject());
             }
         });
     });
@@ -70,6 +71,7 @@ export function registerResource(
 // proto.google.protobuf.Struct out of a resource's properties.
 function transferProperties(
     res: Resource, props: {[key: string]: PropertyValue<any> | undefined}): Promise<any> {
+    let resbag: any = res;
     let obj: any = {}; // this will eventually hold the serialized object properties.
     let eventuals: Promise<void>[] = []; // this contains all promises outstanding for assignments.
     if (props) {
@@ -80,32 +82,32 @@ function transferProperties(
             }
 
             // Create a property to wrap the value and store it on the resource.
-            let p = new Property<any>(props[k]);
-            if ((<any>res)[k]) {
+            if (resbag[k]) {
                 throw new Error(`Property '${k}' is already initialized on this resource object`);
             }
-            (<any>res)[k] = p;
+            let p = resbag[k] = new Property<any>(props[k]);
 
             // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
             // after all properties have settled, and we may need to wait for them before this transfer finishes.
-            if (p.has()) {
-                eventuals.push(serializeProperty(p.require()).then((v) => {
-                    obj[k] = v;
-                }));
-            } else {
-                let link: PropertyValue<any> | Promise<any> | undefined = p.linked();
-                if (link) {
-                    eventuals.push(serializeProperty(link).then((v) => {
-                        obj[k] = v;
-                    }));
-                }
+            let input: Promise<any> | undefined = internalGetState(p).inputPromise;
+            if (input !== undefined) {
+                let serval: Promise<any> = serializeProperty(input);
+                let assigned: Promise<void> = serval.then((v: any) => { obj[k] = v; });
+                eventuals.push(assigned);
             }
         }
     }
+
     // Now return a promise that resolves when all assignments above have settled.  Note that we do not
     // use await here, because we don't actually want to block the above assignments of properties.
     return Promise.all(eventuals).then(() => {
-        return gstruct.Struct.fromJavaScript(obj);
+        try {
+            return gstruct.Struct.fromJavaScript(obj);
+        }
+        catch (err) {
+            Log.debug(`Failed to marshal gstruct from JSON: ${JSON.stringify(obj)}`);
+            throw err;
+        }
     });
 }
 
@@ -113,35 +115,42 @@ function transferProperties(
 // resource's matching properties to the values inside.
 function resolveProperties(res: Resource, propsStruct: any): void {
     // First set any properties present in the output object.
-    let props: any = propsStruct.toJavaScript();
-    for (let k of Object.keys(props)) {
-        // Skip "id" and "urn", since we handle those specially.
-        if (k === "id" || k === "urn") {
-            continue;
-        }
+    if (propsStruct) {
+        let resany: any = <any>res;
+        let props: any = propsStruct.toJavaScript();
+        for (let k of Object.keys(props)) {
+            // Skip "id" and "urn", since we handle those specially.
+            if (k === "id" || k === "urn") {
+                continue;
+            }
 
-        // Otherwise, unmarshal the value, and store it on the resource object.
-        let p: any = (<any>res)[k];
-        if (p === undefined) {
-            // If there is no property yet, zero initialize it.  This ensures unexpected properties are
-            // still made available on the object.  This isn't ideal, because any code running prior to the actual
-            // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
-            (<any>res)[k] = p = new Property<any>();
-        } else if (!(p instanceof Property)) {
-            throw new Error(`Unable to set resource property '${k}' because it is not a Property<T>`);
-        }
-        try {
-            p.resolve(deserializeProperty(props[k]));
-        }
-        catch (err) {
-            throw new Error(`Unable to set resource property '${k}'; error: ${err}`);
+            // Otherwise, unmarshal the value, and store it on the resource object.
+            let p: Object | undefined = resany[k];
+            if (p === undefined) {
+                // If there is no property yet, zero initialize it.  This ensures unexpected properties are
+                // still made available on the object.  This isn't ideal, because any code running prior to the actual
+                // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
+                resany[k] = p = new Property<any>();
+            }
+            else if (!(p instanceof Property)) {
+                throw new Error(`Unable to set resource property '${k}' because it is not a Property<T>`);
+            }
+            try {
+                internalGetState(p as Property<any>).setOutput(
+                    deserializeProperty(props[k]), !isDryRun(), false);
+            }
+            catch (err) {
+                throw new Error(`Unable to set resource property '${k}'; error: ${err}`);
+            }
         }
     }
-    // Now latch any other properties to their final values, in case they aren't set.
+
+    // Now latch all properties in case the inputs did not contain any values.  If we're doing a dry-run, we won't
+    // actually propagate the provisional state, because we cannot know for sure that it is final yet.
     for (let k of Object.keys(res)) {
-        let p: any = (<any>res)[k];
+        let p: Object = (<any>res)[k];
         if (p instanceof Property) {
-            p.done();
+            internalGetState(p as Property<any>).done(isDryRun());
         }
     }
 }
@@ -158,7 +167,13 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 // serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
 // appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
 async function serializeProperty(prop: any): Promise<any> {
-    if (prop === undefined || typeof prop === "boolean" ||
+    if (prop === undefined) {
+        if (!isDryRun()) {
+            Log.debug("Unexpected unknown property during deployment");
+        }
+        return unknownPropertyValue;
+    }
+    else if (prop === null || typeof prop === "boolean" ||
             typeof prop === "number" || typeof prop === "string") {
         return prop;
     }
@@ -185,21 +200,13 @@ async function serializeProperty(prop: any): Promise<any> {
         return obj;
     }
     else if (prop instanceof Promise) {
-        // If this is a promise from an ordinary I/O operation, await it.
-        let v: any = await prop;
-        return await serializeProperty(v);
+        // For a promise input, await the property and then serialize the result.
+        let value: any = await prop;
+        return serializeProperty(value);
     }
     else if (prop instanceof Property) {
-        // If this is a property linked to the completion of another one, it's computed.  In the case
-        // of a dry run, we cannot know its value, so we say so.  For other cases, we must wait.
-        if (isDryRun()) {
-            return unknownPropertyValue;
-        }
-        return await new Promise<any>((resolve) => {
-            prop.then((v) => {
-                resolve(serializeProperty(v));
-            });
-        });
+        // For properties, wait for the output values to become available, and then serialize them.
+        return serializeProperty(internalGetState(prop).outputPromise);
     }
     else {
         let obj: any = {};
@@ -231,11 +238,14 @@ function deserializeProperty(prop: any): any {
                 case specialAssetSig:
                     if (prop["path"]) {
                         return new asset.FileAsset(<string>prop["path"]);
-                    } else if (prop["text"]) {
+                    }
+                    else if (prop["text"]) {
                         return new asset.StringAsset(<string>prop["text"]);
-                    } else if (prop["uri"]) {
+                    }
+                    else if (prop["uri"]) {
                         return new asset.RemoteAsset(<string>prop["uri"]);
-                    } else {
+                    }
+                    else {
                         throw new Error("Invalid asset encountered when unmarshaling resource property");
                     }
                 case specialArchiveSig:
@@ -249,11 +259,14 @@ function deserializeProperty(prop: any): any {
                             assets[name] = a;
                         }
                         return new asset.AssetArchive(assets);
-                    } else if (prop["path"]) {
+                    }
+                    else if (prop["path"]) {
                         return new asset.FileArchive(<string>prop["path"]);
-                    } else if (prop["uri"]) {
+                    }
+                    else if (prop["uri"]) {
                         return new asset.RemoteArchive(<string>prop["uri"]);
-                    } else {
+                    }
+                    else {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
                 default:

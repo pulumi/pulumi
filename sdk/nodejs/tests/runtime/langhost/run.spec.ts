@@ -161,11 +161,17 @@ describe("rpc", () => {
             expectResourceCount: 2,
             createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 switch (t) {
-                    case "test:index:ResourceA":
+                    case "test:index:ResourceA": {
                         assert.strictEqual(name, "resourceA");
                         assert.deepEqual(res, { inprop: 777 });
-                        return { id: name, urn: t + "::" + name, props: { outprop: "output yeah" } };
-                    case "test:index:ResourceB":
+                        let result: any = { urn: t + "::" + name };
+                        if (!dryrun) {
+                            result.id = name;
+                            result.props = { outprop: "output yeah" };
+                        }
+                        return result;
+                    }
+                    case "test:index:ResourceB": {
                         assert.strictEqual(name, "resourceB");
                         if (dryrun) {
                             // If this is a dry-run, we won't have the real values:
@@ -181,7 +187,12 @@ describe("rpc", () => {
                                 otherOut: "output yeah",
                             });
                         }
-                        return { id: name, urn: t + "::" + name };
+                        let result: any = { urn: t + "::" + name };
+                        if (!dryrun) {
+                            result.id = name;
+                        }
+                        return result;
+                    }
                     default:
                         assert.fail(`Unrecognized resource type ${t}`);
                         throw new Error();
