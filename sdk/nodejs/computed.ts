@@ -8,7 +8,7 @@
 // such as during planning, so forward progress must not depend on resolution.
 export interface Computed<T> {
     // mapValue attaches a callback for the resolution of a computed value, and returns a newly computed value.
-    mapValue<U>(callback: (v: T) => U): Computed<U>;
+    mapValue<U>(callback: (v: T) => MaybeComputed<U>): Computed<U>;
 }
 
 // MaybeComputed is one of: a T, a computed of T (whose value may not yet be known), or a promise of T.

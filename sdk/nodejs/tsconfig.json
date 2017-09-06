@@ -41,6 +41,7 @@
         "tests/init.spec.ts",
         "tests/util.ts",
         "tests/runtime/closure.spec.ts",
+        "tests/runtime/computed.spec.ts",
         "tests/runtime/langhost/run.spec.ts"
     ]
 }
