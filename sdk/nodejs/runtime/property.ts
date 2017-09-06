@@ -18,7 +18,7 @@ export function isInsideMapValueCallback(): boolean {
 // Property is the internal representation of a resource's property state.  It is used by the runtime
 // to resolve to final values and hook into important lifecycle states.
 export class Property<T> implements Computed<T> {
-    public readonly inputPromise: Promise<T | undefined> | undefined; // a promise for this property's final input.
+    public readonly inputPromise: Promise<T | undefined>;  // a promise for this property's final input.
     public readonly outputPromise: Promise<T | undefined>; // a promise for this property's final output.
 
     private input: T | undefined; // the property's value, evolving until it becomes final.
@@ -26,72 +26,78 @@ export class Property<T> implements Computed<T> {
     private resolveInput: ((v: T | undefined) => void) | undefined; // the resolver used to resolve input values.
     private resolveOutput: ((v: T | undefined) => void) | undefined; // the resolver used to resolve output values.
 
-    constructor(value?: MaybeComputed<T>) {
-        // Either link to a property or promise to resolve the input, or do it immediately, if it's available.
-        if (value !== undefined) {
-            this.inputPromise = new Promise<T | undefined>(
-                (resolve: (v: T | undefined) => void) => { this.resolveInput = resolve; },
-            );
-            if (value instanceof Promise) {
-                value.then((v: T) => { this.setInput(v); });
-            }
-            else if (value instanceof Property) {
-                // For properties specifically, we want to intercept the value resolution and go straight
-                // to the output promise because the implementation of map for property will propagate unknowns.
-                value.outputPromise.then((v: T | undefined) => { this.setInput(v); });
-            }
-            else if ((value as Computed<T>).mapValue !== undefined) {
-                // For all other computed properties, simply wire up the map and propagate the values.
-                (value as Computed<T>).mapValue((v: T | undefined) => { this.setInput(v); });
-            }
-            else {
-                this.setInput(value as T);
-            }
-        }
-
+    // constructs a new property.  If immediate is true, the input state is used to resolve the final value
+    // immediately.  Otherwise, input values will not lead to resolution of the final value, and some internal
+    // logic will instead need to manually invoke setOutput in order to resolve it to a final value.
+    constructor(value: MaybeComputed<T> | undefined, setInput: boolean, setOutput: boolean) {
         // We use different input and output promises, because we depend on the different values in different cases.
+        this.inputPromise = new Promise<T | undefined>(
+            (resolve: (v: T | undefined) => void) => { this.resolveInput = resolve; },
+        );
         this.outputPromise = new Promise<T | undefined>(
             (resolve: (v: T | undefined) => void) => { this.resolveOutput = resolve; },
         );
+
+        Property.resolveTo(this, value, setInput, setOutput);
+    }
+
+    private static resolveTo<T>(p: Property<T>, value: MaybeComputed<T> | undefined,
+                                setInput: boolean, setOutput: boolean): void {
+        // If this is another computed, we need to wire up to its resolution; else just store the value.
+        if (value && value instanceof Promise) {
+            value.then(
+                (v: T | Promise<T>) => { Property.resolveTo(p, v, setInput, setOutput); },
+                (err: Error) => { Log.error(`Unexpected error in dependent mapValue promise: ${err}`); },
+            );
+        }
+        else if (value && value instanceof Property) {
+            value.outputPromise.then(
+                (v: T | undefined) => { Property.resolveTo(p, v, setInput, setOutput); },
+                (err: Error) => { Log.error(`Unexpected error in dependent mapValue property`); },
+            );
+        }
+        else if (value && (value as Computed<T>).mapValue) {
+            (value as Computed<T>).mapValue(
+                (v: MaybeComputed<T>) => { Property.resolveTo(p, v, setInput, setOutput); });
+        }
+        else {
+            if (setInput) {
+                p.setInput(<T>value);
+            }
+            if (setOutput) {
+                p.setOutput(<T>value, true, false);
+            }
+        }
     }
 
     // mapValue attaches a callback for the resolution of a computed value, and returns a newly computed value.
     public mapValue<U>(callback: (v: T) => MaybeComputed<U>): Computed<U> {
-        let result = new Property<U>();
-        this.outputPromise.then((value: T | undefined) => {
+        let result = new Property<U>(undefined, false, false);
+
+        // Fire off a promise hinging on the target's output that will resolve the resulting property.
+        let outcome: Promise<any> = this.outputPromise.then((value: T | undefined) => {
             // If the value is unknown, propagate an unknown.  Otherwise, use the callback to compute something new.
             if (value === undefined) {
-                result.setOutput(undefined, true, false);
+                Property.resolveTo(result, undefined, true, true);
             }
             else {
+                // There's a callback; invoke it and resolve the value.
                 try {
-                    // There's a callback; invoke it.
-                    try {
-                        mapValueCallbackRecursionCount++;
-
-                        let u: MaybeComputed<U> = callback(value);
-                        // If this is another computed, we need to wire up to its resolution; else just store the value.
-                        if (u && u instanceof Promise) {
-                            u.then((v: U) => { result.setOutput(v, true, false); });
-                        }
-                        else if (u && (u as Computed<U>).mapValue) {
-                            (u as Computed<U>).mapValue((v: U) => {
-                                result.setOutput(v, true, false);
-                            });
-                        }
-                        else {
-                            result.setOutput(<U>u, true, false);
-                        }
-                    }
-                    finally {
-                        mapValueCallbackRecursionCount--;
-                    }
+                    mapValueCallbackRecursionCount++;
+                    let transformed: MaybeComputed<U> = callback(value);
+                    Property.resolveTo(result, transformed, true, true);
                 }
-                catch (err) {
-                    Log.error(`MapValue of a Computed yielded an unhandled error: ${err}`);
+                finally {
+                    mapValueCallbackRecursionCount--;
                 }
             }
         });
+
+        // Ensure we log any errors.
+        outcome.catch((err: Error) => {
+            Log.error(`MapValue of a Computed yielded an unhandled error: ${err}`);
+        });
+
         return result;
     }
 
@@ -110,17 +116,49 @@ export class Property<T> implements Computed<T> {
         this.setOutput(value, true, true);
     }
 
+    // awaitingInput returns true if the input has yet to arrive.
+    public awaitingInput(): boolean {
+        return (this.resolveInput !== undefined);
+    }
+
+    // awaitingOutput returns true if the output has yet to arrive.
+    public awaitingOutput(): boolean {
+        return (this.resolveOutput !== undefined);
+    }
+
+    // setInput resolves the initial input value of a property.
+    public setInput(value: T | undefined): void {
+        if (!this.awaitingInput()) {
+            throw new Error(`Illegal attempt to set a property input multiple times (${value})`);
+        }
+        else if (value instanceof Promise) {
+            throw new Error(`Unexpected dependent promise value for property input`);
+        }
+        else if (value instanceof Property) {
+            throw new Error(`Unexpected dependent property value for property input`);
+        }
+        this.input = value;
+        this.resolveInput!(value);
+        this.resolveInput = undefined;
+    }
+
     // setOutput resolves the final output value of a property.
     public setOutput(value: T | undefined, isFinal: boolean, skipIfAlready: boolean): void {
-        if (this.resolveOutput === undefined) {
+        if (!this.awaitingOutput()) {
             if (!skipIfAlready) {
                 throw new Error(`Illegal attempt to set a property output multiple times (${value})`);
             }
         }
         else {
+            if (value instanceof Promise) {
+                throw new Error(`Unexpected dependent promise value for property input`);
+            }
+            else if (value instanceof Property) {
+                throw new Error(`Unexpected dependent property value for property input`);
+            }
             this.output = value;
             if (isFinal) {
-                this.resolveOutput(value);
+                this.resolveOutput!(value);
                 this.resolveOutput = undefined;
             }
         }
@@ -132,16 +170,6 @@ export class Property<T> implements Computed<T> {
         return `[pulumi-fabric Property: ` +
             `input=${this.input} output=${this.output} ` +
             `resolved=${this.resolveOutput === undefined}]`;
-    }
-
-    // setInput resolves the initial input value of a property.
-    private setInput(value: T | undefined): void {
-        if (this.resolveInput === undefined) {
-            throw new Error(`Illegal attempt to set a property input multiple times (${value})`);
-        }
-        this.input = value;
-        this.resolveInput(value);
-        this.resolveInput = undefined;
     }
 }
 

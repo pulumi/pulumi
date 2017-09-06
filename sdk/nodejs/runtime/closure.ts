@@ -33,7 +33,7 @@ export interface EnvironmentEntry {
 export function serializeClosure(func: Function): Computed<Closure> {
     // Serialize the closure as a promise and then transform it into a computed property as a convenience so that
     // it interacts nicely with our overall programming model.
-    return new Property<Closure>(serializeClosureAsync(func));
+    return new Property<Closure>(serializeClosureAsync(func), true, true);
 }
 
 // serializeClosureAsync serializes a function and its closure environment into a promise for a form that is amenable

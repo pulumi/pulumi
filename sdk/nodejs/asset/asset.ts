@@ -22,7 +22,7 @@ export class FileAsset extends Asset {
 
     constructor(path: MaybeComputed<string>) {
         super();
-        this.path = new Property<string>(path);
+        this.path = new Property<string>(path, true, true);
     }
 }
 
@@ -32,7 +32,7 @@ export class StringAsset extends Asset {
 
     constructor(text: MaybeComputed<string>) {
         super();
-        this.text = new Property<string>(text);
+        this.text = new Property<string>(text, true, true);
     }
 }
 
@@ -44,7 +44,7 @@ export class RemoteAsset extends Asset {
 
     constructor(uri: MaybeComputed<string>) {
         super();
-        this.uri = new Property<string>(uri);
+        this.uri = new Property<string>(uri, true, true);
     }
 }
 

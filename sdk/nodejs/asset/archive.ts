@@ -17,7 +17,7 @@ export class AssetArchive extends Archive {
 
     constructor(assets: MaybeComputed<AssetMap>) {
         super();
-        this.assets = new Property<AssetMap>(assets);
+        this.assets = new Property<AssetMap>(assets, true, true);
     }
 }
 
@@ -27,7 +27,7 @@ export class FileArchive extends Archive {
 
     constructor(path: MaybeComputed<string>) {
         super();
-        this.path = new Property<string>(path);
+        this.path = new Property<string>(path, true, true);
     }
 }
 
@@ -39,7 +39,7 @@ export class RemoteArchive extends Archive {
 
     constructor(uri: MaybeComputed<string>) {
         super();
-        this.uri = new Property<string>(uri);
+        this.uri = new Property<string>(uri, true, true);
     }
 }
 
