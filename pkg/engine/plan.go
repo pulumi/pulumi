@@ -61,6 +61,11 @@ func (eng *Engine) Plan(opts PlanOptions) error {
 			return err
 		}
 	}
+	if !eng.Diag().Success() {
+		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
+		// although error messages may have spewed to the output, the final lines of the plan may look fine.
+		return errors.New("One or more errors occurred during the creation of this plan")
+	}
 	return nil
 }
 

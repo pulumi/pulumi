@@ -109,6 +109,10 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			return err
 		}
 	}
+	if !eng.Diag().Success() {
+		// If any error that wasn't printed above, be sure to make it evident in the output.
+		return errors.New("One or more errors occurred during this deployment")
+	}
 	return nil
 }
 
