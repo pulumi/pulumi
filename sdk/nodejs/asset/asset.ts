@@ -1,5 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { Computed, MaybeComputed } from "../computed";
+import { Property } from "../runtime";
+
 // Asset represents a blob of text or data that is managed as a first class entity.
 export abstract class Asset {
 }
@@ -15,21 +18,21 @@ export class Blob extends Asset {
 
 // FileAsset is a kind of asset produced from a given path to a file on the local filesystem.
 export class FileAsset extends Asset {
-    public readonly path: string; // the path to the asset file.
+    public readonly path: Computed<string>; // the path to the asset file.
 
-    constructor(path: string) {
+    constructor(path: MaybeComputed<string>) {
         super();
-        this.path = path;
+        this.path = new Property<string>(path);
     }
 }
 
 // StringAsset is a kind of asset produced from an in-memory UTF8-encoded string.
 export class StringAsset extends Asset {
-    public readonly text: string; // the string contents.
+    public readonly text: Computed<string>; // the string contents.
 
-    constructor(text: string) {
+    constructor(text: MaybeComputed<string>) {
         super();
-        this.text = text;
+        this.text = new Property<string>(text);
     }
 }
 
@@ -37,11 +40,11 @@ export class StringAsset extends Asset {
 // contents: `file://` specifies a local file, `http://` and `https://` specify HTTP and HTTPS, respectively.  Note that
 // specific providers may recognize alternative schemes; this is merely the base-most set that all providers support.
 export class RemoteAsset extends Asset {
-    public readonly uri: string; // the URI where the asset lives.
+    public readonly uri: Computed<string>; // the URI where the asset lives.
 
-    constructor(uri: string) {
+    constructor(uri: MaybeComputed<string>) {
         super();
-        this.uri = uri;
+        this.uri = new Property<string>(uri);
     }
 }
 
