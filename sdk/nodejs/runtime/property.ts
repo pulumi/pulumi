@@ -47,7 +47,7 @@ export class Property<T> implements Computed<T> {
     }
 
     // mapValue attaches a callback for the resolution of a computed value, and returns a newly computed value.
-    public mapValue<U>(callback: (v: T) => U): Computed<U> {
+    public mapValue<U>(callback: (v: T) => U | Computed<U>): Computed<U> {
         let result = new Property<U>();
         this.outputPromise.then((value: T | undefined) => {
             // If the value is unknown, propagate an unknown.  Otherwise, use the callback to compute something new.
@@ -55,7 +55,23 @@ export class Property<T> implements Computed<T> {
                 result.setOutput(undefined, true, false);
             }
             else {
-                result.setOutput(callback(value), true, false);
+                try {
+                    // There's a callback; invoke it.
+                    let u: U | Computed<U> = callback(value);
+
+                    // If this is another computed, we need to wire up to its resolution; else just store the value.
+                    if ((u as Computed<U>).mapValue) {
+                        (u as Computed<U>).mapValue((v: U) => {
+                            result.setOutput(v, true, false);
+                        });
+                    }
+                    else {
+                        result.setOutput(<U>u, true, false);
+                    }
+                }
+                catch (err) {
+                    Log.error(`MapValue of a Computed yielded an unhandled error: ${err}`);
+                }
             }
         });
         return result;
