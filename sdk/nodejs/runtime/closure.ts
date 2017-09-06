@@ -1,6 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { Computed } from "../computed";
 import { Log } from "./log";
+import { Property } from "./property";
 import * as acorn from "acorn";
 import * as estree from "estree";
 
@@ -9,26 +11,35 @@ const nativeruntime = require("./native/build/Release/nativeruntime.node");
 
 // Closure represents the serialized form of a JavaScript serverless function.
 export interface Closure {
-    code: string;        // a serialization of the function's source code as text.
-    runtime: string;     // the language runtime required to execute the serialized code.
-    environment: EnvObj; // the captured lexical environment of variables to values, if any.
+    code: string;             // a serialization of the function's source code as text.
+    runtime: string;          // the language runtime required to execute the serialized code.
+    environment: Environment; // the captured lexical environment of variables to values, if any.
 }
 
-// EnvObj is the captured lexical environment for a closure.
-export type EnvObj = {[key: string]: EnvEntry};
+// Environment is the captured lexical environment for a closure.
+export type Environment = {[key: string]: EnvironmentEntry};
 
-// EnvEntry is the environment slot for a named lexically captured variable.
-export interface EnvEntry {
-    json?: any;        // a value which can be safely json serialized.
-    closure?: Closure; // a closure we are dependent on.
-    obj?: EnvObj;      // an object which may contain nested closures.
-    arr?: EnvEntry[];  // an array which may contain nested closures.
+// EnvironmentEntry is the environment slot for a named lexically captured variable.
+export interface EnvironmentEntry {
+    json?: any;               // a value which can be safely json serialized.
+    closure?: Closure;        // a closure we are dependent on.
+    obj?: Environment;        // an object which may contain nested closures.
+    arr?: EnvironmentEntry[]; // an array which may contain nested closures.
 }
 
 // serializeClosure serializes a function and its closure environment into a form that is amenable to persistence
 // as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for execution.
 // Unlike toString, it actually includes information about the captured environment.
-export function serializeClosure(func: Function): Closure {
+export function serializeClosure(func: Function): Computed<Closure> {
+    // Serialize the closure as a promise and then transform it into a computed property as a convenience so that
+    // it interacts nicely with our overall programming model.
+    return new Property<Closure>(serializeClosureAsync(func));
+}
+
+// serializeClosureAsync serializes a function and its closure environment into a promise for a form that is amenable
+// to persistence as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for
+// execution.  Unlike toString, it actually includes information about the captured environment.
+export async function serializeClosureAsync(func: Function): Promise<Closure> {
     // Invoke the native runtime.  Note that we pass a callback to our function below to compute free variables.
     // This must be a callback and not the result of this function alone, since we may recursively compute them.
     //
@@ -36,35 +47,69 @@ export function serializeClosure(func: Function): Closure {
     // V8 and Acorn (three if you include optional TypeScript), but has the significant advantage that V8's parser
     // isn't designed to be stable for 3rd party consumtpion.  Hence it would be brittle and a maintenance challenge.
     // This approach also avoids needing to write a big hunk of complex code in C++, which is nice.
-    return <Closure>nativeruntime.serializeClosure(func, computeFreeVariables, serializeCapturedObject);
+    let closure = <EventualClosure>nativeruntime.serializeClosure(
+        func, computeFreeVariables, serializeCapturedObject);
+
+    // Now wait for the environment to settle, and then return the final environment variables.
+    let env: Environment = {};
+    for (let key of Object.keys(closure.environment)) {
+        env[key] = await closure.environment[key];
+    }
+    return {
+        code: closure.code,
+        runtime: closure.runtime,
+        environment: env,
+    };
 }
 
+// EventualClosure is a closure that is currently being created, and so may contain promises inside of it if we've
+// captured computed values that must be resolved before we serialize the final result.  It looks a lot like Closure
+// above, except that its environment contains promises for environment records rather than actual values.
+interface EventualClosure {
+    code: string;
+    runtime: string;
+    environment: EventualEnvironment;
+}
+
+// EventualEnvironment is the captured lexical environment for a closure with promises for entries.
+type EventualEnvironment = {[key: string]: Promise<EnvironmentEntry>};
+
 // serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
-function serializeCapturedObject(obj: any): EnvEntry {
+async function serializeCapturedObject(obj: any): Promise<EnvironmentEntry> {
     if (obj === undefined || obj === null ||
-            typeof obj === "boolean" || typeof obj === "number" || typeof obj === "number") {
+            typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
         return { json: obj };
     }
     else if (obj instanceof Array) {
         // Recursively serialize elements of an array.
-        let arr: any[] = [];
+        let arr: EnvironmentEntry[] = [];
         for (let elem of obj) {
-            arr.push(serializeCapturedObject(elem));
+            arr.push(await serializeCapturedObject(elem));
         }
         return { arr: arr };
     }
     else if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
-        return { closure: serializeClosure(obj) };
+        return { closure: await serializeClosureAsync(obj) };
+    }
+    else if (obj instanceof Promise) {
+        // If this is a promise, we will await it and serialize the result instead.
+        return serializeCapturedObject(await obj);
+    }
+    else if ((obj as Computed<any>).mapValue) {
+        // If this is a computed value -- including a captured fabric resource property -- mapValue it.
+        return await new Promise<EnvironmentEntry>((resolve) => {
+            (obj as Computed<any>).mapValue((v: any) => resolve(serializeCapturedObject(v)));
+        });
     }
     else {
         // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
-        let envobj: EnvObj = {};
+        let env: Environment = {};
         for (let key of Object.keys(obj)) {
-            envobj[key] = serializeCapturedObject(obj[key]);
+            env[key] = await serializeCapturedObject(obj[key]);
         }
-        return envobj;
+        return { obj: env };
     }
 }
 
@@ -81,8 +126,7 @@ function computeFreeVariables(funcstr: string): string[] {
     let program: estree.Program = parser.parse();
 
     // Now that we've parsed the program, compute the free variables, and return them.
-    let freecomp = new FreeVariableComputer();
-    return freecomp.compute(program);
+    return new FreeVariableComputer().compute(program);
 }
 
 type walkCallback = (node: estree.BaseNode, state: any) => void;
