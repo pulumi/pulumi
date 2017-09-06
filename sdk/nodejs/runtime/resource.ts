@@ -37,6 +37,7 @@ export function registerResource(
 
             // Fetch the monitor; if it doesn't exist, bail right away.
             if (!monitor) {
+                Log.debug(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
                 return;
             }
 

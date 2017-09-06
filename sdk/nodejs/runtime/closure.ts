@@ -97,6 +97,10 @@ async function serializeCapturedObject(obj: any): Promise<EnvironmentEntry> {
         // If this is a promise, we will await it and serialize the result instead.
         return serializeCapturedObject(await obj);
     }
+    else if (obj instanceof Property) {
+        // If this is a property, explicitly await its output promise so that we get the raw value.
+        return serializeCapturedObject(await obj.outputPromise);
+    }
     else if ((obj as Computed<any>).mapValue) {
         // If this is a computed value -- including a captured fabric resource property -- mapValue it.
         return await new Promise<EnvironmentEntry>((resolve) => {
