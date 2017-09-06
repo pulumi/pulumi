@@ -6,6 +6,15 @@ import { Resource, URN } from "../resource";
 import { Log } from "./log";
 import { getMonitor, isDryRun } from "./settings";
 
+// mapValueCallbackRecursionCount tracks the recursion depth inside of mapValue callbacks.  This is used to
+// prevent resource creation inside of such callbacks, as doing so leads to conditional resource creation.
+let mapValueCallbackRecursionCount = 0;
+
+// isInsideMapValueCallback is used by the runtime to ensure resources aren't conditionally created.
+export function isInsideMapValueCallback(): boolean {
+    return (mapValueCallbackRecursionCount > 0);
+}
+
 // Property is the internal representation of a resource's property state.  It is used by the runtime
 // to resolve to final values and hook into important lifecycle states.
 export class Property<T> implements Computed<T> {
@@ -57,7 +66,17 @@ export class Property<T> implements Computed<T> {
             else {
                 try {
                     // There's a callback; invoke it.
-                    let u: MaybeComputed<U> = callback(value);
+                    let u: MaybeComputed<U> | undefined;
+                    try {
+                        mapValueCallbackRecursionCount++;
+                        u = callback(value);
+                    }
+                    finally {
+                        mapValueCallbackRecursionCount--;
+                    }
+                    if (u === undefined) {
+                        throw new Error("MapValue yielded no result");
+                    }
 
                     // If this is another computed, we need to wire up to its resolution; else just store the value.
                     if (u instanceof Promise) {

@@ -4,7 +4,7 @@ import * as asset from "../asset";
 import { Computed, MaybeComputed } from "../computed";
 import { Resource, URN } from "../resource";
 import { Log } from "./log";
-import { Property } from "./property";
+import { isInsideMapValueCallback, Property } from "./property";
 import { getMonitor, isDryRun } from "./settings";
 
 let langproto = require("../proto/languages_pb.js");
@@ -16,6 +16,10 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 export function registerResource(
     res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): void {
     Log.debug(`Registering resource: t=${t}, name=${name}, props=${props}`);
+    if (isInsideMapValueCallback()) {
+        throw new Error(
+            `Illegal attempt to create a conditional resource '${name}' (type ${t}) inside a mapValue callback`);
+    }
 
     // Fetch the monitor; if it doesn't exist, bail right away.
     let monitor: any = getMonitor();
