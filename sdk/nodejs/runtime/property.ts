@@ -66,29 +66,25 @@ export class Property<T> implements Computed<T> {
             else {
                 try {
                     // There's a callback; invoke it.
-                    let u: MaybeComputed<U> | undefined;
                     try {
                         mapValueCallbackRecursionCount++;
-                        u = callback(value);
+
+                        let u: MaybeComputed<U> = callback(value);
+                        // If this is another computed, we need to wire up to its resolution; else just store the value.
+                        if (u && u instanceof Promise) {
+                            u.then((v: U) => { result.setOutput(v, true, false); });
+                        }
+                        else if (u && (u as Computed<U>).mapValue) {
+                            (u as Computed<U>).mapValue((v: U) => {
+                                result.setOutput(v, true, false);
+                            });
+                        }
+                        else {
+                            result.setOutput(<U>u, true, false);
+                        }
                     }
                     finally {
                         mapValueCallbackRecursionCount--;
-                    }
-                    if (u === undefined) {
-                        throw new Error("MapValue yielded no result");
-                    }
-
-                    // If this is another computed, we need to wire up to its resolution; else just store the value.
-                    if (u instanceof Promise) {
-                        u.then((v: U) => { result.setOutput(v, true, false); });
-                    }
-                    else if ((u as Computed<U>).mapValue) {
-                        (u as Computed<U>).mapValue((v: U) => {
-                            result.setOutput(v, true, false);
-                        });
-                    }
-                    else {
-                        result.setOutput(<U>u, true, false);
                     }
                 }
                 catch (err) {
