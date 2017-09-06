@@ -2,7 +2,7 @@
 
 import * as asset from "../asset";
 import { Computed, MaybeComputed } from "../computed";
-import { Resource, URN } from "../resource";
+import { ID, Resource, URN } from "../resource";
 import { Log } from "./log";
 import { isInsideMapValueCallback, Property } from "./property";
 import { getMonitor, isDryRun } from "./settings";
@@ -15,7 +15,7 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
     res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): void {
-    Log.debug(`Registering resource: t=${t}, name=${name}, props=${props}`);
+    Log.debug(`Registering resource: t=${t}, name=${name}, props=${JSON.stringify(Object.keys(props))}`);
     if (isInsideMapValueCallback()) {
         throw new Error(
             `Illegal attempt to create a conditional resource '${name}' (type ${t}) inside a mapValue callback`);
@@ -27,54 +27,60 @@ export function registerResource(
         return;
     }
 
-    // Create a resource URN and an ID that will get populated after deployment.
-    let urn = new Property<URN>();
-    let id = new Property<string>();
-
-    // Store these properties, plus all of those passed in, on the resource object.  Note that we do these using
+    // Store a URN and ID property, plus any passed in, on the resource object.  Note that we do these using
     // any casts because they are typically readonly and this function is in cahoots with the initialization process.
-    let transfer: Promise<any> = transferProperties(res, props);
-    (<any>res).urn = urn;
-    (<any>res).id = id;
+    let urn = (<any>res).urn = new Property<URN>();
+    let id = (<any>res).id = new Property<ID>();
+    let transfer: Promise<any> = transferProperties(res, t, name, props);
 
     // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
     // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
     // time, we want to give the illusion of non-blocking code, so we return immediately.
-    transfer.then((obj: any) => {
-        Log.debug(`Resource RPC prepared: t=${t}, name=${name}, obj=${obj}`);
+    transfer.then(
+        (obj: any) => {
+            Log.debug(`Resource RPC prepared: t=${t}, name=${name}, obj=${JSON.stringify(obj)}`);
 
-        // Fire off an RPC to the monitor to register the resource.  If/when it resolves, we will blit the properties.
-        let req = new langproto.NewResourceRequest();
-        req.setType(t);
-        req.setName(name);
-        req.setObject(obj);
-        monitor.newResource(req, (err: Error, resp: any) => {
-            Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
-            if (err) {
-                throw new Error(`Failed to register new resource with monitor: ${err}`);
-            }
-            else {
-                // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
-                urn.setOutput(resp.getUrn(), true, false);
-
-                // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
-                // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
-                let idOutput: string | undefined = resp.getId();
-                if (idOutput) {
-                    id.setOutput(idOutput, true, false);
+            // Fire off an RPC to the monitor to register the resource.  If/when it resolves, we will blit the properties.
+            let req = new langproto.NewResourceRequest();
+            req.setType(t);
+            req.setName(name);
+            req.setObject(obj);
+            monitor.newResource(req, (err: Error, resp: any) => {
+                Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
+                if (err) {
+                    Log.error(`Failed to register new resource ${name}[${t}]: ${err}`);
                 }
+                else {
+                    // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
+                    urn.setOutput(resp.getUrn(), true, false);
 
-                // Finally propagate any other properties that were given to us as outputs.
-                resolveProperties(res, resp.getObject(), resp.getStable());
-            }
-        });
-    });
+                    // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
+                    // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
+                    let idOutput: string | undefined = resp.getId();
+                    if (idOutput) {
+                        id.setOutput(idOutput, true, false);
+                    }
+
+                    // Finally propagate any other properties that were given to us as outputs.
+                    try {
+                        resolveProperties(res, t, name, resp.getObject(), resp.getStable());
+                    }
+                    catch (err) {
+                        Log.error(`Failed to propagate resource provider properties to ${name}[${t}]: ${err}`);
+                    }
+                }
+            });
+        },
+        (err: Error) => {
+            Log.error(`An unhandled error occurred during resource ${name}[${t}] creation: ${err}`);
+        },
+    );
 }
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
 function transferProperties(
-    res: Resource, props: {[key: string]: MaybeComputed<any> | undefined}): Promise<any> {
+    res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): Promise<any> {
     let resbag: any = res;
     let obj: any = {}; // this will eventually hold the serialized object properties.
     let eventuals: Promise<void>[] = []; // this contains all promises outstanding for assignments.
@@ -87,7 +93,7 @@ function transferProperties(
 
             // Create a property to wrap the value and store it on the resource.
             if (resbag[k]) {
-                throw new Error(`Property '${k}' is already initialized on this resource object`);
+                throw new Error(`Property '${k}' is already initialized on resource ${name}[${t}]`);
             }
             let p = resbag[k] = new Property<any>(props[k]);
 
@@ -103,20 +109,12 @@ function transferProperties(
 
     // Now return a promise that resolves when all assignments above have settled.  Note that we do not
     // use await here, because we don't actually want to block the above assignments of properties.
-    return Promise.all(eventuals).then(() => {
-        try {
-            return gstruct.Struct.fromJavaScript(obj);
-        }
-        catch (err) {
-            Log.debug(`Failed to marshal gstruct from JSON: ${JSON.stringify(obj)}`);
-            throw err;
-        }
-    });
+    return Promise.all(eventuals).then(() => gstruct.Struct.fromJavaScript(obj));
 }
 
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
 // resource's matching properties to the values inside.
-function resolveProperties(res: Resource, propsStruct: any, stable: boolean): void {
+function resolveProperties(res: Resource, t: string, name: string, propsStruct: any, stable: boolean): void {
     // First set any properties present in the output object.
     if (propsStruct) {
         let resany: any = <any>res;
@@ -136,14 +134,16 @@ function resolveProperties(res: Resource, propsStruct: any, stable: boolean): vo
                 resany[k] = p = new Property<any>();
             }
             else if (!(p instanceof Property)) {
-                throw new Error(`Unable to set resource property '${k}' because it is not a Property<T>`);
+                throw new Error(
+                    `Unable to set property '${k}' on resource ${name}[${t}] because it is not a Property<T>`);
             }
             try {
                 (p as Property<any>).setOutput(
                     deserializeProperty(props[k]), !isDryRun() || stable, false);
             }
             catch (err) {
-                throw new Error(`Unable to set resource property '${k}'; error: ${err}`);
+                throw new Error(
+                    `Unable to set property '${k}' on resource ${name}[${t}; error: ${err}`);
             }
         }
     }
@@ -172,7 +172,7 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 async function serializeProperty(prop: any): Promise<any> {
     if (prop === undefined) {
         if (!isDryRun()) {
-            Log.debug("Unexpected unknown property during deployment");
+            throw new Error("Unexpected unknown property during deployment");
         }
         return unknownPropertyValue;
     }
