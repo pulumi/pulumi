@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -108,9 +109,15 @@ type evalSourceIterator struct {
 }
 
 func (iter *evalSourceIterator) Close() error {
-	// Cancel the monitor and reclaim any resources associated with it.
-	// TODO: we need to cancel the runtime execution if this happens before it has completed.
-	return iter.mon.Cancel()
+	// Cancel the language host and monitor and reclaim any resources associated with them.
+	var result error
+	if err := iter.langhost.Close(); err != nil {
+		result = multierror.Append(err)
+	}
+	if err := iter.mon.Cancel(); err != nil {
+		result = multierror.Append(err)
+	}
+	return result
 }
 
 func (iter *evalSourceIterator) Next() (SourceGoal, error) {
