@@ -3,13 +3,13 @@
     "main": "bin/index.js",
     "typings": "bin/index.d.ts",
     "scripts": {
-        "build": "lumijs"
+        "build": "tsc"
     },
     "devDependencies": {
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
-        "@lumi/lumi": "*"
+        "@pulumi/pulumi-fabric": "*"
     }
 }
 
