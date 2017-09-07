@@ -12,7 +12,7 @@
         "lint": "tslint '{,!(node_modules|bin)/!(bin|node_modules)**/}(*.d).ts'",
         "copyprotos": "cp -R ../proto/nodejs/. proto/",
         "binplaceprotos": "cp -R proto/. bin/proto/",
-        "binplacenative": "mkdir -p bin/runtime/native/build/. && cp -R runtime/native/build/ bin/runtime/native/build/",
+        "binplacenative": "mkdir -p bin/runtime/native/ && cp -R runtime/native/build/. bin/runtime/native/build/",
         "binplacetestdata": "mkdir -p bin/tests/runtime/langhost/cases/ && find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \\;",
         "binplace": "yarn run binplaceprotos && yarn run binplacenative && yarn run binplacetestdata",
         "test": "yarn run cov && yarn run covreport",
