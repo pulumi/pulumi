@@ -1,7 +1,5 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Log } from "./log";
-
 // debugPromiseTimeout can be set to enable promises debugging.  If it is -1, it has no effect.  Be careful setting
 // this to other values, because too small a value will cause legitimate promise resolutions to appear as timeouts.
 const debugPromiseTimeout: number = -1;
@@ -19,14 +17,18 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
 
     // Setup leak detection.
     if (!leakDetectorScheduled) {
-        process.on('exit', () => {
-            for (let leaked of leakCandidates) {
-                Log.error(
-                    `Promise leak detected:\n` +
-                    `CONTEXT: ${(<any>leaked)._debugCtx}\n` +
-                    `STACK_TRACE:\n` +
-                    `${(<any>leaked)._debugStackTrace}`
-                );
+        process.on('exit', (code: number) => {
+            // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
+            // course yields things that look like "leaks".
+            if (code === 0) {
+                for (let leaked of leakCandidates) {
+                    console.error(
+                        `Promise leak detected:\n` +
+                        `CONTEXT: ${(<any>leaked)._debugCtx}\n` +
+                        `STACK_TRACE:\n` +
+                        `${(<any>leaked)._debugStackTrace}`
+                    );
+                }
             }
         });
         leakDetectorScheduled = true;
