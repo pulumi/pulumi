@@ -3,40 +3,28 @@
 
 set -e
 
-# Default the Lumi root to the right place, but let it be overridden.
-if [ -z "${LUMIROOT}" ]; then
-    LUMIROOT=/usr/local/lumi
-fi
-LUMILIB=${LUMIROOT}/packs
-
 PUBDIR=$(mktemp -du)
 GITVER=$(git rev-parse HEAD)
 PUBFILE=$(dirname ${PUBDIR})/${GITVER}.tgz
-PUBPREFIX=s3://eng.pulumi.com/releases/lumi
+PUBPREFIX=s3://eng.pulumi.com/releases/pulumi-fabric
 declare -a PUBTARGETS=(${GITVER} $(git describe --tags) $(git rev-parse --abbrev-ref HEAD))
 
 ROOT=$(dirname $0)/..
 
-# Make sure the repo isn't dirty.
+# Ensure the repo isn't dirty.
 git diff-index --quiet HEAD -- || \
     test -n "${PUBFORCE}" || \
     (echo "error: Cannot publish a dirty repo; set PUBFORCE=true to override" && exit 99)
 
-# If it isn't, or publication was forced, do it.
-mkdir -p ${PUBDIR}/cmd ${PUBDIR}/packs
-
 # Copy the binaries and packs.
-cp ${GOPATH}/bin/lumi ${PUBDIR}/cmd
-cp ${ROOT}/cmd/lumijs/lumijs ${PUBDIR}/cmd
-cp -R ${ROOT}/cmd/lumijs/bin/ ${PUBDIR}/cmd/lumijs.bin
-cp -R ${ROOT}/cmd/lumijs/node_modules/ ${PUBDIR}/cmd/lumijs.bin/node_modules/
-cp -R ${LUMILIB}/lumirt ${PUBDIR}/packs/lumirt
-cp -R ${LUMILIB}/lumijs ${PUBDIR}/packs/lumijs
-cp -R ${LUMILIB}/lumi ${PUBDIR}/packs/lumi
-
-# Fix up the LumiJS script so that it can run in place.
-sed -i.bak 's/"\.\/bin\/cmd"/"\.\/lumijs.bin\/cmd"/g' ${PUBDIR}/cmd/lumijs
-rm ${PUBDIR}/cmd/lumijs.bak
+mkdir -p ${PUBDIR}/bin/
+cp ${GOPATH}/bin/lumi ${PUBDIR}/bin/
+mkdir -p ${PUBDIR}/sdk/nodejs/
+cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/sdk/nodejs/
+cp -R ${ROOT}/sdk/nodejs/package.json ${PUBDIR}/sdk/nodejs/package.json
+cp -R ${ROOT}/sdk/nodejs/bin/. ${PUBDIR}/sdk/nodejs/bin/
+cp -R ${ROOT}/sdk/nodejs/node_modules/. ${PUBDIR}/sdk/nodejs/node_modules/
+echo sdk/nodejs/ >> ${PUBDIR}/packs.txt
 
 # Tar up the release and upload it to our S3 bucket.
 tar -czf ${PUBFILE} -C ${PUBDIR} .

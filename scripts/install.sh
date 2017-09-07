@@ -4,27 +4,5 @@
 
 set -e
 
-GITVER=${1}
-INSTALLDIR=${2}
-
-if [ -z "${GITVER}" ]; then
-    echo error: missing Git commit/tag/branch argument
-    exit 1
-fi
-if [ -z "${INSTALLDIR}" ]; then
-    echo error: missing target installation directory
-    exit 2
-fi
-
-# Make the directory, download the bits, and unzip/tar them in place.
-RELEASE=s3://eng.pulumi.com/releases/lumi/${GITVER}.tgz
-echo Installing ${RELEASE} to: ${PUBTARGET}
-mkdir -p ${INSTALLDIR}
-aws s3 cp ${RELEASE} ${INSTALLDIR}
-tar -xzf ${INSTALLDIR}/${GITVER}.tgz -C ${INSTALLDIR}
-
-# Finally, link the bits so that NPM packages link to the right place.
-for pack in ${INSTALLDIR}/packs/*; do
-    cd ${pack} && yarn link
-done
+./install_release.sh pulumi-fabric ${1} ${2}
 
