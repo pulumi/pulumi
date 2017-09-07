@@ -1,6 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import { Computed } from "../computed";
+import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { Property } from "./property";
 import * as acorn from "acorn";
@@ -95,17 +96,17 @@ async function serializeCapturedObject(obj: any): Promise<EnvironmentEntry> {
     }
     else if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
-        return serializeCapturedObject(await obj);
+        return await serializeCapturedObject(await obj);
     }
     else if (obj instanceof Property) {
         // If this is a property, explicitly await its output promise so that we get the raw value.
-        return serializeCapturedObject(await obj.outputPromise);
+        return await serializeCapturedObject(obj.outputPromise);
     }
     else if ((obj as Computed<any>).mapValue) {
         // If this is a computed value -- including a captured fabric resource property -- mapValue it.
-        return await new Promise<EnvironmentEntry>((resolve) => {
-            (obj as Computed<any>).mapValue((v: any) => resolve(serializeCapturedObject(v)));
-        });
+        return await debuggablePromise(new Promise<EnvironmentEntry>((resolve) => {
+            (obj as Computed<any>).mapValue(async (v: any) => resolve(await serializeCapturedObject(v)));
+        }));
     }
     else {
         // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).

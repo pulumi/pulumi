@@ -3,6 +3,7 @@
 import * as asset from "../asset";
 import { Computed, MaybeComputed } from "../computed";
 import { ID, Resource, URN } from "../resource";
+import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { isInsideMapValueCallback, Property } from "./property";
 import { getMonitor, isDryRun } from "./settings";
@@ -25,14 +26,14 @@ export function registerResource(
     // any casts because they are typically readonly and this function is in cahoots with the initialization process.
     let urn = (<any>res).urn = new Property<URN>(undefined, true, false);
     let id = (<any>res).id = new Property<ID>(undefined, true, false);
-    let transfer: Promise<any> = transferProperties(res, t, name, props);
+    let transfer: Promise<any> = debuggablePromise(transferProperties(res, t, name, props));
 
     // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
     // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
     // time, we want to give the illusion of non-blocking code, so we return immediately.
     let monitor: any = getMonitor();
-    transfer.then(
-        (obj: any) => {
+    let resourceRegistered: Promise<void> = debuggablePromise(transfer.then(
+        async (obj: any) => {
             Log.debug(`Resource RPC prepared: t=${t}, name=${name}, obj=${JSON.stringify(obj)}`);
 
             // Fetch the monitor; if it doesn't exist, bail right away.
@@ -46,37 +47,42 @@ export function registerResource(
             req.setType(t);
             req.setName(name);
             req.setObject(obj);
-
-            monitor.newResource(req, (err: Error, resp: any) => {
-                Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
-                if (err) {
-                    Log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
-                }
-                else {
-                    // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
-                    urn.setOutput(resp.getUrn(), true, false);
-
-                    // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
-                    // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
-                    let idOutput: string | undefined = resp.getId();
-                    if (idOutput) {
-                        id.setOutput(idOutput, true, false);
+            let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
+                monitor.newResource(req, (err: Error, resp: any) => {
+                    Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
+                    if (err) {
+                        Log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
+                        reject(err);
                     }
+                    else {
+                        resolve(resp);
+                    }
+                });
+            }));
 
-                    // Finally propagate any other properties that were given to us as outputs.
-                    try {
-                        resolveProperties(res, t, name, resp.getObject(), resp.getStable());
-                    }
-                    catch (err) {
-                        Log.error(`Failed to propagate resource provider properties to '${name}' [${t}]: ${err}`);
-                    }
-                }
-            });
-        },
-        (err: Error) => {
-            Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
-        },
-    );
+            // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
+            urn.setOutput(resp.getUrn(), true, false);
+
+            // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
+            // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
+            let idOutput: string | undefined = resp.getId();
+            if (idOutput) {
+                id.setOutput(idOutput, true, false);
+            }
+
+            // Finally propagate any other properties that were given to us as outputs.
+            try {
+                resolveProperties(res, t, name, resp.getObject(), resp.getStable());
+            }
+            catch (err) {
+                Log.error(`Failed to propagate resource provider properties to '${name}' [${t}]: ${err}`);
+                throw err;
+            }
+        }
+    ));
+    resourceRegistered.catch((err: Error) => {
+        Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
+    });
 }
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
@@ -113,7 +119,7 @@ function transferProperties(
 
     // Now return a promise that resolves when all assignments above have settled.  Note that we do not
     // use await here, because we don't actually want to block the above assignments of properties.
-    return Promise.all(eventuals).then(() => gstruct.Struct.fromJavaScript(obj));
+    return debuggablePromise(Promise.all(eventuals).then(() => gstruct.Struct.fromJavaScript(obj)));
 }
 
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
@@ -216,9 +222,9 @@ async function serializeProperty(prop: any): Promise<any> {
     }
     else if ((prop as Computed<any>).mapValue !== undefined) {
         // For arbitrary computed values, wire up a handler to await their resolution and then serialize the value.
-        let value: any = await new Promise<any>((resolve) => {
+        let value: any = await debuggablePromise(new Promise<any>((resolve) => {
             (prop as Computed<any>).mapValue((v: any) => { resolve(v); });
-        });
+        }));
         return serializeProperty(value);
     }
     else {

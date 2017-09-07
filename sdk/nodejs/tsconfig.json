@@ -28,6 +28,7 @@
         "runtime/index.ts",
         "runtime/closure.ts",
         "runtime/config.ts",
+        "runtime/debuggable.ts",
         "runtime/langhost.ts",
         "runtime/log.ts",
         "runtime/property.ts",

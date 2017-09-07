@@ -3,6 +3,7 @@
 import * as asset from "../asset";
 import { Computed, MaybeComputed } from "../computed";
 import { Resource, URN } from "../resource";
+import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { getMonitor, isDryRun } from "./settings";
 
@@ -31,12 +32,12 @@ export class Property<T> implements Computed<T> {
     // logic will instead need to manually invoke setOutput in order to resolve it to a final value.
     constructor(value: MaybeComputed<T> | undefined, setInput: boolean, setOutput: boolean) {
         // We use different input and output promises, because we depend on the different values in different cases.
-        this.inputPromise = new Promise<T | undefined>(
+        this.inputPromise = debuggablePromise(new Promise<T | undefined>(
             (resolve: (v: T | undefined) => void) => { this.resolveInput = resolve; },
-        );
-        this.outputPromise = new Promise<T | undefined>(
+        ), "inputPromise");
+        this.outputPromise = debuggablePromise(new Promise<T | undefined>(
             (resolve: (v: T | undefined) => void) => { this.resolveOutput = resolve; },
-        );
+        ), "outputPromise");
 
         Property.resolveTo(this, value, setInput, setOutput);
     }
@@ -53,7 +54,7 @@ export class Property<T> implements Computed<T> {
         else if (value && value instanceof Property) {
             value.outputPromise.then(
                 (v: T | undefined) => { Property.resolveTo(p, v, setInput, setOutput); },
-                (err: Error) => { Log.error(`Unexpected error in dependent mapValue property`); },
+                (err: Error) => { Log.error(`Unexpected error in dependent mapValue property: ${err}`); },
             );
         }
         else if (value && (value as Computed<T>).mapValue) {
@@ -144,12 +145,7 @@ export class Property<T> implements Computed<T> {
 
     // setOutput resolves the final output value of a property.
     public setOutput(value: T | undefined, isFinal: boolean, skipIfAlready: boolean): void {
-        if (!this.awaitingOutput()) {
-            if (!skipIfAlready) {
-                throw new Error(`Illegal attempt to set a property output multiple times (${value})`);
-            }
-        }
-        else {
+        if (this.awaitingOutput()) {
             if (value instanceof Promise) {
                 throw new Error(`Unexpected dependent promise value for property input`);
             }
@@ -161,6 +157,9 @@ export class Property<T> implements Computed<T> {
                 this.resolveOutput!(value);
                 this.resolveOutput = undefined;
             }
+        }
+        else if (!skipIfAlready) {
+            throw new Error(`Illegal attempt to set a property output multiple times (${value})`);
         }
     }
 
