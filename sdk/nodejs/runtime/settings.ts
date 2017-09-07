@@ -49,3 +49,15 @@ export function configure(m: Object | undefined, e: Object | undefined, dr: bool
     configured = true;
 }
 
+// disconnect permanently disconnects from the server, closing the connections.
+export function disconnect(): void {
+    if (monitor) {
+        (<any>monitor).close();
+        monitor = undefined;
+    }
+    if (engine) {
+        (<any>engine).close();
+        engine = undefined;
+    }
+}
+

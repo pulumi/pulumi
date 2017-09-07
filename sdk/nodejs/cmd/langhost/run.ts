@@ -126,10 +126,7 @@ export function main(args: string[]): void {
         throw err;
     }
     finally {
-        monitor.close();
-        if (engine) {
-            engine.close();
-        }
+        runtime.disconnect();
     }
 }
 
