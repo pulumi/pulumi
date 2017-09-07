@@ -72,7 +72,7 @@ export function main(args: string[]): void {
     }
 
     // Ensure the monitor argument is present and, if so, connect to it.
-    let monitor: Object | undefined;
+    let monitor: any;
     let monitorAddr: string | undefined = argv["monitor"];
     if (!monitorAddr) {
         console.error("fatal: Missing required --monitor flag to connect to the resource monitor's RPC");
@@ -83,7 +83,7 @@ export function main(args: string[]): void {
     }
 
     // If there is an engine argument, connect to it too.
-    let engine: Object | undefined;
+    let engine: any | undefined;
     let engineAddr: string | undefined = argv["engine"];
     if (engineAddr) {
         engine = new engrpc.EngineClient(engineAddr, grpc.credentials.createInsecure());
@@ -124,6 +124,12 @@ export function main(args: string[]): void {
         runtime.Log.debug(`Running program '${program}' failed with an unhandled exception:`);
         runtime.Log.debug(err);
         throw err;
+    }
+    finally {
+        monitor.close();
+        if (engine) {
+            engine.close();
+        }
     }
 }
 
