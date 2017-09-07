@@ -1,6 +1,0 @@
-name: mantle-helloworld
-description: A simple serverless Node.js Hello, World API, using Mantle.
-dependencies:
-    lumi: "*"
-    mantle: "*"
-

@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
@@ -6,7 +8,6 @@ import (
 
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
@@ -67,8 +68,7 @@ func (eng *Engine) newWorkspace() (workspace.W, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx := core.NewContext(pwd, eng.Diag(), &core.Options{})
-	return workspace.New(ctx)
+	return workspace.New(pwd, eng.Diag())
 }
 
 // getCurrentEnv reads the current environment.

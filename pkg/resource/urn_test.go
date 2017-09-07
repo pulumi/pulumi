@@ -12,7 +12,7 @@ import (
 
 func TestURNRoundTripping(t *testing.T) {
 	ns := tokens.QName("namespace")
-	alloc := tokens.Module("foo:bar/baz")
+	alloc := tokens.PackageName("foo/bar/baz")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
 	name := tokens.QName("a-swell-resource")
 	urn := NewURN(ns, alloc, typ, name)

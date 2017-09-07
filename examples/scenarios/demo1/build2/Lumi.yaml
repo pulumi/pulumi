@@ -1,6 +1,0 @@
-name: demo1-example
-description: A simple Express voting app with a cloud-agnostic hosted backend, ready for production use.
-services:
-    sources:
-        - ./app.js
-

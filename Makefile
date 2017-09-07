@@ -10,7 +10,7 @@ GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
 .PHONY: default
-all: banner_all core lumijs lumirtpkg lumijspkg lumipkg integrationtest
+all: banner_all core sdk/nodejs integrationtest
 
 .PHONY: nightly
 nightly: default gocover
@@ -31,6 +31,13 @@ banner_all:
 	@$(ECHO) "\033[1;37m====================\033[0m"
 	@$(ECHO) "\033[1;37mPulumi Fabric (Full)\033[0m"
 	@$(ECHO) "\033[1;37m====================\033[0m"
+
+.PHONY: configure
+configure:
+	dep ensure -v
+	cd sdk/nodejs && yarn install
+	cd sdk/nodejs/runtime/native && ./ensure_node_v8.sh
+	cd sdk/nodejs/runtime/native && ../../node_modules/.bin/node-gyp configure
 
 .PHONY: install
 install:
@@ -74,17 +81,9 @@ integrationtest:
 	@$(ECHO) "\033[0;32mINTEGRATION TEST:\033[0m"
 	go test -cover -parallel ${TESTPARALLELISM} ./examples
 
-.PHONY: lumijs
-lumijs:
-	@cd ./cmd/lumijs && $(MAKE)
-
-lumirtpkg:
-	@cd ./lib/lumirt && $(MAKE)
-lumijspkg:
-	@cd ./lib/lumijs && $(MAKE)
-lumipkg:
-	@cd ./lib/lumi && $(MAKE)
-.PHONY: lumirtpkg lumijspkg lumipkg
+sdk/nodejs:
+	@cd ./sdk/nodejs && $(MAKE)
+.PHONY: sdk/nodejs
 
 publish:
 	@$(ECHO) "\033[0;32mPublishing current release:\033[0m"

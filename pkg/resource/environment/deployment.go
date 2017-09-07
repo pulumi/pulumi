@@ -39,7 +39,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	if snapres := snap.Resources; len(snapres) > 0 {
 		resm = NewResources()
 		for _, res := range snapres {
-			urn := res.URN()
+			urn := res.URN
 			contract.Assertf(string(urn) != "", "Unexpected empty resource resource.URN")
 			contract.Assertf(!resm.Has(urn), "Unexpected duplicate resource resource.URN '%v'", urn)
 			resm.Add(urn, SerializeResource(res))
@@ -73,7 +73,7 @@ func SerializeResource(res *resource.State) *Resource {
 
 	return &Resource{
 		ID:       res.ID,
-		Type:     res.Type(),
+		Type:     res.Type,
 		Inputs:   inputs,
 		Defaults: defaults,
 		Outputs:  outputs,

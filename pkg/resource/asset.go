@@ -18,8 +18,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
-	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -42,24 +40,6 @@ const (
 func NewTextAsset(text string) Asset { return Asset{Sig: AssetSig, Text: text} }
 func NewPathAsset(path string) Asset { return Asset{Sig: AssetSig, Path: path} }
 func NewURIAsset(uri string) Asset   { return Asset{Sig: AssetSig, URI: uri} }
-
-func NewAssetFromObject(obj *rt.Object) Asset {
-	contract.Assert(predef.IsResourceAssetType(obj.Type()))
-	props := obj.Properties()
-	var text string
-	if prop, has := props.TryGet(AssetTextProperty); has {
-		text = prop.StringValue()
-	}
-	var path string
-	if prop, has := props.TryGet(AssetPathProperty); has {
-		path = prop.StringValue()
-	}
-	var uri string
-	if prop, has := props.TryGet(AssetURIProperty); has {
-		uri = prop.StringValue()
-	}
-	return Asset{Text: text, Path: path, URI: uri}
-}
 
 func (a Asset) IsText() bool { return a.Text != "" }
 func (a Asset) IsPath() bool { return a.Path != "" }
@@ -282,28 +262,6 @@ const (
 func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Sig: ArchiveSig, Assets: assets} }
 func NewPathArchive(path string) Archive              { return Archive{Sig: ArchiveSig, Path: path} }
 func NewURIArchive(uri string) Archive                { return Archive{Sig: ArchiveSig, URI: uri} }
-
-func NewArchiveFromObject(obj *rt.Object) Archive {
-	contract.Assert(predef.IsResourceArchiveType(obj.Type()))
-	props := obj.Properties()
-	var assets map[string]Asset
-	if prop, has := props.TryGet(ArchiveAssetsProperty); has {
-		assets = make(map[string]Asset)
-		mapprops := prop.Properties()
-		for _, k := range mapprops.Stable() {
-			assets[string(k)] = NewAssetFromObject(mapprops.Get(k))
-		}
-	}
-	var path string
-	if prop, has := props.TryGet(ArchivePathProperty); has {
-		path = prop.StringValue()
-	}
-	var uri string
-	if prop, has := props.TryGet(ArchiveURIProperty); has {
-		uri = prop.StringValue()
-	}
-	return Archive{Assets: assets, Path: path, URI: uri}
-}
 
 func (a Archive) IsAssets() bool { return a.Assets != nil }
 func (a Archive) IsPath() bool   { return a.Path != "" }

@@ -1,9 +1,13 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
 	"bytes"
 	"fmt"
 	"time"
+
+	goerr "github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
@@ -20,7 +24,6 @@ type DeployOptions struct {
 	Debug                bool     // true to enable resource debugging output.
 	DryRun               bool     // true if we should just print the plan without performing it.
 	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReads            bool     // true to show the read-only steps in the plan.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
@@ -37,7 +40,6 @@ func (eng *Engine) Deploy(opts DeployOptions) error {
 		DryRun:               opts.DryRun,
 		Analyzers:            opts.Analyzers,
 		ShowConfig:           opts.ShowConfig,
-		ShowReads:            opts.ShowReads,
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
@@ -51,7 +53,6 @@ type deployOptions struct {
 	DryRun               bool     // true if we should just print the plan without performing it.
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReads            bool     // true to show the read-only steps in the plan.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
@@ -109,6 +110,10 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			return err
 		}
+	}
+	if !eng.Diag().Success() {
+		// If any error that wasn't printed above, be sure to make it evident in the output.
+		return goerr.New("One or more errors occurred during this deployment")
 	}
 	return nil
 }

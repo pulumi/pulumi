@@ -1,7 +1,6 @@
-# sdk
+# lumi/sdk
 
-The SDK directory contains language packages for the various supported languages.
+This directory contains the Lumi SDKs, one for each supported language.
 
-These packages are real language packages and not LumiPacks.  Therefore, they can contain I/O, asynchronous code, and
-anything else necessary for building runtime code, resource providers, and other helpful tooling and abstractions.
+Please see the respective `README`s for information about installing and using these libraries.
 

@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "outDir": ".lumi/bin",
+        "outDir": "bin",
         "target": "es6",
         "module": "commonjs",
         "moduleResolution": "node",

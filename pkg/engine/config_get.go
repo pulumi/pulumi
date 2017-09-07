@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
@@ -7,15 +9,15 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
-func (eng *Engine) GetConfig(envName string, key string) error {
+func (eng *Engine) GetConfig(envName string, key tokens.ModuleMember) error {
 	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
 	if err != nil {
 		return err
 	}
-	config := info.Target.Config
 
+	config := info.Target.Config
 	if config != nil {
-		if v, has := config[tokens.Token(key)]; has {
+		if v, has := config[key]; has {
 			fmt.Fprintf(eng.Stdout, "%v\n", v)
 			return nil
 		}

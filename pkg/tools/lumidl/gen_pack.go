@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/tools"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
@@ -299,7 +298,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	// Next, a constructor that validates arguments and self-assigns them.
 	w.Writefmt("    constructor(")
 	if res.Named {
-		w.Writefmt("%v: string, ", resource.URNNamePropertyKey)
+		w.Writefmt("name: string, ")
 	}
 	w.Writefmt("args")
 	if !hasRequiredArgs {
@@ -309,7 +308,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 
 	if hasName {
 		// Named properties are passed as the constructor's first argument.
-		w.Writefmtln("        super(%v);", resource.URNNamePropertyKey)
+		w.Writefmtln("        super(name);")
 	} else {
 		w.Writefmtln("        super();")
 	}

@@ -3,7 +3,7 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"
@@ -16,6 +16,10 @@ type nullSource struct {
 
 func (src *nullSource) Close() error {
 	return nil // nothing to do.
+}
+
+func (src *nullSource) Pkg() tokens.PackageName {
+	return ""
 }
 
 func (src *nullSource) Info() interface{} {
@@ -34,10 +38,6 @@ func (iter *nullSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *nullSourceIterator) Produce(res *resource.Object) {
-	// ignore
-}
-
-func (iter *nullSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
-	return nil, nil, nil // means "done"
+func (iter *nullSourceIterator) Next() (SourceGoal, error) {
+	return nil, nil // means "done"
 }

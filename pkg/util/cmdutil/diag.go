@@ -3,7 +3,6 @@
 package cmdutil
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
@@ -13,7 +12,9 @@ var snk diag.Sink
 // Diag lazily allocates a sink to be used if we can't create a compiler.
 func Diag() diag.Sink {
 	if snk == nil {
-		snk = core.DefaultSink("")
+		snk = diag.DefaultSink(diag.FormatOptions{
+			Colors: true, // turn on colorization of warnings/errors.
+		})
 	}
 	return snk
 }

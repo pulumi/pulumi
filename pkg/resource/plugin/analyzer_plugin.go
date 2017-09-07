@@ -10,10 +10,10 @@ import (
 
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
+	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
 )
 
-const AnalyzerPluginPrefix = "lumi-analyzer-"
+const AnalyzerPluginPrefix = "pulumi-analyzer-"
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
@@ -26,13 +26,13 @@ type analyzer struct {
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
-	// Search for the analyzer on the path.
+	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := AnalyzerPluginPrefix + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
-
-	// Now go ahead and attempt to load the plugin.
-	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("analyzer[%v]", name))
+	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("analyzer[%v]", name), []string{host.ServerAddr()})
 	if err != nil {
 		return nil, err
+	} else if plug == nil {
+		return nil, nil
 	}
 
 	return &analyzer{

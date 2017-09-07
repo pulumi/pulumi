@@ -1,7 +1,0 @@
-{
-    "name": "@lumi/lumijs",
-    "devDependencies": {
-        "typescript": "^2.1.4"
-    }
-}
-

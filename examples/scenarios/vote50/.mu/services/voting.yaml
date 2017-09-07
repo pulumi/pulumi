@@ -1,8 +1,0 @@
-name: voting
-type: Service
-api: ./voting.proto
-services:
-    votes: mu.services.Table
-    voteCounts: mu.services.Table
-    votesFunction: mu.Function
-

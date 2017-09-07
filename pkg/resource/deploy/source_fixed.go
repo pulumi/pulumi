@@ -3,23 +3,26 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // NewFixedSource returns a valid planning source that is comprised of a list of pre-computed resource objects.
-func NewFixedSource(ctx tokens.Module, resources []*resource.Object) Source {
+func NewFixedSource(ctx tokens.PackageName, resources []SourceGoal) Source {
 	return &fixedSource{ctx: ctx, resources: resources}
 }
 
 // A fixedSource just returns from a fixed set of resource states.
 type fixedSource struct {
-	ctx       tokens.Module
-	resources []*resource.Object
+	ctx       tokens.PackageName
+	resources []SourceGoal
 }
 
 func (src *fixedSource) Close() error {
 	return nil // nothing to do.
+}
+
+func (src *fixedSource) Pkg() tokens.PackageName {
+	return src.ctx
 }
 
 func (src *fixedSource) Info() interface{} {
@@ -43,17 +46,10 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Produce(res *resource.Object) {
-	// ignore
-}
-
-func (iter *fixedSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
+func (iter *fixedSourceIterator) Next() (SourceGoal, error) {
 	iter.current++
 	if iter.current >= len(iter.src.resources) {
-		return nil, nil, nil
+		return nil, nil
 	}
-	return &SourceAllocation{
-		Obj: iter.src.resources[iter.current],
-		Ctx: iter.src.ctx,
-	}, nil, nil
+	return iter.src.resources[iter.current], nil
 }

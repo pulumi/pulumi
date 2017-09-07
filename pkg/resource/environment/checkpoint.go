@@ -13,9 +13,9 @@ import (
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 type Checkpoint struct {
-	Target tokens.QName        `json:"target"`           // the target environment name.
-	Config *resource.ConfigMap `json:"config,omitempty"` // optional configuration key/values.
-	Latest *Deployment         `json:"latest,omitempty"` // the latest/current deployment information.
+	Target tokens.QName                   `json:"target"`           // the target environment name.
+	Config map[tokens.ModuleMember]string `json:"config,omitempty"` // optional configuration key/values.
+	Latest *Deployment                    `json:"latest,omitempty"` // the latest/current deployment information.
 }
 
 // SerializeCheckpoint turns a snapshot into a LumiGL data structure suitable for serialization.
@@ -28,14 +28,9 @@ func SerializeCheckpoint(targ *deploy.Target, snap *deploy.Snapshot) *Checkpoint
 		latest = SerializeDeployment(snap)
 	}
 
-	var config *resource.ConfigMap
-	if targ.Config != nil {
-		config = &targ.Config
-	}
-
 	return &Checkpoint{
 		Target: targ.Name,
-		Config: config,
+		Config: targ.Config,
 		Latest: latest,
 	}
 }
@@ -67,9 +62,8 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 	}
 
 	// Create a new target and snapshot objects to return.
-	targ := &deploy.Target{Name: name}
-	if chkpoint.Config != nil {
-		targ.Config = *chkpoint.Config
-	}
-	return targ, snap
+	return &deploy.Target{
+		Name:   name,
+		Config: chkpoint.Config,
+	}, snap
 }

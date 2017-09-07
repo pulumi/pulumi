@@ -1,3 +1,5 @@
+// Copyright 2017, Pulumi Corporation.  All rights reserved.
+
 package engine
 
 import (
@@ -37,7 +39,7 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 		fmt.Fprintf(eng.Stdout, "\n")
 		fmt.Fprintf(eng.Stdout, "%-48s %s\n", "TYPE", "NAME")
 		for _, res := range snapshot.Resources {
-			fmt.Fprintf(eng.Stdout, "%-48s %s\n", res.Type(), res.URN().Name())
+			fmt.Fprintf(eng.Stdout, "%-48s %s\n", res.Type, res.URN.Name())
 
 			// If the ID and/or URN is requested, show it on the following line.  It would be nice to do this
 			// on a single line, but they can get quite lengthy and so this formatting makes more sense.
@@ -45,7 +47,7 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 				fmt.Fprintf(eng.Stdout, "\tID: %s\n", res.ID)
 			}
 			if showURNs {
-				fmt.Fprintf(eng.Stdout, "\tURN: %s\n", res.URN())
+				fmt.Fprintf(eng.Stdout, "\tURN: %s\n", res.URN)
 			}
 		}
 	}

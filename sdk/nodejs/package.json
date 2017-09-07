@@ -1,0 +1,40 @@
+{
+    "name": "@pulumi/pulumi-fabric",
+    "version": "0.0.1",
+    "description": "Pulumi's Fabric Node.js SDK",
+    "repository": "https://github.com/pulumi/pulumi-fabric/sdk/nodejs",
+    "main": "bin/index.js",
+    "typings": "bin/index.d.ts",
+    "scripts": {
+        "clean": "rm -rf bin/ && rm -rf runtime/native/build",
+        "build": "yarn run copyprotos && yarn run buildnative && tsc && yarn run binplace && yarn run lint",
+        "buildnative": "cd runtime/native/ && node-gyp build",
+        "lint": "tslint '{,!(node_modules|bin)/!(bin|node_modules)**/}(*.d).ts'",
+        "copyprotos": "cp -R ../proto/nodejs/. proto/",
+        "binplaceprotos": "cp -R proto/. bin/proto/",
+        "binplacenative": "mkdir -p bin/runtime/native/ && cp -R runtime/native/build/. bin/runtime/native/build/",
+        "binplacetestdata": "mkdir -p bin/tests/runtime/langhost/cases/ && find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \\;",
+        "binplace": "yarn run binplaceprotos && yarn run binplacenative && yarn run binplacetestdata",
+        "test": "yarn run cov && yarn run covreport",
+        "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --timeout 15000 'bin/tests/**/*.spec.js'",
+        "covreport": "istanbul report text-summary && istanbul report text"
+    },
+    "devDependencies": {
+        "@types/minimist": "^1.2.0",
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^8.0.25",
+        "istanbul": "^0.4.5",
+        "mocha": "^3.5.0",
+        "node-gyp": "^3.6.2",
+        "tslint": "^5.6.0",
+        "typescript": "^2.1.4"
+    },
+    "dependencies": {
+        "@types/acorn": "^4.0.2",
+        "acorn": "^5.1.1",
+        "google-protobuf": "^3.4.0",
+        "grpc": "^1.4.1",
+        "minimist": "^1.2.0",
+        "source-map-support": "^0.4.16"
+    }
+}

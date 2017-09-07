@@ -14,27 +14,11 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
-const ProjectFile = "Lumi"       // the base name of a Project.
+const ProjectFile = "Pulumi"     // the base name of a Project.
 const Dir = ".lumi"              // the default name of the LumiPack output directory.
-const PackFile = "Lumipack"      // the base name of a compiled LumiPack.
-const BinDir = "bin"             // the default name of the LumiPack binary output directory.
 const EnvDir = "env"             // the default name of the LumiPack environment directory.
 const DepDir = "packs"           // the directory in which dependencies exist, either local or global.
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
-
-const InstallRootEnvvar = "LUMIROOT"         // the envvar describing where Lumi has been installed.
-const InstallRootLibdir = "packs"            // the directory in which the Lumi standard library exists.
-const DefaultInstallRoot = "/usr/local/lumi" // where Lumi is installed by default.
-
-// InstallRoot returns Lumi's installation location.  This is controlled my the LUMIROOT envvar.
-func InstallRoot() string {
-	// TODO[pulumi/pulumi-fabric#208]: support Windows.
-	root := os.Getenv(InstallRootEnvvar)
-	if root == "" {
-		return DefaultInstallRoot
-	}
-	return root
-}
 
 // EnvPath returns a path to the given environment's default location.
 func EnvPath(env tokens.QName) string {
@@ -77,17 +61,6 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		// See if there's a compiled package in the expected location.
-		pack := filepath.Join(curr, Dir, BinDir, PackFile)
-		for _, ext := range encoding.Exts {
-			packfile := pack + ext
-			if IsPack(packfile, d) {
-				return packfile, nil
-			}
-		}
-
-		// Now look for uncompiled project files.
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
@@ -124,12 +97,6 @@ func IsLumiDir(path string) bool {
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func IsProject(path string, d diag.Sink) bool {
 	return isMarkupFile(path, ProjectFile, d)
-}
-
-// IsPack returns true if the path references what appears to be a valid package.  If problems are detected -- like
-// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsPack(path string, d diag.Sink) bool {
-	return isMarkupFile(path, PackFile, d)
 }
 
 // IsSettings returns true if the path references what appears to be a valid settings file.  If problems are detected --

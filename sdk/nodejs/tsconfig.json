@@ -1,0 +1,49 @@
+{
+    "compilerOptions": {
+        "outDir": "bin",
+        "target": "es6",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "pretty": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "forceConsistentCasingInFileNames": true,
+        "strictNullChecks": true
+    },
+    "files": [
+        "index.ts",
+        "computed.ts",
+        "config.ts",
+        "resource.ts",
+
+        "asset/index.ts",
+        "asset/asset.ts",
+        "asset/archive.ts",
+
+        "runtime/index.ts",
+        "runtime/closure.ts",
+        "runtime/config.ts",
+        "runtime/debuggable.ts",
+        "runtime/langhost.ts",
+        "runtime/log.ts",
+        "runtime/property.ts",
+        "runtime/resource.ts",
+        "runtime/settings.ts",
+
+        "cmd/langhost/index.ts",
+        "cmd/langhost/run.ts",
+
+        "tests/config.spec.ts",
+        "tests/init.spec.ts",
+        "tests/util.ts",
+        "tests/runtime/closure.spec.ts",
+        "tests/runtime/computed.spec.ts",
+        "tests/runtime/langhost/run.spec.ts"
+    ]
+}
+

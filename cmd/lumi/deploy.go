@@ -15,7 +15,6 @@ func newDeployCmd() *cobra.Command {
 	var dryRun bool
 	var env string
 	var showConfig bool
-	var showReads bool
 	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
@@ -42,7 +41,6 @@ func newDeployCmd() *cobra.Command {
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				ShowConfig:           showConfig,
-				ShowReads:            showReads,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
@@ -65,9 +63,6 @@ func newDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
-	cmd.PersistentFlags().BoolVar(
-		&showReads, "show-reads", false,
-		"Show resources that will be read, in addition to those that will be modified")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", true,
 		"Show detailed resource replacement creates and deletes instead of a single step")

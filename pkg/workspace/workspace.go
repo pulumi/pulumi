@@ -11,9 +11,8 @@ import (
 	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
 	"github.com/pulumi/pulumi-fabric/pkg/encoding"
-	"github.com/pulumi/pulumi-fabric/pkg/pack"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
@@ -21,21 +20,20 @@ import (
 // W offers functionality for interacting with Lumi workspaces.  A workspace influences compilation; for example, it
 // can specify default versions of dependencies, easing the process of working with multiple projects.
 type W interface {
-	Path() string        // the base path of the current workspace.
-	Root() string        // the root path of the current workspace.
-	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
-
-	DetectPackage() (string, error)             // locates the nearest project file in the directory hierarchy.
-	DepCandidates(dep pack.PackageURL) []string // fetches all candidate locations for a dependency's artifacts.
-	Save() error                                // saves any modifications to the workspace.
+	Path() string                   // the base path of the current workspace.
+	Root() string                   // the root path of the current workspace.
+	Settings() *Settings            // returns a mutable pointer to the optional workspace settings info.
+	DetectPackage() (string, error) // locates the nearest project file in the directory hierarchy.
+	Save() error                    // saves any modifications to the workspace.
 }
 
 // New creates a new workspace from the given starting path.
-func New(ctx *core.Context) (W, error) {
-	contract.Requiref(ctx != nil, "ctx", "!= nil")
+func New(path string, diag diag.Sink) (W, error) {
+	contract.Requiref(diag != nil, "diag", "!= nil")
 
 	// First normalize the path to an absolute one.
-	path, err := filepath.Abs(ctx.Path)
+	var err error
+	path, err = filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +44,7 @@ func New(ctx *core.Context) (W, error) {
 	}
 
 	ws := workspace{
-		ctx:  ctx,
+		diag: diag,
 		path: path,
 		home: home,
 	}
@@ -60,11 +58,11 @@ func New(ctx *core.Context) (W, error) {
 }
 
 type workspace struct {
-	ctx      *core.Context // the shared compiler context object.
-	path     string        // the path at which the workspace was constructed.
-	home     string        // the home directory to use for this workspace.
-	root     string        // the root of the workspace.
-	settings Settings      // an optional bag of workspace-wide settings.
+	diag     diag.Sink // the diagnostics sink to use for messages.
+	path     string    // the path at which the workspace was constructed.
+	home     string    // the home directory to use for this workspace.
+	root     string    // the root of the workspace.
+	settings Settings  // an optional bag of workspace-wide settings.
 }
 
 // init finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
@@ -82,7 +80,7 @@ func (w *workspace) init() error {
 				// A lumi directory delimits the root of the workspace.
 				lumidir := filepath.Join(root, file.Name())
 				if IsLumiDir(lumidir) {
-					glog.V(3).Infof("Lumi workspace detected; setting root to %v", w.root)
+					glog.V(3).Infof("Lumi workspace detected; setting root to %v", root)
 					w.root = root                      // remember the root.
 					w.settings, err = w.readSettings() // load up optional settings.
 					if err != nil {
@@ -110,59 +108,7 @@ func (w *workspace) Root() string        { return w.root }
 func (w *workspace) Settings() *Settings { return &w.settings }
 
 func (w *workspace) DetectPackage() (string, error) {
-	return DetectPackage(w.path, w.ctx.Diag)
-}
-
-func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
-	// The search order for dependencies is specified in https://github.com/pulumi/pulumi-fabric/blob/master/docs/deps.md.
-	//
-	// Roughly speaking, these locations are are searched, in order:
-	//
-	// 		1. The current workspace, for intra-workspace but inter-package dependencies.
-	// 		2. The current workspace's .lumi/packs/ directory.
-	// 		3. The global workspace's .lumi/packs/ directory.
-	// 		4. The Lumi installation location's $LUMIROOT/lib/ directory (default /usr/local/lumi/lib).
-	//
-	// In each location, we prefer a fully qualified hit if it exists -- containing both the base of the reference plus
-	// the name -- however, we also accept name-only hits.  This allows developers to organize their workspace without
-	// worrying about where packages are hosted.  Most of the Lumi tools, however, prefer fully qualified paths.
-	//
-	// To be more precise, given a PackageRef r and a workspace root w, we look in these locations, in order:
-	//
-	//		1. w/base(r)/name(r)
-	//		2. w/name(r)
-	//		3. w/.lumi/packs/base(r)/name(r)
-	//		4. w/.lumi/packs/name(r)
-	//		5. ~/.lumi/packs/base(r)/name(r)
-	//		6. ~/.lumi/packs/name(r)
-	//		7. $LUMIROOT/lib/base(r)/name(r)
-	//		8. $LUMIROOT/lib/name(r)
-	//
-	// A workspace may optionally have a namespace, in which case, we will also look for stacks in the workspace whose
-	// name is simplified to omit that namespace part.  For example, if a stack is named `mu/project/stack`, and the
-	// workspace namespace is `mu/`, then we will search `w/project/stack`; if the workspace is `mu/project/`, then we
-	// will search `w/stack`; and so on.  This helps to avoid needing to deeply nest workspaces needlessly.
-	//
-	// The following code simply produces an array of these candidate locations, in order.
-
-	dep = dep.Defaults() // ensure we use defaults in the pathing.
-	base := stringNamePath(dep.Base)
-	name := packageNamePath(dep.Name)
-	wsname := workspacePath(w, dep.Name)
-
-	// For each extension we support, add the same set of search locations.
-	cands := make([]string, 0, 4*len(encoding.Exts))
-	for _, ext := range encoding.Exts {
-		cands = append(cands, filepath.Join(w.root, base, name, PackFile+ext))
-		cands = append(cands, filepath.Join(w.root, wsname, PackFile+ext))
-		cands = append(cands, filepath.Join(w.root, Dir, DepDir, base, name, PackFile+ext))
-		cands = append(cands, filepath.Join(w.root, Dir, DepDir, name, PackFile+ext))
-		cands = append(cands, filepath.Join(w.home, Dir, DepDir, base, name, PackFile+ext))
-		cands = append(cands, filepath.Join(w.home, Dir, DepDir, name, PackFile+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, PackFile+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, PackFile+ext))
-	}
-	return cands
+	return DetectPackage(w.path, w.diag)
 }
 
 // qnamePath just cleans a name and makes sure it's appropriate to use as a path.
@@ -170,26 +116,9 @@ func qnamePath(nm tokens.QName) string {
 	return stringNamePath(string(nm))
 }
 
-// packageNamePath just cleans a package name and makes sure it's appropriate to use as a path.
-func packageNamePath(nm tokens.PackageName) string {
-	return stringNamePath(string(nm))
-}
-
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
 	return strings.Replace(nm, tokens.QNameDelimiter, string(os.PathSeparator), -1)
-}
-
-// workspacePath converts a name into the relevant name-part in the workspace to look for that dependency.
-func workspacePath(w *workspace, nm tokens.PackageName) string {
-	if ns := w.Settings().Namespace; ns != "" {
-		// If the name starts with the namespace, trim the name part.
-		orig := string(nm)
-		if trim := strings.TrimPrefix(orig, ns+tokens.QNameDelimiter); trim != orig {
-			return stringNamePath(trim)
-		}
-	}
-	return packageNamePath(nm)
 }
 
 // Save persists any in-memory changes made to the workspace.

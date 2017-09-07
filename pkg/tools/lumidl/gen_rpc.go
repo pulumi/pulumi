@@ -111,7 +111,7 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/tokens"`)
 			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/util/contract"`)
 			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/util/mapper"`)
-			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"`)
+			w.Writefmtln(`    lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"`)
 		}
 
 		if len(g.FileImports) > 0 {

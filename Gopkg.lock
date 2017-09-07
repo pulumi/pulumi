@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  name = "github.com/blang/semver"
-  packages = ["."]
-  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
-  version = "v3.5.1"
-
-[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -130,6 +124,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a6428585b976403675ace7a19e1f07f8aa1bb4464c0ae94c8aa1bc3ed7cca9bd"
+  inputs-digest = "9cb2e03c2edd4818463dfbb6be9219bf1a15e790072b0fbf258bca11a1397d56"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -8,13 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
 	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
-	"github.com/pulumi/pulumi-fabric/pkg/pack"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
@@ -31,7 +25,7 @@ func TestNullPlan(t *testing.T) {
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, nil, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
-	iter, err := plan.Iterate()
+	iter, err := plan.Start()
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
 	next, err := iter.Next()
@@ -52,7 +46,7 @@ func TestErrorPlan(t *testing.T) {
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
-		iter, err := plan.Iterate()
+		iter, err := plan.Start()
 		assert.Nil(t, iter)
 		assert.NotNil(t, err)
 		assert.Equal(t, "ITERATE", err.Error())
@@ -67,7 +61,7 @@ func TestErrorPlan(t *testing.T) {
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
-		iter, err := plan.Iterate()
+		iter, err := plan.Start()
 		assert.Nil(t, err)
 		assert.NotNil(t, iter)
 		next, err := iter.Next()
@@ -89,6 +83,10 @@ func (src *errorSource) Close() error {
 	return nil // nothing to do.
 }
 
+func (src *errorSource) Pkg() tokens.PackageName {
+	return ""
+}
+
 func (src *errorSource) Info() interface{} {
 	return nil
 }
@@ -108,42 +106,27 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Produce(res *resource.Object) {
-	// nothing to do.
-}
-
-func (iter *errorSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
-	return nil, nil, iter.src.err
+func (iter *errorSourceIterator) Next() (SourceGoal, error) {
+	return nil, iter.src.err
 }
 
 // TestBasicCRUDPlan creates a plan with numerous C(R)UD operations.
 func TestBasicCRUDPlan(t *testing.T) {
 	t.Parallel()
 
-	// Setup a fake namespace/target combination.
-	targ := &Target{Name: tokens.QName("crud")}
-	ns := targ.Name
-	base := fakeResourceBase()
-	pkg, mod, newResourceType := fakeTestResources(tokens.PackageName("testcrud"), tokens.ModuleName("index"))
-
 	// Create a context that the snapshots and plan will use.
+	pkg := tokens.Package("testcrud")
 	ctx, err := plugin.NewContext(cmdutil.Diag(), &testProviderHost{
 		provider: func(propkg tokens.Package) (plugin.Provider, error) {
-			if propkg != pkg.Tok {
+			if propkg != pkg {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
 			}
 			return &testProvider{
-				check: func(t tokens.Type,
+				check: func(urn resource.URN,
 					props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, nil // accept all changes.
 				},
-				name: func(_ tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
-					name, has := props["name"]
-					assert.True(t, has)
-					assert.True(t, name.IsString())
-					return tokens.QName(name.StringValue()), nil
-				},
-				diff: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
+				diff: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
 					news resource.PropertyMap) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil // accept all changes.
 				},
@@ -153,35 +136,39 @@ func TestBasicCRUDPlan(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
+	// Setup a fake namespace/target combination.
+	targ := &Target{Name: tokens.QName("crud")}
+	ns := targ.Name
+	mod := tokens.Module(pkg + ":index")
+	pkgname := pkg.Name()
+
 	// Some shared tokens and names.
-	typA := newResourceType(tokens.TypeName("A"), base)
+	typA := tokens.Type(mod + ":A")
 	namA := tokens.QName("res-a")
-	urnA := resource.NewURN(ns, mod.Tok, typA.Tok, namA)
-	typB := newResourceType(tokens.TypeName("B"), base)
+	urnA := resource.NewURN(ns, pkgname, typA, namA)
+	typB := tokens.Type(mod + ":B")
 	namB := tokens.QName("res-b")
-	urnB := resource.NewURN(ns, mod.Tok, typB.Tok, namB)
-	typC := newResourceType(tokens.TypeName("C"), base)
+	urnB := resource.NewURN(ns, pkgname, typB, namB)
+	typC := tokens.Type(mod + ":C")
 	namC := tokens.QName("res-c")
-	urnC := resource.NewURN(ns, mod.Tok, typC.Tok, namC)
-	typD := newResourceType(tokens.TypeName("D"), base)
+	urnC := resource.NewURN(ns, pkgname, typC, namC)
+	typD := tokens.Type(mod + ":D")
 	namD := tokens.QName("res-d")
-	urnD := resource.NewURN(ns, mod.Tok, typD.Tok, namD)
+	urnD := resource.NewURN(ns, pkgname, typD, namD)
 
 	// Create the old resources snapshot.
-	oldResB := resource.NewState(typB.Tok, urnB, resource.ID("b-b-b"),
+	oldResB := resource.NewState(typB, urnB, resource.ID("b-b-b"),
 		resource.PropertyMap{
-			"name": resource.NewStringProperty(namB.String()),
-			"bf1":  resource.NewStringProperty("b-value"),
-			"bf2":  resource.NewNumberProperty(42),
+			"bf1": resource.NewStringProperty("b-value"),
+			"bf2": resource.NewNumberProperty(42),
 		},
 		make(resource.PropertyMap),
 		nil,
 	)
-	oldResC := resource.NewState(typC.Tok, urnC, resource.ID("c-c-c"),
+	oldResC := resource.NewState(typC, urnC, resource.ID("c-c-c"),
 		resource.PropertyMap{
-			"name": resource.NewStringProperty(namC.String()),
-			"cf1":  resource.NewStringProperty("c-value"),
-			"cf2":  resource.NewNumberProperty(83),
+			"cf1": resource.NewStringProperty("c-value"),
+			"cf2": resource.NewNumberProperty(83),
 		},
 		make(resource.PropertyMap),
 		resource.PropertyMap{
@@ -189,11 +176,10 @@ func TestBasicCRUDPlan(t *testing.T) {
 			"outta234": resource.NewNumberProperty(99881122),
 		},
 	)
-	oldResD := resource.NewState(typD.Tok, urnD, resource.ID("d-d-d"),
+	oldResD := resource.NewState(typD, urnD, resource.ID("d-d-d"),
 		resource.PropertyMap{
-			"name": resource.NewStringProperty(namD.String()),
-			"df1":  resource.NewStringProperty("d-value"),
-			"df2":  resource.NewNumberProperty(167),
+			"df1": resource.NewStringProperty("d-value"),
+			"df2": resource.NewNumberProperty(167),
 		},
 		make(resource.PropertyMap),
 		nil,
@@ -202,41 +188,36 @@ func TestBasicCRUDPlan(t *testing.T) {
 
 	// Create the new resource objects a priori.
 	//     - A is created:
-	newObjA := rt.NewObject(typA, nil, nil, nil)
-	newObjA.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namA.String()), false, nil, nil)
-	newObjA.Properties().InitAddr(rt.PropertyKey("af1"), rt.NewStringObject("a-value"), false, nil, nil)
-	newObjA.Properties().InitAddr(rt.PropertyKey("af2"), rt.NewNumberObject(42), false, nil, nil)
-	newResA := resource.NewObject(newObjA)
-	newResAProps := newResA.CopyProperties()
+	newResA := resource.NewGoal(typA, namA, resource.PropertyMap{
+		"af1": resource.NewStringProperty("a-value"),
+		"af2": resource.NewNumberProperty(42),
+	})
+	newStateA := &testSourceGoal{Goal: newResA}
 	//     - B is updated:
-	newObjB := rt.NewObject(typB, nil, nil, nil)
-	newObjB.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namB.String()), false, nil, nil)
-	newObjB.Properties().InitAddr(rt.PropertyKey("bf1"), rt.NewStringObject("b-value"), false, nil, nil)
-	// delete the bf2 field, and add bf3.
-	newObjB.Properties().InitAddr(rt.PropertyKey("bf3"), rt.True, false, nil, nil)
-	newResB := resource.NewObject(newObjB)
-	newResBProps := newResB.CopyProperties()
+	newResB := resource.NewGoal(typB, namB, resource.PropertyMap{
+		"bf1": resource.NewStringProperty("b-value"),
+		// delete the bf2 field, and add bf3.
+		"bf3": resource.NewBoolProperty(true),
+	})
+	newStateB := &testSourceGoal{Goal: newResB}
 	//     - C has no changes:
-	newObjC := rt.NewObject(typC, nil, nil, nil)
-	newObjC.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namC.String()), false, nil, nil)
-	newObjC.Properties().InitAddr(rt.PropertyKey("cf1"), rt.NewStringObject("c-value"), false, nil, nil)
-	newObjC.Properties().InitAddr(rt.PropertyKey("cf2"), rt.NewNumberObject(83), false, nil, nil)
-	newObjC.Properties().InitAddr(rt.PropertyKey("outta234"),
-		rt.NewComputedObject(types.Dynamic, false, []*rt.Object{newObjC}), false, nil, nil)
-	newResC := resource.NewObject(newObjC)
-	newResCProps := newResC.CopyProperties()
+	newResC := resource.NewGoal(typC, namC, resource.PropertyMap{
+		"cf1": resource.NewStringProperty("c-value"),
+		"cf2": resource.NewNumberProperty(83),
+	})
+	newStateC := &testSourceGoal{Goal: newResC}
 	//     - No D; it is deleted.
 
 	// Use a fixed source that just returns the above predefined objects during planning.
-	new := NewFixedSource(mod.Tok, []*resource.Object{newResA, newResB, newResC})
+	source := NewFixedSource(pkgname, []SourceGoal{newStateA, newStateB, newStateC})
 
 	// Next up, create a plan from the new and old, and validate its shape.
-	plan := NewPlan(ctx, targ, oldsnap, new, nil)
+	plan := NewPlan(ctx, targ, oldsnap, source, nil)
 
 	// Next, validate the steps and ensure that we see all of the expected ones.  Note that there aren't any
 	// dependencies between the steps, so we must validate it in a way that's insensitive of order.
 	seen := make(map[StepOp]int)
-	iter, err := plan.Iterate()
+	iter, err := plan.Start()
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
 	for {
@@ -252,81 +233,78 @@ func TestBasicCRUDPlan(t *testing.T) {
 		var urn resource.URN
 		var realID bool
 		var expectOuts resource.PropertyMap
-		var obj *resource.Object
+		var state *testSourceGoal
 		switch s := step.(type) {
 		case *CreateStep: // A is created
 			old := s.Old()
-			new := s.Obj()
 			assert.Nil(t, old)
+			new := s.New()
 			assert.NotNil(t, new)
-			assert.Equal(t, newResAProps, s.New().Inputs)
-			assert.Equal(t, newResAProps, s.New().AllInputs())
-			obj, urn, realID = new, urnA, false
+			assert.Equal(t, urnA, new.URN)
+			assert.Equal(t, newResA.Properties, new.Inputs)
+			assert.Equal(t, newResA.Properties, new.AllInputs())
+			state, urn, realID = newStateA, urnA, false
 		case *UpdateStep: // B is updated
 			old := s.Old()
-			new := s.Obj()
 			assert.NotNil(t, old)
-			assert.Equal(t, urnB, old.URN())
+			assert.Equal(t, urnB, old.URN)
 			assert.Equal(t, oldResB, old)
+			new := s.New()
 			assert.NotNil(t, new)
-			assert.Equal(t, newResBProps, s.New().Inputs)
-			assert.Equal(t, newResBProps, s.New().AllInputs())
-			obj, urn, realID = new, urnB, true
+			assert.Equal(t, urnB, new.URN)
+			assert.Equal(t, newResB.Properties, new.Inputs)
+			assert.Equal(t, newResB.Properties, new.AllInputs())
+			state, urn, realID = newStateB, urnB, true
 		case *SameStep: // C is the same
 			old := s.Old()
-			new := s.Obj()
 			assert.NotNil(t, old)
-			assert.Equal(t, urnC, old.URN())
+			assert.Equal(t, urnC, old.URN)
 			assert.Equal(t, oldResC, old)
-			assert.NotNil(t, new)
-			assert.Equal(t, newResCProps, s.New().Inputs)
-			assert.Equal(t, newResCProps, s.New().AllInputs())
-			obj, urn, realID, expectOuts = new, urnC, true, oldResC.Outputs
+			new := s.New()
+			assert.NotNil(t, s.New())
+			assert.Equal(t, urnC, new.URN)
+			assert.Equal(t, newResC.Properties, new.Inputs)
+			assert.Equal(t, newResC.Properties, new.AllInputs())
+			state, urn, realID, expectOuts = newStateC, urnC, true, oldResC.Outputs
 		case *DeleteStep: // D is deleted
 			old := s.Old()
-			new := s.New()
 			assert.NotNil(t, old)
-			assert.Equal(t, urnD, old.URN())
+			assert.Equal(t, urnD, old.URN)
 			assert.Equal(t, oldResD, old)
+			new := s.New()
 			assert.Nil(t, new)
 		default:
 			t.FailNow() // unexpected step kind.
 		}
 
-		if obj != nil {
-			// Ensure the ID and URN aren't assigned until we step.
-			assert.False(t, obj.HasID())
-			assert.False(t, obj.HasURN())
-			if expectOuts != nil {
-				for k := range expectOuts {
-					outprop := obj.Obj().Properties().GetAddr(rt.PropertyKey(k))
-					if outprop != nil {
-						outobj := outprop.Obj()
-						assert.NotNil(t, outobj)
-						assert.True(t, outobj.IsNull() || outobj.IsComputed())
-					}
-				}
-			}
+		if state != nil {
+			// Ensure the state is empty until until we step.
+			assert.Nil(t, state.State)
 		}
 
 		err = step.Skip()
 		assert.Nil(t, err)
 
 		op := step.Op()
-		if obj != nil {
-			// Ensure the ID and URN are populated correctly.
+		if state != nil {
+			// The state should be non-nil by now.
+			assert.NotNil(t, state.State)
+
+			// Ensure the ID, URN, and properties are populated correctly.
 			if realID {
-				assert.True(t, obj.HasID(), "Expected op %v to populate a real ID (%v)", op, urn)
+				assert.NotEqual(t, resource.ID(""), state.State.ID,
+					"Expected op %v to populate a real ID (%v)", op, urn)
+			} else {
+				assert.Equal(t, resource.ID(""), state.State.ID,
+					"Expected op %v to leave ID blank (%v); got %v", op, urn, state.State.ID)
 			}
-			assert.True(t, obj.HasURN(), "Expected op %v to populate a URN (%v)", op, urn)
-			assert.Equal(t, urn, obj.URN())
+			assert.Equal(t, urn, state.State.URN,
+				"Expected op %v to populate a URN equal to %v", op, urn)
+
 			if expectOuts != nil {
+				props := state.State.All()
 				for k := range expectOuts {
-					outprop := obj.Obj().Properties().GetAddr(rt.PropertyKey(k))
-					assert.NotNil(t, outprop)
-					outobj := outprop.Obj()
-					assert.NotNil(t, outobj)
-					assert.False(t, outobj.IsNull())
+					assert.Equal(t, expectOuts[k], props[k])
 				}
 			}
 		}
@@ -338,8 +316,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.Equal(t, 1, seen[OpDelete])
 	assert.Equal(t, 0, seen[OpReplace])
 	assert.Equal(t, 0, seen[OpDeleteReplaced])
-	assert.Equal(t, 0, seen[OpGet])
-	assert.Equal(t, 0, seen[OpQuery])
 
 	assert.Equal(t, 1, len(iter.Creates()))
 	assert.True(t, iter.Creates()[urnA])
@@ -352,40 +328,24 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.True(t, iter.Deletes()[urnD])
 }
 
-// fakeResourceBase news up a resource type so that it looks like a predefined resource type.
-func fakeResourceBase() symbols.Type {
-	_, _, fact := fakeTestResources(predef.LumiStdlib.Name(), predef.LumiStdlibResourceClass.Module().Name())
-	return fact(predef.LumiStdlibResourceClass.Name(), nil)
+type testSourceGoal struct {
+	Goal  *resource.Goal
+	State *resource.State
 }
 
-// fakeTestResources creates a fake package, module, and factory for resource types.
-func fakeTestResources(pkgnm tokens.PackageName,
-	modnm tokens.ModuleName) (*symbols.Package, *symbols.Module, func(tokens.TypeName, symbols.Type) *symbols.Class) {
-	pkg := symbols.NewPackageSym(&pack.Package{
-		Name: pkgnm,
-	})
-	mod := symbols.NewModuleSym(&ast.Module{
-		DefinitionNode: ast.DefinitionNode{
-			Name: &ast.Identifier{Ident: tokens.Name(modnm)},
-		},
-	}, pkg)
-	pkg.Modules[mod.Tok.Name()] = mod
-	return pkg, mod, func(tynm tokens.TypeName, base symbols.Type) *symbols.Class {
-		cls := symbols.NewClassSym(&ast.Class{
-			ModuleMemberNode: ast.ModuleMemberNode{
-				DefinitionNode: ast.DefinitionNode{
-					Name: &ast.Identifier{Ident: tokens.Name(tynm)},
-				},
-			},
-		}, mod, base, nil)
-		mod.Members[cls.MemberName()] = cls
-		return cls
-	}
+func (g *testSourceGoal) Resource() *resource.Goal {
+	return g.Goal
+}
+
+func (g *testSourceGoal) Done(state *resource.State, stable bool) {
+	contract.Assertf(g.State == nil, "Attempt to invoke testSourceGoal.Done more than once")
+	g.State = state
 }
 
 type testProviderHost struct {
 	analyzer func(nm tokens.QName) (plugin.Analyzer, error)
 	provider func(pkg tokens.Package) (plugin.Provider, error)
+	langhost func(runtime string, monitorAddr string) (plugin.LanguageRuntime, error)
 }
 
 func (host *testProviderHost) Close() error {
@@ -410,17 +370,19 @@ func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error)
 func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, error) {
 	return host.provider(pkg)
 }
+func (host *testProviderHost) LanguageRuntime(runtime string, monitorAddr string) (plugin.LanguageRuntime, error) {
+	return host.langhost(runtime, monitorAddr)
+}
 
 type testProvider struct {
 	pkg    tokens.Package
-	check  func(tokens.Type, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
-	name   func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
-	create func(tokens.Type, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
-	get    func(tokens.Type, resource.ID) (resource.PropertyMap, error)
-	diff   func(tokens.Type, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
-	update func(tokens.Type, resource.ID,
+	config func(map[tokens.ModuleMember]string) error
+	check  func(resource.URN, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	create func(resource.URN, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
+	diff   func(resource.URN, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
+	update func(resource.URN, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
-	delete func(tokens.Type, resource.ID, resource.PropertyMap) (resource.Status, error)
+	delete func(resource.URN, resource.ID, resource.PropertyMap) (resource.Status, error)
 }
 
 func (prov *testProvider) Close() error {
@@ -429,28 +391,26 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
-func (prov *testProvider) Check(t tokens.Type,
+func (prov *testProvider) Configure(vars map[tokens.ModuleMember]string) error {
+	return prov.config(vars)
+}
+func (prov *testProvider) Check(urn resource.URN,
 	props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return prov.check(t, props)
+	return prov.check(urn, props)
 }
-func (prov *testProvider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
-	return prov.name(t, props)
-}
-func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID,
+func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
-	return prov.create(t, props)
+	return prov.create(urn, props)
 }
-func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error) {
-	return prov.get(t, id)
-}
-func (prov *testProvider) Diff(t tokens.Type, id resource.ID,
+func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (plugin.DiffResult, error) {
-	return prov.diff(t, id, olds, news)
+	return prov.diff(urn, id, olds, news)
 }
-func (prov *testProvider) Update(t tokens.Type, id resource.ID,
+func (prov *testProvider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
-	return prov.update(t, id, olds, news)
+	return prov.update(urn, id, olds, news)
 }
-func (prov *testProvider) Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
-	return prov.delete(t, id, props)
+func (prov *testProvider) Delete(urn resource.URN,
+	id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	return prov.delete(urn, id, props)
 }
