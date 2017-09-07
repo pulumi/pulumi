@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	goerr "github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
@@ -111,7 +113,7 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 	}
 	if !eng.Diag().Success() {
 		// If any error that wasn't printed above, be sure to make it evident in the output.
-		return errors.New("One or more errors occurred during this deployment")
+		return goerr.New("One or more errors occurred during this deployment")
 	}
 	return nil
 }
