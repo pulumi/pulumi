@@ -3,8 +3,6 @@
     "version": "0.0.1",
     "description": "Pulumi's Fabric Node.js SDK",
     "repository": "https://github.com/pulumi/pulumi-fabric/sdk/nodejs",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
     "scripts": {
         "clean": "rm -rf bin/ && rm -rf runtime/native/build",
         "build": "yarn run copyprotos && yarn run buildnative && tsc && yarn run binplace && yarn run lint",

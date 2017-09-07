@@ -26,5 +26,6 @@ build:
 .PHONY: install
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	yarn link
+	cp package.json bin/
+	cd bin/ && yarn link
 
