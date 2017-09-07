@@ -1,5 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { debuggablePromise } from "./debuggable";
+
 // configured is set to true once configuration has been set.
 let configured: boolean;
 
@@ -49,15 +51,30 @@ export function configure(m: Object | undefined, e: Object | undefined, dr: bool
     configured = true;
 }
 
-// disconnect permanently disconnects from the server, closing the connections.
+// disconnect permanently disconnects from the server, closing the connections.  It waits for the existing RPC
+// queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
 export function disconnect(): void {
-    if (monitor) {
-        (<any>monitor).close();
-        monitor = undefined;
-    }
-    if (engine) {
-        (<any>engine).close();
-        engine = undefined;
-    }
+    debuggablePromise(rpcDone.then(() => {
+        if (monitor) {
+            (<any>monitor).close();
+            monitor = undefined;
+        }
+        if (engine) {
+            (<any>engine).close();
+            engine = undefined;
+        }
+    }));
+}
+
+// rpcDone resolves when the last known client-side RPC call finishes.
+let rpcDone: Promise<any> = Promise.resolve();
+
+// rpcKeepAlive registers a pending call to ensure that we don't prematurely disconnect from the server.  It returns
+// a function that, when invoked, signals that the RPC has completed.
+export function rpcKeepAlive(): () => void {
+    let done: (() => void) | undefined = undefined;
+    let donePromise = debuggablePromise(new Promise<void>((resolve) => { done = resolve; }));
+    rpcDone = rpcDone.then(() => donePromise);
+    return done!;
 }
 

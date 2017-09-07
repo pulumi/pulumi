@@ -6,7 +6,7 @@ import { ID, Resource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { isInsideMapValueCallback, Property } from "./property";
-import { getMonitor, isDryRun } from "./settings";
+import { getMonitor, isDryRun, rpcKeepAlive } from "./settings";
 
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -21,6 +21,9 @@ export function registerResource(
         throw new Error(
             `Illegal attempt to create a conditional resource '${name}' (type ${t}) inside a mapValue callback`);
     }
+
+    // Ensure the process won't exit until this registerResource call finishes.
+    let notAlive: () => void = rpcKeepAlive();
 
     // Store a URN and ID property, plus any passed in, on the resource object.  Note that we do these using
     // any casts because they are typically readonly and this function is in cahoots with the initialization process.
@@ -47,6 +50,7 @@ export function registerResource(
             req.setType(t);
             req.setName(name);
             req.setObject(obj);
+
             let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
                 monitor.newResource(req, (err: Error, resp: any) => {
                     Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
@@ -80,9 +84,14 @@ export function registerResource(
             }
         }
     ));
+
+    // If any errors make it this far, ensure we log them.
     resourceRegistered.catch((err: Error) => {
         Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
     });
+
+    // Ensure we mark the RPC as done no matter the outcome.
+    resourceRegistered.then(() => { notAlive(); }, () => { notAlive(); });
 }
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable

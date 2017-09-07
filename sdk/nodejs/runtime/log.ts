@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { getEngine } from "./settings";
+import { getEngine, rpcKeepAlive } from "./settings";
 let engproto = require("../proto/engine_pb.js");
 
 // Log offers the ability to log messages in a way that integrate tightly with the resource engine's interface.
@@ -49,7 +49,11 @@ export class Log {
         let req = new engproto.LogRequest();
         req.setSeverity(sev);
         req.setMessage(msg);
-        engine.log(req, () => {/*keep the msg loop alive until it gets delivered*/});
+        let notAlive: () => void = rpcKeepAlive();
+        engine.log(req, () => {
+            // keep the process alive until it gets delivered
+            notAlive();
+        });
     }
 }
 
