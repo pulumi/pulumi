@@ -24,7 +24,7 @@ install:
     # Now restore dependencies, build prerequisites, and generally make this thing ready to go.
     - make configure
 before_script:
-    - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/:$PATH
+    - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/bin:$PATH
     - export LUMIROOT=~/.lumi
 script:
     - if [ $TRAVIS_EVENT_TYPE = "cron" ]; then make nightly; else make; fi
