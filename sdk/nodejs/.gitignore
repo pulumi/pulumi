@@ -1,4 +1,5 @@
-/bin/
+/bin/*
+!/bin/pulumi-langhost-nodejs
 /coverage/
 /node_modules/
 /proto/

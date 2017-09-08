@@ -15,7 +15,6 @@ cp ${GOPATH}/bin/lumi ${PUBDIR}/bin/
 mkdir -p ${PUBDIR}/sdk/
 cp -R ${ROOT}/sdk/nodejs/bin/. ${PUBDIR}/sdk/nodejs/
 cp -R ${ROOT}/sdk/nodejs/node_modules/. ${PUBDIR}/sdk/nodejs/node_modules/
-cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/sdk/nodejs/
 echo sdk/nodejs/ >> ${PUBDIR}/packs.txt
 
 # Tar up the file and then print it out for use by the caller or script.
