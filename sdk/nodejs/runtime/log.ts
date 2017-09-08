@@ -49,11 +49,7 @@ export class Log {
         let req = new engproto.LogRequest();
         req.setSeverity(sev);
         req.setMessage(msg);
-        let notAlive: () => void = rpcKeepAlive();
-        engine.log(req, () => {
-            // keep the process alive until it gets delivered
-            notAlive();
-        });
+        engine.log(req, () => {/* do not keep the message loop alive; there is no need */});
     }
 }
 
