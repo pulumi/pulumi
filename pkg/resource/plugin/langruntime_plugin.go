@@ -63,13 +63,13 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		DryRun:  info.DryRun,
 	})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
+		glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			h.runtime, info.Pwd, info.Program, info.DryRun, err)
 		return "", err
 	}
 
 	progerr := resp.GetError()
-	glog.V(7).Infof("resource[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
+	glog.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
 		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
 	return progerr, nil
 }

@@ -41,7 +41,7 @@ function runRPC(call: any, callback: any): void {
     try {
         // Create an args array to pass to spawn, starting with just the run.js program.
         let args: string[] = [
-            path.join(__filename, "..", "..", "cmd", "langhost", "run.js"),
+            path.join(__filename, "..", "..", "cmd", "run"),
         ];
 
         // Serialize the config args using "--config.k=v" flags.

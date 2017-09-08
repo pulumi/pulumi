@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -72,23 +71,12 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
 
-	// Next fire up the language plugin.
-	// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
-	rt := src.runinfo.Pkg.Runtime
-	langhost, err := src.plugctx.Host.LanguageRuntime(rt, mon.Address())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to launch language host for '%v'", src.runinfo.Pkg.Runtime)
-	} else if langhost == nil {
-		return nil, errors.Errorf("could not load language plugin for '%v' from $PATH", rt)
-	}
-
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		mon:      mon,
-		langhost: langhost,
-		src:      src,
-		finchan:  make(chan error),
-		reschan:  reschan,
+		mon:     mon,
+		src:     src,
+		finchan: make(chan error),
+		reschan: reschan,
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -100,24 +88,16 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 }
 
 type evalSourceIterator struct {
-	mon      *resmon                // the resource monitor, per iterator.
-	langhost plugin.LanguageRuntime // the language host to use for program interactions.
-	src      *evalSource            // the owning eval source object.
-	finchan  chan error             // the channel that communicates completion.
-	reschan  chan *evalSourceGoal   // the channel that contains resource elements.
-	done     bool                   // set to true when the evaluation is done.
+	mon     *resmon              // the resource monitor, per iterator.
+	src     *evalSource          // the owning eval source object.
+	finchan chan error           // the channel that communicates completion.
+	reschan chan *evalSourceGoal // the channel that contains resource elements.
+	done    bool                 // set to true when the evaluation is done.
 }
 
 func (iter *evalSourceIterator) Close() error {
-	// Cancel the language host and monitor and reclaim any resources associated with them.
-	var result error
-	if err := iter.langhost.Close(); err != nil {
-		result = multierror.Append(err)
-	}
-	if err := iter.mon.Cancel(); err != nil {
-		result = multierror.Append(err)
-	}
-	return result
+	// Cancel the monitor and reclaim any associated resources.
+	return iter.mon.Cancel()
 }
 
 func (iter *evalSourceIterator) Next() (SourceGoal, error) {
@@ -152,28 +132,42 @@ func (iter *evalSourceIterator) Next() (SourceGoal, error) {
 
 // forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
 func (iter *evalSourceIterator) forkRun() {
-	if iter.src.destroy {
-		// If we are destroying, no need to perform any evaluation beyond the config initialization.
-	} else {
+	// If we are destroying, no need to perform any evaluation beyond the config initialization.
+	if !iter.src.destroy {
 		// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 		// to queue things up in the resource channel will occur, and we will serve them concurrently.
 		// FIXME: we need to ensure that out of order calls won't deadlock us.  In particular, we need to ensure: 1)
 		//    gRPC won't block the dispatching of calls, and 2) that the channel's fixed size won't cause troubles.
 		go func() {
-			progerr, err := iter.langhost.Run(plugin.RunInfo{
-				Pwd:     iter.src.runinfo.Pwd,
-				Program: iter.src.runinfo.Program,
-				Args:    iter.src.runinfo.Args,
-				Config:  iter.src.runinfo.Config,
-				DryRun:  iter.src.dryRun,
-			})
-			if err != nil || progerr == "" {
-				// Communicate the error, if it exists, or nil if the program exited cleanly.
-				iter.finchan <- err
+			// Next, launch the language plugin.
+			// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
+			rt := iter.src.runinfo.Pkg.Runtime
+			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, iter.mon.Address())
+			if err != nil {
+				err = errors.Wrapf(err, "failed to launch language host for '%v'", rt)
+			} else if langhost == nil {
+				err = errors.Errorf("could not load language plugin for '%v' from $PATH", rt)
 			} else {
-				// Otherwise, the program had an unhandled error; propagate it to the caller.
-				iter.finchan <- errors.Errorf("an unhandled error occurred: %v", progerr)
+				// Make sure to clean up before exiting.
+				defer contract.IgnoreClose(langhost)
+
+				// Now run the actual program.
+				var progerr string
+				progerr, err = langhost.Run(plugin.RunInfo{
+					Pwd:     iter.src.runinfo.Pwd,
+					Program: iter.src.runinfo.Program,
+					Args:    iter.src.runinfo.Args,
+					Config:  iter.src.runinfo.Config,
+					DryRun:  iter.src.dryRun,
+				})
+				if err == nil && progerr != "" {
+					// If the program had an unhandled error; propagate it to the caller.
+					err = errors.Errorf("an unhandled error occurred: %v", progerr)
+				}
 			}
+
+			// Communicate the error, if it exists, or nil if the program exited cleanly.
+			iter.finchan <- err
 		}()
 	}
 }

@@ -71,14 +71,10 @@ export function main(args: string[]): void {
         dryrun = true;
     }
 
-    // Ensure the monitor argument is present and, if so, connect to it.
-    let monitor: any;
+    // If there is a monitor argument, connect to it.
+    let monitor: any | undefined;
     let monitorAddr: string | undefined = argv["monitor"];
-    if (!monitorAddr) {
-        console.error("fatal: Missing required --monitor flag to connect to the resource monitor's RPC");
-        usage();
-        process.exit(-1);
-    } else {
+    if (monitorAddr) {
         monitor = new langrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
     }
 

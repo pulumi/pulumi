@@ -36,7 +36,7 @@
         "runtime/settings.ts",
 
         "cmd/langhost/index.ts",
-        "cmd/langhost/run.ts",
+        "cmd/run/index.ts",
 
         "tests/config.spec.ts",
         "tests/init.spec.ts",
