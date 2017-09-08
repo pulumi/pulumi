@@ -8,6 +8,6 @@ if [ ! -f $PUBLISH ]; then
     exit 1
 fi
 
-RELEASE_INFO=($(./make_release.sh))
+RELEASE_INFO=($($(dirname $0)/make_release.sh))
 ${PUBLISH} ${RELEASE_INFO[0]} pulumi-fabric ${RELEASE_INFO[@]:1}
 
