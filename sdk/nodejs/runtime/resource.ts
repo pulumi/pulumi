@@ -11,6 +11,9 @@ import { errorString, getMonitor, isDryRun, rpcKeepAlive } from "./settings";
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
+// excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
+let excessiveDebugOutput: boolean = false;
+
 // resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
 // entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
 // causes problems with some resource providers, so for now we will serialize all of them.  The issue
@@ -22,7 +25,9 @@ let resourceChain: Promise<void> = Promise.resolve();
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
     res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): void {
-        Log.debug(`Registering resource: t=${t}, name=${name}, props=${JSON.stringify(props)}`);
+    Log.debug(
+        `Registering resource: t=${t}, name=${name}` +
+        excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
     if (isInsideMapValueCallback()) {
         throw new Error(
             `Illegal attempt to create a conditional resource '${name}' (type ${t}) inside a mapValue callback`);
@@ -213,7 +218,9 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 // appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
 async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     if (prop === undefined) {
-        Log.debug(`Serialize property [${ctx}]: undefined`);
+        if (excessiveDebugOutput) {
+            Log.debug(`Serialize property [${ctx}]: undefined`);
+        }
         if (!isDryRun()) {
             throw new Error("Unexpected unknown property during deployment");
         }
@@ -221,20 +228,26 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     }
     else if (prop === null || typeof prop === "boolean" ||
             typeof prop === "number" || typeof prop === "string") {
-        Log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
+        if (excessiveDebugOutput) {
+            Log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
+        }
         return prop;
     }
     else if (prop instanceof Array) {
         let elems: any[] = [];
         for (let i = 0; i < prop.length; i++) {
-            Log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            if (excessiveDebugOutput) {
+                Log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            }
             elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`));
         }
         return elems;
     }
     else if (prop instanceof Resource) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
-        Log.debug(`Serialize property [${ctx}]: resource ID`);
+        if (excessiveDebugOutput) {
+            Log.debug(`Serialize property [${ctx}]: resource ID`);
+        }
         return serializeProperty(prop.id, `${ctx}.id`);
     }
     else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
@@ -244,24 +257,32 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
             [specialSigKey]: (prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig),
         };
         for (let k of Object.keys(prop)) {
-            Log.debug(`Serialize property [${ctx}]: asset.${k}`);
+            if (excessiveDebugOutput) {
+                Log.debug(`Serialize property [${ctx}]: asset.${k}`);
+            }
             obj[k] = await serializeProperty((<any>prop)[k], `asset<${ctx}>.${k}`);
         }
         return obj;
     }
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
-        Log.debug(`Serialize property [${ctx}]: promise<T>`);
+        if (excessiveDebugOutput) {
+            Log.debug(`Serialize property [${ctx}]: promise<T>`);
+        }
         return serializeProperty(await prop, `promise<${ctx}>`);
     }
     else if (prop instanceof Property) {
         // For properties, wait for the output values to become available, and then serialize them.
-        Log.debug(`Serialize property [${ctx}]: property<T>`);
+        if (excessiveDebugOutput) {
+            Log.debug(`Serialize property [${ctx}]: property<T>`);
+        }
         return serializeProperty(await prop.outputPromise, `property<${ctx}>`);
     }
     else if ((prop as Computed<any>).mapValue !== undefined) {
         // For arbitrary computed values, wire up a handler to await their resolution and then serialize the value.
-        Log.debug(`Serialize property [${ctx}]: computed<T>`);
+        if (excessiveDebugOutput) {
+            Log.debug(`Serialize property [${ctx}]: computed<T>`);
+        }
         let value: any = await debuggablePromise(new Promise<any>((resolve) => {
             (prop as Computed<any>).mapValue(async (v: any) => { resolve(v); });
         }));
@@ -270,7 +291,9 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     else {
         let obj: any = {};
         for (let k of Object.keys(prop)) {
-            Log.debug(`Serialize property [${ctx}]: object.${k}`);
+            if (excessiveDebugOutput) {
+                Log.debug(`Serialize property [${ctx}]: object.${k}`);
+            }
             obj[k] = await serializeProperty(prop[k], `${ctx}.${k}`);
         }
         return obj;
