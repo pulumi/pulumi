@@ -108,7 +108,9 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			_ = eng.Environment.SaveEnvironment(targ, summary.Snap())
 
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if !eng.Diag().Success() {

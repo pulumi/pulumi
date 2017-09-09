@@ -21,7 +21,9 @@ type Engine struct {
 
 func (e *Engine) Diag() diag.Sink {
 	if e.snk == nil {
-		e.InitDiag(diag.FormatOptions{})
+		e.InitDiag(diag.FormatOptions{
+			Colors: true,
+		})
 	}
 
 	return e.snk
