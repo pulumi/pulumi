@@ -2,6 +2,16 @@
 
 import { debuggablePromise } from "./debuggable";
 
+// includeStacks dictates whether we include full stack traces in resource errors or not.
+let includeStacks: boolean = true;
+
+export function errorString(err: Error): string {
+    if (includeStacks && err.stack) {
+        return err.stack;
+    }
+    return err.toString();
+}
+
 // configured is set to true once configuration has been set.
 let configured: boolean;
 

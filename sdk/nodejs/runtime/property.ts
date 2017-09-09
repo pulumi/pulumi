@@ -5,7 +5,7 @@ import { Computed, MaybeComputed } from "../computed";
 import { Resource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
-import { getMonitor, isDryRun } from "./settings";
+import { errorString, getMonitor, isDryRun } from "./settings";
 
 // mapValueCallbackRecursionCount tracks the recursion depth inside of mapValue callbacks.  This is used to
 // prevent resource creation inside of such callbacks, as doing so leads to conditional resource creation.
@@ -77,15 +77,16 @@ export class Property<T> implements Computed<T> {
 
         // Fire off a promise hinging on the target's output that will resolve the resulting property.
         let outcome: Promise<any> = this.outputPromise.then((value: T | undefined) => {
-            // If the value is unknown, propagate an unknown.  Otherwise, use the callback to compute something new.
-            if (value === undefined) {
+            // If the value is unknown, and this is a dry-run, propagate an unknown.  Otherwise, use the callback
+            // to compute something new.
+            if (value === undefined && isDryRun()) {
                 Property.resolveTo(result, undefined, true, true);
             }
             else {
                 // There's a callback; invoke it and resolve the value.
                 try {
                     mapValueCallbackRecursionCount++;
-                    let transformed: MaybeComputed<U> = callback(value);
+                    let transformed: MaybeComputed<U> = callback(<T>value);
                     Property.resolveTo(result, transformed, true, true);
                 }
                 finally {
@@ -94,9 +95,11 @@ export class Property<T> implements Computed<T> {
             }
         });
 
-        // Ensure we log any errors.
+        // Ensure we log any errors and keep the original stack trace for debuggability.
+        let origin: Error = new Error("MapValue had an unhandled error");
         outcome.catch((err: Error) => {
-            Log.error(`MapValue of a Computed yielded an unhandled error: ${err}`);
+            Log.error(errorString(origin));
+            Log.error(errorString(err));
         });
 
         return result;

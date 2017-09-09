@@ -6,7 +6,7 @@ import { ID, Resource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { isInsideMapValueCallback, Property } from "./property";
-import { getMonitor, isDryRun, rpcKeepAlive } from "./settings";
+import { errorString, getMonitor, isDryRun, rpcKeepAlive } from "./settings";
 
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -22,11 +22,14 @@ let resourceChain: Promise<void> = Promise.resolve();
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
     res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): void {
-    Log.debug(`Registering resource: t=${t}, name=${name}`);
+        Log.debug(`Registering resource: t=${t}, name=${name}, props=${JSON.stringify(props)}`);
     if (isInsideMapValueCallback()) {
         throw new Error(
             `Illegal attempt to create a conditional resource '${name}' (type ${t}) inside a mapValue callback`);
     }
+
+    // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
+    let createError: Error = new Error(`Resouce '${name}' [${t}] could not be created`);
 
     // Ensure the process won't exit until this registerResource call finishes.
     let notAlive: () => void = rpcKeepAlive();
@@ -88,7 +91,8 @@ export function registerResource(
                     resolveProperties(res, t, name, resp.getObject(), resp.getStable());
                 }
                 catch (err) {
-                    Log.error(`Failed to propagate resource provider properties to '${name}' [${t}]: ${err}`);
+                    Log.error(
+                        `Failed to propagate resource provider properties to '${name}' [${t}]: ${errorString(err)}`);
                     throw err;
                 }
             }
@@ -96,7 +100,10 @@ export function registerResource(
 
         // If any errors make it this far, ensure we log them.
         resourceRegistered.catch((err: Error) => {
-            Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
+            // At this point, we've gone fully asynchronous, and the stack is missing.  To make it easier
+            // to debug which resource this came from, we will emit the original stack trace too.
+            Log.error(errorString(createError));
+            Log.error(`Failed to create resource '${name}' [${t}]: ${errorString(err)}`);
         });
 
         // Ensure we mark the RPC as done no matter the outcome and return this promise so that
@@ -129,12 +136,12 @@ function transferProperties(
             // after all properties have settled, and we may need to wait for them before this transfer finishes.
             if (props[k] !== undefined) {
                 eventuals.push(
-                    serializeProperty(p.inputPromise).then(
+                    serializeProperty(p.inputPromise, `${t}[${name}]`).then(
                         (v: any) => {
                             obj[k] = v;
                         },
                         (err: Error) => {
-                            throw new Error(`Property '${k}' could not be serialized: ${err}`);
+                            throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
                         },
                     )
                 );
@@ -178,7 +185,7 @@ function resolveProperties(res: Resource, t: string, name: string, propsStruct: 
             }
             catch (err) {
                 throw new Error(
-                    `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${err}`);
+                    `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(err)}`);
             }
         }
     }
@@ -204,8 +211,9 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 
 // serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
 // appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
-async function serializeProperty(prop: any): Promise<any> {
+async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     if (prop === undefined) {
+        Log.debug(`Serialize property [${ctx}]: undefined`);
         if (!isDryRun()) {
             throw new Error("Unexpected unknown property during deployment");
         }
@@ -213,18 +221,21 @@ async function serializeProperty(prop: any): Promise<any> {
     }
     else if (prop === null || typeof prop === "boolean" ||
             typeof prop === "number" || typeof prop === "string") {
+        Log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
         return prop;
     }
     else if (prop instanceof Array) {
         let elems: any[] = [];
-        for (let e of prop) {
-            elems.push(await serializeProperty(e));
+        for (let i = 0; i < prop.length; i++) {
+            Log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+            elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`));
         }
         return elems;
     }
     else if (prop instanceof Resource) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
-        return serializeProperty(prop.id);
+        Log.debug(`Serialize property [${ctx}]: resource ID`);
+        return serializeProperty(prop.id, `${ctx}.id`);
     }
     else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
@@ -233,29 +244,34 @@ async function serializeProperty(prop: any): Promise<any> {
             [specialSigKey]: (prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig),
         };
         for (let k of Object.keys(prop)) {
-            obj[k] = await serializeProperty((<any>prop)[k]);
+            Log.debug(`Serialize property [${ctx}]: asset.${k}`);
+            obj[k] = await serializeProperty((<any>prop)[k], `asset<${ctx}>.${k}`);
         }
         return obj;
     }
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
-        return serializeProperty(await prop);
+        Log.debug(`Serialize property [${ctx}]: promise<T>`);
+        return serializeProperty(await prop, `promise<${ctx}>`);
     }
     else if (prop instanceof Property) {
         // For properties, wait for the output values to become available, and then serialize them.
-        return serializeProperty(await prop.outputPromise);
+        Log.debug(`Serialize property [${ctx}]: property<T>`);
+        return serializeProperty(await prop.outputPromise, `property<${ctx}>`);
     }
     else if ((prop as Computed<any>).mapValue !== undefined) {
         // For arbitrary computed values, wire up a handler to await their resolution and then serialize the value.
+        Log.debug(`Serialize property [${ctx}]: computed<T>`);
         let value: any = await debuggablePromise(new Promise<any>((resolve) => {
-            (prop as Computed<any>).mapValue((v: any) => { resolve(v); });
+            (prop as Computed<any>).mapValue(async (v: any) => { resolve(v); });
         }));
-        return serializeProperty(value);
+        return serializeProperty(value, `computed<${ctx}>`);
     }
     else {
         let obj: any = {};
         for (let k of Object.keys(prop)) {
-            obj[k] = await serializeProperty(prop[k]);
+            Log.debug(`Serialize property [${ctx}]: object.${k}`);
+            obj[k] = await serializeProperty(prop[k], `${ctx}.${k}`);
         }
         return obj;
     }

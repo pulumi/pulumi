@@ -10,6 +10,7 @@ import (
 	goerr "github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
@@ -30,6 +31,12 @@ type DeployOptions struct {
 }
 
 func (eng *Engine) Deploy(opts DeployOptions) error {
+	// Initialize the diagnostics logger with the right stuff.
+	eng.InitDiag(diag.FormatOptions{
+		Colors: true,
+		Debug:  opts.Debug,
+	})
+
 	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
 	if err != nil {
 		return err

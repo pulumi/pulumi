@@ -5,12 +5,21 @@ let engproto = require("../proto/engine_pb.js");
 
 // Log offers the ability to log messages in a way that integrate tightly with the resource engine's interface.
 export class Log {
+    private static errcnt = 0;
+    private static lastLog: Promise<any> = Promise.resolve();
+
+    // hasErrors returns true if any errors have occurred in the program.
+    public static hasErrors(): boolean {
+        return Log.errcnt > 0;
+    }
+
     // debug logs a debug-level message that is generally hidden from end-users.
     public static debug(msg: string): void {
         let engine: Object | undefined = getEngine();
         if (engine) {
             Log.log(engine, engproto.LogSeverity.DEBUG, msg);
-        } else {
+        }
+        else {
             // ignore debug messages when no engine is available.
         }
     }
@@ -20,7 +29,8 @@ export class Log {
         let engine: Object | undefined = getEngine();
         if (engine) {
             Log.log(engine, engproto.LogSeverity.INFO, msg);
-        } else {
+        }
+        else {
             console.log(`info: [runtime] ${msg}`);
         }
     }
@@ -30,26 +40,35 @@ export class Log {
         let engine: Object | undefined = getEngine();
         if (engine) {
             Log.log(engine, engproto.LogSeverity.WARNING, msg);
-        } else {
+        }
+        else {
             console.warn(`warning: [runtime] ${msg}`);
         }
     }
 
     // error logs a fatal error to indicate that the tool should stop processing resource operations immediately.
     public static error(msg: string): void {
+        Log.errcnt++; // remember the error so we can suppress leaks.
+
         let engine: Object | undefined = getEngine();
         if (engine) {
             Log.log(engine, engproto.LogSeverity.ERROR, msg);
-        } else {
+        }
+        else {
             console.error(`error: [runtime] ${msg}`);
         }
     }
 
     private static log(engine: any, sev: any, msg: string): void {
-        let req = new engproto.LogRequest();
-        req.setSeverity(sev);
-        req.setMessage(msg);
-        engine.log(req, () => {/* do not keep the message loop alive; there is no need */});
+        // Ensure we log everything in serial order.
+        Log.lastLog = Log.lastLog.then(() => {
+            return new Promise((resolve) => {
+                let req = new engproto.LogRequest();
+                req.setSeverity(sev);
+                req.setMessage(msg);
+                engine.log(req, () => { resolve(); });
+            });
+        });
     }
 }
 
