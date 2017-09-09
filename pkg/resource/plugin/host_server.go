@@ -3,7 +3,7 @@
 package plugin
 
 import (
-	"strconv"
+	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -19,7 +19,7 @@ import (
 type hostServer struct {
 	host   Host       // the host for this RPC server.
 	ctx    *Context   // the associated plugin context.
-	port   int        // the port the host is listening on.
+	addr   string     // the address the host is listening on.
 	cancel chan bool  // a channel that can cancel the server.
 	done   chan error // a channel that resolves when the server completes.
 }
@@ -44,7 +44,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 		return nil, err
 	}
 
-	engine.port = port
+	engine.addr = fmt.Sprintf("0.0.0.0:%d", port)
 	engine.done = done
 
 	return engine, nil
@@ -52,7 +52,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 
 // Address returns the address at which the engine's RPC server may be reached.
 func (eng *hostServer) Address() string {
-	return ":" + strconv.Itoa(eng.port)
+	return eng.addr
 }
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.

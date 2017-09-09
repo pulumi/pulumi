@@ -3,7 +3,7 @@
 package deploy
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -176,7 +176,7 @@ func (iter *evalSourceIterator) forkRun() {
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
 	reschan chan *evalSourceGoal // the channel to send resources to.
-	port    int                  // the port the host is listening on.
+	addr    string               // the address the host is listening on.
 	cancel  chan bool            // a channel that can cancel the server.
 	done    chan error           // a channel that resolves when the server completes.
 }
@@ -200,7 +200,7 @@ func newResourceMonitor(reschan chan *evalSourceGoal) (*resmon, error) {
 		return nil, err
 	}
 
-	resmon.port = port
+	resmon.addr = fmt.Sprintf("0.0.0.0:%d", port)
 	resmon.done = done
 
 	return resmon, nil
@@ -208,7 +208,7 @@ func newResourceMonitor(reschan chan *evalSourceGoal) (*resmon, error) {
 
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
-	return ":" + strconv.Itoa(rm.port)
+	return rm.addr
 }
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
