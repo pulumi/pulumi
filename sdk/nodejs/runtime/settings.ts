@@ -64,7 +64,14 @@ export function configure(m: Object | undefined, e: Object | undefined, dr: bool
 // disconnect permanently disconnects from the server, closing the connections.  It waits for the existing RPC
 // queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
 export function disconnect(): void {
-    debuggablePromise(rpcDone.then(() => {
+    let done: Promise<any> | undefined;
+    let closeCallback: () => Promise<void> = () => {
+        if (done !== rpcDone) {
+            // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
+            done = rpcDone;
+            return debuggablePromise(done.then(closeCallback));
+        }
+        // Otherwise, actually perform the close activities.
         if (monitor) {
             (<any>monitor).close();
             monitor = undefined;
@@ -73,7 +80,9 @@ export function disconnect(): void {
             (<any>engine).close();
             engine = undefined;
         }
-    }));
+        return Promise.resolve();
+    };
+    closeCallback();
 }
 
 // rpcDone resolves when the last known client-side RPC call finishes.

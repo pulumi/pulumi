@@ -61,12 +61,16 @@ export class Log {
 
     private static log(engine: any, sev: any, msg: string): void {
         // Ensure we log everything in serial order.
+        let keepAlive: () => void = rpcKeepAlive();
         Log.lastLog = Log.lastLog.then(() => {
             return new Promise((resolve) => {
                 let req = new engproto.LogRequest();
                 req.setSeverity(sev);
                 req.setMessage(msg);
-                engine.log(req, () => { resolve(); });
+                engine.log(req, () => {
+                    resolve(); // let the next log through
+                    keepAlive(); // permit RPC channel tear-downs
+                });
             });
         });
     }
