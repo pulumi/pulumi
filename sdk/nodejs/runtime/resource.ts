@@ -11,6 +11,12 @@ import { getMonitor, isDryRun, rpcKeepAlive } from "./settings";
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
+// resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
+// entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
+// causes problems with some resource providers, so for now we will serialize all of them.  The issue
+// pulumi/pulumi-fabric#335 tracks coming up with a long-term solution here.
+let resourceChain: Promise<void> = Promise.resolve();
+
 // registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
@@ -25,73 +31,77 @@ export function registerResource(
     // Ensure the process won't exit until this registerResource call finishes.
     let notAlive: () => void = rpcKeepAlive();
 
-    // Store a URN and ID property, plus any passed in, on the resource object.  Note that we do these using
-    // any casts because they are typically readonly and this function is in cahoots with the initialization process.
+    // Store a URN and ID property, plus any passed in, on the resource object.  Note that we do these using any
+    // casts because they are typically readonly and this function is in cahoots with the initialization process.
     let urn = (<any>res).urn = new Property<URN>(undefined, true, false);
     let id = (<any>res).id = new Property<ID>(undefined, true, false);
     let transfer: Promise<any> = debuggablePromise(transferProperties(res, t, name, props));
 
-    // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
-    // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
-    // time, we want to give the illusion of non-blocking code, so we return immediately.
-    let monitor: any = getMonitor();
-    let resourceRegistered: Promise<void> = debuggablePromise(transfer.then(
-        async (obj: any) => {
-            Log.debug(`Resource RPC prepared: t=${t}, name=${name}, obj=${JSON.stringify(obj)}`);
+    // Now wait for the prior resource operation to finish before we proceed, serializing them, and make this the
+    // current resource operation so that everybody piles up on it.
+    resourceChain = debuggablePromise(resourceChain.then(() => {
+        // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
+        // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
+        // time, we want to give the illusion of non-blocking code, so we return immediately.
+        let monitor: any = getMonitor();
+        let resourceRegistered: Promise<void> = debuggablePromise(transfer.then(
+            async (obj: any) => {
+                Log.debug(`Resource RPC prepared: t=${t}, name=${name}, obj=${JSON.stringify(obj)}`);
 
-            // Fetch the monitor; if it doesn't exist, bail right away.
-            if (!monitor) {
-                Log.debug(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
-                return;
+                // Fetch the monitor; if it doesn't exist, bail right away.
+                if (!monitor) {
+                    Log.debug(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
+                    return;
+                }
+
+                // Send an RPC to the monitor to register the resource.  If/when it resolves, we copy the properties.
+                let req = new langproto.NewResourceRequest();
+                req.setType(t);
+                req.setName(name);
+                req.setObject(obj);
+
+                let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
+                    monitor.newResource(req, (err: Error, resp: any) => {
+                        Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
+                        if (err) {
+                            Log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
+                            reject(err);
+                        }
+                        else {
+                            resolve(resp);
+                        }
+                    });
+                }));
+
+                // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
+                urn.setOutput(resp.getUrn(), true, false);
+
+                // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
+                // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
+                let idOutput: string | undefined = resp.getId();
+                if (idOutput) {
+                    id.setOutput(idOutput, true, false);
+                }
+
+                // Finally propagate any other properties that were given to us as outputs.
+                try {
+                    resolveProperties(res, t, name, resp.getObject(), resp.getStable());
+                }
+                catch (err) {
+                    Log.error(`Failed to propagate resource provider properties to '${name}' [${t}]: ${err}`);
+                    throw err;
+                }
             }
+        ));
 
-            // Fire off an RPC to the monitor to register the resource.  If/when it resolves, we will blit the properties.
-            let req = new langproto.NewResourceRequest();
-            req.setType(t);
-            req.setName(name);
-            req.setObject(obj);
+        // If any errors make it this far, ensure we log them.
+        resourceRegistered.catch((err: Error) => {
+            Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
+        });
 
-            let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
-                monitor.newResource(req, (err: Error, resp: any) => {
-                    Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
-                    if (err) {
-                        Log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
-                        reject(err);
-                    }
-                    else {
-                        resolve(resp);
-                    }
-                });
-            }));
-
-            // The resolution will always have a valid URN, even during planning, and it is final (doesn't change).
-            urn.setOutput(resp.getUrn(), true, false);
-
-            // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
-            // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).
-            let idOutput: string | undefined = resp.getId();
-            if (idOutput) {
-                id.setOutput(idOutput, true, false);
-            }
-
-            // Finally propagate any other properties that were given to us as outputs.
-            try {
-                resolveProperties(res, t, name, resp.getObject(), resp.getStable());
-            }
-            catch (err) {
-                Log.error(`Failed to propagate resource provider properties to '${name}' [${t}]: ${err}`);
-                throw err;
-            }
-        }
-    ));
-
-    // If any errors make it this far, ensure we log them.
-    resourceRegistered.catch((err: Error) => {
-        Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
-    });
-
-    // Ensure we mark the RPC as done no matter the outcome.
-    resourceRegistered.then(() => { notAlive(); }, () => { notAlive(); });
+        // Ensure we mark the RPC as done no matter the outcome.
+        resourceRegistered.then(() => { notAlive(); }, () => { notAlive(); });
+    }));
 }
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
