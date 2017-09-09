@@ -99,8 +99,9 @@ export function registerResource(
             Log.error(`An unhandled error occurred during resource '${name}' [${t}] creation: ${err}`);
         });
 
-        // Ensure we mark the RPC as done no matter the outcome.
-        resourceRegistered.then(() => { notAlive(); }, () => { notAlive(); });
+        // Ensure we mark the RPC as done no matter the outcome and return this promise so that
+        // errors from resource registation do not propagate forwards to other dependent registrations.
+        return resourceRegistered.then(() => { notAlive(); }, () => { notAlive(); });
     }));
 }
 
@@ -128,9 +129,14 @@ function transferProperties(
             // after all properties have settled, and we may need to wait for them before this transfer finishes.
             if (props[k] !== undefined) {
                 eventuals.push(
-                    serializeProperty(p.inputPromise).then((v: any) => {
-                        obj[k] = v;
-                    })
+                    serializeProperty(p.inputPromise).then(
+                        (v: any) => {
+                            obj[k] = v;
+                        },
+                        (err: Error) => {
+                            throw new Error(`Property '${k}' could not be serialized: ${err}`);
+                        },
+                    )
                 );
             }
         }
