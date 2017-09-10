@@ -75,16 +75,16 @@ async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
     flatCache.set(entry, result);
 
     let e: AsyncEnvironmentEntry = await entry;
-    if (e.json !== undefined) {
+    if (e.hasOwnProperty("json")) {
         result.json = e.json;
     }
-    else if (e.closure !== undefined) {
+    else if (e.closure) {
         result.closure = await flattenClosure(e.closure, flatCache);
     }
-    else if (e.obj !== undefined) {
+    else if (e.obj) {
         result.obj = await flattenEnvironment(e.obj, flatCache);
     }
-    else if (e.arr !== undefined) {
+    else if (e.arr) {
         let arr: EnvironmentEntry[] = [];
         for (let elem of e.arr) {
             arr.push(await flattenEnvironmentEntry(elem, flatCache));
@@ -94,7 +94,6 @@ async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
     else {
         throw new Error(`Malformed flattened environment entry: ${e}`);
     }
-
     return result;
 }
 
