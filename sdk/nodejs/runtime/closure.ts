@@ -191,13 +191,22 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
 // expected to be the usual V8-serialized function expression text.
 function computeFreeVariables(funcstr: string): string[] {
     Log.debug(`Computing free variables for function: ${funcstr}`);
+    if (funcstr.indexOf("[native code]") !== -1) {
+        throw new Error(`Cannot serialize native code function: "${funcstr}"`);
+    }
 
     let opts: acorn.Options = {
         ecmaVersion: 8,
         sourceType: "script",
     };
     let parser = new acorn.Parser(opts, funcstr);
-    let program: estree.Program = parser.parse();
+    let program: estree.Program;
+    try {
+        program = parser.parse();
+    }
+    catch (err) {
+        throw new Error(`Could not parse function: ${err}\n${funcstr}`);
+    }
 
     // Now that we've parsed the program, compute the free variables, and return them.
     return new FreeVariableComputer().compute(program);
@@ -237,6 +246,7 @@ class FreeVariableComputer {
             ThisExpression: this.visitThisExpression.bind(this),
             BlockStatement: this.visitBlockStatement.bind(this),
             CatchClause: this.visitCatchClause.bind(this),
+            CallExpression: this.visitCallExpression.bind(this),
             FunctionDeclaration: this.visitFunctionDeclaration.bind(this),
             FunctionExpression: this.visitBaseFunction.bind(this),
             ArrowFunctionExpression: this.visitBaseFunction.bind(this),
@@ -346,6 +356,22 @@ class FreeVariableComputer {
 
         // Relinquish the scope so the error patterns aren't available beyond the catch.
         this.scope.pop();
+    }
+
+    private visitCallExpression(node: estree.SimpleCallExpression, state: any, cb: walkCallback): void {
+        // Most call expressions are normal.  But we must special case one kind of function:
+        // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0, function* (){})`,
+        // which will cause us to attempt to capture and serialize the entire surrounding function in
+        // which any lambda is created (thanks to `this`).  That spirals into craziness, and bottoms out on native
+        // functions which we cannot serialize.  We only want to capture `this` if the user code mentioned it.
+        cb(node.callee, state);
+        let isAwaiterCall: boolean =
+            (node.callee.type === "Identifier" && (node.callee as estree.Identifier).name === "__awaiter");
+        for (let i = 0; i < node.arguments.length; i++) {
+            if (i > 0 || !isAwaiterCall) {
+                cb(node.arguments[i], state);
+            }
+        }
     }
 
     private visitVariableDeclaration(node: estree.VariableDeclaration, state: any, cb: walkCallback): void {
