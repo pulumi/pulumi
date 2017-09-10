@@ -10,12 +10,29 @@ const debugPromiseTimeout: number = -1;
 let leakDetectorScheduled: boolean = false;
 // leakCandidates tracks the list of potential leak candidates.
 let leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
+// unhandledHandlerScheduled is true when the unhandled promise detector is scheduled for this process.
+let unhandledHandlerScheduled: boolean = false;
+
+function promiseDebugString(p: Promise<any>): string {
+    return `CONTEXT: ${(<any>p)._debugCtx}\n` +
+        `STACK_TRACE:\n` +
+        `${(<any>p)._debugStackTrace}`;
+}
 
 // debuggablePromise optionally wraps a promise with some goo to make it easier to debug common problems.
 export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
-    // Whack some stack onto the promise.
-    (<any>p)._debugCtx = ctx;
-    (<any>p)._debugStackTrace = new Error().stack;
+    // If the unhandled handler isn't active yet, schedule it.
+    if (!unhandledHandlerScheduled) {
+        process.on("unhandledRejection", (reason, p) => {
+            if (!Log.hasErrors()) {
+                console.error("Unhandled promise rejection:");
+                console.error(reason);
+                console.error(reason.stack);
+                console.error(promiseDebugString(p));
+            }
+        });
+        unhandledHandlerScheduled = true;
+    }
 
     // Setup leak detection.
     if (!leakDetectorScheduled) {
@@ -24,17 +41,19 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
             // course yields things that look like "leaks".
             if (code === 0 && !Log.hasErrors()) {
                 for (let leaked of leakCandidates) {
-                    console.error(
-                        `Promise leak detected:\n` +
-                        `CONTEXT: ${(<any>leaked)._debugCtx}\n` +
-                        `STACK_TRACE:\n` +
-                        `${(<any>leaked)._debugStackTrace}`
-                    );
+                    console.error("Promise leak detected:");
+                    console.error(promiseDebugString(leaked));
                 }
             }
         });
         leakDetectorScheduled = true;
     }
+
+    // Whack some stack onto the promise.
+    (<any>p)._debugCtx = ctx;
+    (<any>p)._debugStackTrace = new Error().stack;
+
+    // Add this promise to the leak candidates list, and schedule it for removal if it resolves.
     leakCandidates.add(p);
     p.then((v: any) => leakCandidates.delete(p), (err: any) => leakCandidates.delete(p));
 
