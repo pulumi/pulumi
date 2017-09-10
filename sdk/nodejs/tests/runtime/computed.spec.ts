@@ -1,14 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { asyncTest, assertAsyncThrows } from "../util";
+import { asyncTest, assertAsyncThrows, computedToPromise } from "../util";
 import { Computed, runtime } from "../../index";
-
-function computedToPromise<T>(computed: Computed<T>): Promise<T> {
-    return new Promise((resolve: any) => {
-        computed.mapValue((res: T) => { resolve(res); });
-    });
-}
 
 // Some basic computed tests.
 describe("computed", () => {

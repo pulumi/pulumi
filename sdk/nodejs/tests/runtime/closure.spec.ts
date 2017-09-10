@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { asyncTest, assertAsyncThrows } from "../util";
+import { asyncTest, assertAsyncThrows, computedToPromise } from "../util";
 import { runtime } from "../../index";
 
 interface ClosureCase {
@@ -247,15 +247,51 @@ describe("closure", () => {
         });
     }
 
+    {
+        class CapCap {
+            constructor() {
+                (<any>this).x = 42;
+                (<any>this).f = () => { console.log((<any>this).x); };
+            }
+        }
+
+        // Closing over 'this'.  This yields a circular closure.
+        let cap: any = new CapCap();
+        let env: runtime.Environment = { "this": {} };
+        env["this"].obj = {
+            f: {
+                closure: {
+                    code: "(() => { console.log(this.x); })",
+                    environment: {
+                        "this": env["this"],
+                    },
+                    runtime: "nodejs",
+                },
+            },
+            x: {
+                json: 42,
+            },
+        };
+        cases.push({
+            title: "Serializes `this` capturing closures",
+            func: cap.f,
+            expect: {
+                code: "(() => { console.log(this.x); })",
+                environment: env,
+                runtime: "nodejs",
+            },
+        });
+    }
+
     // Now go ahead and run the test cases, each as its own case.
     for (let test of cases) {
         it(test.title, asyncTest(async () => {
             if (test.expect) {
-                let closure: runtime.Closure = await runtime.serializeClosureAsync(test.func);
+                let closure: runtime.Closure = await computedToPromise(runtime.serializeClosure(test.func));
                 assert.deepEqual(closure, test.expect);
             } else {
                 await assertAsyncThrows(async () => {
-                    await runtime.serializeClosureAsync(test.func);
+                    await computedToPromise(runtime.serializeClosure(test.func));
                 });
             }
         }));

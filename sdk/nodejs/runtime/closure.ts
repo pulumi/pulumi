@@ -32,15 +32,95 @@ export interface EnvironmentEntry {
 // as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for execution.
 // Unlike toString, it actually includes information about the captured environment.
 export function serializeClosure(func: Function): Computed<Closure> {
-    // Serialize the closure as a promise and then transform it into a computed property as a convenience so that
-    // it interacts nicely with our overall programming model.
-    return new Property<Closure>(serializeClosureAsync(func), true, true);
+    // First get the async version.  We will then await it to turn it into a flattened, async-free computed closure.
+    // This must be done "at the top" because we must not block the creation of the dataflow graph of closure
+    // elements, since there may be cycles that can only resolve by creating the entire graph first.
+    let closure: AsyncClosure = serializeClosureAsync(func);
+
+    // Now turn the AsyncClosure into a normal closure, and return it.
+    let flatCache = new Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>();
+    return new Property<Closure>(flattenClosure(closure, flatCache), true, true);
 }
 
-// serializeClosureAsync serializes a function and its closure environment into a promise for a form that is amenable
-// to persistence as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for
-// execution.  Unlike toString, it actually includes information about the captured environment.
-export async function serializeClosureAsync(func: Function): Promise<Closure> {
+async function flattenClosure(closure: AsyncClosure,
+    flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Closure> {
+    return {
+        code: closure.code,
+        runtime: closure.runtime,
+        environment: await flattenEnvironment(closure.environment, flatCache),
+    };
+}
+
+async function flattenEnvironment(env: AsyncEnvironment,
+    flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Environment> {
+    let result: Environment = {};
+    for (let key of Object.keys(env)) {
+        result[key] = await flattenEnvironmentEntry(env[key], flatCache);
+    }
+    return result;
+}
+
+async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
+    flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<EnvironmentEntry> {
+    // See if there's an entry for this object already; if there is, use it.
+    let result: EnvironmentEntry | undefined = flatCache.get(entry);
+    if (result) {
+        return result;
+    }
+
+    // Otherwise, we need to create a new one, add it to the cache before recursing, and then go.  Note that we
+    // DO NOT add a promise for the entry!  We add the entry object itself, to avoid deadlocks in which mutually
+    // recursive functions end up trying to resolve the same entry on the same callstack.
+    result = {};
+    flatCache.set(entry, result);
+
+    let e: AsyncEnvironmentEntry = await entry;
+    if (e.json !== undefined) {
+        result.json = e.json;
+    }
+    else if (e.closure !== undefined) {
+        result.closure = await flattenClosure(e.closure, flatCache);
+    }
+    else if (e.obj !== undefined) {
+        result.obj = await flattenEnvironment(e.obj, flatCache);
+    }
+    else if (e.arr !== undefined) {
+        let arr: EnvironmentEntry[] = [];
+        for (let elem of e.arr) {
+            arr.push(await flattenEnvironmentEntry(elem, flatCache));
+        }
+        result.arr = arr;
+    }
+    else {
+        throw new Error(`Malformed flattened environment entry: ${e}`);
+    }
+
+    return result;
+}
+
+// AsyncClosure represents the eventual serialized form of a JavaScript serverless function.
+export interface AsyncClosure {
+    code: string;                     // a serialization of the function's source code as text.
+    runtime: string;                  // the language runtime required to execute the serialized code.
+    environment: AsyncEnvironment; // the captured lexical environment of variables to values, if any.
+}
+
+// AsyncEnvironment is the eventual captured lexical environment for a closure.
+export type AsyncEnvironment = {[key: string]: Promise<AsyncEnvironmentEntry>};
+
+// AsyncEnvironmentEntry is the eventual environment slot for a named lexically captured variable.
+export interface AsyncEnvironmentEntry {
+    json?: any;                        // a value which can be safely json serialized.
+    closure?: AsyncClosure;            // a closure we are dependent on.
+    obj?: AsyncEnvironment;            // an object which may contain nested closures.
+    arr?: Promise<EnvironmentEntry>[]; // an array which may contain nested closures.
+}
+
+// entryCache stores a map of entry to promise, to support mutually recursive captures.
+let entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
+
+// serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
+function serializeClosureAsync(func: Function): AsyncClosure {
     // Invoke the native runtime.  Note that we pass a callback to our function below to compute free variables.
     // This must be a callback and not the result of this function alone, since we may recursively compute them.
     //
@@ -48,73 +128,63 @@ export async function serializeClosureAsync(func: Function): Promise<Closure> {
     // V8 and Acorn (three if you include optional TypeScript), but has the significant advantage that V8's parser
     // isn't designed to be stable for 3rd party consumtpion.  Hence it would be brittle and a maintenance challenge.
     // This approach also avoids needing to write a big hunk of complex code in C++, which is nice.
-    let closure = <EventualClosure>nativeruntime.serializeClosure(
-        func, computeFreeVariables, serializeCapturedObject);
-
-    // Now wait for the environment to settle, and then return the final environment variables.
-    let env: Environment = {};
-    for (let key of Object.keys(closure.environment)) {
-        env[key] = await closure.environment[key];
-    }
-    return {
-        code: closure.code,
-        runtime: closure.runtime,
-        environment: env,
-    };
+    return <AsyncClosure>nativeruntime.serializeClosure(func, computeFreeVariables, serializeCapturedObject);
 }
-
-// EventualClosure is a closure that is currently being created, and so may contain promises inside of it if we've
-// captured computed values that must be resolved before we serialize the final result.  It looks a lot like Closure
-// above, except that its environment contains promises for environment records rather than actual values.
-interface EventualClosure {
-    code: string;
-    runtime: string;
-    environment: EventualEnvironment;
-}
-
-// EventualEnvironment is the captured lexical environment for a closure with promises for entries.
-type EventualEnvironment = {[key: string]: Promise<EnvironmentEntry>};
 
 // serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
-async function serializeCapturedObject(obj: any): Promise<EnvironmentEntry> {
+function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
+    // See if we have a cache hit.  If yes, use the object as-is.
+    let result: Promise<AsyncEnvironmentEntry> | undefined = entryCache.get(obj);
+    if (result) {
+        return result;
+    }
+
+    // If it doesn't exist, actually do it, but stick the promise in the cache first for recursive scenarios.
+    let resultResolve: ((v: AsyncEnvironmentEntry) => void) | undefined = undefined;
+    result = debuggablePromise(new Promise<AsyncEnvironmentEntry>((resolve) => { resultResolve = resolve; }));
+    entryCache.set(obj, result);
+    serializeCapturedObjectAsync(obj, resultResolve!);
+    return result;
+}
+
+// serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
+function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEntry) => void): void {
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
-        return { json: obj };
+        resolve({ json: obj });
     }
     else if (obj instanceof Array) {
         // Recursively serialize elements of an array.
-        let arr: EnvironmentEntry[] = [];
+        let arr: Promise<AsyncEnvironmentEntry>[] = [];
         for (let elem of obj) {
-            arr.push(await serializeCapturedObject(elem));
+            arr.push(serializeCapturedObject(elem));
         }
-        return { arr: arr };
+        resolve({ arr: arr });
     }
     else if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
-        return { closure: await serializeClosureAsync(obj) };
+        resolve({ closure: serializeClosureAsync(obj) });
     }
     else if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
-        return await serializeCapturedObject(await obj);
+        obj.then((v) => serializeCapturedObjectAsync(v, resolve));
     }
     else if (obj instanceof Property) {
         // If this is a property, explicitly await its output promise so that we get the raw value.
-        return await serializeCapturedObject(obj.outputPromise);
+        serializeCapturedObjectAsync(obj.outputPromise, resolve);
     }
     else if ((obj as Computed<any>).mapValue) {
         // If this is a computed value -- including a captured fabric resource property -- mapValue it.
-        return await debuggablePromise(new Promise<EnvironmentEntry>((resolve) => {
-            (obj as Computed<any>).mapValue(async (v: any) => resolve(await serializeCapturedObject(v)));
-        }));
+        (obj as Computed<any>).mapValue(async (v: any) => serializeCapturedObjectAsync(v, resolve));
     }
     else {
         // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
-        let env: Environment = {};
+        let env: AsyncEnvironment = {};
         for (let key of Object.keys(obj)) {
-            env[key] = await serializeCapturedObject(obj[key]);
+            env[key] = serializeCapturedObject(obj[key]);
         }
-        return { obj: env };
+        resolve({ obj: env });
     }
 }
 
@@ -165,6 +235,7 @@ class FreeVariableComputer {
         // Recurse through the tree.
         acornwalk.recursive(program, {}, {
             Identifier: this.visitIdentifier.bind(this),
+            ThisExpression: this.visitThisExpression.bind(this),
             BlockStatement: this.visitBlockStatement.bind(this),
             CatchClause: this.visitCatchClause.bind(this),
             FunctionDeclaration: this.visitFunctionDeclaration.bind(this),
@@ -196,6 +267,11 @@ class FreeVariableComputer {
                 this.frees[name] = true;
             }
         }
+    }
+
+    private visitThisExpression(node: estree.Identifier, state: any, cb: walkCallback): void {
+        // Mar references to the built-in 'this' variable as free.
+        this.frees["this"] = true;
     }
 
     private visitBlockStatement(node: estree.BlockStatement, state: any, cb: walkCallback): void {
