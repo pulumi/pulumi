@@ -1,8 +1,8 @@
 [![Build Status](https://travis-ci.com/pulumi/pulumi-fabric.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi-fabric)
 
-# Lumi
+# Pulumi Fabric
 
-Lumi is a framework and toolset for creating reusable cloud services.
+The Pulumi Fabric ("Lumi") is a framework and toolset for creating reusable cloud services.
 
 If you are learning about Lumi for the first time, please see [the overview document](docs/overview.md).
 
@@ -17,16 +17,8 @@ https://github.com/golang/go/issues/17262).
 
 This installs the `lumi` binary to `$GOPATH/bin`.
 
-At this moment, libraries must be manually installed.  See below.  Eventually we will have an installer.
-
-## Compilers
-
-The Lumi compilers are independent from the core Lumi tools.
-
-Please see the respective pages for details on how to install, build, and test each compiler:
-
-* [LumiJS](cmd/lumijs/README.md)
-* [LumiPy](cmd/lumipy/README.md)
+To do anything interesting with Lumi, you will need an SDK for your language of choice.  Please see
+[sdk/README.md](`sdk/`) for information about how to obtain, install, and use such an SDK.
 
 ## Development
 
@@ -61,11 +53,6 @@ This installs the `lumi` binary into `$GOPATH/bin`, which may now be run provide
 
 The Makefile also supports just running tests (`make test`), just running the linter (`make lint`), just running Govet
 (`make vet`), and so on.  Please just refer to the Makefile for the full list of targets.
-
-### Installing the Runtime Libraries
-
-By default, Lumi looks for its runtime libraries underneath `/usr/local/lumi`.  `$LUMIPATH` overrides this.
-Please refer to the [libraries README](lib/README.md) for details on additional installation requirements.
 
 ### Debugging
 
