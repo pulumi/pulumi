@@ -8,10 +8,10 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/ghodss/yaml"
   packages = ["."]
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -77,7 +77,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "81e90905daefcd6fd217b62423c0908922eadb30"
+  revision = "74b34b9dd60829a9fcaf56a59e81c3877a8ecd2c"
 
 [[projects]]
   branch = "master"
@@ -89,7 +89,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
-  revision = "9aade4d3a3b7e6d876cd3823ad20ec45fc035402"
+  revision = "a5054c7c1385fd50d9394475365355a87a7873ec"
 
 [[projects]]
   branch = "master"
@@ -124,6 +124,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9cb2e03c2edd4818463dfbb6be9219bf1a15e790072b0fbf258bca11a1397d56"
+  inputs-digest = "2d050570a3aa6ce61dc61215ef585a4fbaa1c5d177251a9407479b5c8eb618b5"
   solver-name = "gps-cdcl"
   solver-version = 1

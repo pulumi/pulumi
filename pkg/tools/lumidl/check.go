@@ -5,6 +5,7 @@ package lumidl
 import (
 	"go/ast"
 	"go/types"
+	"path/filepath"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -76,8 +77,9 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 		}
 		// Otherwise, find the AST node, and create a new object.
 		for _, fileast := range pkginfo.Files {
-			if RelFilename(chk.Root, chk.Program, fileast) == path {
-				file := NewFile(path, fileast)
+			if rel := RelFilename(chk.Root, chk.Program, fileast); rel == path {
+				mod := tokens.Module(string(name) + ":" + filepath.Dir(rel))
+				file := NewFile(path, mod, fileast)
 				pkg.Files[path] = file
 				return file
 			}
@@ -175,7 +177,7 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 	if t != nil {
 		return &Const{
 			member: member{
-				name:     tokens.Name(c.Name()),
+				tok:      tokens.ModuleMember(string(file.Module) + ":" + c.Name()),
 				exported: c.Exported(),
 				pos:      c.Pos(),
 			},
@@ -189,7 +191,7 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 
 func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Member, bool) {
 	memb := member{
-		name:     tokens.Name(t.Name()),
+		tok:      tokens.ModuleMember(string(file.Module) + ":" + t.Name()),
 		exported: t.Exported(),
 		pos:      t.Pos(),
 	}
@@ -223,13 +225,12 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 			}, true
 		case *types.Struct:
 			// A struct definition, possibly a resource.  First, check that all the fields are supported types.
-			isres, isnamed := IsResource(t, s)
+			isres := IsResource(t, s)
 			if ok, props, opts := chk.CheckStructFields(typ.Obj(), s, isres); ok {
 				// If a resource, return additional information.
 				if isres {
 					return &Resource{
 						member: memb,
-						Named:  isnamed,
 						s:      s,
 						props:  props,
 						popts:  opts,
@@ -267,7 +268,7 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 			// If an embedded structure, validate its fields deeply.
 			anon := fld.Type().(*types.Named)
 			embedded := anon.Underlying().(*types.Struct)
-			isembres, _ := IsResource(anon.Obj(), embedded)
+			isembres := IsResource(anon.Obj(), embedded)
 			isok, props, opts := chk.CheckStructFields(anon.Obj(), embedded, isembres)
 			if !isok {
 				ok = false

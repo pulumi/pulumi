@@ -10,22 +10,20 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource/idl"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/tools"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 type RPCGenerator struct {
-	IDLRoot         string            // the root where IDL is loaded from.
-	IDLPkgBase      string            // the IDL's base package path.
-	RPCPkgBase      string            // the RPC's base package path.
-	Out             string            // where RPC stub outputs will be saved.
-	CurrPkg         *Package          // the package currently being visited.
-	CurrFile        string            // the file currently being visited.
-	FileHadRes      bool              // true if the file had at least one resource.
-	FileHadNamedRes bool              // true if the file had at least one named resource.
-	FileImports     map[string]string // a map of foreign packages used in a file.
+	IDLRoot     string            // the root where IDL is loaded from.
+	IDLPkgBase  string            // the IDL's base package path.
+	RPCPkgBase  string            // the RPC's base package path.
+	Out         string            // where RPC stub outputs will be saved.
+	CurrPkg     *Package          // the package currently being visited.
+	CurrFile    string            // the file currently being visited.
+	FileHadRes  bool              // true if the file had at least one resource.
+	FileImports map[string]string // a map of foreign packages used in a file.
 }
 
 func NewRPCGenerator(root, idlPkgBase, rpcPkgBase, out string) *RPCGenerator {
@@ -68,11 +66,10 @@ func (g *RPCGenerator) Generate(pkg *Package) error {
 }
 
 func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) error {
-	oldHadRes, oldHadNamedRes, oldImports := g.FileHadRes, g.FileHadNamedRes, g.FileImports
-	g.FileHadRes, g.FileHadNamedRes, g.FileImports = false, false, make(map[string]string)
+	oldHadRes, oldImports := g.FileHadRes, g.FileImports
+	g.FileHadRes, g.FileImports = false, make(map[string]string)
 	defer (func() {
 		g.FileHadRes = oldHadRes
-		g.FileHadNamedRes = oldHadNamedRes
 		g.FileImports = oldImports
 	})()
 
@@ -98,10 +95,6 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 		w.Writefmtln("import (")
 
 		if g.FileHadRes {
-			if g.FileHadNamedRes {
-				w.Writefmtln(`    "errors"`)
-				w.Writefmtln("")
-			}
 			w.Writefmtln(`    pbempty "github.com/golang/protobuf/ptypes/empty"`)
 			w.Writefmtln(`    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
 			w.Writefmtln(`    "golang.org/x/net/context"`)
@@ -212,9 +205,6 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 
 	// Remember when we encounter resources so we can import the right packages.
 	g.FileHadRes = true
-	if res.Named {
-		g.FileHadNamedRes = true
-	}
 
 	propopts := res.PropertyOptions()
 	var hasinputs bool
@@ -234,14 +224,11 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	// Now, generate an ops interface that the real provider will implement.
 	w.Writefmtln("// %[1]vProviderOps is a pluggable interface for %[1]v-related management functionality.", name)
 	w.Writefmtln("type %vProviderOps interface {", name)
+	w.Writefmtln("    Configure(ctx context.Context, vars map[tokens.ModuleMember]string) error")
 	w.Writefmtln("    Check(ctx context.Context, obj *%v, property string) error", name)
-	if !res.Named {
-		w.Writefmtln("    Name(ctx context.Context, obj *%v) (string, error)", name)
-	}
 	w.Writefmtln("    Diff(ctx context.Context, id resource.ID,")
 	w.Writefmtln("        old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
 	w.Writefmtln("    Create(ctx context.Context, obj *%v) (resource.ID, error)", name)
-	w.Writefmtln("    Get(ctx context.Context, id resource.ID) (*%v, error)", name)
 	w.Writefmtln("    Update(ctx context.Context, id resource.ID,")
 	w.Writefmtln("        old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
 	w.Writefmtln("    Delete(ctx context.Context, id resource.ID, obj %v) error", name)
@@ -260,9 +247,21 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    return &%vProvider{ops: ops}", name)
 	w.Writefmtln("}")
 	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Configure(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.ConfigureRequest) (*pbempty.Empty, error) {")
+	w.Writefmtln("    vars := make(map[tokens.ModuleMember]string)")
+	w.Writefmtln("    for k, v := range req.GetVariables() {")
+	w.Writefmtln("        vars[tokens.ModuleMember(k)] = v")
+	w.Writefmtln("    }")
+	w.Writefmtln("    if err := p.ops.Configure(ctx, vars); err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    return &pbempty.Empty{}, nil")
+	w.Writefmtln("}")
+	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Check(", name)
 	w.Writefmtln("    ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    contract.Assert(resource.URN(req.GetUrn()).Type() == %vToken)", name)
 	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
 	w.Writefmtln("    if err != nil {")
 	w.Writefmtln("        return plugin.NewCheckResponse(err), nil")
@@ -289,30 +288,9 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    return plugin.NewCheckResponse(nil), nil")
 	w.Writefmtln("}")
 	w.Writefmtln("")
-	w.Writefmtln("func (p *%vProvider) Name(", name)
-	w.Writefmtln("    ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
-	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
-	w.Writefmtln("    if err != nil {")
-	w.Writefmtln("        return nil, err")
-	w.Writefmtln("    }")
-	if res.Named {
-		// For named resources, we have a canonical way of fetching the name.
-		urnName := idl.URNNameProperty
-		w.Writefmtln(`    if obj.%[1]v == nil || *obj.%[1]v == "" {`, urnName)
-		w.Writefmtln(`        return nil, errors.New("%v property cannot be empty")`, urnName)
-		w.Writefmtln("    }")
-		w.Writefmtln("    return &lumirpc.NameResponse{Name: *obj.%v}, nil", urnName)
-	} else {
-		// For all other resources, delegate to the underlying provider to perform the naming operation.
-		w.Writefmtln("    name, err := p.ops.Name(ctx, obj)")
-		w.Writefmtln("    return &lumirpc.NameResponse{Name: name}, err")
-	}
-	w.Writefmtln("}")
-	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Create(", name)
 	w.Writefmtln("    ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    contract.Assert(resource.URN(req.GetUrn()).Type() == %vToken)", name)
 	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
 	w.Writefmtln("    if err != nil {")
 	w.Writefmtln("        return nil, err")
@@ -330,7 +308,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Diff(", name)
 	w.Writefmtln("    ctx context.Context, req *lumirpc.DiffRequest) (*lumirpc.DiffResponse, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    contract.Assert(resource.URN(req.GetUrn()).Type() == %vToken)", name)
 	w.Writefmtln("    id := resource.ID(req.GetId())")
 	w.Writefmtln("    old, oldprops, err := p.Unmarshal(req.GetOlds())")
 	w.Writefmtln("    if err != nil {")
@@ -360,23 +338,9 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    }, err")
 	w.Writefmtln("}")
 	w.Writefmtln("")
-	w.Writefmtln("func (p *%vProvider) Get(", name)
-	w.Writefmtln("    ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
-	w.Writefmtln("    id := resource.ID(req.GetId())")
-	w.Writefmtln("    obj, err := p.ops.Get(ctx, id)")
-	w.Writefmtln("    if err != nil {")
-	w.Writefmtln("        return nil, err")
-	w.Writefmtln("    }")
-	w.Writefmtln("    return &lumirpc.GetResponse{")
-	w.Writefmtln("        Properties: plugin.MarshalProperties(")
-	w.Writefmtln("            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),")
-	w.Writefmtln("    }, nil")
-	w.Writefmtln("}")
-	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Update(", name)
 	w.Writefmtln("    ctx context.Context, req *lumirpc.UpdateRequest) (*lumirpc.UpdateResponse, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    contract.Assert(resource.URN(req.GetUrn()).Type() == %vToken)", name)
 	w.Writefmtln("    id := resource.ID(req.GetId())")
 	w.Writefmtln("    old, oldprops, err := p.Unmarshal(req.GetOlds())")
 	w.Writefmtln("    if err != nil {")
@@ -398,7 +362,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Delete(", name)
 	w.Writefmtln("    ctx context.Context, req *lumirpc.DeleteRequest) (*pbempty.Empty, error) {")
-	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    contract.Assert(resource.URN(req.GetUrn()).Type() == %vToken)", name)
 	w.Writefmtln("    id := resource.ID(req.GetId())")
 	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
 	w.Writefmtln("    if err != nil {")
@@ -477,7 +441,7 @@ func (g *RPCGenerator) GenTypeName(t types.Type, opt bool) string {
 	case *types.Named:
 		obj := u.Obj()
 		// For resource types, simply emit an ID, since that is what will have been serialized.
-		if res, _ := IsResource(obj, u); res {
+		if IsResource(obj, u) {
 			return "resource.ID"
 		}
 
@@ -513,7 +477,7 @@ func (g *RPCGenerator) GenTypeName(t types.Type, opt bool) string {
 		unptr := false
 		if !opt {
 			if elnm, iselnm := elem.(*types.Named); iselnm {
-				if res, _ := IsResource(elnm.Obj(), elnm); res {
+				if IsResource(elnm.Obj(), elnm) {
 					unptr = true
 				} else if spec, _ := IsSpecial(elnm.Obj()); spec {
 					unptr = true

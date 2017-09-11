@@ -114,8 +114,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 
 	// If there are any resources, import the Lumi package.
 	if g.FileHadRes {
-		w.Writefmtln("import * as lumi from \"@lumi/lumi\";")
-		w.Writefmtln("import * as lumirt from \"@lumi/lumirt\";")
+		w.Writefmtln("import * as fabric from \"@pulumi/pulumi-fabric\";")
 		w.Writefmtln("")
 	}
 	if len(g.FileImports) > 0 {
@@ -222,11 +221,13 @@ func (g *PackGenerator) genFileBody(members []Member) string {
 }
 
 func (g *PackGenerator) EmitAlias(w *tools.GenWriter, alias *Alias) {
-	w.Writefmtln("export type %v = %v;", alias.Name(), g.GenTypeName(alias.Target()))
+	w.Writefmtln("export type %v = %v;",
+		alias.Name(), g.GenTypeName(alias.Target(), NormalField))
 }
 
 func (g *PackGenerator) EmitConst(w *tools.GenWriter, konst *Const) {
-	w.Writefmtln("export let %v: %v = %v;", konst.Name(), g.GenTypeName(konst.Type), konst.Value.String())
+	w.Writefmtln("export let %v: %v = %v;",
+		konst.Name(), g.GenTypeName(konst.Type, NormalField), konst.Value.String())
 }
 
 func (g *PackGenerator) EmitEnum(w *tools.GenWriter, enum *Enum) {
@@ -256,28 +257,17 @@ func (g *PackGenerator) EmitResource(w *tools.GenWriter, res *Resource) {
 func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	// Emit the class definition itself.
 	name := res.Name()
-	var base string
-	if res.Named {
-		base = "NamedResource"
-	} else {
-		base = "Resource"
-	}
-	w.Writefmtln("export class %v extends lumi.%v implements %vArgs {", name, base, name)
+	w.Writefmtln("export class %s extends fabric.Resource {", name)
 
 	// First, emit all fields definitions.
 	hasArgs := false
-	hasName := false
 	hasRequiredArgs := false
 	fn := forEachField(res, func(fld *types.Var, opt PropertyOptions) {
-		if isResourceNameProperty(res, opt) {
-			hasName = true
-		} else {
-			g.emitField(w, fld, opt, "    public ")
-			if !opt.Out {
-				hasArgs = true
-				if !opt.Optional {
-					hasRequiredArgs = true
-				}
+		g.emitField(w, fld, ComputedField, opt, "    public ")
+		if !opt.Out {
+			hasArgs = true
+			if !opt.Optional {
+				hasRequiredArgs = true
 			}
 		}
 	})
@@ -286,34 +276,23 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	}
 
 	// Add the standard "factory" functions: get and query.  These are static, so they go before the constructor.
-	w.Writefmtln("    public static get(id: lumi.ID): %v {", name)
+	w.Writefmtln("    public static get(id: fabric.ID): %s {", name)
 	w.Writefmtln("        return <any>undefined; // functionality provided by the runtime")
 	w.Writefmtln("    }")
 	w.Writefmtln("")
-	w.Writefmtln("    public static query(q: any): %v[] {", name)
+	w.Writefmtln("    public static query(q: any): %s[] {", name)
 	w.Writefmtln("        return <any>undefined; // functionality provided by the runtime")
 	w.Writefmtln("    }")
 	w.Writefmtln("")
 
-	// Next, a constructor that validates arguments and self-assigns them.
-	w.Writefmt("    constructor(")
-	if res.Named {
-		w.Writefmt("name: string, ")
-	}
-	w.Writefmt("args")
+	// Next, a constructor that validates arguments and chains to the base constructor.
+	var opt string
 	if !hasRequiredArgs {
-		w.Writefmt("?")
+		opt = "?"
 	}
-	w.Writefmtln(": %vArgs) {", name)
+	w.Writefmtln("    constructor(name: string, args%s: %sArgs) {", opt, name)
 
-	if hasName {
-		// Named properties are passed as the constructor's first argument.
-		w.Writefmtln("        super(name);")
-	} else {
-		w.Writefmtln("        super();")
-	}
-
-	// Next, validate that required parameters exist, and store all arguments on the object.
+	// First, validate that required parameters exist, and store all arguments on the object.
 	argLinePrefix := "        "
 	needsArgsCheck := hasArgs && !hasRequiredArgs
 	if needsArgsCheck {
@@ -321,25 +300,30 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 		argLinePrefix += "    "
 	}
 	forEachField(res, func(fld *types.Var, opt PropertyOptions) {
-		if !opt.Out && !isResourceNameProperty(res, opt) {
-			if !opt.Optional {
-				w.Writefmtln("%vif (lumirt.defaultIfComputed(args.%v, \"\") === undefined) {", argLinePrefix, opt.Name)
-				w.Writefmtln("%v    throw new Error(\"Missing required argument '%v'\");", argLinePrefix, opt.Name)
-				w.Writefmtln("%v}", argLinePrefix)
-			}
-			w.Writefmtln("%vthis.%v = args.%v;", argLinePrefix, opt.Name, opt.Name)
+		if !opt.Out && !opt.Optional {
+			w.Writefmtln("%sif (args.%s === undefined) {", argLinePrefix, opt.Name)
+			w.Writefmtln("%s    throw new Error(\"Missing required property '%s'\");", argLinePrefix, opt.Name)
+			w.Writefmtln("%s}", argLinePrefix)
 		}
 	})
 	if needsArgsCheck {
 		w.Writefmtln("        }")
 	}
 
+	// Now invoke the base.
+	w.Writefmtln("        super(\"%s\", name, {", res.Tok())
+	forEachField(res, func(fld *types.Var, opt PropertyOptions) {
+		w.Writefmt("            \"%s\": ", opt.Name)
+		if opt.Out {
+			w.Writefmtln("undefined,")
+		} else {
+			w.Writefmtln("args.%s,", opt.Name)
+		}
+	})
+
+	w.Writefmtln("        });")
 	w.Writefmtln("    }")
 	w.Writefmtln("}")
-}
-
-func isResourceNameProperty(res *Resource, prop PropertyOptions) bool {
-	return res.Named && prop.Name == "urnName"
 }
 
 func (g *PackGenerator) EmitStruct(w *tools.GenWriter, s *Struct) {
@@ -347,76 +331,96 @@ func (g *PackGenerator) EmitStruct(w *tools.GenWriter, s *Struct) {
 }
 
 func (g *PackGenerator) emitStructType(w *tools.GenWriter, t TypeMember, name tokens.Name) {
-	w.Writefmtln(fmt.Sprintf("export interface %v {", name))
+	w.Writefmtln(fmt.Sprintf("export interface %s {", name))
 	forEachField(t, func(fld *types.Var, opt PropertyOptions) {
 		if opt.Out {
 			return // skip output properties, since those exist solely on the resource class.
-		} else if res, isres := t.(*Resource); isres && isResourceNameProperty(res, opt) {
-			return // skip resource names, since those are part of the resource but not its property object.
 		}
-		g.emitField(w, fld, opt, "    ")
+		g.emitField(w, fld, MaybeComputedField, opt, "    ")
 	})
 	w.Writefmtln("}")
 }
 
-func (g *PackGenerator) emitField(w *tools.GenWriter, fld *types.Var, opt PropertyOptions, prefix string) {
-	var readonly string
-	var optional string
-	var typ string
+type FieldKind int
+
+const (
+	NormalField FieldKind = iota
+	ComputedField
+	MaybeComputedField
+)
+
+func (g *PackGenerator) emitField(w *tools.GenWriter, fld *types.Var,
+	kind FieldKind, opt PropertyOptions, prefix string) {
+	var mods string
 	if opt.Replaces {
-		readonly = "readonly "
+		mods += "readonly "
 	}
+	if opt.Out {
+		mods += "/*out*/ "
+	}
+	var optional string
 	if opt.Optional {
 		optional = "?"
 	}
-	typ = g.GenTypeName(fld.Type())
-	w.Writefmtln("%v%v%v%v: %v;", prefix, readonly, opt.Name, optional, typ)
+	typ := g.GenTypeName(fld.Type(), kind)
+	if kind == ComputedField {
+		typ = fmt.Sprintf("fabric.Computed<%v>", typ)
+	}
+	w.Writefmtln("%v%v%v%v: %v;", prefix, mods, opt.Name, optional, typ)
 }
 
-func (g *PackGenerator) GenTypeName(t types.Type) string {
+func (g *PackGenerator) GenTypeName(t types.Type, kind FieldKind) string {
+	var ret string
+	var skipwrap bool
 	switch u := t.(type) {
 	case *types.Basic:
 		switch k := u.Kind(); k {
 		case types.Bool:
-			return "boolean"
+			ret = "boolean"
 		case types.String:
-			return "string"
+			ret = "string"
 		case types.Float64:
-			return "number"
+			ret = "number"
 		default:
 			contract.Failf("Unrecognized GenTypeName basic type: %v", k)
 		}
 	case *types.Interface:
-		return "any"
+		ret = "any"
 	case *types.Named:
 		obj := u.Obj()
 		if spec, kind := IsSpecial(obj); spec {
 			switch kind {
 			case SpecialArchiveType:
-				return "lumi.asset.Archive"
+				ret = "fabric.asset.Archive"
 			case SpecialAssetType:
-				return "lumi.asset.Asset"
-			case SpecialResourceType, SpecialNamedResourceType:
-				return "lumi.Resource"
+				ret = "fabric.asset.Asset"
+			case SpecialResourceType:
+				ret = "fabric.Resource"
 			default:
 				contract.Failf("Unrecognized special type: %v", kind)
 			}
+		} else {
+			// Our import logic will have arranged for the type name to be available.
+			// IDEA: consider auto-generated import names to avoid conflicts between imported and local names.
+			g.trackNameReference(obj)
+			ret = obj.Name()
 		}
-
-		// Our import logic will have arranged for the type name to be available.
-		// IDEA: consider auto-generated import names to avoid conflicts between imported and local names.
-		g.trackNameReference(obj)
-		return obj.Name()
 	case *types.Map:
-		return fmt.Sprintf("{[key: %v]: %v}", g.GenTypeName(u.Key()), g.GenTypeName(u.Elem()))
+		ret = fmt.Sprintf("{[key: %s]: %s}", g.GenTypeName(u.Key(), kind), g.GenTypeName(u.Elem(), kind))
 	case *types.Pointer:
-		return g.GenTypeName(u.Elem()) // no pointers in TypeScript, just emit the underlying type.
+		ret = g.GenTypeName(u.Elem(), kind) // no pointers in TypeScript, just emit the underlying type.
+		skipwrap = true                     // don't doubly emit wrapper types
 	case *types.Slice:
-		return fmt.Sprintf("%v[]", g.GenTypeName(u.Elem())) // postfix syntax for arrays.
+		ret = fmt.Sprintf("%s[]", g.GenTypeName(u.Elem(), kind)) // postfix syntax for arrays.
 	default:
-		contract.Failf("Unrecognized GenTypeName type: %v", reflect.TypeOf(u))
+		contract.Failf("Unrecognized GenTypeName type: %s", reflect.TypeOf(u))
 	}
-	return ""
+
+	if !skipwrap && kind == MaybeComputedField {
+		ret = fmt.Sprintf("fabric.MaybeComputed<%s>", ret)
+	}
+
+	return ret
 }
 
 // trackNameReference registers that we have seen a foreign package and requests that the imports be emitted for it.

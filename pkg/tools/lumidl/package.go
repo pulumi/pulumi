@@ -42,34 +42,38 @@ func (pkg *Package) AddMember(file *File, nm tokens.Name, m Member) {
 
 type File struct {
 	Path        string                 // a relative path to the file.
+	Module      tokens.Module          // the module token for this file.
 	Node        *ast.File              // the Go file object.
 	Members     map[tokens.Name]Member // a map of all members, membered and internal.
 	MemberNames []tokens.Name          // the list of member keys in the order in which they were encountered.
 }
 
-func NewFile(path string, node *ast.File) *File {
+func NewFile(path string, mod tokens.Module, node *ast.File) *File {
 	return &File{
 		Path:    path,
+		Module:  mod,
 		Node:    node,
 		Members: make(map[tokens.Name]Member),
 	}
 }
 
 type Member interface {
-	Name() tokens.Name // the name of the member.
-	Exported() bool    // true if this member is membered.
-	Pos() token.Pos    // the file defining this member.
+	Tok() tokens.ModuleMember // the member's token.
+	Name() tokens.Name        // the name of the member.
+	Exported() bool           // true if this member is membered.
+	Pos() token.Pos           // the file defining this member.
 }
 
 type member struct {
-	name     tokens.Name
+	tok      tokens.ModuleMember
 	exported bool
 	pos      token.Pos
 }
 
-func (m *member) Name() tokens.Name { return m.name }
-func (m *member) Exported() bool    { return m.exported }
-func (m *member) Pos() token.Pos    { return m.pos }
+func (m *member) Tok() tokens.ModuleMember { return m.tok }
+func (m *member) Name() tokens.Name        { return tokens.Name(m.tok.Name()) }
+func (m *member) Exported() bool           { return m.exported }
+func (m *member) Pos() token.Pos           { return m.pos }
 
 type TypeMember interface {
 	Member
@@ -80,7 +84,6 @@ type TypeMember interface {
 
 type Resource struct {
 	member
-	Named bool          // true if this is a named resource.
 	s     *types.Struct // the underlying Go struct node.
 	props []*types.Var
 	popts []PropertyOptions

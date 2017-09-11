@@ -5,6 +5,7 @@ package lumidl
 import (
 	"go/types"
 	"reflect"
+	"strings"
 
 	"github.com/pulumi/pulumi-fabric/pkg/resource/idl"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
@@ -22,21 +23,20 @@ func IsPrimitive(t types.Type) bool {
 
 // IsEntity checks whether a type is an entity that can be used by-reference (asset, resource, etc).
 func IsEntity(obj *types.TypeName, t types.Type) bool {
-	if res, _ := IsResource(obj, t); res {
+	if IsResource(obj, t) {
 		return true
 	}
 	spec, _ := IsSpecial(obj)
 	return spec
 }
 
-// IsResource checks whether a type is a special IDL resource.  If yes, it returns true for the first boolean, and the
-// second boolean indicates whether the resource is named or not.
-func IsResource(obj *types.TypeName, t types.Type) (bool, bool) {
+// IsResource returns true if a type is a special IDL resource.
+func IsResource(obj *types.TypeName, t types.Type) bool {
 	contract.Assert(obj != nil)
 
 	// If this is a resource type itself, then we're done.
-	if isres, isname := IsSpecialResource(obj); isres {
-		return isres, isname
+	if IsSpecialResource(obj) {
+		return true
 	}
 
 	// If a named type, fetch the underlying.
@@ -50,14 +50,14 @@ func IsResource(obj *types.TypeName, t types.Type) (bool, bool) {
 			fld := s.Field(i)
 			if fld.Anonymous() {
 				if named, ok := fld.Type().(*types.Named); ok {
-					if isres, isname := IsSpecialResource(named.Obj()); isres {
-						return isres, isname
+					if IsSpecialResource(named.Obj()) {
+						return true
 					}
 				}
 			}
 		}
 	}
-	return false, false
+	return false
 }
 
 type SpecialType int
@@ -65,20 +65,24 @@ type SpecialType int
 const (
 	NotSpecialType = iota
 	SpecialResourceType
-	SpecialNamedResourceType
 	SpecialAssetType
 	SpecialArchiveType
 )
 
 var (
-	idlArchiveType       = reflect.TypeOf(idl.Archive{})
-	idlAssetType         = reflect.TypeOf(idl.Asset{})
-	idlResourceType      = reflect.TypeOf(idl.Resource{})
-	idlNamedResourceType = reflect.TypeOf(idl.NamedResource{})
+	idlArchiveType  = reflect.TypeOf(idl.Archive{})
+	idlAssetType    = reflect.TypeOf(idl.Asset{})
+	idlResourceType = reflect.TypeOf(idl.Resource{})
 )
 
+// pkgMatch compares two packages.  If the first is a vendored version of match, it still returns true.
+func pkgMatch(pkg string, match string) bool {
+	ix := strings.LastIndex(pkg, match)
+	return ix != -1 && ix+len(match) == len(pkg)
+}
+
 func IsSpecial(obj *types.TypeName) (bool, SpecialType) {
-	if obj != nil && obj.Pkg().Path() == idlResourceType.PkgPath() {
+	if obj != nil && pkgMatch(obj.Pkg().Path(), idlResourceType.PkgPath()) {
 		switch obj.Name() {
 		case idlArchiveType.Name():
 			return true, SpecialArchiveType
@@ -86,16 +90,12 @@ func IsSpecial(obj *types.TypeName) (bool, SpecialType) {
 			return true, SpecialAssetType
 		case idlResourceType.Name():
 			return true, SpecialResourceType
-		case idlNamedResourceType.Name():
-			return true, SpecialNamedResourceType
 		}
 	}
 	return false, NotSpecialType
 }
 
-func IsSpecialResource(obj *types.TypeName) (bool, bool) {
+func IsSpecialResource(obj *types.TypeName) bool {
 	spec, kind := IsSpecial(obj)
-	isres := (spec && kind == SpecialResourceType)
-	isnamed := (spec && kind == SpecialNamedResourceType)
-	return isres || isnamed, isnamed
+	return (spec && kind == SpecialResourceType)
 }
