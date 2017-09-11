@@ -23,7 +23,7 @@ install:
     - git clone git@github.com:pulumi/pulumi ${GOPATH}/src/github.com/pulumi/pulumi
     # Now restore dependencies, build prerequisites, and generally make this thing ready to go.
     - make configure
-    - cd $TRAVIS_BUILD_DIR/nodejs/sdk/ && make configure
+    - cd $TRAVIS_BUILD_DIR/sdk/nodejs/ && make configure
 before_script:
     - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/bin:$PATH
     - export LUMIROOT=~/.lumi
