@@ -18,6 +18,12 @@ Yarn is faster and therefore preferred.  Please follow the directions on Yarn's 
 
 ### Building and Testing
 
+The first time you build, you must `make configure` to install and prepare native plugins for V8:
+
+    $ make configure
+
+Make sure to run this after installing the right version of Node.js above, otherwise it may bind to the wrong version.
+
 To build the SDK, simply run `make` from the root directory (`sdk/nodejs/`).  This will build the code, run tests, and
 then "install" the package (by `yarn link`ing the resulting `bin/` directory).
 

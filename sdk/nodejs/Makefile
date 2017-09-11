@@ -9,6 +9,12 @@ banner:
 	@echo "\033[1;37mPulumi Node.js SDK\033[0m"
 	@echo "\033[1;37m==================\033[0m"
 
+.PHONY: configure
+configure:
+	yarn install
+	cd runtime/native && ./ensure_node_v8.sh
+	cd runtime/native && ../../node_modules/.bin/node-gyp configure
+
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"

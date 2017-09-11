@@ -41,7 +41,11 @@ To build Lumi, ensure `$GOPATH` is set, and clone into a standard Go workspace:
     $ git clone git@github.com:pulumi/pulumi-fabric $GOPATH/src/github.com/pulumi/pulumi-fabric
     $ cd $GOPATH/src/github.com/pulumi/pulumi-fabric
 
-Before building, you will need to ensure dependencies have been restored to your enlistment:
+The first time you build, you must `make configure` to install dependencies and perform other machine setup:
+
+    $ make configure
+
+In the future, you can synch dependencies simply by running `dep ensure` explicitly:
 
     $ dep ensure
 

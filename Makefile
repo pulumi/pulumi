@@ -35,9 +35,7 @@ banner_all:
 .PHONY: configure
 configure:
 	dep ensure -v
-	cd sdk/nodejs && yarn install
-	cd sdk/nodejs/runtime/native && ./ensure_node_v8.sh
-	cd sdk/nodejs/runtime/native && ../../node_modules/.bin/node-gyp configure
+	cd sdk/nodejs/ && make configure
 
 .PHONY: install
 install:
