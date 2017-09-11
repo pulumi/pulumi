@@ -11,7 +11,7 @@ else
     NODE_DISTRO=$(node -p "process.release.sourceUrl")
     echo Downloading Node.js/V8 internal sources and headers from $NODE_DISTRO...
     NODE_TARBALL=$(mktemp)
-    wget -qO $NODE_TARBALL $NODE_DISTRO
+    curl -s $NODE_DISTRO -o $NODE_TARBALL
     mkdir -p $NODE_BASE
     tar xzf $NODE_TARBALL -C $NODE_BASE
 fi
