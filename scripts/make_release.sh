@@ -9,10 +9,11 @@ PUBFILE=$(dirname ${PUBDIR})/${GITVER}.tgz
 PUBPREFIX=s3://eng.pulumi.com/releases/pulumi-fabric
 declare -a PUBTARGETS=(${GITVER} $(git describe --tags) $(git rev-parse --abbrev-ref HEAD))
 
-# Copy the binaries and packs.
+# Copy the binaries, scripts, and packs.
 mkdir -p ${PUBDIR}/bin/
 cp ${GOPATH}/bin/lumi ${PUBDIR}/bin/
 mkdir -p ${PUBDIR}/sdk/
+cp -R ${GOPATH}/src/github.com/pulumi/pulumi/scripts/. ${PUBDIR}/scripts/
 cp -R ${ROOT}/sdk/nodejs/bin/. ${PUBDIR}/sdk/nodejs/
 cp -R ${ROOT}/sdk/nodejs/node_modules/. ${PUBDIR}/sdk/nodejs/node_modules/
 echo sdk/nodejs/ >> ${PUBDIR}/packs.txt
