@@ -26,7 +26,6 @@ install:
     - cd $TRAVIS_BUILD_DIR/sdk/nodejs/ && make configure
 before_script:
     - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/bin:$PATH
-    - export LUMIROOT=~/.lumi
 script:
     - if [ $TRAVIS_EVENT_TYPE = "cron" ]; then make nightly; else make; fi
 after_script:
@@ -34,3 +33,4 @@ after_script:
 notifications:
   slack:
     secure: tPhYdqclnOhFTiKhLn0EqY4/UhJ30c3SFRKHTMPYFfYflCQOyrIARYrzlm+oEOBISw/oNP0wR1LxawhLC2KfDb0ST9Zph8wKyQ8dujk9jXGACuuRic1n/IU9yiu2grZQqcwlieLN6IvGvK+736D2ZxhcjUF5ZwORkpe9jl+nr65NzWH5H+pr4jVWXvYddB2gJ/49i+COydfbaRJ+6O3JORqmSP2VA4CtrArl0L/uDT0osvBwJkeoTSzKjkPWZUwI3ZlGOCSGe+6i5hto6WOzUnU74UgNVZ6dCUOKJrmu146DDzTYB7g4xTkiBi8W5jEo7E6PRqAA6/zGGzUp0J8AMmKcrYnmBf3ALaAIzwiQAFwn9m4V3cKEnnfwzN+SrrmrA3KpwWuj2PNS0UEaxFr35Lb7NNORibmBJi5gj9q138C+b9uD5MQ3poq0PpXG+ZPYTQU1QZODsxcHpR3OyyI89OXBugrP9CTcYpknUgPmiAJgOQn+7H+Xcmme3CB9G5292hC5McZZtyxUAoNwAtg316bXSWWH9MkFRmjTWt7lRGZZ99T1TO/iG0DntyCWxy8lHIbYvCdbY5oTN3WMN93NFrmFMiZJcmmV79meMe/6LNLWVIWVaTXZSpS8IflRmVFp1twveSh4i1+mogh8CsMs2Lqp2Ca7HdakLtRBxHzcH/4=
+
