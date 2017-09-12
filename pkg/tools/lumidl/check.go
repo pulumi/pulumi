@@ -78,8 +78,13 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 		// Otherwise, find the AST node, and create a new object.
 		for _, fileast := range pkginfo.Files {
 			if rel := RelFilename(chk.Root, chk.Program, fileast); rel == path {
-				mod := tokens.Module(string(name) + ":" + filepath.Dir(rel))
-				file := NewFile(path, mod, fileast)
+				mod := string(name) + ":"
+				if ext := filepath.Ext(rel); ext != "" {
+					mod += rel[:len(rel)-len(ext)]
+				} else {
+					mod += rel
+				}
+				file := NewFile(path, tokens.Module(mod), fileast)
 				pkg.Files[path] = file
 				return file
 			}
