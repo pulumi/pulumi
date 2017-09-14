@@ -24,8 +24,8 @@
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
         "node-gyp": "^3.6.2",
-        "tslint": "^5.6.0",
-        "typescript": "^2.1.4"
+        "tslint": "^5.7.0",
+        "typescript": "^2.5.2"
     },
     "dependencies": {
         "@types/acorn": "^4.0.2",

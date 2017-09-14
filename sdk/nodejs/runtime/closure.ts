@@ -109,10 +109,10 @@ export type AsyncEnvironment = {[key: string]: Promise<AsyncEnvironmentEntry>};
 
 // AsyncEnvironmentEntry is the eventual environment slot for a named lexically captured variable.
 export interface AsyncEnvironmentEntry {
-    json?: any;                        // a value which can be safely json serialized.
-    closure?: AsyncClosure;            // a closure we are dependent on.
-    obj?: AsyncEnvironment;            // an object which may contain nested closures.
-    arr?: Promise<EnvironmentEntry>[]; // an array which may contain nested closures.
+    json?: any;                             // a value which can be safely json serialized.
+    closure?: AsyncClosure;                 // a closure we are dependent on.
+    obj?: AsyncEnvironment;                 // an object which may contain nested closures.
+    arr?: Promise<AsyncEnvironmentEntry>[]; // an array which may contain nested closures.
 }
 
 // entryCache stores a map of entry to promise, to support mutually recursive captures.
