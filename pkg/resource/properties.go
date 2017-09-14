@@ -95,6 +95,16 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 	return has && v.HasValue()
 }
 
+// ContainsUnknowns returns true if the property map contains at least one unknown value.
+func (m PropertyMap) ContainsUnknowns() bool {
+	for _, v := range m {
+		if v.ContainsUnknowns() {
+			return true
+		}
+	}
+	return false
+}
+
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() map[string]interface{} {
 	return m.MapRepl(nil, nil)
@@ -272,6 +282,22 @@ func NewPropertyValueRepl(v interface{},
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
 	return !v.IsNull() && !v.IsOutput()
+}
+
+// ContainsUnknowns returns true if the property value contains at least one unknown (deeply).
+func (v PropertyValue) ContainsUnknowns() bool {
+	if v.IsComputed() || v.IsOutput() {
+		return true
+	} else if v.IsArray() {
+		for _, e := range v.ArrayValue() {
+			if e.ContainsUnknowns() {
+				return true
+			}
+		}
+	} else if v.IsObject() {
+		return v.ObjectValue().ContainsUnknowns()
+	}
+	return false
 }
 
 // BoolValue fetches the underlying bool value (panicking if it isn't a bool).

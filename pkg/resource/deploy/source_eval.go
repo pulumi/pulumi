@@ -222,11 +222,16 @@ func (rm *resmon) NewResource(ctx context.Context,
 	req *lumirpc.NewResourceRequest) (*lumirpc.NewResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
+	props, err := plugin.UnmarshalProperties(
+		req.GetObject(), plugin.MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, err
+	}
 	goal := &evalSourceGoal{
 		goal: resource.NewGoal(
 			tokens.Type(req.GetType()),
 			tokens.QName(req.GetName()),
-			plugin.UnmarshalProperties(req.GetObject(), plugin.MarshalOptions{}),
+			props,
 		),
 		done: make(chan *evalState),
 	}
@@ -245,10 +250,14 @@ func (rm *resmon) NewResource(ctx context.Context,
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
+	outs, err := plugin.MarshalProperties(outprops, plugin.MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, err
+	}
 	return &lumirpc.NewResourceResponse{
 		Id:     string(state.ID),
 		Urn:    string(state.URN),
-		Object: plugin.MarshalProperties(outprops, plugin.MarshalOptions{}),
+		Object: outs,
 		Stable: stable,
 	}, nil
 }

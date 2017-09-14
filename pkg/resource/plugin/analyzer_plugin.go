@@ -48,12 +48,15 @@ func (a *analyzer) Name() tokens.QName { return a.name }
 // Analyze analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
 	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,#props=%v) executing", a.name, t, len(props))
-	req := &lumirpc.AnalyzeRequest{
-		Type:       string(t),
-		Properties: MarshalProperties(props, MarshalOptions{}),
+	mprops, err := MarshalProperties(props, MarshalOptions{})
+	if err != nil {
+		return nil, err
 	}
 
-	resp, err := a.client.Analyze(a.ctx.Request(), req)
+	resp, err := a.client.Analyze(a.ctx.Request(), &lumirpc.AnalyzeRequest{
+		Type:       string(t),
+		Properties: mprops,
+	})
 	if err != nil {
 		glog.V(7).Infof("analyzer[%v].Analyze(t=%v,...) failed: err=%v", a.name, t, err)
 		return nil, err

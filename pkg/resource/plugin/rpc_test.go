@@ -14,16 +14,20 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
 	asset := resource.NewTextAsset(text)
-	assetProps := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
-	assetValue := UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	assetProps, err := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
+	assert.Nil(t, err)
+	assetValue, err := UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	assert.Nil(t, err)
 	assert.True(t, assetValue.IsAsset())
 	assetDes := assetValue.AssetValue()
 	assert.True(t, assetDes.IsText())
 	assert.Equal(t, text, assetDes.Text)
 
 	arch := resource.NewAssetArchive(map[string]resource.Asset{"foo": asset})
-	archProps := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
-	archValue := UnmarshalPropertyValue(archProps, MarshalOptions{})
+	archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
+	assert.Nil(t, err)
+	archValue, err := UnmarshalPropertyValue(archProps, MarshalOptions{})
+	assert.Nil(t, err)
 	assert.True(t, archValue.IsArchive())
 	archDes := archValue.ArchiveValue()
 	assert.True(t, archDes.IsAssets())
@@ -34,20 +38,24 @@ func TestAssetSerialize(t *testing.T) {
 
 func TestComputedSerialize(t *testing.T) {
 	// Ensure that computed properties survive round trips.
-	opts := MarshalOptions{}
+	opts := MarshalOptions{AllowUnknowns: true}
 	{
-		cprop := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
-		cpropU := UnmarshalPropertyValue(cprop, opts)
+		assert.Nil(t, err)
+		cpropU, err := UnmarshalPropertyValue(cprop, opts)
+		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.ComputedValue().Element.IsString())
 	}
 	{
-		cprop := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
-		cpropU := UnmarshalPropertyValue(cprop, opts)
+		assert.Nil(t, err)
+		cpropU, err := UnmarshalPropertyValue(cprop, opts)
+		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.ComputedValue().Element.IsNumber())
 	}

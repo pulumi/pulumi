@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
@@ -15,8 +16,8 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	SkipNulls        bool // true to skip nulls altogether in the resulting map.
-	DisallowUnknowns bool // true if we are disallowing unknown values (results in assertion failures).
+	SkipNulls     bool // true to skip nulls altogether in the resulting map.
+	AllowUnknowns bool // true if we are allowing unknown values (otherwise an error results).
 }
 
 const (
@@ -44,7 +45,7 @@ const (
 )
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
-func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) *structpb.Struct {
+func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*structpb.Struct, error) {
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
@@ -54,64 +55,82 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) *structp
 		} else if opts.SkipNulls && v.IsNull() {
 			glog.V(9).Infof("Skipping null property %v (as requested)", key)
 		} else {
-			fields[string(key)] = MarshalPropertyValue(v, opts)
+			m, err := MarshalPropertyValue(v, opts)
+			if err != nil {
+				return nil, err
+			}
+			fields[string(key)] = m
 		}
 	}
 	return &structpb.Struct{
 		Fields: fields,
-	}
+	}, nil
 }
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
-func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) *structpb.Value {
+func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*structpb.Value, error) {
 	if v.IsNull() {
-		return MarshalNull(opts)
+		return MarshalNull(opts), nil
 	} else if v.IsBool() {
 		return &structpb.Value{
 			Kind: &structpb.Value_BoolValue{
 				BoolValue: v.BoolValue(),
 			},
-		}
+		}, nil
 	} else if v.IsNumber() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NumberValue{
 				NumberValue: v.NumberValue(),
 			},
-		}
+		}, nil
 	} else if v.IsString() {
-		return MarshalString(v.StringValue(), opts)
+		return MarshalString(v.StringValue(), opts), nil
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
-			elems = append(elems, MarshalPropertyValue(elem, opts))
+			e, err := MarshalPropertyValue(elem, opts)
+			if err != nil {
+				return nil, err
+			}
+			elems = append(elems, e)
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
 				ListValue: &structpb.ListValue{Values: elems},
 			},
-		}
+		}, nil
 	} else if v.IsAsset() {
 		return MarshalAsset(v.AssetValue(), opts)
 	} else if v.IsArchive() {
 		return MarshalArchive(v.ArchiveValue(), opts)
 	} else if v.IsObject() {
-		obj := MarshalProperties(v.ObjectValue(), opts)
-		return MarshalStruct(obj, opts)
+		obj, err := MarshalProperties(v.ObjectValue(), opts)
+		if err != nil {
+			return nil, err
+		}
+		return MarshalStruct(obj, opts), nil
 	} else if v.IsComputed() {
-		return marshalUnknownProperty(v.ComputedValue().Element, opts)
+		elem := v.ComputedValue().Element
+		if opts.AllowUnknowns {
+			return marshalUnknownProperty(elem, opts), nil
+		}
+		return nil, errors.Errorf("unpexected computed property during marshaling: %v", elem)
 	} else if v.IsOutput() {
 		// Note that at the moment we don't differentiate between computed and output properties on the wire.  As
 		// a result, they will show up as computed on the other end.  This distinction isn't currently interesting.
-		return marshalUnknownProperty(v.OutputValue().Element, opts)
+		elem := v.ComputedValue().Element
+		if opts.AllowUnknowns {
+			return marshalUnknownProperty(v.OutputValue().Element, opts), nil
+		}
+		return nil, errors.Errorf("unexpected output property during marshaling: %v", elem)
 	}
 
 	contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
-	return nil
+	return nil, nil
 }
 
 // marshalUnknownProperty marshals an unknown property in a way that lets us recover its type on the other end.
 func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *structpb.Value {
-	contract.Assertf(!opts.DisallowUnknowns, "Unexpected unknown value when opts.DisallowUnknowns")
 	// Normal cases, these get sentinels.
 	if elem.IsBool() {
 		return MarshalString(UnknownBoolValue, opts)
@@ -146,7 +165,7 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 }
 
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
-func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) resource.PropertyMap {
+func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.PropertyMap, error) {
 	result := make(resource.PropertyMap)
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
@@ -161,7 +180,10 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) resource.P
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
 		pk := resource.PropertyKey(key)
-		v := UnmarshalPropertyValue(props.Fields[key], opts)
+		v, err := UnmarshalPropertyValue(props.Fields[key], opts)
+		if err != nil {
+			return nil, err
+		}
 		glog.V(9).Infof("Unmarshaling property for RPC: %v=%v", key, v)
 		if opts.SkipNulls && v.IsNull() {
 			glog.V(9).Infof("Skipping unmarshaling of %v (it is null)", key)
@@ -170,27 +192,31 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) resource.P
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.
-func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) resource.PropertyValue {
+func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (resource.PropertyValue, error) {
 	contract.Assert(v != nil)
 
 	switch v.Kind.(type) {
 	case *structpb.Value_NullValue:
-		return resource.NewNullProperty()
+		return resource.NewNullProperty(), nil
 	case *structpb.Value_BoolValue:
-		return resource.NewBoolProperty(v.GetBoolValue())
+		return resource.NewBoolProperty(v.GetBoolValue()), nil
 	case *structpb.Value_NumberValue:
-		return resource.NewNumberProperty(v.GetNumberValue())
+		return resource.NewNumberProperty(v.GetNumberValue()), nil
 	case *structpb.Value_StringValue:
 		// If it's a string, it could be an unknown property, or just a regular string.
 		s := v.GetStringValue()
 		if unk, isunk := unmarshalUnknownPropertyValue(s, opts); isunk {
-			return unk
+			if opts.AllowUnknowns {
+				return unk, nil
+			}
+			return resource.PropertyValue{},
+				errors.Errorf("unexpected unknown property during unmarshaling: %v", unk)
 		}
-		return resource.NewStringProperty(s)
+		return resource.NewStringProperty(s), nil
 	case *structpb.Value_ListValue:
 		// If there's already an array, prefer to swap elements within it.
 		var elems []resource.PropertyValue
@@ -200,26 +226,32 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) resource.Pro
 				elems = append(elems, resource.PropertyValue{})
 			}
 			contract.Assert(len(elems) > i)
-			elems[i] = UnmarshalPropertyValue(elem, opts)
+			e, err := UnmarshalPropertyValue(elem, opts)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			elems[i] = e
 		}
-
-		return resource.NewArrayProperty(elems)
+		return resource.NewArrayProperty(elems), nil
 	case *structpb.Value_StructValue:
 		// Start by unmarshaling.
-		obj := UnmarshalProperties(v.GetStructValue(), opts)
+		obj, err := UnmarshalProperties(v.GetStructValue(), opts)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
 		objmap := obj.Mappable()
 		if asset, isasset := resource.DeserializeAsset(objmap); isasset {
-			return resource.NewAssetProperty(asset)
+			return resource.NewAssetProperty(asset), nil
 		} else if archive, isarchive := resource.DeserializeArchive(objmap); isarchive {
-			return resource.NewArchiveProperty(archive)
+			return resource.NewArchiveProperty(archive), nil
 		}
-		return resource.NewObjectProperty(obj)
+		return resource.NewObjectProperty(obj), nil
 
 	default:
 		contract.Failf("Unrecognized structpb value kind: %v", reflect.TypeOf(v.Kind))
-		return resource.NewNullProperty()
+		return resource.PropertyValue{}, nil
 	}
 }
 
@@ -277,7 +309,7 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 }
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
-func MarshalAsset(v resource.Asset, opts MarshalOptions) *structpb.Value {
+func MarshalAsset(v resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
 	// To marshal an asset, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
@@ -285,7 +317,7 @@ func MarshalAsset(v resource.Asset, opts MarshalOptions) *structpb.Value {
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
-func MarshalArchive(v resource.Archive, opts MarshalOptions) *structpb.Value {
+func MarshalArchive(v resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
 	// To marshal an archive, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)

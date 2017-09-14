@@ -65,12 +65,15 @@ func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(urn=%v,#props=%v) executing", p.pkg, urn, len(props))
-	req := &lumirpc.CheckRequest{
-		Urn:        string(urn),
-		Properties: MarshalProperties(props, MarshalOptions{}),
+	mprops, err := MarshalProperties(props, MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, nil, err
 	}
 
-	resp, err := p.client.Check(p.ctx.Request(), req)
+	resp, err := p.client.Check(p.ctx.Request(), &lumirpc.CheckRequest{
+		Urn:        string(urn),
+		Properties: mprops,
+	})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Check(urn=%v,...) failed: err=%v", p.pkg, urn, err)
 		return nil, nil, err
@@ -79,7 +82,10 @@ func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource
 	// Unmarshal any defaults.
 	var defaults resource.PropertyMap
 	if defs := resp.GetDefaults(); defs != nil {
-		defaults = UnmarshalProperties(defs, MarshalOptions{})
+		defaults, err = UnmarshalProperties(defs, MarshalOptions{})
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// And now any properties that failed verification.
@@ -103,11 +109,20 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	glog.V(7).Infof("resource[%v].Diff(id=%v,urn=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, urn, len(olds), len(news))
 
+	molds, err := MarshalProperties(olds, MarshalOptions{})
+	if err != nil {
+		return DiffResult{}, err
+	}
+	mnews, err := MarshalProperties(news, MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
 	resp, err := p.client.Diff(p.ctx.Request(), &lumirpc.DiffRequest{
 		Id:   string(id),
 		Urn:  string(urn),
-		Olds: MarshalProperties(olds, MarshalOptions{DisallowUnknowns: true}),
-		News: MarshalProperties(news, MarshalOptions{}),
+		Olds: molds,
+		News: mnews,
 	})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Diff(id=%v,urn=%v,...) failed: %v", p.pkg, id, urn, err)
@@ -128,12 +143,16 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
 	glog.V(7).Infof("resource[%v].Create(urn=%v,#props=%v) executing", p.pkg, urn, len(props))
-	req := &lumirpc.CreateRequest{
-		Urn:        string(urn),
-		Properties: MarshalProperties(props, MarshalOptions{DisallowUnknowns: true}),
+
+	mprops, err := MarshalProperties(props, MarshalOptions{})
+	if err != nil {
+		return "", nil, resource.StatusOK, err
 	}
 
-	resp, err := p.client.Create(p.ctx.Request(), req)
+	resp, err := p.client.Create(p.ctx.Request(), &lumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: mprops,
+	})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Create(urn=%v,...) failed: err=%v", p.pkg, urn, err)
 		return "", nil, resource.StatusUnknown, err
@@ -144,7 +163,11 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusUnknown,
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
-	outs := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+
+	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+	if err != nil {
+		return "", nil, resource.StatusUnknown, err
+	}
 
 	glog.V(7).Infof("resource[%v].Create(urn=%v,...) success: id=%v; #outs=%v", p.pkg, urn, id, len(outs))
 	return id, outs, resource.StatusOK, nil
@@ -157,14 +180,23 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
-
 	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, urn, len(olds), len(news))
+
+	molds, err := MarshalProperties(olds, MarshalOptions{})
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+	mnews, err := MarshalProperties(news, MarshalOptions{})
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+
 	req := &lumirpc.UpdateRequest{
 		Id:   string(id),
 		Urn:  string(urn),
-		Olds: MarshalProperties(olds, MarshalOptions{DisallowUnknowns: true}),
-		News: MarshalProperties(news, MarshalOptions{DisallowUnknowns: true}),
+		Olds: molds,
+		News: mnews,
 	}
 
 	resp, err := p.client.Update(p.ctx.Request(), req)
@@ -172,7 +204,11 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) failed: %v", p.pkg, id, urn, err)
 		return nil, resource.StatusUnknown, err
 	}
-	outs := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+
+	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+	if err != nil {
+		return nil, resource.StatusUnknown, err
+	}
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success; #out=%v", p.pkg, id, urn, len(outs))
 	return outs, resource.StatusOK, nil
@@ -183,11 +219,16 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
+	mprops, err := MarshalProperties(props, MarshalOptions{})
+	if err != nil {
+		return resource.StatusOK, err
+	}
+
 	glog.V(7).Infof("resource[%v].Delete(id=%v,urn=%v) executing", p.pkg, id, urn)
 	req := &lumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
-		Properties: MarshalProperties(props, MarshalOptions{DisallowUnknowns: true}),
+		Properties: mprops,
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
