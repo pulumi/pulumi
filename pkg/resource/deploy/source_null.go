@@ -26,7 +26,7 @@ func (src *nullSource) Info() interface{} {
 	return nil
 }
 
-func (src *nullSource) Iterate() (SourceIterator, error) {
+func (src *nullSource) Iterate(opts Options) (SourceIterator, error) {
 	return &nullSourceIterator{}, nil
 }
 

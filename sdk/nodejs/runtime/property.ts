@@ -3,9 +3,9 @@
 import * as asset from "../asset";
 import { Computed, MaybeComputed } from "../computed";
 import { Resource, URN } from "../resource";
-import { debuggablePromise } from "./debuggable";
+import { errorString, debuggablePromise } from "./debuggable";
 import { Log } from "./log";
-import { errorString, getMonitor, isDryRun } from "./settings";
+import { getMonitor, options } from "./settings";
 
 // mapValueCallbackRecursionCount tracks the recursion depth inside of mapValue callbacks.  This is used to
 // prevent resource creation inside of such callbacks, as doing so leads to conditional resource creation.
@@ -79,7 +79,7 @@ export class Property<T> implements Computed<T> {
         let outcome: Promise<any> = this.outputPromise.then((value: T | undefined) => {
             // If the value is unknown, and this is a dry-run, propagate an unknown.  Otherwise, use the callback
             // to compute something new.
-            if (value === undefined && isDryRun()) {
+            if (value === undefined && options.dryRun) {
                 Property.resolveTo(result, undefined, true, true);
             }
             else {

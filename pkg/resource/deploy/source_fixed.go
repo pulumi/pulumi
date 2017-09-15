@@ -29,7 +29,7 @@ func (src *fixedSource) Info() interface{} {
 	return nil
 }
 
-func (src *fixedSource) Iterate() (SourceIterator, error) {
+func (src *fixedSource) Iterate(opts Options) (SourceIterator, error) {
 	return &fixedSourceIterator{
 		src:     src,
 		current: -1,

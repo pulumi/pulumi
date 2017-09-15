@@ -1,6 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import { Log } from "./log";
+import { options } from "./settings";
 
 // debugPromiseTimeout can be set to enable promises debugging.  If it is -1, it has no effect.  Be careful setting
 // this to other values, because too small a value will cause legitimate promise resolutions to appear as timeouts.
@@ -81,5 +82,13 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
 
     // Now race them; first one wins!
     return Promise.race([ p, timeout ]);
+}
+
+// errorString produces a string from an error, conditionally including additional diagnostics.
+export function errorString(err: Error): string {
+    if (options.includeStacks && err.stack) {
+        return err.stack;
+    }
+    return err.toString();
 }
 

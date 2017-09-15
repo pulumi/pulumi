@@ -24,6 +24,7 @@ type PlanOptions struct {
 	Environment          string   // the environment to use when planning
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Debug                bool     // true to enable resource debugging output.
+	Serialize            bool     // true to serialize resource operations.
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
@@ -46,6 +47,7 @@ func (eng *Engine) Plan(opts PlanOptions) error {
 		Destroy:              false,
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,
+		Serialize:            opts.Serialize,
 		ShowConfig:           opts.ShowConfig,
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
@@ -136,7 +138,7 @@ func (eng *Engine) printPlan(result *planResult, opts deployOptions) error {
 	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
-	iter, err := result.Plan.Start()
+	iter, err := result.Plan.Start(deploy.Options{})
 	if err != nil {
 		return errors.Errorf("An error occurred while preparing the plan: %v", err)
 	}

@@ -71,7 +71,8 @@ proto.lumirpc.RunRequest.toObject = function(includeInstance, msg) {
     program: jspb.Message.getFieldWithDefault(msg, 2, ""),
     argsList: jspb.Message.getField(msg, 3),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
-    dryrun: jspb.Message.getFieldWithDefault(msg, 5, false)
+    dryrun: jspb.Message.getFieldWithDefault(msg, 5, false),
+    serialize: jspb.Message.getFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -130,6 +131,10 @@ proto.lumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDryrun(value);
       break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSerialize(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -187,6 +192,13 @@ proto.lumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       5,
+      f
+    );
+  }
+  f = message.getSerialize();
+  if (f) {
+    writer.writeBool(
+      6,
       f
     );
   }
@@ -286,6 +298,23 @@ proto.lumirpc.RunRequest.prototype.getDryrun = function() {
 /** @param {boolean} value */
 proto.lumirpc.RunRequest.prototype.setDryrun = function(value) {
   jspb.Message.setField(this, 5, value);
+};
+
+
+/**
+ * optional bool serialize = 6;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.lumirpc.RunRequest.prototype.getSerialize = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 6, false));
+};
+
+
+/** @param {boolean} value */
+proto.lumirpc.RunRequest.prototype.setSerialize = function(value) {
+  jspb.Message.setField(this, 6, value);
 };
 
 

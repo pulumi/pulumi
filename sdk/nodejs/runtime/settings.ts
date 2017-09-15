@@ -2,37 +2,28 @@
 
 import { debuggablePromise } from "./debuggable";
 
-// includeStacks dictates whether we include full stack traces in resource errors or not.
-let includeStacks: boolean = true;
-
-export function errorString(err: Error): string {
-    if (includeStacks && err.stack) {
-        return err.stack;
-    }
-    return err.toString();
+// Options is a bag of settings that controls the behavior of planning and deployments.
+export interface Options {
+    readonly engine?: Object; // a live connection to the engine, used for logging, etc.
+    readonly monitor?: Object; // a live connection to the resource monitor that tracks deployments.
+    readonly serialize?: boolean; // true to serialize resource operations (by default, parallelism is on based on the DAG).
+    readonly dryRun?: boolean; // whether we are performing a plan (true) or a real deployment (false).
+    readonly includeStacks?: boolean; // whether we include full stack traces in resource errors or not.
 }
+
+// options are the current deployment options being used for this entire session.
+export let options: Options = {
+    serialize: false,
+    dryRun: false,
+    includeStacks: true,
+};
 
 // configured is set to true once configuration has been set.
 let configured: boolean;
 
-// monitor is a live connection to the resource monitor connection.
-// IDEA: it would be nice to mirror the Protobuf structures as TypeScript interfaces.
-let monitor: Object | undefined;
-
-// engine is an optional live connection to the engine.  This can be used for logging, etc.
-let engine: Object | undefined;
-
-// dryRun tells us whether we're performing a plan (true) versus a real deployment (false).
-export let dryRun: boolean;
-
 // hasMonitor returns true if we are currently connected to a resource monitoring service.
 export function hasMonitor(): boolean {
-    return !!monitor;
-}
-
-// isDryRun returns true if we are planning.
-export function isDryRun(): boolean {
-    return dryRun;
+    return !!options.monitor;
 }
 
 // getMonitor returns the current resource monitoring service client for RPC communications.
@@ -41,23 +32,21 @@ export function getMonitor(): Object | undefined {
         configured = true;
         console.warn("warning: Pulumi Fabric monitor is missing; no resources will be created");
     }
-    return monitor;
+    return options.monitor;
 }
 
 // getEngine returns the current engine, if any, for RPC communications back to the resource engine.
 export function getEngine(): Object | undefined {
-    return engine;
+    return options.engine;
 }
 
 // configure initializes the current resource monitor and engine RPC connections, and whether we are performing a "dry
-// run" (plan), versus a real deployment.  It may only be called once.
-export function configure(m: Object | undefined, e: Object | undefined, dr: boolean): void {
+// run" (plan), versus a real deployment, and so on.  It may only be called once.
+export function configure(opts: Options): void {
     if (configured) {
         throw new Error("Cannot configure runtime settings more than once");
     }
-    monitor = m;
-    engine = e;
-    dryRun = dr;
+    Object.assign(options, opts);
     configured = true;
 }
 
@@ -72,13 +61,11 @@ export function disconnect(): void {
             return debuggablePromise(done.then(closeCallback));
         }
         // Otherwise, actually perform the close activities.
-        if (monitor) {
-            (<any>monitor).close();
-            monitor = undefined;
+        if (options.monitor) {
+            (<any>options.monitor).close();
         }
-        if (engine) {
-            (<any>engine).close();
-            engine = undefined;
+        if (options.engine) {
+            (<any>options.engine).close();
         }
         return Promise.resolve();
     };

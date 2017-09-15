@@ -25,7 +25,7 @@ func TestNullPlan(t *testing.T) {
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, nil, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
-	iter, err := plan.Start()
+	iter, err := plan.Start(Options{})
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
 	next, err := iter.Next()
@@ -46,7 +46,7 @@ func TestErrorPlan(t *testing.T) {
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
-		iter, err := plan.Start()
+		iter, err := plan.Start(Options{})
 		assert.Nil(t, iter)
 		assert.NotNil(t, err)
 		assert.Equal(t, "ITERATE", err.Error())
@@ -61,7 +61,7 @@ func TestErrorPlan(t *testing.T) {
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
-		iter, err := plan.Start()
+		iter, err := plan.Start(Options{})
 		assert.Nil(t, err)
 		assert.NotNil(t, iter)
 		next, err := iter.Next()
@@ -91,7 +91,7 @@ func (src *errorSource) Info() interface{} {
 	return nil
 }
 
-func (src *errorSource) Iterate() (SourceIterator, error) {
+func (src *errorSource) Iterate(opts Options) (SourceIterator, error) {
 	if src.duringIterate {
 		return nil, src.err
 	}
@@ -217,7 +217,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	// Next, validate the steps and ensure that we see all of the expected ones.  Note that there aren't any
 	// dependencies between the steps, so we must validate it in a way that's insensitive of order.
 	seen := make(map[StepOp]int)
-	iter, err := plan.Start()
+	iter, err := plan.Start(Options{})
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
 	for {

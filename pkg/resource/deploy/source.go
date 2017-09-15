@@ -17,7 +17,7 @@ type Source interface {
 	// Info returns a serializable payload that can be used to stamp snapshots for future reconciliation.
 	Info() interface{}
 	// Iterate begins iterating the source.  Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate() (SourceIterator, error)
+	Iterate(opts Options) (SourceIterator, error)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer.

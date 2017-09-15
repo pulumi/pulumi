@@ -3,10 +3,10 @@
 import * as asset from "../asset";
 import { Computed, MaybeComputed } from "../computed";
 import { ID, Resource, URN } from "../resource";
-import { debuggablePromise } from "./debuggable";
+import { errorString, debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { isInsideMapValueCallback, Property } from "./property";
-import { errorString, getMonitor, isDryRun, rpcKeepAlive } from "./settings";
+import { getMonitor, options, rpcKeepAlive } from "./settings";
 
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -24,7 +24,8 @@ let resourceChain: Promise<void> = Promise.resolve();
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
-    res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): void {
+    res: Resource, t: string, name: string,
+    props: {[key: string]: MaybeComputed<any> | undefined}, dependsOn: Resource[] | undefined): void {
     Log.debug(
         `Registering resource: t=${t}, name=${name}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
@@ -43,11 +44,8 @@ export function registerResource(
     // casts because they are typically readonly and this function is in cahoots with the initialization process.
     let urn = (<any>res).urn = new Property<URN>(undefined, true, false);
     let id = (<any>res).id = new Property<ID>(undefined, true, false);
-    let transfer: Promise<any> = debuggablePromise(transferProperties(res, t, name, props));
-
-    // Now wait for the prior resource operation to finish before we proceed, serializing them, and make this the
-    // current resource operation so that everybody piles up on it.
-    resourceChain = debuggablePromise(resourceChain.then(() => {
+    let transfer: Promise<any> = debuggablePromise(transferProperties(res, t, name, props, dependsOn));
+    let resourceOp: Promise<void> = debuggablePromise(resourceChain.then(() => {
         // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
         // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
         // time, we want to give the illusion of non-blocking code, so we return immediately.
@@ -115,16 +113,33 @@ export function registerResource(
         // errors from resource registation do not propagate forwards to other dependent registrations.
         return resourceRegistered.then(() => { notAlive(); }, () => { notAlive(); });
     }));
+
+    // If serialization is requested, wait for the prior resource operation to finish before we proceed, serializing
+    // them, and make this the current resource operation so that everybody piles up on it.
+    if (options.serialize) {
+        resourceChain = resourceOp;
+    }
 }
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
 function transferProperties(
-    res: Resource, t: string, name: string, props: {[key: string]: MaybeComputed<any> | undefined}): Promise<any> {
-    let resbag: any = res;
-    let obj: any = {}; // this will eventually hold the serialized object properties.
-    let eventuals: Promise<void>[] = []; // this contains all promises outstanding for assignments.
+    res: Resource, t: string, name: string,
+    props: {[key: string]: MaybeComputed<any> | undefined}, dependsOn: Resource[] | undefined): Promise<any> {
+    // First set up an array of all promises that we will await on before completing the transfer.
+    let eventuals: Promise<any>[] = [];
+
+    // If the dependsOn array is present, make sure we wait on those.
+    if (dependsOn) {
+        for (let dep of dependsOn) {
+            eventuals.push((dep.id as Property<string>).outputPromise);
+        }
+    }
+
+    // Set up an object that will hold the serialized object properties and then serialize them.
+    let obj: any = {};
     if (props) {
+        let resbag: any = res;
         for (let k of Object.keys(props)) {
             // Skip "id" and "urn", since we handle those specially.
             if (k === "id" || k === "urn") {
@@ -186,7 +201,7 @@ function resolveProperties(res: Resource, t: string, name: string, propsStruct: 
             }
             try {
                 (p as Property<any>).setOutput(
-                    deserializeProperty(props[k]), !isDryRun() || stable, false);
+                    deserializeProperty(props[k]), !options.dryRun || stable, false);
             }
             catch (err) {
                 throw new Error(
@@ -200,7 +215,7 @@ function resolveProperties(res: Resource, t: string, name: string, propsStruct: 
     for (let k of Object.keys(res)) {
         let p: Object = weakres[k];
         if (p instanceof Property) {
-            (p as Property<any>).done(isDryRun());
+            (p as Property<any>).done(!!options.dryRun);
         }
     }
 }
@@ -221,7 +236,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         if (excessiveDebugOutput) {
             Log.debug(`Serialize property [${ctx}]: undefined`);
         }
-        if (!isDryRun()) {
+        if (!options.dryRun) {
             throw new Error("Unexpected unknown property during deployment");
         }
         return unknownPropertyValue;

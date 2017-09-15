@@ -15,14 +15,18 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-// TODO[pulumi/pulumi-fabric#106]: parallelism.
+// Options controls the planning and deployment process.
+type Options struct {
+	Serialize bool     // true to serialize all operations (the default is to enable parallelism).
+	Progress  Progress // an optional object that may be used to hook resource operation progress.
+}
 
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
 // things: the resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step
 // that failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) {
+func (p *Plan) Apply(opts Options) (PlanSummary, Step, resource.Status, error) {
 	// Fetch a plan iterator and keep walking it until we are done.
-	iter, err := p.Start()
+	iter, err := p.Start(opts)
 	if err != nil {
 		return nil, nil, resource.StatusOK, err
 	}
@@ -34,6 +38,7 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 		return nil, nil, resource.StatusOK, err
 	}
 
+	prog := opts.Progress
 	for step != nil {
 		// Do the pre-step.
 		rst := resource.StatusOK
@@ -75,14 +80,14 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 }
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
-func (p *Plan) Start() (*PlanIterator, error) {
+func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 	// First, configure all providers based on the target configuration map.
 	if err := p.configure(); err != nil {
 		return nil, err
 	}
 
 	// Next, ask the source for its iterator.
-	src, err := p.source.Iterate()
+	src, err := p.source.Iterate(opts)
 	if err != nil {
 		return nil, err
 	}

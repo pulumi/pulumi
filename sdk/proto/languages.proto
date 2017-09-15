@@ -19,6 +19,7 @@ message RunRequest {
     repeated string args = 3;       // any arguments to pass to the program.
     map<string, string> config = 4; // the configuration variables to apply before running.
     bool dryRun = 5;                // true if we're only doing a dryrun (plan).
+    bool serialize = 6;             // true to serialize resource operations (the default is false/parallel).
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

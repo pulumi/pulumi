@@ -57,6 +57,11 @@ function runRPC(call: any, callback: any): void {
             args.push("--dry-run");
         }
 
+        // If serialized execution has been requested, propagate it.
+        if (req.getSerialize()) {
+            args.push("--serialize");
+        }
+
         // If a different working directory was requested, make sure to pass it too.
         let pwd: string | undefined = req.getPwd();
         if (pwd) {

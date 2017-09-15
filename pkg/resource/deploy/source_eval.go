@@ -63,7 +63,7 @@ func (src *evalSource) Info() interface{} {
 }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate() (SourceIterator, error) {
+func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	reschan := make(chan *evalSourceGoal)
 	mon, err := newResourceMonitor(reschan)
@@ -81,7 +81,7 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun()
+	iter.forkRun(opts)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -131,7 +131,7 @@ func (iter *evalSourceIterator) Next() (SourceGoal, error) {
 }
 
 // forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
-func (iter *evalSourceIterator) forkRun() {
+func (iter *evalSourceIterator) forkRun(opts Options) {
 	// If we are destroying, no need to perform any evaluation beyond the config initialization.
 	if !iter.src.destroy {
 		// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
@@ -154,11 +154,12 @@ func (iter *evalSourceIterator) forkRun() {
 				// Now run the actual program.
 				var progerr string
 				progerr, err = langhost.Run(plugin.RunInfo{
-					Pwd:     iter.src.runinfo.Pwd,
-					Program: iter.src.runinfo.Program,
-					Args:    iter.src.runinfo.Args,
-					Config:  iter.src.runinfo.Config,
-					DryRun:  iter.src.dryRun,
+					Pwd:       iter.src.runinfo.Pwd,
+					Program:   iter.src.runinfo.Program,
+					Args:      iter.src.runinfo.Args,
+					Config:    iter.src.runinfo.Config,
+					DryRun:    iter.src.dryRun,
+					Serialize: opts.Serialize,
 				})
 				if err == nil && progerr != "" {
 					// If the program had an unhandled error; propagate it to the caller.

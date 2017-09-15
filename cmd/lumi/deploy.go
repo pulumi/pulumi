@@ -14,6 +14,7 @@ func newDeployCmd() *cobra.Command {
 	var debug bool
 	var dryRun bool
 	var env string
+	var serialize bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -40,6 +41,7 @@ func newDeployCmd() *cobra.Command {
 				Debug:                debug,
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
+				Serialize:            serialize,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
@@ -60,6 +62,9 @@ func newDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
+	cmd.PersistentFlags().BoolVar(
+		&serialize, "serialize", false,
+		"Serialize resource operations (instead of the default parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

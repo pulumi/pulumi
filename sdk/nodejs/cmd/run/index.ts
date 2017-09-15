@@ -16,6 +16,7 @@ function usage(): void {
     console.error(``);
     console.error(`    where [flags] may include`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
+    console.error(`        --serialize         true to serialize all resource operations`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      the RPC address for a resource monitor to connect to`);
@@ -28,7 +29,7 @@ export function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     let config: {[key: string]: string} = {};
     let argv: minimist.ParsedArgs = minimist(args, {
-        boolean: [ "dry-run" ],
+        boolean: [ "dry-run", "serialize" ],
         string: [ "pwd", "monitor", "engine" ],
         unknown: (arg: string) => {
             // If unknown, first see if it's a --config.k=v flag.
@@ -65,28 +66,33 @@ export function main(args: string[]): void {
         process.chdir(pwd);
     }
 
+    // If resource serialization was requested, turn it on.
+    let serialize: boolean = !!(argv["serialize"]);
+
     // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
-    let dryrun = false;
-    if (argv["dry-run"]) {
-        dryrun = true;
-    }
+    let dryRun: boolean = !!(argv["dry-run"]);
 
     // If there is a monitor argument, connect to it.
-    let monitor: any | undefined;
+    let monitor: Object | undefined;
     let monitorAddr: string | undefined = argv["monitor"];
     if (monitorAddr) {
         monitor = new langrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
     }
 
     // If there is an engine argument, connect to it too.
-    let engine: any | undefined;
+    let engine: Object | undefined;
     let engineAddr: string | undefined = argv["engine"];
     if (engineAddr) {
         engine = new engrpc.EngineClient(engineAddr, grpc.credentials.createInsecure());
     }
 
     // Now configure the runtime and get it ready to run the program.
-    runtime.configure(monitor, engine, dryrun);
+    runtime.configure({
+        serialize: serialize,
+        dryRun: dryRun,
+        monitor: monitor,
+        engine: engine,
+    });
 
     // Pluck out the program and arguments.
     if (argv._.length === 0) {

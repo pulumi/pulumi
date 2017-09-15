@@ -226,6 +226,29 @@ describe("rpc", () => {
                 return { id: undefined, urn: undefined, props: undefined };
             },
         },
+        // A program that allocates ten simple resources that use dependsOn to depend on one another.
+        "ten_depends_on_resources": {
+            program: path.join(base, "008.ten_depends_on_resources"),
+            expectResourceCount: 10,
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                if (ctx.seen) {
+                    assert(!ctx.seen[name],
+                           `Got multiple resources with same name ${name}`);
+                }
+                else {
+                    ctx.seen = {};
+                }
+                const prefix = "testResource";
+                assert.strictEqual(name.substring(0, prefix.length), prefix,
+                                   `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                let seqnum = parseInt(name.substring(prefix.length), 10);
+                assert(!isNaN(seqnum),
+                       `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                ctx.seen[name] = true;
+                return { id: undefined, urn: undefined, props: undefined };
+            },
+        },
     };
 
     for (let casename of Object.keys(cases)) {
