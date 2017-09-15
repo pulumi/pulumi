@@ -82,7 +82,7 @@ func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource
 	// Unmarshal any defaults.
 	var defaults resource.PropertyMap
 	if defs := resp.GetDefaults(); defs != nil {
-		defaults, err = UnmarshalProperties(defs, MarshalOptions{})
+		defaults, err = UnmarshalProperties(defs, MarshalOptions{AllowUnknowns: true})
 		if err != nil {
 			return nil, nil, err
 		}
