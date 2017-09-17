@@ -56,12 +56,12 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		config[string(k)] = v
 	}
 	resp, err := h.client.Run(h.ctx.Request(), &lumirpc.RunRequest{
-		Pwd:       info.Pwd,
-		Program:   info.Program,
-		Args:      info.Args,
-		Config:    config,
-		DryRun:    info.DryRun,
-		Serialize: info.Serialize,
+		Pwd:      info.Pwd,
+		Program:  info.Program,
+		Args:     info.Args,
+		Config:   config,
+		DryRun:   info.DryRun,
+		Parallel: int32(info.Parallel),
 	})
 	if err != nil {
 		glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",

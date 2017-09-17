@@ -72,7 +72,7 @@ proto.lumirpc.RunRequest.toObject = function(includeInstance, msg) {
     argsList: jspb.Message.getField(msg, 3),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
     dryrun: jspb.Message.getFieldWithDefault(msg, 5, false),
-    serialize: jspb.Message.getFieldWithDefault(msg, 6, false)
+    parallel: jspb.Message.getFieldWithDefault(msg, 6, 0)
   };
 
   if (includeInstance) {
@@ -132,8 +132,8 @@ proto.lumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
       msg.setDryrun(value);
       break;
     case 6:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSerialize(value);
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setParallel(value);
       break;
     default:
       reader.skipField();
@@ -195,9 +195,9 @@ proto.lumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getSerialize();
-  if (f) {
-    writer.writeBool(
+  f = message.getParallel();
+  if (f !== 0) {
+    writer.writeInt32(
       6,
       f
     );
@@ -302,18 +302,16 @@ proto.lumirpc.RunRequest.prototype.setDryrun = function(value) {
 
 
 /**
- * optional bool serialize = 6;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
+ * optional int32 parallel = 6;
+ * @return {number}
  */
-proto.lumirpc.RunRequest.prototype.getSerialize = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 6, false));
+proto.lumirpc.RunRequest.prototype.getParallel = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
 };
 
 
-/** @param {boolean} value */
-proto.lumirpc.RunRequest.prototype.setSerialize = function(value) {
+/** @param {number} value */
+proto.lumirpc.RunRequest.prototype.setParallel = function(value) {
   jspb.Message.setField(this, 6, value);
 };
 

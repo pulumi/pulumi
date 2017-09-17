@@ -13,7 +13,7 @@ func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var dryRun bool
 	var env string
-	var serialize bool
+	var parallel int
 	var summary bool
 	var yes bool
 	var cmd = &cobra.Command{
@@ -40,8 +40,9 @@ func newDestroyCmd() *cobra.Command {
 					Package:     pkgargFromArgs(args),
 					DryRun:      dryRun,
 					Debug:       debug,
-					Serialize:   serialize,
-					Summary:     summary})
+					Parallel:    parallel,
+					Summary:     summary,
+				})
 			}
 
 			return nil
@@ -57,9 +58,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
-	cmd.PersistentFlags().BoolVar(
-		&serialize, "serialize", false,
-		"Serialize resource operations (instead of the default parallelism)")
+	cmd.PersistentFlags().IntVarP(
+		&parallel, "parallel", "p", 0,
+		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Only display summarization of resources and plan operations")

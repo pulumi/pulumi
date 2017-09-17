@@ -24,7 +24,7 @@ type PlanOptions struct {
 	Environment          string   // the environment to use when planning
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Debug                bool     // true to enable resource debugging output.
-	Serialize            bool     // true to serialize resource operations.
+	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
@@ -47,7 +47,7 @@ func (eng *Engine) Plan(opts PlanOptions) error {
 		Destroy:              false,
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,
-		Serialize:            opts.Serialize,
+		Parallel:             opts.Parallel,
 		ShowConfig:           opts.ShowConfig,
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
@@ -59,7 +59,7 @@ func (eng *Engine) Plan(opts PlanOptions) error {
 	}
 	if result != nil {
 		defer contract.IgnoreClose(result)
-		if err := eng.printPlan(result, deployOpts); err != nil {
+		if err := eng.printPlan(result); err != nil {
 			return err
 		}
 	}
@@ -120,25 +120,41 @@ func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, erro
 }
 
 type planResult struct {
-	Ctx  *plugin.Context // the context containing plugins and their state.
-	Info *envCmdInfo     // plan command information.
-	Plan *deploy.Plan    // the plan created by this command.
+	Ctx     *plugin.Context // the context containing plugins and their state.
+	Info    *envCmdInfo     // plan command information.
+	Plan    *deploy.Plan    // the plan created by this command.
+	Options deployOptions   // the deployment options.
+}
+
+func (res *planResult) Apply(progress deploy.Progress) (deploy.PlanSummary, deploy.Step, resource.Status, error) {
+	opts := deploy.Options{
+		Progress: progress,
+		Parallel: res.Options.Parallel,
+	}
+	return res.Plan.Apply(opts)
+}
+
+func (res *planResult) Start() (*deploy.PlanIterator, error) {
+	opts := deploy.Options{
+		Parallel: res.Options.Parallel,
+	}
+	return res.Plan.Start(opts)
 }
 
 func (res *planResult) Close() error {
 	return res.Ctx.Close()
 }
 
-func (eng *Engine) printPlan(result *planResult, opts deployOptions) error {
+func (eng *Engine) printPlan(result *planResult) error {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
-	printPrelude(&prelude, result, opts, true)
+	printPrelude(&prelude, result, true)
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
-	iter, err := result.Plan.Start(deploy.Options{})
+	iter, err := result.Start()
 	if err != nil {
 		return errors.Errorf("An error occurred while preparing the plan: %v", err)
 	}
@@ -161,8 +177,8 @@ func (eng *Engine) printPlan(result *planResult, opts deployOptions) error {
 
 		// Print this step information (resource and all its properties).
 		// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-		if shouldShow(step, opts) {
-			printStep(&summary, step, opts.Summary, true, "")
+		if shouldShow(step, result.Options) {
+			printStep(&summary, step, result.Options.Summary, true, "")
 		}
 
 		// Be sure to skip the step so that in-memory state updates are performed.
@@ -199,9 +215,9 @@ func shouldShow(step deploy.Step, opts deployOptions) bool {
 	return true
 }
 
-func printPrelude(b *bytes.Buffer, result *planResult, opts deployOptions, planning bool) {
+func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
 	// If there are configuration variables, show them.
-	if opts.ShowConfig {
+	if result.Options.ShowConfig {
 		printConfig(b, result.Info.Target.Config)
 	}
 }

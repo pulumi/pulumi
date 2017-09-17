@@ -24,7 +24,7 @@ type DeployOptions struct {
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Debug                bool     // true to enable resource debugging output.
 	DryRun               bool     // true if we should just print the plan without performing it.
-	Serialize            bool     // true to serialize resource operations.
+	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
@@ -47,7 +47,7 @@ func (eng *Engine) Deploy(opts DeployOptions) error {
 		Destroy:              false,
 		DryRun:               opts.DryRun,
 		Analyzers:            opts.Analyzers,
-		Serialize:            opts.Serialize,
+		Parallel:             opts.Parallel,
 		ShowConfig:           opts.ShowConfig,
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
@@ -61,7 +61,7 @@ type deployOptions struct {
 	Destroy              bool     // true if we are destroying the environment.
 	DryRun               bool     // true if we should just print the plan without performing it.
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Serialize            bool     // true to serialize resource operations.
+	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
@@ -78,20 +78,20 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 		defer contract.IgnoreClose(result)
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			if err := eng.printPlan(result, opts); err != nil {
+			if err := eng.printPlan(result); err != nil {
 				return err
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			var header bytes.Buffer
-			printPrelude(&header, result, opts, false)
+			printPrelude(&header, result, false)
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
 			fmt.Fprint(eng.Stdout, colors.Colorize(&header))
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
 			progress := newProgress(opts, eng)
-			summary, _, _, err := result.Plan.Apply(deploy.Options{Progress: progress})
+			summary, _, _, err := result.Apply(progress)
 			if err != nil && summary == nil {
 				// Something went wrong, and we have no checkpoint to save.
 				return err

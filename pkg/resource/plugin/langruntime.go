@@ -21,10 +21,10 @@ type LanguageRuntime interface {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	Pwd       string                         // the program's working directory.
-	Program   string                         // the path to the program to execute.
-	Args      []string                       // any arguments to pass to the program.
-	Config    map[tokens.ModuleMember]string // the configuration variables to apply before running.
-	DryRun    bool                           // true if we are performing a dry-run (plan).
-	Serialize bool                           // true to serialize resource operations (the default is false).
+	Pwd      string                         // the program's working directory.
+	Program  string                         // the path to the program to execute.
+	Args     []string                       // any arguments to pass to the program.
+	Config   map[tokens.ModuleMember]string // the configuration variables to apply before running.
+	DryRun   bool                           // true if we are performing a dry-run (plan).
+	Parallel int                            // the degree of parallelism for resource operations (<=1 for serial).
 }

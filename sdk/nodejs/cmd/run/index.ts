@@ -16,7 +16,7 @@ function usage(): void {
     console.error(``);
     console.error(`    where [flags] may include`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
-    console.error(`        --serialize         true to serialize all resource operations`);
+    console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      the RPC address for a resource monitor to connect to`);
@@ -29,8 +29,8 @@ export function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     let config: {[key: string]: string} = {};
     let argv: minimist.ParsedArgs = minimist(args, {
-        boolean: [ "dry-run", "serialize" ],
-        string: [ "pwd", "monitor", "engine" ],
+        boolean: [ "dry-run" ],
+        string: [ "parallel", "pwd", "monitor", "engine" ],
         unknown: (arg: string) => {
             // If unknown, first see if it's a --config.k=v flag.
             let cix = arg.indexOf("-config");
@@ -66,8 +66,16 @@ export function main(args: string[]): void {
         process.chdir(pwd);
     }
 
-    // If resource serialization was requested, turn it on.
-    let serialize: boolean = !!(argv["serialize"]);
+    // If resource parallelism was requested, turn it on.
+    let parallel: number | undefined;
+    if (argv["parallel"]) {
+        parallel = parseInt(argv["parallel"], 10);
+        if (isNaN(parallel)) {
+            console.error(`error: --parallel flag must specify a number: ${argv["parallel"]} is not a number`);
+            usage();
+            process.exit(-1);
+        }
+    }
 
     // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
     let dryRun: boolean = !!(argv["dry-run"]);
@@ -88,8 +96,8 @@ export function main(args: string[]): void {
 
     // Now configure the runtime and get it ready to run the program.
     runtime.configure({
-        serialize: serialize,
         dryRun: dryRun,
+        parallel: parallel,
         monitor: monitor,
         engine: engine,
     });

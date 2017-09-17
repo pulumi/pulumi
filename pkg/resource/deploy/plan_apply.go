@@ -17,8 +17,8 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Serialize bool     // true to serialize all operations (the default is to enable parallelism).
-	Progress  Progress // an optional object that may be used to hook resource operation progress.
+	Parallel int      // the degree of parallelism for resource operations (<=1 for serial).
+	Progress Progress // an optional object that may be used to hook resource operation progress.
 }
 
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four

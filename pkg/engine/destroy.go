@@ -9,7 +9,7 @@ type DestroyOptions struct {
 	Package     string
 	DryRun      bool
 	Debug       bool
-	Serialize   bool
+	Parallel    int
 	Summary     bool
 }
 
@@ -20,10 +20,10 @@ func (eng *Engine) Destroy(opts DestroyOptions) error {
 	}
 
 	return eng.deployLatest(info, deployOptions{
-		Debug:     opts.Debug,
-		Destroy:   true,
-		DryRun:    opts.DryRun,
-		Serialize: opts.Serialize,
-		Summary:   opts.Summary,
+		Debug:    opts.Debug,
+		Destroy:  true,
+		DryRun:   opts.DryRun,
+		Parallel: opts.Parallel,
+		Summary:  opts.Summary,
 	})
 }

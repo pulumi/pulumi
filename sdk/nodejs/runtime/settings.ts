@@ -6,14 +6,13 @@ import { debuggablePromise } from "./debuggable";
 export interface Options {
     readonly engine?: Object; // a live connection to the engine, used for logging, etc.
     readonly monitor?: Object; // a live connection to the resource monitor that tracks deployments.
-    readonly serialize?: boolean; // true to serialize resource operations (by default, parallelism is on based on the DAG).
+    readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
     readonly dryRun?: boolean; // whether we are performing a plan (true) or a real deployment (false).
     readonly includeStacks?: boolean; // whether we include full stack traces in resource errors or not.
 }
 
 // options are the current deployment options being used for this entire session.
 export let options: Options = {
-    serialize: false,
     dryRun: false,
     includeStacks: true,
 };
@@ -38,6 +37,11 @@ export function getMonitor(): Object | undefined {
 // getEngine returns the current engine, if any, for RPC communications back to the resource engine.
 export function getEngine(): Object | undefined {
     return options.engine;
+}
+
+// serialize returns true if resource operations should be serialized.
+export function serialize(): boolean {
+    return !options.parallel || options.parallel <= 1;
 }
 
 // configure initializes the current resource monitor and engine RPC connections, and whether we are performing a "dry

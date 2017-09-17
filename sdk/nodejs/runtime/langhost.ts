@@ -57,9 +57,11 @@ function runRPC(call: any, callback: any): void {
             args.push("--dry-run");
         }
 
-        // If serialized execution has been requested, propagate it.
-        if (req.getSerialize()) {
-            args.push("--serialize");
+        // If parallel execution has been requested, propagate it.
+        let parallel: number | undefined = req.getParallel();
+        if (parallel !== undefined) {
+            args.push("--parallel");
+            args.push(parallel.toString());
         }
 
         // If a different working directory was requested, make sure to pass it too.

@@ -154,12 +154,12 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				// Now run the actual program.
 				var progerr string
 				progerr, err = langhost.Run(plugin.RunInfo{
-					Pwd:       iter.src.runinfo.Pwd,
-					Program:   iter.src.runinfo.Program,
-					Args:      iter.src.runinfo.Args,
-					Config:    iter.src.runinfo.Config,
-					DryRun:    iter.src.dryRun,
-					Serialize: opts.Serialize,
+					Pwd:      iter.src.runinfo.Pwd,
+					Program:  iter.src.runinfo.Program,
+					Args:     iter.src.runinfo.Args,
+					Config:   iter.src.runinfo.Config,
+					DryRun:   iter.src.dryRun,
+					Parallel: opts.Parallel,
 				})
 				if err == nil && progerr != "" {
 					// If the program had an unhandled error; propagate it to the caller.

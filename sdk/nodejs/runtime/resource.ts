@@ -6,7 +6,7 @@ import { ID, Resource, URN } from "../resource";
 import { errorString, debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { isInsideMapValueCallback, Property } from "./property";
-import { getMonitor, options, rpcKeepAlive } from "./settings";
+import { getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -116,7 +116,7 @@ export function registerResource(
 
     // If serialization is requested, wait for the prior resource operation to finish before we proceed, serializing
     // them, and make this the current resource operation so that everybody piles up on it.
-    if (options.serialize) {
+    if (serialize()) {
         resourceChain = resourceOp;
     }
 }

@@ -15,7 +15,7 @@ func newPlanCmd() *cobra.Command {
 	var debug bool
 	var dotOutput bool
 	var env string
-	var serialize bool
+	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -42,7 +42,7 @@ func newPlanCmd() *cobra.Command {
 				Debug:                debug,
 				Environment:          env,
 				Analyzers:            analyzers,
-				Serialize:            serialize,
+				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
@@ -63,9 +63,9 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
-	cmd.PersistentFlags().BoolVar(
-		&serialize, "serialize", false,
-		"Serialize resource operations (instead of the default parallelism)")
+	cmd.PersistentFlags().IntVarP(
+		&parallel, "parallel", "p", 0,
+		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
