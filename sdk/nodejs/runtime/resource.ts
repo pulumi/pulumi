@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as asset from "../asset";
-import { ID, PropertyValue, PropertyValues, Resource, URN } from "../resource";
+import { ID, ComputedValue, ComputedValues, Resource, URN } from "../resource";
 import { errorString, debuggablePromise } from "./debuggable";
 import { Log } from "./log";
 import { getMonitor, options, rpcKeepAlive, serialize } from "./settings";
@@ -21,7 +21,7 @@ let resourceChain: Promise<void> = Promise.resolve();
 // registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
-export function registerResource(res: Resource, t: string, name: string, props: PropertyValues | undefined,
+export function registerResource(res: Resource, t: string, name: string, props: ComputedValues | undefined,
     dependsOn: Resource[] | undefined): void {
     Log.debug(
         `Registering resource: t=${t}, name=${name}` +
@@ -128,7 +128,7 @@ interface PropertyTransfer {
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
-function transferProperties(res: Resource, t: string, name: string, props: PropertyValues | undefined,
+function transferProperties(res: Resource, t: string, name: string, props: ComputedValues | undefined,
     dependsOn: Resource[] | undefined): Promise<PropertyTransfer> {
     // First set up an array of all promises that we will await on before completing the transfer.
     let eventuals: Promise<any>[] = [];
@@ -187,7 +187,7 @@ function transferProperties(res: Resource, t: string, name: string, props: Prope
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
 // resource's matching properties to the values inside.
 function resolveProperties(res: Resource, transfer: PropertyTransfer,
-    t: string, name: string, inputs: PropertyValues | undefined, outputsStruct: any, stable: boolean): void {
+    t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any, stable: boolean): void {
 
     // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same
     // property exists in the inputs and outputs states, the output wins.
@@ -243,8 +243,8 @@ function resolveProperties(res: Resource, transfer: PropertyTransfer,
     }
 }
 
-// unknownPropertyValue is a special value that the monitor recognizes.
-export const unknownPropertyValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+// unknownComputedValue is a special value that the monitor recognizes.
+export const unknownComputedValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 // specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
 // specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
@@ -262,7 +262,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         if (!options.dryRun) {
             Log.error(`Unexpected unknown property during deployment`);
         }
-        return unknownPropertyValue;
+        return unknownComputedValue;
     }
     else if (prop === null || typeof prop === "boolean" ||
             typeof prop === "number" || typeof prop === "string") {

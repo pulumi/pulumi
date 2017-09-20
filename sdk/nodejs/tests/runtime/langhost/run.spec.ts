@@ -176,8 +176,8 @@ describe("rpc", () => {
                         if (dryrun) {
                             // If this is a dry-run, we won't have the real values:
                             assert.deepEqual(res, {
-                                otherIn: runtime.unknownPropertyValue,
-                                otherOut: runtime.unknownPropertyValue,
+                                otherIn: runtime.unknownComputedValue,
+                                otherOut: runtime.unknownComputedValue,
                             });
                         }
                         else {

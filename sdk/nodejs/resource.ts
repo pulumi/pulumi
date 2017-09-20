@@ -11,12 +11,12 @@ export abstract class Resource {
     public readonly urn: Promise<URN>;
     // id is the provider-assigned unique ID for this resource.  It is set during deployments and may be missing
     // (undefined) during planning phases.
-    public readonly id: Property<ID>;
+    public readonly id: Computed<ID>;
 
     // creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
     // to use in creating a stable and globally unique URN for the object.  dependsOn is an optional list of other
     // resources that this resource depends on, controlling the order in which we perform resource operations.
-    constructor(t: string, name: string, props: PropertyValues, dependsOn?: Resource[]) {
+    constructor(t: string, name: string, props: ComputedValues, dependsOn?: Resource[]) {
         if (t === undefined || t === "") {
             throw new Error("Missing resource type argument");
         }
@@ -31,13 +31,13 @@ export abstract class Resource {
     }
 }
 
-// Property is a property output for a resource.  It is just a promise that also permits undefined values.  The
+// Computed is a property output for a resource.  It is just a promise that also permits undefined values.  The
 // undefined values are used during planning, when the actual final value of a resource may not yet be known.
-export type Property<T> = Promise<T | undefined>;
+export type Computed<T> = Promise<T | undefined>;
 
-// PropertyValue is a property input for a resource.  It may be a promptly available T or a promise for one.
-export type PropertyValue<T> = T | undefined | Property<T>;
+// ComputedValue is a property input for a resource.  It may be a promptly available T or a promise for one.
+export type ComputedValue<T> = T | undefined | Computed<T>;
 
-// PropertyValues is a map of property name to optional property input, one for each resource property value.
-export type PropertyValues = {[key: string]: PropertyValue<any> | undefined};
+// ComputedValues is a map of property name to optional property input, one for each resource property value.
+export type ComputedValues = {[key: string]: ComputedValue<any> | undefined};
 
