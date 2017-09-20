@@ -30,20 +30,26 @@ class MyResource extends fabric.Resource {
 }
 
 let res = new MyResource("testResource1");
-res.id.mapValue(id => {
-    console.log(`ID: ${id}`);
-    assert.equal(id, "testResource1");
-});
-res.urn.mapValue(urn => {
+res.urn.then(urn => {
     console.log(`URN: ${urn}`);
     assert.equal(urn, "test:index:MyResource::testResource1");
 });
-res.outprop1.mapValue(prop => {
-    console.log(`OutProp1: ${prop}`);
-    assert.equal(prop, "output properties ftw");
+res.id.then(id => {
+    if (id) {
+        console.log(`ID: ${id}`);
+        assert.equal(id, "testResource1");
+    }
 });
-res.outprop2.mapValue(prop => {
-    console.log(`OutProp2: ${prop}`);
-    assert.equal(prop, 998.6);
+res.outprop1.then(prop => {
+    if (prop) {
+        console.log(`OutProp1: ${prop}`);
+        assert.equal(prop, "output properties ftw");
+    }
+});
+res.outprop2.then(prop => {
+    if (prop) {
+        console.log(`OutProp2: ${prop}`);
+        assert.equal(prop, 998.6);
+    }
 });
 

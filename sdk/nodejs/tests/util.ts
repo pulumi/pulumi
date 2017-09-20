@@ -1,7 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { Computed } from "../index";
 
 export type MochaFunc = (err: Error) => void;
 
@@ -35,11 +34,5 @@ export async function assertAsyncThrows(test: () => Promise<void>): Promise<void
         thrown = true;
     }
     assert(thrown, "Function was expected to throw, but didn't");
-}
-
-export function computedToPromise<T>(computed: Computed<T>): Promise<T> {
-    return new Promise((resolve: any) => {
-        computed.mapValue((res: T) => { resolve(res); });
-    });
 }
 

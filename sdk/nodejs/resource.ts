@@ -1,6 +1,5 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Computed, MaybeComputed } from "./computed";
 import * as runtime from "./runtime";
 
 export type ID = string;  // a provider-assigned ID.
@@ -8,16 +7,16 @@ export type URN = string; // an automatically generated logical URN, used to sta
 
 // Resource represents a class whose CRUD operations are implemented by a provider plugin.
 export abstract class Resource {
-    // id is the provider-assigned unique ID for this object.  It is set during deployments.
-    public readonly id: Computed<ID>;
-    // urn is the stable logical URN used to distinctly address an object, both before and after deployments.
-    public readonly urn: Computed<URN>;
+    // urn is the stable logical URN used to distinctly address a resource, both before and after deployments.
+    public readonly urn: Promise<URN>;
+    // id is the provider-assigned unique ID for this resource.  It is set during deployments and may be missing
+    // (undefined) during planning phases.
+    public readonly id: Property<ID>;
 
     // creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
     // to use in creating a stable and globally unique URN for the object.  dependsOn is an optional list of other
     // resources that this resource depends on, controlling the order in which we perform resource operations.
-    constructor(t: string, name: string,
-        props: {[key: string]: MaybeComputed<any> | undefined}, dependsOn?: Resource[]) {
+    constructor(t: string, name: string, props: PropertyValues, dependsOn?: Resource[]) {
         if (t === undefined || t === "") {
             throw new Error("Missing resource type argument");
         }
@@ -31,4 +30,14 @@ export abstract class Resource {
         runtime.registerResource(this, t, name, props, dependsOn);
     }
 }
+
+// Property is a property output for a resource.  It is just a promise that also permits undefined values.  The
+// undefined values are used during planning, when the actual final value of a resource may not yet be known.
+export type Property<T> = Promise<T | undefined>;
+
+// PropertyValue is a property input for a resource.  It may be a promptly available T or a promise for one.
+export type PropertyValue<T> = T | undefined | Property<T>;
+
+// PropertyValues is a map of property name to optional property input, one for each resource property value.
+export type PropertyValues = {[key: string]: PropertyValue<any> | undefined};
 
