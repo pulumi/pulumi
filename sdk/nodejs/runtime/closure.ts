@@ -1,9 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Computed } from "../computed";
 import { debuggablePromise } from "./debuggable";
 import { Log } from "./log";
-import { Property } from "./property";
 import * as acorn from "acorn";
 import * as estree from "estree";
 
@@ -31,7 +29,7 @@ export interface EnvironmentEntry {
 // serializeClosure serializes a function and its closure environment into a form that is amenable to persistence
 // as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for execution.
 // Unlike toString, it actually includes information about the captured environment.
-export function serializeClosure(func: Function): Computed<Closure> {
+export function serializeClosure(func: Function): Promise<Closure> {
     // First get the async version.  We will then await it to turn it into a flattened, async-free computed closure.
     // This must be done "at the top" because we must not block the creation of the dataflow graph of closure
     // elements, since there may be cycles that can only resolve by creating the entire graph first.
@@ -39,7 +37,7 @@ export function serializeClosure(func: Function): Computed<Closure> {
 
     // Now turn the AsyncClosure into a normal closure, and return it.
     let flatCache = new Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>();
-    return new Property<Closure>(flattenClosure(closure, flatCache), true, true);
+    return flattenClosure(closure, flatCache);
 }
 
 async function flattenClosure(closure: AsyncClosure,
@@ -168,14 +166,6 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
     else if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
         obj.then((v) => serializeCapturedObjectAsync(v, resolve));
-    }
-    else if (obj instanceof Property) {
-        // If this is a property, explicitly await its output promise so that we get the raw value.
-        serializeCapturedObjectAsync(obj.outputPromise, resolve);
-    }
-    else if ((obj as Computed<any>).mapValue) {
-        // If this is a computed value -- including a captured fabric resource property -- mapValue it.
-        (obj as Computed<any>).mapValue(async (v: any) => serializeCapturedObjectAsync(v, resolve));
     }
     else {
         // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).

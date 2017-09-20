@@ -17,7 +17,6 @@
     },
     "files": [
         "index.ts",
-        "computed.ts",
         "config.ts",
         "resource.ts",
 
@@ -31,7 +30,6 @@
         "runtime/debuggable.ts",
         "runtime/langhost.ts",
         "runtime/log.ts",
-        "runtime/property.ts",
         "runtime/resource.ts",
         "runtime/settings.ts",
 
@@ -42,7 +40,6 @@
         "tests/init.spec.ts",
         "tests/util.ts",
         "tests/runtime/closure.spec.ts",
-        "tests/runtime/computed.spec.ts",
         "tests/runtime/langhost/run.spec.ts"
     ]
 }

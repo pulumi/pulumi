@@ -4,7 +4,6 @@
 import "source-map-support/register";
 
 // Export top-level elements.
-export * from "./computed";
 export * from "./config";
 export * from "./resource";
 

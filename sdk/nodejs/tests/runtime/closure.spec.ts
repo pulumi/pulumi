@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { asyncTest, assertAsyncThrows, computedToPromise } from "../util";
+import { asyncTest, assertAsyncThrows } from "../util";
 import { runtime } from "../../index";
 
 interface ClosureCase {
@@ -287,11 +287,11 @@ describe("closure", () => {
     for (let test of cases) {
         it(test.title, asyncTest(async () => {
             if (test.expect) {
-                let closure: runtime.Closure = await computedToPromise(runtime.serializeClosure(test.func));
+                let closure: runtime.Closure = await runtime.serializeClosure(test.func);
                 assert.deepEqual(closure, test.expect);
             } else {
                 await assertAsyncThrows(async () => {
-                    await computedToPromise(runtime.serializeClosure(test.func));
+                    await runtime.serializeClosure(test.func);
                 });
             }
         }));
