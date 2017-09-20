@@ -7,7 +7,11 @@ PUBDIR=$(mktemp -du)
 GITVER=$(git rev-parse HEAD)
 PUBFILE=$(dirname ${PUBDIR})/${GITVER}.tgz
 PUBPREFIX=s3://eng.pulumi.com/releases/pulumi-fabric
-declare -a PUBTARGETS=(${GITVER} $(git describe --tags) $(git rev-parse --abbrev-ref HEAD))
+
+# Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
+# Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
+BRANCH=${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
+declare -a PUBTARGETS=(${GITVER} $(git describe --tags) ${BRANCH})
 
 # Copy the binaries, scripts, and packs.
 mkdir -p ${PUBDIR}/bin/
@@ -21,4 +25,3 @@ echo sdk/nodejs/ >> ${PUBDIR}/packs.txt
 # Tar up the file and then print it out for use by the caller or script.
 tar -czf ${PUBFILE} -C ${PUBDIR} .
 echo ${PUBFILE} ${PUBTARGETS[@]}
-
