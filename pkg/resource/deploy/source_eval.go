@@ -66,7 +66,7 @@ func (src *evalSource) Info() interface{} {
 func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	reschan := make(chan *evalSourceGoal)
-	mon, err := newResourceMonitor(reschan)
+	mon, err := newResourceMonitor(src, reschan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
@@ -176,6 +176,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 // resmon implements the lumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
+	src     *evalSource          // the evaluation source.
 	reschan chan *evalSourceGoal // the channel to send resources to.
 	addr    string               // the address the host is listening on.
 	cancel  chan bool            // a channel that can cancel the server.
@@ -183,9 +184,10 @@ type resmon struct {
 }
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor(reschan chan *evalSourceGoal) (*resmon, error) {
+func newResourceMonitor(src *evalSource, reschan chan *evalSourceGoal) (*resmon, error) {
 	// New up an engine RPC server.
 	resmon := &resmon{
+		src:     src,
 		reschan: reschan,
 		cancel:  make(chan bool),
 	}
@@ -216,6 +218,42 @@ func (rm *resmon) Address() string {
 func (rm *resmon) Cancel() error {
 	rm.cancel <- true
 	return <-rm.done
+}
+
+// Invoke performs an invocation of a member located in a resource provider.
+func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumirpc.InvokeResponse, error) {
+	// Fetch the token and load up the resource provider.
+	tok := tokens.ModuleMember(req.GetTok())
+	prov, err := rm.src.plugctx.Host.Provider(tok.Package())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load resource provider for %v", tok)
+	}
+
+	// Now unpack all of the arguments and prepare to perform the invocation.
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	// Do the invoke and then return the arguments.
+	glog.V(5).Info("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
+	ret, failures, err := prov.Invoke(tok, args)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
+	}
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
+	}
+	var chkfails []*lumirpc.CheckFailure
+	for _, failure := range failures {
+		chkfails = append(chkfails, &lumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+	return &lumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
 // NewResource is invoked by a language process when a new resource has been allocated.

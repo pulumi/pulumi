@@ -10,6 +10,7 @@ var goog = jspb;
 var global = Function('return this')();
 
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
+var provider_pb = require('./provider_pb.js');
 goog.exportSymbol('proto.pulumirpc.NewResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.NewResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RunRequest', null, global);

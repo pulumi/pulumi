@@ -240,6 +240,40 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	return resource.StatusOK, nil
 }
 
+// Invoke dynamically executes a built-in function in the provider.
+func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap,
+	[]CheckFailure, error) {
+	contract.Assert(tok != "")
+
+	margs, err := MarshalProperties(args, MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v) executing", tok, len(args))
+	resp, err := p.client.Invoke(p.ctx.Request(), &lumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	if err != nil {
+		glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v) failed: %v", p.pkg, tok, len(args), err)
+		return nil, nil, err
+	}
+
+	// Unmarshal any return values.
+	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{AllowUnknowns: true})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// And now any properties that failed verification.
+	var failures []CheckFailure
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
+	glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v,#ret=%v,#failures=%v) success",
+		p.pkg, tok, len(args), len(ret), len(failures))
+	return ret, failures, nil
+}
+
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
 	return p.plug.Close()
