@@ -77,6 +77,12 @@ Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context
     return Local<Value>();
 }
 
+// MSVC 2015 (which we build with on Windows) does not treat strlen of a literal as a constexpr,
+// so we can't use it to intialize our buffer size. So instead, we use sizeof() to compute the
+// length, so we need a literal string instead of just a const char*.
+#define BAD_PREFIX "[Function:"
+#define STRLEN_LITERAL_ONLY(S) (sizeof((S))/sizeof(char) - 1)
+
 Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
     // Serialize the code simply by calling toString on the Function.
     Local<Function> toString = Local<Function>::Cast(
@@ -84,12 +90,11 @@ Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
     Local<String> code = Local<String>::Cast(toString->Call(func, 0, nullptr));
 
     // Ensure that the code is a function expression (including arrows), and not a definition, etc.
-    const char* badprefix = "[Function:";
-    size_t badprefixLength = strlen(badprefix);
+    constexpr size_t badprefixLength = STRLEN_LITERAL_ONLY(BAD_PREFIX);
     if (code->Length() >= (int)badprefixLength) {
         char buf[badprefixLength];
         code->WriteUtf8(buf, badprefixLength);
-        if (!strncmp(badprefix, buf, badprefixLength)) {
+        if (!strncmp(BAD_PREFIX, buf, badprefixLength)) {
             isolate->ThrowException(Exception::TypeError(
                 String::NewFromUtf8(isolate,
                     "Cannot serialize non-expression functions (such as definitions and generators)")));
@@ -101,6 +106,8 @@ Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
         String::Concat(String::NewFromUtf8(isolate, "("), code),
             String::NewFromUtf8(isolate, ")"));
 }
+#undef BAD_PREFIX
+#undef STRLEN_LITERAL_ONLY
 
 // SerializeFunction serializes a JavaScript function expression and its associated closure environment.
 Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
