@@ -20,7 +20,7 @@ cache:
     yarn: true
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
-    - git clone git@github.com:pulumi/pulumi ${GOPATH}/src/github.com/pulumi/pulumi
+    - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
     # Now restore dependencies, build prerequisites, and generally make this thing ready to go.
     - make configure
 before_script:

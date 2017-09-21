@@ -13,7 +13,7 @@ declare -a PUBTARGETS=(${GITVER} $(git describe --tags) $(git rev-parse --abbrev
 mkdir -p ${PUBDIR}/bin/
 cp ${GOPATH}/bin/lumi ${PUBDIR}/bin/
 mkdir -p ${PUBDIR}/sdk/
-cp -R ${GOPATH}/src/github.com/pulumi/pulumi/scripts/. ${PUBDIR}/scripts/
+cp -R ${GOPATH}/src/github.com/pulumi/home/scripts/. ${PUBDIR}/scripts/
 cp -R ${ROOT}/sdk/nodejs/bin/. ${PUBDIR}/sdk/nodejs/
 cp -R ${ROOT}/sdk/nodejs/node_modules/. ${PUBDIR}/sdk/nodejs/node_modules/
 echo sdk/nodejs/ >> ${PUBDIR}/packs.txt

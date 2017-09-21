@@ -2,7 +2,7 @@
 # publish.sh builds and publishes a release.
 set -e
 
-PUBLISH=$GOPATH/src/github.com/pulumi/pulumi/scripts/publish.sh
+PUBLISH=$GOPATH/src/github.com/pulumi/home/scripts/publish.sh
 if [ ! -f $PUBLISH ]; then
     >&2 echo "error: Missing publish script at $PUBLISH"
     exit 1
