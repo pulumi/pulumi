@@ -44,7 +44,7 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 		return nil, err
 	}
 
-	engine.addr = fmt.Sprintf("0.0.0.0:%d", port)
+	engine.addr = fmt.Sprintf("127.0.0.1:%d", port)
 	engine.done = done
 
 	return engine, nil

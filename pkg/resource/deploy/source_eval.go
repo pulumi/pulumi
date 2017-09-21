@@ -201,7 +201,7 @@ func newResourceMonitor(reschan chan *evalSourceGoal) (*resmon, error) {
 		return nil, err
 	}
 
-	resmon.addr = fmt.Sprintf("0.0.0.0:%d", port)
+	resmon.addr = fmt.Sprintf("127.0.0.1:%d", port)
 	resmon.done = done
 
 	return resmon, nil

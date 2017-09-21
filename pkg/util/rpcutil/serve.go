@@ -30,7 +30,7 @@ func IsBenignCloseErr(err error) bool {
 // the server is finished, in the case of a successful launch of the RPC server.
 func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (int, chan error, error) {
 	// Listen on a TCP port, but let the kernel choose a free port for us.
-	lis, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	lis, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
 	if err != nil {
 		return port, nil, errors.Errorf("failed to listen on TCP port ':%v': %v", port, err)
 	}
