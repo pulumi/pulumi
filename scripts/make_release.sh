@@ -14,13 +14,14 @@ declare -a PUBTARGETS=(${GITVER} $(git describe --tags 2>/dev/null) ${BRANCH})
 
 # usage: run_go_build <path-to-package-to-build>
 function run_go_build() {
-    local BINSUFFIX=""
+    local bin_suffix=""
+    local output_name=$(basename $(cd "$1" ; pwd))
     if [ "$(go env GOOS)" = "windows" ]; then
-        BINSUFFIX=".exe"
+        bin_suffix=".exe"
     fi
 
     mkdir -p "${PUBDIR}/bin"
-    go build -o "${PUBDIR}/bin/$(basename "${1}")${BINSUFFIX}" "${1}"
+    go build -o "${PUBDIR}/bin/${output_name}${bin_suffix}" "$1"
 }
 
 # usage: copy_package <path-to-module> <module-name>
@@ -36,7 +37,7 @@ copy_package() {
 
 
 # Build binaries
-run_go_build "${ROOT}/cmd/lumi"
+run_go_build "${ROOT}"
 
 # Copy over the langhost
 if [ "$(go env GOOS)" != "windows" ]; then
