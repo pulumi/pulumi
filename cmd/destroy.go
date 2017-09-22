@@ -1,12 +1,12 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package main
+package cmd
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newDestroyCmd() *cobra.Command {

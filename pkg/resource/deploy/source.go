@@ -5,8 +5,8 @@ package deploy
 import (
 	"io"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // A Source can generate a new set of resources that the planner will process accordingly.

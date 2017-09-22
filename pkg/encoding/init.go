@@ -3,7 +3,7 @@
 package encoding
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func init() {

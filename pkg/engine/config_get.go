@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 func (eng *Engine) GetConfig(envName string, key tokens.ModuleMember) error {

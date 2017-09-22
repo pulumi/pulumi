@@ -8,9 +8,9 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 const AnalyzerPluginPrefix = "pulumi-analyzer-"

@@ -50,7 +50,7 @@ Specifically, the reference has up to four parts: a protocol, base URL, name, an
 Although there are four parts, all but the version are optional, because because Lumi uses these defaults:
 
 * `https://` is the default protocol.
-* `lumihub.com/` is the default base URL.
+* `pulumihub.com/` is the default base URL.
 * The package name from the key is the default name.
 
 Note that the `#` preceding the version is only required if the protocol, base URL, and/or name parts are provided.
@@ -73,8 +73,8 @@ latest available package, use either `latest` or the shortcut `*`.  Lumi will al
 
 For example, the Git provider allows dependency on a specific Git SHA hash.  So,
 `git://github.com/lumi/aws#1895753f53a63c055e7cae81ebe4ea5d5805584f` refers to a package published in a GitHub
-repo `lumi/aws` at commit `1895753`.  Alternatively, Git tags can be used to give packages friendly names.  So, for
-example, `git://github.com/lumi/aws#beta1` refers to a package published in a GitHub repo `lumi/aws` at the tag
+repo `pulumi/aws` at commit `1895753`.  Alternatively, Git tags can be used to give packages friendly names.  So, for
+example, `git://github.com/lumi/aws#beta1` refers to a package published in a GitHub repo `pulumi/aws` at the tag
 `beta1`.  The same scheme can be used to denote semantic versions simply by using numeric semantic version Git tags, for
 instance `git://github.com/lumi/aws#^1.0.0-beta1` refers to a version of the package of at least `1.0.0-beta1`.
 
@@ -105,12 +105,12 @@ To pin versions, you can simply specify concrete versions in your package manife
 
 Alternatively, you can use command line tools to manage pinned versions:
 
-* `lumi pack pin` will pin all packages to a specific version.
-* `lumi pack pin <dep>` will pin the specific `<dep>` package to a specific version.
-* `lumi pack upgrade` will upgrade all packages to new versions when available.
-* `lumi pack upgrade <dep>` will upgrade the specific `<dep>` package to a new version when available.
+* `pulumi pack pin` will pin all packages to a specific version.
+* `pulumi pack pin <dep>` will pin the specific `<dep>` package to a specific version.
+* `pulumi pack upgrade` will upgrade all packages to new versions when available.
+* `pulumi pack upgrade <dep>` will upgrade the specific `<dep>` package to a new version when available.
 
-To encourage the recommended workflow, the `lumi deploy` command will automatically pin references.  This ensures
+To encourage the recommended workflow, the `pulumi deploy` command will automatically pin references.  This ensures
 executables are pinned to versions during, between, and after deployments.  The resulting manifest should be checked
 into source control and versioned using the above commands.  The option `--no-pin` suppresses automatic pinning.
 
@@ -177,9 +177,9 @@ It is possible to simplify this even further by specifying the namespace as `aws
     |   Lumi.yaml
     |   ...other assets...
 
-Notice that we didn't have to mention the `lumihub.com/` part in our workspace, although we can if we choose to.
+Notice that we didn't have to mention the `pulumihub.com/` part in our workspace, although we can if we choose to.
 
-In the second illustration, let us imagine we have used `lumi get` to download the dependency from a package manager:
+In the second illustration, let us imagine we have used `pulumi get` to download the dependency from a package manager:
 
     $ lumi get https://lumihub.com/aws/utils
 
@@ -194,10 +194,10 @@ In this case, our local workspace's package directory will have been populated w
     |   |   |   |   |   |   Lumi.yaml
     |   |   |   |   |   |   ...other assets...
 
-Notice that in this case, the full base part `lumihub.com/` is part of the path, since we downloaded it from that URL.
+Notice that in this case, the full base part `pulumihub.com/` is part of the path, since we downloaded it from that URL.
 
 Now in the third and final illustration, let us imagine that we've installed a global copy of the package.  This might
-have been thanks to use using `lumi get`'s `--global` (or `-g`) flag:
+have been thanks to use using `pulumi get`'s `--global` (or `-g`) flag:
 
     $ lumi get --global https://lumihub.com/aws/utils
 

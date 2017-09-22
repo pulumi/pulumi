@@ -41,25 +41,25 @@ details, and in the cloud provider of their choice.  And the low-level developer
 
 ## Cross-Cloud Abstractions Out-of-the-Box
 
-To facilitate cross-cloud abstractions, Lumi offers a `lumi/x` package containing a number of them.
+To facilitate cross-cloud abstractions, Lumi offers a `pulumi/x` package containing a number of them.
 
 ### lumi/x
 
-The services offered by `lumi/x` have been conditionalized internally and are guaranteed to run on all clouds,
+The services offered by `pulumi/x` have been conditionalized internally and are guaranteed to run on all clouds,
 including locally for development and testing.  The differences between them have been abstracted and unified so that
 you can configure them declaratively, using a single logical set of options, and rely on the service internally mapping
 to the cloud provider's specific configuration settings.
 
-For example, `lumi/x/fs/Volume` implements the `lumi/Volume` abstract interface, and maps to an AWS Elastic Block
+For example, `pulumi/x/fs/Volume` implements the `pulumi/Volume` abstract interface, and maps to an AWS Elastic Block
 Store (EBS), Azure Data Disk (DD), or GCP Persistent Disk (PD) volume, depending on the IaaS target.  Although the
 details for each of these differs, a standard set of options -- like capacity, filesystem type, reclamation policy,
-storage class, and so on -- and `lumi/x` handles mapping these standard options to the specific underlying ones.
+storage class, and so on -- and `pulumi/x` handles mapping these standard options to the specific underlying ones.
 
-The goal for the `lumi/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.
+The goal for the `pulumi/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.
 
 ### Services
 
-This section contains a full list of the `lumi/x` cloud-agnostic services:
+This section contains a full list of the `pulumi/x` cloud-agnostic services:
 
 * Apps
     - Containers

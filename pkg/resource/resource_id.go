@@ -7,7 +7,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Lumi.

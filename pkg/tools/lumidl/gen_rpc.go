@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/tools"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type RPCGenerator struct {
@@ -99,12 +99,12 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 			w.Writefmtln(`    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
 			w.Writefmtln(`    "golang.org/x/net/context"`)
 			w.Writefmtln("")
-			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/resource"`)
-			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/resource/plugin"`)
-			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/tokens"`)
-			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/util/contract"`)
-			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/util/mapper"`)
-			w.Writefmtln(`    lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi/pkg/resource"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi/pkg/resource/plugin"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi/pkg/tokens"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi/pkg/util/contract"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi/pkg/util/mapper"`)
+			w.Writefmtln(`    lumirpc "github.com/pulumi/pulumi/sdk/proto/go"`)
 		}
 
 		if len(g.FileImports) > 0 {
@@ -430,7 +430,7 @@ func makeLumiTag(opts PropertyOptions) string {
 	if opts.Optional || opts.In || opts.Out {
 		flags = ",optional"
 	}
-	return fmt.Sprintf("`lumi:\"%v%v\"`", opts.Name, flags)
+	return fmt.Sprintf("`pulumi:\"%v%v\"`", opts.Name, flags)
 }
 
 func (g *RPCGenerator) GenTypeName(t types.Type, opt bool) string {

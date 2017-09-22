@@ -3,8 +3,8 @@
 package cmdutil
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 var snk diag.Sink

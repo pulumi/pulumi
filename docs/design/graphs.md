@@ -170,11 +170,11 @@ why the URNs in the example above are rather lengthy, and include so much of the
 
 Please refer to the [resources design note](resources.md) for additional details on the URN generation process.
 
-TODO[pulumi/pulumi-fabric#30]: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gremlin?  Etc.)
+TODO[pulumi/pulumi#30]: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gremlin?  Etc.)
 
-TODO[pulumi/pulumi-fabric#109]: dynamic linking versus the default of static linking.
+TODO[pulumi/pulumi#109]: dynamic linking versus the default of static linking.
 
-TODO[pulumi/pulumi-fabric#90]: specify how "holes" show up during planning ("<computed>").  E.g., control flow simulation.
+TODO[pulumi/pulumi#90]: specify how "holes" show up during planning ("<computed>").  E.g., control flow simulation.
 
 TODO: describe what happens in the face of partial application failure.  Do graphs become tainted?
 

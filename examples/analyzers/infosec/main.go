@@ -7,9 +7,9 @@ import (
 	"os"
 
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
-	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
-	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

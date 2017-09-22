@@ -6,8 +6,8 @@ package pack
 import (
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // Package is a top-level package definition.

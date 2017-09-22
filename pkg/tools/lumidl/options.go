@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 // PropertyOptionsTag is the field tag the IDL compiler uses to find property options.
-const PropertyOptionsTag = "lumi"
+const PropertyOptionsTag = "pulumi"
 
 // PropertyOptions represents a parsed field tag, controlling how properties are treated.
 type PropertyOptions struct {
@@ -40,7 +40,7 @@ func ParsePropertyOptions(tag string) PropertyOptions {
 				case "out":
 					opts.Out = true
 				default:
-					cmdutil.Diag().Errorf(diag.Message("unrecognized tag `lumi:\"%v\"`"), key)
+					cmdutil.Diag().Errorf(diag.Message("unrecognized tag `pulumi:\"%v\"`"), key)
 				}
 			}
 		}

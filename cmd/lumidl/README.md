@@ -18,7 +18,7 @@ The LumIDL toolset cuts down on boilerplate and makes it easy to author new reso
 
 To build the Lumi IDL compiler, run
 
-    $ go install github.com/pulumi/pulumi-fabric/cmd/lumidl
+    $ go install github.com/pulumi/pulumi/cmd/lumidl
 
 from an enlistment with a proper `GOPATH` set.
 

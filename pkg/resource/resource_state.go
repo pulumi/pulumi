@@ -3,8 +3,8 @@
 package resource
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // State is a structure containing state associated with a resource.  This resource may have been serialized and

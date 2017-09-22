@@ -1,8 +1,8 @@
 // This tests simple creation of assets.
 
-let fabric = require("../../../../../");
+let pulumi = require("../../../../../");
 
-class FileResource extends fabric.Resource {
+class FileResource extends pulumi.Resource {
     constructor(name, data) {
         super("test:index:FileResource", name, {
             "data": data,
@@ -10,5 +10,5 @@ class FileResource extends fabric.Resource {
     }
 }
 
-new FileResource("file1", new fabric.asset.FileAsset("./testdata.txt"));
+new FileResource("file1", new pulumi.asset.FileAsset("./testdata.txt"));
 

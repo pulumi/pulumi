@@ -19,14 +19,14 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_LogRequest(arg) {
+function serialize_pulumirpc_LogRequest(arg) {
   if (!(arg instanceof engine_pb.LogRequest)) {
-    throw new Error('Expected argument of type lumirpc.LogRequest');
+    throw new Error('Expected argument of type pulumirpc.LogRequest');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_LogRequest(buffer_arg) {
+function deserialize_pulumirpc_LogRequest(buffer_arg) {
   return engine_pb.LogRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
@@ -35,13 +35,13 @@ function deserialize_lumirpc_LogRequest(buffer_arg) {
 var EngineService = exports.EngineService = {
   // Log logs a global message in the engine, including errors and warnings.
   log: {
-    path: '/lumirpc.Engine/Log',
+    path: '/pulumirpc.Engine/Log',
     requestStream: false,
     responseStream: false,
     requestType: engine_pb.LogRequest,
     responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_lumirpc_LogRequest,
-    requestDeserialize: deserialize_lumirpc_LogRequest,
+    requestSerialize: serialize_pulumirpc_LogRequest,
+    requestDeserialize: deserialize_pulumirpc_LogRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

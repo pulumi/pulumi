@@ -39,7 +39,7 @@ higher the priority (a sorted list will produce the intended implementation orde
 In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
 AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
 
-Refer to [pulumi/pulumi-fabric#2](https://github.com/pulumi/pulumi-fabric/issues/2) for an up-to-date prioritization of platforms.
+Refer to [pulumi/pulumi#2](https://github.com/pulumi/pulumi/issues/2) for an up-to-date prioritization of platforms.
 
 ## Clusters
 
@@ -120,7 +120,7 @@ Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along wi
 sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress and Egress ports are left closed.  As
 Stacks are deployed, ports are managed automatically (although an administrator can lock them (TODO(joe): how)).
 
-TODO[pulumi/pulumi-fabric#33]: figure out what to do with SSH by default; most likely, we want to lock this down.
+TODO[pulumi/pulumi#33]: figure out what to do with SSH by default; most likely, we want to lock this down.
 
 TODO(joe): joining existing VPCs.
 
@@ -183,22 +183,22 @@ TODO(joe): I'm still unsure whether each of these should be a custom CloudFormat
     you'd see our logical constructs rather than the deconstructed form.  It's a little less nice, however, in that it's
     more complex implementation-wise, requiring dynamic Lambda actions that I'd prefer to be static compilation actions.
 
-`lumi/container` maps to a single `AWS::EC2::Instance`.  However, by default, it runs a custom AMI that uses our
+`pulumi/container` maps to a single `AWS::EC2::Instance`.  However, by default, it runs a custom AMI that uses our
 daemon for container management, including configuration, image pulling policies, and more.  (Note that, later on, we
 will see that running a CaaS layer completely changes the shape of this particular primitive.)
 
-`lumi/gateway` maps to a `AWS::ElasticLoadBalancing::LoadBalancer` (specifically, an [Application Load Balancer](
+`pulumi/gateway` maps to a `AWS::ElasticLoadBalancing::LoadBalancer` (specifically, an [Application Load Balancer](
 https://aws.amazon.com/elasticloadbalancing/applicationloadbalancer/)).  Numerous policies are automatically applied
 to target the Services wired up to the Gateway, including routine rules and tables.  In the event that a Stack is
 publically exported from the Cluster, this may also entail modifications of the overall Cluster's Ingress/Egress rules.
 
-TODO: `lumi/lambda` and `lumi/event` are more, umm, difficult.
+TODO: `pulumi/lambda` and `pulumi/event` are more, umm, difficult.
 
-`lumi/volume` is an abstract Stack type and so has no footprint per se.  However, implementations of this type exist
-that do have a footprint.  For example, `aws/ebs/volume` derives from `lumi/volume`, enabling easy EBS-based container
+`pulumi/volume` is an abstract Stack type and so has no footprint per se.  However, implementations of this type exist
+that do have a footprint.  For example, `aws/ebs/volume` derives from `pulumi/volume`, enabling easy EBS-based container
 persistence.  Please refer to the section below on native AWS Stacks to understand how this particular one works.
 
-`lumi/autoscaler` generally maps to an `AWS::AutoScaling::AutoScalingGroup`, however, like the Gateway's mapping to
+`pulumi/autoscaler` generally maps to an `AWS::AutoScaling::AutoScalingGroup`, however, like the Gateway's mapping to
 the ELB, its mapping to the AWS scaling group entails a lot of automatic policy to properly scale attached Services.
 
 The general case is any Stack marked `intrinsic: true`.  These are mapped in a cloud backend-specific manner.  For
@@ -274,20 +274,20 @@ TODO(joe): figure out how Docker InfraKit does or does not relate to all of this
 Targeting the [ECS](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/) CaaS lets AWS's native container
 service manage scheduling of containers on EC2 VMs.  It is only legal when using the AWS IaaS provider.
 
-First and foremost, every Cluster containing at least one `lumi/container` in its transitive closure of Stacks gets
+First and foremost, every Cluster containing at least one `pulumi/container` in its transitive closure of Stacks gets
 an associated [ECS cluster](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_GetStarted.html).
 
 A reasonable default number of instances, of a predefined type, are chosen, but you may override them (TODO(joe): how).
 All of the AWS-wide settings, such as IAM, credentials, and region, are inherited from the base AWS IaaS configuration.
 
-The next difference is that, rather than provisioning entire VMs per `lumi/container`, each one maps to an [ECS
+The next difference is that, rather than provisioning entire VMs per `pulumi/container`, each one maps to an [ECS
 service](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html).
 
 TODO(joe): describe the auto-scaling differences.  In ECS, service auto-scaling is *not* the same as ordinary EC2
     auto-scaling.  (See [this](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html).)
-    This could cause some challenges around the composition of `lumi/autoscaler`, particularly with encapsulation.
+    This could cause some challenges around the composition of `pulumi/autoscaler`, particularly with encapsulation.
 
-TODO(joe): if we do end up supporting a `lumi/job` type, we would presumably map it to ECS's CreateTask construct.
+TODO(joe): if we do end up supporting a `pulumi/job` type, we would presumably map it to ECS's CreateTask construct.
 
 ### Google Container Engine (GKE)
 

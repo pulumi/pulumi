@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-fabric/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
 func TestExamples(t *testing.T) {
@@ -20,7 +20,7 @@ func TestExamples(t *testing.T) {
 	examples := []integration.LumiProgramTestOptions{
 		{
 			Dir:          path.Join(cwd, "basic/minimal"),
-			Dependencies: []string{"@pulumi/pulumi-fabric"},
+			Dependencies: []string{"pulumi"},
 			Config: map[string]string{
 				"minimal:config:name": "Pulumi",
 			},

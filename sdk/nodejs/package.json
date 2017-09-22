@@ -1,8 +1,8 @@
 {
-    "name": "@pulumi/pulumi-fabric",
-    "version": "0.0.1",
-    "description": "Pulumi's Fabric Node.js SDK",
-    "repository": "https://github.com/pulumi/pulumi-fabric/sdk/nodejs",
+    "name": "pulumi",
+    "version": "0.6.1",
+    "description": "Pulumi's Node.js SDK",
+    "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
     "scripts": {
         "clean": "rm -rf bin/ && rm -rf runtime/native/build",
         "build": "yarn run copyprotos && yarn run buildnative && tsc && yarn run binplace && yarn run lint",

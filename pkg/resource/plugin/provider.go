@@ -5,8 +5,8 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each

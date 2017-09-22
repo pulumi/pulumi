@@ -5,7 +5,7 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // LanguageRuntime is a convenient interface for interacting with language runtime plugins.  These tend to be

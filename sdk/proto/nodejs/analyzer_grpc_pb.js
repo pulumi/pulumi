@@ -8,25 +8,25 @@ var grpc = require('grpc');
 var analyzer_pb = require('./analyzer_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
-function serialize_lumirpc_AnalyzeRequest(arg) {
+function serialize_pulumirpc_AnalyzeRequest(arg) {
   if (!(arg instanceof analyzer_pb.AnalyzeRequest)) {
-    throw new Error('Expected argument of type lumirpc.AnalyzeRequest');
+    throw new Error('Expected argument of type pulumirpc.AnalyzeRequest');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_AnalyzeRequest(buffer_arg) {
+function deserialize_pulumirpc_AnalyzeRequest(buffer_arg) {
   return analyzer_pb.AnalyzeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_AnalyzeResponse(arg) {
+function serialize_pulumirpc_AnalyzeResponse(arg) {
   if (!(arg instanceof analyzer_pb.AnalyzeResponse)) {
-    throw new Error('Expected argument of type lumirpc.AnalyzeResponse');
+    throw new Error('Expected argument of type pulumirpc.AnalyzeResponse');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_AnalyzeResponse(buffer_arg) {
+function deserialize_pulumirpc_AnalyzeResponse(buffer_arg) {
   return analyzer_pb.AnalyzeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
@@ -36,15 +36,15 @@ function deserialize_lumirpc_AnalyzeResponse(buffer_arg) {
 var AnalyzerService = exports.AnalyzerService = {
   // Analyze analyzes a single resource object, and returns any errors that it finds.
   analyze: {
-    path: '/lumirpc.Analyzer/Analyze',
+    path: '/pulumirpc.Analyzer/Analyze',
     requestStream: false,
     responseStream: false,
     requestType: analyzer_pb.AnalyzeRequest,
     responseType: analyzer_pb.AnalyzeResponse,
-    requestSerialize: serialize_lumirpc_AnalyzeRequest,
-    requestDeserialize: deserialize_lumirpc_AnalyzeRequest,
-    responseSerialize: serialize_lumirpc_AnalyzeResponse,
-    responseDeserialize: deserialize_lumirpc_AnalyzeResponse,
+    requestSerialize: serialize_pulumirpc_AnalyzeRequest,
+    requestDeserialize: deserialize_pulumirpc_AnalyzeRequest,
+    responseSerialize: serialize_pulumirpc_AnalyzeResponse,
+    responseDeserialize: deserialize_pulumirpc_AnalyzeResponse,
   },
 };
 

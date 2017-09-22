@@ -4,7 +4,7 @@ package engine
 
 import (
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func (eng *Engine) RemoveEnv(envName string, force bool) error {

@@ -2,7 +2,7 @@
 
 package engine
 
-import "github.com/pulumi/pulumi-fabric/pkg/tokens"
+import "github.com/pulumi/pulumi/pkg/tokens"
 
 type DestroyOptions struct {
 	Environment string

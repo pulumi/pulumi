@@ -1,18 +1,18 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package main
+package cmd
 
 import (
 	"errors"
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/workspace"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newEnvInitCmd() *cobra.Command {

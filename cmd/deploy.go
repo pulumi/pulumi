@@ -1,19 +1,18 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package main
+package cmd
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newPlanCmd() *cobra.Command {
+func newDeployCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
-	var dotOutput bool
+	var dryRun bool
 	var env string
 	var parallel int
 	var showConfig bool
@@ -21,26 +20,26 @@ func newPlanCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:     "plan [<package>] [-- [<args>]]",
-		Aliases: []string{"dryrun"},
-		Short:   "Show a plan to update, create, and delete an environment's resources",
-		Long: "Show a plan to update, create, and delete an environment's resources\n" +
+		Use:     "deploy [<package>] [-- [<args>]]",
+		Aliases: []string{"run", "up", "update"},
+		Short:   "Deploy resource updates, creations, and deletions to an environment",
+		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
 			"\n" +
-			"This command displays a plan to update an existing environment whose state is represented by\n" +
-			"an existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
+			"This command updates an existing environment whose state is represented by the\n" +
+			"existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
 			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
 			"This graph is compared against the existing state to determine what operations must take\n" +
-			"place to achieve the desired state.  No changes to the environment will actually take place.\n" +
+			"place to achieve the desired state.  This command results in a full snapshot of the\n" +
+			"environment's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
-
-			return lumiEngine.Plan(engine.PlanOptions{
+			return lumiEngine.Deploy(engine.DeployOptions{
+				Environment:          env,
 				Package:              pkgargFromArgs(args),
 				Debug:                debug,
-				Environment:          env,
+				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
@@ -57,9 +56,9 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().BoolVar(
-		&dotOutput, "dot", false,
-		"Output the plan as a DOT digraph (graph description language)")
+	cmd.PersistentFlags().BoolVarP(
+		&dryRun, "dry-run", "n", false,
+		"Don't actually update resources, just print out the planned updates (synonym for plan)")
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
@@ -70,7 +69,7 @@ func newPlanCmd() *cobra.Command {
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", false,
+		&showReplacementSteps, "show-replacement-steps", true,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,

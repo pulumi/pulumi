@@ -5,8 +5,8 @@ package resource
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // URN is a friendly, but unique, URN for a resource, most often auto-assigned by Lumi.  These are
@@ -32,7 +32,7 @@ type URN string
 
 const (
 	URNPrefix        = "urn:" + URNNamespaceID + ":" // the standard URN prefix
-	URNNamespaceID   = "lumi"                        // the URN namespace
+	URNNamespaceID   = "pulumi"                      // the URN namespace
 	URNNameDelimiter = "::"                          // the delimiter between URN name elements
 )
 

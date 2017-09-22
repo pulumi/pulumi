@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-ec
 
-PROJECT=github.com/pulumi/pulumi-fabric
+PROJECT=github.com/pulumi/pulumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
@@ -41,28 +41,28 @@ configure:
 .PHONY: install
 install:
 	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
-	go install ${PROJECT}/cmd/lumi
+	go install ${PROJECT}
 	go install ${PROJECT}/cmd/lumidl
 
 .PHONY: lint
 lint:
 	@$(ECHO) "\033[0;32mLINT:\033[0m"
+	$(GOMETALINTER) main.go | sort ; exit "$${PIPESTATUS[0]}"
 	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
-	$(GOMETALINTER) ./cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
-	$(GOMETALINTER) ./cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) ./cmd/... | sort ; exit "$${PIPESTATUS[0]}"
 
 # In quiet mode, suppress some messages.
-#    - "or be unexported": TODO[pulumi/pulumi-fabric#191]: will fix when we write all of our API docs
+#    - "or be unexported": TODO[pulumi/pulumi#191]: will fix when we write all of our API docs
 #    - "Subprocess launching with variable": we intentionally launch processes dynamically.
-#    - "cyclomatic complexity" (disabled in config): TODO[pulumi/pulumi-fabric#259]: need to fix many of these.
+#    - "cyclomatic complexity" (disabled in config): TODO[pulumi/pulumi#259]: need to fix many of these.
 LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
 
 .PHONY: lint_quiet
 lint_quiet:
 	@$(ECHO) "\033[0;32mLINT (quiet):\033[0m"
+	$(GOMETALINTER) main.go | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	$(GOMETALINTER) ./cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	$(GOMETALINTER) ./cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	@$(ECHO) "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
 
 .PHONY: vet

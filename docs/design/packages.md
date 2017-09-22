@@ -130,7 +130,7 @@ point of attempting to access members that are missing (versus `object` which in
 Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
 in their domain.  To include it in a type's domain, suffix that type `T` with a question mark, as in `T?`.
 
-TODO[pulumi/pulumi-fabric#64]: at the moment, we have not yet implemented non-null types.  Instead, all types include `null`
+TODO[pulumi/pulumi#64]: at the moment, we have not yet implemented non-null types.  Instead, all types include `null`
     in the legal domain of values.  It remains to be seen whether we'll actually go forward with non-nullability.
 
 ### Primitives
@@ -425,7 +425,7 @@ dynamic languages.  These operations respect accessibility.  These operations ar
 
 LumiIL supports some additional "advanced" type system features.
 
-TODO[pulumi/pulumi-fabric#64]: at the moment, we don't support any of these.  It's unclear if we will pursue adding these to
+TODO[pulumi/pulumi#64]: at the moment, we don't support any of these.  It's unclear if we will pursue adding these to
     the type system.  It's unfortunate that CloudFormation supports them, and we do not, at the moment, so we will need
     to do something.  Enums, for sure.  But perhaps constraint types rely on library verification instead.
 
@@ -524,7 +524,7 @@ or register machines.  There are three reasons LumiIL chooses ASTs over these ot
 ### AST Nodes
 
 Below is an overview of LumiIL's AST types.  For the latest, please [refer to the source code](
-https://github.com/pulumi/pulumi-fabric/tree/master/pkg/compiler/ast).
+https://github.com/pulumi/pulumi/tree/master/pkg/compiler/ast).
 
 TODO: this is just a dumb name listing; eventually we want to specify each and every node type.
 
@@ -617,7 +617,7 @@ LumiPack and LumiIL are interpreted formats.
 
 That means we do not compile them to assembly and, in certain cases, we have made design decisions that favor
 correctness over performance.  The toolchain has a built in verifier that enforces these design decisions at runtime
-(which can be run explicitly with `lumi pack verify`).  This is unlike most runtimes that leverage an independent static
+(which can be run explicitly with `pulumi pack verify`).  This is unlike most runtimes that leverage an independent static
 verification step, often at the time of machine translation, to avoid runtime penalties.
 
 TODO: specify more information about the runtime context in which evaluation is performed.

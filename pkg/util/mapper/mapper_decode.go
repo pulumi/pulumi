@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Decoder is a func that knows how to decode into particular type.
@@ -26,13 +26,13 @@ func (md *mapper) Decode(obj map[string]interface{}, target interface{}) Mapping
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	vdstType := vdst.Type().Elem()
 	contract.Assertf(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
-		"Target %v must be a struct type with `lumi:\"x\"` tags to direct decoding", vdstType)
+		"Target %v must be a struct type with `pulumi:\"x\"` tags to direct decoding", vdstType)
 
 	// Keep track of any errors that result.
 	var errs []error
 
-	// For each field in the struct that has a `lumi:"name"`, look it up in the map by that `name`, issuing an error if
-	// it is missing or of the wrong type.  For each field that is marked optional, e.g. `lumi:"name,optional"`,
+	// For each field in the struct that has a `pulumi:"name"`, look it up in the map by that `name`, issuing an error
+	// if it is missing or of the wrong type.  For each field that is marked optional, e.g. `pulumi:"name,optional"`,
 	// do the same, but permit it to be missing without issuing an error.
 	flds := make(map[string]bool)
 	for _, fldtag := range md.structFieldsTags(vdstType) {

@@ -1,9 +1,9 @@
 // This test case links one resource's property to another.
 
 let assert = require("assert");
-let fabric = require("../../../../../");
+let pulumi = require("../../../../../");
 
-class ResourceA extends fabric.Resource {
+class ResourceA extends pulumi.Resource {
     constructor(name) {
         super("test:index:ResourceA", name, {
             "inprop": 777,
@@ -12,7 +12,7 @@ class ResourceA extends fabric.Resource {
     }
 }
 
-class ResourceB extends fabric.Resource {
+class ResourceB extends pulumi.Resource {
     constructor(name, other) {
         super("test:index:ResourceB", name, {
             "otherIn": other.inprop,

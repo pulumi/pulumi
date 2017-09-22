@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // RelFilename gets the target filename for any given position relative to the root.

@@ -6,7 +6,7 @@ import (
 	"go/types"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/tools"
 )
 
 const lumidl = "the Lumi IDL Compiler (LUMIDL)" // used in generated files.

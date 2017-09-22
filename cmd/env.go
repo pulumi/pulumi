@@ -1,11 +1,11 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package main
+package cmd
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
 func newEnvCmd() *cobra.Command {
@@ -27,7 +27,7 @@ func newEnvCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.PersistentFlags().BoolVarP(
-		&showURNs, "show-urns", "u", false, "Display each resource's Lumi-assigned globally unique URN")
+		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 
 	cmd.AddCommand(newEnvInitCmd())
 	cmd.AddCommand(newEnvLsCmd())

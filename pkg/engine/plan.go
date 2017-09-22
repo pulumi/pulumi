@@ -10,13 +10,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
-	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
-	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type PlanOptions struct {
@@ -90,7 +90,7 @@ func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, erro
 	contract.Assert(pkginfo != nil)
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	// TODO[pulumi/pulumi-fabric#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
+	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
 		Pkg:    pkginfo.Pkg,
 		Pwd:    pkginfo.Root,

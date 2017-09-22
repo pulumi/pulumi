@@ -3,7 +3,7 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // NewFixedSource returns a valid planning source that is comprised of a list of pre-computed resource objects.

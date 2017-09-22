@@ -15,9 +15,9 @@ The following are the basic steps to creating a new LumiPack:
 * Pick your favorite LumiLang language.
 * Create a new project folder in your workspace.
 * Create a Lumifile (`Lumi.yaml`) containing the top-level metadata.
-* Install any dependencies using the `lumi get` command line.
+* Install any dependencies using the `pulumi get` command line.
 * Author stacks by subclassing the `Stack` base class in the Lumi SDK.
-* Build the package using `lumi build`, rinse and repeat, and then publish it.
+* Build the package using `pulumi build`, rinse and repeat, and then publish it.
 
 For illustration purposes within this document, we shall choose Lumi's JavaScript subset, LumiJS.  Please also note
 that, though metadata examples are in YAML, it is generally valid to use JSON instead if preferred.
@@ -51,7 +51,7 @@ In addition to basic metadata like this, any dependency packages must also be li
 Each dependency package should consist of the following elements:
 
 * An optional protocol (e.g., `https://`).
-* An optional base URL (e.g., `lumihub.com/`, `github.com/`, etc).
+* An optional base URL (e.g., `pulumihub.com/`, `github.com/`, etc).
 * A required namespace and/or name part (e.g., `acmecorp/worker`, `aws/s3/bucket`, etc).
 * An optional `#` followed by version number (e.g., `#^1.0.6`, `#6f99088`, `#latest`, etc).
 
@@ -107,7 +107,7 @@ The more statically typed approach of using service capabilities also eliminates
 typed and dynamic approaches, which can be prone to race conditions, requiring manual sleeps, retries, etc.
 
 Capabilities can also benefit from the abstraction and encapsulation provided by Lumi.  For example, imagine we want
-a key/value store.  The `lumi/x` namespace offers such a `KVStore` abstraction, but it is abstract.  By declaring in
+a key/value store.  The `pulumi/x` namespace offers such a `KVStore` abstraction, but it is abstract.  By declaring in
 a constructor that we require a `KVStore`, we leave open the possibility that a caller might provide an instance of
 etcd, Consul, Zookeeper, or their favorite key/value store provider.
 
@@ -169,7 +169,7 @@ TODO(joe): write this section.
 
 Lumi offers a complete set of infrastructure stacks for each cloud provider.
 
-Lumi also provides the `lumi/x` package, which contains a set of logical stack types, like `Container`, `Lambda`,
+Lumi also provides the `pulumi/x` package, which contains a set of logical stack types, like `Container`, `Lambda`,
 `Table`, `Volume`, and so on, offering a framework of higher-level, cloud-agnostic abstractions.  Please consult
 [the cross-cloud design document](x-cloud.md) for more details on this package and its contents.
 

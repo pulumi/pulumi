@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 func (eng *Engine) ListConfig(envName string) error {
@@ -25,7 +25,7 @@ func (eng *Engine) ListConfig(envName string) error {
 		sort.Strings(keys)
 		for _, key := range keys {
 			v := info.Target.Config[tokens.ModuleMember(key)]
-			// TODO[pulumi/pulumi-fabric#113]: print complex values.
+			// TODO[pulumi/pulumi#113]: print complex values.
 			fmt.Fprintf(eng.Stdout, "%-32s %-32s\n", key, v)
 		}
 	}

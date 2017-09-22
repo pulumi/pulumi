@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package main
+package cmd
 
 import (
 	"bufio"
@@ -10,18 +10,29 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-// NewLumiCmd creates a new Lumi Cmd instance.
-func NewLumiCmd() *cobra.Command {
+var (
+	// The lumi engine provides an API for common lumi tasks.  It's shared across the
+	// `pulumi` command and the deployment engine in the pulumi-service. For `pulumi` we set
+	// the engine to write output and errors to os.Stdout and os.Stderr.
+	lumiEngine engine.Engine
+)
+
+func init() {
+	lumiEngine = engine.Engine{Stdout: os.Stdout, Stderr: os.Stderr, Environment: localEnvProvider{}}
+}
+
+// NewPulumiCmd creates a new Pulumi Cmd instance.
+func NewPulumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var verbose int
 	cmd := &cobra.Command{
-		Use:   "lumi",
-		Short: "Lumi is a framework and toolset for reusable stacks of services",
+		Use: "pulumi",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
 		},

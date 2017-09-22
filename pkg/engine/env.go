@@ -8,13 +8,13 @@ import (
 
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
-	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
-	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
-	"github.com/pulumi/pulumi-fabric/pkg/workspace"
+	"github.com/pulumi/pulumi/pkg/compiler/errors"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/environment"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func (eng *Engine) initEnvCmd(name string, pkgarg string) (*envCmdInfo, error) {
@@ -57,7 +57,7 @@ type envCmdInfo struct {
 func (eng *Engine) createEnv(name tokens.QName) {
 	env := &deploy.Target{Name: name}
 	if err := eng.Environment.SaveEnvironment(env, nil); err == nil {
-		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
+		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `pulumi deploy` to deploy into it\n", name)
 		eng.setCurrentEnv(name, false)
 	}
 }

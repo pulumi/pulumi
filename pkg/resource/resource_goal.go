@@ -3,7 +3,7 @@
 package resource
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // Goal is a desired state for a resource object.

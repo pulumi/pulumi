@@ -2,9 +2,9 @@
 // In particular, there aren't any fancy dataflow linked properties.
 
 let assert = require("assert");
-let fabric = require("../../../../../");
+let pulumi = require("../../../../../");
 
-class MyResource extends fabric.Resource {
+class MyResource extends pulumi.Resource {
     constructor(name) {
         super("test:index:MyResource", name, {
             // First a few basic properties that are resolved to values.
