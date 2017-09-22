@@ -47,7 +47,7 @@ else
 fi
 
 # Copy packages
-copy_package "${ROOT}/sdk/nodejs/bin/." "@pulumi/pulumi"
+copy_package "${ROOT}/sdk/nodejs/bin/." "pulumi"
 
 # Tar up the file and then print it out for use by the caller or script.
 tar -czf ${PUBFILE} -C ${PUBDIR} .
