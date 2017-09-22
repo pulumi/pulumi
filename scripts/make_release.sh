@@ -14,7 +14,7 @@ declare -a PUBTARGETS=(${GITVER} $(git describe --tags) ${BRANCH})
 
 # Copy the binaries, scripts, and packs.
 mkdir -p ${PUBDIR}/bin/
-cp ${GOPATH}/bin/lumi ${PUBDIR}/bin/
+cp ${GOPATH}/bin/pulumi ${PUBDIR}/bin/
 mkdir -p ${PUBDIR}/sdk/
 cp -R ${GOPATH}/src/github.com/pulumi/home/scripts/. ${PUBDIR}/scripts/
 cp -R ${ROOT}/sdk/nodejs/bin/. ${PUBDIR}/sdk/nodejs/
