@@ -1,1 +1,1 @@
-@%~dp0\node.exe -e "require(\"@pulumi/pulumi-fabric/cmd/langhost\")" %*
+@%~dp0\node.exe -e "require(\"pulumi/cmd/langhost\")" %*
