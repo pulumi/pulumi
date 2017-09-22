@@ -19,9 +19,9 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type plugin struct {
@@ -60,7 +60,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	contract.Assert(plug != nil)
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
-	// TODO[pulumi/pulumi-fabric#143]: eventually we want real progress reporting, etc., out of band
+	// TODO[pulumi/pulumi#143]: eventually we want real progress reporting, etc., out of band
 	//     via RPC.  This will be particularly important when we parallelize the application of the resource graph.
 	tracers := map[io.Reader]struct {
 		lbl string
@@ -122,7 +122,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// Now wait for the gRPC connection to the plugin to become ready.
-	// TODO[pulumi/pulumi-fabric#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
+	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
 	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
 	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
 	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)

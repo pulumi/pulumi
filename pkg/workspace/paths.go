@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/encoding"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/compiler/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 const ProjectFile = "Pulumi"     // the base name of a Project.
-const Dir = ".lumi"              // the default name of the LumiPack output directory.
+const Dir = ".pulumi"            // the default name of the LumiPack output directory.
 const EnvDir = "env"             // the default name of the LumiPack environment directory.
 const DepDir = "packs"           // the directory in which dependencies exist, either local or global.
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.

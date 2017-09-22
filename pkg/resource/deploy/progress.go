@@ -3,7 +3,7 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource"
 )
 
 // Progress can be used for progress reporting.

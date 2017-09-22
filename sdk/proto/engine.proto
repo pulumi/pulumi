@@ -4,7 +4,7 @@ syntax = "proto3";
 
 import "google/protobuf/empty.proto";
 
-package lumirpc;
+package pulumirpc;
 
 // Engine is an interface into the core engine responsible for orchestrating resource operations.
 service Engine {

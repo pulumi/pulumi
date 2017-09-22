@@ -168,12 +168,12 @@ correctness and reliability than evaluation performance, which for cloud resourc
 
 An executable package is eventually deployed as a stack.  This takes one of two forms:
 
-* *Plan*: `lumi deploy <env> -n` generates a plan, a description of a hypothetical deployment, but does not actually
+* *Plan*: `pulumi deploy <env> -n` generates a plan, a description of a hypothetical deployment, but does not actually
   mutate anything.  This is essentially a "dry run" to see what changes will occur.  To do this, the package's main
   entrypoint is called with the provided arguments.  The graph may be incomplete if code depends on resource outputs for
   conditional execution or property values, resulting in so-called "holes" that will be shown in the plan's output.
 
-* *Deployment*: `lumi deploy <env>` applies a plan to a target environment `<env>`.  The primary difference compared to
+* *Deployment*: `pulumi deploy <env>` applies a plan to a target environment `<env>`.  The primary difference compared to
   a plan is that real resources may be created, updated, and deleted.  Because side-effecting actions are performed, all
   outputs are known, and so the resulting graph will be complete.  The resulting deployment record is saved locally.
 
@@ -219,7 +219,7 @@ Because the graph is a DAG, any cycles in this graph are illegal and will result
 level translation catches this, since each step in the translation process reduces the diagnosability of errors.
 Dynamic linking is possible for advanced scenarios, and leverages URNs for discovery, but is described elsewhere.
 
-Please refer to the [design document](https://github.com/pulumi/pulumi-fabric/blob/master/docs/design/graphs.md) for more
+Please refer to the [design document](https://github.com/pulumi/pulumi/blob/master/docs/design/graphs.md) for more
 information about LumiGL graphs.
 
 ### Resource Providers

@@ -10,9 +10,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi-fabric/sdk/proto/go"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // hostServer is the server side of the host RPC machinery.

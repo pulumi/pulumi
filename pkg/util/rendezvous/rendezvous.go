@@ -5,7 +5,7 @@ package rendezvous
 import (
 	"sync"
 
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // New allocates a new rendezvous meeting point for two coroutines.

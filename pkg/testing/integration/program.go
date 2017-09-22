@@ -17,8 +17,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/resource/environment"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 type LumiProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
-	// Array of NPM packages which must be `yarn linked` (e.g. {"@pulumi/pulumi-fabric", "@pulumi/aws"})
+	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
 	Dependencies []string
 	// Map of config keys and values to set on the Lumi environment (e.g. {"aws:config:region": "us-east-2"})
 	Config map[string]string
@@ -43,7 +43,7 @@ type LumiProgramTestOptions struct {
 	// Stderr is the writer to use for all stderr messages.
 	Stderr io.Writer
 
-	// LumiBin is a location of a `lumi` executable to be run.  Taken from the $PATH if missing.
+	// LumiBin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
 	LumiBin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
@@ -70,27 +70,27 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 }
 
 // LumiProgramTest runs a lifecylce of Lumi commands in a Lumi program working directory.
-// Uses the `lumi` and `yarn` binaries available on PATH. Executes the following
+// Uses the `pulumi` and `yarn` binaries available on PATH. Executes the following
 // workflow:
 //   yarn install
 //   yarn link <each opts.Depencies>
 //   yarn run build
-//   lumi env init integrationtesting
-//   lumi config <each opts.Config>
-//   lumi plan
-//   lumi deploy
-//   lumi plan (expected to be empty)
-//   lumi deploy (expected to be empty)
-//   lumi destroy --yes
-//   lumi env rm --yes integrationtesting
+//   pulumi env init integrationtesting
+//   pulumi config <each opts.Config>
+//   pulumi plan
+//   pulumi deploy
+//   pulumi plan (expected to be empty)
+//   pulumi deploy (expected to be empty)
+//   pulumi destroy --yes
+//   pulumi env rm --yes integrationtesting
 // All commands must return success return codes for the test to succeed.
 func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	t.Parallel()
 
 	// Ensure the required programs are present.
 	if opts.LumiBin == "" {
-		lumi, err := exec.LookPath("lumi")
-		if !assert.NoError(t, err, "Expected to find `lumi` binary on $PATH: %v", err) {
+		lumi, err := exec.LookPath("pulumi")
+		if !assert.NoError(t, err, "Expected to find `pulumi` binary on $PATH: %v", err) {
 			return
 		}
 		opts.LumiBin = lumi
@@ -121,12 +121,12 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	var err error
 	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
 	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "lumi: %v\n", opts.LumiBin)
+	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.LumiBin)
 	contract.IgnoreError(err)
 	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 	contract.IgnoreError(err)
 
-	// Now copy the source project, excluding the .lumi directory.
+	// Now copy the source project, excluding the .pulumi directory.
 	dir, err = prepareProject(t, dir, "", opts)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return
@@ -158,9 +158,9 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
-		checkpointFile := path.Join(dir, ".lumi", "env", testEnvironmentName+".json")
+		checkpointFile := path.Join(dir, ".pulumi", "env", testEnvironmentName+".json")
 		var byts []byte
-		byts, err = ioutil.ReadFile(path.Join(dir, ".lumi", "env", testEnvironmentName+".json"))
+		byts, err = ioutil.ReadFile(path.Join(dir, ".pulumi", "env", testEnvironmentName+".json"))
 		if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
 			return
 		}
@@ -207,8 +207,8 @@ func runCmd(t *testing.T, args []string, wd string, opts LumiProgramTestOptions)
 	assert.NoError(t, err, "Expected to successfully invoke '%v' in %v: %v", command, wd, err)
 }
 
-// prepareProject copies the source directory, srcDir (excluding .lumi), to a new temporary directory.  It then copies
-// the .lumi/ directory from the given lumiSrc, if any.  The function returns the newly resulting directory.
+// prepareProject copies the source directory, srcDir (excluding .pulumi), to a new temporary directory.  It then
+// copies the .pulumi/ directory from the given lumiSrc, if any.  The function returns the newly resulting directory.
 func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgramTestOptions) (string, error) {
 	// Create a new temp directory.
 	dir, err := ioutil.TempDir("", "lumi-integration-test-")
@@ -216,16 +216,16 @@ func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgra
 		return "", err
 	}
 
-	// Now copy the source into it, ignoring .lumi.
-	if copyerr := copyFile(dir, srcDir, ".lumi"); copyerr != nil {
+	// Now copy the source into it, ignoring .pulumi.
+	if copyerr := copyFile(dir, srcDir, ".pulumi"); copyerr != nil {
 		return "", copyerr
 	}
 
 	// If there's a lumi source directory, copy it atop the target.
 	if lumiSrc != "" {
-		lumiDir := filepath.Join(lumiSrc, ".lumi")
+		lumiDir := filepath.Join(lumiSrc, ".pulumi")
 		if info, err := os.Stat(lumiDir); err == nil && info.IsDir() {
-			copyerr := copyFile(filepath.Join(dir, ".lumi"), lumiDir, "")
+			copyerr := copyFile(filepath.Join(dir, ".pulumi"), lumiDir, "")
 			if copyerr != nil {
 				return "", copyerr
 			}

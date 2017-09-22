@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pulumi/pulumi-fabric/pkg/resource/idl"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/resource/idl"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func IsPrimitive(t types.Type) bool {

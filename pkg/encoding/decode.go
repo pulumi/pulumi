@@ -5,7 +5,7 @@
 package encoding
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/pack"
 )
 
 // Decode unmarshals the entire contents of the given byte array into a Package object.

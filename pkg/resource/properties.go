@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
-	"github.com/pulumi/pulumi-fabric/pkg/util/mapper"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/mapper"
 )
 
 // PropertyKey is the name of a property.

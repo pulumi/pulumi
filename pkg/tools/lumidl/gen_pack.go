@@ -12,12 +12,12 @@ import (
 
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/tools"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tools"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// TODO[pulumi/pulumi-fabric#139]: preserve GoDocs in the generated code.
+// TODO[pulumi/pulumi#139]: preserve GoDocs in the generated code.
 
 type PackGenerator struct {
 	Program     *loader.Program          // the compiled Go program.
@@ -114,7 +114,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 
 	// If there are any resources, import the Lumi package.
 	if g.FileHadRes {
-		w.Writefmtln("import * as fabric from \"@pulumi/pulumi-fabric\";")
+		w.Writefmtln("import * as fabric from \"@pulumi/pulumi\";")
 		w.Writefmtln("")
 	}
 	if len(g.FileImports) > 0 {

@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/encoding"
-	"github.com/pulumi/pulumi-fabric/pkg/pack"
-	"github.com/pulumi/pulumi-fabric/pkg/workspace"
+	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 type pkginfo struct {

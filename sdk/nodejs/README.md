@@ -28,8 +28,8 @@ To build the SDK, simply run `make` from the root directory (`sdk/nodejs/`).  Th
 then "install" the package (by `yarn link`ing the resulting `bin/` directory).
 
 We recommend putting `bin/` on your `$PATH`, since the `pulumi-langhost-nodejs` executable will be loaded dynamically
-by the `lumi` tool whenever it encounters a Node.js program.
+by the `pulumi` tool whenever it encounters a Node.js program.
 
-The tests will verify that everything works, but feel free to try running `lumi plan` and/or `lumi deploy` from
-the `examples/minimal/` directory.  Remember to run `tsc` first, since `lumi` expects JavaScript, not TypeScript.
+The tests will verify that everything works, but feel free to try running `pulumi plan` and/or `pulumi deploy` from
+the `examples/minimal/` directory.  Remember to run `tsc` first, since `pulumi` expects JavaScript, not TypeScript.
 

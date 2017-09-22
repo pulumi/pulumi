@@ -42,10 +42,10 @@ For now, just like our gRPC files, we will check in the resulting generated code
 
 The Lumi type definitions are in TypeScript for the time being (as with our current hand-coded ones).  So,
 `cidlc` actually generates TypeScript, not a LumiPack directly.  (Eventually, `cidlc` can have a pluggable
-language target.)  `lumijs` is then used to compile that TypeScript in the usual ways.  This allows interesting things
+language target.)  `pulumijs` is then used to compile that TypeScript in the usual ways.  This allows interesting things
 like augmenting the type definitions with functions (like `aws.getLinuxAMI`).
 
-The RPC stubs are simply variations of our existing gRPC `lumirpc.ResourceProvider` base type, with some boilerplate
+The RPC stubs are simply variations of our existing gRPC `pulumirpc.ResourceProvider` base type, with some boilerplate
 around standard marshaling and validation, so the real providers can focus on important resource-specific logic.
 
 ## IDL
@@ -75,7 +75,7 @@ A type is a resource if it embeds one of the standard Lumi IDL resource types: e
 `pkg/resource/idl/NamedResource`, the latter having a `Name` property.  For example:
 
     import (
-        "github.com/pulumi/pulumi-fabric/pkg/resource/idl"
+        "github.com/pulumi/pulumi/pkg/resource/idl"
     )
     type FooResource struct {
         idl.Resource
@@ -93,13 +93,13 @@ compiler automatically turns `CapitalCase` fields into idiomatic Lumi `lowerCase
     }
 
 The resulting `Foo` type's property will be named `bar`, not `Bar`.  This is almost always what you want, however,
-you may explicitly specify an alternative name to use using the `lumi` tag's `name=<name>` option:
+you may explicitly specify an alternative name to use using the `pulumi` tag's `name=<name>` option:
 
     type Foo struct {
-        Bar string `lumi:"name=Bar"`
+        Bar string `pulumi:"name=Bar"`
     }
 
-In fact, there are three other options supported by the `lumi` tag, to control code generation:
+In fact, there are three other options supported by the `pulumi` tag, to control code generation:
 
 * `optional`: this is an optional property (required is the default)
 * `out`: this property is set post-creation by the resource provider, rather than set by the client
@@ -109,7 +109,7 @@ In fact, there are three other options supported by the `lumi` tag, to control c
 The resulting package and provider will perform client- and server-side validation automatically for each of these.
 
 Eventually we envision additional annotations, like min/max values for numbers, regexes for strings, and so on
-(see [pulumi/pulumi-fabric#64](https://github.com/pulumi/pulumi-fabric/issues/64) for details).
+(see [pulumi/pulumi#64](https://github.com/pulumi/pulumi/issues/64) for details).
 
 Enums are supported using semi-idiomatic Go enums, by just using a `string`-backed type alias, and by declaring the
 entire set of constants that the enum may take on.  The IDL compiler will treat this like an enum type:
@@ -158,7 +158,7 @@ For every struct definition in the IDL, a corresponding interface is created wit
 casing, optionality, etc., as described above.
 
 For every resource in the IDL, a subclass of the appropriate lumi LumiPack resource base class is created (from the
-`lumi` package).  Each such class will have a constructor that accepts an arguments object containing all of its
+`pulumi` package).  Each such class will have a constructor that accepts an arguments object containing all of its
 properties and simply validates and self-assigns them, in the straightforward way.
 
 At the moment, custom logic for resource constructors is not supported.  Eventually, when `cidlc` is generalized to
@@ -205,7 +205,7 @@ This is an example of the IDL definition for the aws/ec2/SecurityGroup resource 
 package ec2
 
 import (
-    "github.com/pulumi/pulumi-fabric/pkg/resource/idl"
+    "github.com/pulumi/pulumi/pkg/resource/idl"
 )
 
 // A SecurityGroup is an Amazon EC2 Security Group.  For more information, see
@@ -213,15 +213,15 @@ import (
 type SecurityGroup struct {
     idl.NamedResource
     // A required description about the security group.
-    GroupDescription string `lumi:"replace"`
+    GroupDescription string `pulumi:"replace"`
     // The VPC in which this security group resides (or blank if the default VPC).
-    VPC *VPC `lumi:"optional,replace"`
+    VPC *VPC `pulumi:"optional,replace"`
     // A list of Amazon EC2 security group egress rules.
-    SecurityGroupEgress *[]SecurityGroupRule `lumi:"optional"`
+    SecurityGroupEgress *[]SecurityGroupRule `pulumi:"optional"`
     // A list of Amazon EC2 security group ingress rules.
-    SecurityGroupIngress *[]SecurityGroupRule `lumi:"optional"`
+    SecurityGroupIngress *[]SecurityGroupRule `pulumi:"optional"`
     // The group ID of the specified security group, such as `sg-94b3a1f6`.
-    GroupID *string `lumi:"out"`
+    GroupID *string `pulumi:"out"`
 }
 
 // A SecurityGroupRule describes an EC2 security group rule embedded within a SecurityGroup.
@@ -229,13 +229,13 @@ type SecurityGroupRule struct {
     // The IP name or number.
     IPProtocol string
     // Specifies a CIDR range.
-    CIDRIP *string `lumi:"optional"`
+    CIDRIP *string `pulumi:"optional"`
     // The start of port range for the TCP and UDP protocols, or an ICMP type number.  An ICMP type number of `-1`
     // indicates a wildcard (i.e., any ICMP type number).
-    FromPort *float64 `lumi:"optional"`
+    FromPort *float64 `pulumi:"optional"`
     // The end of port range for the TCP and UDP protocols, or an ICMP code.  An ICMP code of `-1` indicates a
     // wildcard (i.e., any ICMP code).
-    ToPort *float64 `lumi:"optional"`
+    ToPort *float64 `pulumi:"optional"`
 }
 ```
 

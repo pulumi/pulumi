@@ -8,11 +8,11 @@ import (
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/resource"
-	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/compiler/errors"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Options controls the planning and deployment process.

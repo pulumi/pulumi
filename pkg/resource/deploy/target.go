@@ -3,7 +3,7 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // Target represents information about a deployment target.

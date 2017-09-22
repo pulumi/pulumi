@@ -6,7 +6,7 @@ First, there is no ad-hoc I/O available, in order to encourage determinism.  Sec
 resource that consumed a file -- something we call an "asset" in this document -- your options are limited.  Moreover,
 even if a resource provider did come up with its own scheme for supporting such things, there would be no consistency.
 
-Enter assets.  The Lumi framework providers a common base class, `lumi.Asset`, with derived implementations for
+Enter assets.  The Lumi framework providers a common base class, `pulumi.Asset`, with derived implementations for
 many kinds of file sources, including in-memory blobs and strings, files, and URI-addressed files.  There is a standard
 way for resource providers to interact with assets, ensuring consistency across providers.
 

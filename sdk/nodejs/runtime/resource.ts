@@ -18,7 +18,7 @@ let excessiveDebugOutput: boolean = false;
  * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
  * entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
  * causes problems with some resource providers, so for now we will serialize all of them.  The issue
- * pulumi/pulumi-fabric#335 tracks coming up with a long-term solution here.
+ * pulumi/pulumi#335 tracks coming up with a long-term solution here.
  */
 let resourceChain: Promise<void> = Promise.resolve();
 

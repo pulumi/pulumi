@@ -5,8 +5,8 @@ package plugin
 import (
 	"context"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 )
 
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
@@ -35,7 +35,7 @@ func NewContext(d diag.Sink, host Host) (*Context, error) {
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	// TODO[pulumi/pulumi-fabric#143]: support cancellation.
+	// TODO[pulumi/pulumi#143]: support cancellation.
 	return context.TODO()
 }
 

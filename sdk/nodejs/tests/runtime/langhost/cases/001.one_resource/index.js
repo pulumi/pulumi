@@ -1,8 +1,8 @@
 // This tests the basic creation of a single propertyless resource.
 
-let fabric = require("../../../../../");
+let pulumi = require("../../../../../");
 
-class MyResource extends fabric.Resource {
+class MyResource extends pulumi.Resource {
     constructor(name) {
         super("test:index:MyResource", name);
     }

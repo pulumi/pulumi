@@ -21,7 +21,7 @@ The question is, how does it "provision" them?
 
 First thing's first.  For this to work, we must first identify what a "resource" is.
 
-A resource in the programming model is simply identified by any class that derives from the `lumi.Resource` base
+A resource in the programming model is simply identified by any class that derives from the `pulumi.Resource` base
 class.  (The specific manifestation of this depends on your language SDK; examples below are in LumiJS.)  This class
 is primarily a marker class in that it doesn't offer much on its own (except for a few advanced methods, see below).
 
@@ -87,18 +87,18 @@ aspects of the scope in which a resource object is allocated.  As you can see ab
 Despite this relatively specific context, it is possible for the same logical resource's name to change due to simple
 refactoring.  For instance, if we move a resource allocation from inside of one module and into another one, its name
 will change.  It is difficult for Lumi to automatically understand such situations; that said, there is a
-`lumi rename <old> <new>` command that will rename an old URN to a new one and move all old references accordingly.  The
+`pulumi rename <old> <new>` command that will rename an old URN to a new one and move all old references accordingly.  The
 deployment command also attempts to recognize and suggest potential moves, although it won't perform them automatically.
 
 ## Resource Providers and Extensibility
 
 Each resource provider plugin corresponds to a single package and handles one or more resource types.  The rule for
-loading a plugin is quite simple: a binary of the name `lumi-resource-<pkg>` is loaded, either from the path, or from
+loading a plugin is quite simple: a binary of the name `pulumi-resource-<pkg>` is loaded, either from the path, or from
 one of [the standard installation locations](deps.md).  `<pkg>` is the package token with any `/`s replaced with `_`s.
 
 There is no requirement around a resource provider, other than that it implement a specific HTTP/2 protocol.  This
 protocol is described by a [set of gRPC interfaces](
-https://github.com/pulumi/pulumi-fabric/blob/master/sdk/proto/provider.proto).  In particular:
+https://github.com/pulumi/pulumi/blob/master/sdk/proto/provider.proto).  In particular:
 
     service ResourceProvider {
         // Check validates that the given property bag is valid for a resource of the given type.
@@ -120,9 +120,9 @@ https://github.com/pulumi/pulumi-fabric/blob/master/sdk/proto/provider.proto).  
         rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
     }
 
-TODO[pulumi/pulumi-fabric#54]: eventually we will add operational APIs to resource providers.  This will allow them to report
+TODO[pulumi/pulumi#54]: eventually we will add operational APIs to resource providers.  This will allow them to report
     logging and performance counters, for example.  This will permit easy inspection from the command line (e.g.,
-    `lumi resource perf cpu <resource-id>` could print out the current CPU perf-counter history for a resource).  It
+    `pulumi resource perf cpu <resource-id>` could print out the current CPU perf-counter history for a resource).  It
     will also permit handy resource monitoring from our hosted service, possibly in conjunction with workflows.
 
 Describing the full RPC interface here is outside of the scope of this document.  However, all existing resources are

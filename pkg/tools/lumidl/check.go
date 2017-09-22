@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type Checker struct {
@@ -287,7 +287,7 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 			if opts.Name == "" {
 				ok = false
 				cmdutil.Diag().Errorf(
-					diag.Message("field %v.%v is missing a `lumi:\"<name>\"` tag directive").At(chk.diag(fld)),
+					diag.Message("field %v.%v is missing a `pulumi:\"<name>\"` tag directive").At(chk.diag(fld)),
 					t.Name(), fld.Name())
 			}
 			if opts.Out && !isres {

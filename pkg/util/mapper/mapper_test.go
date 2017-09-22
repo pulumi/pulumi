@@ -93,10 +93,10 @@ func TestFieldMapper(t *testing.T) {
 }
 
 type bagtag struct {
-	String        string `lumi:"s"`
-	StringSkip    string `lumi:"sc,skip"`
-	StringOpt     string `lumi:"so,optional"`
-	StringSkipOpt string `lumi:"sco,skip,optional"`
+	String        string `pulumi:"s"`
+	StringSkip    string `pulumi:"sc,skip"`
+	StringOpt     string `pulumi:"so,optional"`
+	StringSkipOpt string `pulumi:"sco,skip,optional"`
 }
 
 func TestMapper(t *testing.T) {
@@ -152,14 +152,14 @@ func TestMapper(t *testing.T) {
 }
 
 type bog struct {
-	Boggy    bogger     `lumi:"boggy"`
-	BoggyP   *bogger    `lumi:"boggyp"`
-	Boggers  []bogger   `lumi:"boggers"`
-	BoggersP *[]*bogger `lumi:"boggersp"`
+	Boggy    bogger     `pulumi:"boggy"`
+	BoggyP   *bogger    `pulumi:"boggyp"`
+	Boggers  []bogger   `pulumi:"boggers"`
+	BoggersP *[]*bogger `pulumi:"boggersp"`
 }
 
 type bogger struct {
-	Num float64 `lumi:"num"`
+	Num float64 `pulumi:"num"`
 }
 
 func TestNestedMapper(t *testing.T) {
@@ -202,8 +202,8 @@ func TestNestedMapper(t *testing.T) {
 }
 
 type boggerdybogger struct {
-	Bogs  map[string]bog   `lumi:"bogs"`
-	BogsP *map[string]*bog `lumi:"bogsp"`
+	Bogs  map[string]bog   `pulumi:"bogs"`
+	BogsP *map[string]*bog `pulumi:"bogsp"`
 }
 
 func TestMultiplyNestedMapper(t *testing.T) {
@@ -287,12 +287,12 @@ func TestMultiplyNestedMapper(t *testing.T) {
 }
 
 type hasmap struct {
-	Entries  map[string]mapentry  `lumi:"entries"`
-	EntriesP map[string]*mapentry `lumi:"entriesp"`
+	Entries  map[string]mapentry  `pulumi:"entries"`
+	EntriesP map[string]*mapentry `pulumi:"entriesp"`
 }
 
 type mapentry struct {
-	Title string `lumi:"title"`
+	Title string `pulumi:"title"`
 }
 
 func TestMapMapper(t *testing.T) {
@@ -324,8 +324,8 @@ func TestMapMapper(t *testing.T) {
 }
 
 type wrap struct {
-	C  customStruct    `lumi:"c"`
-	CI customInterface `lumi:"ci"`
+	C  customStruct    `pulumi:"c"`
+	CI customInterface `pulumi:"ci"`
 }
 
 type customInterface interface {
@@ -334,8 +334,8 @@ type customInterface interface {
 }
 
 type customStruct struct {
-	X float64 `lumi:"x"`
-	Y float64 `lumi:"y"`
+	X float64 `pulumi:"x"`
+	Y float64 `pulumi:"y"`
 }
 
 func (s *customStruct) GetX() float64 { return s.X }
@@ -393,18 +393,18 @@ func decodeCustomStruct(m Mapper, tree map[string]interface{}) (interface{}, err
 }
 
 type outer struct {
-	Inners *[]inner `lumi:"inners,optional"`
+	Inners *[]inner `pulumi:"inners,optional"`
 }
 
 type inner struct {
-	A string   `lumi:"a"`
-	B *string  `lumi:"b,optional"`
-	C *string  `lumi:"c,optional"`
-	D float64  `lumi:"d"`
-	E *float64 `lumi:"e,optional"`
-	F *float64 `lumi:"f,optional"`
-	G *inner   `lumi:"g,optional"`
-	H *[]inner `lumi:"h,optional"`
+	A string   `pulumi:"a"`
+	B *string  `pulumi:"b,optional"`
+	C *string  `pulumi:"c,optional"`
+	D float64  `pulumi:"d"`
+	E *float64 `pulumi:"e,optional"`
+	F *float64 `pulumi:"f,optional"`
+	G *inner   `pulumi:"g,optional"`
+	H *[]inner `pulumi:"h,optional"`
 }
 
 func TestBasicUnmap(t *testing.T) {

@@ -1,8 +1,8 @@
 // Define and export a resource class that can be used by index.js.
 
-let fabric = require("../../../../../");
+let pulumi = require("../../../../../");
 
-exports.MyResource = class MyResource extends fabric.Resource {
+exports.MyResource = class MyResource extends pulumi.Resource {
     constructor(name, seq) {
         super("test:index:MyResource", name, {
             // First a few basic properties that are resolved to values.

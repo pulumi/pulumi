@@ -8,47 +8,47 @@ var grpc = require('grpc');
 var languages_pb = require('./languages_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
-function serialize_lumirpc_NewResourceRequest(arg) {
+function serialize_pulumirpc_NewResourceRequest(arg) {
   if (!(arg instanceof languages_pb.NewResourceRequest)) {
-    throw new Error('Expected argument of type lumirpc.NewResourceRequest');
+    throw new Error('Expected argument of type pulumirpc.NewResourceRequest');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_NewResourceRequest(buffer_arg) {
+function deserialize_pulumirpc_NewResourceRequest(buffer_arg) {
   return languages_pb.NewResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_NewResourceResponse(arg) {
+function serialize_pulumirpc_NewResourceResponse(arg) {
   if (!(arg instanceof languages_pb.NewResourceResponse)) {
-    throw new Error('Expected argument of type lumirpc.NewResourceResponse');
+    throw new Error('Expected argument of type pulumirpc.NewResourceResponse');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_NewResourceResponse(buffer_arg) {
+function deserialize_pulumirpc_NewResourceResponse(buffer_arg) {
   return languages_pb.NewResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_RunRequest(arg) {
+function serialize_pulumirpc_RunRequest(arg) {
   if (!(arg instanceof languages_pb.RunRequest)) {
-    throw new Error('Expected argument of type lumirpc.RunRequest');
+    throw new Error('Expected argument of type pulumirpc.RunRequest');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_RunRequest(buffer_arg) {
+function deserialize_pulumirpc_RunRequest(buffer_arg) {
   return languages_pb.RunRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_RunResponse(arg) {
+function serialize_pulumirpc_RunResponse(arg) {
   if (!(arg instanceof languages_pb.RunResponse)) {
-    throw new Error('Expected argument of type lumirpc.RunResponse');
+    throw new Error('Expected argument of type pulumirpc.RunResponse');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_lumirpc_RunResponse(buffer_arg) {
+function deserialize_pulumirpc_RunResponse(buffer_arg) {
   return languages_pb.RunResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
@@ -57,15 +57,15 @@ function deserialize_lumirpc_RunResponse(buffer_arg) {
 // for confguring and creating resource objects.
 var LanguageRuntimeService = exports.LanguageRuntimeService = {
   run: {
-    path: '/lumirpc.LanguageRuntime/Run',
+    path: '/pulumirpc.LanguageRuntime/Run',
     requestStream: false,
     responseStream: false,
     requestType: languages_pb.RunRequest,
     responseType: languages_pb.RunResponse,
-    requestSerialize: serialize_lumirpc_RunRequest,
-    requestDeserialize: deserialize_lumirpc_RunRequest,
-    responseSerialize: serialize_lumirpc_RunResponse,
-    responseDeserialize: deserialize_lumirpc_RunResponse,
+    requestSerialize: serialize_pulumirpc_RunRequest,
+    requestDeserialize: deserialize_pulumirpc_RunRequest,
+    responseSerialize: serialize_pulumirpc_RunResponse,
+    responseDeserialize: deserialize_pulumirpc_RunResponse,
   },
 };
 
@@ -73,15 +73,15 @@ exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntim
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 var ResourceMonitorService = exports.ResourceMonitorService = {
   newResource: {
-    path: '/lumirpc.ResourceMonitor/NewResource',
+    path: '/pulumirpc.ResourceMonitor/NewResource',
     requestStream: false,
     responseStream: false,
     requestType: languages_pb.NewResourceRequest,
     responseType: languages_pb.NewResourceResponse,
-    requestSerialize: serialize_lumirpc_NewResourceRequest,
-    requestDeserialize: deserialize_lumirpc_NewResourceRequest,
-    responseSerialize: serialize_lumirpc_NewResourceResponse,
-    responseDeserialize: deserialize_lumirpc_NewResourceResponse,
+    requestSerialize: serialize_pulumirpc_NewResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_NewResourceRequest,
+    responseSerialize: serialize_pulumirpc_NewResourceResponse,
+    responseDeserialize: deserialize_pulumirpc_NewResourceResponse,
   },
 };
 

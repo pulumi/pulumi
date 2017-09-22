@@ -4,7 +4,7 @@ syntax = "proto3";
 
 import "google/protobuf/struct.proto";
 
-package lumirpc;
+package pulumirpc;
 
 // Analyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
 // for arbitrary issues.  These might be style, policy, correctness, security, or performance related.

@@ -3,7 +3,7 @@
 package testutil
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag"
 )
 
 // TestDiagSink suppresses message output, but captures them, so that they can be compared to expected results.

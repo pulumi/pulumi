@@ -15,10 +15,10 @@ func (eng *Engine) GetCurrentEnvName() string {
 func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 	curr := eng.getCurrentEnv()
 	if curr == "" {
-		return errors.New("no current environment; either `lumi env init` or `lumi env select` one")
+		return errors.New("no current environment; either `pulumi env init` or `pulumi env select` one")
 	}
 	fmt.Fprintf(eng.Stdout, "Current environment is %v\n", curr)
-	fmt.Fprintf(eng.Stdout, "    (use `lumi env select` to change environments; `lumi env ls` lists known ones)\n")
+	fmt.Fprintf(eng.Stdout, "    (use `pulumi env select` to change environments; `pulumi env ls` lists known ones)\n")
 	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(curr)
 	if err != nil {
 		return err
@@ -30,7 +30,8 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 		}
 	}
 	if target.Config != nil && len(target.Config) > 0 {
-		fmt.Fprintf(eng.Stdout, "%v configuration variables set (see `lumi config` for details)\n", len(target.Config))
+		fmt.Fprintf(eng.Stdout,
+			"%v configuration variables set (see `pulumi config` for details)\n", len(target.Config))
 	}
 	if snapshot == nil || len(snapshot.Resources) == 0 {
 		fmt.Fprintf(eng.Stdout, "No resources currently in this environment\n")

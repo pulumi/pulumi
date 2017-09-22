@@ -289,7 +289,7 @@ Let us now look at a cloud-neutral serverless component that creates thumbnails 
         }
     }
 
-`Thumbnailer` accepts two `lumi.x.Bucket`s in its constructor, subscribes to the source's `onNewObject` event,
+`Thumbnailer` accepts two `pulumi.x.Bucket`s in its constructor, subscribes to the source's `onNewObject` event,
 creates new thumbnails in the resulting lambda, and stores them in the other bucket.
 
 It is important to note that the body of this lambda is real JavaScript -- and can use libraries from NPM, perform IO
@@ -315,7 +315,7 @@ In fact, let us now look at code that uses `Thumbnailer`:
 This package is an executable because it is meant to be run directly to create a new cloud topology.  Many Lumi
 programs are libraries (like `Thumbnailer` itself), while blueprints are akin to executables in your favorite language.
 
-The `aws.s3.Bucket` class is a subclass of `lumi.x.Bucket`, and so can be passed to `Thumbnailer`'s constructor just
+The `aws.s3.Bucket` class is a subclass of `pulumi.x.Bucket`, and so can be passed to `Thumbnailer`'s constructor just
 fine.  We could have passed an `azure.blob.Container`, `google.storage.Bucket`, or a custom subclass, instead.  Notice
 how `Thumbnailer` is itself a cloud-neutral abstraction.  Of course, if it had wanted to access specific AWS S3
 features, it could have requested a concrete `aws.s3.Bucket` instead; or it can enlighten itself and use advanced
