@@ -18,7 +18,6 @@ func newDestroyCmd() *cobra.Command {
 	var yes bool
 	var cmd = &cobra.Command{
 		Use:     "destroy",
-		Aliases: []string{"down", "stop"},
 		Short:   "Destroy an existing environment and its resources",
 		Long: "Destroy an existing environment and its resources\n" +
 			"\n" +

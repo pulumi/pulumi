@@ -7,13 +7,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func newPlanCmd() *cobra.Command {
+func newPreviewCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
-	var dotOutput bool
 	var env string
 	var parallel int
 	var showConfig bool
@@ -21,23 +19,21 @@ func newPlanCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:     "plan [<package>] [-- [<args>]]",
-		Aliases: []string{"dryrun"},
-		Short:   "Show a plan to update, create, and delete an environment's resources",
-		Long: "Show a plan to update, create, and delete an environment's resources\n" +
+		Use:   "preview [<package>] [-- [<args>]]",
+		Short: "Show a preview of changes to an environment's resources",
+		Long: "Show a preview of changes an environment's resources\n" +
 			"\n" +
-			"This command displays a plan to update an existing environment whose state is represented by\n" +
-			"an existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
-			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
-			"This graph is compared against the existing state to determine what operations must take\n" +
-			"place to achieve the desired state.  No changes to the environment will actually take place.\n" +
+			"This command displays a preview of the changes to an existing environment whose state is\n" +
+			"represented by an existing snapshot file. The new desired state is computed by compiling\n" +
+			"and evaluating an executable package, and extracting all resource allocations from its\n" +
+			"resulting object graph. These allocations are then compared against the existing state to\n" +
+			"determine what operations must take place to achieve the desired state. No changes to the\n" +
+			"environment will actually take place.\n" +
 			"\n" +
-			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
+			"By default, the package to execute is loaded from the current directory. Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi#235]: DOT files not yet supported")
-
-			return lumiEngine.Plan(engine.PlanOptions{
+			return lumiEngine.Preview(engine.PreviewOptions{
 				Package:              pkgargFromArgs(args),
 				Debug:                debug,
 				Environment:          env,
@@ -53,13 +49,10 @@ func newPlanCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this deployment")
+		"Run one or more analyzers as part of this preview")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().BoolVar(
-		&dotOutput, "dot", false,
-		"Output the plan as a DOT digraph (graph description language)")
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
@@ -77,7 +70,7 @@ func newPlanCmd() *cobra.Command {
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
-		"Only display summarization of resources and plan operations")
+		"Only display summarization of resources and operations")
 
 	return cmd
 }

@@ -25,6 +25,6 @@ type RunInfo struct {
 	Program  string                         // the path to the program to execute.
 	Args     []string                       // any arguments to pass to the program.
 	Config   map[tokens.ModuleMember]string // the configuration variables to apply before running.
-	DryRun   bool                           // true if we are performing a dry-run (plan).
+	DryRun   bool                           // true if we are performing a dry-run (preview).
 	Parallel int                            // the degree of parallelism for resource operations (<=1 for serial).
 }

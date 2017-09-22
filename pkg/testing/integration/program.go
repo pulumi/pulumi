@@ -77,10 +77,10 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 //   yarn run build
 //   pulumi env init integrationtesting
 //   pulumi config <each opts.Config>
-//   pulumi plan
-//   pulumi deploy
-//   pulumi plan (expected to be empty)
-//   pulumi deploy (expected to be empty)
+//   pulumi preview
+//   pulumi push
+//   pulumi preview (expected to be empty)
+//   pulumi push (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi env rm --yes integrationtesting
 // All commands must return success return codes for the test to succeed.
@@ -142,19 +142,19 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 		runCmd(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
 	}
 
-	// Now plan and deploy the real changes.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing primary plan and deploy\n")
+	// Now preview and push the real changes.
+	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and push\n")
 	contract.IgnoreError(err)
-	planAndDeploy := func(d string) {
-		runCmd(t, []string{opts.LumiBin, "plan"}, d, opts)
-		runCmd(t, []string{opts.LumiBin, "deploy"}, d, opts)
+	previewAndPush := func(d string) {
+		runCmd(t, []string{opts.LumiBin, "preview"}, d, opts)
+		runCmd(t, []string{opts.LumiBin, "push"}, d, opts)
 	}
-	planAndDeploy(dir)
+	previewAndPush(dir)
 
-	// Perform an empty plan and deploy; nothing is expected to happen here.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing empty plan and deploy (no changes expected)\n")
+	// Perform an empty preview and push; nothing is expected to happen here.
+	_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and push (no changes expected)\n")
 	contract.IgnoreError(err)
-	planAndDeploy(dir)
+	previewAndPush(dir)
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
@@ -172,15 +172,15 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 		opts.ExtraRuntimeValidation(t, checkpoint)
 	}
 
-	// If there are any edits, apply them and run a plan and deploy for each one.
+	// If there are any edits, apply them and run a preview and push for each one.
 	for _, edit := range opts.EditDirs {
-		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning plan and deploy\n", edit)
+		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and push\n", edit)
 		contract.IgnoreError(err)
 		dir, err = prepareProject(t, edit, dir, opts)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
-		planAndDeploy(dir)
+		previewAndPush(dir)
 	}
 
 	// Finally, tear down the environment, and clean up the environment.
