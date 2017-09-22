@@ -17,8 +17,8 @@ import (
 
 func newEnvInitCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "init <env>",
-		Short:   "Create an empty environment with the given name, ready for deployments",
+		Use:   "init <env>",
+		Short: "Create an empty environment with the given name, ready for deployments",
 		Long: "Create an empty environment with the given name, ready for deployments\n" +
 			"\n" +
 			"This command creates an empty environment with the given name.  It has no resources,\n" +
