@@ -9,18 +9,24 @@ import { getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 let langproto = require("../proto/languages_pb.js");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-// excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
+/**
+ * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
+ */
 let excessiveDebugOutput: boolean = false;
 
-// resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
-// entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
-// causes problems with some resource providers, so for now we will serialize all of them.  The issue
-// pulumi/pulumi-fabric#335 tracks coming up with a long-term solution here.
+/**
+ * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
+ * entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
+ * causes problems with some resource providers, so for now we will serialize all of them.  The issue
+ * pulumi/pulumi-fabric#335 tracks coming up with a long-term solution here.
+ */
 let resourceChain: Promise<void> = Promise.resolve();
 
-// registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
-// and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
-// objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
+/**
+ * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
+ * and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
+ * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
+ */
 export function registerResource(res: Resource, t: string, name: string, props: ComputedValues | undefined,
     dependsOn: Resource[] | undefined): void {
     Log.debug(
@@ -120,14 +126,18 @@ export function registerResource(res: Resource, t: string, name: string, props: 
     }
 }
 
-// PropertyTransfer is the result of transferring all properties.
+/**
+ * PropertyTransfer is the result of transferring all properties.
+ */
 interface PropertyTransfer {
     obj: any; // the bag of input properties after awaiting them.
     resolvers: {[key: string]: ((v: any) => void)}; // a map of resolvers for output properties that will resolve.
 }
 
-// transferProperties stores the properties on the resource object and returns a gRPC serializable
-// proto.google.protobuf.Struct out of a resource's properties.
+/**
+ * transferProperties stores the properties on the resource object and returns a gRPC serializable
+ * proto.google.protobuf.Struct out of a resource's properties.
+ */
 function transferProperties(res: Resource, t: string, name: string, props: ComputedValues | undefined,
     dependsOn: Resource[] | undefined): Promise<PropertyTransfer> {
     // First set up an array of all promises that we will await on before completing the transfer.
@@ -184,8 +194,10 @@ function transferProperties(res: Resource, t: string, name: string, props: Compu
     }));
 }
 
-// resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
-// resource's matching properties to the values inside.
+/**
+ * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
+ * resource's matching properties to the values inside.
+ */
 function resolveProperties(res: Resource, transfer: PropertyTransfer,
     t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any, stable: boolean): void {
 
@@ -243,17 +255,27 @@ function resolveProperties(res: Resource, transfer: PropertyTransfer,
     }
 }
 
-// unknownComputedValue is a special value that the monitor recognizes.
+/**
+ * unknownComputedValue is a special value that the monitor recognizes.
+ */
 export const unknownComputedValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
-// specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
+/**
+ * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
+ */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
-// specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
+/**
+ * specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go.
+ */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
-// specialArchiveSig is a randomly assigned hash used to identify archives in maps.  See pkg/resource/asset.go.
+/**
+ * specialArchiveSig is a randomly assigned hash used to identify archives in maps.  See pkg/resource/asset.go.
+ */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 
-// serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
-// appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
+/**
+ * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
+ * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
+ */
 async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
@@ -321,7 +343,9 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     }
 }
 
-// deserializeProperty unpacks some special types, reversing the above process.
+/**
+ * deserializeProperty unpacks some special types, reversing the above process.
+ */
 function deserializeProperty(prop: any): any {
     if (prop === undefined) {
         throw new Error("Unexpected unknown property value");

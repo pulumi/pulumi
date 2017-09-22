@@ -8,12 +8,18 @@ let grpc = require("grpc");
 let langproto = require("../proto/languages_pb.js");
 let langrpc = require("../proto/languages_grpc_pb.js");
 
-// monitorAddr is the current resource monitor address.
+/**
+ * monitorAddr is the current resource monitor address.
+ */
 let monitorAddr: string | undefined;
-// engineAddr is the current resource engine address, if any.
+/**
+ * engineAddr is the current resource engine address, if any.
+ */
 let engineAddr: string | undefined;
 
-// serveLanguageHost spawns a language host that connects to the resource monitor and listens on port.
+/**
+ * serveLanguageHost spawns a language host that connects to the resource monitor and listens on port.
+ */
 export function serveLanguageHost(monitor: string, engine: string | undefined): { server: any, port: number } {
     if (monitorAddr) {
         throw new Error("Already connected to a resource monitor; cannot serve two hosts in one process");
@@ -31,7 +37,9 @@ export function serveLanguageHost(monitor: string, engine: string | undefined): 
     return { server: server, port: port }; // return the port for callers.
 }
 
-// runRPC implements the core "run" logic for both planning and deploying.
+/**
+ * runRPC implements the core "run" logic for both planning and deploying.
+ */
 function runRPC(call: any, callback: any): void {
     // Unpack the request and fire up the program.
     // IDEA: stick the monitor address in Run's RPC so that it's per invocation.

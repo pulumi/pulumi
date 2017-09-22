@@ -2,7 +2,9 @@
 
 import { debuggablePromise } from "./debuggable";
 
-// Options is a bag of settings that controls the behavior of planning and deployments.
+/**
+ * Options is a bag of settings that controls the behavior of planning and deployments.
+ */
 export interface Options {
     readonly engine?: Object; // a live connection to the engine, used for logging, etc.
     readonly monitor?: Object; // a live connection to the resource monitor that tracks deployments.
@@ -11,21 +13,29 @@ export interface Options {
     readonly includeStacks?: boolean; // whether we include full stack traces in resource errors or not.
 }
 
-// options are the current deployment options being used for this entire session.
+/**
+ * options are the current deployment options being used for this entire session.
+ */
 export let options: Options = {
     dryRun: false,
     includeStacks: true,
 };
 
-// configured is set to true once configuration has been set.
+/**
+ * configured is set to true once configuration has been set.
+ */
 let configured: boolean;
 
-// hasMonitor returns true if we are currently connected to a resource monitoring service.
+/**
+ * hasMonitor returns true if we are currently connected to a resource monitoring service.
+ */
 export function hasMonitor(): boolean {
     return !!options.monitor;
 }
 
-// getMonitor returns the current resource monitoring service client for RPC communications.
+/**
+ * getMonitor returns the current resource monitoring service client for RPC communications.
+ */
 export function getMonitor(): Object | undefined {
     if (!configured) {
         configured = true;
@@ -34,18 +44,24 @@ export function getMonitor(): Object | undefined {
     return options.monitor;
 }
 
-// getEngine returns the current engine, if any, for RPC communications back to the resource engine.
+/**
+ * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
+ */
 export function getEngine(): Object | undefined {
     return options.engine;
 }
 
-// serialize returns true if resource operations should be serialized.
+/**
+ * serialize returns true if resource operations should be serialized.
+ */
 export function serialize(): boolean {
     return !options.parallel || options.parallel <= 1;
 }
 
-// configure initializes the current resource monitor and engine RPC connections, and whether we are performing a "dry
-// run" (plan), versus a real deployment, and so on.  It may only be called once.
+/**
+ * configure initializes the current resource monitor and engine RPC connections, and whether we are performing a "dry
+ * run" (plan), versus a real deployment, and so on.  It may only be called once.
+ */
 export function configure(opts: Options): void {
     if (configured) {
         throw new Error("Cannot configure runtime settings more than once");
@@ -54,8 +70,10 @@ export function configure(opts: Options): void {
     configured = true;
 }
 
-// disconnect permanently disconnects from the server, closing the connections.  It waits for the existing RPC
-// queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
+/**
+ * disconnect permanently disconnects from the server, closing the connections.  It waits for the existing RPC
+ * queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
+ */
 export function disconnect(): void {
     let done: Promise<any> | undefined;
     let closeCallback: () => Promise<void> = () => {
@@ -76,11 +94,15 @@ export function disconnect(): void {
     closeCallback();
 }
 
-// rpcDone resolves when the last known client-side RPC call finishes.
+/**
+ * rpcDone resolves when the last known client-side RPC call finishes.
+ */
 let rpcDone: Promise<any> = Promise.resolve();
 
-// rpcKeepAlive registers a pending call to ensure that we don't prematurely disconnect from the server.  It returns
-// a function that, when invoked, signals that the RPC has completed.
+/**
+ * rpcKeepAlive registers a pending call to ensure that we don't prematurely disconnect from the server.  It returns
+ * a function that, when invoked, signals that the RPC has completed.
+ */
 export function rpcKeepAlive(): () => void {
     let done: (() => void) | undefined = undefined;
     let donePromise = debuggablePromise(new Promise<void>((resolve) => { done = resolve; }));

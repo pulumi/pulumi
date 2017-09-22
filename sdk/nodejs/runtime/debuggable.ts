@@ -3,18 +3,28 @@
 import { Log } from "./log";
 import { options } from "./settings";
 
-// debugPromiseTimeout can be set to enable promises debugging.  If it is -1, it has no effect.  Be careful setting
-// this to other values, because too small a value will cause legitimate promise resolutions to appear as timeouts.
+/**
+ * debugPromiseTimeout can be set to enable promises debugging.  If it is -1, it has no effect.  Be careful setting
+ * this to other values, because too small a value will cause legitimate promise resolutions to appear as timeouts.
+ */
 const debugPromiseTimeout: number = -1;
 
-// debugPromiseLeaks can be set to enable promises leaks debugging.
+/**
+ * debugPromiseLeaks can be set to enable promises leaks debugging.
+ */
 const debugPromiseLeaks: boolean = true;
 
-// leakDetectorScheduled is true when the promise leak detector is scheduled for process exit.
+/**
+ * leakDetectorScheduled is true when the promise leak detector is scheduled for process exit.
+ */
 let leakDetectorScheduled: boolean = false;
-// leakCandidates tracks the list of potential leak candidates.
+/**
+ * leakCandidates tracks the list of potential leak candidates.
+ */
 let leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
-// unhandledHandlerScheduled is true when the unhandled promise detector is scheduled for this process.
+/**
+ * unhandledHandlerScheduled is true when the unhandled promise detector is scheduled for this process.
+ */
 let unhandledHandlerScheduled: boolean = false;
 
 function promiseDebugString(p: Promise<any>): string {
@@ -23,7 +33,9 @@ function promiseDebugString(p: Promise<any>): string {
         `${(<any>p)._debugStackTrace}`;
 }
 
-// debuggablePromise optionally wraps a promise with some goo to make it easier to debug common problems.
+/**
+ * debuggablePromise optionally wraps a promise with some goo to make it easier to debug common problems.
+ */
 export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     // Whack some stack onto the promise.
     (<any>p)._debugCtx = ctx;
@@ -89,7 +101,9 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     return p;
 }
 
-// errorString produces a string from an error, conditionally including additional diagnostics.
+/**
+ * errorString produces a string from an error, conditionally including additional diagnostics.
+ */
 export function errorString(err: Error): string {
     if (options.includeStacks && err.stack) {
         return err.stack;

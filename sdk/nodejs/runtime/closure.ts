@@ -8,17 +8,23 @@ import * as estree from "estree";
 const acornwalk = require("acorn/dist/walk");
 const nativeruntime = require("./native/build/Release/nativeruntime.node");
 
-// Closure represents the serialized form of a JavaScript serverless function.
+/**
+ * Closure represents the serialized form of a JavaScript serverless function.
+ */
 export interface Closure {
     code: string;             // a serialization of the function's source code as text.
     runtime: string;          // the language runtime required to execute the serialized code.
     environment: Environment; // the captured lexical environment of variables to values, if any.
 }
 
-// Environment is the captured lexical environment for a closure.
+/**
+ * Environment is the captured lexical environment for a closure.
+ */
 export type Environment = {[key: string]: EnvironmentEntry};
 
-// EnvironmentEntry is the environment slot for a named lexically captured variable.
+/**
+ * EnvironmentEntry is the environment slot for a named lexically captured variable.
+ */
 export interface EnvironmentEntry {
     json?: any;               // a value which can be safely json serialized.
     closure?: Closure;        // a closure we are dependent on.
@@ -26,9 +32,11 @@ export interface EnvironmentEntry {
     arr?: EnvironmentEntry[]; // an array which may contain nested closures.
 }
 
-// serializeClosure serializes a function and its closure environment into a form that is amenable to persistence
-// as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for execution.
-// Unlike toString, it actually includes information about the captured environment.
+/**
+ * serializeClosure serializes a function and its closure environment into a form that is amenable to persistence
+ * as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for execution.
+ * Unlike toString, it actually includes information about the captured environment.
+ */
 export function serializeClosure(func: Function): Promise<Closure> {
     // First get the async version.  We will then await it to turn it into a flattened, async-free computed closure.
     // This must be done "at the top" because we must not block the creation of the dataflow graph of closure
@@ -95,17 +103,23 @@ async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
     return result;
 }
 
-// AsyncClosure represents the eventual serialized form of a JavaScript serverless function.
+/**
+ * AsyncClosure represents the eventual serialized form of a JavaScript serverless function.
+ */
 export interface AsyncClosure {
     code: string;                     // a serialization of the function's source code as text.
     runtime: string;                  // the language runtime required to execute the serialized code.
     environment: AsyncEnvironment; // the captured lexical environment of variables to values, if any.
 }
 
-// AsyncEnvironment is the eventual captured lexical environment for a closure.
+/**
+ * AsyncEnvironment is the eventual captured lexical environment for a closure.
+ */
 export type AsyncEnvironment = {[key: string]: Promise<AsyncEnvironmentEntry>};
 
-// AsyncEnvironmentEntry is the eventual environment slot for a named lexically captured variable.
+/**
+ * AsyncEnvironmentEntry is the eventual environment slot for a named lexically captured variable.
+ */
 export interface AsyncEnvironmentEntry {
     json?: any;                             // a value which can be safely json serialized.
     closure?: AsyncClosure;                 // a closure we are dependent on.
@@ -113,10 +127,14 @@ export interface AsyncEnvironmentEntry {
     arr?: Promise<AsyncEnvironmentEntry>[]; // an array which may contain nested closures.
 }
 
-// entryCache stores a map of entry to promise, to support mutually recursive captures.
+/**
+ * entryCache stores a map of entry to promise, to support mutually recursive captures.
+ */
 let entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
 
-// serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
+/**
+ * serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
+ */
 function serializeClosureAsync(func: Function): AsyncClosure {
     // Invoke the native runtime.  Note that we pass a callback to our function below to compute free variables.
     // This must be a callback and not the result of this function alone, since we may recursively compute them.
@@ -128,7 +146,9 @@ function serializeClosureAsync(func: Function): AsyncClosure {
     return <AsyncClosure>nativeruntime.serializeClosure(func, computeFreeVariables, serializeCapturedObject);
 }
 
-// serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
+/**
+ * serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
+ */
 function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
     let result: Promise<AsyncEnvironmentEntry> | undefined = entryCache.get(obj);
@@ -144,7 +164,9 @@ function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
     return result;
 }
 
-// serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
+/**
+ * serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
+ */
 function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEntry) => void): void {
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
@@ -177,8 +199,10 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
     }
 }
 
-// computeFreeVariables computes the set of free variables in a given function string.  Note that this string is
-// expected to be the usual V8-serialized function expression text.
+/**
+ * computeFreeVariables computes the set of free variables in a given function string.  Note that this string is
+ * expected to be the usual V8-serialized function expression text.
+ */
 function computeFreeVariables(funcstr: string): string[] {
     Log.debug(`Computing free variables for function: ${funcstr}`);
     if (funcstr.indexOf("[native code]") !== -1) {
