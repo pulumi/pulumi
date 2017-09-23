@@ -4,6 +4,7 @@
 
 import * as minimist from "minimist";
 import * as path from "path";
+import { RunError } from "../../errors";
 import * as runtime from "../../runtime";
 
 let grpc = require("grpc");
@@ -131,9 +132,16 @@ export function main(args: string[]): void {
         require(program);
     }
     catch (err) {
-        runtime.Log.debug(`Running program '${program}' failed with an unhandled exception:`);
-        runtime.Log.debug(err);
-        throw err;
+        if (err instanceof RunError) {
+            // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
+            // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
+            runtime.Log.error(err.message);
+        }
+        else {
+            runtime.Log.debug(`Running program '${program}' failed with an unhandled exception:`);
+            runtime.Log.debug(err);
+            throw err;
+        }
     }
     finally {
         runtime.disconnect();

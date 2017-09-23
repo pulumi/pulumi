@@ -3,7 +3,6 @@
 package plugin
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/golang/glog"
@@ -27,8 +26,7 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe,
-		fmt.Sprintf("langhost[%v]", runtime), []string{monitorAddr, host.ServerAddr()})
+	plug, err := newPlugin(ctx, srvexe, "nodejs", []string{monitorAddr, host.ServerAddr()})
 	if err != nil {
 		return nil, err
 	} else if plug == nil {

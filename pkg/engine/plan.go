@@ -117,6 +117,11 @@ func (eng *Engine) printPlan(result *planResult) error {
 	for step != nil {
 		var err error
 
+		// If any errors were emitted, stop planning.
+		if !eng.Diag().Success() {
+			break
+		}
+
 		// Perform the pre-step.
 		if err = step.Pre(); err != nil {
 			return errors.Errorf("An error occurred preparing the preview: %v", err)
@@ -141,6 +146,12 @@ func (eng *Engine) printPlan(result *planResult) error {
 		if step, err = iter.Next(); err != nil {
 			return errors.Errorf("An error occurred while viewing the preview: %v", err)
 		}
+	}
+
+	if !eng.Diag().Success() {
+		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
+		// although error messages may have spewed to the output, the final lines of the plan may look fine.
+		return errors.New("One or more errors occurred during the creation of this plan")
 	}
 
 	// Print a summary of operation counts.

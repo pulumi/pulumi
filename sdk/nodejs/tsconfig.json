@@ -18,6 +18,7 @@
     "files": [
         "index.ts",
         "config.ts",
+        "errors.ts",
         "resource.ts",
 
         "asset/index.ts",
