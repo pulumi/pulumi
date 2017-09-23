@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -26,7 +27,11 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 	if checkpoint.Latest != nil {
 		fmt.Fprintf(eng.Stdout, "Last deployment at %v\n", checkpoint.Latest.Time)
 		if checkpoint.Latest.Info != nil {
-			fmt.Fprintf(eng.Stdout, "Additional deployment info: %v\n", checkpoint.Latest.Info)
+			info, err := json.MarshalIndent(checkpoint.Latest.Info, "    ", "    ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(eng.Stdout, "Additional deployment info:\n    %s\n", string(info))
 		}
 	}
 	if target.Config != nil && len(target.Config) > 0 {
