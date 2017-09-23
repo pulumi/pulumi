@@ -4,7 +4,6 @@ package plugin
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -60,29 +59,24 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	contract.Assert(plug != nil)
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
-	// TODO[pulumi/pulumi#143]: eventually we want real progress reporting, etc., out of band
-	//     via RPC.  This will be particularly important when we parallelize the application of the resource graph.
-	tracers := map[io.Reader]struct {
-		lbl string
-		cb  func(string)
-	}{
-		plug.Stderr: {"stderr", func(line string) { ctx.Diag.Errorf(diag.Message("%s"), line) }},
-		plug.Stdout: {"stdout", func(line string) { ctx.Diag.Infof(diag.Message("%s"), line) }},
-	}
-	runtrace := func(t io.Reader) {
-		ts := tracers[t]
+	runtrace := func(t io.Reader, stderr bool) {
 		reader := bufio.NewReader(t)
 		for {
 			line, readerr := reader.ReadString('\n')
 			if readerr != nil {
 				break
 			}
-			ts.cb(fmt.Sprintf("%v.%v: %v", prefix, ts.lbl, line[:len(line)-1]))
+			msg := line[:len(line)-1]
+			if stderr {
+				ctx.Diag.Infoerrf(diag.Message("%s"), msg)
+			} else {
+				ctx.Diag.Infof(diag.Message("%s"), msg)
+			}
 		}
 	}
 
 	// Set up a tracer on stderr before going any further, since important errors might get communicated this way.
-	go runtrace(plug.Stderr)
+	go runtrace(plug.Stderr, true)
 
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
@@ -113,7 +107,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
-	go runtrace(plug.Stdout)
+	go runtrace(plug.Stdout, false)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())

@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { RunError } from "./errors";
 import * as runtime from "./runtime";
 
 /**
@@ -10,7 +11,9 @@ import * as runtime from "./runtime";
  * fully qualified names, such as `pulumi:foo:a`, ..., and `pulumi:bar:a`, respectively.
  */
 export class Config {
-    // name is the configuration bag's logical name and uniquely identifies it.
+    /**
+     * name is the configuration bag's logical name and uniquely identifies it.
+     */
     public readonly name: string;
 
     constructor(name: string) {
@@ -41,7 +44,7 @@ export class Config {
         } else if (v === "false") {
             return false;
         }
-        throw new Error(`Configuration '${key}' value '${v}' is not a valid boolean`);
+        throw new ConfigTypeError(this.fullKey(key), v, "boolean");
     }
 
     /**
@@ -57,7 +60,7 @@ export class Config {
         }
         let f: number = parseFloat(v);
         if (isNaN(f)) {
-            throw new Error(`Configuration '${key}' value '${v}' is not a valid number`);
+            throw new ConfigTypeError(this.fullKey(key), v, "number");
         }
         return f;
     }
@@ -77,7 +80,7 @@ export class Config {
             return <T>JSON.parse(v);
         }
         catch (err) {
-            throw new Error(`Configuration key '${key}' is not a valid JSON object: ${err}`);
+            throw new ConfigTypeError(this.fullKey(key), v, "JSON object");
         }
     }
 
@@ -89,7 +92,7 @@ export class Config {
     public require(key: string): string {
         let v: string | undefined = this.get(key);
         if (v === undefined) {
-            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+            throw new ConfigMissingError(this.fullKey(key));
         }
         return v;
     }
@@ -103,7 +106,7 @@ export class Config {
     public requireBoolean(key: string): boolean {
         let v: boolean | undefined = this.getBoolean(key);
         if (v === undefined) {
-            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+            throw new ConfigMissingError(this.fullKey(key));
         }
         return v;
     }
@@ -117,7 +120,7 @@ export class Config {
     public requireNumber(key: string): number {
         let v: number | undefined = this.getNumber(key);
         if (v === undefined) {
-            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+            throw new ConfigMissingError(this.fullKey(key));
         }
         return v;
     }
@@ -131,7 +134,7 @@ export class Config {
     public requireObject<T>(key: string): T {
         let v: T | undefined = this.getObject<T>(key);
         if (v === undefined) {
-            throw new Error(`Missing required configuration variable '${this.fullKey(key)}'`);
+            throw new ConfigMissingError(this.fullKey(key));
         }
         return v;
     }
@@ -143,6 +146,27 @@ export class Config {
      */
     private fullKey(key: string): string {
         return `${this.name}:${key}`;
+    }
+}
+
+/**
+ * ConfigTypeError is used when a configuration value is of the wrong type.
+ */
+class ConfigTypeError extends RunError {
+    constructor(key: string, v: any, expectedType: string) {
+        super(`Configuration '${key}' value '${v}' is not a valid ${expectedType}`);
+    }
+}
+
+/**
+ * ConfigMissingError is used when a configuration value is completely missing.
+ */
+class ConfigMissingError extends RunError {
+    constructor(key: string) {
+        super(
+            `Missing required configuration variable '${key}'\n` +
+            `\tplease set a value using the command \`pulumi config ${key} <value>\``
+        );
     }
 }
 

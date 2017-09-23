@@ -24,8 +24,10 @@ type Sink interface {
 	Count() int
 	// Infos fetches the number of debug messages issued.
 	Debugs() int
-	// Infos fetches the number of informational messages issued.
+	// Infos fetches the number of stdout informational messages issued.
 	Infos() int
+	// Infos fetches the number of stderr informational messages issued.
+	Infoerrs() int
 	// Errors fetches the number of errors issued.
 	Errors() int
 	// Warnings fetches the number of warnings issued.
@@ -37,8 +39,10 @@ type Sink interface {
 	Logf(sev Severity, diag *Diag, args ...interface{})
 	// Debugf issues a debugging message.
 	Debugf(diag *Diag, args ...interface{})
-	// Infof issues an informational message.
+	// Infof issues an informational message (to stdout).
 	Infof(diag *Diag, args ...interface{})
+	// Infoerrf issues an informational message (to stderr).
+	Infoerrf(diag *Diag, args ...interface{})
 	// Errorf issues a new error diagnostic.
 	Errorf(diag *Diag, args ...interface{})
 	// Warningf issues a new warning diagnostic.
@@ -56,6 +60,7 @@ type Severity string
 const (
 	Debug   Severity = "debug"
 	Info    Severity = "info"
+	Infoerr Severity = "info#err"
 	Warning Severity = "warning"
 	Error   Severity = "error"
 )
@@ -71,25 +76,25 @@ type FormatOptions struct {
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(opts FormatOptions) Sink {
-	debug := ioutil.Discard
+	// Default info to stdout if there's no override in the options.
 	stdout := io.Writer(os.Stdout)
-	stderr := io.Writer(os.Stderr)
-
 	if opts.Stdout != nil {
 		stdout = opts.Stdout
 	}
-
+	// Default info(err), error, warning to stderr if there's no override in the options.
+	stderr := io.Writer(os.Stderr)
 	if opts.Stderr != nil {
 		stderr = opts.Stderr
 	}
-
+	// Discard debug output by default unless requested.
+	debug := ioutil.Discard
 	if opts.Debug {
 		debug = stdout
 	}
-
 	return newDefaultSink(opts, map[Severity]io.Writer{
 		Debug:   debug,
 		Info:    stdout,
+		Infoerr: stderr,
 		Error:   stderr,
 		Warning: stderr,
 	})
@@ -98,6 +103,7 @@ func DefaultSink(opts FormatOptions) Sink {
 func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
 	contract.Assert(writers[Debug] != nil)
 	contract.Assert(writers[Info] != nil)
+	contract.Assert(writers[Infoerr] != nil)
 	contract.Assert(writers[Error] != nil)
 	contract.Assert(writers[Warning] != nil)
 	return &defaultSink{
@@ -107,7 +113,7 @@ func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *default
 	}
 }
 
-const DefaultSinkIDPrefix = "LUMI"
+const DefaultSinkIDPrefix = "PU"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
@@ -121,6 +127,7 @@ type defaultSink struct {
 func (d *defaultSink) Count() int    { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
 func (d *defaultSink) Debugs() int   { return d.getCount(Debug) }
 func (d *defaultSink) Infos() int    { return d.getCount(Info) }
+func (d *defaultSink) Infoerrs() int { return d.getCount(Infoerr) }
 func (d *defaultSink) Errors() int   { return d.getCount(Error) }
 func (d *defaultSink) Warnings() int { return d.getCount(Warning) }
 func (d *defaultSink) Success() bool { return d.Errors() == 0 }
@@ -131,6 +138,8 @@ func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 		d.Debugf(diag, args...)
 	case Info:
 		d.Infof(diag, args...)
+	case Infoerr:
+		d.Infoerrf(diag, args...)
 	case Warning:
 		d.Warningf(diag, args...)
 	case Error:
@@ -158,6 +167,15 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	}
 	fmt.Fprintf(d.writers[Info], msg)
 	d.incrementCount(Info)
+}
+
+func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
+	msg := d.Stringify(Info /* not Infoerr, just "info: "*/, diag, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
+	}
+	fmt.Fprintf(d.writers[Infoerr], msg)
+	d.incrementCount(Infoerr)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
@@ -209,7 +227,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 		switch sev {
 		case Debug:
 			buffer.WriteString(colors.SpecDebug)
-		case Info:
+		case Info, Infoerr:
 			buffer.WriteString(colors.SpecInfo)
 		case Error:
 			buffer.WriteString(colors.SpecError)

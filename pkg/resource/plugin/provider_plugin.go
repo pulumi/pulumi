@@ -30,7 +30,7 @@ type provider struct {
 func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := ProviderPluginPrefix + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("resource[%v]", pkg), []string{host.ServerAddr()})
+	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("%v (resource)", pkg), []string{host.ServerAddr()})
 	if err != nil {
 		return nil, err
 	} else if plug == nil {
