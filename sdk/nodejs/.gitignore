@@ -1,6 +1,8 @@
 /bin/*
 !/bin/pulumi-langhost-nodejs
+!/bin/pulumi-langhost-nodejs.cmd
 /coverage/
 /node_modules/
 /proto/
-
+/custom_node/
+/runtime/native/node_dev/

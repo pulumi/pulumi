@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <RepoRootDirectory>$(MSBuildThisFileDirectory)</RepoRootDirectory>
+    <SdkDirectory>$(RepoRootDirectory)\sdk\</SdkDirectory>
+    <NodeJSSdkDirectory>$(SdkDirectory)\nodejs\</NodeJSSdkDirectory>
+    <NativeRuntimeModuleDirectory>$(NodeJSSdkDirectory)\runtime\native\</NativeRuntimeModuleDirectory>
+    <NodeVersion>6.10.2</NodeVersion>
+    <NodeArch>x64</NodeArch>
+    <TestParallelism>10</TestParallelism>
+  </PropertyGroup>
+ 
+  <Target Name="EnsureGoDependencies">
+    <Exec Command="dep ensure -v"
+          WorkingDirectory="$(RepoRootDirectory)" />
+  </Target>
+
+  <Target Name="EnsureNodeDependencies">
+    <Exec Command="yarn install"
+          WorkingDirectory="$(NodeJSSdkDirectory)" />
+  </Target>
+
+  <Target Name="EnsureCustomNode"
+          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node.exe')">
+    <MakeDir Directories="$(NodeJSSdkDirectory)\custom_node" />
+    <Exec Command="aws s3 cp --only-show-errors s3://eng.pulumi.com/node/node-$(NodeVersion)-win-$(NodeArch).zip &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;"/>
+    <Exec Command="7z x -o&quot;$(NodeJSSdkDirectory)\custom_node&quot; &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;" />
+  </Target>
+
+  <Target Name="CopyNodeSdkProtos">
+    <ItemGroup>
+      <NodeSdkProtos Include="$(SdkDirectory)\proto\nodejs\**\*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(NodeSdkProtos)"
+          DestinationFolder="$(NodeJSSdkDirectory)\proto" />
+  </Target>
+
+  <Target Name="ConfigureNativeRuntimeModule"
+          DependsOnTargets="EnsureNodeDependencies">
+    <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
+          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version 2015 --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node.lib"
+          DestinationFiles="$(NativeRuntimeModuleDirectory)\node_dev\$(NodeVersion)\$(NodeArch)\node.lib" />
+  </Target>
+
+  <Target Name="BuildNativeRuntimeModule"
+          DependsOnTargets="ConfigureNativeRuntimeModule">
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version 2015 --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
+  </Target>
+
+  <Target Name="TypeScriptCompileNodeSdk">
+    <Exec Command="yarn run tsc"
+          WorkingDirectory="$(NodeJSSdkDirectory)" />
+  </Target>
+
+  <Target Name="BinplaceNodeSdkProtos">
+    <ItemGroup>
+      <NodeSdkProtosForBinplace Include="$(NodeSdkDirectory)\proto\nodejs\**\*" />
+    </ItemGroup>
+    
+    <Copy SourceFiles="@(NodeSdkProtos)"
+          DestinationFolder="$(NodeJSSdkDirectory)\bin\proto" />
+  </Target>
+
+  <Target Name="BinPlaceNodeSdkNativeRuntimeModule"
+          DependsOnTargets="BuildNativeRuntimeModule">
+    <ItemGroup>
+      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.node" />
+      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.pdb" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(NodeSdkNativeRuntimeModuleFiles)"
+          DestinationFolder="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release" />
+  </Target>
+
+  <Target Name="BinPlaceNodeSdkTestData">
+    <ItemGroup>
+      <NodeSdkTestDataFiles Include="$(NodeJSSdkDirectory)\tests\runtime\langhost\cases\**\*" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(NodeSdkTestDataFiles)"
+          DestinationFolder="$(NodeJSSdkDirectory)\bin\tests\runtime\langhost\cases" />
+  </Target>
+
+  <Target Name="YarnLinkSdk">
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json"
+          DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
+    <Exec Command="yarn link"
+          WorkingDirectory="$(NodeJSSdkDirectory)\bin" />
+  </Target>
+
+  <Target Name="BinPlaceNodeSdk"
+          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkNativeRuntimeModule;BinPlaceNodeSdkTestData;YarnLinkSdk">
+  </Target>
+
+    <Target Name="BuildNodeSdk"
+          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;BinPlaceNodeSdk">
+  </Target>
+
+  <Target Name="BuildGoCmds">
+    <ItemGroup>
+      <GoCmdsToBuild Include="github.com/pulumi/pulumi" />
+      <GoCmdsToBuild Include="github.com/pulumi/pulumi/cmd/lumidl" />
+    </ItemGroup>
+
+    <Exec Command="go install %(GoCmdsToBuild.Identity)" />
+
+    <ItemGroup>
+      <GoCmdsToBuild />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="Build"
+          DependsOnTargets="EnsureGoDependencies;EnsureNodeDependencies;EnsureCustomNode;BuildNodeSdk;BuildGoCmds">
+  </Target>
+
+  <Target Name="IntegrationTest">
+    <Exec Command="where pulumi-langhost-nodejs.cmd"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
+    </Exec>
+
+    <Error Message="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
+           Condition="$(WhereLangHostExitCode) != 0"/>
+
+    <Exec Command="go test -cover -parallel $(TestParallelism) .\examples"
+          WorkingDirectory="$(RepoRootDirectory)" />
+
+    <!-- Work around pulumi/pulumi#371 by killing all lingering node.exe processes. Yes, in the limit
+         this may kill too much, but we assume for now folks hacking on pulumi on windows are not running
+         additional node.exe processes -->
+    <Exec Command="taskkill /f /im node.exe" />
+  </Target>
+
+  <Target Name="Publish">
+    <Exec Command="&quot;$(RepoRootDirectory)\scripts\publish.cmd" />
+  </Target>
+
+  <Target Name="AppVeyorPush"
+          DependsOnTargets="Build;IntegrationTest;Publish" />
+
+  <Target Name="AppVeyorPullRequest"
+          DependsOnTargets="Build;IntegrationTest" />
+
+</Project>

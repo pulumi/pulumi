@@ -3,7 +3,7 @@
 set -o nounset -o errexit -o pipefail
 
 PUBLISH=$GOPATH/src/github.com/pulumi/home/scripts/publish.sh
-PUBLISH_GOOS=("linux" "windows" "darwin")
+PUBLISH_GOOS=("linux" "darwin")
 PUBLISH_GOARCH=("amd64")
 PUBLISH_PROJECT="pulumi"
 
