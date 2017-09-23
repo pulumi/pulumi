@@ -11,7 +11,7 @@ import (
 
 func newDestroyCmd() *cobra.Command {
 	var debug bool
-	var dryRun bool
+	var preview bool
 	var env string
 	var parallel int
 	var summary bool
@@ -32,12 +32,12 @@ func newDestroyCmd() *cobra.Command {
 				env = lumiEngine.GetCurrentEnvName()
 			}
 
-			if dryRun || yes ||
+			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", env) {
 				return lumiEngine.Destroy(engine.DestroyOptions{
 					Environment: env,
 					Package:     pkgargFromArgs(args),
-					DryRun:      dryRun,
+					DryRun:      preview,
 					Debug:       debug,
 					Parallel:    parallel,
 					Summary:     summary,
@@ -52,7 +52,7 @@ func newDestroyCmd() *cobra.Command {
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVarP(
-		&dryRun, "dry-run", "n", false,
+		&preview, "preview", "n", false,
 		"Don't actually delete resources; just preview the planned deletions")
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
