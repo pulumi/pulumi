@@ -98,18 +98,18 @@ func (eng *Engine) printPlan(result *planResult) error {
 	printPrelude(&prelude, result, true)
 
 	// Now walk the plan's steps and and pretty-print them out.
-	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
+	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
 	iter, err := result.Start()
 	if err != nil {
-		return errors.Errorf("An error occurred while preparing the plan: %v", err)
+		return errors.Errorf("An error occurred while preparing the preview: %v", err)
 	}
 	defer contract.IgnoreClose(iter)
 
 	step, err := iter.Next()
 	if err != nil {
-		return errors.Errorf("An error occurred while enumerating the plan: %v", err)
+		return errors.Errorf("An error occurred while enumerating the preview: %v", err)
 	}
 
 	var summary bytes.Buffer
@@ -119,7 +119,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 		// Perform the pre-step.
 		if err = step.Pre(); err != nil {
-			return errors.Errorf("An error occurred preparing the plan: %v", err)
+			return errors.Errorf("An error occurred preparing the preview: %v", err)
 		}
 
 		// Print this step information (resource and all its properties).
@@ -130,7 +130,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 		// Be sure to skip the step so that in-memory state updates are performed.
 		if err = step.Skip(); err != nil {
-			return errors.Errorf("An error occurred while advancing the plan: %v", err)
+			return errors.Errorf("An error occurred while advancing the preview: %v", err)
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -139,7 +139,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 		}
 
 		if step, err = iter.Next(); err != nil {
-			return errors.Errorf("An error occurred while viewing the plan: %v", err)
+			return errors.Errorf("An error occurred while viewing the preview: %v", err)
 		}
 	}
 
@@ -183,7 +183,7 @@ func printConfig(b *bytes.Buffer, config map[tokens.ModuleMember]string) {
 	}
 }
 
-func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool) int {
+func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview bool) int {
 	changes := 0
 	for op, c := range counts {
 		if op != deploy.OpSame {
@@ -192,10 +192,10 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool
 	}
 
 	var kind string
-	if plan {
-		kind = "planned"
+	if preview {
+		kind = "previewed"
 	} else {
-		kind = "deployed"
+		kind = "performed"
 	}
 
 	var changesLabel string
@@ -211,7 +211,7 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool
 
 	var planTo string
 	var pastTense string
-	if plan {
+	if preview {
 		planTo = "to "
 	} else {
 		pastTense = "d"

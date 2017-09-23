@@ -16,9 +16,9 @@ func newEnvCmd() *cobra.Command {
 		Short: "Manage target environments",
 		Long: "Manage target environments\n" +
 			"\n" +
-			"An environment is a named deployment target, and a single project may have many of them.\n" +
-			"Each environment has a configuration and deployment history associated with it, stored in\n" +
-			"the workspace, in addition to a full checkpoint of the last known good deployment.\n",
+			"An environment is a named update target, and a single project may have many of them.\n" +
+			"Each environment has a configuration and update history associated with it, stored in\n" +
+			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return lumiEngine.EnvInfo(showIDs, showURNs)
 		}),

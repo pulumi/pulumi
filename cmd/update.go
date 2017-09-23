@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newPushCmd() *cobra.Command {
+func newUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
 	var dryRun bool
@@ -20,9 +20,9 @@ func newPushCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "push [<package>] [-- [<args>]]",
-		Short: "Push resource updates, creations, and deletions to an environment",
-		Long: "Push resource updates, creations, and deletions to an environment\n" +
+		Use:   "update [<package>] [-- [<args>]]",
+		Short: "Update the resources in an environment",
+		Long: "Update the resources in an environment\n" +
 			"\n" +
 			"This command updates an existing environment whose state is represented by the\n" +
 			"existing snapshot file. The new desired state is computed by compiling and evaluating an\n" +
@@ -51,7 +51,7 @@ func newPushCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this push")
+		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")

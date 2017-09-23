@@ -18,11 +18,11 @@ import (
 func newEnvInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init <env>",
-		Short: "Create an empty environment with the given name, ready for deployments",
-		Long: "Create an empty environment with the given name, ready for deployments\n" +
+		Short: "Create an empty environment with the given name, ready for updates",
+		Long: "Create an empty environment with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty environment with the given name.  It has no resources,\n" +
-			"but afterwards it can become the target of a deployment using the `deploy` command.",
+			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read in the name of the environment to use.
 			if len(args) == 0 {

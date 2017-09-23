@@ -20,10 +20,10 @@ func newPreviewCmd() *cobra.Command {
 	var summary bool
 	var cmd = &cobra.Command{
 		Use:   "preview [<package>] [-- [<args>]]",
-		Short: "Show a preview of changes to an environment's resources",
-		Long: "Show a preview of changes an environment's resources\n" +
+		Short: "Show a preview of updates to an environment's resources",
+		Long: "Show a preview of updates an environment's resources\n" +
 			"\n" +
-			"This command displays a preview of the changes to an existing environment whose state is\n" +
+			"This command displays a preview of the updates to an existing environment whose state is\n" +
 			"represented by an existing snapshot file. The new desired state is computed by compiling\n" +
 			"and evaluating an executable package, and extracting all resource allocations from its\n" +
 			"resulting object graph. These allocations are then compared against the existing state to\n" +

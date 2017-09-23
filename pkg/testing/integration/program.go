@@ -78,9 +78,9 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 //   pulumi env init integrationtesting
 //   pulumi config <each opts.Config>
 //   pulumi preview
-//   pulumi push
+//   pulumi update
 //   pulumi preview (expected to be empty)
-//   pulumi push (expected to be empty)
+//   pulumi update (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi env rm --yes integrationtesting
 // All commands must return success return codes for the test to succeed.
@@ -142,19 +142,19 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 		runCmd(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
 	}
 
-	// Now preview and push the real changes.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and push\n")
+	// Now preview and update the real changes.
+	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
-	previewAndPush := func(d string) {
+	previewAndUpdate := func(d string) {
 		runCmd(t, []string{opts.LumiBin, "preview"}, d, opts)
-		runCmd(t, []string{opts.LumiBin, "push"}, d, opts)
+		runCmd(t, []string{opts.LumiBin, "update"}, d, opts)
 	}
-	previewAndPush(dir)
+	previewAndUpdate(dir)
 
-	// Perform an empty preview and push; nothing is expected to happen here.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and push (no changes expected)\n")
+	// Perform an empty preview and update; nothing is expected to happen here.
+	_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 	contract.IgnoreError(err)
-	previewAndPush(dir)
+	previewAndUpdate(dir)
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
@@ -172,15 +172,15 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 		opts.ExtraRuntimeValidation(t, checkpoint)
 	}
 
-	// If there are any edits, apply them and run a preview and push for each one.
+	// If there are any edits, apply them and run a preview and update for each one.
 	for _, edit := range opts.EditDirs {
-		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and push\n", edit)
+		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
 		dir, err = prepareProject(t, edit, dir, opts)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
-		previewAndPush(dir)
+		previewAndUpdate(dir)
 	}
 
 	// Finally, tear down the environment, and clean up the environment.

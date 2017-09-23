@@ -24,9 +24,9 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 		return err
 	}
 	if checkpoint.Latest != nil {
-		fmt.Fprintf(eng.Stdout, "Last deployment at %v\n", checkpoint.Latest.Time)
+		fmt.Fprintf(eng.Stdout, "Last update at %v\n", checkpoint.Latest.Time)
 		if checkpoint.Latest.Info != nil {
-			fmt.Fprintf(eng.Stdout, "Additional deployment info: %v\n", checkpoint.Latest.Info)
+			fmt.Fprintf(eng.Stdout, "Additional update info: %v\n", checkpoint.Latest.Info)
 		}
 	}
 	if target.Config != nil && len(target.Config) > 0 {

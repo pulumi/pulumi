@@ -53,7 +53,7 @@ func newDestroyCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
-		"Don't actually delete resources; just print out the planned deletions")
+		"Don't actually delete resources; just preview the planned deletions")
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")

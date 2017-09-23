@@ -23,7 +23,7 @@ func (eng *Engine) ListEnvs() error {
 		return errors.Errorf("could not read environments: %v", err)
 	}
 
-	fmt.Fprintf(eng.Stdout, "%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
+	fmt.Fprintf(eng.Stdout, "%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
 	curr := eng.getCurrentEnv()
 	for _, file := range files {
 		// Ignore directories.

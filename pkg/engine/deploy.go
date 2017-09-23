@@ -85,7 +85,7 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			// Otherwise, we will actually deploy the latest bits.
 			var header bytes.Buffer
 			printPrelude(&header, result, false)
-			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
+			header.WriteString(fmt.Sprintf("%vPerforming changes:%v\n", colors.SpecUnimportant, colors.Reset))
 			fmt.Fprint(eng.Stdout, colors.Colorize(&header))
 
 			// Create an object to track progress and perform the actual operations.
@@ -102,7 +102,7 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			var footer bytes.Buffer
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			if c := printChangeSummary(&footer, progress.Ops, false); c != 0 {
-				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
+				footer.WriteString(fmt.Sprintf("%vUpdate duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
 			}
 
@@ -125,7 +125,7 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 	}
 	if !eng.Diag().Success() {
 		// If any error that wasn't printed above, be sure to make it evident in the output.
-		return goerr.New("One or more errors occurred during this deployment")
+		return goerr.New("One or more errors occurred during this update")
 	}
 	return nil
 }
