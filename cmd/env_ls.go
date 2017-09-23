@@ -10,9 +10,8 @@ import (
 
 func newEnvLsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "ls",
-		Aliases: []string{"list"},
-		Short:   "List all known environments",
+		Use:   "ls",
+		Short: "List all known environments",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return lumiEngine.ListEnvs()
 		}),

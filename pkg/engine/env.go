@@ -57,7 +57,7 @@ type envCmdInfo struct {
 func (eng *Engine) createEnv(name tokens.QName) {
 	env := &deploy.Target{Name: name}
 	if err := eng.Environment.SaveEnvironment(env, nil); err == nil {
-		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `pulumi deploy` to deploy into it\n", name)
+		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `pulumi update` to deploy into it\n", name)
 		eng.setCurrentEnv(name, false)
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newDeployCmd() *cobra.Command {
+func newUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
 	var dryRun bool
@@ -20,19 +20,18 @@ func newDeployCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:     "deploy [<package>] [-- [<args>]]",
-		Aliases: []string{"run", "up", "update"},
-		Short:   "Deploy resource updates, creations, and deletions to an environment",
-		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
+		Use:   "update [<package>] [-- [<args>]]",
+		Short: "Update the resources in an environment",
+		Long: "Update the resources in an environment\n" +
 			"\n" +
 			"This command updates an existing environment whose state is represented by the\n" +
-			"existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
+			"existing snapshot file. The new desired state is computed by compiling and evaluating an\n" +
 			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
-			"This graph is compared against the existing state to determine what operations must take\n" +
-			"place to achieve the desired state.  This command results in a full snapshot of the\n" +
+			"These allocations are then compared against the existing state to determine what operations\n" +
+			"must take place to achieve the desired state. This command results in a full snapshot of the\n" +
 			"environment's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
-			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
+			"By default, the package to execute is loaded from the current directory. Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return lumiEngine.Deploy(engine.DeployOptions{
@@ -52,13 +51,10 @@ func newDeployCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this deployment")
+		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().BoolVarP(
-		&dryRun, "dry-run", "n", false,
-		"Don't actually update resources, just print out the planned updates (synonym for plan)")
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
@@ -76,7 +72,7 @@ func newDeployCmd() *cobra.Command {
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
-		"Only display summarization of resources and plan operations")
+		"Only display summarization of resources and operations")
 
 	return cmd
 }

@@ -25,13 +25,13 @@ func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 		return err
 	}
 	if checkpoint.Latest != nil {
-		fmt.Fprintf(eng.Stdout, "Last deployment at %v\n", checkpoint.Latest.Time)
+		fmt.Fprintf(eng.Stdout, "Last update at %v\n", checkpoint.Latest.Time)
 		if checkpoint.Latest.Info != nil {
 			info, err := json.MarshalIndent(checkpoint.Latest.Info, "    ", "    ")
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(eng.Stdout, "Additional deployment info:\n    %s\n", string(info))
+			fmt.Fprintf(eng.Stdout, "Additional update info:\n    %s\n", string(info))
 		}
 	}
 	if target.Config != nil && len(target.Config) > 0 {

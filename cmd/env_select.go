@@ -10,11 +10,10 @@ import (
 
 func newEnvSelectCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "select [<env>]",
-		Aliases: []string{"checkout", "switch"},
-		Short:   "Switch the current workspace to the given environment",
+		Use:   "select [<env>]",
+		Short: "Switch the current workspace to the given environment",
 		Long: "Switch the current workspace to the given environment.  This allows you to use\n" +
-			"other commands like `config`, `plan`, and `deploy` without needing to specify the\n" +
+			"other commands like `config`, `preview`, and `push` without needing to specify the\n" +
 			"environment name each and every time.\n" +
 			"\n" +
 			"If no <env> argument is supplied, the current environment is printed.",

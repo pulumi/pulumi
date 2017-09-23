@@ -254,9 +254,9 @@ describe("rpc", () => {
     for (let casename of Object.keys(cases)) {
         let opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
-            // For each test case, run it twice: first to plan and then to deploy.
+            // For each test case, run it twice: first to preview and then to update.
             for (let dryrun of [ true, false ]) {
-                console.log(dryrun ? "PLAN:" : "DEPLOY:");
+                console.log(dryrun ? "PREVIEW:" : "UPDATE:");
 
                 // First we need to mock the resource monitor.
                 let ctx = {};

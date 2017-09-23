@@ -3,13 +3,13 @@
 import { debuggablePromise } from "./debuggable";
 
 /**
- * Options is a bag of settings that controls the behavior of planning and deployments.
+ * Options is a bag of settings that controls the behavior of previews and deployments
  */
 export interface Options {
     readonly engine?: Object; // a live connection to the engine, used for logging, etc.
     readonly monitor?: Object; // a live connection to the resource monitor that tracks deployments.
     readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
-    readonly dryRun?: boolean; // whether we are performing a plan (true) or a real deployment (false).
+    readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
     readonly includeStacks?: boolean; // whether we include full stack traces in resource errors or not.
 }
 
@@ -60,7 +60,7 @@ export function serialize(): boolean {
 
 /**
  * configure initializes the current resource monitor and engine RPC connections, and whether we are performing a "dry
- * run" (plan), versus a real deployment, and so on.  It may only be called once.
+ * run" (preview), versus a real deployment, and so on.  It may only be called once.
  */
 export function configure(opts: Options): void {
     if (configured) {

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -18,53 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
-
-type PlanOptions struct {
-	Package              string   // the package to compute the plan for
-	Environment          string   // the environment to use when planning
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Debug                bool     // true to enable resource debugging output.
-	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
-	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool     // true if we should only summarize resources and operations.
-}
-
-func (eng *Engine) Plan(opts PlanOptions) error {
-	// Initialize the diagnostics logger with the right stuff.
-	eng.InitDiag(diag.FormatOptions{
-		Colors: true,
-		Debug:  opts.Debug,
-	})
-
-	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
-	if err != nil {
-		return err
-	}
-	deployOpts := deployOptions{
-		Debug:                opts.Debug,
-		Destroy:              false,
-		DryRun:               true,
-		Analyzers:            opts.Analyzers,
-		Parallel:             opts.Parallel,
-		ShowConfig:           opts.ShowConfig,
-		ShowReplacementSteps: opts.ShowReplacementSteps,
-		ShowSames:            opts.ShowSames,
-		Summary:              opts.Summary,
-	}
-	result, err := eng.plan(info, deployOpts)
-	if err != nil {
-		return err
-	}
-	if result != nil {
-		defer contract.IgnoreClose(result)
-		if err := eng.printPlan(result); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
 func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
@@ -146,18 +98,18 @@ func (eng *Engine) printPlan(result *planResult) error {
 	printPrelude(&prelude, result, true)
 
 	// Now walk the plan's steps and and pretty-print them out.
-	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
+	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
 	iter, err := result.Start()
 	if err != nil {
-		return errors.Errorf("An error occurred while preparing the plan: %v", err)
+		return errors.Errorf("An error occurred while preparing the preview: %v", err)
 	}
 	defer contract.IgnoreClose(iter)
 
 	step, err := iter.Next()
 	if err != nil {
-		return errors.Errorf("An error occurred while enumerating the plan: %v", err)
+		return errors.Errorf("An error occurred while enumerating the preview: %v", err)
 	}
 
 	var summary bytes.Buffer
@@ -172,7 +124,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 		// Perform the pre-step.
 		if err = step.Pre(); err != nil {
-			return errors.Errorf("An error occurred preparing the plan: %v", err)
+			return errors.Errorf("An error occurred preparing the preview: %v", err)
 		}
 
 		// Print this step information (resource and all its properties).
@@ -183,7 +135,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 		// Be sure to skip the step so that in-memory state updates are performed.
 		if err = step.Skip(); err != nil {
-			return errors.Errorf("An error occurred while advancing the plan: %v", err)
+			return errors.Errorf("An error occurred while advancing the preview: %v", err)
 		}
 
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -192,7 +144,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 		}
 
 		if step, err = iter.Next(); err != nil {
-			return errors.Errorf("An error occurred while viewing the plan: %v", err)
+			return errors.Errorf("An error occurred while viewing the preview: %v", err)
 		}
 	}
 
@@ -242,7 +194,7 @@ func printConfig(b *bytes.Buffer, config map[tokens.ModuleMember]string) {
 	}
 }
 
-func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool) int {
+func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview bool) int {
 	changes := 0
 	for op, c := range counts {
 		if op != deploy.OpSame {
@@ -251,10 +203,10 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool
 	}
 
 	var kind string
-	if plan {
-		kind = "planned"
+	if preview {
+		kind = "previewed"
 	} else {
-		kind = "deployed"
+		kind = "performed"
 	}
 
 	var changesLabel string
@@ -270,7 +222,7 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool
 
 	var planTo string
 	var pastTense string
-	if plan {
+	if preview {
 		planTo = "to "
 	} else {
 		pastTense = "d"

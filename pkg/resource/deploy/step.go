@@ -352,7 +352,7 @@ type StepOp string
 const (
 	OpSame              StepOp = "same"               // nothing to do.
 	OpCreate            StepOp = "create"             // creating a new resource.
-	OpUpdate            StepOp = "update"             // updating an existing resource.
+	OpUpdate            StepOp = "modify"             // modifying an existing resource.
 	OpDelete            StepOp = "delete"             // deleting an existing resource.
 	OpReplace           StepOp = "replace"            // replacing a resource with a new one.
 	OpCreateReplacement StepOp = "create-replacement" // creating a new resource for a replacement.

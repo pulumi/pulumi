@@ -30,6 +30,6 @@ then "install" the package (by `yarn link`ing the resulting `bin/` directory).
 We recommend putting `bin/` on your `$PATH`, since the `pulumi-langhost-nodejs` executable will be loaded dynamically
 by the `pulumi` tool whenever it encounters a Node.js program.
 
-The tests will verify that everything works, but feel free to try running `pulumi plan` and/or `pulumi deploy` from
+The tests will verify that everything works, but feel free to try running `pulumi preview` and/or `pulumi update` from
 the `examples/minimal/` directory.  Remember to run `tsc` first, since `pulumi` expects JavaScript, not TypeScript.
 
