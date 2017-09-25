@@ -118,7 +118,8 @@ describe("closure", () => {
         });
     }
     {
-        let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5, nocap6 = 6, nocap7 = 7;
+        let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5, nocap6 = 6, nocap7 = 7,
+            nocap8 = 8, nocap9 = 9, nocap10 = 10;
         let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400;
         let functext = `((nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
@@ -147,6 +148,8 @@ describe("closure", () => {
         function nocap7() {
         }
     }
+    let [{t: [nocap8]},,nocap9 = "hello",...nocap10] = [{t: [true]},null,undefined,1,2];
+    let vvv = [nocap8, nocap9, nocap10]; // not a capture; declarations from destructuring
 })`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",

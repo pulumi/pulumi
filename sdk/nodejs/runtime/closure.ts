@@ -390,27 +390,64 @@ class FreeVariableComputer {
 
     private visitVariableDeclaration(node: estree.VariableDeclaration, state: any, cb: walkCallback): void {
         for (let decl of node.declarations) {
-            // If the declaration is an identifier, it isn't a free variable, for whatever scope it
-            // pertains to (function-wide for var and scope-wide for let/const).  Track it so we can
-            // remove any subseqeunt references to that variable, so we know it isn't free.
-            if (decl.id.type === "Identifier") {
-                let name = (<estree.Identifier>decl.id).name;
-                if (node.kind === "var") {
-                    this.functionVars.push(name);
-                } else {
-                    this.scope[this.scope.length-1][name] = true;
-                }
+            // Walk the declaration's `id` property (which may be an Identifier
+            // or Pattern) using a fresh AST walker which will capture any
+            // variables declared by this variable declaration. Pass the
+            // variable kind in as state for the walker so that variables can be
+            // registered into the right scope (function-wide for var and
+            // scope-wide for let/const).
+            acornwalk.recursive(decl.id, {varKind: node.kind}, {
+                Identifier: this.visitVariableDeclarationIdentifier.bind(this),
+                ObjectPattern: this.visitVariableDeclarationObjectPattern.bind(this),
+                ArrayPattern: this.visitVariableDeclarationArrayPattern.bind(this),
+                AssignmentPattern: this.visitVariableDeclarationAssignmentPattern.bind(this),
+                RestElement: this.visitVariableDeclarationRestPattern.bind(this),
+            });
 
-                // Make sure to walk the initializer.
-                if (decl.init) {
-                    cb(decl.init, state);
-                }
-            } else {
-                // If the declaration is something else (say a destructuring pattern), recurse into
-                // it so that we can find any other identifiers held within.
-                cb(decl, state);
+            // Make sure to walk the initializer.
+            if (decl.init) {
+                cb(decl.init, state);
             }
         }
+    }
+
+    private visitVariableDeclarationIdentifier(node: estree.Identifier, state: any, cb: walkCallback): void {
+        // If the declaration is an identifier, it isn't a free variable, for whatever scope it
+        // pertains to (function-wide for var and scope-wide for let/const).  Track it so we can
+        // remove any subseqeunt references to that variable, so we know it isn't free.
+        if (state.varKind === "var") {
+            this.functionVars.push(node.name);
+        } else {
+            this.scope[this.scope.length-1][node.name] = true;
+        }
+    }
+
+    private visitVariableDeclarationObjectPattern(node: estree.ObjectPattern, state: any, cb: walkCallback): void {
+        for (let prop of node.properties) {
+            // Recurse into each `value` pattern, which may contain nested variable bindings.
+            cb(prop.value, state);
+        }
+    }
+
+    private visitVariableDeclarationArrayPattern(node: estree.ArrayPattern, state: any, cb: walkCallback): void {
+        for (let pattern of node.elements) {
+            // Recurse into each nested pattern, which may contain nested
+            // variable bindings.  Skip gaps in the array pattern.
+            if (pattern) {
+                cb(pattern, state);
+            }
+        }
+    }
+
+    private visitVariableDeclarationAssignmentPattern(node: estree.AssignmentPattern, state: any, cb: walkCallback)
+    : void {
+        // Recurse into the left side of this assignment pattern.
+        cb(node.left, state);
+    }
+
+    private visitVariableDeclarationRestPattern(node: estree.RestElement, state: any, cb: walkCallback): void {
+        // Recurse into the argument pattern of the rest pattern.
+        cb(node.argument, state);
     }
 }
 
