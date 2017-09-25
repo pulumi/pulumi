@@ -1,7 +1,7 @@
 PROCCNT=$(shell nproc --all)
 
 .PHONY: default
-default: banner build install
+default: banner build test install
 
 .PHONY: banner
 banner:
@@ -28,6 +28,11 @@ clean:
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
 	yarn run build
+
+.PHONY: test
+test:
+	@echo "\033[0;32mTEST:\033[0m"
+	yarn run test
 
 .PHONY: install
 install:
