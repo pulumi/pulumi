@@ -87,67 +87,25 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	t.Parallel()
 
-	// Ensure the required programs are present.
-	if opts.LumiBin == "" {
-		lumi, err := exec.LookPath("pulumi")
-		if !assert.NoError(t, err, "Expected to find `pulumi` binary on $PATH: %v", err) {
-			return
-		}
-		opts.LumiBin = lumi
-	}
-	if opts.YarnBin == "" {
-		yarn, err := exec.LookPath("yarn")
-		if !assert.NoError(t, err, "Expected to find `yarn` binary on $PATH: %v", err) {
-			return
-		}
-		opts.YarnBin = yarn
-	}
-
-	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
-	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
-	dir := opts.Dir
-	prefix := fmt.Sprintf("[ %30.30s ] ", dir[len(dir)-30:])
-	stdout := opts.Stdout
-	if stdout == nil {
-		stdout = newPrefixer(os.Stdout, prefix)
-		opts.Stdout = stdout
-	}
-	stderr := opts.Stderr
-	if stderr == nil {
-		stderr = newPrefixer(os.Stderr, prefix)
-		opts.Stderr = stderr
-	}
-
-	var err error
-	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
-	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.LumiBin)
-	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
-	contract.IgnoreError(err)
-
-	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, dir, "", opts)
-	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
+	dir, err := CopyTestToTemporaryDirectory(t, &opts)
+	if !assert.NoError(t, err) {
 		return
 	}
-	_, err = fmt.Fprintf(stdout, "projdir: %v\n", dir)
-	contract.IgnoreError(err)
 
 	// Ensure all links are present, the environment is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
-	runCmd(t, []string{opts.LumiBin, "env", "init", testEnvironmentName}, dir, opts)
+	RunCommand(t, []string{opts.LumiBin, "env", "init", testEnvironmentName}, dir, opts)
 	for key, value := range opts.Config {
-		runCmd(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
+		RunCommand(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
 	}
 
 	// Now preview and update the real changes.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
 	previewAndUpdate := func(d string) {
-		runCmd(t, []string{opts.LumiBin, "preview"}, d, opts)
-		runCmd(t, []string{opts.LumiBin, "update"}, d, opts)
+		RunCommand(t, []string{opts.LumiBin, "preview"}, d, opts)
+		RunCommand(t, []string{opts.LumiBin, "update"}, d, opts)
 	}
 	previewAndUpdate(dir)
 
@@ -186,11 +144,66 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	// Finally, tear down the environment, and clean up the environment.
 	_, err = fmt.Fprintf(opts.Stdout, "Destroying environment\n")
 	contract.IgnoreError(err)
-	runCmd(t, []string{opts.LumiBin, "destroy", "--yes"}, dir, opts)
-	runCmd(t, []string{opts.LumiBin, "env", "rm", "--yes", testEnvironmentName}, dir, opts)
+	RunCommand(t, []string{opts.LumiBin, "destroy", "--yes"}, dir, opts)
+	RunCommand(t, []string{opts.LumiBin, "env", "rm", "--yes", testEnvironmentName}, dir, opts)
 }
 
-func runCmd(t *testing.T, args []string, wd string, opts LumiProgramTestOptions) {
+// CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test
+// to it.
+func CopyTestToTemporaryDirectory(t *testing.T, opts *LumiProgramTestOptions) (dir string, err error) {
+	// Ensure the required programs are present.
+	if opts.LumiBin == "" {
+		var lumi string
+		lumi, err = exec.LookPath("pulumi")
+		if !assert.NoError(t, err, "Expected to find `pulumi` binary on $PATH: %v", err) {
+			return dir, err
+		}
+		opts.LumiBin = lumi
+	}
+	if opts.YarnBin == "" {
+		var yarn string
+		yarn, err = exec.LookPath("yarn")
+		if !assert.NoError(t, err, "Expected to find `yarn` binary on $PATH: %v", err) {
+			return dir, err
+		}
+		opts.YarnBin = yarn
+	}
+
+	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
+	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
+	dir = opts.Dir
+	prefix := fmt.Sprintf("[ %30.30s ] ", dir[len(dir)-30:])
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = newPrefixer(os.Stdout, prefix)
+		opts.Stdout = stdout
+	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = newPrefixer(os.Stderr, prefix)
+		opts.Stderr = stderr
+	}
+
+	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
+	contract.IgnoreError(err)
+	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.LumiBin)
+	contract.IgnoreError(err)
+	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
+	contract.IgnoreError(err)
+
+	// Now copy the source project, excluding the .pulumi directory.
+	dir, err = prepareProject(t, dir, "", *opts)
+	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
+		return dir, err
+	}
+	_, err = fmt.Fprintf(stdout, "projdir: %v\n", dir)
+	contract.IgnoreError(err)
+	return dir, err
+}
+
+// RunCommand executes the specified command and additional arguments, wrapping any output in the
+// specialized test output streams that list the location the test is running in.
+func RunCommand(t *testing.T, args []string, wd string, opts LumiProgramTestOptions) {
 	path := args[0]
 	command := strings.Join(args, " ")
 	var err error
@@ -233,13 +246,13 @@ func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgra
 	}
 
 	// Now ensure dependencies are present.
-	runCmd(t, []string{opts.YarnBin, "install", "--verbose"}, dir, opts)
+	RunCommand(t, []string{opts.YarnBin, "install", "--verbose"}, dir, opts)
 	for _, dependency := range opts.Dependencies {
-		runCmd(t, []string{opts.YarnBin, "link", dependency}, dir, opts)
+		RunCommand(t, []string{opts.YarnBin, "link", dependency}, dir, opts)
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	runCmd(t, []string{opts.YarnBin, "run", "build"}, dir, opts)
+	RunCommand(t, []string{opts.YarnBin, "run", "build"}, dir, opts)
 
 	return dir, nil
 }
