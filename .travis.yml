@@ -1,3 +1,10 @@
+jobs:
+    include:
+        -
+            os: linux
+        -
+            if: type IN (push, api, cron)
+            os: osx
 language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
@@ -16,6 +23,7 @@ before_install:
     - export PATH=$HOME/.yarn/bin:$PATH
     # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
     - pip install --upgrade --user awscli
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; fi
 cache:
     yarn: true
 install:
