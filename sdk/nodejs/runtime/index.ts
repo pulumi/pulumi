@@ -2,8 +2,10 @@
 
 export * from "./closure";
 export * from "./config";
+export * from "./invoke";
 export * from "./langhost";
 export * from "./log";
 export * from "./resource";
+export * from "./rpc";
 export * from "./settings";
 
