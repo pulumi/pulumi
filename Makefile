@@ -9,11 +9,11 @@ ECHO=echo -e
 GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
-.PHONY: default
+.PHONY: all
 all: banner_all core sdk/nodejs integrationtest
 
 .PHONY: nightly
-nightly: default gocover
+nightly: all gocover
 
 .PHONY: core
 core: vet test install lint_quiet
@@ -95,3 +95,15 @@ gocover:
 	@$(ECHO) "\033[0;32mGO CODE COVERAGE:\033[0m"
 	./scripts/gocover.sh
 
+# The travis_* targets are entrypoints for CI.
+.PHONY: travis_cron
+travis_cron: nightly
+
+.PHONY: travis_push
+travis_push: all publish
+
+.PHONY: travis_pull_request
+travis_pull_request: all
+
+.PHONY: travis_api
+travis_api: all
