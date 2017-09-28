@@ -177,6 +177,38 @@ describe("closure", () => {
             runtime: "nodejs",
         },
     });
+    {
+        let os = require("os");
+        cases.push({
+            title: "Capture built-in modules as stable references, not serialized values",
+            func: () => os,
+            expect: {
+                code: `(() => os)`,
+                environment: {
+                    os: {
+                        module: "os",
+                    },
+                },
+                runtime: "nodejs",
+            },
+        });
+    }
+    {
+        let util = require("../util");
+        cases.push({
+            title: "Capture user-defined modules as stable references, not serialized values",
+            func: () => util,
+            expect: {
+                code: `(() => util)`,
+                environment: {
+                    util: {
+                        module: "./bin/tests/util.js",
+                    },
+                },
+                runtime: "nodejs",
+            },
+        });
+    }
     cases.push({
         title: "Don't capture catch variables",
         // tslint:disable-next-line
@@ -276,7 +308,7 @@ describe("closure", () => {
             },
         };
         cases.push({
-            title: "Serializes `this` capturing closures",
+            title: "Serializes `this` capturing arrow functions",
             func: cap.f,
             expect: {
                 code: "(() => { console.log(this.x); })",
@@ -285,6 +317,15 @@ describe("closure", () => {
             },
         });
     }
+    cases.push({
+        title: "Don't serialize `this` in function expressions",
+        func: function() { return this; },
+        expect: {
+            code: `(function () { return this; })`,
+            environment: {},
+            runtime: "nodejs",
+        },
+    });
 
     // Now go ahead and run the test cases, each as its own case.
     for (let test of cases) {

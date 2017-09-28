@@ -1,9 +1,10 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { debuggablePromise } from "./debuggable";
-import { Log } from "./log";
 import * as acorn from "acorn";
 import * as estree from "estree";
+import { relative as pathRelative } from "path";
+import { debuggablePromise } from "./debuggable";
+import { Log } from "./log";
 
 const acornwalk = require("acorn/dist/walk");
 const nativeruntime = require("./native/build/Release/nativeruntime.node");
@@ -30,6 +31,7 @@ export interface EnvironmentEntry {
     closure?: Closure;        // a closure we are dependent on.
     obj?: Environment;        // an object which may contain nested closures.
     arr?: EnvironmentEntry[]; // an array which may contain nested closures.
+    module?: string;          // a reference to a requirable module name.
 }
 
 /**
@@ -84,6 +86,9 @@ async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
     if (e.hasOwnProperty("json")) {
         result.json = e.json;
     }
+    else if (e.module) {
+        result.module = e.module;
+    }
     else if (e.closure) {
         result.closure = await flattenClosure(e.closure, flatCache);
     }
@@ -125,6 +130,7 @@ export interface AsyncEnvironmentEntry {
     closure?: AsyncClosure;                 // a closure we are dependent on.
     obj?: AsyncEnvironment;                 // an object which may contain nested closures.
     arr?: Promise<AsyncEnvironmentEntry>[]; // an array which may contain nested closures.
+    module?: string;                        // a reference to a requirable module name.
 }
 
 /**
@@ -168,10 +174,15 @@ function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
  * serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
  */
 function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEntry) => void): void {
+    let moduleName = findRequirableModuleName(obj);
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
         resolve({ json: obj });
+    }
+    else if (moduleName) {
+        // Serialize any value which was found as a requirable module name as a reference to the module
+        resolve({module: moduleName});
     }
     else if (obj instanceof Array) {
         // Recursively serialize elements of an array.
@@ -197,6 +208,46 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
         }
         resolve({ obj: env });
     }
+}
+
+// These modules are built-in to Node.js, and are available via `require(...)`
+// but are not stored in the `require.cache`.  They are guaranteed to be
+// available at the unqualified names listed below. _Note_: This list is derived
+// based on Node.js 6.x tree at: https://github.com/nodejs/node/tree/v6.x/lib
+let builtInModuleNames = [
+    "assert", "buffer", "child_process", "cluster", "console", "constants", "crypto",
+    "dgram", "dns", "domain", "events", "fs", "http", "https", "module", "net", "os",
+    "path", "process", "punycode", "querystring", "readline", "repl", "stream", "string_decoder",
+    /* "sys" deprecated ,*/ "timers", "tls", "tty", "url", "util", "v8", "vm", "zlib",
+];
+let builtInModules = new Map<any, string>();
+for (let name of builtInModuleNames) {
+    builtInModules.set(require(name), name);
+}
+
+// findRequirableModuleName attempts to find a global name bound to the object, which can
+// be used as a stable reference across serialization.
+function findRequirableModuleName(obj: any): string | undefined  {
+    // First, check the built-in modules
+    let key = builtInModules.get(obj);
+    if (key) {
+        return key;
+    }
+    // Next, check the Node module require cache, which will store cached values
+    // of all non-built-in Node modules loaded by the program so far. _Note_: We
+    // don't pre-compute this because the require cache will get populated
+    // dynamically during execution.
+    for (let path of Object.keys(require.cache)) {
+        if (require.cache[path].exports === obj) {
+            // Rewrite the path to be a local module reference relative to the
+            // current working directory
+            let modPath = pathRelative(process.cwd(), path);
+            return "./" + modPath;
+        }
+    }
+
+    // Else, return that no global name is available for this object.
+    return undefined;
 }
 
 /**
@@ -293,7 +344,7 @@ class FreeVariableComputer {
     }
 
     private visitThisExpression(node: estree.Identifier, state: any, cb: walkCallback): void {
-        // Mar references to the built-in 'this' variable as free.
+        // Mark references to the built-in 'this' variable as free.
         this.frees["this"] = true;
     }
 
@@ -339,6 +390,12 @@ class FreeVariableComputer {
         // Remove any function-scoped variables that we encountered during the walk.
         for (let v of this.functionVars) {
             this.frees[v] = false;
+        }
+
+        // If the function is not an arrow, then its `this` is also a
+        // function-scoped variable and should be removed.
+        if ((node as estree.ArrowFunctionExpression).type !== "ArrowFunctionExpression") {
+            this.frees["this"] = false;
         }
 
         // Restore the prior context and merge our free list with the previous one.
