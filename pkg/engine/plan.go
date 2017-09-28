@@ -221,19 +221,20 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview b
 		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changes), kind))
 
 	var planTo string
-	var pastTense string
 	if preview {
 		planTo = "to "
-	} else {
-		pastTense = "d"
 	}
 
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
 		if op != deploy.OpSame {
 			if c := counts[op]; c > 0 {
-				b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v%v\n",
-					op.Prefix(), c, plural("resource", c), planTo, op, pastTense, colors.Reset))
+				opDescription := string(op)
+				if !preview {
+					opDescription = op.PastTense()
+				}
+				b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v\n",
+					op.Prefix(), c, plural("resource", c), planTo, opDescription, colors.Reset))
 			}
 		}
 	}

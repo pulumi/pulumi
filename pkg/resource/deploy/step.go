@@ -416,6 +416,18 @@ func (op StepOp) Prefix() string {
 	}
 }
 
+func (op StepOp) PastTense() string {
+	switch op {
+	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced:
+		return string(op) + "d"
+	case OpUpdate:
+		return "modified"
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
+}
+
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
 	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace {
