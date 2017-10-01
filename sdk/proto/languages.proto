@@ -3,6 +3,7 @@
 syntax = "proto3";
 
 import "google/protobuf/struct.proto";
+import "provider.proto";
 
 package pulumirpc;
 
@@ -29,6 +30,7 @@ message RunResponse {
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
+    rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
     rpc NewResource(NewResourceRequest) returns (NewResourceResponse) {}
 }
 

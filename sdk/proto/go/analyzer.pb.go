@@ -31,6 +31,8 @@ It has these top-level messages:
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest
+	InvokeRequest
+	InvokeResponse
 */
 package pulumirpc
 

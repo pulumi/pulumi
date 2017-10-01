@@ -108,6 +108,28 @@ function deserialize_pulumirpc_DiffResponse(buffer_arg) {
   return provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_InvokeRequest(arg) {
+  if (!(arg instanceof provider_pb.InvokeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.InvokeRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_InvokeRequest(buffer_arg) {
+  return provider_pb.InvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_InvokeResponse(arg) {
+  if (!(arg instanceof provider_pb.InvokeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.InvokeResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
+  return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type pulumirpc.UpdateRequest');
@@ -206,6 +228,18 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Invoke dynamically executes a built-in function in the provider.
+  invoke: {
+    path: '/pulumirpc.ResourceProvider/Invoke',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.InvokeRequest,
+    responseType: provider_pb.InvokeResponse,
+    requestSerialize: serialize_pulumirpc_InvokeRequest,
+    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
+    responseSerialize: serialize_pulumirpc_InvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
 };
 

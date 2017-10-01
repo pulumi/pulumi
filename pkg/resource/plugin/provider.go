@@ -37,6 +37,8 @@ type Provider interface {
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.Status, error)
+	// Invoke dynamically executes a built-in function in the provider.
+	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

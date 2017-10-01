@@ -19,6 +19,7 @@ interface RunCase {
     config?: {[key: string]: string};
     expectError?: string;
     expectResourceCount?: number;
+    invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
     createResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
         id?: ID, urn?: URN, props?: any };
 }
@@ -249,6 +250,25 @@ describe("rpc", () => {
                 return { id: undefined, urn: undefined, props: undefined };
             },
         },
+        // A simple test of the invocation RPC pathways.
+        "invoke": {
+            program: path.join(base, "009.invoke"),
+            expectResourceCount: 0,
+            invoke: (ctx: any, tok: string, args: any) => {
+                assert.strictEqual(tok, "invoke:index:echo")
+                assert.deepEqual(args, {
+                    a: "hello",
+                    b: true,
+                    c: [ 0.99, 42, { z: "x" } ],
+                });
+                return { failures: undefined, ret: args };
+            },
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { id: undefined, urn: undefined, props: undefined };
+            },
+        },
     };
 
     for (let casename of Object.keys(cases)) {
@@ -261,19 +281,34 @@ describe("rpc", () => {
                 // First we need to mock the resource monitor.
                 let ctx = {};
                 let rescnt = 0;
-                let monitor = createMockResourceMonitor((call: any, callback: any) => {
-                    let resp = new langproto.NewResourceResponse();
-                    if (opts.createResource) {
-                        let req: any = call.request;
-                        let res: any = req.getObject().toJavaScript();
-                        let { id, urn, props } = opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
-                        resp.setId(id);
-                        resp.setUrn(urn);
-                        resp.setObject(gstruct.Struct.fromJavaScript(props));
-                    }
-                    rescnt++;
-                    callback(undefined, resp);
-                });
+                let monitor = createMockResourceMonitor(
+                    (call: any, callback: any) => {
+                        let resp = new langproto.InvokeResponse();
+                        if (opts.invoke) {
+                            let req: any = call.request;
+                            let args: any = req.getArgs().toJavaScript();
+                            let { failures, ret } =
+                                opts.invoke(ctx, req.getTok(), args);
+                            resp.setFailuresList(failures);
+                            resp.setReturn(gstruct.Struct.fromJavaScript(ret));
+                        }
+                        callback(undefined, resp);
+                    },
+                    (call: any, callback: any) => {
+                        let resp = new langproto.NewResourceResponse();
+                        if (opts.createResource) {
+                            let req: any = call.request;
+                            let res: any = req.getObject().toJavaScript();
+                            let { id, urn, props } =
+                                opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
+                            resp.setId(id);
+                            resp.setUrn(urn);
+                            resp.setObject(gstruct.Struct.fromJavaScript(props));
+                        }
+                        rescnt++;
+                        callback(undefined, resp);
+                    },
+                );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
                 let langHost = serveLanguageHostProcess(monitor.addr);
@@ -353,10 +388,14 @@ function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<s
 }
 
 function createMockResourceMonitor(
+        invokeCallback: (call: any, request: any) => any,
         newResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     let server = new grpc.Server();
-    server.addService(langrpc.ResourceMonitorService, { newResource: newResourceCallback });
+    server.addService(langrpc.ResourceMonitorService, {
+        invoke: invokeCallback,
+        newResource: newResourceCallback,
+    });
     let port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };

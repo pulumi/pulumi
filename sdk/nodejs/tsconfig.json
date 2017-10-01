@@ -29,9 +29,11 @@
         "runtime/closure.ts",
         "runtime/config.ts",
         "runtime/debuggable.ts",
+        "runtime/invoke.ts",
         "runtime/langhost.ts",
         "runtime/log.ts",
         "runtime/resource.ts",
+        "runtime/rpc.ts",
         "runtime/settings.ts",
 
         "cmd/langhost/index.ts",

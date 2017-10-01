@@ -383,6 +383,7 @@ type testProvider struct {
 	update func(resource.URN, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	delete func(resource.URN, resource.ID, resource.PropertyMap) (resource.Status, error)
+	invoke func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 }
 
 func (prov *testProvider) Close() error {
@@ -413,4 +414,8 @@ func (prov *testProvider) Update(urn resource.URN, id resource.ID,
 func (prov *testProvider) Delete(urn resource.URN,
 	id resource.ID, props resource.PropertyMap) (resource.Status, error) {
 	return prov.delete(urn, id, props)
+}
+func (prov *testProvider) Invoke(tok tokens.ModuleMember,
+	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	return prov.invoke(tok, args)
 }

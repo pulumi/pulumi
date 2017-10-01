@@ -12,6 +12,8 @@ package pulumirpc;
 service ResourceProvider {
     // Configure configures the resource provider with "globals" that control its behavior.
     rpc Configure(ConfigureRequest) returns (google.protobuf.Empty){}
+    // Invoke dynamically executes a built-in function in the provider.
+    rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
     // Check validates that the given property bag is valid for a resource of the given type.
     rpc Check(CheckRequest) returns (CheckResponse) {}
     // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -27,6 +29,16 @@ service ResourceProvider {
 
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
+}
+
+message InvokeRequest {
+    string tok = 1;                  // the function token to invoke.
+    google.protobuf.Struct args = 2; // the arguments for the function invocation.
+}
+
+message InvokeResponse {
+    google.protobuf.Struct return = 1;  // the returned values, if invoke was successful.
+    repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
 }
 
 message CheckRequest {

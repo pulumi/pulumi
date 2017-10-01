@@ -3,6 +3,11 @@
 import { debuggablePromise } from "./debuggable";
 
 /**
+ * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
+ */
+export let excessiveDebugOutput: boolean = false;
+
+/**
  * Options is a bag of settings that controls the behavior of previews and deployments
  */
 export interface Options {
