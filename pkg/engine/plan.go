@@ -73,23 +73,102 @@ type planResult struct {
 	Options deployOptions   // the deployment options.
 }
 
-func (res *planResult) Apply(progress deploy.Progress) (deploy.PlanSummary, deploy.Step, resource.Status, error) {
-	opts := deploy.Options{
-		Progress: progress,
-		Parallel: res.Options.Parallel,
-	}
-	return res.Plan.Apply(opts)
+// StepActions is used to process a plan's steps.
+type StepActions interface {
+	// Before is invoked after the preparation for a step but before Run.
+	Before(step deploy.Step)
+
+	// Run is invoked to perform whatever action the implementer uses to process the step. If the step's preparation fails, Run is not invoked.
+	Run(step deploy.Step) (resource.Status, error)
+
+	// After is invoked after a step executes, and is given access to the error, if any, that occurred when preparing for or running the step.
+	After(step deploy.Step, state resource.Status, err error)
 }
 
-func (res *planResult) Start() (*deploy.PlanIterator, error) {
+// Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
+// resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
+// failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
+func (res *planResult) Walk(actions StepActions) (deploy.PlanSummary, deploy.Step, resource.Status, error) {
 	opts := deploy.Options{
 		Parallel: res.Options.Parallel,
 	}
-	return res.Plan.Start(opts)
+
+	// Fetch a plan iterator and keep walking it until we are done.
+	iter, err := res.Plan.Start(opts)
+	if err != nil {
+		return nil, nil, resource.StatusOK, err
+	}
+
+	step, err := iter.Next()
+	if err != nil {
+		_ = iter.Close() // ignore close errors; the Next error trumps
+		return nil, nil, resource.StatusOK, err
+	}
+
+	for step != nil {
+		// Do the pre-step.
+		rst := resource.StatusOK
+		err := step.Pre()
+
+		// Perform pre-run actions.
+		actions.Before(step)
+
+		// If the pre step succeeded, run the step.
+		if err == nil {
+			rst, err = actions.Run(step)
+		}
+
+		// Perform post-run actions.
+		actions.After(step, rst, err)
+
+		// If an error occurred, exit early.
+		if err != nil {
+			_ = iter.Close() // ignore close errors; the action error trumps
+			return iter, step, rst, err
+		}
+
+		step, err = iter.Next()
+		if err != nil {
+			_ = iter.Close() // ignore close errors; the action error trumps
+			return iter, step, resource.StatusOK, err
+		}
+	}
+
+	// Finally, return a summary and the resulting plan information.
+	return iter, nil, resource.StatusOK, iter.Close()
 }
 
 func (res *planResult) Close() error {
 	return res.Ctx.Close()
+}
+
+type previewActions struct {
+	Summary bytes.Buffer
+	Ops     map[deploy.StepOp]int
+	Opts    deployOptions
+}
+
+func (acts *previewActions) Before(step deploy.Step) {
+}
+
+func (acts *previewActions) Run(step deploy.Step) (resource.Status, error) {
+	// Print this step information (resource and all its properties).
+	if shouldShow(step, acts.Opts) {
+		printStep(&acts.Summary, step, acts.Opts.Summary, true, "")
+	}
+
+	// Be sure to skip the step so that in-memory state updates are performed.
+	return resource.StatusOK, step.Skip()
+}
+
+func (acts *previewActions) After(step deploy.Step, rst resource.Status, err error) {
+	// We let `printPlan` handle error reporting for now.
+	if err == nil {
+		// Track the operation if shown and/or if it is a logically meaningful operation.
+		if step.Logical() {
+			acts.Ops[step.Op()]++
+		}
+	}
 }
 
 func (eng *Engine) printPlan(result *planResult) error {
@@ -101,57 +180,23 @@ func (eng *Engine) printPlan(result *planResult) error {
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
-	iter, err := result.Start()
-	if err != nil {
-		return errors.Errorf("An error occurred while preparing the preview: %v", err)
-	}
-	defer contract.IgnoreClose(iter)
-
-	step, err := iter.Next()
-	if err != nil {
-		return errors.Errorf("An error occurred while enumerating the preview: %v", err)
-	}
-
 	var summary bytes.Buffer
 	counts := make(map[deploy.StepOp]int)
-	for step != nil {
-		var err error
 
-		// If any errors were emitted, stop planning.
-		if !eng.Diag().Success() {
-			break
-		}
+	var diagError = errors.New("One or more errors occurred during this preview")
+	_, _, _, err := result.Walk(&previewActions{
+		Ops:  make(map[deploy.StepOp]int),
+		Opts: result.Options,
+	})
 
-		// Perform the pre-step.
-		if err = step.Pre(); err != nil {
-			return errors.Errorf("An error occurred preparing the preview: %v", err)
-		}
-
-		// Print this step information (resource and all its properties).
-		// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-		if shouldShow(step, result.Options) {
-			printStep(&summary, step, result.Options.Summary, true, "")
-		}
-
-		// Be sure to skip the step so that in-memory state updates are performed.
-		if err = step.Skip(); err != nil {
-			return errors.Errorf("An error occurred while advancing the preview: %v", err)
-		}
-
-		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if step.Logical() {
-			counts[step.Op()]++
-		}
-
-		if step, err = iter.Next(); err != nil {
-			return errors.Errorf("An error occurred while viewing the preview: %v", err)
-		}
+	if err != nil {
+		return errors.Errorf("An error occurred while advancing the preview: %v", err)
 	}
 
 	if !eng.Diag().Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-		return errors.New("One or more errors occurred during the creation of this plan")
+		return diagError
 	}
 
 	// Print a summary of operation counts.
