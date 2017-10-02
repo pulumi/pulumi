@@ -56,7 +56,8 @@ func (eng *Engine) GetEnvironments() ([]EnvironmentInfo, error) {
 		envs = append(envs, EnvironmentInfo{Name: target.Name,
 			Snapshot:   snapshot,
 			Checkpoint: checkpoint,
-			IsCurrent:  (curr == target.Name)})
+			IsCurrent:  target.Name == curr,
+		})
 	}
 
 	return envs, nil
