@@ -17,66 +17,7 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Parallel int      // the degree of parallelism for resource operations (<=1 for serial).
-	Progress Progress // an optional object that may be used to hook resource operation progress.
-}
-
-// Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
-// things: the resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step
-// that failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (p *Plan) Apply(opts Options) (PlanSummary, Step, resource.Status, error) {
-	// Fetch a plan iterator and keep walking it until we are done.
-	iter, err := p.Start(opts)
-	if err != nil {
-		return nil, nil, resource.StatusOK, err
-	}
-
-	n := 1
-	step, err := iter.Next()
-	if err != nil {
-		_ = iter.Close() // ignore close errors; the Next error trumps
-		return nil, nil, resource.StatusOK, err
-	}
-
-	prog := opts.Progress
-	for step != nil {
-		// Do the pre-step.
-		rst := resource.StatusOK
-		err := step.Pre()
-
-		// Perform pre-application progress reporting.
-		if prog != nil {
-			prog.Before(step)
-		}
-
-		if err == nil {
-			rst, err = step.Apply()
-		}
-
-		// Perform post-application progress reporting.
-		if prog != nil {
-			prog.After(step, rst, err)
-		}
-
-		// If an error occurred, exit early.
-		if err != nil {
-			glog.V(7).Infof("Plan step #%v failed [%v]: %v", n, step.Op(), err)
-			_ = iter.Close() // ignore close errors; the Apply error trumps
-			return iter, step, rst, err
-		}
-
-		glog.V(7).Infof("Plan step #%v succeeded [%v]", n, step.Op())
-		step, err = iter.Next()
-		if err != nil {
-			glog.V(7).Infof("Advancing to plan step #%v failed: %v", n+1, err)
-			_ = iter.Close() // ignore close errors; the Apply error trumps
-			return iter, step, resource.StatusOK, err
-		}
-		n++
-	}
-
-	// Finally, return a summary and the resulting plan information.
-	return iter, nil, resource.StatusOK, iter.Close()
+	Parallel int // the degree of parallelism for resource operations (<=1 for serial).
 }
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
