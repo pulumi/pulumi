@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -20,7 +21,7 @@ func newEnvCmd() *cobra.Command {
 			"Each environment has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return lumiEngine.EnvInfo(showIDs, showURNs)
+			return lumiEngine.EnvInfo(tokens.QName(""), showIDs, showURNs)
 		}),
 	}
 

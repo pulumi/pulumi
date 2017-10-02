@@ -7,8 +7,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-func (eng *Engine) DeleteConfig(envName string, key tokens.ModuleMember) error {
-	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
+func (eng *Engine) DeleteConfig(envName tokens.QName, key tokens.ModuleMember) error {
+	info, err := eng.initEnvCmdName(envName, "")
 	if err != nil {
 		return err
 	}

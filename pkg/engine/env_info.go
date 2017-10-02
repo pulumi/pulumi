@@ -6,18 +6,24 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/tokens"
+
 	"github.com/pkg/errors"
 )
 
-func (eng *Engine) GetCurrentEnvName() string {
-	return eng.getCurrentEnv().String()
+func (eng *Engine) GetCurrentEnvName() tokens.QName {
+	return eng.getCurrentEnv()
 }
 
-func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
-	curr := eng.getCurrentEnv()
+func (eng *Engine) EnvInfo(envName tokens.QName, showIDs bool, showURNs bool) error {
+	curr := envName
+	if curr == "" {
+		curr = eng.getCurrentEnv()
+	}
 	if curr == "" {
 		return errors.New("no current environment; either `pulumi env init` or `pulumi env select` one")
 	}
+
 	fmt.Fprintf(eng.Stdout, "Current environment is %v\n", curr)
 	fmt.Fprintf(eng.Stdout, "    (use `pulumi env select` to change environments; `pulumi env ls` lists known ones)\n")
 	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(curr)

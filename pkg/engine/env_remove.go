@@ -4,13 +4,14 @@ package engine
 
 import (
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func (eng *Engine) RemoveEnv(envName string, force bool) error {
+func (eng *Engine) RemoveEnv(envName tokens.QName, force bool) error {
 	contract.Assert(envName != "")
 
-	info, err := eng.initEnvCmd(envName, "")
+	info, err := eng.initEnvCmdName(envName, "")
 
 	if err != nil {
 		return err

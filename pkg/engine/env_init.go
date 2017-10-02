@@ -4,7 +4,7 @@ package engine
 
 import "github.com/pulumi/pulumi/pkg/tokens"
 
-func (eng *Engine) InitEnv(name string) error {
-	eng.createEnv(tokens.QName(name))
+func (eng *Engine) InitEnv(name tokens.QName) error {
+	eng.createEnv(name)
 	return nil
 }

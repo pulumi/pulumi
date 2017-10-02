@@ -14,8 +14,8 @@ type DestroyOptions struct {
 	Summary  bool
 }
 
-func (eng *Engine) Destroy(environment string, opts DestroyOptions) error {
-	info, err := eng.initEnvCmdName(tokens.QName(environment), opts.Package)
+func (eng *Engine) Destroy(environment tokens.QName, opts DestroyOptions) error {
+	info, err := eng.initEnvCmdName(environment, opts.Package)
 	if err != nil {
 		return err
 	}
