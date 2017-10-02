@@ -3,27 +3,35 @@
 package engine
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/environment"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func (eng *Engine) ListEnvs() error {
+type EnvironmentInfo struct {
+	Name       string
+	Snapshot   *deploy.Snapshot
+	Checkpoint *environment.Checkpoint
+	IsCurrent  bool
+}
+
+func (eng *Engine) GetEnvironments() ([]EnvironmentInfo, error) {
+	var envs []EnvironmentInfo
+
 	// Read the environment directory.
 	path := workspace.EnvPath("")
 	files, err := ioutil.ReadDir(path)
 	if err != nil && !os.IsNotExist(err) {
-		return errors.Errorf("could not read environments: %v", err)
+		return nil, errors.Errorf("could not read environments: %v", err)
 	}
 
-	fmt.Fprintf(eng.Stdout, "%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
 	curr := eng.getCurrentEnv()
 	for _, file := range files {
 		// Ignore directories.
@@ -45,21 +53,11 @@ func (eng *Engine) ListEnvs() error {
 			continue // failure reading the environment information.
 		}
 
-		// Now print out the name, last deployment time (if any), and resources (if any).
-		lastDeploy := "n/a"
-		resourceCount := "n/a"
-		if checkpoint.Latest != nil {
-			lastDeploy = checkpoint.Latest.Time.String()
-		}
-		if snapshot != nil {
-			resourceCount = strconv.Itoa(len(snapshot.Resources))
-		}
-		display := target.Name
-		if display == curr {
-			display += "*" // fancify the current environment.
-		}
-		fmt.Fprintf(eng.Stdout, "%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
+		envs = append(envs, EnvironmentInfo{Name: target.Name.String(),
+			Snapshot:   snapshot,
+			Checkpoint: checkpoint,
+			IsCurrent:  (curr == target.Name)})
 	}
 
-	return nil
+	return envs, nil
 }

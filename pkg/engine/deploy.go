@@ -19,7 +19,6 @@ import (
 )
 
 type DeployOptions struct {
-	Environment          string   // the environment we are deploying into
 	Package              string   // the package we are deploying (or "" to use the default)
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Debug                bool     // true to enable resource debugging output.
@@ -31,14 +30,14 @@ type DeployOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Deploy(opts DeployOptions) error {
+func (eng *Engine) Deploy(environment string, opts DeployOptions) error {
 	// Initialize the diagnostics logger with the right stuff.
 	eng.InitDiag(diag.FormatOptions{
 		Colors: true,
 		Debug:  opts.Debug,
 	})
 
-	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+	info, err := eng.initEnvCmdName(tokens.QName(environment), opts.Package)
 	if err != nil {
 		return err
 	}

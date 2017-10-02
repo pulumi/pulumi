@@ -2,19 +2,20 @@
 
 package engine
 
-import "github.com/pulumi/pulumi/pkg/tokens"
+import (
+	"github.com/pulumi/pulumi/pkg/tokens"
+)
 
 type DestroyOptions struct {
-	Environment string
-	Package     string
-	DryRun      bool
-	Debug       bool
-	Parallel    int
-	Summary     bool
+	Package  string
+	DryRun   bool
+	Debug    bool
+	Parallel int
+	Summary  bool
 }
 
-func (eng *Engine) Destroy(opts DestroyOptions) error {
-	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+func (eng *Engine) Destroy(environment string, opts DestroyOptions) error {
+	info, err := eng.initEnvCmdName(tokens.QName(environment), opts.Package)
 	if err != nil {
 		return err
 	}

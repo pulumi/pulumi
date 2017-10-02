@@ -11,7 +11,6 @@ import (
 
 type PreviewOptions struct {
 	Package              string   // the package to compute the preview for
-	Environment          string   // the environment to use when previewing
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Debug                bool     // true to enable resource debugging output.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
@@ -21,14 +20,14 @@ type PreviewOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Preview(opts PreviewOptions) error {
+func (eng *Engine) Preview(environment string, opts PreviewOptions) error {
 	// Initialize the diagnostics logger with the right stuff.
 	eng.InitDiag(diag.FormatOptions{
 		Colors: true,
 		Debug:  opts.Debug,
 	})
 
-	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+	info, err := eng.initEnvCmdName(tokens.QName(environment), opts.Package)
 	if err != nil {
 		return err
 	}
