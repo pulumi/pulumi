@@ -33,10 +33,9 @@ func newPreviewCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory. Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return lumiEngine.Preview(engine.PreviewOptions{
+			return lumiEngine.Preview(env, engine.PreviewOptions{
 				Package:              pkgargFromArgs(args),
 				Debug:                debug,
-				Environment:          env,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
