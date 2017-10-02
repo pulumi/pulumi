@@ -183,7 +183,6 @@ func (eng *Engine) printPlan(result *planResult) error {
 	var summary bytes.Buffer
 	counts := make(map[deploy.StepOp]int)
 
-	var diagError = errors.New("One or more errors occurred during this preview")
 	_, _, _, err := result.Walk(&previewActions{
 		Ops:  make(map[deploy.StepOp]int),
 		Opts: result.Options,
@@ -196,7 +195,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 	if !eng.Diag().Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-		return diagError
+		return errors.New("One or more errors occurred during this preview")
 	}
 
 	// Print a summary of operation counts.
