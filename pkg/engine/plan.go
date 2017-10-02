@@ -180,14 +180,11 @@ func (eng *Engine) printPlan(result *planResult) error {
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
-	var summary bytes.Buffer
-	counts := make(map[deploy.StepOp]int)
-
-	_, _, _, err := result.Walk(&previewActions{
+	actions := &previewActions{
 		Ops:  make(map[deploy.StepOp]int),
 		Opts: result.Options,
-	})
-
+	}
+	_, _, _, err := result.Walk(actions)
 	if err != nil {
 		return errors.Errorf("An error occurred while advancing the preview: %v", err)
 	}
@@ -199,8 +196,8 @@ func (eng *Engine) printPlan(result *planResult) error {
 	}
 
 	// Print a summary of operation counts.
-	printChangeSummary(&summary, counts, true)
-	fmt.Fprint(eng.Stdout, colors.Colorize(&summary))
+	printChangeSummary(&actions.Summary, actions.Ops, true)
+	fmt.Fprint(eng.Stdout, colors.Colorize(&actions.Summary))
 	return nil
 }
 
