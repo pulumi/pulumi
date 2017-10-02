@@ -16,7 +16,7 @@ import (
 )
 
 type EnvironmentInfo struct {
-	Name       string
+	Name       tokens.QName
 	Snapshot   *deploy.Snapshot
 	Checkpoint *environment.Checkpoint
 	IsCurrent  bool
@@ -53,10 +53,11 @@ func (eng *Engine) GetEnvironments() ([]EnvironmentInfo, error) {
 			continue // failure reading the environment information.
 		}
 
-		envs = append(envs, EnvironmentInfo{Name: target.Name.String(),
+		envs = append(envs, EnvironmentInfo{Name: target.Name,
 			Snapshot:   snapshot,
 			Checkpoint: checkpoint,
-			IsCurrent:  (curr == target.Name)})
+			IsCurrent:  target.Name == curr,
+		})
 	}
 
 	return envs, nil

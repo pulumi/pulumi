@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -29,12 +30,12 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversable and should be used with great care.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if env == "" {
-				env = lumiEngine.GetCurrentEnvName()
+				env = lumiEngine.GetCurrentEnvName().String()
 			}
 
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", env) {
-				return lumiEngine.Destroy(env, engine.DestroyOptions{
+				return lumiEngine.Destroy(tokens.QName(env), engine.DestroyOptions{
 					Package:  pkgargFromArgs(args),
 					DryRun:   preview,
 					Debug:    debug,

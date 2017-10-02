@@ -33,7 +33,7 @@ func newEnvInitCmd() *cobra.Command {
 				return fmt.Errorf("environment '%v' already exists", args[0])
 			}
 
-			return lumiEngine.InitEnv(args[0])
+			return lumiEngine.InitEnv(tokens.QName(args[0]))
 		}),
 	}
 }

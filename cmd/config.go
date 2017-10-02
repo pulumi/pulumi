@@ -33,10 +33,10 @@ func newConfigCmd() *cobra.Command {
 				if !unset {
 					return getConfig(env, key)
 				}
-				return lumiEngine.DeleteConfig(env, key)
+				return lumiEngine.DeleteConfig(tokens.QName(env), key)
 			}
 
-			return lumiEngine.SetConfig(env, key, args[1])
+			return lumiEngine.SetConfig(tokens.QName(env), key, args[1])
 		}),
 	}
 
@@ -51,7 +51,7 @@ func newConfigCmd() *cobra.Command {
 }
 
 func listConfig(env string) error {
-	config, err := lumiEngine.GetConfiguration(env)
+	config, err := lumiEngine.GetConfiguration(tokens.QName(env))
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func listConfig(env string) error {
 }
 
 func getConfig(env string, key tokens.ModuleMember) error {
-	config, err := lumiEngine.GetConfiguration(env)
+	config, err := lumiEngine.GetConfiguration(tokens.QName(env))
 	if err != nil {
 		return err
 	}

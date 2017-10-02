@@ -17,10 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func (eng *Engine) initEnvCmd(name string, pkgarg string) (*envCmdInfo, error) {
-	return eng.initEnvCmdName(tokens.QName(name), pkgarg)
-}
-
 func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo, error) {
 	// If the name is blank, use the default.
 	if name == "" {
@@ -68,7 +64,7 @@ func (eng *Engine) newWorkspace() (workspace.W, error) {
 	if err != nil {
 		return nil, err
 	}
-	return workspace.New(pwd, eng.Diag())
+	return workspace.New(pwd)
 }
 
 // getCurrentEnv reads the current environment.

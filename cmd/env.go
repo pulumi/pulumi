@@ -3,6 +3,10 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -20,7 +24,57 @@ func newEnvCmd() *cobra.Command {
 			"Each environment has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return lumiEngine.EnvInfo(showIDs, showURNs)
+			envInfo, err := lumiEngine.GetEnvironmentInfo(tokens.QName(""))
+			if err != nil {
+				return err
+			}
+			config, err := lumiEngine.GetConfiguration(tokens.QName(""))
+			if err != nil {
+				return err
+			}
+
+			checkpoint := envInfo.Checkpoint
+			snapshot := envInfo.Snapshot
+
+			fmt.Printf("Current environment is %v\n", envInfo.Name)
+			fmt.Printf("    (use `pulumi env select` to change environments; `pulumi env ls` lists known ones)\n")
+
+			if err != nil {
+				return err
+			}
+			if checkpoint.Latest != nil {
+				fmt.Printf("Last update at %v\n", checkpoint.Latest.Time)
+				if checkpoint.Latest.Info != nil {
+					info, err := json.MarshalIndent(checkpoint.Latest.Info, "    ", "    ")
+					if err != nil {
+						return err
+					}
+					fmt.Printf("Additional update info:\n    %s\n", string(info))
+				}
+			}
+			if len(config) > 0 {
+				fmt.Printf("%v configuration variables set (see `pulumi config` for details)\n", len(config))
+			}
+			if snapshot == nil || len(snapshot.Resources) == 0 {
+				fmt.Printf("No resources currently in this environment\n")
+			} else {
+				fmt.Printf("%v resources currently in this environment:\n", len(snapshot.Resources))
+				fmt.Printf("\n")
+				fmt.Printf("%-48s %s\n", "TYPE", "NAME")
+				for _, res := range snapshot.Resources {
+					fmt.Printf("%-48s %s\n", res.Type, res.URN.Name())
+
+					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do this
+					// on a single line, but they can get quite lengthy and so this formatting makes more sense.
+					if showIDs {
+						fmt.Printf("\tID: %s\n", res.ID)
+					}
+					if showURNs {
+						fmt.Printf("\tURN: %s\n", res.URN)
+					}
+				}
+			}
+			return nil
 		}),
 	}
 

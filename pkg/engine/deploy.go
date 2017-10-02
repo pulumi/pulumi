@@ -30,14 +30,14 @@ type DeployOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Deploy(environment string, opts DeployOptions) error {
+func (eng *Engine) Deploy(environment tokens.QName, opts DeployOptions) error {
 	// Initialize the diagnostics logger with the right stuff.
 	eng.InitDiag(diag.FormatOptions{
 		Colors: true,
 		Debug:  opts.Debug,
 	})
 
-	info, err := eng.initEnvCmdName(tokens.QName(environment), opts.Package)
+	info, err := eng.initEnvCmdName(environment, opts.Package)
 	if err != nil {
 		return err
 	}

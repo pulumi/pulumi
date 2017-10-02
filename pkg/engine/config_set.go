@@ -7,8 +7,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-func (eng *Engine) SetConfig(envName string, key tokens.ModuleMember, value string) error {
-	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
+func (eng *Engine) SetConfig(envName tokens.QName, key tokens.ModuleMember, value string) error {
+	info, err := eng.initEnvCmdName(envName, "")
 	if err != nil {
 		return err
 	}
@@ -31,8 +31,8 @@ func (eng *Engine) SetConfig(envName string, key tokens.ModuleMember, value stri
 // ReplaceConfig sets the config for an environment to match `newConfig` and then saves
 // the environment. Note that config values that were present in the old environment but are
 // not present in `newConfig` will be removed from the environment
-func (eng *Engine) ReplaceConfig(envName string, newConfig map[tokens.ModuleMember]string) error {
-	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
+func (eng *Engine) ReplaceConfig(envName tokens.QName, newConfig map[tokens.ModuleMember]string) error {
+	info, err := eng.initEnvCmdName(envName, "")
 	if err != nil {
 		return err
 	}
