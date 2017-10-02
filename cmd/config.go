@@ -20,8 +20,13 @@ func newConfigCmd() *cobra.Command {
 		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			envName, err := explicitOrCurrent(env)
+			if err != nil {
+				return err
+			}
+
 			if len(args) == 0 {
-				return listConfig(env)
+				return listConfig(envName)
 			}
 
 			key, err := tokens.ParseModuleMember(args[0])
@@ -31,12 +36,12 @@ func newConfigCmd() *cobra.Command {
 
 			if len(args) == 1 {
 				if !unset {
-					return getConfig(env, key)
+					return getConfig(envName, key)
 				}
-				return lumiEngine.DeleteConfig(tokens.QName(env), key)
+				return lumiEngine.DeleteConfig(envName, key)
 			}
 
-			return lumiEngine.SetConfig(tokens.QName(env), key, args[1])
+			return lumiEngine.SetConfig(envName, key, args[1])
 		}),
 	}
 
@@ -50,8 +55,8 @@ func newConfigCmd() *cobra.Command {
 	return cmd
 }
 
-func listConfig(env string) error {
-	config, err := lumiEngine.GetConfiguration(tokens.QName(env))
+func listConfig(envName tokens.QName) error {
+	config, err := lumiEngine.GetConfiguration(envName)
 	if err != nil {
 		return err
 	}
@@ -71,8 +76,8 @@ func listConfig(env string) error {
 	return nil
 }
 
-func getConfig(env string, key tokens.ModuleMember) error {
-	config, err := lumiEngine.GetConfiguration(tokens.QName(env))
+func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
+	config, err := lumiEngine.GetConfiguration(envName)
 	if err != nil {
 		return err
 	}
@@ -84,6 +89,6 @@ func getConfig(env string, key tokens.ModuleMember) error {
 		}
 	}
 
-	return errors.Errorf("configuration key '%v' not found for environment '%v'", key, env)
+	return errors.Errorf("configuration key '%v' not found for environment '%v'", key, envName)
 
 }

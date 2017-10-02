@@ -31,6 +31,8 @@ type DeployOptions struct {
 }
 
 func (eng *Engine) Deploy(environment tokens.QName, opts DeployOptions) error {
+	contract.Require(environment != tokens.QName(""), "environment")
+
 	// Initialize the diagnostics logger with the right stuff.
 	eng.InitDiag(diag.FormatOptions{
 		Colors: true,

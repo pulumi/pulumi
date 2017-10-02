@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -34,7 +33,12 @@ func newPreviewCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory. Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return lumiEngine.Preview(tokens.QName(env), engine.PreviewOptions{
+			envName, err := explicitOrCurrent(env)
+			if err != nil {
+				return err
+			}
+
+			return lumiEngine.Preview(envName, engine.PreviewOptions{
 				Package:              pkgargFromArgs(args),
 				Debug:                debug,
 				Analyzers:            analyzers,

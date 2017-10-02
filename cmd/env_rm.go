@@ -28,12 +28,12 @@ func newEnvRmCmd() *cobra.Command {
 				return errors.Errorf("missing required environment name")
 			}
 
-			envName := args[0]
+			envName := tokens.QName(args[0])
 
 			// Ensure the user really wants to do this.
 			if yes ||
-				confirmPrompt("This will permanently remove the '%v' environment!", envName) {
-				return lumiEngine.RemoveEnv(tokens.QName(envName), force)
+				confirmPrompt("This will permanently remove the '%v' environment!", envName.String()) {
+				return lumiEngine.RemoveEnv(envName, force)
 			}
 
 			return nil

@@ -4,31 +4,19 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/tokens"
-
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func (eng *Engine) GetCurrentEnvName() tokens.QName {
-	return eng.getCurrentEnv()
-}
-
 func (eng *Engine) GetEnvironmentInfo(envName tokens.QName) (EnvironmentInfo, error) {
-	curr := envName
-	if curr == "" {
-		curr = eng.getCurrentEnv()
-	}
-	if curr == "" {
-		return EnvironmentInfo{}, errors.New("no current environment; either `pulumi env init` or `pulumi env select` one")
-	}
+	contract.Require(envName != tokens.QName(""), "envName")
 
-	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(curr)
+	_, snapshot, checkpoint, err := eng.Environment.GetEnvironment(envName)
 	if err != nil {
 		return EnvironmentInfo{}, err
 	}
 
-	return EnvironmentInfo{Name: curr,
+	return EnvironmentInfo{Name: envName,
 		Snapshot:   snapshot,
 		Checkpoint: checkpoint,
-		IsCurrent:  target.Name == curr,
 	}, nil
 }

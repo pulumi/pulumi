@@ -19,7 +19,6 @@ type EnvironmentInfo struct {
 	Name       tokens.QName
 	Snapshot   *deploy.Snapshot
 	Checkpoint *environment.Checkpoint
-	IsCurrent  bool
 }
 
 func (eng *Engine) GetEnvironments() ([]EnvironmentInfo, error) {
@@ -32,7 +31,6 @@ func (eng *Engine) GetEnvironments() ([]EnvironmentInfo, error) {
 		return nil, errors.Errorf("could not read environments: %v", err)
 	}
 
-	curr := eng.getCurrentEnv()
 	for _, file := range files {
 		// Ignore directories.
 		if file.IsDir() {
@@ -56,7 +54,6 @@ func (eng *Engine) GetEnvironments() ([]EnvironmentInfo, error) {
 		envs = append(envs, EnvironmentInfo{Name: target.Name,
 			Snapshot:   snapshot,
 			Checkpoint: checkpoint,
-			IsCurrent:  target.Name == curr,
 		})
 	}
 

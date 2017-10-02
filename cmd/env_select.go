@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
@@ -21,10 +23,15 @@ func newEnvSelectCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read in the name of the environment to switch to.
 			if len(args) == 0 {
-				return lumiEngine.GetCurrentEnv()
+				name, err := getCurrentEnv()
+				if err != nil {
+					return err
+				}
+
+				fmt.Printf("%v\n", name)
 			}
 
-			return lumiEngine.SelectEnv(tokens.QName(args[0]))
+			return setCurrentEnv(tokens.QName(args[0]), true)
 		}),
 	}
 }

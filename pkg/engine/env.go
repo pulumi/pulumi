@@ -4,27 +4,18 @@ package engine
 
 import (
 	"fmt"
-	"os"
 
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/compiler/errors"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/environment"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo, error) {
-	// If the name is blank, use the default.
-	if name == "" {
-		name = eng.getCurrentEnv()
-	}
-	if name == "" {
-		return nil, goerr.Errorf("missing environment name (and no default found)")
-	}
+	contract.Require(name != tokens.QName(""), "name")
 
 	// Read in the deployment information, bailing if an IO error occurs.
 	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(name)
@@ -50,53 +41,11 @@ type envCmdInfo struct {
 }
 
 // createEnv just creates a new empty environment without deploying anything into it.
-func (eng *Engine) createEnv(name tokens.QName) {
+func (eng *Engine) createEnv(name tokens.QName) error {
+	contract.Require(name != tokens.QName(""), "name")
+
 	env := &deploy.Target{Name: name}
-	if err := eng.Environment.SaveEnvironment(env, nil); err == nil {
-		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `pulumi update` to deploy into it\n", name)
-		eng.setCurrentEnv(name, false)
-	}
-}
-
-// newWorkspace creates a new workspace using the current working directory.
-func (eng *Engine) newWorkspace() (workspace.W, error) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	return workspace.New(pwd)
-}
-
-// getCurrentEnv reads the current environment.
-func (eng *Engine) getCurrentEnv() tokens.QName {
-	var name tokens.QName
-	w, err := eng.newWorkspace()
-	if err == nil {
-		name = w.Settings().Env
-	}
-	if err != nil {
-		eng.Diag().Errorf(errors.ErrorIO, err)
-	}
-	return name
-}
-
-// setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
-func (eng *Engine) setCurrentEnv(name tokens.QName, verify bool) {
-	if verify {
-		if _, _, _, err := eng.Environment.GetEnvironment(name); err != nil {
-			return // no environment by this name exists, bail out.
-		}
-	}
-
-	// Switch the current workspace to that environment.
-	w, err := eng.newWorkspace()
-	if err == nil {
-		w.Settings().Env = name
-		err = w.Save()
-	}
-	if err != nil {
-		eng.Diag().Errorf(errors.ErrorIO, err)
-	}
+	return eng.Environment.SaveEnvironment(env, nil)
 }
 
 // removeTarget permanently deletes the environment's information from the local workstation.

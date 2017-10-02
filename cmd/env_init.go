@@ -3,12 +3,11 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/spf13/cobra"
 
@@ -29,11 +28,19 @@ func newEnvInitCmd() *cobra.Command {
 				return errors.New("missing required environment name")
 			}
 
-			if _, staterr := os.Stat(workspace.EnvPath(tokens.QName(args[0]))); staterr == nil {
-				return fmt.Errorf("environment '%v' already exists", args[0])
+			envName := tokens.QName(args[0])
+
+			if _, err := lumiEngine.GetEnvironmentInfo(envName); err == nil {
+				return fmt.Errorf("environment '%v' already exists", envName)
+
 			}
 
-			return lumiEngine.InitEnv(tokens.QName(args[0]))
+			err := lumiEngine.InitEnv(envName)
+			if err != nil {
+				return err
+			}
+
+			return setCurrentEnv(envName, false)
 		}),
 	}
 }

@@ -5,9 +5,12 @@ package engine
 import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func (eng *Engine) SetConfig(envName tokens.QName, key tokens.ModuleMember, value string) error {
+	contract.Require(envName != tokens.QName(""), "envName")
+
 	info, err := eng.initEnvCmdName(envName, "")
 	if err != nil {
 		return err
