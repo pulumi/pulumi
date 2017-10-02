@@ -36,7 +36,7 @@ func (eng *Engine) readPackageFromArg(arg string) (*pkginfo, error) {
 		}
 		path = pwd
 		// Now that we got here, we have a path, so we will try to load it.
-		pkgpath, err := workspace.DetectPackage(path, eng.Diag())
+		pkgpath, err := workspace.DetectPackage(path)
 		if err != nil {
 			return nil, errors.Errorf("could not locate a package to load: %v", err)
 		} else if pkgpath == "" {

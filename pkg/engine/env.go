@@ -64,7 +64,7 @@ func (eng *Engine) newWorkspace() (workspace.W, error) {
 	if err != nil {
 		return nil, err
 	}
-	return workspace.New(pwd, eng.Diag())
+	return workspace.New(pwd)
 }
 
 // getCurrentEnv reads the current environment.

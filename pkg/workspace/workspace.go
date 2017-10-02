@@ -11,10 +11,8 @@ import (
 	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // W offers functionality for interacting with Lumi workspaces.  A workspace influences compilation; for example, it
@@ -28,9 +26,7 @@ type W interface {
 }
 
 // New creates a new workspace from the given starting path.
-func New(path string, diag diag.Sink) (W, error) {
-	contract.Requiref(diag != nil, "diag", "!= nil")
-
+func New(path string) (W, error) {
 	// First normalize the path to an absolute one.
 	var err error
 	path, err = filepath.Abs(path)
@@ -44,7 +40,6 @@ func New(path string, diag diag.Sink) (W, error) {
 	}
 
 	ws := workspace{
-		diag: diag,
 		path: path,
 		home: home,
 	}
@@ -58,11 +53,10 @@ func New(path string, diag diag.Sink) (W, error) {
 }
 
 type workspace struct {
-	diag     diag.Sink // the diagnostics sink to use for messages.
-	path     string    // the path at which the workspace was constructed.
-	home     string    // the home directory to use for this workspace.
-	root     string    // the root of the workspace.
-	settings Settings  // an optional bag of workspace-wide settings.
+	path     string   // the path at which the workspace was constructed.
+	home     string   // the home directory to use for this workspace.
+	root     string   // the root of the workspace.
+	settings Settings // an optional bag of workspace-wide settings.
 }
 
 // init finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
@@ -108,7 +102,7 @@ func (w *workspace) Root() string        { return w.root }
 func (w *workspace) Settings() *Settings { return &w.settings }
 
 func (w *workspace) DetectPackage() (string, error) {
-	return DetectPackage(w.path, w.diag)
+	return DetectPackage(w.path)
 }
 
 // qnamePath just cleans a name and makes sure it's appropriate to use as a path.

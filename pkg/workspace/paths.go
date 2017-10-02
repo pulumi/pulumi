@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/compiler/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -46,9 +44,9 @@ func pathDir(path string) string {
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
 // Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
-func DetectPackage(path string, d diag.Sink) (string, error) {
+func DetectPackage(path string) (string, error) {
 	// It's possible the target is already the file we seek; if so, return right away.
-	if IsProject(path, d) {
+	if IsProject(path) {
 		return path, nil
 	}
 
@@ -64,7 +62,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
-			if IsProject(path, d) {
+			if IsProject(path) {
 				return path, nil
 			} else if IsLumiDir(path) {
 				// If we hit a workspace, stop looking.
@@ -95,17 +93,11 @@ func IsLumiDir(path string) bool {
 
 // IsProject returns true if the path references what appears to be a valid project.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsProject(path string, d diag.Sink) bool {
-	return isMarkupFile(path, ProjectFile, d)
+func IsProject(path string) bool {
+	return isMarkupFile(path, ProjectFile)
 }
 
-// IsSettings returns true if the path references what appears to be a valid settings file.  If problems are detected --
-// like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsSettings(path string, d diag.Sink) bool {
-	return isMarkupFile(path, SettingsFile, d)
-}
-
-func isMarkupFile(path string, expect string, d diag.Sink) bool {
+func isMarkupFile(path string, expect string) bool {
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		// Missing files and directories can't be markup files.
@@ -117,10 +109,6 @@ func isMarkupFile(path string, expect string, d diag.Sink) bool {
 	ext := filepath.Ext(name)
 	base := strings.TrimSuffix(name, ext)
 	if base != expect {
-		if d != nil && strings.EqualFold(base, expect) {
-			// If the strings aren't equal, but case-insensitively match, issue a warning.
-			d.Warningf(errors.WarningIllegalMarkupFileCasing.AtFile(name), expect)
-		}
 		return false
 	}
 
@@ -131,9 +119,5 @@ func isMarkupFile(path string, expect string, d diag.Sink) bool {
 		}
 	}
 
-	// If we got here, it means the base name matched, but not the extension.  Warn and return.
-	if d != nil {
-		d.Warningf(errors.WarningIllegalMarkupFileExt.AtFile(name), expect, ext)
-	}
 	return false
 }
