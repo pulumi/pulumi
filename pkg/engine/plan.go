@@ -78,10 +78,12 @@ type StepActions interface {
 	// Before is invoked after the preparation for a step but before Run.
 	Before(step deploy.Step)
 
-	// Run is invoked to perform whatever action the implementer uses to process the step. If the step's preparation fails, Run is not invoked.
+	// Run is invoked to perform whatever action the implementer uses to process the step. If the step's preparation
+	// fails, Run is not invoked.
 	Run(step deploy.Step) (resource.Status, error)
 
-	// After is invoked after a step executes, and is given access to the error, if any, that occurred when preparing for or running the step.
+	// After is invoked after a step executes, and is given access to the error, if any, that occurred when preparing for
+	// or running the step.
 	After(step deploy.Step, state resource.Status, err error)
 }
 

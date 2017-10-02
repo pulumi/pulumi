@@ -17,7 +17,7 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Parallel int      // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel int // the degree of parallelism for resource operations (<=1 for serial).
 }
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
