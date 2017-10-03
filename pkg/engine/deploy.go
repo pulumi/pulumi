@@ -94,6 +94,7 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			actions := &deployActions{
 				Ops:    make(map[deploy.StepOp]int),
 				Opts:   opts,
+				Target: result.Info.Target,
 				Engine: eng,
 			}
 			summary, _, _, err := result.Walk(actions)
@@ -117,10 +118,11 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 					colors.SpecAttention, colors.Reset))
 			}
 
-			// Now save the updated snapshot Notee that if a failure has occurred, the Apply routine above will
+			// Now save the updated snapshot. Note that if a failure has occurred, the Walk routine above will
 			// have returned a safe checkpoint.
-			targ := result.Info.Target
-			_ = eng.Environment.SaveEnvironment(targ, summary.Snap())
+			//
+			// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
+			_ = eng.Environment.SaveEnvironment(actions.Target, summary.Snap())
 
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			if err != nil {
@@ -141,6 +143,7 @@ type deployActions struct {
 	Ops          map[deploy.StepOp]int
 	MaybeCorrupt bool
 	Opts         deployOptions
+	Target       *deploy.Target
 	Engine       *Engine
 }
 
@@ -194,4 +197,10 @@ func (acts *deployActions) After(step deploy.Step, status resource.Status, err e
 			fmt.Fprint(acts.Engine.Stdout, colors.Colorize(&b))
 		}
 	}
+
+	// Write out the current snapshot. Note that even if a failure has occurred, we should still have
+	// a safe checkpoint.
+	//
+	// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
+	_ = acts.Engine.Environment.SaveEnvironment(acts.Target, step.Iterator().Snap())
 }
