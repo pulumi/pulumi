@@ -4,6 +4,7 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type DestroyOptions struct {
@@ -15,6 +16,8 @@ type DestroyOptions struct {
 }
 
 func (eng *Engine) Destroy(environment tokens.QName, opts DestroyOptions) error {
+	contract.Require(environment != tokens.QName(""), "environment")
+
 	info, err := eng.initEnvCmdName(environment, opts.Package)
 	if err != nil {
 		return err

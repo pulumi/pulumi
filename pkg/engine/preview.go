@@ -21,6 +21,8 @@ type PreviewOptions struct {
 }
 
 func (eng *Engine) Preview(environment tokens.QName, opts PreviewOptions) error {
+	contract.Require(environment != tokens.QName(""), "environment")
+
 	// Initialize the diagnostics logger with the right stuff.
 	eng.InitDiag(diag.FormatOptions{
 		Colors: true,
