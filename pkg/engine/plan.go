@@ -108,17 +108,11 @@ func (res *planResult) Walk(actions StepActions) (deploy.PlanSummary, deploy.Ste
 	}
 
 	for step != nil {
-		// Do the pre-step.
-		rst := resource.StatusOK
-		err := step.Pre()
-
 		// Perform pre-run actions.
 		actions.Before(step)
 
-		// If the pre step succeeded, run the step.
-		if err == nil {
-			rst, err = actions.Run(step)
-		}
+		// Run the step.
+		rst, err := actions.Run(step)
 
 		// Perform post-run actions.
 		actions.After(step, rst, err)
