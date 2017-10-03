@@ -118,6 +118,14 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 					colors.SpecAttention, colors.Reset))
 			}
 
+			// Write out the current snapshot. Note that even if a failure has occurred, we should still have
+			// a safe checkpoint. Note that any error that occurs when writing the checkpoint trumps the error
+			// reported above.
+			saveErr := eng.Environment.SaveEnvironment(actions.Target, summary.Snap())
+			if saveErr != nil {
+				err = saveErr
+			}
+
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			if err != nil {
 				return err
@@ -191,13 +199,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 	}
 
-	// Write out the current snapshot. Note that even if a failure has occurred, we should still have
-	// a safe checkpoint. Note that any error that occurs when writing the checkpoint trumps the error
-	// reported above.
-	saveErr := acts.Engine.Environment.SaveEnvironment(acts.Target, step.Iterator().Snap())
-	if saveErr != nil {
-		err = saveErr
-	}
+	// TODO[pulumi/pulumi#101]: write out checkpoint information here.
 
 	return status, err
 }
