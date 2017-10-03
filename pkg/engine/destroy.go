@@ -18,7 +18,7 @@ type DestroyOptions struct {
 func (eng *Engine) Destroy(environment tokens.QName, opts DestroyOptions) error {
 	contract.Require(environment != tokens.QName(""), "environment")
 
-	info, err := eng.initEnvCmdName(environment, opts.Package)
+	info, err := eng.planContextFromEnvironment(environment, opts.Package)
 	if err != nil {
 		return err
 	}

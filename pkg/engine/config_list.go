@@ -10,7 +10,7 @@ import (
 func (eng *Engine) GetConfiguration(environment tokens.QName) (map[tokens.ModuleMember]string, error) {
 	contract.Require(environment != tokens.QName(""), "environment")
 
-	info, err := eng.initEnvCmdName(environment, "")
+	info, err := eng.planContextFromEnvironment(environment, "")
 	if err != nil {
 		return nil, err
 	}

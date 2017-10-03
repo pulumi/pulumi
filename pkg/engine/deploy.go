@@ -39,7 +39,7 @@ func (eng *Engine) Deploy(environment tokens.QName, opts DeployOptions) error {
 		Debug:  opts.Debug,
 	})
 
-	info, err := eng.initEnvCmdName(environment, opts.Package)
+	info, err := eng.planContextFromEnvironment(environment, opts.Package)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ type deployOptions struct {
 	DOT                  bool     // true if we should print the DOT file for this plan.
 }
 
-func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
+func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 	result, err := eng.plan(info, opts)
 	if err != nil {
 		return err

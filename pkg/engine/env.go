@@ -14,7 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo, error) {
+func (eng *Engine) planContextFromEnvironment(name tokens.QName, pkgarg string) (*planContext, error) {
 	contract.Require(name != tokens.QName(""), "name")
 
 	// Read in the deployment information, bailing if an IO error occurs.
@@ -25,7 +25,7 @@ func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo
 
 	contract.Assert(target != nil)
 	contract.Assert(checkpoint != nil)
-	return &envCmdInfo{
+	return &planContext{
 		Target:     target,
 		Checkpoint: checkpoint,
 		Snapshot:   snapshot,
@@ -33,7 +33,7 @@ func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo
 	}, nil
 }
 
-type envCmdInfo struct {
+type planContext struct {
 	Target     *deploy.Target          // the target environment.
 	Checkpoint *environment.Checkpoint // the full serialized checkpoint from which this came.
 	Snapshot   *deploy.Snapshot        // the environment's latest deployment snapshot
