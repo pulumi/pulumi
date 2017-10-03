@@ -246,15 +246,25 @@ func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgra
 	}
 
 	// Now ensure dependencies are present.
-	RunCommand(t, []string{opts.YarnBin, "install", "--verbose"}, dir, opts)
+	RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), dir, opts)
 	for _, dependency := range opts.Dependencies {
-		RunCommand(t, []string{opts.YarnBin, "link", dependency}, dir, opts)
+		RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), dir, opts)
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	RunCommand(t, []string{opts.YarnBin, "run", "build"}, dir, opts)
+	RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), dir, opts)
 
 	return dir, nil
+}
+
+func withOptionalYarnFlags(args []string) []string {
+	flags := os.Getenv("YARNFLAGS")
+
+	if flags != "" {
+		return append(args, flags)
+	}
+
+	return args
 }
 
 // copyFile is a braindead simple function that copies a src file to a dst file.  Note that it is not general purpose:
