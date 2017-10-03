@@ -99,7 +99,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 			}
 			summary, _, _, err := result.Walk(actions)
 			if err != nil && summary == nil {
-				// Something went wrong, and we have no checkpoint to save.
+				// Something went wrong, and no changes were made.
 				return err
 			}
 			contract.Assert(summary != nil)
@@ -117,12 +117,6 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 					"%vA catastrophic error occurred; resources states may be unknown%v\n",
 					colors.SpecAttention, colors.Reset))
 			}
-
-			// Now save the updated snapshot. Note that if a failure has occurred, the Walk routine above will
-			// have returned a safe checkpoint.
-			//
-			// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
-			_ = eng.Environment.SaveEnvironment(actions.Target, summary.Snap())
 
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			if err != nil {
@@ -198,10 +192,12 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have
-	// a safe checkpoint.
-	//
-	// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
-	_ = acts.Engine.Environment.SaveEnvironment(acts.Target, step.Iterator().Snap())
+	// a safe checkpoint. Note that any error that occurs when writing the checkpoint trumps the error
+	// reported above.
+	saveErr := acts.Engine.Environment.SaveEnvironment(acts.Target, step.Iterator().Snap())
+	if saveErr != nil {
+		err = saveErr
+	}
 
 	return status, err
 }
