@@ -75,16 +75,8 @@ type planResult struct {
 
 // StepActions is used to process a plan's steps.
 type StepActions interface {
-	// Before is invoked after the preparation for a step but before Run.
-	Before(step deploy.Step)
-
-	// Run is invoked to perform whatever action the implementer uses to process the step. If the step's preparation
-	// fails, Run is not invoked.
+	// Run is invoked to perform whatever action the implementer uses to process the step.
 	Run(step deploy.Step) (resource.Status, error)
-
-	// After is invoked after a step executes, and is given access to the error, if any, that occurred when preparing for
-	// or running the step.
-	After(step deploy.Step, state resource.Status, err error)
 }
 
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
@@ -108,20 +100,15 @@ func (res *planResult) Walk(actions StepActions) (deploy.PlanSummary, deploy.Ste
 	}
 
 	for step != nil {
-		// Perform pre-run actions.
-		actions.Before(step)
-
-		// Run the step.
+		// Perform any per-step actions.
 		rst, err := actions.Run(step)
-
-		// Perform post-run actions.
-		actions.After(step, rst, err)
 
 		// If an error occurred, exit early.
 		if err != nil {
 			_ = iter.Close() // ignore close errors; the action error trumps
 			return iter, step, rst, err
 		}
+		contract.Assert(rst == resource.StatusOK)
 
 		step, err = iter.Next()
 		if err != nil {
@@ -144,9 +131,6 @@ type previewActions struct {
 	Opts    deployOptions
 }
 
-func (acts *previewActions) Before(step deploy.Step) {
-}
-
 func (acts *previewActions) Run(step deploy.Step) (resource.Status, error) {
 	// Print this step information (resource and all its properties).
 	if shouldShow(step, acts.Opts) {
@@ -154,10 +138,8 @@ func (acts *previewActions) Run(step deploy.Step) (resource.Status, error) {
 	}
 
 	// Be sure to skip the step so that in-memory state updates are performed.
-	return resource.StatusOK, step.Skip()
-}
+	err := step.Skip()
 
-func (acts *previewActions) After(step deploy.Step, rst resource.Status, err error) {
 	// We let `printPlan` handle error reporting for now.
 	if err == nil {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -165,6 +147,8 @@ func (acts *previewActions) After(step deploy.Step, rst resource.Status, err err
 			acts.Ops[step.Op()]++
 		}
 	}
+
+	return resource.StatusOK, err
 }
 
 func (eng *Engine) printPlan(result *planResult) error {
