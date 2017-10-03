@@ -147,19 +147,18 @@ type deployActions struct {
 	Engine       *Engine
 }
 
-func (acts *deployActions) Before(step deploy.Step) {
+func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
+	// Report the beginning of the step if appropriate.
 	if shouldShow(step, acts.Opts) {
 		var b bytes.Buffer
 		printStep(&b, step, acts.Opts.Summary, false, "")
 		fmt.Fprint(acts.Engine.Stdout, colors.Colorize(&b))
 	}
-}
 
-func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
-	return step.Apply()
-}
+	// Apply the step's changes.
+	status, err := step.Apply()
 
-func (acts *deployActions) After(step deploy.Step, status resource.Status, err error) {
+	// Report the result of the step.
 	stepop := step.Op()
 	if err != nil {
 		// Issue a true, bonafide error.
@@ -203,4 +202,6 @@ func (acts *deployActions) After(step deploy.Step, status resource.Status, err e
 	//
 	// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
 	_ = acts.Engine.Environment.SaveEnvironment(acts.Target, step.Iterator().Snap())
+
+	return status, err
 }
