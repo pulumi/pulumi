@@ -9,7 +9,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/environment"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -27,17 +26,15 @@ func (eng *Engine) planContextFromEnvironment(name tokens.QName, pkgarg string) 
 	contract.Assert(checkpoint != nil)
 	return &planContext{
 		Target:     target,
-		Checkpoint: checkpoint,
 		Snapshot:   snapshot,
 		PackageArg: pkgarg,
 	}, nil
 }
 
 type planContext struct {
-	Target     *deploy.Target          // the target environment.
-	Checkpoint *environment.Checkpoint // the full serialized checkpoint from which this came.
-	Snapshot   *deploy.Snapshot        // the environment's latest deployment snapshot
-	PackageArg string                  // an optional path to a package to pass to the compiler
+	Target     *deploy.Target   // the target environment.
+	Snapshot   *deploy.Snapshot // the environment's latest deployment snapshot
+	PackageArg string           // an optional path to a package to pass to the compiler
 }
 
 // createEnv just creates a new empty environment without deploying anything into it.
