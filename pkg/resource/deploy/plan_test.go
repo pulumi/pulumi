@@ -227,9 +227,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			break
 		}
 
-		err = step.Pre()
-		assert.Nil(t, err)
-
 		var urn resource.URN
 		var realID bool
 		var expectOuts resource.PropertyMap

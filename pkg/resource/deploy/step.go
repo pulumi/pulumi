@@ -16,7 +16,6 @@ type Step interface {
 	Plan() *Plan                     // the owning plan.
 	Iterator() *PlanIterator         // the current plan iterator.
 	Type() tokens.Type               // the type affected by this step.
-	Pre() error                      // run any pre-execution steps.
 	Apply() (resource.Status, error) // applies the action that this step represents.
 	Skip() error                     // skips past this step (required when iterating a plan).
 	Logical() bool                   // true if this step represents a logical operation in the program.
@@ -64,10 +63,6 @@ func (s *SameStep) URN() resource.URN       { return s.old.URN }
 func (s *SameStep) Old() *resource.State    { return s.old }
 func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
-
-func (s *SameStep) Pre() error {
-	return nil
-}
 
 func (s *SameStep) Apply() (resource.Status, error) {
 	// Just propagate the ID and output state to the live object and append to the snapshot.
@@ -142,10 +137,6 @@ func (s *CreateStep) New() *resource.State         { return s.new }
 func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
-func (s *CreateStep) Pre() error {
-	return nil
-}
-
 func (s *CreateStep) Apply() (resource.Status, error) {
 	// Invoke the Create RPC function for this provider:
 	prov, err := getProvider(s)
@@ -206,10 +197,6 @@ func (s *DeleteStep) Old() *resource.State    { return s.old }
 func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
-func (s *DeleteStep) Pre() error {
-	return nil
-}
-
 func (s *DeleteStep) Apply() (resource.Status, error) {
 	// Invoke the Delete RPC function for this provider:
 	prov, err := getProvider(s)
@@ -262,10 +249,6 @@ func (s *UpdateStep) URN() resource.URN       { return s.old.URN }
 func (s *UpdateStep) Old() *resource.State    { return s.old }
 func (s *UpdateStep) New() *resource.State    { return s.new }
 func (s *UpdateStep) Logical() bool           { return true }
-
-func (s *UpdateStep) Pre() error {
-	return nil
-}
 
 func (s *UpdateStep) Apply() (resource.Status, error) {
 	// Invoke the Update RPC function for this provider:
@@ -328,10 +311,6 @@ func (s *ReplaceStep) Old() *resource.State         { return s.old }
 func (s *ReplaceStep) New() *resource.State         { return s.new }
 func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *ReplaceStep) Logical() bool                { return true }
-
-func (s *ReplaceStep) Pre() error {
-	return nil
-}
 
 func (s *ReplaceStep) Apply() (resource.Status, error) {
 	return resource.StatusOK, nil
