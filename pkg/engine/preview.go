@@ -29,7 +29,7 @@ func (eng *Engine) Preview(environment tokens.QName, opts PreviewOptions) error 
 		Debug:  opts.Debug,
 	})
 
-	info, err := eng.initEnvCmdName(environment, opts.Package)
+	info, err := eng.planContextFromEnvironment(environment, opts.Package)
 	if err != nil {
 		return err
 	}

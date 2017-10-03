@@ -11,7 +11,7 @@ import (
 func (eng *Engine) SetConfig(envName tokens.QName, key tokens.ModuleMember, value string) error {
 	contract.Require(envName != tokens.QName(""), "envName")
 
-	info, err := eng.initEnvCmdName(envName, "")
+	info, err := eng.planContextFromEnvironment(envName, "")
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (eng *Engine) SetConfig(envName tokens.QName, key tokens.ModuleMember, valu
 // the environment. Note that config values that were present in the old environment but are
 // not present in `newConfig` will be removed from the environment
 func (eng *Engine) ReplaceConfig(envName tokens.QName, newConfig map[tokens.ModuleMember]string) error {
-	info, err := eng.initEnvCmdName(envName, "")
+	info, err := eng.planContextFromEnvironment(envName, "")
 	if err != nil {
 		return err
 	}

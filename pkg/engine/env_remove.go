@@ -11,7 +11,7 @@ import (
 func (eng *Engine) RemoveEnv(envName tokens.QName, force bool) error {
 	contract.Assert(envName != "")
 
-	info, err := eng.initEnvCmdName(envName, "")
+	info, err := eng.planContextFromEnvironment(envName, "")
 
 	if err != nil {
 		return err

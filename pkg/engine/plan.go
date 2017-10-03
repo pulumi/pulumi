@@ -19,7 +19,7 @@ import (
 )
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
+func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
@@ -68,7 +68,7 @@ func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, erro
 
 type planResult struct {
 	Ctx     *plugin.Context // the context containing plugins and their state.
-	Info    *envCmdInfo     // plan command information.
+	Info    *planContext    // plan command information.
 	Plan    *deploy.Plan    // the plan created by this command.
 	Options deployOptions   // the deployment options.
 }
