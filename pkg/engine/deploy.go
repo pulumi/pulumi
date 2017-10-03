@@ -116,8 +116,10 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 					colors.SpecAttention, colors.Reset))
 			}
 
-			// Now save the updated snapshot Note that if a failure has occurred, the Apply routine above will
+			// Now save the updated snapshot. Note that if a failure has occurred, the Walk routine above will
 			// have returned a safe checkpoint.
+			//
+			// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
 			_ = eng.Environment.SaveEnvironment(actions.Target, summary.Snap())
 
 			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
@@ -196,5 +198,7 @@ func (acts *deployActions) After(step deploy.Step, status resource.Status, err e
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have
 	// a safe checkpoint.
+	//
+	// TODO[pulumi/pulumi#388] stop dropping this error on the floor!
 	_ = acts.Engine.Environment.SaveEnvironment(acts.Target, step.Iterator().Snap())
 }
