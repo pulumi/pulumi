@@ -680,12 +680,19 @@ proto.pulumirpc.NewResourceRequest.prototype.hasObject = function() {
  * @constructor
  */
 proto.pulumirpc.NewResourceResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.NewResourceResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.NewResourceResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   proto.pulumirpc.NewResourceResponse.displayName = 'proto.pulumirpc.NewResourceResponse';
 }
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.NewResourceResponse.repeatedFields_ = [5];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -717,7 +724,8 @@ proto.pulumirpc.NewResourceResponse.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    stable: jspb.Message.getFieldWithDefault(msg, 4, false)
+    stable: jspb.Message.getFieldWithDefault(msg, 4, false),
+    stablesList: jspb.Message.getField(msg, 5)
   };
 
   if (includeInstance) {
@@ -770,6 +778,10 @@ proto.pulumirpc.NewResourceResponse.deserializeBinaryFromReader = function(msg, 
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setStable(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addStables(value);
       break;
     default:
       reader.skipField();
@@ -825,6 +837,13 @@ proto.pulumirpc.NewResourceResponse.serializeBinaryToWriter = function(message, 
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getStablesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      5,
       f
     );
   }
@@ -905,6 +924,37 @@ proto.pulumirpc.NewResourceResponse.prototype.getStable = function() {
 /** @param {boolean} value */
 proto.pulumirpc.NewResourceResponse.prototype.setStable = function(value) {
   jspb.Message.setField(this, 4, value);
+};
+
+
+/**
+ * repeated string stables = 5;
+ * If you change this array by adding, removing or replacing elements, or if you
+ * replace the array itself, then you must call the setter to update it.
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.NewResourceResponse.prototype.getStablesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 5));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.NewResourceResponse.prototype.setStablesList = function(value) {
+  jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.NewResourceResponse.prototype.addStables = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+proto.pulumirpc.NewResourceResponse.prototype.clearStablesList = function() {
+  this.setStablesList([]);
 };
 
 

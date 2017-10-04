@@ -65,6 +65,7 @@ message DiffRequest {
 
 message DiffResponse {
     repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
+    repeated string stables = 2;  // an optional list of properties that will not ever change.
 }
 
 message CreateRequest {

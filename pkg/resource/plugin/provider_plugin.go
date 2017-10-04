@@ -133,8 +133,16 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success: #replaces=%v", p.pkg, id, urn, len(replaces))
-	return DiffResult{ReplaceKeys: replaces}, nil
+	var stables []resource.PropertyKey
+	for _, stable := range resp.GetStables() {
+		stables = append(stables, resource.PropertyKey(stable))
+	}
+	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success: #replaces=%v #stables=%v",
+		p.pkg, id, urn, len(replaces), len(stables))
+	return DiffResult{
+		ReplaceKeys: replaces,
+		StableKeys:  stables,
+	}, nil
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.

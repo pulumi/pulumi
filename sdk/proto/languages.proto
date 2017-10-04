@@ -47,5 +47,6 @@ message NewResourceResponse {
     string urn = 2;                    // the URN assigned by the fabric.
     google.protobuf.Struct object = 3; // the resulting object properties, including provider defaults.
     bool stable = 4;                   // if true, the object's state is stable and may be trusted not to change.
+    repeated string stables = 5;       // an optional list of guaranteed-stable properties.
 }
 

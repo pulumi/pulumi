@@ -37,5 +37,5 @@ type SourceGoal interface {
 	Resource() *resource.Goal
 	// Done indicates that we are done with this resource, and provides the full state (ID, URN, and output properties)
 	// that resulted from the operation.  This *must* be called when the resource element is done with.
-	Done(state *resource.State, stable bool)
+	Done(state *resource.State, stable bool, stables []resource.PropertyKey)
 }

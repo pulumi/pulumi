@@ -66,7 +66,7 @@ func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply() (resource.Status, error) {
 	// Just propagate the ID and output state to the live object and append to the snapshot.
-	s.goal.Done(s.old, true)
+	s.goal.Done(s.old, true, nil)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(s.old)
 	return resource.StatusOK, nil
@@ -74,7 +74,7 @@ func (s *SameStep) Apply() (resource.Status, error) {
 
 func (s *SameStep) Skip() error {
 	// In the case of a same, both ID and outputs are identical.
-	s.goal.Done(s.old, true)
+	s.goal.Done(s.old, true, nil)
 	return nil
 }
 
@@ -152,14 +152,14 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 	// Copy any of the default and output properties on the live object state.
 	s.new.ID = id
 	s.new.Outputs = outs
-	s.goal.Done(s.new, false)
+	s.goal.Done(s.new, false, nil)
 	s.iter.AppendStateSnapshot(s.new)
 	return resource.StatusOK, nil
 }
 
 func (s *CreateStep) Skip() error {
 	// In the case of a create, we don't know the ID or output properties.  But we do know the defaults and URN.
-	s.goal.Done(s.new, false)
+	s.goal.Done(s.new, false, nil)
 	return nil
 }
 
@@ -217,15 +217,17 @@ func (s *DeleteStep) Skip() error {
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	iter *PlanIterator   // the current plan iteration.
-	goal SourceGoal      // the goal state for the resource.
-	old  *resource.State // the state of the existing resource.
-	new  *resource.State // the newly computed state of the resource after updating.
+	iter    *PlanIterator          // the current plan iteration.
+	goal    SourceGoal             // the goal state for the resource.
+	old     *resource.State        // the state of the existing resource.
+	new     *resource.State        // the newly computed state of the resource after updating.
+	stables []resource.PropertyKey // an optional list of properties that won't change during this update.
 }
 
 var _ MutatingStep = (*UpdateStep)(nil)
 
-func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new *resource.State) Step {
+func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State,
+	new *resource.State, stables []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "")
@@ -234,10 +236,11 @@ func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new
 	contract.Assert(new.ID == "")
 	contract.Assert(old.Type == new.Type)
 	return &UpdateStep{
-		iter: iter,
-		goal: goal,
-		old:  old,
-		new:  new,
+		iter:    iter,
+		goal:    goal,
+		old:     old,
+		new:     new,
+		stables: stables,
 	}
 }
 
@@ -264,7 +267,7 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 	// Now copy any output state back in case the update triggered cascading updates to other properties.
 	s.new.ID = s.old.ID
 	s.new.Outputs = outs
-	s.goal.Done(s.new, false)
+	s.goal.Done(s.new, false, s.stables)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(s.new)
 	return resource.StatusOK, nil
@@ -273,7 +276,7 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 func (s *UpdateStep) Skip() error {
 	// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
 	s.new.ID = s.old.ID
-	s.goal.Done(s.new, false)
+	s.goal.Done(s.new, false, s.stables)
 	return nil
 }
 

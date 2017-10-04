@@ -295,7 +295,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
 					urn, oldinputs, new.AllInputs())
 			}
-			return []Step{NewUpdateStep(iter, goal, old, new)}, nil
+			return []Step{NewUpdateStep(iter, goal, old, new, diff.StableKeys)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.

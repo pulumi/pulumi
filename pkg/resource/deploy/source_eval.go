@@ -284,8 +284,13 @@ func (rm *resmon) NewResource(ctx context.Context,
 	state := done.State
 	outprops := state.Synthesized()
 	stable := done.Stable
-	glog.V(5).Infof("ResourceMonitor.NewResource operation finished: t=%v, urn=%v (name=%v), stable=%v, #outs=%v",
-		state.Type, state.URN, goal.goal.Name, stable, len(outprops))
+	var stables []string
+	for _, sta := range done.Stables {
+		stables = append(stables, string(sta))
+	}
+	glog.V(5).Infof(
+		"ResourceMonitor.NewResource operation finished: t=%v, urn=%v (name=%v), stable=%v, #stables=%v #outs=%v",
+		state.Type, state.URN, goal.goal.Name, stable, len(stables), len(outprops))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
@@ -294,16 +299,18 @@ func (rm *resmon) NewResource(ctx context.Context,
 		return nil, err
 	}
 	return &lumirpc.NewResourceResponse{
-		Id:     string(state.ID),
-		Urn:    string(state.URN),
-		Object: outs,
-		Stable: stable,
+		Id:      string(state.ID),
+		Urn:     string(state.URN),
+		Object:  outs,
+		Stable:  stable,
+		Stables: stables,
 	}, nil
 }
 
 type evalState struct {
-	State  *resource.State // the resource state.
-	Stable bool            // if true, the resource state is stable and may be trusted.
+	State   *resource.State        // the resource state.
+	Stable  bool                   // if true, the resource state is stable and may be trusted.
+	Stables []resource.PropertyKey // an optional list of specific resource properties that are stable.
 }
 
 type evalSourceGoal struct {
@@ -315,7 +322,11 @@ func (g *evalSourceGoal) Resource() *resource.Goal {
 	return g.goal
 }
 
-func (g *evalSourceGoal) Done(state *resource.State, stable bool) {
+func (g *evalSourceGoal) Done(state *resource.State, stable bool, stables []resource.PropertyKey) {
 	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
-	g.done <- &evalState{State: state, Stable: stable}
+	g.done <- &evalState{
+		State:   state,
+		Stable:  stable,
+		Stables: stables,
+	}
 }

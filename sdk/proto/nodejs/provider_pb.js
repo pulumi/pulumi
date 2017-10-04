@@ -177,6 +177,402 @@ proto.pulumirpc.ConfigureRequest.prototype.clearVariablesMap = function() {
  * @extends {jspb.Message}
  * @constructor
  */
+proto.pulumirpc.InvokeRequest = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.pulumirpc.InvokeRequest, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.pulumirpc.InvokeRequest.displayName = 'proto.pulumirpc.InvokeRequest';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance) {
+  return proto.pulumirpc.InvokeRequest.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.pulumirpc.InvokeRequest} msg The msg instance to transform.
+ * @return {!Object}
+ */
+proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.pulumirpc.InvokeRequest}
+ */
+proto.pulumirpc.InvokeRequest.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.pulumirpc.InvokeRequest;
+  return proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.pulumirpc.InvokeRequest} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.pulumirpc.InvokeRequest}
+ */
+proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTok(value);
+      break;
+    case 2:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setArgs(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.InvokeRequest.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.pulumirpc.InvokeRequest.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.pulumirpc.InvokeRequest} message
+ * @param {!jspb.BinaryWriter} writer
+ */
+proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getTok();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getArgs();
+  if (f != null) {
+    writer.writeMessage(
+      2,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+};
+
+
+/**
+ * optional string tok = 1;
+ * @return {string}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getTok = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.InvokeRequest.prototype.setTok = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct args = 2;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getArgs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.InvokeRequest.prototype.setArgs = function(value) {
+  jspb.Message.setWrapperField(this, 2, value);
+};
+
+
+proto.pulumirpc.InvokeRequest.prototype.clearArgs = function() {
+  this.setArgs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.InvokeRequest.prototype.hasArgs = function() {
+  return jspb.Message.getField(this, 2) != null;
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.pulumirpc.InvokeResponse = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.InvokeResponse.repeatedFields_, null);
+};
+goog.inherits(proto.pulumirpc.InvokeResponse, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.pulumirpc.InvokeResponse.displayName = 'proto.pulumirpc.InvokeResponse';
+}
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.InvokeResponse.repeatedFields_ = [2];
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.pulumirpc.InvokeResponse.prototype.toObject = function(opt_includeInstance) {
+  return proto.pulumirpc.InvokeResponse.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.pulumirpc.InvokeResponse} msg The msg instance to transform.
+ * @return {!Object}
+ */
+proto.pulumirpc.InvokeResponse.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
+    proto.pulumirpc.CheckFailure.toObject, includeInstance)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.pulumirpc.InvokeResponse}
+ */
+proto.pulumirpc.InvokeResponse.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.pulumirpc.InvokeResponse;
+  return proto.pulumirpc.InvokeResponse.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.pulumirpc.InvokeResponse} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.pulumirpc.InvokeResponse}
+ */
+proto.pulumirpc.InvokeResponse.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setReturn(value);
+      break;
+    case 2:
+      var value = new proto.pulumirpc.CheckFailure;
+      reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
+      msg.addFailures(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.InvokeResponse.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.pulumirpc.InvokeResponse.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.pulumirpc.InvokeResponse} message
+ * @param {!jspb.BinaryWriter} writer
+ */
+proto.pulumirpc.InvokeResponse.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getReturn();
+  if (f != null) {
+    writer.writeMessage(
+      1,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getFailuresList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      2,
+      f,
+      proto.pulumirpc.CheckFailure.serializeBinaryToWriter
+    );
+  }
+};
+
+
+/**
+ * optional google.protobuf.Struct return = 1;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.InvokeResponse.prototype.getReturn = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 1));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.InvokeResponse.prototype.setReturn = function(value) {
+  jspb.Message.setWrapperField(this, 1, value);
+};
+
+
+proto.pulumirpc.InvokeResponse.prototype.clearReturn = function() {
+  this.setReturn(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.InvokeResponse.prototype.hasReturn = function() {
+  return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * repeated CheckFailure failures = 2;
+ * If you change this array by adding, removing or replacing elements, or if you
+ * replace the array itself, then you must call the setter to update it.
+ * @return {!Array.<!proto.pulumirpc.CheckFailure>}
+ */
+proto.pulumirpc.InvokeResponse.prototype.getFailuresList = function() {
+  return /** @type{!Array.<!proto.pulumirpc.CheckFailure>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 2));
+};
+
+
+/** @param {!Array.<!proto.pulumirpc.CheckFailure>} value */
+proto.pulumirpc.InvokeResponse.prototype.setFailuresList = function(value) {
+  jspb.Message.setRepeatedWrapperField(this, 2, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.CheckFailure=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.CheckFailure}
+ */
+proto.pulumirpc.InvokeResponse.prototype.addFailures = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.CheckFailure, opt_index);
+};
+
+
+proto.pulumirpc.InvokeResponse.prototype.clearFailuresList = function() {
+  this.setFailuresList([]);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
 proto.pulumirpc.CheckRequest = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
@@ -1007,7 +1403,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.DiffResponse.repeatedFields_ = [1];
+proto.pulumirpc.DiffResponse.repeatedFields_ = [1,2];
 
 
 
@@ -1037,7 +1433,8 @@ proto.pulumirpc.DiffResponse.prototype.toObject = function(opt_includeInstance) 
  */
 proto.pulumirpc.DiffResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    replacesList: jspb.Message.getField(msg, 1)
+    replacesList: jspb.Message.getField(msg, 1),
+    stablesList: jspb.Message.getField(msg, 2)
   };
 
   if (includeInstance) {
@@ -1078,6 +1475,10 @@ proto.pulumirpc.DiffResponse.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {string} */ (reader.readString());
       msg.addReplaces(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addStables(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1113,6 +1514,13 @@ proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer)
       f
     );
   }
+  f = message.getStablesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -1144,6 +1552,37 @@ proto.pulumirpc.DiffResponse.prototype.addReplaces = function(value, opt_index) 
 
 proto.pulumirpc.DiffResponse.prototype.clearReplacesList = function() {
   this.setReplacesList([]);
+};
+
+
+/**
+ * repeated string stables = 2;
+ * If you change this array by adding, removing or replacing elements, or if you
+ * replace the array itself, then you must call the setter to update it.
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.DiffResponse.prototype.getStablesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 2));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.DiffResponse.prototype.setStablesList = function(value) {
+  jspb.Message.setField(this, 2, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.DiffResponse.prototype.addStables = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+};
+
+
+proto.pulumirpc.DiffResponse.prototype.clearStablesList = function() {
+  this.setStablesList([]);
 };
 
 
@@ -2135,402 +2574,6 @@ proto.pulumirpc.DeleteRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.DeleteRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 3) != null;
-};
-
-
-
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.pulumirpc.InvokeRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.pulumirpc.InvokeRequest, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  proto.pulumirpc.InvokeRequest.displayName = 'proto.pulumirpc.InvokeRequest';
-}
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto suitable for use in Soy templates.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
- * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
- *     for transitional soy proto support: http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance) {
-  return proto.pulumirpc.InvokeRequest.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Whether to include the JSPB
- *     instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.pulumirpc.InvokeRequest} msg The msg instance to transform.
- * @return {!Object}
- */
-proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.pulumirpc.InvokeRequest}
- */
-proto.pulumirpc.InvokeRequest.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.pulumirpc.InvokeRequest;
-  return proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.pulumirpc.InvokeRequest} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.pulumirpc.InvokeRequest}
- */
-proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setTok(value);
-      break;
-    case 2:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setArgs(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.pulumirpc.InvokeRequest.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.pulumirpc.InvokeRequest.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.pulumirpc.InvokeRequest} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getTok();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getArgs();
-  if (f != null) {
-    writer.writeMessage(
-      2,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-};
-
-
-/**
- * optional string tok = 1;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getTok = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/** @param {string} value */
-proto.pulumirpc.InvokeRequest.prototype.setTok = function(value) {
-  jspb.Message.setField(this, 1, value);
-};
-
-
-/**
- * optional google.protobuf.Struct args = 2;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.pulumirpc.InvokeRequest.prototype.getArgs = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
-};
-
-
-/** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.pulumirpc.InvokeRequest.prototype.setArgs = function(value) {
-  jspb.Message.setWrapperField(this, 2, value);
-};
-
-
-proto.pulumirpc.InvokeRequest.prototype.clearArgs = function() {
-  this.setArgs(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {!boolean}
- */
-proto.pulumirpc.InvokeRequest.prototype.hasArgs = function() {
-  return jspb.Message.getField(this, 2) != null;
-};
-
-
-
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.pulumirpc.InvokeResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.InvokeResponse.repeatedFields_, null);
-};
-goog.inherits(proto.pulumirpc.InvokeResponse, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  proto.pulumirpc.InvokeResponse.displayName = 'proto.pulumirpc.InvokeResponse';
-}
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.pulumirpc.InvokeResponse.repeatedFields_ = [2];
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto suitable for use in Soy templates.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
- * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
- *     for transitional soy proto support: http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.pulumirpc.InvokeResponse.prototype.toObject = function(opt_includeInstance) {
-  return proto.pulumirpc.InvokeResponse.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Whether to include the JSPB
- *     instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.pulumirpc.InvokeResponse} msg The msg instance to transform.
- * @return {!Object}
- */
-proto.pulumirpc.InvokeResponse.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    pb_return: (f = msg.getReturn()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
-    proto.pulumirpc.CheckFailure.toObject, includeInstance)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.pulumirpc.InvokeResponse}
- */
-proto.pulumirpc.InvokeResponse.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.pulumirpc.InvokeResponse;
-  return proto.pulumirpc.InvokeResponse.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.pulumirpc.InvokeResponse} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.pulumirpc.InvokeResponse}
- */
-proto.pulumirpc.InvokeResponse.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setReturn(value);
-      break;
-    case 2:
-      var value = new proto.pulumirpc.CheckFailure;
-      reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
-      msg.addFailures(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.pulumirpc.InvokeResponse.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.pulumirpc.InvokeResponse.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.pulumirpc.InvokeResponse} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.pulumirpc.InvokeResponse.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getReturn();
-  if (f != null) {
-    writer.writeMessage(
-      1,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getFailuresList();
-  if (f.length > 0) {
-    writer.writeRepeatedMessage(
-      2,
-      f,
-      proto.pulumirpc.CheckFailure.serializeBinaryToWriter
-    );
-  }
-};
-
-
-/**
- * optional google.protobuf.Struct return = 1;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.pulumirpc.InvokeResponse.prototype.getReturn = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 1));
-};
-
-
-/** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.pulumirpc.InvokeResponse.prototype.setReturn = function(value) {
-  jspb.Message.setWrapperField(this, 1, value);
-};
-
-
-proto.pulumirpc.InvokeResponse.prototype.clearReturn = function() {
-  this.setReturn(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {!boolean}
- */
-proto.pulumirpc.InvokeResponse.prototype.hasReturn = function() {
-  return jspb.Message.getField(this, 1) != null;
-};
-
-
-/**
- * repeated CheckFailure failures = 2;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
- * @return {!Array.<!proto.pulumirpc.CheckFailure>}
- */
-proto.pulumirpc.InvokeResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array.<!proto.pulumirpc.CheckFailure>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 2));
-};
-
-
-/** @param {!Array.<!proto.pulumirpc.CheckFailure>} value */
-proto.pulumirpc.InvokeResponse.prototype.setFailuresList = function(value) {
-  jspb.Message.setRepeatedWrapperField(this, 2, value);
-};
-
-
-/**
- * @param {!proto.pulumirpc.CheckFailure=} opt_value
- * @param {number=} opt_index
- * @return {!proto.pulumirpc.CheckFailure}
- */
-proto.pulumirpc.InvokeResponse.prototype.addFailures = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 2, opt_value, proto.pulumirpc.CheckFailure, opt_index);
-};
-
-
-proto.pulumirpc.InvokeResponse.prototype.clearFailuresList = function() {
-  this.setFailuresList([]);
 };
 
 

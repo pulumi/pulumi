@@ -168,6 +168,18 @@ var ResourceProviderService = exports.ResourceProviderService = {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  // Invoke dynamically executes a built-in function in the provider.
+  invoke: {
+    path: '/pulumirpc.ResourceProvider/Invoke',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.InvokeRequest,
+    responseType: provider_pb.InvokeResponse,
+    requestSerialize: serialize_pulumirpc_InvokeRequest,
+    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
+    responseSerialize: serialize_pulumirpc_InvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+  },
   // Check validates that the given property bag is valid for a resource of the given type.
   check: {
     path: '/pulumirpc.ResourceProvider/Check',
@@ -228,18 +240,6 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
-  },
-  // Invoke dynamically executes a built-in function in the provider.
-  invoke: {
-    path: '/pulumirpc.ResourceProvider/Invoke',
-    requestStream: false,
-    responseStream: false,
-    requestType: provider_pb.InvokeRequest,
-    responseType: provider_pb.InvokeResponse,
-    requestSerialize: serialize_pulumirpc_InvokeRequest,
-    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
-    responseSerialize: serialize_pulumirpc_InvokeResponse,
-    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
 };
 

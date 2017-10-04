@@ -47,6 +47,7 @@ export function registerResource(res: Resource, t: string, name: string, props: 
         let id: ID | undefined = undefined;
         let propsStruct: any | undefined = undefined;
         let stable: boolean = false;
+        let stables: Set<string> | undefined = undefined;
 
         // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
         // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
@@ -82,6 +83,14 @@ export function registerResource(res: Resource, t: string, name: string, props: 
                 id = resp.getId();
                 propsStruct = resp.getObject();
                 stable = resp.getStable();
+
+                let stablesList: string[] | undefined = resp.getStablesList();
+                if (stablesList) {
+                    stables = new Set<string>();
+                    for (let sta of stablesList) {
+                        stables.add(sta);
+                    }
+                }
             }
             else {
                 // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
@@ -98,7 +107,7 @@ export function registerResource(res: Resource, t: string, name: string, props: 
             resolveID(id || undefined);
 
             // Finally propagate any other properties that were given to us as outputs.
-            resolveProperties(res, result, t, name, props, propsStruct, stable);
+            resolveProperties(res, result, t, name, props, propsStruct, stable, stables);
         }
     }));
 
