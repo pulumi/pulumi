@@ -162,7 +162,7 @@ class ConfigTypeError extends RunError {
  * ConfigMissingError is used when a configuration value is completely missing.
  */
 class ConfigMissingError extends RunError {
-    constructor(key: string) {
+    constructor(public key: string) {
         super(
             `Missing required configuration variable '${key}'\n` +
             `\tplease set a value using the command \`pulumi config ${key} <value>\``
