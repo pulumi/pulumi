@@ -35,12 +35,21 @@ func newDestroyCmd() *cobra.Command {
 
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", envName.String()) {
-				return lumiEngine.Destroy(envName, engine.DestroyOptions{
+
+				events := make(chan engine.Event)
+				done := make(chan bool)
+
+				go displayEvents(events, done, debug)
+
+				err := lumiEngine.Destroy(envName, events, engine.DestroyOptions{
 					DryRun:   preview,
 					Debug:    debug,
 					Parallel: parallel,
 					Summary:  summary,
 				})
+
+				<-done
+				return err
 			}
 
 			return nil

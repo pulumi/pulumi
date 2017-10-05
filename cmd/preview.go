@@ -38,7 +38,12 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			return lumiEngine.Preview(envName, engine.PreviewOptions{
+			events := make(chan engine.Event)
+			done := make(chan bool)
+
+			go displayEvents(events, done, debug)
+
+			err = lumiEngine.Preview(envName, events, engine.PreviewOptions{
 				Debug:                debug,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
@@ -47,6 +52,9 @@ func newPreviewCmd() *cobra.Command {
 				ShowSames:            showSames,
 				Summary:              summary,
 			})
+
+			<-done
+			return err
 		}),
 	}
 

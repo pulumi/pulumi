@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -67,25 +66,15 @@ const (
 
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Pwd    string    // the working directory.
-	Colors bool      // if true, output will be colorized.
-	Debug  bool      // if true, debugging will be output to stdout.
-	Stdout io.Writer // if non nil, use this writer instead of os.Stdout for output
-	Stderr io.Writer // if non nil, use this writer instead of os.Stderr for errors
+	Pwd    string // the working directory.
+	Colors bool   // if true, output will be colorized.
+	Debug  bool   // if true, debugging will be output to stdout.
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
-func DefaultSink(opts FormatOptions) Sink {
-	// Default info to stdout if there's no override in the options.
-	stdout := io.Writer(os.Stdout)
-	if opts.Stdout != nil {
-		stdout = opts.Stdout
-	}
-	// Default info(err), error, warning to stderr if there's no override in the options.
-	stderr := io.Writer(os.Stderr)
-	if opts.Stderr != nil {
-		stderr = opts.Stderr
-	}
+func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
+	contract.Require(stdout != nil, "stdout")
+	contract.Require(stderr != nil, "stderr")
 	// Discard debug output by default unless requested.
 	debug := ioutil.Discard
 	if opts.Debug {

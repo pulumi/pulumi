@@ -24,7 +24,7 @@ var (
 )
 
 func init() {
-	lumiEngine = engine.Engine{Stdout: os.Stdout, Stderr: os.Stderr, Environment: localEnvProvider{}}
+	lumiEngine = engine.Engine{Environment: localEnvProvider{}}
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.

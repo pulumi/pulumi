@@ -39,7 +39,12 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			return lumiEngine.Deploy(envName, engine.DeployOptions{
+			events := make(chan engine.Event)
+			done := make(chan bool)
+
+			go displayEvents(events, done, debug)
+
+			err = lumiEngine.Deploy(envName, events, engine.DeployOptions{
 				Debug:                debug,
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
@@ -49,6 +54,9 @@ func newUpdateCmd() *cobra.Command {
 				ShowSames:            showSames,
 				Summary:              summary,
 			})
+
+			<-done
+			return err
 		}),
 	}
 

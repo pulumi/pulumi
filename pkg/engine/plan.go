@@ -24,7 +24,7 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	contract.Assert(info.Target != nil)
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(eng.Diag(), nil)
+	ctx, err := plugin.NewContext(opts.Diag, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -60,9 +60,10 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
 	return &planResult{
-		Ctx:  ctx,
-		Info: info,
-		Plan: plan,
+		Ctx:     ctx,
+		Info:    info,
+		Plan:    plan,
+		Options: opts,
 	}, nil
 }
 
@@ -158,7 +159,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
+	result.Options.Events <- stdOutEventWithColor(&prelude)
 
 	actions := &previewActions{
 		Ops:  make(map[deploy.StepOp]int),
@@ -169,7 +170,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 		return errors.Errorf("An error occurred while advancing the preview: %v", err)
 	}
 
-	if !eng.Diag().Success() {
+	if !result.Options.Diag.Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
 		return errors.New("One or more errors occurred during this preview")
@@ -177,7 +178,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 	// Print a summary of operation counts.
 	printChangeSummary(&actions.Summary, actions.Ops, true)
-	fmt.Fprint(eng.Stdout, colors.Colorize(&actions.Summary))
+	result.Options.Events <- stdOutEventWithColor(&actions.Summary)
 	return nil
 }
 
