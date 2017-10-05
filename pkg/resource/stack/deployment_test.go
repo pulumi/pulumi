@@ -22,6 +22,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			tokens.QName("resource-x"),
 		),
 		true,
+		false,
 		resource.ID("test-resource-x"),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"in-nil":         nil,

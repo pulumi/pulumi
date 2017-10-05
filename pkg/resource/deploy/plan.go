@@ -43,6 +43,11 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		for _, oldres := range prev.Resources {
+			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
+			if oldres.Delete {
+				continue
+			}
+
 			urn := oldres.URN
 			contract.Assert(olds[urn] == nil)
 			olds[urn] = oldres

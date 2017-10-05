@@ -158,7 +158,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	urnD := resource.NewURN(ns, pkgname, typD, namD)
 
 	// Create the old resources snapshot.
-	oldResB := resource.NewState(typB, urnB, true, resource.ID("b-b-b"),
+	oldResB := resource.NewState(typB, urnB, true, false, resource.ID("b-b-b"),
 		resource.PropertyMap{
 			"bf1": resource.NewStringProperty("b-value"),
 			"bf2": resource.NewNumberProperty(42),
@@ -167,7 +167,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		nil,
 	)
-	oldResC := resource.NewState(typC, urnC, true, resource.ID("c-c-c"),
+	oldResC := resource.NewState(typC, urnC, true, false, resource.ID("c-c-c"),
 		resource.PropertyMap{
 			"cf1": resource.NewStringProperty("c-value"),
 			"cf2": resource.NewNumberProperty(83),
@@ -179,7 +179,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		},
 		nil,
 	)
-	oldResD := resource.NewState(typD, urnD, true, resource.ID("d-d-d"),
+	oldResD := resource.NewState(typD, urnD, true, false, resource.ID("d-d-d"),
 		resource.PropertyMap{
 			"df1": resource.NewStringProperty("d-value"),
 			"df2": resource.NewNumberProperty(167),

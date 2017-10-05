@@ -190,7 +190,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	new := resource.NewState(res.Type, urn, res.Custom, "", res.Properties, nil, nil, res.Children)
+	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil, nil, res.Children)
 
 	// If there is an old resource, apply its default properties before going any further.
 	old, hasold := iter.p.Olds()[urn]
@@ -380,8 +380,8 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
 			res := prev.Resources[i]
 			urn := res.URN
-			contract.Assert(!iter.creates[urn])
-			if (!iter.sames[urn] && !iter.updates[urn]) || iter.replaces[urn] {
+			contract.Assert(!iter.creates[urn] || res.Delete)
+			if res.Delete || (!iter.sames[urn] && !iter.updates[urn]) || iter.replaces[urn] {
 				dels = append(dels, res)
 			}
 		}

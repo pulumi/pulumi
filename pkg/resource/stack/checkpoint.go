@@ -44,24 +44,8 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 	if latest := chkpoint.Latest; latest != nil {
 		// For every serialized resource vertex, create a ResourceDeployment out of it.
 		var resources []*resource.State
-		if latest.Resources != nil {
-			for _, kvp := range latest.Resources.Iter() {
-				// Deserialize the resource properties, if they exist.
-				res := kvp.Value
-				inputs := DeserializeProperties(res.Inputs)
-				defaults := DeserializeProperties(res.Defaults)
-				outputs := DeserializeProperties(res.Outputs)
-
-				var children []resource.URN
-				for _, child := range res.Children {
-					children = append(children, resource.URN(child))
-				}
-
-				// And now just produce a resource object using the information available.
-				resources = append(resources,
-					resource.NewState(res.Type, kvp.Key, res.Custom, res.ID,
-						inputs, defaults, outputs, children))
-			}
+		for _, res := range latest.Resources {
+			resources = append(resources, DeserializeResource(res))
 		}
 
 		snap = deploy.NewSnapshot(name, chkpoint.Latest.Time, resources, latest.Info)

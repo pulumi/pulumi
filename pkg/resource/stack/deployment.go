@@ -3,8 +3,6 @@
 package stack
 
 import (
-	"bytes"
-	"encoding/json"
 	"reflect"
 	"sort"
 	"time"
@@ -21,12 +19,14 @@ import (
 type Deployment struct {
 	Time      time.Time   `json:"time"`                // the time of the deploy.
 	Info      interface{} `json:"info,omitempty"`      // optional information about the source.
-	Resources *Resources  `json:"resources,omitempty"` // a map of resource.URNs to resource vertices.
+	Resources []Resource  `json:"resources,omitempty"` // an array of resources.
 }
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Resource struct {
+	URN      resource.URN           `json:"URN"`                // the URN for this resource.
 	Custom   bool                   `json:"custom"`             // true if a custom resource managed by a plugin.
+	Delete   bool                   `json:"delete"`             // true if this resource should be deleted during the next update.
 	ID       resource.ID            `json:"id,omitempty"`       // the provider ID for this resource, if any.
 	Type     tokens.Type            `json:"type"`               // this resource's full type token.
 	Inputs   map[string]interface{} `json:"inputs,omitempty"`   // the input properties from the program.
@@ -38,27 +38,22 @@ type Resource struct {
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resm *Resources
-	if snapres := snap.Resources; len(snapres) > 0 {
-		resm = NewResources()
-		for _, res := range snapres {
-			urn := res.URN
-			contract.Assertf(string(urn) != "", "Unexpected empty resource resource.URN")
-			contract.Assertf(!resm.Has(urn), "Unexpected duplicate resource resource.URN '%v'", urn)
-			resm.Add(urn, SerializeResource(res))
-		}
+	var resources []Resource
+	for _, res := range snap.Resources {
+		resources = append(resources, SerializeResource(res))
 	}
 
 	return &Deployment{
 		Time:      snap.Time,
 		Info:      snap.Info,
-		Resources: resm,
+		Resources: resources,
 	}
 }
 
-// SerializeResource turns a resource into a LumiGL data structure suitable for serialization.
-func SerializeResource(res *resource.State) *Resource {
+// SerializeResource turns a resource into a structure suitable for serialization.
+func SerializeResource(res *resource.State) Resource {
 	contract.Assert(res != nil)
+	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
@@ -81,8 +76,10 @@ func SerializeResource(res *resource.State) *Resource {
 	}
 	sort.Strings(children)
 
-	return &Resource{
+	return Resource{
+		URN:      res.URN,
 		Custom:   res.Custom,
+		Delete:   res.Delete,
 		ID:       res.ID,
 		Type:     res.Type,
 		Children: children,
@@ -139,6 +136,21 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 	return prop.V
 }
 
+// DeserializeResource turns a serialized resource back into its usual form.
+func DeserializeResource(res Resource) *resource.State {
+	// Deserialize the resource properties, if they exist.
+	inputs := DeserializeProperties(res.Inputs)
+	defaults := DeserializeProperties(res.Defaults)
+	outputs := DeserializeProperties(res.Outputs)
+
+	var children []resource.URN
+	for _, child := range res.Children {
+		children = append(children, resource.URN(child))
+	}
+
+	return resource.NewState(res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, defaults, outputs, children)
+}
+
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
 func DeserializeProperties(props map[string]interface{}) resource.PropertyMap {
 	result := make(resource.PropertyMap)
@@ -181,151 +193,4 @@ func DeserializePropertyValue(v interface{}) resource.PropertyValue {
 	}
 
 	return resource.NewNullProperty()
-}
-
-// Resources is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
-// enumerations are ordered deterministically, versus Go's built-in map type whose enumeration is randomized.
-// Additionally, because of this stable ordering, marshaling to and from JSON also preserves the order of keys.
-type Resources struct {
-	m    map[resource.URN]*Resource
-	keys []resource.URN
-}
-
-func NewResources() *Resources {
-	return &Resources{m: make(map[resource.URN]*Resource)}
-}
-
-func (m *Resources) Keys() []resource.URN { return m.keys }
-func (m *Resources) Len() int             { return len(m.keys) }
-
-func (m *Resources) Add(k resource.URN, v *Resource) {
-	_, has := m.m[k]
-	contract.Assertf(!has, "Unexpected duplicate key '%v' added to map")
-	m.m[k] = v
-	m.keys = append(m.keys, k)
-}
-
-func (m *Resources) Delete(k resource.URN) {
-	_, has := m.m[k]
-	contract.Assertf(has, "Unexpected delete of non-existent key key '%v'")
-	delete(m.m, k)
-	for i, ek := range m.keys {
-		if ek == k {
-			newk := m.keys[:i]
-			m.keys = append(newk, m.keys[i+1:]...)
-			break
-		}
-		contract.Assertf(i != len(m.keys)-1, "Expected to find deleted key '%v' in map's keys")
-	}
-}
-
-func (m *Resources) Get(k resource.URN) (*Resource, bool) {
-	v, has := m.m[k]
-	return v, has
-}
-
-func (m *Resources) Has(k resource.URN) bool {
-	_, has := m.m[k]
-	return has
-}
-
-func (m *Resources) Must(k resource.URN) *Resource {
-	v, has := m.m[k]
-	contract.Assertf(has, "Expected key '%v' to exist in this map", k)
-	return v
-}
-
-func (m *Resources) Set(k resource.URN, v *Resource) {
-	_, has := m.m[k]
-	contract.Assertf(has, "Expected key '%v' to exist in this map for setting an element", k)
-	m.m[k] = v
-}
-
-func (m *Resources) SetOrAdd(k resource.URN, v *Resource) {
-	if _, has := m.m[k]; has {
-		m.Set(k, v)
-	} else {
-		m.Add(k, v)
-	}
-}
-
-type ResourceKV struct {
-	Key   resource.URN
-	Value *Resource
-}
-
-// Iter can be used to conveniently range over a map's contents stably.
-func (m *Resources) Iter() []ResourceKV {
-	var kvps []ResourceKV
-	for _, k := range m.Keys() {
-		kvps = append(kvps, ResourceKV{k, m.Must(k)})
-	}
-	return kvps
-}
-
-func (m *Resources) MarshalJSON() ([]byte, error) {
-	var b bytes.Buffer
-	b.WriteString("{")
-	for i, k := range m.Keys() {
-		if i != 0 {
-			b.WriteString(",")
-		}
-
-		kb, err := json.Marshal(k)
-		if err != nil {
-			return nil, err
-		}
-		b.Write(kb)
-
-		b.WriteString(":")
-
-		vb, err := json.Marshal(m.Must(k))
-		if err != nil {
-			return nil, err
-		}
-		b.Write(vb)
-	}
-	b.WriteString("}")
-	return b.Bytes(), nil
-}
-
-func (m *Resources) UnmarshalJSON(b []byte) error {
-	contract.Assert(m.m == nil)
-	m.m = make(map[resource.URN]*Resource)
-
-	// Do a pass and read keys and values in the right order.
-	rdr := bytes.NewReader(b)
-	dec := json.NewDecoder(rdr)
-
-	// First, eat the open object curly '{':
-	contract.Assert(dec.More())
-	opencurly, err := dec.Token()
-	if err != nil {
-		return err
-	}
-	contract.Assert(opencurly.(json.Delim) == '{')
-
-	// Parse out every resource key (resource.URN) and element (*Deployment):
-	for dec.More() {
-		// See if we've reached the closing '}'; if yes, chew on it and break.
-		token, err := dec.Token()
-		if err != nil {
-			return err
-		}
-		if closecurly, isclose := token.(json.Delim); isclose {
-			contract.Assert(closecurly == '}')
-			break
-		}
-
-		k := resource.URN(token.(string))
-		contract.Assert(dec.More())
-		var v *Resource
-		if err := dec.Decode(&v); err != nil {
-			return err
-		}
-		contract.Assert(!m.Has(k))
-		m.Add(k, v)
-	}
-
-	return nil
 }
