@@ -12,7 +12,6 @@ import (
 type PreviewOptions struct {
 	Package              string   // the package to compute the preview for
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Debug                bool     // true to enable resource debugging output.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
@@ -31,11 +30,9 @@ func (eng *Engine) Preview(environment tokens.QName, events chan Event, opts Pre
 
 	diag := newEventSink(events, diag.FormatOptions{
 		Colors: true,
-		Debug:  opts.Debug,
 	})
 
 	deployOpts := deployOptions{
-		Debug:                opts.Debug,
 		Destroy:              false,
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,

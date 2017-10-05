@@ -44,7 +44,6 @@ func newPreviewCmd() *cobra.Command {
 			go displayEvents(events, done, debug)
 
 			err = lumiEngine.Preview(envName, events, engine.PreviewOptions{
-				Debug:                debug,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,

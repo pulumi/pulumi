@@ -43,7 +43,6 @@ func newDestroyCmd() *cobra.Command {
 
 				err := lumiEngine.Destroy(envName, events, engine.DestroyOptions{
 					DryRun:   preview,
-					Debug:    debug,
 					Parallel: parallel,
 					Summary:  summary,
 				})

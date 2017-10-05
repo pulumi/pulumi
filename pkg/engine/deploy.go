@@ -21,7 +21,6 @@ import (
 type DeployOptions struct {
 	Package              string   // the package we are deploying (or "" to use the default)
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Debug                bool     // true to enable resource debugging output.
 	DryRun               bool     // true if we should just print the plan without performing it.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
@@ -41,13 +40,11 @@ func (eng *Engine) Deploy(environment tokens.QName, events chan Event, opts Depl
 
 	diag := newEventSink(events, diag.FormatOptions{
 		Colors: true,
-		Debug:  opts.Debug,
 	})
 
 	defer close(events)
 
 	return eng.deployLatest(info, deployOptions{
-		Debug:                opts.Debug,
 		Destroy:              false,
 		DryRun:               opts.DryRun,
 		Analyzers:            opts.Analyzers,
@@ -62,7 +59,6 @@ func (eng *Engine) Deploy(environment tokens.QName, events chan Event, opts Depl
 }
 
 type deployOptions struct {
-	Debug                bool       // true to enable resource debugging output.
 	Create               bool       // true if we are creating resources.
 	Destroy              bool       // true if we are destroying the environment.
 	DryRun               bool       // true if we should just print the plan without performing it.
