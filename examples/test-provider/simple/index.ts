@@ -2,19 +2,51 @@
 
 import * as pulumi from "pulumi";
 
-class Sum extends pulumi.Resource {
+class Add extends pulumi.Resource {
 	public readonly sum: pulumi.Computed<number>;
 
 	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-		super("test:provider:sum", name, {left: left, right: right, sum: undefined}, undefined);
+		super("test:provider:add", name, {left: left, right: right, sum: undefined}, undefined);
+	}
+}
+
+class Mul extends pulumi.Resource {
+	public readonly product: pulumi.Computed<number>;
+
+	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+		super("test:provider:mul", name, {left: left, right: right, product: undefined}, undefined);
+	}
+}
+
+class Sub extends pulumi.Resource {
+	public readonly difference: pulumi.Computed<number>;
+
+	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+		super("test:provider:sub", name, {left: left, right: right, difference: undefined}, undefined);
+	}
+}
+
+class Div extends pulumi.Resource {
+	public readonly quotient: pulumi.Computed<number>;
+	public readonly remainder: pulumi.Computed<number>;
+
+	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+		super("test:provider:div", name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
 	}
 }
 
 let config = new pulumi.Config("simple:config");
 
-let x = Number(config.require("x")), y = Number(config.require("y"));
-let v = Number(config.require("v")), w = Number(config.require("w"));
+let w = Number(config.require("w")), x = Number(config.require("x")), y = Number(config.require("y"));
 
-let left = new Sum("left", x, y);
-let right = new Sum("right", v, w);
-let total = new Sum("total", left.sum, right.sum);
+let sum = new Add("sum", x, y);
+let square = new Mul("square", sum.sum, sum.sum);
+let diff = new Sub("diff", square.product, w);
+let divrem = new Div("result", diff.difference, sum.sum);
+let result = new Add("result", divrem.quotient, divrem.remainder);
+
+let output = async function(): Promise<void> {
+	console.log(`((${x} + ${y})^2 - ${w}) / (${x} + ${y}) + ((${x} + ${y})^2 - ${w}) %% (${x} + ${y}) = ${await result.sum}`);
+};
+
+output();
