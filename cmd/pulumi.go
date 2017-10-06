@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 
@@ -61,6 +62,12 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newUpdateCmd())
 	cmd.AddCommand(newVersionCmd())
+
+	// Tell flag about -C, so someone can do pulumi -C <working-directory> env and the call to cmdutil.InitLogging
+	// which calls flag.Parse under the hood doesn't yell at you.
+	//
+	// TODO[pulumi/pulumi#301]: when we move away from using glog, it should be safe to remove this.
+	flag.StringVar(&cwd, "C", "", "Run pulumi as if it had been started in another directory")
 
 	return cmd
 }
