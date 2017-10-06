@@ -8,30 +8,39 @@ import * as minimist from "minimist";
 
 let fs = require("fs");
 let grpc = require("grpc");
+let emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
+let structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 let provproto = require("../../proto/provider_pb.js");
 let provrpc = require("../../proto/provider_grpc_pb.js");
 
+const ResourcesFileName = "test-resources.json";
 let resources: any;
 let impl: any;
 
 const URNPrefix: string = "urn:pulumi:";
 const URNNameDelimiter: string = "::";
+const NSDelimiter: string = ":";
 
 function getTypeFromURN(urn: string): string {
-	return urn.split(URNNameDelimiter)[2];
+	return urn.split(URNNameDelimiter)[2].split(NSDelimiter)[2];
 }
 
 function configureRPC(call: any, callback: any): void {
 	let req = call.request;
+	let resp = new emptyproto.Empty();
 
-	impl = require(req.variables.impl);
+	let variables = req.getVariablesMap();
+	let implJS = variables.get("test:provider:impl");
+	impl = require(implJS);
 
-	callback(undefined, undefined);
+	callback(undefined, resp);
 }
 
 function invokeRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.InvokeResponse();
+
+	console.error(`invoke(${req})`);
 
 	// TODO: implement this.
 
@@ -51,10 +60,12 @@ function diffRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.DiffResponse();
 
-	let type = getTypeFromURN(req.urn);
-	let result: any = impl[type].diff(resources[req.id], req.olds, req.news);
+	let type = getTypeFromURN(req.getUrn());
+	let result: any = impl[type].diff(resources[req.getId()], req.getOlds().toJavaScript(), req.getNews().toJavaScript());
 
-	resp.replaces = result.replaces;
+	if (result.replaces) {
+		resp.setReplaces(result.replaces);
+	}
 
 	callback(undefined, resp);
 }
@@ -63,14 +74,26 @@ function createRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.CreateResponse();
 
-	let type = getTypeFromURN(req.urn);
-	let result: any = impl[type].create(req.properties);
+	let type = getTypeFromURN(req.getUrn());
+	let ins = req.getProperties().toJavaScript();
+	console.error(ins);
+	let result: any = impl[type].create(ins);
 
-	let id = Object.keys(resources).length - 1;
-	resources[id] = result.resource;
+	let resource = result.resource;
+	let id = Object.keys(resources).length;
+	resources[id] = resource;
 
-	resp.id = id;
-	resp.properties = result.outs;
+	fs.writeFileSync(ResourcesFileName, JSON.stringify(resources));
+
+	resp.setId(id.toString());
+	if (result.outs) {
+		let properties: any = {};
+		for (let k of result.outs) {
+			properties[k] = resource[k];
+		}
+		console.error(properties);
+		resp.setProperties(structproto.Struct.fromJavaScript(properties));
+	}
 
 	callback(undefined, resp);
 }
@@ -79,23 +102,36 @@ function updateRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.UpdateResponse();
 
-	let type = getTypeFromURN(req.urn);
-	let result: any = impl[type].udpate(resources[req.id], req.olds, req.news);
+	let resource = resources[req.getId()];
+	let type = getTypeFromURN(req.getUrn());
+	let result: any = impl[type].update(resource, req.getOlds().toJavaScript(), req.getNews().toJavaScript());
 
-	resp.properties = result.properties;
+	fs.writeFileSync(ResourcesFileName, JSON.stringify(resources));
+
+	if (result.outs) {
+		let properties: any = {};
+		for (let k of result.outs) {
+			properties[k] = resource[k];
+		}
+		resp.setProperties(structproto.Struct.fromJavaScript(properties));
+	}
 
 	callback(undefined, resp);
 }
 
 function deleteRPC(call: any, callback: any): void {
 	let req: any = call.request;
+	let resp = new emptyproto.Empty();
 
-	let type = getTypeFromURN(req.urn);
-	impl[type].delete(resources[req.id], req.properties);
+	let id = req.getId();
+	let type = getTypeFromURN(req.getUrn());
+	impl[type].delete(resources[id], req.getProperties());
 
-	delete resources[req.id];
+	delete resources[id];
 
-	callback(undefined, undefined);
+	fs.writeFileSync(ResourcesFileName, JSON.stringify(resources));
+
+	callback(undefined, resp);
 }
 
 export function main(args: string[]): void {
@@ -110,7 +146,7 @@ export function main(args: string[]): void {
 
 	// Load up any serialized resource state.
 	try {
-		resources = JSON.parse(fs.readFileSync("test-provider-resources.json"));
+		resources = JSON.parse(fs.readFileSync(ResourcesFileName));
 	} catch (e) {
 		console.error(`fatal: could not load resources: ${e}`);
 		process.exit(-1);

@@ -2,22 +2,19 @@
 
 import * as pulumi from "pulumi";
 
-class Simple extends pulumi.Resource {
-	public readonly b: pulumi.Computed<string>;
+class Sum extends pulumi.Resource {
+	public readonly sum: pulumi.Computed<number>;
 
-	constructor(name: string) {
-		let ins: any = { a: "a" };
-		let outs: any = { b: "b" };
-
-		super("test:simple:simple", name, {ins: ins, outs: outs}, undefined);
+	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+		super("test:provider:sum", name, {left: left, right: right, sum: undefined}, undefined);
 	}
 }
 
-async function run(): Promise<void> {
-	let s = new Simple("hello-world");
-	let s2 = new Simple(await s.b || "<unknown>");
+let config = new pulumi.Config("simple:config");
 
-	console.log(await s2.urn);
-}
+let x = Number(config.require("x")), y = Number(config.require("y"));
+let v = Number(config.require("v")), w = Number(config.require("w"));
 
-run();
+let left = new Sum("left", x, y);
+let right = new Sum("right", v, w);
+let total = new Sum("total", left.sum, right.sum);

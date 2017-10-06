@@ -24,7 +24,7 @@ let resourceChain: Promise<void> = Promise.resolve();
 export function registerResource(res: Resource, t: string, name: string, props: ComputedValues | undefined,
     dependsOn: Resource[] | undefined): void {
     log.debug(`Registering resource: t=${t}, name=${name}` +
-        excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
+        (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     let createError: Error = new Error(`Resouce '${name}' [${t}] could not be created`);
@@ -56,7 +56,7 @@ export function registerResource(res: Resource, t: string, name: string, props: 
         try {
             let obj: any = result.obj;
             log.debug(`Resource RPC prepared: t=${t}, name=${name}` +
-                excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+                (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
             // Fetch the monitor and make an RPC request.
             let monitor: any = getMonitor();
