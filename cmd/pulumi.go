@@ -31,9 +31,17 @@ func NewPulumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var verbose int
+	var cwd string
 	cmd := &cobra.Command{
 		Use: "pulumi",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if cwd != "" {
+				err := os.Chdir(cwd)
+				if err != nil {
+					cmdutil.ExitError(err.Error())
+				}
+			}
+
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -41,6 +49,7 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().IntVarP(
@@ -54,14 +63,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd
-}
-
-func pkgargFromArgs(args []string) string {
-	if len(args) > 0 {
-		return args[0]
-	}
-
-	return ""
 }
 
 func confirmPrompt(msg string, name string) bool {

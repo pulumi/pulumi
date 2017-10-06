@@ -19,7 +19,7 @@ func newPreviewCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "preview [<package>] [-- [<args>]]",
+		Use:   "preview",
 		Short: "Show a preview of updates to an environment's resources",
 		Long: "Show a preview of updates an environment's resources\n" +
 			"\n" +
@@ -30,8 +30,8 @@ func newPreviewCmd() *cobra.Command {
 			"determine what operations must take place to achieve the desired state. No changes to the\n" +
 			"environment will actually take place.\n" +
 			"\n" +
-			"By default, the package to execute is loaded from the current directory. Optionally, an\n" +
-			"explicit path can be provided using the [package] argument.",
+			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
+			"use a different directory.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			envName, err := explicitOrCurrent(env)
 			if err != nil {
@@ -39,7 +39,6 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			return lumiEngine.Preview(envName, engine.PreviewOptions{
-				Package:              pkgargFromArgs(args),
 				Debug:                debug,
 				Analyzers:            analyzers,
 				Parallel:             parallel,

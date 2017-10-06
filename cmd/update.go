@@ -20,7 +20,7 @@ func newUpdateCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "update [<package>] [-- [<args>]]",
+		Use:   "update",
 		Short: "Update the resources in an environment",
 		Long: "Update the resources in an environment\n" +
 			"\n" +
@@ -31,8 +31,8 @@ func newUpdateCmd() *cobra.Command {
 			"must take place to achieve the desired state. This command results in a full snapshot of the\n" +
 			"environment's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
-			"By default, the package to execute is loaded from the current directory. Optionally, an\n" +
-			"explicit path can be provided using the [package] argument.",
+			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
+			"use a different directory.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			envName, err := explicitOrCurrent(env)
 			if err != nil {
@@ -40,7 +40,6 @@ func newUpdateCmd() *cobra.Command {
 			}
 
 			return lumiEngine.Deploy(envName, engine.DeployOptions{
-				Package:              pkgargFromArgs(args),
 				Debug:                debug,
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
