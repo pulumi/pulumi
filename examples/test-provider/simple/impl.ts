@@ -1,18 +1,9 @@
-let fs = require("fs");
-
-const ResourceFileName: string = "resources.json";
-let resources: any;
-
-exports.configure = function() {
-	resources = JSON.parse(fs.readFileSync(ResourceFileName));
-}
-
-exports.invoke = function() {}
-exports.check = function() {}
-exports.diff = function() {}
-exports.update = function() {}
-exports.delete = function() {}
-
-exports.create = function() {
-	
-}
+exports.simple = {
+	diff: function() {},
+	create: function(inputs: any): any {
+	},
+	update: function(r: any, olds: any, news: any): any {
+	},
+	delete: function(r: any, properties: any): any {
+	}
+};

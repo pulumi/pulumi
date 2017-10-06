@@ -6,17 +6,25 @@
 
 import * as minimist from "minimist";
 
+let fs = require("fs");
 let grpc = require("grpc");
 let provproto = require("../../proto/provider_pb.js");
 let provrpc = require("../../proto/provider_grpc_pb.js");
 
+let resources: any;
 let impl: any;
 
+const URNPrefix: string = "urn:pulumi:";
+const URNNameDelimiter: string = "::";
+
+function getTypeFromURN(urn: string): string {
+	return urn.split(URNNameDelimiter)[2];
+}
+
 function configureRPC(call: any, callback: any): void {
-	let req: any = call.request;
+	let req = call.request;
 
 	impl = require(req.variables.impl);
-	impl.configure(req.variables);
 
 	callback(undefined, undefined);
 }
@@ -25,9 +33,7 @@ function invokeRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.InvokeResponse();
 
-	let result = impl.invoke(req.tok, req.args);
-	resp.return = result.return;
-	resp.failures = result.failures;
+	// TODO: implement this.
 
 	callback(undefined, resp);
 }
@@ -36,9 +42,7 @@ function checkRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.CheckResponse();
 
-	let result = impl.check(req.urn, req.properties);
-	resp.defaults = result.defaults;
-	resp.failures = result.failures;
+	// TODO: implement this.
 
 	callback(undefined, resp);
 }
@@ -47,7 +51,9 @@ function diffRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.DiffResponse();
 
-	let result = impl.diff(req.id, req.urn, req.olds, req.news);
+	let type = getTypeFromURN(req.urn);
+	let result: any = impl[type].diff(resources[req.id], req.olds, req.news);
+
 	resp.replaces = result.replaces;
 
 	callback(undefined, resp);
@@ -57,9 +63,14 @@ function createRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.CreateResponse();
 
-	let result = impl.create(req.urn, req.properties);
-	resp.id = result.id;
-	resp.properties = result.properties;
+	let type = getTypeFromURN(req.urn);
+	let result: any = impl[type].create(req.properties);
+
+	let id = Object.keys(resources).length - 1;
+	resources[id] = result.resource;
+
+	resp.id = id;
+	resp.properties = result.outs;
 
 	callback(undefined, resp);
 }
@@ -68,7 +79,9 @@ function updateRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.UpdateResponse();
 
-	let result = impl.update(req.id, req.urn, req.olds, req.news);
+	let type = getTypeFromURN(req.urn);
+	let result: any = impl[type].udpate(resources[req.id], req.olds, req.news);
+
 	resp.properties = result.properties;
 
 	callback(undefined, resp);
@@ -77,7 +90,10 @@ function updateRPC(call: any, callback: any): void {
 function deleteRPC(call: any, callback: any): void {
 	let req: any = call.request;
 
-	impl.delete(req.id, req.urn, req.properties);
+	let type = getTypeFromURN(req.urn);
+	impl[type].delete(resources[req.id], req.properties);
+
+	delete resources[req.id];
 
 	callback(undefined, undefined);
 }
@@ -91,6 +107,15 @@ export function main(args: string[]): void {
         return;
     }
     let engineAddr: string = args[0];
+
+	// Load up any serialized resource state.
+	try {
+		resources = JSON.parse(fs.readFileSync("test-provider-resources.json"));
+	} catch (e) {
+		console.error(`fatal: could not load resources: ${e}`);
+		process.exit(-1);
+		return;
+	}
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
 	let server = new grpc.Server();
