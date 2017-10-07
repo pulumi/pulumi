@@ -8,6 +8,7 @@ interface ClosureCase {
     title: string;            // a title banner for the test case.
     func: Function;           // the function whose body and closure to serialize.
     expect?: runtime.Closure; // if undefined, error expected; otherwise, the serialized shape.
+    expectText?: string;      // optionally also validate the serialization to JavaScript text.
 }
 
 // This group of tests ensure that we serialize closures properly.
@@ -24,6 +25,20 @@ describe("closure", () => {
             environment: {},
             runtime: "nodejs",
         },
+        expectText: `exports.handler = __b2fc45402c8ebf8ff0305045b5863b179df417e2;
+
+function __b2fc45402c8ebf8ff0305045b5863b179df417e2() {
+  var _this;
+  with({  }) {
+    return (function() {
+
+return (function () { })
+
+    }).apply(_this).apply(this, arguments);
+  }
+}
+
+`,
     });
     cases.push({
         title: "Empty arrow closure",
@@ -333,6 +348,10 @@ describe("closure", () => {
             if (test.expect) {
                 let closure: runtime.Closure = await runtime.serializeClosure(test.func);
                 assert.deepEqual(closure, test.expect);
+                if (test.expectText) {
+                    let text = runtime.serializeJavaScriptText(closure);
+                    assert.equal(text, test.expectText);
+                }
             } else {
                 await assertAsyncThrows(async () => {
                     await runtime.serializeClosure(test.func);
