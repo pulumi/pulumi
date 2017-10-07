@@ -6,6 +6,7 @@
 
 import * as minimist from "minimist";
 
+let path = require("path");
 let grpc = require("grpc");
 let emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 let structproto = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -27,6 +28,9 @@ function configureRPC(call: any, callback: any): void {
 
 	let variables = req.getVariablesMap();
 	let crudJS = variables.get("test:provider:crud");
+    if (crudJS.startsWith("./") || crudJS.startsWith("../")) {
+        crudJS = path.normalize(path.join(process.cwd(), crudJS));
+    }
 	crud = require(crudJS);
 
 	callback(undefined, new emptyproto.Empty());

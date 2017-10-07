@@ -25,6 +25,16 @@ func TestExamples(t *testing.T) {
 				"minimal:config:name": "Pulumi",
 			},
 		},
+        {
+			Dir:		  path.Join(cwd, "test-provider/simple"),
+			Dependencies: []string{"pulumi"},
+			Config: map[string]string{
+				"test:provider:crud": "./bin/crud.js",
+				"simple:config:w": "1",
+				"simple:config:x": "1",
+				"simple:config:y": "1",
+			},
+		},
 	}
 	for _, ex := range examples {
 		example := ex
