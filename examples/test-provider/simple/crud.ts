@@ -5,13 +5,12 @@ export var add = {
 	create: function(inputs: any): any {
 		let left: number = inputs.left;
 		let right: number = inputs.right;
-		return { resource: { sum: left + right }, outs: [ "sum" ] };
+		return { id: "0", resource: { sum: left + right }, outs: [ "sum" ] };
 	},
-	update: function(r: any, olds: any, news: any): any {
+	update: function(id: string, olds: any, news: any): any {
 		let left: number = news.left;
 		let right: number = news.right;
-		r.sum = left + right;
-		return { outs: ["sum"] };
+		return { id: id, resource: { sum: left + right }, outs: [ "sum" ] };
 	},
 	delete: function(r: any, properties: any): any {
 	}
@@ -24,13 +23,12 @@ export var mul = {
 	create: function(inputs: any): any {
 		let left: number = inputs.left;
 		let right: number = inputs.right;
-		return { resource: { product: left * right }, outs: [ "product" ] };
+		return { id: "0", resource: { product: left * right }, outs: [ "product" ] };
 	},
-	update: function(r: any, olds: any, news: any): any {
+	update: function(id: string, olds: any, news: any): any {
 		let left: number = news.left;
 		let right: number = news.right;
-		r.product = left * right;
-		return { outs: ["product"] };
+		return { id: id, resource: { product: left * right }, outs: [ "product" ] };
 	},
 	delete: function(r: any, properties: any): any {
 	}
@@ -44,13 +42,12 @@ export var sub = {
 	create: function(inputs: any): any {
 		let left: number = inputs.left;
 		let right: number = inputs.right;
-		return { resource: { difference: left - right }, outs: [ "difference" ] };
+		return { id: "0", resource: { difference: left - right }, outs: [ "difference" ] };
 	},
-	update: function(r: any, olds: any, news: any): any {
+	update: function(id: string, olds: any, news: any): any {
 		let left: number = news.left;
 		let right: number = news.right;
-		r.difference = left - right;
-		return { outs: ["difference"] };
+		return { id: id, resource: { difference: left - right }, outs: [ "difference" ] };
 	},
 	delete: function(r: any, properties: any): any {
 	}
@@ -63,14 +60,12 @@ export var div = {
 	create: function(inputs: any): any {
 		let left: number = inputs.left;
 		let right: number = inputs.right;
-		return { resource: { quotient: Math.floor(left / right), remainder: left % right }, outs: [ "quotient", "remainder" ] };
+		return { id: "0", resource: { quotient: Math.floor(left / right), remainder: left % right }, outs: [ "quotient", "remainder" ] };
 	},
-	update: function(r: any, olds: any, news: any): any {
+	update: function(id: string, olds: any, news: any): any {
 		let left: number = news.left;
 		let right: number = news.right;
-		r.quotient = Math.floor(left / right);
-		r.remainder = left % right;
-		return { outs: ["quotient", "remainder"] };
+		return { id: id, resource: { quotient: Math.floor(left / right), remainder: left % right }, outs: [ "quotient", "remainder" ] };
 	},
 	delete: function(r: any, properties: any): any {
 	}

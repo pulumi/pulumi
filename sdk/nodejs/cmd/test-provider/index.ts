@@ -6,16 +6,13 @@
 
 import * as minimist from "minimist";
 
-let fs = require("fs");
 let grpc = require("grpc");
 let emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 let structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 let provproto = require("../../proto/provider_pb.js");
 let provrpc = require("../../proto/provider_grpc_pb.js");
 
-const ResourcesFileName = "test-resources.json";
-let resources: any;
-let impl: any;
+let crud: any;
 
 const URNPrefix: string = "urn:pulumi:";
 const URNNameDelimiter: string = "::";
@@ -27,20 +24,17 @@ function getTypeFromURN(urn: string): string {
 
 function configureRPC(call: any, callback: any): void {
 	let req = call.request;
-	let resp = new emptyproto.Empty();
 
 	let variables = req.getVariablesMap();
-	let implJS = variables.get("test:provider:impl");
-	impl = require(implJS);
+	let crudJS = variables.get("test:provider:crud");
+	crud = require(crudJS);
 
-	callback(undefined, resp);
+	callback(undefined, new emptyproto.Empty());
 }
 
 function invokeRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.InvokeResponse();
-
-	console.error(`invoke(${req})`);
 
 	// TODO: implement this.
 
@@ -61,7 +55,7 @@ function diffRPC(call: any, callback: any): void {
 	let resp = new provproto.DiffResponse();
 
 	let type = getTypeFromURN(req.getUrn());
-	let result: any = impl[type].diff(resources[req.getId()], req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+	let result: any = crud[type].diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
 
 	if (result.replaces) {
 		resp.setReplaces(result.replaces);
@@ -76,22 +70,15 @@ function createRPC(call: any, callback: any): void {
 
 	let type = getTypeFromURN(req.getUrn());
 	let ins = req.getProperties().toJavaScript();
-	console.error(ins);
-	let result: any = impl[type].create(ins);
+	let result: any = crud[type].create(ins);
 
 	let resource = result.resource;
-	let id = Object.keys(resources).length;
-	resources[id] = resource;
-
-	fs.writeFileSync(ResourcesFileName, JSON.stringify(resources));
-
-	resp.setId(id.toString());
+	resp.setId(result.id.toString());
 	if (result.outs) {
 		let properties: any = {};
 		for (let k of result.outs) {
 			properties[k] = resource[k];
 		}
-		console.error(properties);
 		resp.setProperties(structproto.Struct.fromJavaScript(properties));
 	}
 
@@ -102,12 +89,10 @@ function updateRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.UpdateResponse();
 
-	let resource = resources[req.getId()];
 	let type = getTypeFromURN(req.getUrn());
-	let result: any = impl[type].update(resource, req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+	let result: any = crud[type].update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
 
-	fs.writeFileSync(ResourcesFileName, JSON.stringify(resources));
-
+	let resource = result.resource;
 	if (result.outs) {
 		let properties: any = {};
 		for (let k of result.outs) {
@@ -121,17 +106,11 @@ function updateRPC(call: any, callback: any): void {
 
 function deleteRPC(call: any, callback: any): void {
 	let req: any = call.request;
-	let resp = new emptyproto.Empty();
 
-	let id = req.getId();
 	let type = getTypeFromURN(req.getUrn());
-	impl[type].delete(resources[id], req.getProperties());
+	crud[type].delete(req.getId(), req.getProperties());
 
-	delete resources[id];
-
-	fs.writeFileSync(ResourcesFileName, JSON.stringify(resources));
-
-	callback(undefined, resp);
+	callback(undefined, new emptyproto.Empty());
 }
 
 export function main(args: string[]): void {
@@ -143,15 +122,6 @@ export function main(args: string[]): void {
         return;
     }
     let engineAddr: string = args[0];
-
-	// Load up any serialized resource state.
-	try {
-		resources = JSON.parse(fs.readFileSync(ResourcesFileName));
-	} catch (e) {
-		console.error(`fatal: could not load resources: ${e}`);
-		process.exit(-1);
-		return;
-	}
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
 	let server = new grpc.Server();

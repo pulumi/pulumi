@@ -1,4 +1,4 @@
-name: minimal
-description: A minimal Lumi program.
+name: four-function
+description: A silly four-function calculator.
 runtime: nodejs
 

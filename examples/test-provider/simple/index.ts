@@ -42,11 +42,11 @@ let w = Number(config.require("w")), x = Number(config.require("x")), y = Number
 let sum = new Add("sum", x, y);
 let square = new Mul("square", sum.sum, sum.sum);
 let diff = new Sub("diff", square.product, w);
-let divrem = new Div("result", diff.difference, sum.sum);
+let divrem = new Div("divrem", diff.difference, sum.sum);
 let result = new Add("result", divrem.quotient, divrem.remainder);
 
 let output = async function(): Promise<void> {
-	console.log(`((${x} + ${y})^2 - ${w}) / (${x} + ${y}) + ((${x} + ${y})^2 - ${w}) %% (${x} + ${y}) = ${await result.sum}`);
+	console.log(`((x + y)^2 - w) / (x + y) + ((x + y)^2 - w) %% (x + y) = ${await result.sum}`);
 };
 
 output();

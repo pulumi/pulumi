@@ -17,7 +17,7 @@
     },
     "files": [
         "index.ts",
-		"impl.ts"
+		"crud.ts"
     ]
 }
 
