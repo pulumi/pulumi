@@ -3,36 +3,36 @@
 import * as pulumi from "pulumi";
 
 class Add extends pulumi.Resource {
-	public readonly sum: pulumi.Computed<number>;
+    public readonly sum: pulumi.Computed<number>;
 
-	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-		super("test:provider:add", name, {left: left, right: right, sum: undefined}, undefined);
-	}
+    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+        super("test:provider:add", name, {left: left, right: right, sum: undefined}, undefined);
+    }
 }
 
 class Mul extends pulumi.Resource {
-	public readonly product: pulumi.Computed<number>;
+    public readonly product: pulumi.Computed<number>;
 
-	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-		super("test:provider:mul", name, {left: left, right: right, product: undefined}, undefined);
-	}
+    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+        super("test:provider:mul", name, {left: left, right: right, product: undefined}, undefined);
+    }
 }
 
 class Sub extends pulumi.Resource {
-	public readonly difference: pulumi.Computed<number>;
+    public readonly difference: pulumi.Computed<number>;
 
-	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-		super("test:provider:sub", name, {left: left, right: right, difference: undefined}, undefined);
-	}
+    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+        super("test:provider:sub", name, {left: left, right: right, difference: undefined}, undefined);
+    }
 }
 
 class Div extends pulumi.Resource {
-	public readonly quotient: pulumi.Computed<number>;
-	public readonly remainder: pulumi.Computed<number>;
+    public readonly quotient: pulumi.Computed<number>;
+    public readonly remainder: pulumi.Computed<number>;
 
-	constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-		super("test:provider:div", name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
-	}
+    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+        super("test:provider:div", name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
+    }
 }
 
 let config = new pulumi.Config("simple:config");
@@ -46,7 +46,7 @@ let divrem = new Div("divrem", diff.difference, sum.sum);
 let result = new Add("result", divrem.quotient, divrem.remainder);
 
 let output = async function(): Promise<void> {
-	console.log(`((x + y)^2 - w) / (x + y) + ((x + y)^2 - w) %% (x + y) = ${await result.sum}`);
+    console.log(`((x + y)^2 - w) / (x + y) + ((x + y)^2 - w) %% (x + y) = ${await result.sum}`);
 };
 
 output();
