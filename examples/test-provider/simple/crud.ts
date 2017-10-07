@@ -1,4 +1,7 @@
 export var add = {
+	check: function() {
+		return { defaults: undefined, failures: undefined };
+	},
 	diff: function() {
 		return { replaces: undefined };
 	},
@@ -17,6 +20,9 @@ export var add = {
 };
 
 export var mul = {
+	check: function() {
+		return { defaults: undefined, failures: undefined };
+	},
 	diff: function() {
 		return { replaces: undefined };
 	},
@@ -36,6 +42,9 @@ export var mul = {
 
 
 export var sub = {
+	check: function() {
+		return { defaults: undefined, failures: undefined };
+	},
 	diff: function() {
 		return { replaces: undefined };
 	},
@@ -54,6 +63,9 @@ export var sub = {
 };
 
 export var div = {
+	check: function(inputs: any) {
+		return { defaults: undefined, failures: inputs.right == 0 ? [ { property: "right", reason: "divisor must be non-zero" } ] : undefined };
+	},
 	diff: function() {
 		return { replaces: undefined };
 	},

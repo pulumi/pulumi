@@ -45,7 +45,23 @@ function checkRPC(call: any, callback: any): void {
 	let req: any = call.request;
 	let resp = new provproto.CheckResponse();
 
-	// TODO: implement this.
+	let type = getTypeFromURN(req.getUrn());
+	let result: any = crud[type].check(req.getProperties().toJavaScript());
+
+	if (result.defaults) {
+		resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
+	}
+	if (result.failures) {
+		let failures = [];
+		for (let f of result.failures) {
+			let failure = new provproto.CheckFailure();
+			failure.setProperty(f.property);
+			failure.setReason(f.reason);
+
+			failures.push(failure);
+		}
+		resp.setFailuresList(failures);
+	}
 
 	callback(undefined, resp);
 }
@@ -143,4 +159,3 @@ export function main(args: string[]): void {
 }
 
 main(process.argv.slice(2));
-
