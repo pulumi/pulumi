@@ -25,13 +25,14 @@
         "asset/asset.ts",
         "asset/archive.ts",
 
+        "log/index.ts",
+
         "runtime/index.ts",
         "runtime/closure.ts",
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
         "runtime/langhost.ts",
-        "runtime/log.ts",
         "runtime/resource.ts",
         "runtime/rpc.ts",
         "runtime/settings.ts",

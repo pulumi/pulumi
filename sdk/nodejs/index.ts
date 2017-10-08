@@ -9,6 +9,7 @@ export * from "./resource";
 
 // Export submodules individually.
 import * as asset from "./asset";
+import * as log from "./log";
 import * as runtime from "./runtime";
-export {asset, runtime};
+export { asset, log, runtime };
 

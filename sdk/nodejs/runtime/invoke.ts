@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as log from "../log";
 import { ComputedValues } from "../resource";
 import { debuggablePromise } from "./debuggable";
-import { Log } from "./log";
 import { deserializeProperties, PropertyTransfer, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
@@ -13,7 +13,7 @@ let langproto = require("../proto/languages_pb.js");
  * computed values (Ts or Promise<T>s), and the result is a Promise<any> that resolves when the invoke finishes.
  */
 export function invoke(tok: string, props: ComputedValues | undefined): Promise<any> {
-    Log.debug(`Invoking function: tok=${tok}` +
+    log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
@@ -29,7 +29,7 @@ export function invoke(tok: string, props: ComputedValues | undefined): Promise<
         try {
             let result: PropertyTransfer = await transfer;
             let obj: any = result.obj;
-            Log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+            log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
             // Fetch the monitor and make an RPC request.
             let monitor: any = getMonitor();
@@ -39,7 +39,7 @@ export function invoke(tok: string, props: ComputedValues | undefined): Promise<
                 req.setArgs(obj);
                 let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
                     monitor.invoke(req, (err: Error, resp: any) => {
-                        Log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${resp}`);
+                        log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${resp}`);
                         if (err) {
                             reject(err);
                         }
@@ -60,7 +60,7 @@ export function invoke(tok: string, props: ComputedValues | undefined): Promise<
             }
             else {
                 // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-                Log.debug(`Not sending Invoke RPC to monitor -- it doesn't exist: invoke tok=${tok}`);
+                log.debug(`Not sending Invoke RPC to monitor -- it doesn't exist: invoke tok=${tok}`);
                 resolve(undefined);
             }
         }

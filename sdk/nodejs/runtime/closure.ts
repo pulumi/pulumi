@@ -5,7 +5,7 @@ import * as crypto from "crypto";
 import * as estree from "estree";
 import { relative as pathRelative } from "path";
 import { debuggablePromise } from "./debuggable";
-import { Log } from "./log";
+import * as log from "../log";
 
 const acornwalk = require("acorn/dist/walk");
 const nativeruntime = require("./native/build/Release/nativeruntime.node");
@@ -256,7 +256,7 @@ function findRequirableModuleName(obj: any): string | undefined  {
  * expected to be the usual V8-serialized function expression text.
  */
 function computeFreeVariables(funcstr: string): string[] {
-    Log.debug(`Computing free variables for function: ${funcstr}`);
+    log.debug(`Computing free variables for function: ${funcstr}`);
     if (funcstr.indexOf("[native code]") !== -1) {
         throw new Error(`Cannot serialize native code function: "${funcstr}"`);
     }

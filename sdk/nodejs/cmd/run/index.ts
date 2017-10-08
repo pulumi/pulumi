@@ -5,6 +5,7 @@
 import * as minimist from "minimist";
 import * as path from "path";
 import { RunError } from "../../errors";
+import * as log from "../../log";
 import * as runtime from "../../runtime";
 
 let grpc = require("grpc");
@@ -127,7 +128,7 @@ export function main(args: string[]): void {
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
     // Now go ahead and execute the code.  This keeps the process alive until the message loop exits.
-    runtime.Log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+    log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
     try {
         require(program);
     }
@@ -135,11 +136,11 @@ export function main(args: string[]): void {
         if (err instanceof RunError) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
             // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
-            runtime.Log.error(err.message);
+            log.error(err.message);
         }
         else {
-            runtime.Log.debug(`Running program '${program}' failed with an unhandled exception:`);
-            runtime.Log.debug(err);
+            log.debug(`Running program '${program}' failed with an unhandled exception:`);
+            log.debug(err);
             throw err;
         }
     }

@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as log from "../log";
 import { ID, ComputedValue, ComputedValues, Resource, URN } from "../resource";
 import { errorString, debuggablePromise } from "./debuggable";
-import { Log } from "./log";
 import { PropertyTransfer, transferProperties, resolveProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
@@ -23,7 +23,7 @@ let resourceChain: Promise<void> = Promise.resolve();
  */
 export function registerResource(res: Resource, t: string, name: string, props: ComputedValues | undefined,
     dependsOn: Resource[] | undefined): void {
-    Log.debug(`Registering resource: t=${t}, name=${name}` +
+    log.debug(`Registering resource: t=${t}, name=${name}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
@@ -55,7 +55,7 @@ export function registerResource(res: Resource, t: string, name: string, props: 
         let result: PropertyTransfer = await transfer;
         try {
             let obj: any = result.obj;
-            Log.debug(`Resource RPC prepared: t=${t}, name=${name}` +
+            log.debug(`Resource RPC prepared: t=${t}, name=${name}` +
                 excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
             // Fetch the monitor and make an RPC request.
@@ -68,9 +68,9 @@ export function registerResource(res: Resource, t: string, name: string, props: 
 
                 let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
                     monitor.newResource(req, (err: Error, resp: any) => {
-                        Log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
+                        log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
                         if (err) {
-                            Log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
+                            log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
                             reject(err);
                         }
                         else {
@@ -94,7 +94,7 @@ export function registerResource(res: Resource, t: string, name: string, props: 
             }
             else {
                 // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-                Log.debug(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
+                log.debug(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
             }
         }
         finally {
@@ -115,8 +115,8 @@ export function registerResource(res: Resource, t: string, name: string, props: 
     let finalOp: Promise<void> = debuggablePromise(resourceOp.catch((err: Error) => {
         // At this point, we've gone fully asynchronous, and the stack is missing.  To make it easier
         // to debug which resource this came from, we will emit the original stack trace too.
-        Log.error(errorString(createError));
-        Log.error(`Failed to create resource '${name}' [${t}]: ${errorString(err)}`);
+        log.error(errorString(createError));
+        log.error(`Failed to create resource '${name}' [${t}]: ${errorString(err)}`);
     }));
 
     // Ensure the process won't exit until this registerResource call finishes and resolve it when appropriate.

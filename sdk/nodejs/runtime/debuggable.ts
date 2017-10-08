@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Log } from "./log";
+import * as log from "../log";
 import { options } from "./settings";
 
 /**
@@ -44,7 +44,7 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     // If the unhandled handler isn't active yet, schedule it.
     if (!unhandledHandlerScheduled) {
         process.on("unhandledRejection", (reason, p) => {
-            if (!Log.hasErrors()) {
+            if (!log.hasErrors()) {
                 console.error("Unhandled promise rejection:");
                 console.error(reason);
                 console.error(reason.stack);
@@ -60,7 +60,7 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
             process.on('exit', (code: number) => {
                 // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
                 // course yields things that look like "leaks".
-                if (code === 0 && !Log.hasErrors()) {
+                if (code === 0 && !log.hasErrors()) {
                     for (let leaked of leakCandidates) {
                         console.error("Promise leak detected:");
                         console.error(promiseDebugString(leaked));

@@ -1,9 +1,9 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as asset from "../asset";
+import * as log from "../log";
 import { ComputedValue, ComputedValues, Resource } from "../resource";
 import { errorString, debuggablePromise } from "./debuggable";
-import { Log } from "./log";
 import { excessiveDebugOutput, options } from "./settings";
 
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -173,17 +173,17 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
-            Log.debug(`Serialize property [${ctx}]: undefined`);
+            log.debug(`Serialize property [${ctx}]: undefined`);
         }
         if (!options.dryRun) {
-            Log.error(`Unexpected unknown property during deployment`);
+            log.error(`Unexpected unknown property during deployment`);
         }
         return unknownComputedValue;
     }
     else if (prop === null || typeof prop === "boolean" ||
             typeof prop === "number" || typeof prop === "string") {
         if (excessiveDebugOutput) {
-            Log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
+            log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
         }
         return prop;
     }
@@ -191,7 +191,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         let elems: any[] = [];
         for (let i = 0; i < prop.length; i++) {
             if (excessiveDebugOutput) {
-                Log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
             elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`));
         }
@@ -200,7 +200,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     else if (prop instanceof Resource) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
-            Log.debug(`Serialize property [${ctx}]: resource ID`);
+            log.debug(`Serialize property [${ctx}]: resource ID`);
         }
         return serializeProperty(prop.id, `${ctx}.id`);
     }
@@ -212,7 +212,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         };
         for (let k of Object.keys(prop)) {
             if (excessiveDebugOutput) {
-                Log.debug(`Serialize property [${ctx}]: asset.${k}`);
+                log.debug(`Serialize property [${ctx}]: asset.${k}`);
             }
             obj[k] = await serializeProperty((<any>prop)[k], `asset<${ctx}>.${k}`);
         }
@@ -221,7 +221,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
-            Log.debug(`Serialize property [${ctx}]: promise<T>`);
+            log.debug(`Serialize property [${ctx}]: promise<T>`);
         }
         return serializeProperty(await prop, `promise<${ctx}>`);
     }
@@ -229,7 +229,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         let obj: any = {};
         for (let k of Object.keys(prop)) {
             if (excessiveDebugOutput) {
-                Log.debug(`Serialize property [${ctx}]: object.${k}`);
+                log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
             obj[k] = await serializeProperty(prop[k], `${ctx}.${k}`);
         }
