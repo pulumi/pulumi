@@ -1,16 +1,13 @@
-export class CRUD {
-    check(ins: any): any { return { defaults: undefined, failures: undefined }; }
-    diff(id: string, olds: any, news: any): any { return { replaces: undefined }; }
-    delete(id: string, props: any): void { }
-}
-
-export class Operator extends CRUD {
+export class Operator {
     private op: (l: number, r: number) => any;
 
     constructor(op: (l: number, r: number) => any) {
-        super();
         this.op = op;
     }
+
+    check(ins: any): any { return { defaults: undefined, failures: undefined }; }
+    diff(id: string, olds: any, news: any): any { return { replaces: undefined }; }
+    delete(id: string, props: any): void { }
 
     create(inputs: any): any {
         const result: any = this.op(Number(inputs.left), Number(inputs.right));
