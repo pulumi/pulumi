@@ -3,6 +3,8 @@ package cmd
 import (
 	"os"
 
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -31,10 +33,14 @@ func explicitOrCurrent(name string) (tokens.QName, error) {
 func getCurrentEnv() (tokens.QName, error) {
 	w, err := newWorkspace()
 	if err != nil {
-		return tokens.QName(""), err
+		return "", err
 	}
 
-	return w.Settings().Env, nil
+	env := w.Settings().Env
+	if env == "" {
+		return "", errors.New("no current environment detected; please use `pulumi env init` to create one")
+	}
+	return env, nil
 }
 
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
