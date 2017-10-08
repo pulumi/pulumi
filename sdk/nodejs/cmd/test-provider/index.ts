@@ -1,8 +1,10 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// This is the primary entrypoint for all Pulumi programs that are being watched by the resource planning
-// monitor.  It creates the "host" that is responsible for wiring up gRPC connections to and from the monitor,
-// and drives execution of a Node.js program, communicating back as required to track all resource allocations.
+// This is a mock resource provider that can be used to implement custom CRUD operations in JavaScript.
+// It is configured using a single variable, `test:provider:crud`, that provides the path to the JS module
+// that implements CRUD operations for various types. When an operation is requested by the engine for a
+// resource of a particular type, that type's `CRUDProvider` is loaded from the input module using the
+// unqualified type name.
 
 import * as minimist from "minimist";
 
@@ -13,32 +15,47 @@ let structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 let provproto = require("../../proto/provider_pb.js");
 let provrpc = require("../../proto/provider_grpc_pb.js");
 
-let crud: any;
-
-const URNPrefix: string = "urn:pulumi:";
-const URNNameDelimiter: string = "::";
-const NSDelimiter: string = ":";
-
-function getTypeFromURN(urn: string): string {
-    return urn.split(URNNameDelimiter)[2].split(NSDelimiter)[2];
+interface CRUDProvider {
+    check(ins: any): any;
+    diff(id: string, olds: any, news: any): any;
+    create(inputs: any): any;
+    update(id: string, olds: any, news: any): any;
+    delete(id: string, props: any): void;
 }
 
-function configureRPC(call: any, callback: any): void {
-    let req = call.request;
+class CRUDProviders {
+    private crud: any;
 
-    let variables = req.getVariablesMap();
+    constructor(crud: any) {
+        this.crud = crud;
+    }
+
+    getProvider(urn: string): CRUDProvider {
+        const URNNameDelimiter: string = "::";
+        const NSDelimiter: string = ":";
+
+        const type = urn.split(URNNameDelimiter)[2].split(NSDelimiter)[2];
+        return this.crud[type];
+    }
+}
+let crud: CRUDProviders;
+
+function configureRPC(call: any, callback: any): void {
+    const req = call.request;
+
+    const variables = req.getVariablesMap();
     let crudJS = variables.get("test:provider:crud");
     if (crudJS.startsWith("./") || crudJS.startsWith("../")) {
         crudJS = path.normalize(path.join(process.cwd(), crudJS));
     }
-    crud = require(crudJS);
+    crud = new CRUDProviders(require(crudJS));
 
     callback(undefined, new emptyproto.Empty());
 }
 
 function invokeRPC(call: any, callback: any): void {
-    let req: any = call.request;
-    let resp = new provproto.InvokeResponse();
+    const req: any = call.request;
+    const resp = new provproto.InvokeResponse();
 
     // TODO: implement this.
 
@@ -46,19 +63,17 @@ function invokeRPC(call: any, callback: any): void {
 }
 
 function checkRPC(call: any, callback: any): void {
-    let req: any = call.request;
-    let resp = new provproto.CheckResponse();
+    const req: any = call.request;
+    const resp = new provproto.CheckResponse();
 
-    let type = getTypeFromURN(req.getUrn());
-    let result: any = crud[type].check(req.getProperties().toJavaScript());
-
+    const result = crud.getProvider(req.getUrn()).check(req.getProperties().toJavaScript());
     if (result.defaults) {
         resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
     }
     if (result.failures) {
-        let failures = [];
-        for (let f of result.failures) {
-            let failure = new provproto.CheckFailure();
+        const failures = [];
+        for (const f of result.failures) {
+            const failure = new provproto.CheckFailure();
             failure.setProperty(f.property);
             failure.setReason(f.reason);
 
@@ -71,12 +86,10 @@ function checkRPC(call: any, callback: any): void {
 }
 
 function diffRPC(call: any, callback: any): void {
-    let req: any = call.request;
-    let resp = new provproto.DiffResponse();
+    const req: any = call.request;
+    const resp = new provproto.DiffResponse();
 
-    let type = getTypeFromURN(req.getUrn());
-    let result: any = crud[type].diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
-
+    const result: any = crud.getProvider(req.getUrn()).diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
     if (result.replaces) {
         resp.setReplaces(result.replaces);
     }
@@ -85,18 +98,16 @@ function diffRPC(call: any, callback: any): void {
 }
 
 function createRPC(call: any, callback: any): void {
-    let req: any = call.request;
-    let resp = new provproto.CreateResponse();
+    const req: any = call.request;
+    const resp = new provproto.CreateResponse();
 
-    let type = getTypeFromURN(req.getUrn());
-    let ins = req.getProperties().toJavaScript();
-    let result: any = crud[type].create(ins);
+    const result: any = crud.getProvider(req.getUrn()).create(req.getProperties().toJavaScript());
 
-    let resource = result.resource;
+    const resource = result.resource;
     resp.setId(result.id.toString());
     if (result.outs) {
-        let properties: any = {};
-        for (let k of result.outs) {
+        const properties: any = {};
+        for (const k of result.outs) {
             properties[k] = resource[k];
         }
         resp.setProperties(structproto.Struct.fromJavaScript(properties));
@@ -106,16 +117,15 @@ function createRPC(call: any, callback: any): void {
 }
 
 function updateRPC(call: any, callback: any): void {
-    let req: any = call.request;
-    let resp = new provproto.UpdateResponse();
+    const req: any = call.request;
+    const resp = new provproto.UpdateResponse();
 
-    let type = getTypeFromURN(req.getUrn());
-    let result: any = crud[type].update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+    const result: any = crud.getProvider(req.getUrn()).update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
 
-    let resource = result.resource;
+    const resource = result.resource;
     if (result.outs) {
-        let properties: any = {};
-        for (let k of result.outs) {
+        const properties: any = {};
+        for (const k of result.outs) {
             properties[k] = resource[k];
         }
         resp.setProperties(structproto.Struct.fromJavaScript(properties));
@@ -125,11 +135,8 @@ function updateRPC(call: any, callback: any): void {
 }
 
 function deleteRPC(call: any, callback: any): void {
-    let req: any = call.request;
-
-    let type = getTypeFromURN(req.getUrn());
-    crud[type].delete(req.getId(), req.getProperties());
-
+    const req: any = call.request;
+    crud.getProvider(req.getUrn()).delete(req.getId(), req.getProperties());
     callback(undefined, new emptyproto.Empty());
 }
 
@@ -141,10 +148,10 @@ export function main(args: string[]): void {
         process.exit(-1);
         return;
     }
-    let engineAddr: string = args[0];
+    const engineAddr: string = args[0];
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    let server = new grpc.Server();
+    const server = new grpc.Server();
     server.addService(provrpc.ResourceProviderService, {
         configure: configureRPC,
         invoke: invokeRPC,
@@ -154,7 +161,7 @@ export function main(args: string[]): void {
         update: updateRPC,
         delete: deleteRPC
     });
-    let port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
+    const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 
     server.start();
 

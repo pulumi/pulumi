@@ -22,7 +22,7 @@ export class Operator {
 
 export class Div extends Operator {
     constructor() {
-        super(function (left: number, right: number): any { return { quotient: Math.floor(left / right), remainder: left % right } });
+        super((left: number, right: number) => <any>{ quotient: Math.floor(left / right), remainder: left % right });
     }
 
     check(ins: any) {
@@ -30,7 +30,7 @@ export class Div extends Operator {
     }
 }
 
-export var add = new Operator(function (left: number, right: number): any { return { sum: left + right }; });
-export var mul = new Operator(function (left: number, right: number): any { return { product: left * right }; });
-export var sub = new Operator(function (left: number, right: number): any { return { difference: left - right }; });
+export var add = new Operator((left: number, right: number) => <any>{ sum: left + right });
+export var mul = new Operator((left: number, right: number) => <any>{ product: left * right });
+export var sub = new Operator((left: number, right: number) => <any>{ difference: left - right });
 export var div = new Div();
