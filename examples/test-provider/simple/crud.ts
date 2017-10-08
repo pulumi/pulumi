@@ -1,84 +1,39 @@
-export var add = {
-    check: function() {
-        return { defaults: undefined, failures: undefined };
-    },
-    diff: function() {
-        return { replaces: undefined };
-    },
-    create: function(inputs: any): any {
-        let left: number = inputs.left;
-        let right: number = inputs.right;
-        return { id: "0", resource: { sum: left + right }, outs: [ "sum" ] };
-    },
-    update: function(id: string, olds: any, news: any): any {
-        let left: number = news.left;
-        let right: number = news.right;
-        return { id: id, resource: { sum: left + right }, outs: [ "sum" ] };
-    },
-    delete: function(r: any, properties: any): any {
-    }
-};
+export class CRUD {
+    check(ins: any): any { return { defaults: undefined, failures: undefined }; }
+    diff(id: string, olds: any, news: any): any { return { replaces: undefined }; }
+    delete(id: string, props: any): void { }
+}
 
-export var mul = {
-    check: function() {
-        return { defaults: undefined, failures: undefined };
-    },
-    diff: function() {
-        return { replaces: undefined };
-    },
-    create: function(inputs: any): any {
-        let left: number = inputs.left;
-        let right: number = inputs.right;
-        return { id: "0", resource: { product: left * right }, outs: [ "product" ] };
-    },
-    update: function(id: string, olds: any, news: any): any {
-        let left: number = news.left;
-        let right: number = news.right;
-        return { id: id, resource: { product: left * right }, outs: [ "product" ] };
-    },
-    delete: function(r: any, properties: any): any {
-    }
-};
+export class Operator extends CRUD {
+    private op: (l: number, r: number) => any;
 
-
-export var sub = {
-    check: function() {
-        return { defaults: undefined, failures: undefined };
-    },
-    diff: function() {
-        return { replaces: undefined };
-    },
-    create: function(inputs: any): any {
-        let left: number = inputs.left;
-        let right: number = inputs.right;
-        return { id: "0", resource: { difference: left - right }, outs: [ "difference" ] };
-    },
-    update: function(id: string, olds: any, news: any): any {
-        let left: number = news.left;
-        let right: number = news.right;
-        return { id: id, resource: { difference: left - right }, outs: [ "difference" ] };
-    },
-    delete: function(r: any, properties: any): any {
+    constructor(op: (l: number, r: number) => any) {
+        super();
+        this.op = op;
     }
-};
 
-export var div = {
-    check: function(inputs: any) {
-        return { defaults: undefined, failures: inputs.right == 0 ? [ { property: "right", reason: "divisor must be non-zero" } ] : undefined };
-    },
-    diff: function() {
-        return { replaces: undefined };
-    },
-    create: function(inputs: any): any {
-        let left: number = inputs.left;
-        let right: number = inputs.right;
-        return { id: "0", resource: { quotient: Math.floor(left / right), remainder: left % right }, outs: [ "quotient", "remainder" ] };
-    },
-    update: function(id: string, olds: any, news: any): any {
-        let left: number = news.left;
-        let right: number = news.right;
-        return { id: id, resource: { quotient: Math.floor(left / right), remainder: left % right }, outs: [ "quotient", "remainder" ] };
-    },
-    delete: function(r: any, properties: any): any {
+    create(inputs: any): any {
+        const result: any = this.op(Number(inputs.left), Number(inputs.right));
+        return { id: "0", resource: result, outs: Object.keys(result) };
     }
-};
+
+    update(id: string, olds: any, news: any): any {
+        const result: any = this.op(Number(news.left), Number(news.right));
+        return { id: id, resource: result, outs: Object.keys(result) };
+    }
+}
+
+export class Div extends Operator {
+    constructor() {
+        super(function (left: number, right: number): any { return { quotient: Math.floor(left / right), remainder: left % right } });
+    }
+
+    check(ins: any) {
+        return { defaults: undefined, failures: ins.right == 0 ? [ { property: "right", reason: "divisor must be non-zero" } ] : undefined };
+    }
+}
+
+export var add = new Operator(function (left: number, right: number): any { return { sum: left + right }; });
+export var mul = new Operator(function (left: number, right: number): any { return { product: left * right }; });
+export var sub = new Operator(function (left: number, right: number): any { return { difference: left - right }; });
+export var div = new Div();
