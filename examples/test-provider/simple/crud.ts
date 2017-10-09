@@ -1,22 +1,23 @@
-export class Operator {
+import * as pulumi from "pulumi";
+import * as crud from "pulumi/crud";
+
+export class Operator implements crud.Provider {
     private op: (l: number, r: number) => any;
 
     constructor(op: (l: number, r: number) => any) {
         this.op = op;
     }
 
-    check(ins: any): any { return { defaults: undefined, failures: undefined }; }
-    diff(id: string, olds: any, news: any): any { return { replaces: undefined }; }
-    delete(id: string, props: any): void { }
+    check(inputs: any): crud.CheckResult { return new crud.CheckResult(undefined, []); }
+    diff(id: pulumi.ID, olds: any, news: any): crud.DiffResult { return new crud.DiffResult([]); }
+    delete(id: pulumi.ID, props: any): void { }
 
-    create(inputs: any): any {
-        const result: any = this.op(Number(inputs.left), Number(inputs.right));
-        return { id: "0", resource: result, outs: Object.keys(result) };
+    create(inputs: any): crud.CreateResult {
+        return new crud.CreateResult("0", this.op(Number(inputs.left), Number(inputs.right)));
     }
 
     update(id: string, olds: any, news: any): any {
-        const result: any = this.op(Number(news.left), Number(news.right));
-        return { id: id, resource: result, outs: Object.keys(result) };
+        return new crud.UpdateResult(this.op(Number(news.left), Number(news.right)));
     }
 }
 
@@ -26,7 +27,7 @@ export class Div extends Operator {
     }
 
     check(ins: any) {
-        return { defaults: undefined, failures: ins.right == 0 ? [ { property: "right", reason: "divisor must be non-zero" } ] : undefined };
+        return new crud.CheckResult(undefined, ins.right == 0 ? [ new crud.CheckFailure("right", "divisor must be non-zero") ] : []);
     }
 }
 

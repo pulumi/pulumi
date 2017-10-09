@@ -41,6 +41,8 @@
         "cmd/run/index.ts",
         "cmd/test-provider/index.ts",
 
+        "crud/index.ts",
+
         "tests/config.spec.ts",
         "tests/init.spec.ts",
         "tests/util.ts",
