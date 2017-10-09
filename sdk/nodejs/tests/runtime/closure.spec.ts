@@ -25,9 +25,9 @@ describe("closure", () => {
             environment: {},
             runtime: "nodejs",
         },
-        expectText: `exports.handler = __b2fc45402c8ebf8ff0305045b5863b179df417e2;
+        expectText: `exports.handler = __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6;
 
-function __b2fc45402c8ebf8ff0305045b5863b179df417e2() {
+function __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6() {
   var _this;
   with({  }) {
     return (function() {
