@@ -540,7 +540,7 @@ export function serializeJavaScriptText(c: Closure): string {
     return text;
 }
 
-interface FuncEnv {
+export interface FuncEnv {
     code: string;
     env: { [key: string]: string; };
 }
@@ -551,7 +551,7 @@ interface FuncEnv {
  * Note that a Closure object can reference other Closure objects and can also have cycles, so we recursively walk the
  * graph and cache serialized nodes along the way to avoid cycles.
  */
-class FuncsForClosure {
+export class FuncsForClosure {
     public funcs: { [hash: string]: FuncEnv }; // a cache of functions.
     public root: string;                       // the root closure hash.
 
