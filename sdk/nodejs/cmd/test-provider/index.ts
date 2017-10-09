@@ -47,7 +47,7 @@ function configureRPC(call: any, callback: any): void {
     callback(undefined, new emptyproto.Empty());
 }
 
-function invokeRPC(call: any, callback: any): void {
+async function invokeRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
     const resp = new provproto.InvokeResponse();
 
@@ -56,11 +56,11 @@ function invokeRPC(call: any, callback: any): void {
     callback(undefined, resp);
 }
 
-function checkRPC(call: any, callback: any): void {
+async function checkRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
     const resp = new provproto.CheckResponse();
 
-    const result = providers.get(req.getUrn()).check(req.getProperties().toJavaScript());
+    const result = await providers.get(req.getUrn()).check(req.getProperties().toJavaScript());
     if (result.defaults) {
         resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
     }
@@ -79,11 +79,11 @@ function checkRPC(call: any, callback: any): void {
     callback(undefined, resp);
 }
 
-function diffRPC(call: any, callback: any): void {
+async function diffRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
     const resp = new provproto.DiffResponse();
 
-    const result: any = providers.get(req.getUrn()).diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+    const result: any = await providers.get(req.getUrn()).diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
     if (result.replaces.length != 0) {
         resp.setReplaces(result.replaces);
     }
@@ -91,11 +91,11 @@ function diffRPC(call: any, callback: any): void {
     callback(undefined, resp);
 }
 
-function createRPC(call: any, callback: any): void {
+async function createRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
     const resp = new provproto.CreateResponse();
 
-    const result = providers.get(req.getUrn()).create(req.getProperties().toJavaScript());
+    const result = await providers.get(req.getUrn()).create(req.getProperties().toJavaScript());
     resp.setId(result.id);
     if (result.outs) {
         resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
@@ -104,11 +104,11 @@ function createRPC(call: any, callback: any): void {
     callback(undefined, resp);
 }
 
-function updateRPC(call: any, callback: any): void {
+async function updateRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
     const resp = new provproto.UpdateResponse();
 
-    const result: any = providers.get(req.getUrn()).update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+    const result: any = await providers.get(req.getUrn()).update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
     if (result.outs) {
         resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
     }
@@ -116,9 +116,9 @@ function updateRPC(call: any, callback: any): void {
     callback(undefined, resp);
 }
 
-function deleteRPC(call: any, callback: any): void {
+async function deleteRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
-    providers.get(req.getUrn()).delete(req.getId(), req.getProperties());
+    await providers.get(req.getUrn()).delete(req.getId(), req.getProperties());
     callback(undefined, new emptyproto.Empty());
 }
 

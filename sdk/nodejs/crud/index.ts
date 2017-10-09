@@ -49,9 +49,9 @@ export class UpdateResult {
 }
 
 export interface Provider {
-    check(inputs: any): CheckResult;
-    diff(id: resource.ID, olds: any, news: any): DiffResult;
-    create(inputs: any): CreateResult;
-    update(id: resource.ID, olds: any, news: any): UpdateResult;
-    delete(id: resource.ID, props: any): void;
+    check(inputs: any): Promise<CheckResult>;
+    diff(id: resource.ID, olds: any, news: any): Promise<DiffResult>;
+    create(inputs: any): Promise<CreateResult>;
+    update(id: resource.ID, olds: any, news: any): Promise<UpdateResult>;
+    delete(id: resource.ID, props: any): Promise<void>;
 }
