@@ -3,7 +3,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
@@ -33,7 +36,25 @@ func newEnvRmCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' environment!", envName.String()) {
-				return lumiEngine.RemoveEnv(envName, force)
+
+				target, snapshot, _, err := lumiEngine.Environment.GetEnvironment(envName)
+				if err != nil {
+					return err
+				}
+
+				// Don't remove environments that still have resources.
+				if !force && snapshot != nil && len(snapshot.Resources) > 0 {
+					return errors.Errorf(
+						"'%v' still has resources; removal rejected; pass --force to override", envName)
+				}
+
+				err = lumiEngine.Environment.RemoveEnvironment(target)
+				if err != nil {
+					return err
+				}
+
+				msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s", colors.SpecAttention, envName, colors.Reset)
+				fmt.Println(colors.ColorizeText(msg))
 			}
 
 			return nil
