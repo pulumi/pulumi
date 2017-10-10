@@ -69,7 +69,7 @@ describe("closure", () => {
             assert.notEqual(hash1, hash2);
         });
 
-        it("is affected by environment vales.", () => {
+        it("is affected by environment values.", () => {
             let closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
@@ -80,6 +80,24 @@ describe("closure", () => {
                 code: "",
                 runtime: "",
                 environment: { cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by environment names.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap2: { json: 100 } }
             };
 
             let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
