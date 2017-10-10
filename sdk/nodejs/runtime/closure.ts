@@ -631,7 +631,7 @@ class FuncsForClosure {
         ];
     }
 
-    private convertEnvironmentToNormalizedObject(seenClosures: Closure[], environment: Environment | undefined): any {
+    private convertEnvironmentToNormalizedObject(seenClosures: Closure[], environment: Environment | undefined) {
         if (!environment) {
             // Encode no environment differently than an empty environment. It may not be necessary
             // to do this.  However, in case there ever is a meaningful distinction between the two,
