@@ -6,8 +6,10 @@ If you are learning about Pulumi for the first time, please see [the overview do
 
 ## Build Status
 
-| Linux x64   | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)  |
-| Windows x64 | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true)](https://ci.appveyor.com/project/pulumi/pulumi) |
+| Architecture | Build Status |
+| ------------ | ------------ |
+| Linux x64    | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)  |
+| Windows x64  | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true)](https://ci.appveyor.com/project/pulumi/pulumi) |
 
 ## Installing
 
