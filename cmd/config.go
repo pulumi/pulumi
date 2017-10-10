@@ -40,7 +40,7 @@ func newConfigCmd() *cobra.Command {
 				if !unset {
 					return getConfig(envName, key)
 				}
-				return lumiEngine.DeleteConfig(envName, key)
+				return deleteConfiguration(envName, key)
 			}
 
 			return lumiEngine.SetConfig(envName, key, args[1])
@@ -102,4 +102,19 @@ func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, err
 
 	contract.Assert(target != nil)
 	return target.Config, nil
+}
+
+func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
+	target, snapshot, _, err := lumiEngine.Environment.GetEnvironment(envName)
+	if err != nil {
+		return err
+	}
+
+	contract.Assert(target != nil)
+
+	if target.Config != nil {
+		delete(target.Config, key)
+	}
+
+	return lumiEngine.Environment.SaveEnvironment(target, snapshot)
 }
