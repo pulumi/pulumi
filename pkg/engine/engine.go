@@ -15,7 +15,7 @@ type Engine struct {
 type EnvironmentProvider interface {
 	// GetEnvironment returns the environment named by `name` or a non nil error
 	GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error)
-	// SaveEnvironment saves an environment o be retrieved later by GetEnvironment
+	// SaveEnvironment saves an environment to be retrieved later by GetEnvironment
 	SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error
 	// RemoveEnvironment removes an environment from the system
 	RemoveEnvironment(env *deploy.Target) error
