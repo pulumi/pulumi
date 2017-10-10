@@ -32,7 +32,7 @@ func newEnvCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			config, err := lumiEngine.GetConfiguration(envName)
+			config, err := getConfiguration(envName)
 			if err != nil {
 				return err
 			}
