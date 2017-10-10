@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { asyncTest, assertAsyncThrows } from "../util";
 import { runtime } from "../../index";
+import { assertAsyncThrows, asyncTest } from "../util";
 
 interface ClosureCase {
     title: string;            // a title banner for the test case.
@@ -16,134 +16,134 @@ interface ClosureCase {
 describe("closure", () => {
     describe("hash", () => {
         it("is affected by code.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { }
+                environment: { },
             };
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "1",
                 runtime: "",
-                environment: { }
+                environment: { },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.notEqual(hash1, hash2);
         });
 
         it("is affected by runtime.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { }
+                environment: { },
             };
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "",
                 runtime: "1",
-                environment: { }
+                environment: { },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.notEqual(hash1, hash2);
         });
 
         it("is affected by module.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { module: "m1" } }
+                environment: { cap1: { module: "m1" } },
             };
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { module: "m2" } }
+                environment: { cap1: { module: "m2" } },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.notEqual(hash1, hash2);
         });
 
         it("is affected by environment values.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { }
+                environment: { },
             };
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { json: 100 } }
+                environment: { cap1: { json: 100 } },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.notEqual(hash1, hash2);
         });
 
         it("is affected by environment names.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { json: 100 } }
+                environment: { cap1: { json: 100 } },
             };
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap2: { json: 100 } }
+                environment: { cap2: { json: 100 } },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.notEqual(hash1, hash2);
         });
 
         it("is not affected by environment order.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { json: 100 }, cap2: { json: 200 } }
+                environment: { cap1: { json: 100 }, cap2: { json: 200 } },
             };
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap2: { json: 200 }, cap1: { json: 100 } }
+                environment: { cap2: { json: 200 }, cap1: { json: 100 } },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.equal(hash1, hash2);
         });
 
         it("is different with cyclic and non-cyclic environments.", () => {
-            let closure1: runtime.Closure = {
+            const closure1: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { json: 100 } }
+                environment: { cap1: { json: 100 } },
             };
             closure1.environment.cap1.closure = closure1;
 
-            let closure2: runtime.Closure = {
+            const closure2: runtime.Closure = {
                 code: "",
                 runtime: "",
-                environment: { cap1: { json: 100 } }
+                environment: { cap1: { json: 100 } },
             };
 
-            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
             assert.notEqual(hash1, hash2);
         });
     });
 
-    let cases: ClosureCase[] = [];
+    const cases: ClosureCase[] = [];
 
     // A few simple positive cases for functions/arrows (no captures).
     cases.push({
@@ -228,10 +228,10 @@ return (function () { })
         closureHash: "__47ac0033692c3101b014a1a3c17a4318cf7d4330",
     });
     {
-        let wcap = "foo";
-        let xcap = 97;
-        let ycap = [ true, -1, "yup" ];
-        let zcap = {
+        const wcap = "foo";
+        const xcap = 97;
+        const ycap = [ true, -1, "yup" ];
+        const zcap = {
             a: "a",
             b: false,
             c: [ 0 ],
@@ -270,10 +270,13 @@ return (function () { })
         });
     }
     {
-        let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5, nocap6 = 6, nocap7 = 7,
-            nocap8 = 8, nocap9 = 9, nocap10 = 10;
+        // tslint:disable-next-line
+        let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5, nocap6 = 6, nocap7 = 7;
+        // tslint:disable-next-line
+        let nocap8 = 8, nocap9 = 9, nocap10 = 10;
+        // tslint:disable-next-line
         let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400;
-        let functext = `((nocap1, nocap2) => {
+        const functext = `((nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
     let yy = nocap3; // not a capture: var later on
     if (zz) {
@@ -332,7 +335,7 @@ return (function () { })
         closureHash: "__fa1c10acee8dd79b39d0f8109d2bc3252b19619a",
     });
     {
-        let os = require("os");
+        const os = require("os");
         cases.push({
             title: "Capture built-in modules as stable references, not serialized values",
             func: () => os,
@@ -349,7 +352,7 @@ return (function () { })
         });
     }
     {
-        let util = require("../util");
+        const util = require("../util");
         cases.push({
             title: "Capture user-defined modules as stable references, not serialized values",
             func: () => util,
@@ -379,16 +382,16 @@ return (function () { })
 
     // Recursive function serialization.
     {
-        let fff = "fff!";
-        let ggg = "ggg!";
-        let xcap = {
+        const fff = "fff!";
+        const ggg = "ggg!";
+        const xcap = {
             fff: function () { console.log(fff); },
             ggg: () => { console.log(ggg); },
             zzz: {
                 a: [ (a1: any, a2: any) => { console.log(a1 + a2); } ],
             },
         };
-        let functext = `(() => {
+        const functext = `(() => {
     xcap.fff();
     xcap.ggg();
     xcap.zzz.a[0]("x", "y");
@@ -449,8 +452,8 @@ return (function () { })
         }
 
         // Closing over 'this'.  This yields a circular closure.
-        let cap: any = new CapCap();
-        let env: runtime.Environment = { "this": {} };
+        const cap: any = new CapCap();
+        const env: runtime.Environment = { "this": {} };
         env["this"].obj = {
             f: {
                 closure: {
@@ -488,17 +491,17 @@ return (function () { })
     });
 
     // Now go ahead and run the test cases, each as its own case.
-    for (let test of cases) {
+    for (const test of cases) {
         it(test.title, asyncTest(async () => {
             if (test.expect) {
-                let closure: runtime.Closure = await runtime.serializeClosure(test.func);
+                const closure: runtime.Closure = await runtime.serializeClosure(test.func);
                 assert.deepEqual(closure, test.expect);
                 if (test.expectText) {
-                    let text = runtime.serializeJavaScriptText(closure);
+                    const text = runtime.serializeJavaScriptText(closure);
                     assert.equal(text, test.expectText);
                 }
 
-                let closureHash = runtime.getClosureHash_forTestingPurposes(closure);
+                const closureHash = runtime.getClosureHash_forTestingPurposes(closure);
                 assert.equal(closureHash, test.closureHash);
             } else {
                 await assertAsyncThrows(async () => {

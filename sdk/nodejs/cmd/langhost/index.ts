@@ -15,14 +15,14 @@ export function main(args: string[]): void {
         process.exit(-1);
         return;
     }
-    let monitorAddr: string = args[0];
+    const monitorAddr: string = args[0];
     let serverAddr: string | undefined;
     if (args.length > 1) {
         serverAddr = args[1];
     }
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    let { server, port } = runtime.serveLanguageHost(monitorAddr, serverAddr);
+    const { server, port } = runtime.serveLanguageHost(monitorAddr, serverAddr);
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
     console.log(port);

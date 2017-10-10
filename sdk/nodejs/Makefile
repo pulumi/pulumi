@@ -1,7 +1,7 @@
 PROCCNT=$(shell nproc --all)
 
 .PHONY: default
-default: banner build test install
+default: banner build lint test install
 
 .PHONY: banner
 banner:

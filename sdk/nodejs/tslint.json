@@ -73,6 +73,7 @@
             "check-whitespace"
         ],
         "ordered-imports": true,
+        "prefer-const": true,
         "quotemark": [
             true,
             "double",
