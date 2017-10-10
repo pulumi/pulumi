@@ -540,6 +540,10 @@ export function serializeJavaScriptText(c: Closure): string {
     return text;
 }
 
+export function getClosureHash_forTestingPurposes(closure: Closure): string {
+    return new FuncsForClosure(closure).root;
+}
+
 interface FuncEnv {
     code: string;
     env: { [key: string]: string; };
@@ -562,9 +566,7 @@ class FuncsForClosure {
 
     private createFuncForClosure(closure: Closure): string {
         // Produce a hash to identify the function.
-        let shasum: crypto.Hash = crypto.createHash("sha1");
-        shasum.update(closure.code);
-        let hash: string = "__" + shasum.digest("hex");
+        let hash = this.createFunctionHash(closure);
 
         // Now only store if this function hasn't already been hashed.
         if (this.funcs[hash] === undefined) {
@@ -576,6 +578,88 @@ class FuncsForClosure {
         }
 
         return hash;
+    }
+
+    private createFunctionHash(closure: Closure): string {
+        let shasum = crypto.createHash("sha1");
+
+        // We want to produce a deterministic hash from all the relevant data in this closure. To do
+        // so we 'normalize' the object to remove any meaningless differences, and also to ensure
+        // the closure can be appropriately serialized to a JSON string, which can then be sha1
+        // hashed.
+        //
+        // The changes normalization performs are:
+        //  1. Cycles are removed.  If a closure is self referenced, we replace it with an object
+        //     indicating the reference.
+        //  2. The entire structure is ordered (through the use of arrays).  This avoids any
+        //     potential concerns around property enumeration order in dictionaries.
+        //  3. All data is packed into the final object (even when undefined). That way, if you had
+        //     { key: undefined, value: "foo" } and { key: "foo", value: undefined } you don't end
+        //     up with the same hash (which would happen if undefined values were ignored, and both
+        //     only wrote out the "foo" value).
+
+        // To ensure that cycles are properly represented (and so that we do not infinitely
+        // recurse), keep track of which closures we've seen.  We specifically use an array so that
+        // we can map the closures to a unique value that we can then use as the reference when seen
+        // later on.
+        let seenClosures: Closure[] = [];
+        let normalizedClosure = this.convertClosureToNormalizedObject(seenClosures, closure);
+
+        shasum.update(JSON.stringify(normalizedClosure));
+        let hash: string = "__" + shasum.digest("hex");
+        return hash;
+    }
+
+    private convertClosureToNormalizedObject(seenClosures: Closure[], closure: Closure | undefined) {
+        if (!closure) {
+            return undefined;
+        }
+
+        let closureIndex = seenClosures.indexOf(closure);
+        if (closureIndex >= 0) {
+            // We've already seen this closure.  Represent it specially.  Importantly: do not
+            // represent it in the same way that we represent 'no closure' (above).  There is a
+            // difference between if we have a cyclic closure versus a non-cyclic one.
+            return closureIndex;
+        }
+
+        // keep track of this closure so we don't recurse into it again.
+        seenClosures.push(closure);
+
+        return [
+            closure.code,
+            closure.runtime,
+            this.convertEnvironmentToNormalizedObject(seenClosures, closure.environment)
+        ];
+    }
+
+    private convertEnvironmentToNormalizedObject(seenClosures: Closure[], environment: Environment | undefined) {
+        if (!environment) {
+            // Encode no environment differently than an empty environment. It may not be necessary
+            // to do this.  However, in case there ever is a meaningful distinction between the two,
+            // this can help avoid particularly subtle bugs.
+            return undefined;
+        }
+
+        // Process keys in a deterministic order.
+        return Object.keys(environment).sort().map(key => ({
+            name: key,
+            value: this.convertEnvironmentEntryToNormalizedObject(seenClosures, environment[key]),
+        }));
+    }
+
+    private convertEnvironmentEntryToNormalizedObject(seenClosures: Closure[], entry: EnvironmentEntry | undefined): any {
+        if (!entry) {
+            return undefined;
+        }
+
+        return [
+            entry.json,
+            this.convertClosureToNormalizedObject(seenClosures, entry.closure),
+            this.convertEnvironmentToNormalizedObject(seenClosures, entry.obj),
+            entry.arr ? entry.arr.map(child => this.convertEnvironmentEntryToNormalizedObject(seenClosures, child)) : undefined,
+            entry.module
+        ];
     }
 
     private envFromEnvObj(env: Environment): {[key: string]: string} {

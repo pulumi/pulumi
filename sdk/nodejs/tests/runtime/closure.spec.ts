@@ -9,10 +9,140 @@ interface ClosureCase {
     func: Function;           // the function whose body and closure to serialize.
     expect?: runtime.Closure; // if undefined, error expected; otherwise, the serialized shape.
     expectText?: string;      // optionally also validate the serialization to JavaScript text.
+    closureHash?: string;      // hash of the closure.
 }
 
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
+    describe("hash", () => {
+        it("is affected by code.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "1",
+                runtime: "",
+                environment: { }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by runtime.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "1",
+                environment: { }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by module.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { module: "m1" } }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { module: "m2" } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by environment values.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by environment names.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap2: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is not affected by environment order.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 }, cap2: { json: 200 } }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap2: { json: 200 }, cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.equal(hash1, hash2);
+        });
+
+        it("is different with cyclic and non-cyclic environments.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+            closure1.environment.cap1.closure = closure1;
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+    });
+
     let cases: ClosureCase[] = [];
 
     // A few simple positive cases for functions/arrows (no captures).
@@ -25,9 +155,10 @@ describe("closure", () => {
             environment: {},
             runtime: "nodejs",
         },
-        expectText: `exports.handler = __b2fc45402c8ebf8ff0305045b5863b179df417e2;
+        closureHash: "__2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6",
+        expectText: `exports.handler = __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6;
 
-function __b2fc45402c8ebf8ff0305045b5863b179df417e2() {
+function __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6() {
   var _this;
   with({  }) {
     return (function() {
@@ -49,6 +180,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__b135b11756da3f7aecaaa23a36898c0d6d2845ab",
     });
     cases.push({
         title: "Empty function closure w/ args",
@@ -59,6 +191,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__e680605f156fcaa89016e23c51d3e2328602ebad",
     });
     cases.push({
         title: "Empty arrow closure w/ args",
@@ -69,6 +202,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__dd08d1034bd5f0e06f1269cb79974a636ef9cb13",
     });
 
     // Ensure we reject function declarations.
@@ -79,6 +213,7 @@ return (function () { })
     cases.push({
         title: "Reject non-expression function objects",
         func: new C().m,
+        closureHash: "",
     });
 
     // Serialize captures.
@@ -90,6 +225,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__47ac0033692c3101b014a1a3c17a4318cf7d4330",
     });
     {
         let wcap = "foo";
@@ -130,6 +266,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
+            closureHash: "__a07cae0afeaeddbb97b9f7a372b75aafd3b29d0e",
         });
     }
     {
@@ -180,6 +317,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
+            closureHash: "__2806dcb0e9b815d3ada9417edbbc7a95438196b3",
         });
     }
     cases.push({
@@ -191,6 +329,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__fa1c10acee8dd79b39d0f8109d2bc3252b19619a",
     });
     {
         let os = require("os");
@@ -206,6 +345,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
+            closureHash: "__3fa97b166e39ae989158bb37acfa12c7abc25b53",
         });
     }
     {
@@ -222,6 +362,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
+            closureHash: "__cd171f28483c78d2a63bdda674a8f577dd4b41db",
         });
     }
     cases.push({
@@ -233,6 +374,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__6b8e43947115e731ff7808be1ff6bf9b18aaa67d",
     });
 
     // Recursive function serialization.
@@ -294,6 +436,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
+            closureHash: "__53324dfdeb155ad763635ace1384fa8e1d397e72",
         });
     }
 
@@ -330,6 +473,7 @@ return (function () { })
                 environment: env,
                 runtime: "nodejs",
             },
+            closureHash: "__8d564176f3cd517bfe3c6e9d6b4da488a1198c0d",
         });
     }
     cases.push({
@@ -340,6 +484,7 @@ return (function () { })
             environment: {},
             runtime: "nodejs",
         },
+        closureHash: "__05dabc231611ca558334d59d661ebfb242b31b5d",
     });
 
     // Now go ahead and run the test cases, each as its own case.
@@ -352,6 +497,9 @@ return (function () { })
                     let text = runtime.serializeJavaScriptText(closure);
                     assert.equal(text, test.expectText);
                 }
+
+                let closureHash = runtime.getClosureHash_forTestingPurposes(closure);
+                assert.equal(closureHash, test.closureHash);
             } else {
                 await assertAsyncThrows(async () => {
                     await runtime.serializeClosure(test.func);
