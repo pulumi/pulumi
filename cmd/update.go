@@ -20,8 +20,9 @@ func newUpdateCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "update",
-		Short: "Update the resources in an environment",
+		Use:     "update",
+		Aliases: []string{"up"},
+		Short:   "Update the resources in an environment",
 		Long: "Update the resources in an environment\n" +
 			"\n" +
 			"This command updates an existing environment whose state is represented by the\n" +
