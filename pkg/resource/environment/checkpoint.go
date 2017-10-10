@@ -58,7 +58,7 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 			}
 		}
 
-		snap = deploy.NewSnapshot(name, resources, latest.Info)
+		snap = deploy.NewSnapshot(name, chkpoint.Latest.Time, resources, latest.Info)
 	}
 
 	// Create a new target and snapshot objects to return.

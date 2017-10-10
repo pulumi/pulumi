@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -40,20 +39,16 @@ func newEnvLsCmd() *cobra.Command {
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
 			for _, env := range envs {
-				_, snapshot, checkpoint, err := lumiEngine.Environment.GetEnvironment(env)
+				_, snapshot, _, err := lumiEngine.Environment.GetEnvironment(env)
 				if err != nil {
 					continue
 				}
 
-				contract.Assert(checkpoint != nil)
-
 				// Now print out the name, last deployment time (if any), and resources (if any).
 				lastDeploy := "n/a"
 				resourceCount := "n/a"
-				if checkpoint.Latest != nil {
-					lastDeploy = checkpoint.Latest.Time.String()
-				}
 				if snapshot != nil {
+					lastDeploy = snapshot.Time.String()
 					resourceCount = strconv.Itoa(len(snapshot.Resources))
 				}
 				display := env.String()

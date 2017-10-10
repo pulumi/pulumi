@@ -28,7 +28,7 @@ func newEnvCmd() *cobra.Command {
 				return err
 			}
 
-			target, snapshot, checkpoint, err := lumiEngine.Environment.GetEnvironment(envName)
+			target, snapshot, _, err := lumiEngine.Environment.GetEnvironment(envName)
 			if err != nil {
 				return err
 			}
@@ -41,10 +41,10 @@ func newEnvCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if checkpoint.Latest != nil {
-				fmt.Printf("Last update at %v\n", checkpoint.Latest.Time)
-				if checkpoint.Latest.Info != nil {
-					info, err := json.MarshalIndent(checkpoint.Latest.Info, "    ", "    ")
+			if snapshot != nil {
+				fmt.Printf("Last update at %v\n", snapshot.Time)
+				if snapshot.Info != nil {
+					info, err := json.MarshalIndent(snapshot.Info, "    ", "    ")
 					if err != nil {
 						return err
 					}
