@@ -19,8 +19,7 @@ import (
 
 type localEnvProvider struct{}
 
-func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
-	*deploy.Snapshot, *environment.Checkpoint, error) {
+func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
 
 	contract.Require(name != "", "name")
 	file := workspace.EnvPath(name)
@@ -28,29 +27,29 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		return nil, nil, nil, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
+		return nil, nil, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
 	}
 
 	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil, nil, errors.Errorf("Environment '%v' could not be found in the current workspace", name)
+			return nil, nil, errors.Errorf("Environment '%v' could not be found in the current workspace", name)
 		}
-		return nil, nil, nil, errors.Wrapf(err, "An IO error occurred during the current operation")
+		return nil, nil, errors.Wrapf(err, "An IO error occurred during the current operation")
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
+		return nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
 	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
+		return nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
 	}
 
 	if obj["latest"] != nil {
@@ -61,12 +60,12 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target,
 	md := mapper.New(nil)
 	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
+		return nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
 	}
 
 	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
 	contract.Assert(target != nil)
-	return target, snapshot, &checkpoint, nil
+	return target, snapshot, nil
 }
 
 func (p localEnvProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {

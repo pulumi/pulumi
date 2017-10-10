@@ -14,13 +14,13 @@ func (eng *Engine) planContextFromEnvironment(name tokens.QName, pkgarg string) 
 	contract.Require(name != tokens.QName(""), "name")
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	target, snapshot, checkpoint, err := eng.Environment.GetEnvironment(name)
+	target, snapshot, err := eng.Environment.GetEnvironment(name)
 	if err != nil {
 		return nil, goerr.Errorf("could not read environment information")
 	}
 
 	contract.Assert(target != nil)
-	contract.Assert(checkpoint != nil)
+
 	return &planContext{
 		Target:     target,
 		Snapshot:   snapshot,

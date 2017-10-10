@@ -37,7 +37,7 @@ func newEnvRmCmd() *cobra.Command {
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' environment!", envName.String()) {
 
-				target, snapshot, _, err := lumiEngine.Environment.GetEnvironment(envName)
+				target, snapshot, err := lumiEngine.Environment.GetEnvironment(envName)
 				if err != nil {
 					return err
 				}

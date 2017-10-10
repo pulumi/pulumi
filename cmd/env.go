@@ -28,7 +28,7 @@ func newEnvCmd() *cobra.Command {
 				return err
 			}
 
-			target, snapshot, _, err := lumiEngine.Environment.GetEnvironment(envName)
+			target, snapshot, err := lumiEngine.Environment.GetEnvironment(envName)
 			if err != nil {
 				return err
 			}

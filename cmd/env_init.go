@@ -32,7 +32,7 @@ func newEnvInitCmd() *cobra.Command {
 
 			envName := tokens.QName(args[0])
 
-			if _, _, _, err := lumiEngine.Environment.GetEnvironment(envName); err == nil {
+			if _, _, err := lumiEngine.Environment.GetEnvironment(envName); err == nil {
 				return fmt.Errorf("environment '%v' already exists", envName)
 
 			}

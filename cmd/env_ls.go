@@ -39,7 +39,7 @@ func newEnvLsCmd() *cobra.Command {
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
 			for _, env := range envs {
-				_, snapshot, _, err := lumiEngine.Environment.GetEnvironment(env)
+				_, snapshot, err := lumiEngine.Environment.GetEnvironment(env)
 				if err != nil {
 					continue
 				}
@@ -88,7 +88,7 @@ func getEnvironments() ([]tokens.QName, error) {
 
 		// Read in this environment's information.
 		name := tokens.QName(envfn[:len(envfn)-len(ext)])
-		_, _, _, err := lumiEngine.Environment.GetEnvironment(name)
+		_, _, err := lumiEngine.Environment.GetEnvironment(name)
 		if err != nil {
 			continue // failure reading the environment information.
 		}

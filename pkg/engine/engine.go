@@ -7,7 +7,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/environment"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -42,7 +41,7 @@ func (e *Engine) InitDiag(opts diag.FormatOptions) {
 // EnvironmentProvider abstracts away retriving and storing environments
 type EnvironmentProvider interface {
 	// GetEnvironment returns the environment named by `name` or a non nil error
-	GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.Checkpoint, error)
+	GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error)
 	// SaveEnvironment saves an environment o be retrieved later by GetEnvironment
 	SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error
 	// RemoveEnvironment removes an environment from the system
