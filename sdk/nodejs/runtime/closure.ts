@@ -598,8 +598,10 @@ class FuncsForClosure {
         //     up with the same hash (which would happen if undefined values were ignored, and both
         //     only wrote out the "foo" value).
 
-        // To ensure that cycles are properly represented (and so that we do not recurse
-        // infinitely), keep track of which closures we've seen.
+        // To ensure that cycles are properly represented (and so that we do not infinitely
+        // recurse), keep track of which closures we've seen.  We specifically use an array so that
+        // we can map the closures to a unique value that we can then use as the reference when seen
+        // later on.
         let seenClosures: Closure[] = [];
         let normalizedClosure = this.convertClosureToNormalizedObject(seenClosures, closure);
 
