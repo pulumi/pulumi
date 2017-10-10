@@ -8,10 +8,10 @@ import { RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
-let grpc = require("grpc");
-let engrpc = require("../../proto/engine_grpc_pb.js");
-let langproto = require("../../proto/languages_pb.js");
-let langrpc = require("../../proto/languages_grpc_pb.js");
+const grpc = require("grpc");
+const engrpc = require("../../proto/engine_grpc_pb.js");
+const langproto = require("../../proto/languages_pb.js");
+const langrpc = require("../../proto/languages_grpc_pb.js");
 
 function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
@@ -29,16 +29,16 @@ function usage(): void {
 
 export function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
-    let config: {[key: string]: string} = {};
-    let argv: minimist.ParsedArgs = minimist(args, {
+    const config: {[key: string]: string} = {};
+    const argv: minimist.ParsedArgs = minimist(args, {
         boolean: [ "dry-run" ],
         string: [ "parallel", "pwd", "monitor", "engine" ],
         unknown: (arg: string) => {
             // If unknown, first see if it's a --config.k=v flag.
-            let cix = arg.indexOf("-config");
+            const cix = arg.indexOf("-config");
             if (cix === 0 || cix === 1) {
-                let kix = arg.indexOf(".");
-                let vix = arg.indexOf("=");
+                const kix = arg.indexOf(".");
+                const vix = arg.indexOf("=");
                 if (kix === -1 || vix === -1) {
                     console.error(`fatal: --config flag malformed (expected '--config.key=val')`);
                     usage();
@@ -58,12 +58,12 @@ export function main(args: string[]): void {
     });
 
     // Set any configuration keys/values that were found.
-    for (let key of Object.keys(config)) {
+    for (const key of Object.keys(config)) {
         runtime.setConfig(key, config[key]);
     }
 
     // If there is a --pwd directive, switch directories.
-    let pwd: string | undefined = argv["pwd"];
+    const pwd: string | undefined = argv["pwd"];
     if (pwd) {
         process.chdir(pwd);
     }
@@ -80,18 +80,18 @@ export function main(args: string[]): void {
     }
 
     // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
-    let dryRun: boolean = !!(argv["dry-run"]);
+    const dryRun: boolean = !!(argv["dry-run"]);
 
     // If there is a monitor argument, connect to it.
     let monitor: Object | undefined;
-    let monitorAddr: string | undefined = argv["monitor"];
+    const monitorAddr: string | undefined = argv["monitor"];
     if (monitorAddr) {
         monitor = new langrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
     }
 
     // If there is an engine argument, connect to it too.
     let engine: Object | undefined;
-    let engineAddr: string | undefined = argv["engine"];
+    const engineAddr: string | undefined = argv["engine"];
     if (engineAddr) {
         engine = new engrpc.EngineClient(engineAddr, grpc.credentials.createInsecure());
     }
@@ -124,7 +124,7 @@ export function main(args: string[]): void {
     }
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
-    let programArgs: string[] = argv._.slice(1);
+    const programArgs: string[] = argv._.slice(1);
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
     // Now go ahead and execute the code.  This keeps the process alive until the message loop exits.

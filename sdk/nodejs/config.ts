@@ -36,7 +36,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public getBoolean(key: string): boolean | undefined {
-        let v: string | undefined = this.get(key);
+        const v: string | undefined = this.get(key);
         if (v === undefined) {
             return undefined;
         } else if (v === "true") {
@@ -54,11 +54,11 @@ export class Config {
      * @param key The key to lookup.
      */
     public getNumber(key: string): number | undefined {
-        let v: string | undefined = this.get(key);
+        const v: string | undefined = this.get(key);
         if (v === undefined) {
             return undefined;
         }
-        let f: number = parseFloat(v);
+        const f: number = parseFloat(v);
         if (isNaN(f)) {
             throw new ConfigTypeError(this.fullKey(key), v, "number");
         }
@@ -72,7 +72,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public getObject<T>(key: string): T | undefined {
-        let v: string | undefined = this.get(key);
+        const v: string | undefined = this.get(key);
         if (v === undefined) {
             return undefined;
         }
@@ -90,7 +90,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public require(key: string): string {
-        let v: string | undefined = this.get(key);
+        const v: string | undefined = this.get(key);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -104,7 +104,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireBoolean(key: string): boolean {
-        let v: boolean | undefined = this.getBoolean(key);
+        const v: boolean | undefined = this.getBoolean(key);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -118,7 +118,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireNumber(key: string): number {
-        let v: number | undefined = this.getNumber(key);
+        const v: number | undefined = this.getNumber(key);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -132,7 +132,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireObject<T>(key: string): T {
-        let v: T | undefined = this.getObject<T>(key);
+        const v: T | undefined = this.getObject<T>(key);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
         }
@@ -165,7 +165,7 @@ class ConfigMissingError extends RunError {
     constructor(public key: string) {
         super(
             `Missing required configuration variable '${key}'\n` +
-            `\tplease set a value using the command \`pulumi config ${key} <value>\``
+            `\tplease set a value using the command \`pulumi config ${key} <value>\``,
         );
     }
 }
