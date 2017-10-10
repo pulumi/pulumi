@@ -43,7 +43,7 @@ func newConfigCmd() *cobra.Command {
 				return deleteConfiguration(envName, key)
 			}
 
-			return lumiEngine.SetConfig(envName, key, args[1])
+			return setConfiguration(envName, key, args[1])
 		}),
 	}
 
@@ -115,6 +115,23 @@ func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
 	if target.Config != nil {
 		delete(target.Config, key)
 	}
+
+	return lumiEngine.Environment.SaveEnvironment(target, snapshot)
+}
+
+func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value string) error {
+	target, snapshot, _, err := lumiEngine.Environment.GetEnvironment(envName)
+	if err != nil {
+		return err
+	}
+
+	contract.Assert(target != nil)
+
+	if target.Config == nil {
+		target.Config = make(map[tokens.ModuleMember]string)
+	}
+
+	target.Config[key] = value
 
 	return lumiEngine.Environment.SaveEnvironment(target, snapshot)
 }
