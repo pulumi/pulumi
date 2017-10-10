@@ -14,6 +14,117 @@ interface ClosureCase {
 
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
+    describe("hash", () => {
+        it("is affected by code.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "1",
+                runtime: "",
+                environment: { }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by runtime.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "1",
+                environment: { }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by module.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { module: "m1" } }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { module: "m2" } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is affected by environment vales.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
+        it("is not affected by environment order.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 }, cap2: { json: 200 } }
+            };
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap2: { json: 200 }, cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.equal(hash1, hash2);
+        });
+
+        it("is different with cyclic and non-cyclic environments.", () => {
+            let closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+            closure1.environment.cap1.closure = closure1;
+
+            let closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } }
+            };
+
+            let hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            let hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+    });
+
     let cases: ClosureCase[] = [];
 
     // A few simple positive cases for functions/arrows (no captures).
@@ -369,7 +480,7 @@ return (function () { })
                     assert.equal(text, test.expectText);
                 }
 
-                let closureHash = (new runtime.FuncsForClosure(closure)).root;
+                let closureHash = runtime.getClosureHash_forTestingPurposes(closure);
                 assert.equal(closureHash, test.closureHash);
             } else {
                 await assertAsyncThrows(async () => {
