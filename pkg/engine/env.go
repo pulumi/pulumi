@@ -37,14 +37,6 @@ type planContext struct {
 	PackageArg string           // an optional path to a package to pass to the compiler
 }
 
-// createEnv just creates a new empty environment without deploying anything into it.
-func (eng *Engine) createEnv(name tokens.QName) error {
-	contract.Require(name != tokens.QName(""), "name")
-
-	env := &deploy.Target{Name: name}
-	return eng.Environment.SaveEnvironment(env, nil)
-}
-
 // removeTarget permanently deletes the environment's information from the local workstation.
 func (eng *Engine) removeTarget(env *deploy.Target) error {
 	if err := eng.Environment.RemoveEnvironment(env); err != nil {

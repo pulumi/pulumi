@@ -5,6 +5,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -35,7 +37,9 @@ func newEnvInitCmd() *cobra.Command {
 
 			}
 
-			err := lumiEngine.InitEnv(envName)
+			target := deploy.Target{Name: envName}
+
+			err := lumiEngine.Environment.SaveEnvironment(&target, nil)
 			if err != nil {
 				return err
 			}
