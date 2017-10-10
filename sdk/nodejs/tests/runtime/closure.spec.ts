@@ -276,6 +276,7 @@ return (function () { })
         let nocap8 = 8, nocap9 = 9, nocap10 = 10;
         // tslint:disable-next-line
         let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400;
+
         const functext = `((nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
     let yy = nocap3; // not a capture: var later on
