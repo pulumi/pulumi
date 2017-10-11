@@ -5,6 +5,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -30,12 +32,14 @@ func newEnvInitCmd() *cobra.Command {
 
 			envName := tokens.QName(args[0])
 
-			if _, err := lumiEngine.GetEnvironmentInfo(envName); err == nil {
+			if _, _, err := getEnvironment(envName); err == nil {
 				return fmt.Errorf("environment '%v' already exists", envName)
 
 			}
 
-			err := lumiEngine.InitEnv(envName)
+			target := deploy.Target{Name: envName}
+
+			err := saveEnvironment(&target, nil)
 			if err != nil {
 				return err
 			}

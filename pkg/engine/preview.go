@@ -12,7 +12,6 @@ import (
 type PreviewOptions struct {
 	Package              string   // the package to compute the preview for
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Debug                bool     // true to enable resource debugging output.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
@@ -20,21 +19,20 @@ type PreviewOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Preview(environment tokens.QName, opts PreviewOptions) error {
+func (eng *Engine) Preview(environment tokens.QName, events chan Event, opts PreviewOptions) error {
 	contract.Require(environment != tokens.QName(""), "environment")
-
-	// Initialize the diagnostics logger with the right stuff.
-	eng.InitDiag(diag.FormatOptions{
-		Colors: true,
-		Debug:  opts.Debug,
-	})
+	contract.Require(events != nil, "events")
 
 	info, err := eng.planContextFromEnvironment(environment, opts.Package)
 	if err != nil {
 		return err
 	}
+
+	diag := newEventSink(events, diag.FormatOptions{
+		Colors: true,
+	})
+
 	deployOpts := deployOptions{
-		Debug:                opts.Debug,
 		Destroy:              false,
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,
@@ -43,7 +41,12 @@ func (eng *Engine) Preview(environment tokens.QName, opts PreviewOptions) error 
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
+		Events:               events,
+		Diag:                 diag,
 	}
+
+	defer close(events)
+
 	result, err := eng.plan(info, deployOpts)
 	if err != nil {
 		return err
@@ -54,7 +57,7 @@ func (eng *Engine) Preview(environment tokens.QName, opts PreviewOptions) error 
 			return err
 		}
 	}
-	if !eng.Diag().Success() {
+	if !diag.Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
 		return errors.New("One or more errors occurred during the creation of this preview")

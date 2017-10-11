@@ -4,7 +4,14 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
+
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 
@@ -25,24 +32,27 @@ func newEnvLsCmd() *cobra.Command {
 				currentEnv = tokens.QName("")
 			}
 
-			envs, err := lumiEngine.GetEnvironments()
+			envs, err := getEnvironments()
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
 			for _, env := range envs {
+				_, snapshot, err := getEnvironment(env)
+				if err != nil {
+					continue
+				}
+
 				// Now print out the name, last deployment time (if any), and resources (if any).
 				lastDeploy := "n/a"
 				resourceCount := "n/a"
-				if env.Checkpoint.Latest != nil {
-					lastDeploy = env.Checkpoint.Latest.Time.String()
+				if snapshot != nil {
+					lastDeploy = snapshot.Time.String()
+					resourceCount = strconv.Itoa(len(snapshot.Resources))
 				}
-				if env.Snapshot != nil {
-					resourceCount = strconv.Itoa(len(env.Snapshot.Resources))
-				}
-				display := env.Name
-				if env.Name == currentEnv {
+				display := env.String()
+				if env == currentEnv {
 					display += "*" // fancify the current environment.
 				}
 				fmt.Printf("%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
@@ -51,4 +61,40 @@ func newEnvLsCmd() *cobra.Command {
 			return nil
 		}),
 	}
+}
+
+func getEnvironments() ([]tokens.QName, error) {
+	var envs []tokens.QName
+
+	// Read the environment directory.
+	path := workspace.EnvPath("")
+	files, err := ioutil.ReadDir(path)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Errorf("could not read environments: %v", err)
+	}
+
+	for _, file := range files {
+		// Ignore directories.
+		if file.IsDir() {
+			continue
+		}
+
+		// Skip files without valid extensions (e.g., *.bak files).
+		envfn := file.Name()
+		ext := filepath.Ext(envfn)
+		if _, has := encoding.Marshalers[ext]; !has {
+			continue
+		}
+
+		// Read in this environment's information.
+		name := tokens.QName(envfn[:len(envfn)-len(ext)])
+		_, _, err := getEnvironment(name)
+		if err != nil {
+			continue // failure reading the environment information.
+		}
+
+		envs = append(envs, name)
+	}
+
+	return envs, nil
 }

@@ -4,6 +4,7 @@ package deploy
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestNullPlan(t *testing.T) {
 	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
 	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
-	prev := NewSnapshot(targ.Name, nil, nil)
+	prev := NewSnapshot(targ.Name, time.Now(), nil, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
 	iter, err := plan.Start(Options{})
 	assert.Nil(t, err)
@@ -44,7 +45,7 @@ func TestErrorPlan(t *testing.T) {
 		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
-		prev := NewSnapshot(targ.Name, nil, nil)
+		prev := NewSnapshot(targ.Name, time.Now(), nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, iter)
@@ -59,7 +60,7 @@ func TestErrorPlan(t *testing.T) {
 		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
-		prev := NewSnapshot(targ.Name, nil, nil)
+		prev := NewSnapshot(targ.Name, time.Now(), nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, err)
@@ -184,7 +185,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		make(resource.PropertyMap),
 		nil,
 	)
-	oldsnap := NewSnapshot(ns, []*resource.State{oldResB, oldResC, oldResD}, nil)
+	oldsnap := NewSnapshot(ns, time.Now(), []*resource.State{oldResB, oldResC, oldResD}, nil)
 
 	// Create the new resource objects a priori.
 	//     - A is created:

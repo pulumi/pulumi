@@ -3,6 +3,8 @@
 package testutil
 
 import (
+	"io/ioutil"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 )
 
@@ -16,7 +18,7 @@ type TestDiagSink struct {
 func NewTestDiagSink(pwd string) *TestDiagSink {
 	return &TestDiagSink{
 		Pwd: pwd,
-		sink: diag.DefaultSink(diag.FormatOptions{
+		sink: diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
 			Pwd: pwd,
 		}),
 		messages: make(map[diag.Severity][]string),

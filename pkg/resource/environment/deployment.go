@@ -47,7 +47,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	}
 
 	return &Deployment{
-		Time:      time.Now(),
+		Time:      snap.Time,
 		Info:      snap.Info,
 		Resources: resm,
 	}

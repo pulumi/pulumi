@@ -21,7 +21,6 @@ import (
 type DeployOptions struct {
 	Package              string   // the package we are deploying (or "" to use the default)
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Debug                bool     // true to enable resource debugging output.
 	DryRun               bool     // true if we should just print the plan without performing it.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
@@ -30,21 +29,22 @@ type DeployOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Deploy(environment tokens.QName, opts DeployOptions) error {
+func (eng *Engine) Deploy(environment tokens.QName, events chan Event, opts DeployOptions) error {
 	contract.Require(environment != tokens.QName(""), "environment")
-
-	// Initialize the diagnostics logger with the right stuff.
-	eng.InitDiag(diag.FormatOptions{
-		Colors: true,
-		Debug:  opts.Debug,
-	})
+	contract.Require(events != nil, "events")
 
 	info, err := eng.planContextFromEnvironment(environment, opts.Package)
 	if err != nil {
 		return err
 	}
+
+	diag := newEventSink(events, diag.FormatOptions{
+		Colors: true,
+	})
+
+	defer close(events)
+
 	return eng.deployLatest(info, deployOptions{
-		Debug:                opts.Debug,
 		Destroy:              false,
 		DryRun:               opts.DryRun,
 		Analyzers:            opts.Analyzers,
@@ -53,21 +53,24 @@ func (eng *Engine) Deploy(environment tokens.QName, opts DeployOptions) error {
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
+		Events:               events,
+		Diag:                 diag,
 	})
 }
 
 type deployOptions struct {
-	Debug                bool     // true to enable resource debugging output.
-	Create               bool     // true if we are creating resources.
-	Destroy              bool     // true if we are destroying the environment.
-	DryRun               bool     // true if we should just print the plan without performing it.
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
-	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool     // true if we should only summarize resources and operations.
-	DOT                  bool     // true if we should print the DOT file for this plan.
+	Create               bool       // true if we are creating resources.
+	Destroy              bool       // true if we are destroying the environment.
+	DryRun               bool       // true if we should just print the plan without performing it.
+	Analyzers            []string   // an optional set of analyzers to run as part of this deployment.
+	Parallel             int        // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool       // true to show the configuration variables being used.
+	ShowReplacementSteps bool       // true to show the replacement steps in the plan.
+	ShowSames            bool       // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool       // true if we should only summarize resources and operations.
+	DOT                  bool       // true if we should print the DOT file for this plan.
+	Events               chan Event // the channel to write events from the engine to.
+	Diag                 diag.Sink  // the sink to use for diag'ing.
 }
 
 func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
@@ -87,7 +90,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 			var header bytes.Buffer
 			printPrelude(&header, result, false)
 			header.WriteString(fmt.Sprintf("%vPerforming changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			fmt.Fprint(eng.Stdout, colors.Colorize(&header))
+			opts.Events <- stdOutEventWithColor(&header)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
@@ -121,18 +124,19 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 			// Write out the current snapshot. Note that even if a failure has occurred, we should still have
 			// a safe checkpoint. Note that any error that occurs when writing the checkpoint trumps the error
 			// reported above.
-			saveErr := eng.Environment.SaveEnvironment(actions.Target, summary.Snap())
+			saveErr := eng.Snapshots.SaveSnapshot(summary.Snap())
 			if saveErr != nil {
 				err = saveErr
 			}
 
-			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
+			opts.Events <- stdOutEventWithColor(&footer)
+
 			if err != nil {
 				return err
 			}
 		}
 	}
-	if !eng.Diag().Success() {
+	if !opts.Diag.Success() {
 		// If any error that wasn't printed above, be sure to make it evident in the output.
 		return goerr.New("One or more errors occurred during this update")
 	}
@@ -154,7 +158,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	if shouldShow(step, acts.Opts) {
 		var b bytes.Buffer
 		printStep(&b, step, acts.Opts.Summary, false, "")
-		fmt.Fprint(acts.Engine.Stdout, colors.Colorize(&b))
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
 	// Apply the step's changes.
@@ -164,7 +168,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	stepop := step.Op()
 	if err != nil {
 		// Issue a true, bonafide error.
-		acts.Engine.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
+		acts.Opts.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
 		var b bytes.Buffer
@@ -183,7 +187,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		fmt.Fprint(acts.Engine.Stdout, colors.Colorize(&b))
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	} else {
 		// Increment the counters.
 		if step.Logical() {
@@ -195,7 +199,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		if shouldShow(step, acts.Opts) && !acts.Opts.Summary {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
-			fmt.Fprint(acts.Engine.Stdout, colors.Colorize(&b))
+			acts.Opts.Events <- stdOutEventWithColor(&b)
 		}
 	}
 

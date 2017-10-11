@@ -28,28 +28,23 @@ func newEnvCmd() *cobra.Command {
 				return err
 			}
 
-			envInfo, err := lumiEngine.GetEnvironmentInfo(envName)
-			if err != nil {
-				return err
-			}
-			config, err := lumiEngine.GetConfiguration(envName)
+			target, snapshot, err := getEnvironment(envName)
 			if err != nil {
 				return err
 			}
 
-			checkpoint := envInfo.Checkpoint
-			snapshot := envInfo.Snapshot
+			config := target.Config
 
-			fmt.Printf("Current environment is %v\n", envInfo.Name)
+			fmt.Printf("Current environment is %v\n", envName)
 			fmt.Printf("    (use `pulumi env select` to change environments; `pulumi env ls` lists known ones)\n")
 
 			if err != nil {
 				return err
 			}
-			if checkpoint.Latest != nil {
-				fmt.Printf("Last update at %v\n", checkpoint.Latest.Time)
-				if checkpoint.Latest.Info != nil {
-					info, err := json.MarshalIndent(checkpoint.Latest.Info, "    ", "    ")
+			if snapshot != nil {
+				fmt.Printf("Last update at %v\n", snapshot.Time)
+				if snapshot.Info != nil {
+					info, err := json.MarshalIndent(snapshot.Info, "    ", "    ")
 					if err != nil {
 						return err
 					}

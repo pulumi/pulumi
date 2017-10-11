@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -38,10 +40,10 @@ func newConfigCmd() *cobra.Command {
 				if !unset {
 					return getConfig(envName, key)
 				}
-				return lumiEngine.DeleteConfig(envName, key)
+				return deleteConfiguration(envName, key)
 			}
 
-			return lumiEngine.SetConfig(envName, key, args[1])
+			return setConfiguration(envName, key, args[1])
 		}),
 	}
 
@@ -56,7 +58,7 @@ func newConfigCmd() *cobra.Command {
 }
 
 func listConfig(envName tokens.QName) error {
-	config, err := lumiEngine.GetConfiguration(envName)
+	config, err := getConfiguration(envName)
 	if err != nil {
 		return err
 	}
@@ -77,7 +79,7 @@ func listConfig(envName tokens.QName) error {
 }
 
 func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
-	config, err := lumiEngine.GetConfiguration(envName)
+	config, err := getConfiguration(envName)
 	if err != nil {
 		return err
 	}
@@ -90,5 +92,46 @@ func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
 	}
 
 	return errors.Errorf("configuration key '%v' not found for environment '%v'", key, envName)
+}
 
+func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, error) {
+	target, _, err := getEnvironment(envName)
+	if err != nil {
+		return nil, err
+	}
+
+	contract.Assert(target != nil)
+	return target.Config, nil
+}
+
+func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
+	target, snapshot, err := getEnvironment(envName)
+	if err != nil {
+		return err
+	}
+
+	contract.Assert(target != nil)
+
+	if target.Config != nil {
+		delete(target.Config, key)
+	}
+
+	return saveEnvironment(target, snapshot)
+}
+
+func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value string) error {
+	target, snapshot, err := getEnvironment(envName)
+	if err != nil {
+		return err
+	}
+
+	contract.Assert(target != nil)
+
+	if target.Config == nil {
+		target.Config = make(map[tokens.ModuleMember]string)
+	}
+
+	target.Config[key] = value
+
+	return saveEnvironment(target, snapshot)
 }
