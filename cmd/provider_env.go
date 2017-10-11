@@ -13,7 +13,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/environment"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/mapper"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -70,24 +69,6 @@ func getEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error)
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		return nil, nil, err
-	}
-
-	// Next, use the mapping infrastructure to validate the contents.
-	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
-	var obj map[string]interface{}
-	if err = m.Unmarshal(b, &obj); err != nil {
-		return nil, nil, err
-	}
-
-	if obj["latest"] != nil {
-		if latest, islatest := obj["latest"].(map[string]interface{}); islatest {
-			delete(latest, "resources") // remove the resources, since they require custom marshaling.
-		}
-	}
-	md := mapper.New(nil)
-	var ignore environment.Checkpoint // just for errors.
-	if err = md.Decode(obj, &ignore); err != nil {
 		return nil, nil, err
 	}
 
