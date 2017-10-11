@@ -6,7 +6,7 @@ class Add extends pulumi.Resource {
     public readonly sum: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super("test:provider:add", name, {left: left, right: right, sum: undefined}, undefined);
+        super("testing:simple:add", name, {left: left, right: right, sum: undefined}, undefined);
     }
 }
 
@@ -14,7 +14,7 @@ class Mul extends pulumi.Resource {
     public readonly product: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super("test:provider:mul", name, {left: left, right: right, product: undefined}, undefined);
+        super("testing:simple:mul", name, {left: left, right: right, product: undefined}, undefined);
     }
 }
 
@@ -22,7 +22,7 @@ class Sub extends pulumi.Resource {
     public readonly difference: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super("test:provider:sub", name, {left: left, right: right, difference: undefined}, undefined);
+        super("testing:simple:sub", name, {left: left, right: right, difference: undefined}, undefined);
     }
 }
 
@@ -31,7 +31,7 @@ class Div extends pulumi.Resource {
     public readonly remainder: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super("test:provider:div", name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
+        super("testing:simple:div", name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
     }
 }
 

@@ -1,125 +1,157 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 // This is a mock resource provider that can be used to implement custom CRUD operations in JavaScript.
-// It is configured using a single variable, `test:provider:crud`, that provides the path to the JS module
-// that implements CRUD operations for various types. When an operation is requested by the engine for a
-// resource of a particular type, that type's `CRUDProvider` is loaded from the input module using the
-// unqualified type name.
+// It is configured using a single variable, `pulumi:testing:providers`, that provides the path to the JS
+// module that implements CRUD operations for various types. When an operation is requested by the engine
+// for a resource of a particular type, that type's `testing.Provider` is loaded from the input module
+// using the unqualified type name.
 
 import * as minimist from "minimist";
+import * as path from "path";
 import * as resource from "../../resource";
-import * as crud from "../../crud";
+import * as testing from "../../testing";
 
-let path = require("path");
-let grpc = require("grpc");
-let emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
-let structproto = require("google-protobuf/google/protobuf/struct_pb.js");
-let provproto = require("../../proto/provider_pb.js");
-let provrpc = require("../../proto/provider_grpc_pb.js");
+const grpc = require("grpc");
+const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
+const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
+const provproto = require("../../proto/provider_pb.js");
+const provrpc = require("../../proto/provider_grpc_pb.js");
 
-class CRUDProviders {
+class Providers {
     private registry: any;
 
     constructor(registry: any) {
         this.registry = registry;
     }
 
-    get(urn: string): crud.Provider {
-        const URNNameDelimiter: string = "::";
-        const NSDelimiter: string = ":";
+    get(urn: string): testing.ResourceProvider {
+        const urnNameDelimiter: string = "::";
+        const nsDelimiter: string = ":";
 
-        const type = urn.split(URNNameDelimiter)[2].split(NSDelimiter)[2];
+        const type = urn.split(urnNameDelimiter)[2].split(nsDelimiter)[2];
         return this.registry[type];
     }
 }
-let providers: CRUDProviders;
+let providers: Providers;
 
 function configureRPC(call: any, callback: any): void {
-    const req = call.request;
+    try {
+        const req = call.request;
 
-    const variables = req.getVariablesMap();
-    let crudJS = variables.get("test:provider:crud");
-    if (crudJS.startsWith("./") || crudJS.startsWith("../")) {
-        crudJS = path.normalize(path.join(process.cwd(), crudJS));
+        const variables = req.getVariablesMap();
+        let providersJS = variables.get(testing.ProvidersConfigKey);
+        if (providersJS.startsWith("./") || providersJS.startsWith("../")) {
+            providersJS = path.normalize(path.join(process.cwd(), providersJS));
+        }
+        providers = new Providers(require(providersJS));
+
+        callback(undefined, new emptyproto.Empty());
+    } catch (e) {
+        console.error(new Error().stack);
+        callback(e, undefined);
     }
-    providers = new CRUDProviders(require(crudJS));
-
-    callback(undefined, new emptyproto.Empty());
 }
 
 async function invokeRPC(call: any, callback: any): Promise<void> {
     const req: any = call.request;
     const resp = new provproto.InvokeResponse();
 
-    // TODO: implement this.
+    // TODO[pulumi/pulumi#406]: implement this.
 
     callback(undefined, resp);
 }
 
 async function checkRPC(call: any, callback: any): Promise<void> {
-    const req: any = call.request;
-    const resp = new provproto.CheckResponse();
+    try {
+        const req: any = call.request;
+        const resp = new provproto.CheckResponse();
 
-    const result = await providers.get(req.getUrn()).check(req.getProperties().toJavaScript());
-    if (result.defaults) {
-        resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
-    }
-    if (result.failures.length != 0) {
-        const failures = [];
-        for (const f of result.failures) {
-            const failure = new provproto.CheckFailure();
-            failure.setProperty(f.property);
-            failure.setReason(f.reason);
-
-            failures.push(failure);
+        const result = await providers.get(req.getUrn()).check(req.getProperties().toJavaScript());
+        if (result.defaults) {
+            resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
         }
-        resp.setFailuresList(failures);
-    }
+        if (result.failures.length !== 0) {
+            const failures = [];
+            for (const f of result.failures) {
+                const failure = new provproto.CheckFailure();
+                failure.setProperty(f.property);
+                failure.setReason(f.reason);
 
-    callback(undefined, resp);
+                failures.push(failure);
+            }
+            resp.setFailuresList(failures);
+        }
+
+        callback(undefined, resp);
+    } catch (e) {
+        console.error(new Error().stack);
+        callback(e, undefined);
+    }
 }
 
 async function diffRPC(call: any, callback: any): Promise<void> {
-    const req: any = call.request;
-    const resp = new provproto.DiffResponse();
+    try {
+        const req: any = call.request;
+        const resp = new provproto.DiffResponse();
 
-    const result: any = await providers.get(req.getUrn()).diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
-    if (result.replaces.length != 0) {
-        resp.setReplaces(result.replaces);
+        const result: any = await providers.get(req.getUrn())
+            .diff(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+        if (result.replaces.length !== 0) {
+            resp.setReplaces(result.replaces);
+        }
+
+        callback(undefined, resp);
+    } catch (e) {
+        console.error(new Error().stack);
+        callback(e, undefined);
     }
-
-    callback(undefined, resp);
 }
 
 async function createRPC(call: any, callback: any): Promise<void> {
-    const req: any = call.request;
-    const resp = new provproto.CreateResponse();
+    try {
+        const req: any = call.request;
+        const resp = new provproto.CreateResponse();
 
-    const result = await providers.get(req.getUrn()).create(req.getProperties().toJavaScript());
-    resp.setId(result.id);
-    if (result.outs) {
-        resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+        const result = await providers.get(req.getUrn()).create(req.getProperties().toJavaScript());
+        resp.setId(result.id);
+        if (result.outs) {
+            resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+        }
+
+        callback(undefined, resp);
+    } catch (e) {
+        console.error(new Error().stack);
+        callback(e, undefined);
     }
-
-    callback(undefined, resp);
 }
 
 async function updateRPC(call: any, callback: any): Promise<void> {
-    const req: any = call.request;
-    const resp = new provproto.UpdateResponse();
+    try {
+        const req: any = call.request;
+        const resp = new provproto.UpdateResponse();
 
-    const result: any = await providers.get(req.getUrn()).update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
-    if (result.outs) {
-        resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+        const result: any = await providers.get(req.getUrn())
+            .update(req.getId(), req.getOlds().toJavaScript(), req.getNews().toJavaScript());
+        if (result.outs) {
+            resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+        }
+
+        callback(undefined, resp);
+    } catch (e) {
+        console.error(new Error().stack);
+        callback(e, undefined);
     }
-
-    callback(undefined, resp);
 }
 
 async function deleteRPC(call: any, callback: any): Promise<void> {
-    const req: any = call.request;
-    await providers.get(req.getUrn()).delete(req.getId(), req.getProperties());
-    callback(undefined, new emptyproto.Empty());
+    try {
+        const req: any = call.request;
+        await providers.get(req.getUrn()).delete(req.getId(), req.getProperties());
+        callback(undefined, new emptyproto.Empty());
+    } catch (e) {
+        console.error(new Error().stack);
+        callback(e, undefined);
+    }
 }
 
 export function main(args: string[]): void {
@@ -141,7 +173,7 @@ export function main(args: string[]): void {
         diff: diffRPC,
         create: createRPC,
         update: updateRPC,
-        delete: deleteRPC
+        delete: deleteRPC,
     });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 

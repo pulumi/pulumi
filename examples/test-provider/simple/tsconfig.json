@@ -17,7 +17,7 @@
     },
     "files": [
         "index.ts",
-        "crud.ts"
+        "providers.ts"
     ]
 }
 

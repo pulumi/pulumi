@@ -29,7 +29,7 @@ func TestExamples(t *testing.T) {
 			Dir:          path.Join(cwd, "test-provider/simple"),
 			Dependencies: []string{"pulumi"},
 			Config: map[string]string{
-				"test:provider:crud": "./bin/crud.js",
+				"testing:providers:module": "./bin/providers.js",
 				"simple:config:w": "1",
 				"simple:config:x": "1",
 				"simple:config:y": "1",
