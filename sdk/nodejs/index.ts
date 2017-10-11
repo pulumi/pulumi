@@ -11,5 +11,6 @@ export * from "./resource";
 import * as asset from "./asset";
 import * as log from "./log";
 import * as runtime from "./runtime";
-export { asset, log, runtime };
+import * as testing from "./testing";
+export { asset, log, runtime, testing };
 
