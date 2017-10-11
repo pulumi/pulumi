@@ -19,8 +19,36 @@ import (
 
 type localEnvProvider struct{}
 
-func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
+func (p localEnvProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
+	contract.Require(name != "", "name")
 
+	target, _, err := getEnvironment(name)
+
+	return target, err
+}
+
+func (p localEnvProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
+	contract.Require(name != "", "name")
+
+	_, snapshot, err := getEnvironment(name)
+
+	return snapshot, err
+}
+
+func (p localEnvProvider) SaveSnapshot(snapshot *deploy.Snapshot) error {
+	target, _, err := getEnvironment(snapshot.Namespace)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if target == nil {
+		target = &deploy.Target{Name: snapshot.Namespace}
+	}
+
+	return saveEnvironment(target, snapshot)
+}
+
+func getEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
 	file := workspace.EnvPath(name)
 
@@ -34,22 +62,22 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target, *de
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil, errors.Errorf("Environment '%v' could not be found in the current workspace", name)
+			return nil, nil, err
 		}
-		return nil, nil, errors.Wrapf(err, "An IO error occurred during the current operation")
+		return nil, nil, err
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
+		return nil, nil, err
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
 	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
+		return nil, nil, err
 	}
 
 	if obj["latest"] != nil {
@@ -60,7 +88,7 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target, *de
 	md := mapper.New(nil)
 	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not read deployment file '%v'", file)
+		return nil, nil, err
 	}
 
 	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
@@ -68,7 +96,7 @@ func (p localEnvProvider) GetEnvironment(name tokens.QName) (*deploy.Target, *de
 	return target, snapshot, nil
 }
 
-func (p localEnvProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
+func saveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
 	contract.Require(env != nil, "env")
 	file := workspace.EnvPath(env.Name)
 
@@ -102,7 +130,7 @@ func (p localEnvProvider) SaveEnvironment(env *deploy.Target, snap *deploy.Snaps
 	return nil
 }
 
-func (p localEnvProvider) RemoveEnvironment(env *deploy.Target) error {
+func removeEnvironment(env *deploy.Target) error {
 	contract.Require(env != nil, "env")
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.EnvPath(env.Name)

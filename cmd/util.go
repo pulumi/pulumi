@@ -32,7 +32,7 @@ func explicitOrCurrent(name string) (tokens.QName, error) {
 		return getCurrentEnv()
 	}
 
-	_, _, err := lumiEngine.Environment.GetEnvironment(tokens.QName(name))
+	_, _, err := getEnvironment(tokens.QName(name))
 	return tokens.QName(name), err
 }
 
@@ -53,7 +53,7 @@ func getCurrentEnv() (tokens.QName, error) {
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
 func setCurrentEnv(name tokens.QName, verify bool) error {
 	if verify {
-		if _, _, err := lumiEngine.Environment.GetEnvironment(name); err != nil {
+		if _, _, err := getEnvironment(name); err != nil {
 			return err
 		}
 	}

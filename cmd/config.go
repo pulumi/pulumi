@@ -95,7 +95,7 @@ func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
 }
 
 func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	target, _, err := lumiEngine.Environment.GetEnvironment(envName)
+	target, _, err := getEnvironment(envName)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, err
 }
 
 func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
-	target, snapshot, err := lumiEngine.Environment.GetEnvironment(envName)
+	target, snapshot, err := getEnvironment(envName)
 	if err != nil {
 		return err
 	}
@@ -116,11 +116,11 @@ func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
 		delete(target.Config, key)
 	}
 
-	return lumiEngine.Environment.SaveEnvironment(target, snapshot)
+	return saveEnvironment(target, snapshot)
 }
 
 func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value string) error {
-	target, snapshot, err := lumiEngine.Environment.GetEnvironment(envName)
+	target, snapshot, err := getEnvironment(envName)
 	if err != nil {
 		return err
 	}
@@ -133,5 +133,5 @@ func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value strin
 
 	target.Config[key] = value
 
-	return lumiEngine.Environment.SaveEnvironment(target, snapshot)
+	return saveEnvironment(target, snapshot)
 }

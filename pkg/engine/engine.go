@@ -8,15 +8,17 @@ import (
 )
 
 type Engine struct {
-	Environment EnvironmentProvider
+	Targets   TargetProvider
+	Snapshots SnapshotProvider
 }
 
-// EnvironmentProvider abstracts away retriving and storing environments
-type EnvironmentProvider interface {
-	// GetEnvironment returns the environment named by `name` or a non nil error
-	GetEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error)
-	// SaveEnvironment saves an environment to be retrieved later by GetEnvironment
-	SaveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error
-	// RemoveEnvironment removes an environment from the system
-	RemoveEnvironment(env *deploy.Target) error
+// TargetProvider abstracts away retriving a target
+type TargetProvider interface {
+	GetTarget(name tokens.QName) (*deploy.Target, error)
+}
+
+// SnapshotProvider abstracts away retriving and storing snapshots
+type SnapshotProvider interface {
+	GetSnapshot(name tokens.QName) (*deploy.Snapshot, error)
+	SaveSnapshot(snapshot *deploy.Snapshot) error
 }

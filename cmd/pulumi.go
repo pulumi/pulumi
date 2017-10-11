@@ -20,11 +20,12 @@ var (
 	// The lumi engine provides an API for common lumi tasks.  It's shared across the
 	// `pulumi` command and the deployment engine in the pulumi-service. For `pulumi` we set
 	// the engine to write output and errors to os.Stdout and os.Stderr.
-	lumiEngine engine.Engine
+	lumiEngine    engine.Engine
+	localProvider localEnvProvider
 )
 
 func init() {
-	lumiEngine = engine.Engine{Environment: localEnvProvider{}}
+	lumiEngine = engine.Engine{Targets: localProvider, Snapshots: localProvider}
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.

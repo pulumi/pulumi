@@ -37,7 +37,7 @@ func newEnvRmCmd() *cobra.Command {
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' environment!", envName.String()) {
 
-				target, snapshot, err := lumiEngine.Environment.GetEnvironment(envName)
+				target, snapshot, err := getEnvironment(envName)
 				if err != nil {
 					return err
 				}
@@ -48,7 +48,7 @@ func newEnvRmCmd() *cobra.Command {
 						"'%v' still has resources; removal rejected; pass --force to override", envName)
 				}
 
-				err = lumiEngine.Environment.RemoveEnvironment(target)
+				err = removeEnvironment(target)
 				if err != nil {
 					return err
 				}

@@ -3,8 +3,7 @@
 package engine
 
 import (
-	goerr "github.com/pkg/errors"
-
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -14,9 +13,14 @@ func (eng *Engine) planContextFromEnvironment(name tokens.QName, pkgarg string) 
 	contract.Require(name != tokens.QName(""), "name")
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	target, snapshot, err := eng.Environment.GetEnvironment(name)
+	target, err := eng.Targets.GetTarget(name)
 	if err != nil {
-		return nil, goerr.Errorf("could not read environment information")
+		return nil, errors.Wrap(err, "could not read target information")
+	}
+
+	snapshot, err := eng.Snapshots.GetSnapshot(name)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read snapshot information")
 	}
 
 	contract.Assert(target != nil)

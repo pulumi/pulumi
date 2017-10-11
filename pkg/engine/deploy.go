@@ -124,7 +124,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 			// Write out the current snapshot. Note that even if a failure has occurred, we should still have
 			// a safe checkpoint. Note that any error that occurs when writing the checkpoint trumps the error
 			// reported above.
-			saveErr := eng.Environment.SaveEnvironment(actions.Target, summary.Snap())
+			saveErr := eng.Snapshots.SaveSnapshot(summary.Snap())
 			if saveErr != nil {
 				err = saveErr
 			}
