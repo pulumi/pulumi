@@ -45,15 +45,20 @@ export abstract class Resource {
 }
 
 /**
+ * Maybe is a union of either a T or undefined.
+ */
+export type Maybe<T> = T | undefined;
+
+/**
  * Computed is a property output for a resource.  It is just a promise that also permits undefined values.  The
  * undefined values are used during planning, when the actual final value of a resource may not yet be known.
  */
-export type Computed<T> = Promise<T | undefined>;
+export type Computed<T> = Promise<Maybe<T>>;
 
 /**
  * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise for one.
  */
-export type ComputedValue<T> = T | undefined | Computed<T>;
+export type ComputedValue<T> = Maybe<T> | Computed<T> | Promise<T>;
 
 /**
  * ComputedValues is a map of property name to optional property input, one for each resource property value.
