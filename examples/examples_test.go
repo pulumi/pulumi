@@ -19,7 +19,7 @@ func TestExamples(t *testing.T) {
 	}
 	examples := []integration.LumiProgramTestOptions{
 		{
-			Dir:          path.Join(cwd, "basic/minimal"),
+			Dir:          path.Join(cwd, "minimal"),
 			Dependencies: []string{"pulumi"},
 			Config: map[string]string{
 				"minimal:config:name": "Pulumi",
@@ -30,9 +30,9 @@ func TestExamples(t *testing.T) {
 			Dependencies: []string{"pulumi"},
 			Config: map[string]string{
 				"testing:providers:module": "./bin/providers.js",
-				"simple:config:w": "1",
-				"simple:config:x": "1",
-				"simple:config:y": "1",
+				"simple:config:w":          "1",
+				"simple:config:x":          "1",
+				"simple:config:y":          "1",
 			},
 		},
 	}

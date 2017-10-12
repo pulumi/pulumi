@@ -1,5 +1,0 @@
-name: examples/abc
-description: An example of a few resources hooking up with one another.
-dependencies:
-    lumi: "*"
-
