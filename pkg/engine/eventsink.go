@@ -14,7 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func newEventSink(events chan Event, opts diag.FormatOptions) diag.Sink {
+func newEventSink(events chan<- Event, opts diag.FormatOptions) diag.Sink {
 	contract.Require(events != nil, "events")
 
 	return &eventSink{
@@ -28,7 +28,7 @@ const eventSinkIDPrefix = "PU"
 
 // eventSink is a sink which writes all events to a channel
 type eventSink struct {
-	events chan Event            // the channel to emit events into.
+	events chan<- Event          // the channel to emit events into.
 	opts   diag.FormatOptions    // a set of options that control output style and content.
 	counts map[diag.Severity]int // the number of messages that have been issued per severity.
 	mutex  sync.RWMutex          // a mutex for guarding updates to the counts map
