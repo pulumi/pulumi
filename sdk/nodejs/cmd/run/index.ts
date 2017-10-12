@@ -34,19 +34,7 @@ export function main(args: string[]): void {
         boolean: [ "dry-run" ],
         string: [ "parallel", "pwd", "monitor", "engine" ],
         unknown: (arg: string) => {
-            // If unknown, first see if it's a --config.k=v flag.
-            const cix = arg.indexOf("-config");
-            if (cix === 0 || cix === 1) {
-                const kix = arg.indexOf(".");
-                const vix = arg.indexOf("=");
-                if (kix === -1 || vix === -1) {
-                    console.error(`fatal: --config flag malformed (expected '--config.key=val')`);
-                    usage();
-                    process.exit(-1);
-                }
-                config[arg.substring(kix+1, vix)] = arg.substring(vix+1);
-                return false;
-            } else if (arg.indexOf("-") === 0) {
+            if (arg.indexOf("-") === 0) {
                 console.error(`fatal: Unrecognized flag ${arg}`);
                 usage();
                 process.exit(-1);
@@ -57,9 +45,10 @@ export function main(args: string[]): void {
         stopEarly: true,
     });
 
-    // Set any configuration keys/values that were found.
-    for (const key of Object.keys(config)) {
-        runtime.setConfig(key, config[key]);
+    // If any config variables are present, parse and set them, so the subsequent accesses are fast.
+    const envObject: {[key: string]: string} = runtime.getConfigEnv();
+    for (const key of Object.keys(envObject)) {
+        runtime.setConfig(key, envObject[key]);
     }
 
     // If there is a --pwd directive, switch directories.

@@ -3,6 +3,7 @@
 import * as childprocess from "child_process";
 import * as os from "os";
 import * as path from "path";
+import * as runtime from "../runtime";
 
 let grpc = require("grpc");
 let langproto = require("../proto/languages_pb.js");
@@ -52,12 +53,17 @@ function runRPC(call: any, callback: any): void {
             path.join(__filename, "..", "..", "cmd", "run"),
         ];
 
-        // Serialize the config args using "--config.k=v" flags.
+        // Serialize the config args using an environment variable.
+        let env: {[key: string]: string} = {};
         let config: any = req.getConfigMap();
         if (config) {
+            // First flatten the config into a regular (non-RPC) object.
+            let configForEnv: {[key: string]: string} = {};
             for (let entry of config.entries()) {
-                args.push(`--config.${entry[0]}=${entry[1]}`);
+                configForEnv[(entry[0] as string)] = (entry[1] as string);
             }
+            // Now JSON serialize the config into an environment variable.
+            env[runtime.configEnvKey] = JSON.stringify(configForEnv);
         }
 
         // If this is a dry-run, tell the program so.
@@ -111,7 +117,9 @@ function runRPC(call: any, callback: any): void {
 
         // We spawn a new process to run the program.  This is required because we don't want the run to complete
         // until the Node message loop quiesces.  It also gives us an extra level of isolation.
-        proc = childprocess.spawn(process.argv[0], args);
+        proc = childprocess.spawn(process.argv[0], args, {
+            env: Object.assign({}, process.env, env),
+        });
         proc.stdout.on("data", (data: string | Buffer) => {
             console.log(stripEOL(data));
         });
