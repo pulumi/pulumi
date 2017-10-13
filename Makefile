@@ -34,12 +34,6 @@ banner_all:
 	@$(ECHO) "\033[1;37mPulumi Fabric (Full)\033[0m"
 	@$(ECHO) "\033[1;37m====================\033[0m"
 
-.PHONY: configure
-configure:
-	dep ensure -v
-	cd sdk/nodejs/ && make configure
-	@if [ -z "`which pulumi-langhost-nodejs`" ]; then $(ECHO) NOTE: please add "`pwd`/sdk/nodejs/bin" to your path before running lumi or the nodejs language plugin will not load.; fi
-
 .PHONY: install
 install:
 	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
