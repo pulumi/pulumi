@@ -7,7 +7,7 @@
     <NativeRuntimeModuleDirectory>$(NodeJSSdkDirectory)\runtime\native\</NativeRuntimeModuleDirectory>
     <NodeVersion>6.10.2</NodeVersion>
     <NodeArch>x64</NodeArch>
-    <TestParallelism>10</TestParallelism>
+    <TestParallelism>1</TestParallelism>
   </PropertyGroup>
  
   <Target Name="EnsureGoDependencies">
