@@ -71,7 +71,7 @@ func setCurrentEnv(name tokens.QName, verify bool) error {
 // displayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
 // Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
 // await all the events being written.
-func displayEvents(events chan engine.Event, done chan bool, debug bool) {
+func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
 	defer close(done)
 
 	for event := range events {

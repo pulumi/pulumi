@@ -29,7 +29,7 @@ type DeployOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Deploy(environment tokens.QName, events chan Event, opts DeployOptions) error {
+func (eng *Engine) Deploy(environment tokens.QName, events chan<- Event, opts DeployOptions) error {
 	contract.Require(environment != tokens.QName(""), "environment")
 	contract.Require(events != nil, "events")
 
@@ -59,18 +59,18 @@ func (eng *Engine) Deploy(environment tokens.QName, events chan Event, opts Depl
 }
 
 type deployOptions struct {
-	Create               bool       // true if we are creating resources.
-	Destroy              bool       // true if we are destroying the environment.
-	DryRun               bool       // true if we should just print the plan without performing it.
-	Analyzers            []string   // an optional set of analyzers to run as part of this deployment.
-	Parallel             int        // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool       // true to show the configuration variables being used.
-	ShowReplacementSteps bool       // true to show the replacement steps in the plan.
-	ShowSames            bool       // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool       // true if we should only summarize resources and operations.
-	DOT                  bool       // true if we should print the DOT file for this plan.
-	Events               chan Event // the channel to write events from the engine to.
-	Diag                 diag.Sink  // the sink to use for diag'ing.
+	Create               bool         // true if we are creating resources.
+	Destroy              bool         // true if we are destroying the environment.
+	DryRun               bool         // true if we should just print the plan without performing it.
+	Analyzers            []string     // an optional set of analyzers to run as part of this deployment.
+	Parallel             int          // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool         // true to show the configuration variables being used.
+	ShowReplacementSteps bool         // true to show the replacement steps in the plan.
+	ShowSames            bool         // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool         // true if we should only summarize resources and operations.
+	DOT                  bool         // true if we should print the DOT file for this plan.
+	Events               chan<- Event // the channel to write events from the engine to.
+	Diag                 diag.Sink    // the sink to use for diag'ing.
 }
 
 func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {

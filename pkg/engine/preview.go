@@ -19,7 +19,7 @@ type PreviewOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Preview(environment tokens.QName, events chan Event, opts PreviewOptions) error {
+func (eng *Engine) Preview(environment tokens.QName, events chan<- Event, opts PreviewOptions) error {
 	contract.Require(environment != tokens.QName(""), "environment")
 	contract.Require(events != nil, "events")
 
