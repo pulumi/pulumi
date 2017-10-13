@@ -3,9 +3,7 @@ SHELL=/bin/bash
 
 PROJECT=github.com/pulumi/pulumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-
-# Integration tests run Yarn, and Yarn may fail if invoked concurrently.
-TESTPARALLELISM=1
+TESTPARALLELISM=10
 
 ECHO=echo -e
 GOMETALINTERBIN=gometalinter
