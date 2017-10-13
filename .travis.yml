@@ -24,8 +24,6 @@ before_install:
     # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
     - pip install --upgrade --user awscli
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; fi
-cache:
-    yarn: true
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
