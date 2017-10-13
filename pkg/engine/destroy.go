@@ -15,7 +15,7 @@ type DestroyOptions struct {
 	Summary  bool
 }
 
-func (eng *Engine) Destroy(environment tokens.QName, events chan Event, opts DestroyOptions) error {
+func (eng *Engine) Destroy(environment tokens.QName, events chan<- Event, opts DestroyOptions) error {
 	contract.Require(environment != tokens.QName(""), "environment")
 
 	info, err := eng.planContextFromEnvironment(environment, opts.Package)
