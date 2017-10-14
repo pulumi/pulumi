@@ -3,7 +3,7 @@
 import * as pulumi from "pulumi";
 import * as dynamic from "pulumi/dynamic";
 
-class OperatorCallbacks implements dynamic.ResourceProvider {
+class OperatorProvider implements dynamic.ResourceProvider {
     private op: (l: number, r: number) => any;
 
     constructor(op: (l: number, r: number) => any) {
@@ -19,7 +19,7 @@ class OperatorCallbacks implements dynamic.ResourceProvider {
     update = (id: string, olds: any, news: any) => Promise.resolve(new dynamic.UpdateResult(this.op(Number(news.left), Number(news.right))));
 }
 
-class DivCallbacks extends OperatorCallbacks {
+class DivProvider extends OperatorProvider {
     constructor() {
         super((left: number, right: number) => <any>{ quotient: Math.floor(left / right), remainder: left % right });
     }
@@ -30,30 +30,30 @@ class DivCallbacks extends OperatorCallbacks {
 class Add extends dynamic.Resource {
     public readonly sum: pulumi.Computed<number>;
 
-    private static callbacks = new OperatorCallbacks((left: number, right: number) => <any>{ sum: left + right });
+    private static provider = new OperatorProvider((left: number, right: number) => <any>{ sum: left + right });
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super(Add.callbacks, name, {left: left, right: right, sum: undefined}, undefined);
+        super(Add.provider, name, {left: left, right: right, sum: undefined}, undefined);
     }
 }
 
 class Mul extends dynamic.Resource {
     public readonly product: pulumi.Computed<number>;
 
-    private static callbacks = new OperatorCallbacks((left: number, right: number) => <any>{ product: left * right });
+    private static provider = new OperatorProvider((left: number, right: number) => <any>{ product: left * right });
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super(Mul.callbacks, name, {left: left, right: right, product: undefined}, undefined);
+        super(Mul.provider, name, {left: left, right: right, product: undefined}, undefined);
     }
 }
 
 class Sub extends dynamic.Resource {
     public readonly difference: pulumi.Computed<number>;
 
-    private static callbacks = new OperatorCallbacks((left: number, right: number) => <any>{ difference: left - right });
+    private static provider = new OperatorProvider((left: number, right: number) => <any>{ difference: left - right });
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super(Sub.callbacks, name, {left: left, right: right, difference: undefined}, undefined);
+        super(Sub.provider, name, {left: left, right: right, difference: undefined}, undefined);
     }
 }
 
@@ -61,10 +61,10 @@ class Div extends dynamic.Resource {
     public readonly quotient: pulumi.Computed<number>;
     public readonly remainder: pulumi.Computed<number>;
 
-    private static callbacks = new DivCallbacks();
+    private static provider = new DivProvider();
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
-        super(Div.callbacks, name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
+        super(Div.provider, name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
     }
 }
 
