@@ -226,7 +226,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	tok := tokens.ModuleMember(req.GetTok())
 	prov, err := rm.src.plugctx.Host.Provider(tok.Package())
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load resource provider for %v", tok)
+		return nil, err
+	} else if prov == nil {
+		return nil, errors.Errorf("could not load resource provider for package '%v' from $PATH", tok.Package())
 	}
 
 	// Now unpack all of the arguments and prepare to perform the invocation.
@@ -237,7 +239,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	}
 
 	// Do the invoke and then return the arguments.
-	glog.V(5).Info("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
+	glog.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	ret, failures, err := prov.Invoke(tok, args)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)

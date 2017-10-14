@@ -5,6 +5,7 @@ import "source-map-support/register";
 
 // Export top-level elements.
 export * from "./config";
+export * from "./dynamic";
 export * from "./resource";
 
 // Export submodules individually.
