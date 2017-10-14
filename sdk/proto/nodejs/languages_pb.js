@@ -1,6 +1,8 @@
 /**
  * @fileoverview
  * @enhanceable
+ * @suppress {messageConventions} JS Compiler reports an error if a variable or
+ *     field starts with 'MSG_' and isn't a translatable message.
  * @public
  */
 // GENERATED CODE -- DO NOT EDIT!
@@ -65,12 +67,13 @@ proto.pulumirpc.RunRequest.prototype.toObject = function(opt_includeInstance) {
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.RunRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     pwd: jspb.Message.getFieldWithDefault(msg, 1, ""),
     program: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    argsList: jspb.Message.getField(msg, 3),
+    argsList: jspb.Message.getRepeatedField(msg, 3),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
     dryrun: jspb.Message.getFieldWithDefault(msg, 5, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 6, 0)
@@ -161,6 +164,7 @@ proto.pulumirpc.RunRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.RunRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -238,12 +242,10 @@ proto.pulumirpc.RunRequest.prototype.setProgram = function(value) {
 
 /**
  * repeated string args = 3;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<string>}
  */
 proto.pulumirpc.RunRequest.prototype.getArgsList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 3));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 3));
 };
 
 
@@ -360,6 +362,7 @@ proto.pulumirpc.RunResponse.prototype.toObject = function(opt_includeInstance) {
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.RunResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.RunResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -429,6 +432,7 @@ proto.pulumirpc.RunResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.RunResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.RunResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -469,12 +473,19 @@ proto.pulumirpc.RunResponse.prototype.setError = function(value) {
  * @constructor
  */
 proto.pulumirpc.NewResourceRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.NewResourceRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.NewResourceRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   proto.pulumirpc.NewResourceRequest.displayName = 'proto.pulumirpc.NewResourceRequest';
 }
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.NewResourceRequest.repeatedFields_ = [3];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -500,11 +511,14 @@ proto.pulumirpc.NewResourceRequest.prototype.toObject = function(opt_includeInst
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.NewResourceRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.NewResourceRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
     name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    childrenList: jspb.Message.getRepeatedField(msg, 3),
+    external: jspb.Message.getFieldWithDefault(msg, 4, false),
     object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -551,6 +565,14 @@ proto.pulumirpc.NewResourceRequest.deserializeBinaryFromReader = function(msg, r
       msg.setName(value);
       break;
     case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addChildren(value);
+      break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setExternal(value);
+      break;
+    case 5:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setObject(value);
@@ -580,6 +602,7 @@ proto.pulumirpc.NewResourceRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.NewResourceRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.NewResourceRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -597,10 +620,24 @@ proto.pulumirpc.NewResourceRequest.serializeBinaryToWriter = function(message, w
       f
     );
   }
+  f = message.getChildrenList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      3,
+      f
+    );
+  }
+  f = message.getExternal();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
+    );
+  }
   f = message.getObject();
   if (f != null) {
     writer.writeMessage(
-      3,
+      5,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -639,18 +676,64 @@ proto.pulumirpc.NewResourceRequest.prototype.setName = function(value) {
 
 
 /**
- * optional google.protobuf.Struct object = 3;
+ * repeated string children = 3;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.NewResourceRequest.prototype.getChildrenList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 3));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.NewResourceRequest.prototype.setChildrenList = function(value) {
+  jspb.Message.setField(this, 3, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.NewResourceRequest.prototype.addChildren = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+};
+
+
+proto.pulumirpc.NewResourceRequest.prototype.clearChildrenList = function() {
+  this.setChildrenList([]);
+};
+
+
+/**
+ * optional bool external = 4;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.NewResourceRequest.prototype.getExternal = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 4, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.NewResourceRequest.prototype.setExternal = function(value) {
+  jspb.Message.setField(this, 4, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct object = 5;
  * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.NewResourceRequest.prototype.getObject = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
 };
 
 
 /** @param {?proto.google.protobuf.Struct|undefined} value */
 proto.pulumirpc.NewResourceRequest.prototype.setObject = function(value) {
-  jspb.Message.setWrapperField(this, 3, value);
+  jspb.Message.setWrapperField(this, 5, value);
 };
 
 
@@ -664,7 +747,7 @@ proto.pulumirpc.NewResourceRequest.prototype.clearObject = function() {
  * @return {!boolean}
  */
 proto.pulumirpc.NewResourceRequest.prototype.hasObject = function() {
-  return jspb.Message.getField(this, 3) != null;
+  return jspb.Message.getField(this, 5) != null;
 };
 
 
@@ -718,6 +801,7 @@ proto.pulumirpc.NewResourceResponse.prototype.toObject = function(opt_includeIns
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.NewResourceResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.NewResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -725,7 +809,7 @@ proto.pulumirpc.NewResourceResponse.toObject = function(includeInstance, msg) {
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     stable: jspb.Message.getFieldWithDefault(msg, 4, false),
-    stablesList: jspb.Message.getField(msg, 5)
+    stablesList: jspb.Message.getRepeatedField(msg, 5)
   };
 
   if (includeInstance) {
@@ -808,6 +892,7 @@ proto.pulumirpc.NewResourceResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.NewResourceResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.NewResourceResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -929,12 +1014,10 @@ proto.pulumirpc.NewResourceResponse.prototype.setStable = function(value) {
 
 /**
  * repeated string stables = 5;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<string>}
  */
 proto.pulumirpc.NewResourceResponse.prototype.getStablesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 5));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 5));
 };
 
 

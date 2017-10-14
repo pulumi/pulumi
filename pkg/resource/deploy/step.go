@@ -43,7 +43,7 @@ func NewSameStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new *
 	contract.Assert(goal != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "")
+	contract.Assert(old.ID != "" || !old.External)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -107,7 +107,7 @@ func NewCreateReplacementStep(iter *PlanIterator, goal SourceGoal,
 	contract.Assert(goal != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "")
+	contract.Assert(old.ID != "" || !old.External)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -138,20 +138,24 @@ func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, error) {
-	// Invoke the Create RPC function for this provider:
-	prov, err := getProvider(s)
-	if err != nil {
-		return resource.StatusOK, err
-	}
-	id, outs, rst, err := prov.Create(s.URN(), s.new.AllInputs())
-	if err != nil {
-		return rst, err
-	}
-	contract.Assert(id != "")
+	if s.new.External {
+		// Invoke the Create RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+		id, outs, rst, err := prov.Create(s.URN(), s.new.AllInputs())
+		if err != nil {
+			return rst, err
+		}
+		contract.Assert(id != "")
 
-	// Copy any of the default and output properties on the live object state.
-	s.new.ID = id
-	s.new.Outputs = outs
+		// Copy any of the default and output properties on the live object state.
+		s.new.ID = id
+		s.new.Outputs = outs
+	}
+
+	// And finish the overall operation.
 	s.goal.Done(s.new, false, nil)
 	s.iter.AppendStateSnapshot(s.new)
 	return resource.StatusOK, nil
@@ -175,7 +179,7 @@ var _ MutatingStep = (*DeleteStep)(nil)
 func NewDeleteStep(iter *PlanIterator, old *resource.State, replacing bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "")
+	contract.Assert(old.ID != "" || !old.External)
 	return &DeleteStep{
 		iter:      iter,
 		old:       old,
@@ -198,13 +202,15 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply() (resource.Status, error) {
-	// Invoke the Delete RPC function for this provider:
-	prov, err := getProvider(s)
-	if err != nil {
-		return resource.StatusOK, err
-	}
-	if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
-		return rst, err
+	if s.old.External {
+		// Invoke the Delete RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
+			return rst, err
+		}
 	}
 	s.iter.MarkStateSnapshot(s.old)
 	return resource.StatusOK, nil
@@ -230,7 +236,7 @@ func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State,
 	new *resource.State, stables []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "")
+	contract.Assert(old.ID != "" || !old.External)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -254,19 +260,23 @@ func (s *UpdateStep) New() *resource.State    { return s.new }
 func (s *UpdateStep) Logical() bool           { return true }
 
 func (s *UpdateStep) Apply() (resource.Status, error) {
-	// Invoke the Update RPC function for this provider:
-	prov, err := getProvider(s)
-	if err != nil {
-		return resource.StatusOK, err
-	}
-	outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.AllInputs(), s.new.AllInputs())
-	if upderr != nil {
-		return rst, upderr
+	if s.new.External {
+		// Invoke the Update RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.AllInputs(), s.new.AllInputs())
+		if upderr != nil {
+			return rst, upderr
+		}
+
+		// Now copy any output state back in case the update triggered cascading updates to other properties.
+		s.new.ID = s.old.ID
+		s.new.Outputs = outs
 	}
 
-	// Now copy any output state back in case the update triggered cascading updates to other properties.
-	s.new.ID = s.old.ID
-	s.new.Outputs = outs
+	// Finally, mark this operation as complete.
 	s.goal.Done(s.new, false, s.stables)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(s.new)
@@ -293,7 +303,7 @@ type ReplaceStep struct {
 func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State, keys []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "")
+	contract.Assert(old.ID != "" || !old.External)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")

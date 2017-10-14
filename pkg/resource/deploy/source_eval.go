@@ -266,16 +266,24 @@ func (rm *resmon) NewResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	var children []resource.URN
+	for _, child := range req.GetChildren() {
+		children = append(children, resource.URN(child))
+	}
+
 	goal := &evalSourceGoal{
 		goal: resource.NewGoal(
 			tokens.Type(req.GetType()),
 			tokens.QName(req.GetName()),
+			req.GetExternal(),
 			props,
+			children,
 		),
 		done: make(chan *evalState),
 	}
-	glog.V(5).Infof("ResourceMonitor.NewResource received: t=%v, name=%v, #props=%v",
-		goal.goal.Type, goal.goal.Name, len(goal.goal.Properties))
+	glog.V(5).Infof("ResourceMonitor.NewResource received: t=%v, name=%v, external=%v, #props=%v, #children=%v",
+		goal.goal.Type, goal.goal.Name, goal.goal.External, len(goal.goal.Properties), len(goal.goal.Children))
 	rm.reschan <- goal
 
 	// Now block waiting for the operation to finish.

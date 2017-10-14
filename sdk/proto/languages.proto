@@ -38,7 +38,9 @@ service ResourceMonitor {
 message NewResourceRequest {
     string type = 1;                   // the type of the object allocated.
     string name = 2;                   // the name, for URN purposes, of the object.
-    google.protobuf.Struct object = 3; // an object produced by the interpreter/source.
+    repeated string children = 3;      // an optional list of child URNs belonging to this parent resource.
+    bool external = 4;                 // true if the resource is external to Pulumi, managed by CRUD operations.
+    google.protobuf.Struct object = 5; // an object produced by the interpreter/source.
 }
 
 // NewResourceResponse reflects back the properties initialized during creation, if applicable.

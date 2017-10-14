@@ -158,15 +158,16 @@ func TestBasicCRUDPlan(t *testing.T) {
 	urnD := resource.NewURN(ns, pkgname, typD, namD)
 
 	// Create the old resources snapshot.
-	oldResB := resource.NewState(typB, urnB, resource.ID("b-b-b"),
+	oldResB := resource.NewState(typB, urnB, true, resource.ID("b-b-b"),
 		resource.PropertyMap{
 			"bf1": resource.NewStringProperty("b-value"),
 			"bf2": resource.NewNumberProperty(42),
 		},
 		make(resource.PropertyMap),
 		nil,
+		nil,
 	)
-	oldResC := resource.NewState(typC, urnC, resource.ID("c-c-c"),
+	oldResC := resource.NewState(typC, urnC, true, resource.ID("c-c-c"),
 		resource.PropertyMap{
 			"cf1": resource.NewStringProperty("c-value"),
 			"cf2": resource.NewNumberProperty(83),
@@ -176,36 +177,38 @@ func TestBasicCRUDPlan(t *testing.T) {
 			"outta1":   resource.NewStringProperty("populated during skip/step"),
 			"outta234": resource.NewNumberProperty(99881122),
 		},
+		nil,
 	)
-	oldResD := resource.NewState(typD, urnD, resource.ID("d-d-d"),
+	oldResD := resource.NewState(typD, urnD, true, resource.ID("d-d-d"),
 		resource.PropertyMap{
 			"df1": resource.NewStringProperty("d-value"),
 			"df2": resource.NewNumberProperty(167),
 		},
 		make(resource.PropertyMap),
 		nil,
+		nil,
 	)
 	oldsnap := NewSnapshot(ns, time.Now(), []*resource.State{oldResB, oldResC, oldResD}, nil)
 
 	// Create the new resource objects a priori.
 	//     - A is created:
-	newResA := resource.NewGoal(typA, namA, resource.PropertyMap{
+	newResA := resource.NewGoal(typA, namA, true, resource.PropertyMap{
 		"af1": resource.NewStringProperty("a-value"),
 		"af2": resource.NewNumberProperty(42),
-	})
+	}, nil)
 	newStateA := &testSourceGoal{Goal: newResA}
 	//     - B is updated:
-	newResB := resource.NewGoal(typB, namB, resource.PropertyMap{
+	newResB := resource.NewGoal(typB, namB, true, resource.PropertyMap{
 		"bf1": resource.NewStringProperty("b-value"),
 		// delete the bf2 field, and add bf3.
 		"bf3": resource.NewBoolProperty(true),
-	})
+	}, nil)
 	newStateB := &testSourceGoal{Goal: newResB}
 	//     - C has no changes:
-	newResC := resource.NewGoal(typC, namC, resource.PropertyMap{
+	newResC := resource.NewGoal(typC, namC, true, resource.PropertyMap{
 		"cf1": resource.NewStringProperty("c-value"),
 		"cf2": resource.NewNumberProperty(83),
-	})
+	}, nil)
 	newStateC := &testSourceGoal{Goal: newResC}
 	//     - No D; it is deleted.
 

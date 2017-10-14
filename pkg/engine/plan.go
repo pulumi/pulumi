@@ -321,6 +321,17 @@ func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.St
 		b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, urn))
 	}
 
+	// If this resource has children, also print a summary of those out too.
+	var children []resource.URN
+	if new != nil {
+		children = new.Children
+	} else {
+		children = old.Children
+	}
+	for _, child := range children {
+		b.WriteString(fmt.Sprintf("%s=> %s\n", indent, child))
+	}
+
 	if !summary {
 		// Print all of the properties associated with this resource.
 		if old == nil && new != nil {

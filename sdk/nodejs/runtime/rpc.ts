@@ -2,7 +2,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComputedValue, ComputedValues, Resource } from "../resource";
+import { ComputedValue, ComputedValues, ExternalResource, Resource } from "../resource";
 import { errorString, debuggablePromise } from "./debuggable";
 import { excessiveDebugOutput, options } from "./settings";
 
@@ -28,7 +28,7 @@ export function transferProperties(onto: any | undefined, label: string, props: 
     // If the dependsOn array is present, make sure we wait on those.
     if (dependsOn) {
         for (let dep of dependsOn) {
-            eventuals.push(dep.id);
+            eventuals.push(dep.urn);
         }
     }
 
@@ -197,7 +197,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         }
         return elems;
     }
-    else if (prop instanceof Resource) {
+    else if (prop instanceof ExternalResource) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: resource ID`);

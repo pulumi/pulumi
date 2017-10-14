@@ -176,16 +176,10 @@ func (iter *PlanIterator) Next() (Step, error) {
 // aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
 // possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
 func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
-	// Fetch the provider for this resource type.
-	res := goal.Resource()
-	prov, err := iter.Provider(res.Type)
-	if err != nil {
-		return nil, err
-	}
-
 	var invalid bool // will be set to true if this object fails validation.
 
 	// Use the resource goal state name to produce a globally unique URN.
+	res := goal.Resource()
 	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Type, res.Name)
 	if iter.urns[urn] {
 		invalid = true
@@ -196,7 +190,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	new := resource.NewState(res.Type, urn, "", res.Properties, nil, nil)
+	new := resource.NewState(res.Type, urn, res.External, "", res.Properties, nil, nil, res.Children)
 
 	// If there is an old resource, apply its default properties before going any further.
 	old, hasold := iter.p.Olds()[urn]
@@ -209,13 +203,27 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 		}
 	}
 
-	// Ensure the provider is okay with this resource and see if it has any new defaults to contribute.
+	// Fetch the provider for this resource type, assuming it isn't just a logical one.
+	var prov plugin.Provider
+	var err error
+	if res.External {
+		if prov, err = iter.Provider(res.Type); err != nil {
+			return nil, err
+		}
+	}
+
 	inputs := new.AllInputs()
-	defaults, failures, err := prov.Check(urn, inputs)
-	if err != nil {
-		return nil, err
-	} else if iter.issueCheckErrors(new, urn, failures) {
-		invalid = true
+
+	// Ensure the provider is okay with this resource and see if it has any new defaults to contribute.
+	var defaults resource.PropertyMap
+	if prov != nil {
+		var failures []plugin.CheckFailure
+		defaults, failures, err = prov.Check(urn, inputs)
+		if err != nil {
+			return nil, err
+		} else if iter.issueCheckErrors(new, urn, failures) {
+			invalid = true
+		}
 	}
 
 	// If there are any new defaults, apply them, and use the combined view for various operations below.
@@ -226,13 +234,15 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
 	for _, a := range iter.p.analyzers {
-		analyzer, err := iter.p.ctx.Host.Analyzer(a)
+		var analyzer plugin.Analyzer
+		analyzer, err = iter.p.ctx.Host.Analyzer(a)
 		if err != nil {
 			return nil, err
 		} else if analyzer == nil {
 			return nil, goerr.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
-		failures, err := analyzer.Analyze(new.Type, inputs)
+		var failures []plugin.AnalyzeFailure
+		failures, err = analyzer.Analyze(new.Type, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -266,31 +276,42 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 		oldinputs := old.AllInputs()
 		if !oldinputs.DeepEquals(inputs) {
 			// The properties changed; we need to figure out whether to do an update or replacement.
-			diff, err := prov.Diff(urn, old.ID, oldinputs, inputs)
-			if err != nil {
-				return nil, err
+			var diff plugin.DiffResult
+			if prov != nil {
+				if diff, err = prov.Diff(urn, old.ID, oldinputs, inputs); err != nil {
+					return nil, err
+				}
 			}
+
 			// This is either an update or a replacement; check for the latter first, and handle it specially.
 			if diff.Replace() {
 				iter.replaces[urn] = true
+
 				// If we are going to perform a replacement, we need to recompute the default values.  The above logic
 				// had assumed that we were going to carry them over from the old resource, which is no longer true.
-				defaults, failures, err := prov.Check(urn, new.Inputs)
-				if err != nil {
-					return nil, err
-				} else if iter.issueCheckErrors(new, urn, failures) {
-					return nil, goerr.New("One or more resource validation errors occurred; refusing to proceed")
+				if prov != nil {
+					var failures []plugin.CheckFailure
+					defaults, failures, err = prov.Check(urn, new.Inputs)
+					if err != nil {
+						return nil, err
+					} else if iter.issueCheckErrors(new, urn, failures) {
+						return nil, goerr.New("One or more resource validation errors occurred; refusing to proceed")
+					}
 				}
+
 				new.Defaults = defaults
 				if glog.V(7) {
 					glog.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
 						urn, oldinputs, new.AllInputs())
 				}
+
 				return []Step{
 					NewCreateReplacementStep(iter, goal, old, new, diff.ReplaceKeys),
 					NewReplaceStep(iter, old, new, diff.ReplaceKeys),
 				}, nil
 			}
+
+			// If we fell through, it's an update.
 			iter.updates[urn] = true
 			if glog.V(7) {
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
