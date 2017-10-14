@@ -4,7 +4,7 @@ import * as resource from "./resource";
 import * as runtime from "./runtime";
 
 /**
- * CheckResult represents the results of a call to `ProviderCallbacks.check`.
+ * CheckResult represents the results of a call to `ResourceProvider.check`.
  */
 export class CheckResult {
     /**
@@ -30,7 +30,7 @@ export class CheckResult {
 }
 
 /**
- * CheckFailure represents a single failure in the results of a call to `ProviderCallbacks.check`
+ * CheckFailure represents a single failure in the results of a call to `ResourceProvider.check`
  */
 export class CheckFailure {
     /**
@@ -56,7 +56,7 @@ export class CheckFailure {
 }
 
 /**
- * DiffResult represents the results of a call to `ProviderCallbacks.diff`.
+ * DiffResult represents the results of a call to `ResourceProvider.diff`.
  */
 export class DiffResult {
     /**
@@ -82,7 +82,7 @@ export class DiffResult {
 }
 
 /**
- * CreateResult represents the results of a call to `ProviderCallbacks.create`.
+ * CreateResult represents the results of a call to `ResourceProvider.create`.
  */
 export class CreateResult {
     /**
@@ -108,7 +108,7 @@ export class CreateResult {
 }
 
 /**
- * UpdateResult represents the results of a call to `ProviderCallbacks.update`.
+ * UpdateResult represents the results of a call to `ResourceProvider.update`.
  */
 export class UpdateResult {
     /**
@@ -127,9 +127,9 @@ export class UpdateResult {
 }
 
 /**
- * Provider represents an object that provides CRUD operations for a particular type of resource.
+ * ResourceProvider represents an object that provides CRUD operations for a particular type of resource.
  */
-export interface ProviderCallbacks {
+export interface ResourceProvider {
     /**
      * Check validates that the given property bag is valid for a resource of the given type.
      *
@@ -172,16 +172,34 @@ export interface ProviderCallbacks {
     delete: (id: resource.ID, props: any) => Promise<void>;
 }
 
-export abstract class DynamicResource extends resource.Resource {
-    private static async serializeCallbacks(callbacks: ProviderCallbacks): Promise<string> {
-        return runtime.serializeJavaScriptText(await runtime.serializeClosure(() => callbacks));
+/**
+ * Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
+ */
+export abstract class Resource extends resource.Resource {
+    private static async serializeProvider(provider: ResourceProvider): Promise<string> {
+        return runtime.serializeJavaScriptText(await runtime.serializeClosure(() => provider));
     }
 
-    public constructor(callbacks: ProviderCallbacks,
+    /**
+     * Creates a new dynamic resource.
+     *
+     * @param provider The implementation of the resource's CRUD operations.
+     * @param name The name of the resource.
+     * @param props The arguments to use to populate the new resource. Must not define the reserved
+     *              property "__provider".
+     * @param dependsOn Optional additional explicit dependencies on other resources.
+     */
+    public constructor(provider: ResourceProvider,
                        name: string,
                        props: resource.ComputedValues,
                        dependsOn?: resource.Resource[]) {
-        props["dynamic:runtime:callbacks"] = DynamicResource.serializeCallbacks(callbacks);
-        super("dynamic:runtime:resource", name, props, dependsOn);
+        const providerKey: string = "__provider";
+
+        if (props[providerKey]) {
+            throw new Error("A dynamic resource must not define the __provider key");
+        }
+        props[providerKey] = Resource.serializeProvider(provider);
+
+        super("pulumi-nodejs:dynamic:Resource", name, props, dependsOn);
     }
 }

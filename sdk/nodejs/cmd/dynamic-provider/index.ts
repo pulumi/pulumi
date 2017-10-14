@@ -19,10 +19,11 @@ const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const provproto = require("../../proto/provider_pb.js");
 const provrpc = require("../../proto/provider_grpc_pb.js");
 
-const callbacksKey: string = "dynamic:runtime:callbacks";
+const providerKey: string = "__provider";
 
-function getCallbacks(props: any): dynamic.ProviderCallbacks {
-    return requireFromString(props[callbacksKey]).handler();
+function getProvider(props: any): dynamic.ResourceProvider {
+    // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
+    return requireFromString(props[providerKey]).handler();
 }
 
 function configureRPC(call: any, callback: any): void {
@@ -42,9 +43,9 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         const resp = new provproto.CheckResponse();
 
         const props = req.getProperties().toJavaScript();
-        const callbacks = getCallbacks(props);
+        const provider = getProvider(props);
 
-        const result = await callbacks.check(props);
+        const result = await provider.check(props);
         if (result.defaults) {
             resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
         }
@@ -75,12 +76,12 @@ async function diffRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        if (olds[callbacksKey] !== news[callbacksKey]) {
-            resp.setReplacesList([ callbacksKey ]);
+        if (olds[providerKey] !== news[providerKey]) {
+            resp.setReplacesList([ providerKey ]);
         } else {
-            const callbacks = getCallbacks(olds);
+            const provider = getProvider(olds);
 
-            const result: any = await callbacks.diff(req.getId(), olds, news);
+            const result: any = await provider.diff(req.getId(), olds, news);
             if (result.replaces.length !== 0) {
                 resp.setReplacesList(result.replaces);
             }
@@ -99,9 +100,9 @@ async function createRPC(call: any, callback: any): Promise<void> {
         const resp = new provproto.CreateResponse();
 
         const props = req.getProperties().toJavaScript();
-        const callbacks = getCallbacks(props);
+        const provider = getProvider(props);
 
-        const result = await callbacks.create(props);
+        const result = await provider.create(props);
         resp.setId(result.id);
         if (result.outs) {
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
@@ -121,12 +122,12 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        if (olds[callbacksKey] !== news[callbacksKey]) {
-            throw new Error("changes to callbacks should require replacement");
+        if (olds[providerKey] !== news[providerKey]) {
+            throw new Error("changes to provider should require replacement");
         }
-        const callbacks = getCallbacks(olds);
+        const provider = getProvider(olds);
 
-        const result: any = await callbacks.update(req.getId(), olds, news);
+        const result: any = await provider.update(req.getId(), olds, news);
         if (result.outs) {
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
         }
@@ -142,7 +143,7 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
     try {
         const req: any = call.request;
         const props: any = req.getProperties().toJavaScript();
-        await getCallbacks(props).delete(req.getId(), props);
+        await getProvider(props).delete(req.getId(), props);
         callback(undefined, new emptyproto.Empty());
     } catch (e) {
         console.error(new Error().stack);
