@@ -3,7 +3,7 @@
 let assert = require("assert");
 let pulumi = require("../../../../../");
 
-class ResourceA extends pulumi.Resource {
+class ResourceA extends pulumi.CustomResource {
     constructor(name) {
         super("test:index:ResourceA", name, {
             "inprop": 777,
@@ -12,7 +12,7 @@ class ResourceA extends pulumi.Resource {
     }
 }
 
-class ResourceB extends pulumi.Resource {
+class ResourceB extends pulumi.CustomResource {
     constructor(name, other) {
         super("test:index:ResourceB", name, {
             "otherIn": other.inprop,

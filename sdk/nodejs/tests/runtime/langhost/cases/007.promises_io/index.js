@@ -3,7 +3,7 @@
 let pulumi = require("../../../../../");
 let fs = require("fs");
 
-class FileResource extends pulumi.Resource {
+class FileResource extends pulumi.CustomResource {
     constructor(name, data) {
         super("test:index:FileResource", name, {
             "data": data,

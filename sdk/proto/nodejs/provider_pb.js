@@ -1,6 +1,8 @@
 /**
  * @fileoverview
  * @enhanceable
+ * @suppress {messageConventions} JS Compiler reports an error if a variable or
+ *     field starts with 'MSG_' and isn't a translatable message.
  * @public
  */
 // GENERATED CODE -- DO NOT EDIT!
@@ -67,6 +69,7 @@ proto.pulumirpc.ConfigureRequest.prototype.toObject = function(opt_includeInstan
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.ConfigureRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.ConfigureRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -138,6 +141,7 @@ proto.pulumirpc.ConfigureRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.ConfigureRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.ConfigureRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -209,6 +213,7 @@ proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance)
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.InvokeRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -284,6 +289,7 @@ proto.pulumirpc.InvokeRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.InvokeRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -400,6 +406,7 @@ proto.pulumirpc.InvokeResponse.prototype.toObject = function(opt_includeInstance
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.InvokeResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.InvokeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -477,6 +484,7 @@ proto.pulumirpc.InvokeResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.InvokeResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.InvokeResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -531,8 +539,6 @@ proto.pulumirpc.InvokeResponse.prototype.hasReturn = function() {
 
 /**
  * repeated CheckFailure failures = 2;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<!proto.pulumirpc.CheckFailure>}
  */
 proto.pulumirpc.InvokeResponse.prototype.getFailuresList = function() {
@@ -605,6 +611,7 @@ proto.pulumirpc.CheckRequest.prototype.toObject = function(opt_includeInstance) 
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.CheckRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -680,6 +687,7 @@ proto.pulumirpc.CheckRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.CheckRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -796,6 +804,7 @@ proto.pulumirpc.CheckResponse.prototype.toObject = function(opt_includeInstance)
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.CheckResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CheckResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -873,6 +882,7 @@ proto.pulumirpc.CheckResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.CheckResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CheckResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -927,8 +937,6 @@ proto.pulumirpc.CheckResponse.prototype.hasDefaults = function() {
 
 /**
  * repeated CheckFailure failures = 2;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<!proto.pulumirpc.CheckFailure>}
  */
 proto.pulumirpc.CheckResponse.prototype.getFailuresList = function() {
@@ -1001,6 +1009,7 @@ proto.pulumirpc.CheckFailure.prototype.toObject = function(opt_includeInstance) 
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.CheckFailure} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CheckFailure.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -1075,6 +1084,7 @@ proto.pulumirpc.CheckFailure.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.CheckFailure} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CheckFailure.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -1168,6 +1178,7 @@ proto.pulumirpc.DiffRequest.prototype.toObject = function(opt_includeInstance) {
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.DiffRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.DiffRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -1254,6 +1265,7 @@ proto.pulumirpc.DiffRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.DiffRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.DiffRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -1430,11 +1442,12 @@ proto.pulumirpc.DiffResponse.prototype.toObject = function(opt_includeInstance) 
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.DiffResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.DiffResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    replacesList: jspb.Message.getField(msg, 1),
-    stablesList: jspb.Message.getField(msg, 2)
+    replacesList: jspb.Message.getRepeatedField(msg, 1),
+    stablesList: jspb.Message.getRepeatedField(msg, 2)
   };
 
   if (includeInstance) {
@@ -1504,6 +1517,7 @@ proto.pulumirpc.DiffResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.DiffResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -1526,12 +1540,10 @@ proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer)
 
 /**
  * repeated string replaces = 1;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<string>}
  */
 proto.pulumirpc.DiffResponse.prototype.getReplacesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 1));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
@@ -1557,12 +1569,10 @@ proto.pulumirpc.DiffResponse.prototype.clearReplacesList = function() {
 
 /**
  * repeated string stables = 2;
- * If you change this array by adding, removing or replacing elements, or if you
- * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<string>}
  */
 proto.pulumirpc.DiffResponse.prototype.getStablesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 2));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 2));
 };
 
 
@@ -1629,6 +1639,7 @@ proto.pulumirpc.CreateRequest.prototype.toObject = function(opt_includeInstance)
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.CreateRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CreateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -1704,6 +1715,7 @@ proto.pulumirpc.CreateRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.CreateRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CreateRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -1813,6 +1825,7 @@ proto.pulumirpc.CreateResponse.prototype.toObject = function(opt_includeInstance
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.CreateResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -1888,6 +1901,7 @@ proto.pulumirpc.CreateResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.CreateResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.CreateResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -1997,6 +2011,7 @@ proto.pulumirpc.UpdateRequest.prototype.toObject = function(opt_includeInstance)
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.UpdateRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -2083,6 +2098,7 @@ proto.pulumirpc.UpdateRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.UpdateRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -2252,6 +2268,7 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.UpdateResponse} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -2322,6 +2339,7 @@ proto.pulumirpc.UpdateResponse.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.UpdateResponse} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.UpdateResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
@@ -2409,6 +2427,7 @@ proto.pulumirpc.DeleteRequest.prototype.toObject = function(opt_includeInstance)
  *     http://goto/soy-param-migration
  * @param {!proto.pulumirpc.DeleteRequest} msg The msg instance to transform.
  * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
@@ -2489,6 +2508,7 @@ proto.pulumirpc.DeleteRequest.prototype.serializeBinary = function() {
  * format), writing to the given BinaryWriter.
  * @param {!proto.pulumirpc.DeleteRequest} message
  * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
  */
 proto.pulumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;

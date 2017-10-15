@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -25,11 +26,13 @@ type Deployment struct {
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Resource struct {
-	ID       resource.ID            `json:"id"`                 // the provider ID for this resource, if any.
+	Custom   bool                   `json:"custom"`             // true if a custom resource managed by a plugin.
+	ID       resource.ID            `json:"id,omitempty"`       // the provider ID for this resource, if any.
 	Type     tokens.Type            `json:"type"`               // this resource's full type token.
 	Inputs   map[string]interface{} `json:"inputs,omitempty"`   // the input properties from the program.
 	Defaults map[string]interface{} `json:"defaults,omitempty"` // the default property values from the provider.
 	Outputs  map[string]interface{} `json:"outputs,omitempty"`  // the output properties from the resource provider.
+	Children []string               `json:"children,omitempty"` // an optional list of child resources.
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
@@ -71,9 +74,18 @@ func SerializeResource(res *resource.State) *Resource {
 		outputs = SerializeProperties(outp)
 	}
 
+	// Sort the list of children.
+	var children []string
+	for _, child := range res.Children {
+		children = append(children, string(child))
+	}
+	sort.Strings(children)
+
 	return &Resource{
+		Custom:   res.Custom,
 		ID:       res.ID,
 		Type:     res.Type,
+		Children: children,
 		Inputs:   inputs,
 		Defaults: defaults,
 		Outputs:  outputs,

@@ -52,9 +52,15 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 				defaults := DeserializeProperties(res.Defaults)
 				outputs := DeserializeProperties(res.Outputs)
 
+				var children []resource.URN
+				for _, child := range res.Children {
+					children = append(children, resource.URN(child))
+				}
+
 				// And now just produce a resource object using the information available.
-				state := resource.NewState(res.Type, kvp.Key, res.ID, inputs, defaults, outputs)
-				resources = append(resources, state)
+				resources = append(resources,
+					resource.NewState(res.Type, kvp.Key, res.Custom, res.ID,
+						inputs, defaults, outputs, children))
 			}
 		}
 

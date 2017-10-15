@@ -21,6 +21,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			tokens.Type("Test"),
 			tokens.QName("resource-x"),
 		),
+		true,
 		resource.ID("test-resource-x"),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"in-nil":         nil,
@@ -52,6 +53,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			},
 			"out-empty-map": map[string]interface{}{},
 		}),
+		nil,
 	)
 
 	dep := SerializeResource(res)
