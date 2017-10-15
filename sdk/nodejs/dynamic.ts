@@ -171,15 +171,14 @@ export interface ResourceProvider {
      */
     delete: (id: resource.ID, props: any) => Promise<void>;
 }
+async function serializeProvider(provider: ResourceProvider): Promise<string> {
+    return runtime.serializeJavaScriptText(await runtime.serializeClosure(() => provider));
+}
 
 /**
  * Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
  */
-export abstract class Resource extends resource.Resource {
-    private static async serializeProvider(provider: ResourceProvider): Promise<string> {
-        return runtime.serializeJavaScriptText(await runtime.serializeClosure(() => provider));
-    }
-
+export abstract class Resource extends resource.CustomResource {
     /**
      * Creates a new dynamic resource.
      *
@@ -198,7 +197,7 @@ export abstract class Resource extends resource.Resource {
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");
         }
-        props[providerKey] = Resource.serializeProvider(provider);
+        props[providerKey] = serializeProvider(provider);
 
         super("pulumi-nodejs:dynamic:Resource", name, props, dependsOn);
     }
