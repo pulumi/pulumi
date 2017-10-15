@@ -2,7 +2,7 @@
 
 let pulumi = require("../../../../../");
 
-exports.MyResource = class MyResource extends pulumi.ExternalResource {
+exports.MyResource = class MyResource extends pulumi.CustomResource {
     constructor(name, seq) {
         super("test:index:MyResource", name, {
             // First a few basic properties that are resolved to values.

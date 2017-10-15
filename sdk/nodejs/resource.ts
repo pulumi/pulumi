@@ -10,6 +10,11 @@ export type URN = string; // an automatically generated logical URN, used to sta
  */
 export abstract class Resource {
     /**
+     * parentScope tracks the currently active parent to automatically parent children to.
+     */
+    private static parentScope: (Resource | undefined)[] = [];
+
+    /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after deployments.
      */
     public readonly urn: Promise<URN>;
@@ -20,11 +25,32 @@ export abstract class Resource {
     public readonly children: Resource[];
 
     /**
+     * withParent executes a callback, body, and any resources allocated within become parent's children.
+     */
+    protected static withParent<T>(parent: Resource, body: () => T): T {
+        Resource.parentScope.push(parent);
+        try {
+            return body();
+        }
+        finally {
+            Resource.parentScope.pop();
+        }
+    }
+
+    /**
      * Creates a new initialized resource object.
      */
     constructor() {
         this.children = [];
         runtime.initResource(this);
+
+        // If there is a parent scope, automatically add this to it as a child.
+        if (Resource.parentScope.length) {
+            const parent: Resource | undefined = Resource.parentScope[Resource.parentScope.length-1];
+            if (parent) {
+                parent.adopt(this);
+            }
+        }
     }
 
     /**
@@ -52,11 +78,11 @@ export abstract class Resource {
      *
      * @param t The type of the resource.
      * @param name The _unqiue_ name of the resource.
-     * @param external True to indicate that this requires is external to Pulumi.
+     * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
-    protected register(t: string, name: string, external: boolean, props: ComputedValues, dependsOn?: Resource[]) {
+    protected register(t: string, name: string, custom: boolean, props: ComputedValues, dependsOn?: Resource[]) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -67,16 +93,16 @@ export abstract class Resource {
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        runtime.registerResource(this, t, name, external, props, this.children, dependsOn);
+        runtime.registerResource(this, t, name, custom, props, this.children, dependsOn);
     }
 }
 
 /**
- * ExternalResource is a resource whose create, read, update, and delete (CRUD) operations are managed by performing
+ * CustomResource is a resource whose create, read, update, and delete (CRUD) operations are managed by performing
  * external operations on some physical entity.  The engine understands how to diff and perform partial updates of
  * them, and these CRUD operations are implemented in a dynamically loaded plugin for the defining package.
  */
-export abstract class ExternalResource extends Resource {
+export abstract class CustomResource extends Resource {
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during deployments and may be
      * missing (undefined) during planning phases.
@@ -98,6 +124,34 @@ export abstract class ExternalResource extends Resource {
     constructor(t: string, name: string, props: ComputedValues, dependsOn?: Resource[]) {
         super();
         this.register(t, name, true, props, dependsOn);
+    }
+}
+
+/**
+ * ComponentResource is a resource that aggregates one or more other child resources into a higher level abstraction.
+ * The component resource itself is a resource, but does not require custom CRUD operations for provisioning.
+ */
+export abstract class ComponentResource extends Resource {
+    /**
+     * Creates and registers a new component resource.  t is the fully qualified type token and name is the "name" part
+     * to use in creating a stable and globally unique URN for the object.  init is used to generate whatever children
+     * will be parented to this component resource.  dependsOn is an optional list of other resources that this
+     * resource depends on, controlling the order in which we perform resource operations.
+     *
+     * @param t The type of the resource.
+     * @param name The _unqiue_ name of the resource.
+     * @param props The arguments to use to populate the new resource.
+     * @param init The callback that will allocate child resources.
+     * @param dependsOn Optional additional explicit dependencies on other resources.
+     */
+    constructor(t: string, name: string, props: ComputedValues,
+                init: () => void | ComputedValues | undefined, dependsOn?: Resource[]) {
+        super();
+        const values: void | ComputedValues | undefined = Resource.withParent(this, init);
+        // IDEA: in the future, it would be nice to split inputs and outputs in the Pulumi metadata.  This would let
+        //     us display them differently.  That implies fairly sizable changes to the RPC interfaces, however, so
+        //     for now we simply cram both values (outputs) and props (inputs) together into the same property bag.
+        this.register(t, name, false, Object.assign({}, values, props), dependsOn);
     }
 }
 

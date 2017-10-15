@@ -518,7 +518,7 @@ proto.pulumirpc.NewResourceRequest.toObject = function(includeInstance, msg) {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
     name: jspb.Message.getFieldWithDefault(msg, 2, ""),
     childrenList: jspb.Message.getRepeatedField(msg, 3),
-    external: jspb.Message.getFieldWithDefault(msg, 4, false),
+    custom: jspb.Message.getFieldWithDefault(msg, 4, false),
     object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -570,7 +570,7 @@ proto.pulumirpc.NewResourceRequest.deserializeBinaryFromReader = function(msg, r
       break;
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setExternal(value);
+      msg.setCustom(value);
       break;
     case 5:
       var value = new google_protobuf_struct_pb.Struct;
@@ -627,7 +627,7 @@ proto.pulumirpc.NewResourceRequest.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = message.getExternal();
+  f = message.getCustom();
   if (f) {
     writer.writeBool(
       4,
@@ -705,18 +705,18 @@ proto.pulumirpc.NewResourceRequest.prototype.clearChildrenList = function() {
 
 
 /**
- * optional bool external = 4;
+ * optional bool custom = 4;
  * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
  * You should avoid comparisons like {@code val === true/false} in those cases.
  * @return {boolean}
  */
-proto.pulumirpc.NewResourceRequest.prototype.getExternal = function() {
+proto.pulumirpc.NewResourceRequest.prototype.getCustom = function() {
   return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 4, false));
 };
 
 
 /** @param {boolean} value */
-proto.pulumirpc.NewResourceRequest.prototype.setExternal = function(value) {
+proto.pulumirpc.NewResourceRequest.prototype.setCustom = function(value) {
   jspb.Message.setField(this, 4, value);
 };
 

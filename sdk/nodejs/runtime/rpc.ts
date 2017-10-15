@@ -2,7 +2,7 @@
 
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComputedValue, ComputedValues, ExternalResource, Resource } from "../resource";
+import { ComputedValue, ComputedValues, CustomResource, Resource } from "../resource";
 import { errorString, debuggablePromise } from "./debuggable";
 import { excessiveDebugOutput, options } from "./settings";
 
@@ -197,7 +197,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         }
         return elems;
     }
-    else if (prop instanceof ExternalResource) {
+    else if (prop instanceof CustomResource) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: resource ID`);

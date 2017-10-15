@@ -2,7 +2,7 @@
 
 import * as pulumi from "pulumi";
 
-class Add extends pulumi.ExternalResource {
+class Add extends pulumi.CustomResource {
     public readonly sum: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
@@ -10,7 +10,7 @@ class Add extends pulumi.ExternalResource {
     }
 }
 
-class Mul extends pulumi.ExternalResource {
+class Mul extends pulumi.CustomResource {
     public readonly product: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
@@ -18,7 +18,7 @@ class Mul extends pulumi.ExternalResource {
     }
 }
 
-class Sub extends pulumi.ExternalResource {
+class Sub extends pulumi.CustomResource {
     public readonly difference: pulumi.Computed<number>;
 
     constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
@@ -26,7 +26,7 @@ class Sub extends pulumi.ExternalResource {
     }
 }
 
-class Div extends pulumi.ExternalResource {
+class Div extends pulumi.CustomResource {
     public readonly quotient: pulumi.Computed<number>;
     public readonly remainder: pulumi.Computed<number>;
 

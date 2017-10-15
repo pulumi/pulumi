@@ -190,7 +190,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	new := resource.NewState(res.Type, urn, res.External, "", res.Properties, nil, nil, res.Children)
+	new := resource.NewState(res.Type, urn, res.Custom, "", res.Properties, nil, nil, res.Children)
 
 	// If there is an old resource, apply its default properties before going any further.
 	old, hasold := iter.p.Olds()[urn]
@@ -206,7 +206,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 	// Fetch the provider for this resource type, assuming it isn't just a logical one.
 	var prov plugin.Provider
 	var err error
-	if res.External {
+	if res.Custom {
 		if prov, err = iter.Provider(res.Type); err != nil {
 			return nil, err
 		}

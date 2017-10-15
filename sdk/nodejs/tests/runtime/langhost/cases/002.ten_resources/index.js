@@ -2,7 +2,7 @@
 
 let pulumi = require("../../../../../");
 
-class MyResource extends pulumi.ExternalResource {
+class MyResource extends pulumi.CustomResource {
     constructor(name) {
         super("test:index:MyResource", name);
     }

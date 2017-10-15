@@ -26,8 +26,8 @@ type Deployment struct {
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Resource struct {
-	External bool                   `json:"external"`           // true if managed external to Pulumi.
-	ID       resource.ID            `json:"id"`                 // the provider ID for this resource, if any.
+	Custom   bool                   `json:"custom"`             // true if a custom resource managed by a plugin.
+	ID       resource.ID            `json:"id,omitempty"`       // the provider ID for this resource, if any.
 	Type     tokens.Type            `json:"type"`               // this resource's full type token.
 	Inputs   map[string]interface{} `json:"inputs,omitempty"`   // the input properties from the program.
 	Defaults map[string]interface{} `json:"defaults,omitempty"` // the default property values from the provider.
@@ -82,7 +82,7 @@ func SerializeResource(res *resource.State) *Resource {
 	sort.Strings(children)
 
 	return &Resource{
-		External: res.External,
+		Custom:   res.Custom,
 		ID:       res.ID,
 		Type:     res.Type,
 		Children: children,

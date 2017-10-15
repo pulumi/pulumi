@@ -4,7 +4,7 @@
 let assert = require("assert");
 let pulumi = require("../../../../../");
 
-class MyResource extends pulumi.ExternalResource {
+class MyResource extends pulumi.CustomResource {
     constructor(name) {
         super("test:index:MyResource", name, {
             // First a few basic properties that are resolved to values.

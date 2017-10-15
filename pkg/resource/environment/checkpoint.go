@@ -59,7 +59,7 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 
 				// And now just produce a resource object using the information available.
 				resources = append(resources,
-					resource.NewState(res.Type, kvp.Key, res.External, res.ID,
+					resource.NewState(res.Type, kvp.Key, res.Custom, res.ID,
 						inputs, defaults, outputs, children))
 			}
 		}

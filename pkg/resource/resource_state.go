@@ -13,7 +13,7 @@ import (
 type State struct {
 	Type     tokens.Type // the resource's type.
 	URN      URN         // the resource's object urn, a human-friendly, unique name for the resource.
-	External bool        // true if managed external to Pulumi.
+	Custom   bool        // true if the resource is custom, managed by a plugin.
 	ID       ID          // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
 	Inputs   PropertyMap // the resource's input properties (as specified by the program).
 	Defaults PropertyMap // the resource's default property values (if any, given by the provider).
@@ -22,15 +22,15 @@ type State struct {
 }
 
 // NewState creates a new resource value from existing resource state information.
-func NewState(t tokens.Type, urn URN, external bool, id ID,
+func NewState(t tokens.Type, urn URN, custom bool, id ID,
 	inputs PropertyMap, defaults PropertyMap, outputs PropertyMap, children []URN) *State {
 	contract.Assert(t != "")
-	contract.Assert(external || id == "")
+	contract.Assert(custom || id == "")
 	contract.Assert(inputs != nil)
 	return &State{
 		Type:     t,
 		URN:      urn,
-		External: external,
+		Custom:   custom,
 		ID:       id,
 		Inputs:   inputs,
 		Defaults: defaults,

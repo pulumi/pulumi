@@ -52,9 +52,9 @@ export function initResource(res: Resource): void {
  * and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(res: Resource, t: string, name: string, external: boolean,
+export function registerResource(res: Resource, t: string, name: string, custom: boolean,
     props: ComputedValues | undefined, children: Resource[], dependsOn: Resource[] | undefined): void {
-        log.debug(`Registering resource: t=${t}, name=${name}, external=${external}` +
+        log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
     // Ensure we're not registering more than once.
     if (registrations.has(res)) {
@@ -71,9 +71,9 @@ export function registerResource(res: Resource, t: string, name: string, externa
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     let createError: Error = new Error(`Resouce '${name}' [${t}] could not be created`);
 
-    // If an external resource, make room for the ID property.
+    // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID | undefined) => void) | undefined;
-    if (external) {
+    if (custom) {
         (res as any).id = debuggablePromise(new Promise<ID | undefined>((resolve) => { resolveID = resolve; }));
     }
 
@@ -123,7 +123,7 @@ export function registerResource(res: Resource, t: string, name: string, externa
                 req.setType(t);
                 req.setName(name);
                 req.setChildrenList(childURNs);
-                req.setExternal(external);
+                req.setCustom(custom);
                 req.setObject(obj);
 
                 let resp: any = await debuggablePromise(new Promise((resolve, reject) => {

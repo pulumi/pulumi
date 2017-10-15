@@ -43,7 +43,7 @@ func NewSameStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new *
 	contract.Assert(goal != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.External)
+	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -107,7 +107,7 @@ func NewCreateReplacementStep(iter *PlanIterator, goal SourceGoal,
 	contract.Assert(goal != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.External)
+	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -138,7 +138,7 @@ func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply() (resource.Status, error) {
-	if s.new.External {
+	if s.new.Custom {
 		// Invoke the Create RPC function for this provider:
 		prov, err := getProvider(s)
 		if err != nil {
@@ -179,7 +179,7 @@ var _ MutatingStep = (*DeleteStep)(nil)
 func NewDeleteStep(iter *PlanIterator, old *resource.State, replacing bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.External)
+	contract.Assert(old.ID != "" || !old.Custom)
 	return &DeleteStep{
 		iter:      iter,
 		old:       old,
@@ -202,7 +202,7 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply() (resource.Status, error) {
-	if s.old.External {
+	if s.old.Custom {
 		// Invoke the Delete RPC function for this provider:
 		prov, err := getProvider(s)
 		if err != nil {
@@ -236,7 +236,7 @@ func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State,
 	new *resource.State, stables []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.External)
+	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -260,7 +260,7 @@ func (s *UpdateStep) New() *resource.State    { return s.new }
 func (s *UpdateStep) Logical() bool           { return true }
 
 func (s *UpdateStep) Apply() (resource.Status, error) {
-	if s.new.External {
+	if s.new.Custom {
 		// Invoke the Update RPC function for this provider:
 		prov, err := getProvider(s)
 		if err != nil {
@@ -303,7 +303,7 @@ type ReplaceStep struct {
 func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State, keys []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.External)
+	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
