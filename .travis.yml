@@ -29,8 +29,7 @@ cache:
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
-    # Now restore dependencies, build prerequisites, and generally make this thing ready to go.
-    - make configure
+    - dep ensure -v
 before_script:
     - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/bin:$PATH
 script:

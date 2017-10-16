@@ -3,9 +3,7 @@ SHELL=/bin/bash
 
 PROJECT=github.com/pulumi/pulumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-
-# Integration tests run Yarn, and Yarn may fail if invoked concurrently.
-TESTPARALLELISM=1
+TESTPARALLELISM=10
 
 ECHO=echo -e
 GOMETALINTERBIN=gometalinter
@@ -33,12 +31,6 @@ banner_all:
 	@$(ECHO) "\033[1;37m====================\033[0m"
 	@$(ECHO) "\033[1;37mPulumi Fabric (Full)\033[0m"
 	@$(ECHO) "\033[1;37m====================\033[0m"
-
-.PHONY: configure
-configure:
-	dep ensure -v
-	cd sdk/nodejs/ && make configure
-	@if [ -z "`which pulumi-langhost-nodejs`" ]; then $(ECHO) NOTE: please add "`pwd`/sdk/nodejs/bin" to your path before running lumi or the nodejs language plugin will not load.; fi
 
 .PHONY: install
 install:

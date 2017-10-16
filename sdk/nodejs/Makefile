@@ -1,24 +1,32 @@
+SHELL=/bin/bash
+.SHELLFLAGS=-ec
+ECHO=echo -e
 PROCCNT=$(shell nproc --all)
 
+export PATH:=$(shell yarn bin):$(PATH)
+
 .PHONY: default
-default: banner build lint test install
+default: banner ensure configure build lint test install
 
 .PHONY: banner
 banner:
-	@echo "\033[1;37m==================\033[0m"
-	@echo "\033[1;37mPulumi Node.js SDK\033[0m"
-	@echo "\033[1;37m==================\033[0m"
+	@$(ECHO) "\033[1;37m==================\033[0m"
+	@$(ECHO) "\033[1;37mPulumi Node.js SDK\033[0m"
+	@$(ECHO) "\033[1;37m==================\033[0m"
+
+.PHONY: ensure
+ensure:
+	yarn install
 
 .PHONY: configure
 configure:
-	yarn install $(YARNFLAGS)
 	cd runtime/native && ./ensure_node_v8.sh
-	cd runtime/native && ../../node_modules/.bin/node-gyp configure
+	cd runtime/native && node-gyp configure
 
 .PHONY: lint
 lint:
-	@echo "\033[0;32mLINT:\033[0m"
-	yarn run lint $(YARNFLAGS)
+	@$(ECHO) "\033[0;32mLINT:\033[0m"
+	tslint -c tslint.json '{,!(bin|doc|node_modules|vendor)/!(bin|node_modules)**/}!(*.d).ts'
 
 .PHONY: clean
 clean:
@@ -26,17 +34,26 @@ clean:
 
 .PHONY: build
 build:
-	@echo "\033[0;32mBUILD:\033[0m"
-	yarn run build $(YARNFLAGS)
+	@$(ECHO) "\033[0;32mBUILD:\033[0m"
+	cp -R ../proto/nodejs/. proto/
+	cd runtime/native/ && node-gyp build
+	tsc
+	cp -R proto/. bin/proto/
+	mkdir -p bin/runtime/native/
+	cp -R runtime/native/build/. bin/runtime/native/build/
+	mkdir -p bin/tests/runtime/langhost/cases/
+	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 .PHONY: test
 test:
-	@echo "\033[0;32mTEST:\033[0m"
-	yarn run test $(YARNFLAGS)
+	@$(ECHO) "\033[0;32mTEST:\033[0m"
+	istanbul cover --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
+	istanbul report text-summary
+	istanbul report text
 
 .PHONY: install
 install:
-	@echo "\033[0;32mINSTALL:\033[0m"
+	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
 	cp package.json bin/
-	cd bin/ && yarn link $(YARNFLAGS)
+	cd bin/ && (yarn unlink > /dev/null 2>&1 || true) && yarn link
 
