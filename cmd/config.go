@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -31,7 +32,7 @@ func newConfigCmd() *cobra.Command {
 				return listConfig(stackName)
 			}
 
-			key, err := tokens.ParseModuleMember(args[0])
+			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
@@ -57,6 +58,38 @@ func newConfigCmd() *cobra.Command {
 	return cmd
 }
 
+func parseConfigKey(key string) (tokens.ModuleMember, error) {
+
+	// As a convience, we'll treat any key with no delimiter as if:
+	// <program-name>:config:<key> had been written instead
+	if !strings.Contains(key, tokens.TokenDelimiter) {
+		_, pkg, err := getPackage()
+		if err != nil {
+			return "", err
+		}
+
+		return tokens.ParseModuleMember(fmt.Sprintf("%s:config:%s", pkg.Name, key))
+	}
+
+	return tokens.ParseModuleMember(key)
+}
+
+func prettyKey(key string) string {
+	_, pkg, err := getPackage()
+	if err != nil {
+		return key
+	}
+
+	s := key
+	defaultPrefix := fmt.Sprintf("%s:config:", pkg.Name)
+
+	if strings.HasPrefix(s, defaultPrefix) {
+		return s[len(defaultPrefix):]
+	}
+
+	return s
+}
+
 func listConfig(stackName tokens.QName) error {
 	config, err := getConfiguration(stackName)
 	if err != nil {
@@ -67,11 +100,13 @@ func listConfig(stackName tokens.QName) error {
 		fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
 		var keys []string
 		for key := range config {
+			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure that all the config
+			// values for the current program are displayed next to one another in the output.
 			keys = append(keys, string(key))
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			fmt.Printf("%-32s %-32s\n", key, config[tokens.ModuleMember(key)])
+			fmt.Printf("%-32s %-32s\n", prettyKey(key), config[tokens.ModuleMember(key)])
 		}
 	}
 
@@ -91,7 +126,7 @@ func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
 		}
 	}
 
-	return errors.Errorf("configuration key '%v' not found for stack '%v'", key, stackName)
+	return errors.Errorf("configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stackName)
 }
 
 func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
