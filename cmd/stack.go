@@ -11,32 +11,32 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newEnvCmd() *cobra.Command {
+func newStackCmd() *cobra.Command {
 	var showIDs bool
 	var showURNs bool
 	cmd := &cobra.Command{
-		Use:   "env",
-		Short: "Manage target environments",
-		Long: "Manage target environments\n" +
+		Use:   "stack",
+		Short: "Manage stacks",
+		Long: "Manage stacks\n" +
 			"\n" +
-			"An environment is a named update target, and a single project may have many of them.\n" +
-			"Each environment has a configuration and update history associated with it, stored in\n" +
+			"An stack is a named update target, and a single project may have many of them.\n" +
+			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			envName, err := getCurrentEnv()
+			stackName, err := getCurrentStack()
 			if err != nil {
 				return err
 			}
 
-			target, snapshot, err := getEnvironment(envName)
+			target, snapshot, err := getStack(stackName)
 			if err != nil {
 				return err
 			}
 
 			config := target.Config
 
-			fmt.Printf("Current environment is %v\n", envName)
-			fmt.Printf("    (use `pulumi env select` to change environments; `pulumi env ls` lists known ones)\n")
+			fmt.Printf("Current stack is %v\n", stackName)
+			fmt.Printf("    (use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
 
 			if err != nil {
 				return err
@@ -55,9 +55,9 @@ func newEnvCmd() *cobra.Command {
 				fmt.Printf("%v configuration variables set (see `pulumi config` for details)\n", len(config))
 			}
 			if snapshot == nil || len(snapshot.Resources) == 0 {
-				fmt.Printf("No resources currently in this environment\n")
+				fmt.Printf("No resources currently in this stack\n")
 			} else {
-				fmt.Printf("%v resources currently in this environment:\n", len(snapshot.Resources))
+				fmt.Printf("%v resources currently in this stack:\n", len(snapshot.Resources))
 				fmt.Printf("\n")
 				fmt.Printf("%-48s %s\n", "TYPE", "NAME")
 				for _, res := range snapshot.Resources {
@@ -82,10 +82,10 @@ func newEnvCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 
-	cmd.AddCommand(newEnvInitCmd())
-	cmd.AddCommand(newEnvLsCmd())
-	cmd.AddCommand(newEnvRmCmd())
-	cmd.AddCommand(newEnvSelectCmd())
+	cmd.AddCommand(newStackInitCmd())
+	cmd.AddCommand(newStackLsCmd())
+	cmd.AddCommand(newStackRmCmd())
+	cmd.AddCommand(newStackSelectCmd())
 
 	return cmd
 }

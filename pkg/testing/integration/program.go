@@ -17,12 +17,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/resource/environment"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 const (
-	testEnvironmentName = "integrationtesting"
+	testStackName = "integrationtesting"
 )
 
 // LumiProgramTestOptions provides options for LumiProgramTest
@@ -31,12 +31,12 @@ type LumiProgramTestOptions struct {
 	Dir string
 	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
 	Dependencies []string
-	// Map of config keys and values to set on the Lumi environment (e.g. {"aws:config:region": "us-east-2"})
+	// Map of config keys and values to set on the Lumi stack (e.g. {"aws:config:region": "us-east-2"})
 	Config map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []string
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
-	ExtraRuntimeValidation func(t *testing.T, checkpoint environment.Checkpoint)
+	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
 
 	// Stdout is the writer to use for all stdout messages.
 	Stdout io.Writer
@@ -75,14 +75,14 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 //   yarn install
 //   yarn link <each opts.Depencies>
 //   yarn run build
-//   pulumi env init integrationtesting
+//   pulumi stack init integrationtesting
 //   pulumi config <each opts.Config>
 //   pulumi preview
 //   pulumi update
 //   pulumi preview (expected to be empty)
 //   pulumi update (expected to be empty)
 //   pulumi destroy --yes
-//   pulumi env rm --yes integrationtesting
+//   pulumi stack rm --yes integrationtesting
 // All commands must return success return codes for the test to succeed.
 func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	t.Parallel()
@@ -92,10 +92,10 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 		return
 	}
 
-	// Ensure all links are present, the environment is created, and all configs are applied.
+	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
-	RunCommand(t, []string{opts.LumiBin, "env", "init", testEnvironmentName}, dir, opts)
+	RunCommand(t, []string{opts.LumiBin, "stack", "init", testStackName}, dir, opts)
 	for key, value := range opts.Config {
 		RunCommand(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
 	}
@@ -116,13 +116,13 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
-		checkpointFile := path.Join(dir, ".pulumi", "env", testEnvironmentName+".json")
+		checkpointFile := path.Join(dir, ".pulumi", "env", testStackName+".json")
 		var byts []byte
-		byts, err = ioutil.ReadFile(path.Join(dir, ".pulumi", "env", testEnvironmentName+".json"))
+		byts, err = ioutil.ReadFile(path.Join(dir, ".pulumi", "env", testStackName+".json"))
 		if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
 			return
 		}
-		var checkpoint environment.Checkpoint
+		var checkpoint stack.Checkpoint
 		err = json.Unmarshal(byts, &checkpoint)
 		if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
 			return
@@ -141,11 +141,11 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 		previewAndUpdate(dir)
 	}
 
-	// Finally, tear down the environment, and clean up the environment.
-	_, err = fmt.Fprintf(opts.Stdout, "Destroying environment\n")
+	// Finally, tear down the stack, and clean up the stack.
+	_, err = fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.LumiBin, "destroy", "--yes"}, dir, opts)
-	RunCommand(t, []string{opts.LumiBin, "env", "rm", "--yes", testEnvironmentName}, dir, opts)
+	RunCommand(t, []string{opts.LumiBin, "stack", "rm", "--yes", testStackName}, dir, opts)
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test

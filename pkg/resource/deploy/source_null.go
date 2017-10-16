@@ -7,7 +7,7 @@ import (
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"
-// version of the world is meant to be empty, either for testing purposes, or removal of an existing environment.
+// version of the world is meant to be empty, either for testing purposes, or removal of an existing stack.
 var NullSource Source = &nullSource{}
 
 // A nullSource never returns any resources.

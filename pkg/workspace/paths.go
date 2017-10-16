@@ -14,15 +14,15 @@ import (
 
 const ProjectFile = "Pulumi"     // the base name of a Project.
 const Dir = ".pulumi"            // the default name of the LumiPack output directory.
-const EnvDir = "env"             // the default name of the LumiPack environment directory.
+const StackDir = "env"           // the default name of the LumiPack stack directory.
 const DepDir = "packs"           // the directory in which dependencies exist, either local or global.
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
 
-// EnvPath returns a path to the given environment's default location.
-func EnvPath(env tokens.QName) string {
-	path := filepath.Join(Dir, EnvDir)
-	if env != "" {
-		path = filepath.Join(path, qnamePath(env)+encoding.Exts[0])
+// StackPath returns a path to the given stack's default location.
+func StackPath(stack tokens.QName) string {
+	path := filepath.Join(Dir, StackDir)
+	if stack != "" {
+		path = filepath.Join(path, qnamePath(stack)+encoding.Exts[0])
 	}
 	return path
 }

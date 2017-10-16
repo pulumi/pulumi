@@ -16,19 +16,19 @@ import (
 )
 
 func newConfigCmd() *cobra.Command {
-	var env string
+	var stack string
 	var unset bool
 	cmd := &cobra.Command{
 		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			envName, err := explicitOrCurrent(env)
+			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
 
 			if len(args) == 0 {
-				return listConfig(envName)
+				return listConfig(stackName)
 			}
 
 			key, err := tokens.ParseModuleMember(args[0])
@@ -38,18 +38,18 @@ func newConfigCmd() *cobra.Command {
 
 			if len(args) == 1 {
 				if !unset {
-					return getConfig(envName, key)
+					return getConfig(stackName, key)
 				}
-				return deleteConfiguration(envName, key)
+				return deleteConfiguration(stackName, key)
 			}
 
-			return setConfiguration(envName, key, args[1])
+			return setConfiguration(stackName, key, args[1])
 		}),
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&env, "env", "e", "",
-		"Choose an environment other than the currently selected one")
+		&stack, "stack", "s", "",
+		"Choose an stack other than the currently selected one")
 	cmd.PersistentFlags().BoolVar(
 		&unset, "unset", false,
 		"Unset a configuration value")
@@ -57,8 +57,8 @@ func newConfigCmd() *cobra.Command {
 	return cmd
 }
 
-func listConfig(envName tokens.QName) error {
-	config, err := getConfiguration(envName)
+func listConfig(stackName tokens.QName) error {
+	config, err := getConfiguration(stackName)
 	if err != nil {
 		return err
 	}
@@ -78,8 +78,8 @@ func listConfig(envName tokens.QName) error {
 	return nil
 }
 
-func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
-	config, err := getConfiguration(envName)
+func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
+	config, err := getConfiguration(stackName)
 	if err != nil {
 		return err
 	}
@@ -91,11 +91,11 @@ func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
 		}
 	}
 
-	return errors.Errorf("configuration key '%v' not found for environment '%v'", key, envName)
+	return errors.Errorf("configuration key '%v' not found for stack '%v'", key, stackName)
 }
 
-func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	target, _, err := getEnvironment(envName)
+func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
+	target, _, err := getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, err
 	return target.Config, nil
 }
 
-func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
-	target, snapshot, err := getEnvironment(envName)
+func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
+	target, snapshot, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -116,11 +116,11 @@ func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
 		delete(target.Config, key)
 	}
 
-	return saveEnvironment(target, snapshot)
+	return saveStack(target, snapshot)
 }
 
-func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value string) error {
-	target, snapshot, err := getEnvironment(envName)
+func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value string) error {
+	target, snapshot, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -133,5 +133,5 @@ func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value strin
 
 	target.Config[key] = value
 
-	return saveEnvironment(target, snapshot)
+	return saveStack(target, snapshot)
 }
