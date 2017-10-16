@@ -19,11 +19,11 @@ type PreviewOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Preview(environment tokens.QName, events chan<- Event, opts PreviewOptions) error {
-	contract.Require(environment != tokens.QName(""), "environment")
+func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts PreviewOptions) error {
+	contract.Require(stack != tokens.QName(""), "stack")
 	contract.Require(events != nil, "events")
 
-	info, err := eng.planContextFromEnvironment(environment, opts.Package)
+	info, err := eng.planContextFromStack(stack, opts.Package)
 	if err != nil {
 		return err
 	}

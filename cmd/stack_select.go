@@ -11,19 +11,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newEnvSelectCmd() *cobra.Command {
+func newStackSelectCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "select [<env>]",
-		Short: "Switch the current workspace to the given environment",
-		Long: "Switch the current workspace to the given environment.  This allows you to use\n" +
+		Use:   "select [<stack>]",
+		Short: "Switch the current workspace to the given stack",
+		Long: "Switch the current workspace to the given stack.  This allows you to use\n" +
 			"other commands like `config`, `preview`, and `push` without needing to specify the\n" +
-			"environment name each and every time.\n" +
+			"stack name each and every time.\n" +
 			"\n" +
-			"If no <env> argument is supplied, the current environment is printed.",
+			"If no <stack> argument is supplied, the current stack is printed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Read in the name of the environment to switch to.
+			// Read in the name of the stack to switch to.
 			if len(args) == 0 {
-				name, err := getCurrentEnv()
+				name, err := getCurrentStack()
 				if err != nil {
 					return err
 				}
@@ -31,7 +31,7 @@ func newEnvSelectCmd() *cobra.Command {
 				fmt.Printf("%v\n", name)
 			}
 
-			return setCurrentEnv(tokens.QName(args[0]), true)
+			return setCurrentStack(tokens.QName(args[0]), true)
 		}),
 	}
 }

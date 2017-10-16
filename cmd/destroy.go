@@ -12,36 +12,36 @@ import (
 func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var preview bool
-	var env string
+	var stack string
 	var parallel int
 	var summary bool
 	var yes bool
 	var cmd = &cobra.Command{
 		Use:   "destroy",
-		Short: "Destroy an existing environment and its resources",
-		Long: "Destroy an existing environment and its resources\n" +
+		Short: "Destroy an existing stack and its resources",
+		Long: "Destroy an existing stack and its resources\n" +
 			"\n" +
-			"This command deletes an entire existing environment by name.  The current state is\n" +
+			"This command deletes an entire existing stack by name.  The current state is\n" +
 			"loaded from the associated snapshot file in the workspace.  After running to completion,\n" +
-			"all of this environment's resources and associated state will be gone.\n" +
+			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
-			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
+			"Warning: although old snapshots can be used to recreate an stack, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			envName, err := explicitOrCurrent(env)
+			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
 
 			if preview || yes ||
-				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", envName.String()) {
+				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", stackName.String()) {
 
 				events := make(chan engine.Event)
 				done := make(chan bool)
 
 				go displayEvents(events, done, debug)
 
-				err := lumiEngine.Destroy(envName, events, engine.DestroyOptions{
+				err := lumiEngine.Destroy(stackName, events, engine.DestroyOptions{
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,
@@ -62,13 +62,13 @@ func newDestroyCmd() *cobra.Command {
 		&preview, "preview", "n", false,
 		"Don't actually delete resources; just preview the planned deletions")
 	cmd.PersistentFlags().StringVarP(
-		&env, "env", "e", "",
-		"Choose an environment other than the currently selected one")
+		&stack, "stack", "s", "",
+		"Choose an stack other than the currently selected one")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
-	cmd.PersistentFlags().BoolVarP(
-		&summary, "summary", "s", false,
+	cmd.PersistentFlags().BoolVar(
+		&summary, "summary", false,
 		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,

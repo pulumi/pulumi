@@ -20,26 +20,26 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newEnvLsCmd() *cobra.Command {
+func newStackLsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls",
-		Short: "List all known environments",
+		Short: "List all known stacks",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			currentEnv, err := getCurrentEnv()
+			currentStack, err := getCurrentStack()
 			if err != nil {
-				// If we couldn't figure out the current environment, just don't print the '*' later
+				// If we couldn't figure out the current stack, just don't print the '*' later
 				// on instead of failing.
-				currentEnv = tokens.QName("")
+				currentStack = tokens.QName("")
 			}
 
-			envs, err := getEnvironments()
+			stacks, err := getStacks()
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
-			for _, env := range envs {
-				_, snapshot, err := getEnvironment(env)
+			for _, stack := range stacks {
+				_, snapshot, err := getStack(stack)
 				if err != nil {
 					continue
 				}
@@ -51,9 +51,9 @@ func newEnvLsCmd() *cobra.Command {
 					lastDeploy = snapshot.Time.String()
 					resourceCount = strconv.Itoa(len(snapshot.Resources))
 				}
-				display := env.String()
-				if env == currentEnv {
-					display += "*" // fancify the current environment.
+				display := stack.String()
+				if stack == currentStack {
+					display += "*" // fancify the current stack.
 				}
 				fmt.Printf("%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
 			}
@@ -63,14 +63,14 @@ func newEnvLsCmd() *cobra.Command {
 	}
 }
 
-func getEnvironments() ([]tokens.QName, error) {
-	var envs []tokens.QName
+func getStacks() ([]tokens.QName, error) {
+	var stacks []tokens.QName
 
-	// Read the environment directory.
-	path := workspace.EnvPath("")
+	// Read the stack directory.
+	path := workspace.StackPath("")
 	files, err := ioutil.ReadDir(path)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Errorf("could not read environments: %v", err)
+		return nil, errors.Errorf("could not read stacks: %v", err)
 	}
 
 	for _, file := range files {
@@ -80,21 +80,21 @@ func getEnvironments() ([]tokens.QName, error) {
 		}
 
 		// Skip files without valid extensions (e.g., *.bak files).
-		envfn := file.Name()
-		ext := filepath.Ext(envfn)
+		stackfn := file.Name()
+		ext := filepath.Ext(stackfn)
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue
 		}
 
-		// Read in this environment's information.
-		name := tokens.QName(envfn[:len(envfn)-len(ext)])
-		_, _, err := getEnvironment(name)
+		// Read in this stack's information.
+		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
+		_, _, err := getStack(name)
 		if err != nil {
-			continue // failure reading the environment information.
+			continue // failure reading the stack information.
 		}
 
-		envs = append(envs, name)
+		stacks = append(stacks, name)
 	}
 
-	return envs, nil
+	return stacks, nil
 }

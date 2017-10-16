@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// Package environment contains the serialized and configurable state associated with an environment; or, in other
+// Package stack contains the serialized and configurable state associated with an stack; or, in other
 // words, a deployment target.  It pertains to resources and deployment plans, but is a package unto itself.
-package environment
+package stack
 
 import (
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -13,7 +13,7 @@ import (
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 type Checkpoint struct {
-	Target tokens.QName                   `json:"target"`           // the target environment name.
+	Target tokens.QName                   `json:"target"`           // the target stack name.
 	Config map[tokens.ModuleMember]string `json:"config,omitempty"` // optional configuration key/values.
 	Latest *Deployment                    `json:"latest,omitempty"` // the latest/current deployment information.
 }

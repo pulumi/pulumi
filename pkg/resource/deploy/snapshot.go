@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// Snapshot is a view of a collection of resources in an environment at a point in time.  It describes resources; their
+// Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
