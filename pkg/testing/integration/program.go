@@ -245,6 +245,14 @@ func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgra
 		}
 	}
 
+	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
+	// may run concurrently and yarn may fail if invoked concurrently
+	// https://github.com/yarnpkg/yarn/issues/683
+	yarnrcerr := ioutil.WriteFile(filepath.Join(dir, ".yarnrc"), []byte("--mutex network\n"), 0644)
+	if yarnrcerr != nil {
+		return "", yarnrcerr
+	}
+
 	// Now ensure dependencies are present.
 	RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), dir, opts)
 	for _, dependency := range opts.Dependencies {
