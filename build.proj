@@ -107,11 +107,11 @@
       <GoCmdsToBuild Include="github.com/pulumi/pulumi/cmd/lumidl" />
     </ItemGroup>
 
-    <Exec Command="go install %(GoCmdsToBuild.Identity)" />
+    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
 
-    <ItemGroup>
-      <GoCmdsToBuild />
-    </ItemGroup>
+    <Exec Command="go install -ldflags &quot;-X main.version=$(Version)&quot; %(GoCmdsToBuild.Identity)" />
   </Target>
 
   <Target Name="Build"

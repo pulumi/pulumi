@@ -8,6 +8,7 @@ TESTPARALLELISM=10
 ECHO=echo -e
 GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
+VERSION=$(shell git describe --tags 2>/dev/null)
 
 .PHONY: all
 all: banner_all core sdk/nodejs integrationtest
@@ -35,8 +36,8 @@ banner_all:
 .PHONY: install
 install:
 	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
-	go install ${PROJECT}
-	go install ${PROJECT}/cmd/lumidl
+	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}
+	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}/cmd/lumidl
 
 .PHONY: lint
 lint:
