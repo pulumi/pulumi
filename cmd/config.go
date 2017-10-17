@@ -23,10 +23,7 @@ func newConfigCmd() *cobra.Command {
 		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack)
-			if err != nil {
-				return err
-			}
+			stackName := tokens.QName(stack)
 
 			if len(args) == 0 {
 				return listConfig(stackName)
@@ -50,7 +47,7 @@ func newConfigCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Target a specific stack instead of all stacks")
 	cmd.PersistentFlags().BoolVar(
 		&unset, "unset", false,
 		"Unset a configuration value")
@@ -139,7 +136,11 @@ func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]string, e
 		return nil, err
 	}
 
-	return pkg.Stacks[stackName].Config, nil
+	if stackName == "" {
+		return pkg.Config, nil
+	}
+
+	return mergeConfigs(pkg.Config, pkg.Stacks[stackName].Config), nil
 }
 
 func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
@@ -148,8 +149,14 @@ func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error 
 		return err
 	}
 
-	if pkg.Stacks[stackName].Config != nil {
-		delete(pkg.Stacks[stackName].Config, key)
+	if stackName == "" {
+		if pkg.Config != nil {
+			delete(pkg.Config, key)
+		}
+	} else {
+		if pkg.Stacks[stackName].Config != nil {
+			delete(pkg.Stacks[stackName].Config, key)
+		}
 	}
 
 	return savePackage(pkg)
@@ -161,17 +168,46 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value str
 		return err
 	}
 
-	if pkg.Stacks == nil {
-		pkg.Stacks = make(map[tokens.QName]pack.StackInfo)
-	}
+	if stackName == "" {
+		if pkg.Config == nil {
+			pkg.Config = make(map[tokens.ModuleMember]string)
+		}
 
-	if pkg.Stacks[stackName].Config == nil {
-		si := pkg.Stacks[stackName]
-		si.Config = make(map[tokens.ModuleMember]string)
-		pkg.Stacks[stackName] = si
-	}
+		pkg.Config[key] = value
+	} else {
+		if pkg.Stacks == nil {
+			pkg.Stacks = make(map[tokens.QName]pack.StackInfo)
+		}
 
-	pkg.Stacks[stackName].Config[key] = value
+		if pkg.Stacks[stackName].Config == nil {
+			si := pkg.Stacks[stackName]
+			si.Config = make(map[tokens.ModuleMember]string)
+			pkg.Stacks[stackName] = si
+		}
+
+		pkg.Stacks[stackName].Config[key] = value
+	}
 
 	return savePackage(pkg)
+}
+
+func mergeConfigs(global, stack map[tokens.ModuleMember]string) map[tokens.ModuleMember]string {
+	if stack == nil {
+		return global
+	}
+
+	if global == nil {
+		return stack
+	}
+
+	merged := make(map[tokens.ModuleMember]string)
+	for key, value := range global {
+		merged[key] = value
+	}
+
+	for key, value := range stack {
+		merged[key] = value
+	}
+
+	return merged
 }

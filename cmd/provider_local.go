@@ -26,14 +26,12 @@ func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error)
 		return nil, err
 	}
 
-	pkg, err := getPackage()
+	config, err := getConfiguration(name)
 	if err != nil {
 		return nil, err
 	}
 
-	if pkg.Stacks != nil {
-		target.Config = pkg.Stacks[name].Config
-	}
+	target.Config = config
 
 	return target, err
 }

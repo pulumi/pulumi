@@ -33,6 +33,8 @@ type Package struct {
 
 	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
 
+	Config map[tokens.ModuleMember]string `json:"config,omitempty" yaml:"config,omitempty"` // optional config that applies to all stacks.
+
 	Stacks map[tokens.QName]StackInfo `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
 
 	Doc *diag.Document `json:"-" yaml:"-"` // the document from which this package came.
