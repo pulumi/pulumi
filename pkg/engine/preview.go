@@ -47,7 +47,11 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 
 	defer close(events)
 
-	result, err := eng.plan(info, deployOpts)
+	return eng.previewLatest(info, deployOpts)
+}
+
+func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
+	result, err := eng.plan(info, opts)
 	if err != nil {
 		return err
 	}
@@ -57,10 +61,11 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 			return err
 		}
 	}
-	if !diag.Success() {
+	if !opts.Diag.Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
 		return errors.New("One or more errors occurred during the creation of this preview")
 	}
 	return nil
+
 }
