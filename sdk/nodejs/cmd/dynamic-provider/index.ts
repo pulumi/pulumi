@@ -20,15 +20,16 @@ function getProvider(props: any): dynamic.ResourceProvider {
     return requireFromString(props[providerKey]).handler();
 }
 
-// Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD functions--checkRPC,
-// diffRPC, createRPC, updateRPC, and deleteRPC--all operate in a similar fashion:
+// Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD
+// functions--checkRPC, diffRPC, createRPC, updateRPC, and deleteRPC--all operate in a similar fashion:
 //     1. Deserialize the dyanmic provider for the resource on which the function is operating
 //     2. Call the dynamic provider's corresponding {check,diff,create,update,delete} method
 //     3. Convert and return the results
-// In all cases, the dynamic provider is available in its serialized form as a property of the resourcel `getProvider` is responsible
-// for handling its deserialization. In the case of `diffRPC`, if the provider itself has changed, `diff` reports that the resource
-// requires replacement and does not delegate to the dynamic provider. This allows the creation of the replacement resource to use the
-// new provider while the deletion of the old resource uses the provider with which it was created.
+// In all cases, the dynamic provider is available in its serialized form as a property of the resource;
+// getProvider` is responsible for handling its deserialization. In the case of diffRPC, if the provider itself
+// has changed, `diff` reports that the resource requires replacement and does not delegate to the dynamic provider.
+// This allows the creation of the replacement resource to use the new provider while the deletion of the old
+// resource uses the provider with which it was created.
 
 function configureRPC(call: any, callback: any): void {
     callback(undefined, new emptyproto.Empty());
@@ -77,9 +78,9 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp = new provproto.DiffResponse();
 
-        // If the provider itself has changed, do not delegate to the dynamic provider. Instead, simply report that the resource requires
-        // replacement. This allows the new resource to be created using the new provider and the old resource to be deleted using the
-        // old provider.
+        // If the provider itself has changed, do not delegate to the dynamic provider. Instead, simply report that the
+        // resource requires replacement. This allows the new resource to be created using the new provider and the old
+        // resource to be deleted using the old provider.
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
         if (olds[providerKey] !== news[providerKey]) {
