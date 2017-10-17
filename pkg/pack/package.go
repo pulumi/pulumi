@@ -17,18 +17,23 @@ import (
 )
 
 // Package is a top-level package definition.
+// We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works in terms of the
+// JSON tags) so we can directly marshall and unmarshall this struct using https://github.com/go-yaml/yaml an have the fields in the
+// serialized object match the order they are defined in this struct
+//
+// TODO[pulumi/pulumi#423]: use DOM based marshalling so we can make minimal changes to the seralized structure when roundtripping
 type Package struct {
-	Name    tokens.PackageName `json:"name"`    // a required fully qualified name.
-	Runtime string             `json:"runtime"` // a required runtime that executes code.
+	Name    tokens.PackageName `json:"name" yaml:"name"`       // a required fully qualified name.
+	Runtime string             `json:"runtime" yaml:"runtime"` // a required runtime that executes code.
 
-	Description *string `json:"description,omitempty"` // an optional informational description.
-	Author      *string `json:"author,omitempty"`      // an optional author.
-	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
-	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
+	Description *string `json:"description,omitempty" yaml:"description,omitempty"` // an optional informational description.
+	Author      *string `json:"author,omitempty" yaml:"author,omitempty"`           // an optional author.
+	Website     *string `json:"website,omitempty" yaml:"website,omitempty"`         // an optional website for additional info.
+	License     *string `json:"license,omitempty" yaml:"license,omitempty"`         // an optional license governing this package's usage.
 
-	Analyzers *Analyzers `json:"analyzers,omitempty"` // any analyzers enabled for this project.
+	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
 
-	Doc *diag.Document `json:"-"` // the document from which this package came.
+	Doc *diag.Document `json:"-" yaml:"-"` // the document from which this package came.
 }
 
 var _ diag.Diagable = (*Package)(nil)
