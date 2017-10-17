@@ -61,7 +61,9 @@ func (eng *Engine) readPackageFromStdin() (*pkginfo, error) {
 	}
 
 	m := encoding.Marshalers[".json"]
-	pkg, err := encoding.Decode(m, b)
+	var pkg pack.Package
+	err = m.Unmarshal(b, &pkg)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "a problem occurred when unmarshaling stdin into a package")
 	}
@@ -70,7 +72,7 @@ func (eng *Engine) readPackageFromStdin() (*pkginfo, error) {
 	}
 
 	return &pkginfo{
-		Pkg:  pkg,
+		Pkg:  &pkg,
 		Root: "",
 	}, nil
 }
@@ -86,24 +88,8 @@ func (eng *Engine) readPackage(path string) (*pkginfo, error) {
 		return nil, errors.Wrapf(err, "path '%v' is a directory and not a path to package file", path)
 	}
 
-	// Lookup the marshaler for this format.
-	ext := filepath.Ext(path)
-	m, has := encoding.Marshalers[ext]
-	if !has {
-		return nil, errors.Errorf("no marshaler found for file format '%v'", ext)
-	}
-
-	// Read the contents.
-	b, err := ioutil.ReadFile(path)
+	pkg, err := pack.Load(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "a problem occurred when reading file '%v'", path)
-	}
-
-	pkg, err := encoding.Decode(m, b)
-	if err != nil {
-		return nil, errors.Wrapf(err, "a problem occurred when unmarshaling file '%v'", path)
-	}
-	if err = pkg.Validate(); err != nil {
 		return nil, err
 	}
 
