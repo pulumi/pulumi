@@ -1,11 +1,5 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// This is a mock resource provider that can be used to implement custom CRUD operations in JavaScript.
-// It is configured using a single variable, `pulumi:testing:providers`, that provides the path to the JS
-// module that implements CRUD operations for various types. When an operation is requested by the engine
-// for a resource of a particular type, that type's `testing.Provider` is loaded from the input module
-// using the unqualified type name.
-
 import * as minimist from "minimist";
 import * as path from "path";
 
@@ -25,6 +19,16 @@ function getProvider(props: any): dynamic.ResourceProvider {
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
     return requireFromString(props[providerKey]).handler();
 }
+
+// Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD functions--checkRPC,
+// diffRPC, createRPC, updateRPC, and deleteRPC--all operate in a similar fashion:
+//     1. Deserialize the dyanmic provider for the resource on which the function is operating
+//     2. Call the dynamic provider's corresponding {check,diff,create,update,delete} method
+//     3. Convert and return the results
+// In all cases, the dynamic provider is available in its serialized form as a property of the resourcel `getProvider` is responsible
+// for handling its deserialization. In the case of `diffRPC`, if the provider itself has changed, `diff` reports that the resource
+// requires replacement and does not delegate to the dynamic provider. This allows the creation of the replacement resource to use the
+// new provider while the deletion of the old resource uses the provider with which it was created.
 
 function configureRPC(call: any, callback: any): void {
     callback(undefined, new emptyproto.Empty());
@@ -63,8 +67,7 @@ async function checkRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(e);
-        console.error(new Error().stack);
+        console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
 }
@@ -74,6 +77,9 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp = new provproto.DiffResponse();
 
+        // If the provider itself has changed, do not delegate to the dynamic provider. Instead, simply report that the resource requires
+        // replacement. This allows the new resource to be created using the new provider and the old resource to be deleted using the
+        // old provider.
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
         if (olds[providerKey] !== news[providerKey]) {
@@ -89,7 +95,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(new Error().stack);
+        console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
 }
@@ -110,7 +116,7 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(new Error().stack);
+        console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
 }
@@ -134,7 +140,7 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(new Error().stack);
+        console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
 }
@@ -146,7 +152,7 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
         await getProvider(props).delete(req.getId(), props);
         callback(undefined, new emptyproto.Empty());
     } catch (e) {
-        console.error(new Error().stack);
+        console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
 }
