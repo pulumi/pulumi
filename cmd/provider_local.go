@@ -22,6 +22,18 @@ func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error)
 	contract.Require(name != "", "name")
 
 	target, _, err := getStack(name)
+	if err != nil {
+		return nil, err
+	}
+
+	pkg, err := getPackage()
+	if err != nil {
+		return nil, err
+	}
+
+	if pkg.Stacks != nil {
+		target.Config = pkg.Stacks[name].Config
+	}
 
 	return target, err
 }

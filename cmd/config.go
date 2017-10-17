@@ -9,8 +9,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/pack"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -65,7 +63,7 @@ func parseConfigKey(key string) (tokens.ModuleMember, error) {
 	// As a convience, we'll treat any key with no delimiter as if:
 	// <program-name>:config:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		_, pkg, err := getPackage()
+		pkg, err := getPackage()
 		if err != nil {
 			return "", err
 		}
@@ -77,7 +75,7 @@ func parseConfigKey(key string) (tokens.ModuleMember, error) {
 }
 
 func prettyKey(key string) string {
-	_, pkg, err := getPackage()
+	pkg, err := getPackage()
 	if err != nil {
 		return key
 	}
@@ -85,7 +83,7 @@ func prettyKey(key string) string {
 	return prettyKeyForPackage(key, pkg)
 }
 
-func prettyKeyForPackage(key string, pkg pack.Package) string {
+func prettyKeyForPackage(key string, pkg *pack.Package) string {
 	s := key
 	defaultPrefix := fmt.Sprintf("%s:config:", pkg.Name)
 
@@ -136,43 +134,44 @@ func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
 }
 
 func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	target, _, err := getStack(stackName)
+	pkg, err := getPackage()
 	if err != nil {
 		return nil, err
 	}
 
-	contract.Assert(target != nil)
-	return target.Config, nil
+	return pkg.Stacks[stackName].Config, nil
 }
 
 func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
-	target, snapshot, err := getStack(stackName)
+	pkg, err := getPackage()
 	if err != nil {
 		return err
 	}
 
-	contract.Assert(target != nil)
-
-	if target.Config != nil {
-		delete(target.Config, key)
+	if pkg.Stacks[stackName].Config != nil {
+		delete(pkg.Stacks[stackName].Config, key)
 	}
 
-	return saveStack(target, snapshot)
+	return savePackage(pkg)
 }
 
 func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value string) error {
-	target, snapshot, err := getStack(stackName)
+	pkg, err := getPackage()
 	if err != nil {
 		return err
 	}
 
-	contract.Assert(target != nil)
-
-	if target.Config == nil {
-		target.Config = make(map[tokens.ModuleMember]string)
+	if pkg.Stacks == nil {
+		pkg.Stacks = make(map[tokens.QName]pack.StackInfo)
 	}
 
-	target.Config[key] = value
+	if pkg.Stacks[stackName].Config == nil {
+		si := pkg.Stacks[stackName]
+		si.Config = make(map[tokens.ModuleMember]string)
+		pkg.Stacks[stackName] = si
+	}
 
-	return saveStack(target, snapshot)
+	pkg.Stacks[stackName].Config[key] = value
+
+	return savePackage(pkg)
 }
