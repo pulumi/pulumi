@@ -18,6 +18,7 @@
     "files": [
         "index.ts",
         "config.ts",
+        "dynamic.ts",
         "errors.ts",
         "resource.ts",
 
@@ -37,11 +38,9 @@
         "runtime/rpc.ts",
         "runtime/settings.ts",
 
+        "cmd/dynamic-provider/index.ts",
         "cmd/langhost/index.ts",
         "cmd/run/index.ts",
-        "cmd/test-provider/index.ts",
-
-        "testing/index.ts",
 
         "tests/config.spec.ts",
         "tests/init.spec.ts",
