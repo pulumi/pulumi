@@ -61,6 +61,13 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 	contract.Assert(plug != nil)
 
+	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
+	defer func() {
+		if plug.Conn == nil {
+			contract.IgnoreError(plug.Close())
+		}
+	}()
+
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
 		reader := bufio.NewReader(t)
@@ -79,10 +86,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 		close(done)
 	}
 
-	stderrDone, stdoutDone := make(chan bool), make(chan bool)
-	plug.stderrDone, plug.stdoutDone = stderrDone, stdoutDone
-
 	// Set up a tracer on stderr before going any further, since important errors might get communicated this way.
+	stderrDone := make(chan bool)
+	plug.stderrDone = stderrDone
 	go runtrace(plug.Stderr, true, stderrDone)
 
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
@@ -114,6 +120,8 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
+	stdoutDone := make(chan bool)
+	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
@@ -196,8 +204,10 @@ func execPlugin(bin string, args []string) (*plugin, error) {
 }
 
 func (p *plugin) Close() error {
-	closerr := p.Conn.Close()
-	contract.IgnoreError(closerr)
+	if p.Conn != nil {
+		closerr := p.Conn.Close()
+		contract.IgnoreError(closerr)
+	}
 
 	// IDEA: consider a more graceful termination than just SIGKILL.
 	err := p.Proc.Kill()
