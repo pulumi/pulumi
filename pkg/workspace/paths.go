@@ -14,7 +14,7 @@ import (
 
 const ProjectFile = "Pulumi"     // the base name of a Project.
 const Dir = ".pulumi"            // the default name of the LumiPack output directory.
-const StackDir = "env"           // the default name of the LumiPack stack directory.
+const StackDir = "stacks"        // the default name of the LumiPack stack directory.
 const DepDir = "packs"           // the directory in which dependencies exist, either local or global.
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
 
