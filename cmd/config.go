@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/pack"
+
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -80,6 +82,10 @@ func prettyKey(key string) string {
 		return key
 	}
 
+	return prettyKeyForPackage(key, pkg)
+}
+
+func prettyKeyForPackage(key string, pkg pack.Package) string {
 	s := key
 	defaultPrefix := fmt.Sprintf("%s:config:", pkg.Name)
 
