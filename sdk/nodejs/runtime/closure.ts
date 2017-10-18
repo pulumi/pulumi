@@ -1,7 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as crypto from "crypto";
-import * as estree from "estree";
 import { relative as pathRelative } from "path";
 import * as ts from "typescript";
 import * as log from "../log";
