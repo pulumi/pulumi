@@ -262,11 +262,15 @@ function computeFreeVariables(funcstr: string): string[] {
         throw new Error(`Cannot serialize native code function: "${funcstr}"`);
     }
 
-    const program = ts.createSourceFile(
+    const file = ts.createSourceFile(
         "", funcstr, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
+    if (diagnostics.length) {
+        throw new Error(`Could not parse function: ${diagnostics[0].messageText}\n${funcstr}`);
+    }
 
-    // Now that we've parsed the program, compute the free variables, and return them.
-    return new FreeVariableComputer().compute(program);
+    // Now that we've parsed the file, compute the free variables, and return them.
+    return new FreeVariableComputer().compute(file);
 }
 
 type walkCallback = (node: ts.Node | undefined) => void;

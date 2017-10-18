@@ -144,7 +144,18 @@ describe("closure", () => {
     });
 
     const cases: ClosureCase[] = [];
-
+    {
+        // Ensure we reject function declarations.
+        class C {
+            // tslint:disable-next-line
+            public m(): void { }
+        }
+        cases.push({
+            title: "Reject non-expression function objects",
+            func: new C().m,
+            closureHash: "",
+        });
+    }
     // A few simple positive cases for functions/arrows (no captures).
     cases.push({
         title: "Empty function closure",
@@ -203,17 +214,6 @@ return (function () { })
             runtime: "nodejs",
         },
         closureHash: "__dd08d1034bd5f0e06f1269cb79974a636ef9cb13",
-    });
-
-    // Ensure we reject function declarations.
-    class C {
-        // tslint:disable-next-line
-        public m(): void { }
-    }
-    cases.push({
-        title: "Reject non-expression function objects",
-        func: new C().m,
-        closureHash: "",
     });
 
     // Serialize captures.
