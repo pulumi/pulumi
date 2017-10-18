@@ -8,7 +8,7 @@ export type MochaFunc = (err: Error) => void;
 // testing and our TypeScript async tests.
 export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void {
     return (done: (err: any) => void) => {
-        let go = async () => {
+        const go = async () => {
             let caught: Error | undefined;
             try {
                 await test();

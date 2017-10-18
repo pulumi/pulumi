@@ -42,15 +42,15 @@ export function serializeClosure(func: Function): Promise<Closure> {
     // First get the async version.  We will then await it to turn it into a flattened, async-free computed closure.
     // This must be done "at the top" because we must not block the creation of the dataflow graph of closure
     // elements, since there may be cycles that can only resolve by creating the entire graph first.
-    let closure: AsyncClosure = serializeClosureAsync(func);
+    const closure: AsyncClosure = serializeClosureAsync(func);
 
     // Now turn the AsyncClosure into a normal closure, and return it.
-    let flatCache = new Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>();
+    const flatCache = new Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>();
     return flattenClosure(closure, flatCache);
 }
 
 async function flattenClosure(closure: AsyncClosure,
-    flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Closure> {
+                              flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Closure> {
     return {
         code: closure.code,
         runtime: closure.runtime,
@@ -58,17 +58,20 @@ async function flattenClosure(closure: AsyncClosure,
     };
 }
 
-async function flattenEnvironment(env: AsyncEnvironment,
-    flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Environment> {
-    let result: Environment = {};
-    for (let key of Object.keys(env)) {
+async function flattenEnvironment(
+        env: AsyncEnvironment,
+        flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Environment> {
+    const result: Environment = {};
+    for (const key of Object.keys(env)) {
         result[key] = await flattenEnvironmentEntry(env[key], flatCache);
     }
     return result;
 }
 
-async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
-    flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<EnvironmentEntry> {
+async function flattenEnvironmentEntry(
+        entry: Promise<AsyncEnvironmentEntry>,
+        flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<EnvironmentEntry> {
+
     // See if there's an entry for this object already; if there is, use it.
     let result: EnvironmentEntry | undefined = flatCache.get(entry);
     if (result) {
@@ -81,7 +84,7 @@ async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
     result = {};
     flatCache.set(entry, result);
 
-    let e: AsyncEnvironmentEntry = await entry;
+    const e: AsyncEnvironmentEntry = await entry;
     if (e.hasOwnProperty("json")) {
         result.json = e.json;
     }
@@ -95,8 +98,8 @@ async function flattenEnvironmentEntry(entry: Promise<AsyncEnvironmentEntry>,
         result.obj = await flattenEnvironment(e.obj, flatCache);
     }
     else if (e.arr) {
-        let arr: EnvironmentEntry[] = [];
-        for (let elem of e.arr) {
+        const arr: EnvironmentEntry[] = [];
+        for (const elem of e.arr) {
             arr.push(await flattenEnvironmentEntry(elem, flatCache));
         }
         result.arr = arr;
@@ -135,7 +138,7 @@ export interface AsyncEnvironmentEntry {
 /**
  * entryCache stores a map of entry to promise, to support mutually recursive captures.
  */
-let entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
+const entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
 
 /**
  * serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
@@ -175,7 +178,7 @@ function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
  * serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
  */
 function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEntry) => void): void {
-    let moduleName = findRequirableModuleName(obj);
+    const moduleName = findRequirableModuleName(obj);
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
@@ -187,8 +190,8 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
     }
     else if (obj instanceof Array) {
         // Recursively serialize elements of an array.
-        let arr: Promise<AsyncEnvironmentEntry>[] = [];
-        for (let elem of obj) {
+        const arr: Promise<AsyncEnvironmentEntry>[] = [];
+        for (const elem of obj) {
             arr.push(serializeCapturedObject(elem));
         }
         resolve({ arr: arr });
@@ -203,8 +206,8 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
     }
     else {
         // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
-        let env: AsyncEnvironment = {};
-        for (let key of Object.keys(obj)) {
+        const env: AsyncEnvironment = {};
+        for (const key of Object.keys(obj)) {
             env[key] = serializeCapturedObject(obj[key]);
         }
         resolve({ obj: env });
@@ -215,14 +218,14 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
 // but are not stored in the `require.cache`.  They are guaranteed to be
 // available at the unqualified names listed below. _Note_: This list is derived
 // based on Node.js 6.x tree at: https://github.com/nodejs/node/tree/v6.x/lib
-let builtInModuleNames = [
+const builtInModuleNames = [
     "assert", "buffer", "child_process", "cluster", "console", "constants", "crypto",
     "dgram", "dns", "domain", "events", "fs", "http", "https", "module", "net", "os",
     "path", "process", "punycode", "querystring", "readline", "repl", "stream", "string_decoder",
     /* "sys" deprecated ,*/ "timers", "tls", "tty", "url", "util", "v8", "vm", "zlib",
 ];
-let builtInModules = new Map<any, string>();
-for (let name of builtInModuleNames) {
+const builtInModules = new Map<any, string>();
+for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
 }
 
@@ -230,7 +233,7 @@ for (let name of builtInModuleNames) {
 // be used as a stable reference across serialization.
 function findRequirableModuleName(obj: any): string | undefined  {
     // First, check the built-in modules
-    let key = builtInModules.get(obj);
+    const key = builtInModules.get(obj);
     if (key) {
         return key;
     }
@@ -238,11 +241,11 @@ function findRequirableModuleName(obj: any): string | undefined  {
     // of all non-built-in Node modules loaded by the program so far. _Note_: We
     // don't pre-compute this because the require cache will get populated
     // dynamically during execution.
-    for (let path of Object.keys(require.cache)) {
+    for (const path of Object.keys(require.cache)) {
         if (require.cache[path].exports === obj) {
             // Rewrite the path to be a local module reference relative to the
             // current working directory
-            let modPath = pathRelative(process.cwd(), path);
+            const modPath = pathRelative(process.cwd(), path);
             return "./" + modPath;
         }
     }
@@ -348,8 +351,8 @@ class FreeVariableComputer {
 
         // Now just return all variables whose value is true.  Filter out any that are part of the built-in
         // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-        let freeVars: string[] = [];
-        for (let key of Object.keys(this.frees)) {
+        const freeVars: string[] = [];
+        for (const key of Object.keys(this.frees)) {
             if (this.frees[key] && !FreeVariableComputer.isBuiltIn(key)) {
                 freeVars.push(key);
             }
@@ -395,18 +398,18 @@ class FreeVariableComputer {
 
     private visitBaseFunction(node: ts.FunctionLikeDeclarationBase, walk: walkCallback): void {
         // First, push new free vars list, scope, and function vars
-        let oldFrees: {[key: string]: boolean} = this.frees;
-        let oldFunctionVars: string[] = this.functionVars;
+        const oldFrees: {[key: string]: boolean} = this.frees;
+        const oldFunctionVars: string[] = this.functionVars;
         this.frees = {};
         this.functionVars = [];
         this.scope.push({});
 
         // Add all parameters to the scope.  By visiting the parameters, they end up being seen as
         // identifiers, and therefore added to the free variables list.  We then migrate them to the scope.
-        for (let param of node.parameters) {
+        for (const param of node.parameters) {
             walk(param);
         }
-        for (let param of Object.keys(this.frees)) {
+        for (const param of Object.keys(this.frees)) {
             if (this.frees[param]) {
                 this.scope[this.scope.length-1][param] = true;
             }
@@ -417,7 +420,7 @@ class FreeVariableComputer {
         walk(node.body);
 
         // Remove any function-scoped variables that we encountered during the walk.
-        for (let v of this.functionVars) {
+        for (const v of this.functionVars) {
             this.frees[v] = false;
         }
 
@@ -430,7 +433,7 @@ class FreeVariableComputer {
         // Restore the prior context and merge our free list with the previous one.
         this.scope.pop();
         this.functionVars = oldFunctionVars;
-        for (let free of Object.keys(this.frees)) {
+        for (const free of Object.keys(this.frees)) {
             if (this.frees[free]) {
                 oldFrees[free] = true;
             }
@@ -440,12 +443,12 @@ class FreeVariableComputer {
 
     private visitCatchClause(node: ts.CatchClause, walk: walkCallback): void {
         // Add the catch pattern to the scope as a variable.
-        let oldFrees: {[key: string]: boolean} = this.frees;
+        const oldFrees: {[key: string]: boolean} = this.frees;
         this.frees = {};
         this.scope.push({});
         walk(node.variableDeclaration);
 
-        for (let param of Object.keys(this.frees)) {
+        for (const param of Object.keys(this.frees)) {
             if (this.frees[param]) {
                 this.scope[this.scope.length-1][param] = true;
             }
@@ -467,7 +470,7 @@ class FreeVariableComputer {
         // functions which we cannot serialize.  We only want to capture `this` if the user code mentioned it.
         walk(node.expression);
 
-        let isAwaiterCall = ts.isIdentifier(node.expression) && node.expression.text === "__awaiter";
+        const isAwaiterCall = ts.isIdentifier(node.expression) && node.expression.text === "__awaiter";
         for (let i = 0; i < node.arguments.length; i++) {
             if (i > 0 || !isAwaiterCall) {
                 walk(node.arguments[i]);
@@ -500,6 +503,7 @@ class FreeVariableComputer {
     }
 
     private visitVariableDeclaration(node: ts.VariableDeclaration, walk: walkCallback): void {
+        // tslint:disable-next-line:max-line-length
         const isLet = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Let) !== 0;
         const isConst = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
         const isVar = !isLet && !isConst;
@@ -603,10 +607,10 @@ export function serializeJavaScriptText(c: Closure): string {
     }
 
     // Now produce a textual representation of the closure and its serialized captured environment.
-    let funcsForClosure = new FuncsForClosure(c);
-    let funcs = funcsForClosure.funcs;
+    const funcsForClosure = new FuncsForClosure(c);
+    const funcs = funcsForClosure.funcs;
     let text = "exports.handler = " + funcsForClosure.root + ";\n\n";
-    for (let name of Object.keys(funcs)) {
+    for (const name of Object.keys(funcs)) {
         text +=
             "function " + name + "() {\n" +
             "  var _this;\n" +
@@ -647,7 +651,7 @@ class FuncsForClosure {
 
     private createFuncForClosure(closure: Closure): string {
         // Produce a hash to identify the function.
-        let hash = this.createFunctionHash(closure);
+        const hash = this.createFunctionHash(closure);
 
         // Now only store if this function hasn't already been hashed.
         if (this.funcs[hash] === undefined) {
@@ -662,7 +666,7 @@ class FuncsForClosure {
     }
 
     private createFunctionHash(closure: Closure): string {
-        let shasum = crypto.createHash("sha1");
+        const shasum = crypto.createHash("sha1");
 
         // We want to produce a deterministic hash from all the relevant data in this closure. To do
         // so we 'normalize' the object to remove any meaningless differences, and also to ensure
@@ -683,11 +687,11 @@ class FuncsForClosure {
         // recurse), keep track of which closures we've seen.  We specifically use an array so that
         // we can map the closures to a unique value that we can then use as the reference when seen
         // later on.
-        let seenClosures: Closure[] = [];
-        let normalizedClosure = this.convertClosureToNormalizedObject(seenClosures, closure);
+        const seenClosures: Closure[] = [];
+        const normalizedClosure = this.convertClosureToNormalizedObject(seenClosures, closure);
 
         shasum.update(JSON.stringify(normalizedClosure));
-        let hash: string = "__" + shasum.digest("hex");
+        const hash: string = "__" + shasum.digest("hex");
         return hash;
     }
 
@@ -696,7 +700,7 @@ class FuncsForClosure {
             return undefined;
         }
 
-        let closureIndex = seenClosures.indexOf(closure);
+        const closureIndex = seenClosures.indexOf(closure);
         if (closureIndex >= 0) {
             // We've already seen this closure.  Represent it specially.  Importantly: do not
             // represent it in the same way that we represent 'no closure' (above).  There is a
@@ -710,7 +714,7 @@ class FuncsForClosure {
         return [
             closure.code,
             closure.runtime,
-            this.convertEnvironmentToNormalizedObject(seenClosures, closure.environment)
+            this.convertEnvironmentToNormalizedObject(seenClosures, closure.environment),
         ];
     }
 
@@ -729,7 +733,8 @@ class FuncsForClosure {
         }));
     }
 
-    private convertEnvironmentEntryToNormalizedObject(seenClosures: Closure[], entry: EnvironmentEntry | undefined): any {
+    private convertEnvironmentEntryToNormalizedObject(
+            seenClosures: Closure[], entry: EnvironmentEntry | undefined): any {
         if (!entry) {
             return undefined;
         }
@@ -738,15 +743,17 @@ class FuncsForClosure {
             entry.json,
             this.convertClosureToNormalizedObject(seenClosures, entry.closure),
             this.convertEnvironmentToNormalizedObject(seenClosures, entry.obj),
-            entry.arr ? entry.arr.map(child => this.convertEnvironmentEntryToNormalizedObject(seenClosures, child)) : undefined,
-            entry.module
+            entry.arr
+                ? entry.arr.map(child => this.convertEnvironmentEntryToNormalizedObject(seenClosures, child))
+                : undefined,
+            entry.module,
         ];
     }
 
     private envFromEnvObj(env: Environment): {[key: string]: string} {
-        let envObj: {[key: string]: string} = {};
-        for (let key of Object.keys(env)) {
-            let val = this.envEntryToString(env[key]);
+        const envObj: {[key: string]: string} = {};
+        for (const key of Object.keys(env)) {
+            const val = this.envEntryToString(env[key]);
             if (val !== undefined) {
                 envObj[key] = val;
             }
@@ -755,7 +762,7 @@ class FuncsForClosure {
     }
 
     private envFromEnvArr(arr: EnvironmentEntry[]): (string | undefined)[] {
-        let envArr: (string | undefined)[] = [];
+        const envArr: (string | undefined)[] = [];
         for (let i = 0; i < arr.length; i++) {
             envArr[i] = this.envEntryToString(arr[i]);
         }
@@ -767,7 +774,7 @@ class FuncsForClosure {
             return JSON.stringify(envEntry.json);
         }
         else if (envEntry.closure !== undefined) {
-            let innerHash = this.createFuncForClosure(envEntry.closure);
+            const innerHash = this.createFuncForClosure(envEntry.closure);
             return innerHash;
         }
         else if (envEntry.obj !== undefined) {
@@ -796,7 +803,7 @@ function envObjToString(envObj: { [key: string]: string; }): string {
     let result = "";
     let first = true;
     for (let key of Object.keys(envObj)) {
-        let val = envObj[key];
+        const val = envObj[key];
 
         // Rewrite references to `this` to the special name `_this`.  This will get rewritten to use `.apply` later.
         if (key === "this") {

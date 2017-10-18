@@ -21,7 +21,7 @@ let leakDetectorScheduled: boolean = false;
 /**
  * leakCandidates tracks the list of potential leak candidates.
  */
-let leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
+const leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
 /**
  * unhandledHandlerScheduled is true when the unhandled promise detector is scheduled for this process.
  */
@@ -43,12 +43,12 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
 
     // If the unhandled handler isn't active yet, schedule it.
     if (!unhandledHandlerScheduled) {
-        process.on("unhandledRejection", (reason, p) => {
+        process.on("unhandledRejection", (reason, innerPromise) => {
             if (!log.hasErrors()) {
                 console.error("Unhandled promise rejection:");
                 console.error(reason);
                 console.error(reason.stack);
-                console.error(promiseDebugString(p));
+                console.error(promiseDebugString(innerPromise));
             }
         });
         unhandledHandlerScheduled = true;
@@ -57,11 +57,11 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     if (debugPromiseLeaks) {
         // Setup leak detection.
         if (!leakDetectorScheduled) {
-            process.on('exit', (code: number) => {
+            process.on("exit", (code: number) => {
                 // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
                 // course yields things that look like "leaks".
                 if (code === 0 && !log.hasErrors()) {
-                    for (let leaked of leakCandidates) {
+                    for (const leaked of leakCandidates) {
                         console.error("Promise leak detected:");
                         console.error(promiseDebugString(leaked));
                     }
@@ -79,14 +79,14 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     if (debugPromiseTimeout !== -1) {
         // Create a timer that we race against the original promise.
         let timetok: any;
-        let timeout = new Promise<T>((resolve, reject) => {
+        const timeout = new Promise<T>((resolve, reject) => {
             timetok = setTimeout(() => {
                 clearTimeout(timetok);
                 reject(
                     `Promise timeout after ${debugPromiseTimeout}ms;\n` +
                     `CONTEXT: ${ctx}\n` +
                     `STACK TRACE:\n` +
-                    `${(<any>p)._debugStackTrace}`
+                    `${(<any>p)._debugStackTrace}`,
                 );
             }, debugPromiseTimeout);
         });

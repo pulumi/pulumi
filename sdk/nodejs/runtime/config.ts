@@ -6,7 +6,7 @@
  */
 export const configEnvKey = "PULUMI_CONFIG";
 
-let config: {[key: string]: string} = {};
+const config: {[key: string]: string} = {};
 
 /**
  * setConfig sets a configuration variable.
@@ -45,15 +45,15 @@ export function getConfig(k: string): string | undefined {
  */
 export function getConfigEnvKey(key: string): string {
     let envkey: string = "";
-    for (let c of key) {
-        if (c == '_' || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+    for (const c of key) {
+        if (c === "_" || (c >= "A" && c <= "Z") || (c >= "0" && c <= "9")) {
             envkey += c;
         }
-        else if (c >= 'a' && c <= 'z') {
+        else if (c >= "a" && c <= "z") {
             envkey += c.toUpperCase();
         }
         else {
-            envkey += '_';
+            envkey += "_";
         }
     }
     return `${configEnvKey}_${envkey}`;

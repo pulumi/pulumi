@@ -11,7 +11,7 @@ describe("config", () => {
         runtime.setConfig("pkg:config:baz", "baz");
         runtime.setConfig("otherpkg:config:a", "babble");
         runtime.setConfig("otherpkg:config:nothere", "bazzle");
-        let config = new Config("pkg:config");
+        const config = new Config("pkg:config");
         assert.strictEqual("foo", config.get("a"));
         assert.strictEqual("foo", config.require("a"));
         assert.strictEqual("b", config.get("bar"));
@@ -28,7 +28,7 @@ describe("config", () => {
         runtime.setConfig("pkg:config:num", "42.333");
         runtime.setConfig("pkg:config:array", "[ 0, false, 2, \"foo\" ]");
         runtime.setConfig("pkg:config:struct", "{ \"foo\": \"bar\", \"mim\": [] }");
-        let config = new Config("pkg:config");
+        const config = new Config("pkg:config");
         assert.strictEqual(false, config.getBoolean("boolf"));
         assert.strictEqual(false, config.requireBoolean("boolf"));
         assert.strictEqual(true, config.getBoolean("boolt"));

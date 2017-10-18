@@ -2,16 +2,6 @@
 # yarn lockfile v1
 
 
-"@types/acorn@^4.0.2":
-  version "4.0.2"
-  resolved "https://registry.yarnpkg.com/@types/acorn/-/acorn-4.0.2.tgz#5c37dade857a53c14258c914d43e634076aec3fd"
-  dependencies:
-    "@types/estree" "*"
-
-"@types/estree@*":
-  version "0.0.37"
-  resolved "https://registry.yarnpkg.com/@types/estree/-/estree-0.0.37.tgz#48949c1516d46139c1e521195f9e12993b69d751"
-
 "@types/minimist@^1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@types/minimist/-/minimist-1.2.0.tgz#69a23a3ad29caf0097f06eda59b361ee2f0639f6"
@@ -27,10 +17,6 @@
 abbrev@1, abbrev@1.0.x:
   version "1.0.9"
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135"
-
-acorn@^5.1.1:
-  version "5.1.1"
-  resolved "https://registry.yarnpkg.com/acorn/-/acorn-5.1.1.tgz#53fe161111f912ab999ee887a90a0bc52822fd75"
 
 ajv@^4.9.1:
   version "4.11.8"
