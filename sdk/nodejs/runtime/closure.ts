@@ -4,8 +4,9 @@ import * as acorn from "acorn";
 import * as crypto from "crypto";
 import * as estree from "estree";
 import { relative as pathRelative } from "path";
-import { debuggablePromise } from "./debuggable";
+import * as ts from "typescript";
 import * as log from "../log";
+import { debuggablePromise } from "./debuggable";
 
 const acornwalk = require("acorn/dist/walk");
 const nativeruntime = require("./native/build/Release/nativeruntime.node");
@@ -265,20 +266,24 @@ function computeFreeVariables(funcstr: string): string[] {
         ecmaVersion: 8,
         sourceType: "script",
     };
+
     let parser = new acorn.Parser(opts, funcstr);
-    let program: estree.Program;
+    let program2: estree.Program;
     try {
-        program = parser.parse();
+        program2 = parser.parse();
     }
     catch (err) {
         throw new Error(`Could not parse function: ${err}\n${funcstr}`);
     }
 
+    const program = ts.createSourceFile(
+        "", funcstr, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+
     // Now that we've parsed the program, compute the free variables, and return them.
     return new FreeVariableComputer().compute(program);
 }
 
-type walkCallback = (node: estree.BaseNode, state: any) => void;
+type walkCallback = (node: ts.Node | undefined) => void;
 
 const nodeModuleGlobals: {[key: string]: boolean} = {
     "__dirname": true,
@@ -300,24 +305,51 @@ class FreeVariableComputer {
         return global.hasOwnProperty(ident) || nodeModuleGlobals[ident];
     }
 
-    public compute(program: estree.Program): string[] {
+    public compute(program: ts.SourceFile): string[] {
         // Reset the state.
         this.frees = {};
         this.scope = [];
         this.functionVars = [];
 
         // Recurse through the tree.
-        acornwalk.recursive(program, {}, {
-            Identifier: this.visitIdentifier.bind(this),
-            ThisExpression: this.visitThisExpression.bind(this),
-            BlockStatement: this.visitBlockStatement.bind(this),
-            CatchClause: this.visitCatchClause.bind(this),
-            CallExpression: this.visitCallExpression.bind(this),
-            FunctionDeclaration: this.visitFunctionDeclaration.bind(this),
-            FunctionExpression: this.visitBaseFunction.bind(this),
-            ArrowFunctionExpression: this.visitBaseFunction.bind(this),
-            VariableDeclaration: this.visitVariableDeclaration.bind(this),
-        });
+
+        const walk = (node: ts.Node) => {
+            if (!node) {
+                return;
+            }
+
+            switch (node.kind) {
+                case ts.SyntaxKind.Identifier:
+                    return this.visitIdentifier(<ts.Identifier>node);
+                case ts.SyntaxKind.ThisKeyword:
+                    return this.visitThisExpression(<ts.PrimaryExpression>node);
+                case ts.SyntaxKind.Block:
+                    return this.visitBlockStatement(<ts.Block>node, walk);
+                case ts.SyntaxKind.CatchClause:
+                    return this.visitCatchClause(<ts.CatchClause>node, walk);
+                case ts.SyntaxKind.CallExpression:
+                    return this.visitCallExpression(<ts.CallExpression>node, walk);
+                case ts.SyntaxKind.MethodDeclaration:
+                    return this.visitMethodDeclaration(<ts.MethodDeclaration>node, walk);
+                case ts.SyntaxKind.PropertyAssignment:
+                    return this.visitPropertyAssignment(<ts.PropertyAssignment>node, walk);
+                case ts.SyntaxKind.PropertyAccessExpression:
+                    return this.visitPropertyAccessExpression(<ts.PropertyAccessExpression>node, walk);
+                case ts.SyntaxKind.FunctionDeclaration:
+                    return this.visitFunctionDeclaration(<ts.FunctionDeclaration>node, walk);
+                case ts.SyntaxKind.FunctionExpression:
+                case ts.SyntaxKind.ArrowFunction:
+                    return this.visitBaseFunction(<ts.ArrowFunction | ts.FunctionExpression>node, walk);
+                case ts.SyntaxKind.VariableDeclaration:
+                    return this.visitVariableDeclaration(<ts.VariableDeclaration>node, walk);
+                default:
+                    break;
+            }
+
+            ts.forEachChild(node, walk);
+        };
+
+        ts.forEachChild(program, walk);
 
         // Now just return all variables whose value is true.  Filter out any that are part of the built-in
         // Node.js global object, however, since those are implicitly availble on the other side of serialization.
@@ -330,9 +362,9 @@ class FreeVariableComputer {
         return freeVars;
     }
 
-    private visitIdentifier(node: estree.Identifier, state: any, cb: walkCallback): void {
+    private visitIdentifier(node: ts.Identifier): void {
         // Remember undeclared identifiers during the walk, as they are possibly free.
-        let name: string = node.name;
+        const name = node.text;
         for (let i = this.scope.length - 1; i >= 0; i--) {
             if (this.scope[i][name]) {
                 // This is currently known in the scope chain, so do not add it as free.
@@ -344,28 +376,29 @@ class FreeVariableComputer {
         }
     }
 
-    private visitThisExpression(node: estree.Identifier, state: any, cb: walkCallback): void {
+    private visitThisExpression(node: ts.PrimaryExpression): void {
         // Mark references to the built-in 'this' variable as free.
         this.frees["this"] = true;
     }
 
-    private visitBlockStatement(node: estree.BlockStatement, state: any, cb: walkCallback): void {
+    private visitBlockStatement(node: ts.Block, walk: walkCallback): void {
         // Push new scope, visit all block statements, and then restore the scope.
         this.scope.push({});
-        for (let stmt of node.body) {
-            cb(stmt, state);
-        }
+        ts.forEachChild(node, walk);
         this.scope.pop();
     }
 
-    private visitFunctionDeclaration(node: estree.FunctionDeclaration, state: any, cb: walkCallback): void {
+    private visitFunctionDeclaration(node: ts.FunctionDeclaration, walk: walkCallback): void {
         // A function declaration is special in one way: its identifier is added to the current function's
         // var-style variables, so that its name is in scope no matter the order of surrounding references to it.
-        this.functionVars.push(node.id.name);
-        this.visitBaseFunction(node, state, cb);
+        if (node.name) {
+            this.functionVars.push(node.name.text);
+        }
+
+        this.visitBaseFunction(node, walk);
     }
 
-    private visitBaseFunction(node: estree.BaseFunction, state: any, cb: walkCallback): void {
+    private visitBaseFunction(node: ts.FunctionLikeDeclarationBase, walk: walkCallback): void {
         // First, push new free vars list, scope, and function vars
         let oldFrees: {[key: string]: boolean} = this.frees;
         let oldFunctionVars: string[] = this.functionVars;
@@ -375,8 +408,8 @@ class FreeVariableComputer {
 
         // Add all parameters to the scope.  By visiting the parameters, they end up being seen as
         // identifiers, and therefore added to the free variables list.  We then migrate them to the scope.
-        for (let param of node.params) {
-            cb(param, state);
+        for (let param of node.parameters) {
+            walk(param);
         }
         for (let param of Object.keys(this.frees)) {
             if (this.frees[param]) {
@@ -386,7 +419,7 @@ class FreeVariableComputer {
         this.frees = {};
 
         // Next, visit the body underneath this new context.
-        cb(node.body, state);
+        walk(node.body);
 
         // Remove any function-scoped variables that we encountered during the walk.
         for (let v of this.functionVars) {
@@ -395,7 +428,7 @@ class FreeVariableComputer {
 
         // If the function is not an arrow, then its `this` is also a
         // function-scoped variable and should be removed.
-        if ((node as estree.ArrowFunctionExpression).type !== "ArrowFunctionExpression") {
+        if (!ts.isArrowFunction(node)) {
             this.frees["this"] = false;
         }
 
@@ -410,12 +443,13 @@ class FreeVariableComputer {
         this.frees = oldFrees;
     }
 
-    private visitCatchClause(node: estree.CatchClause, state: any, cb: walkCallback): void {
+    private visitCatchClause(node: ts.CatchClause, walk: walkCallback): void {
         // Add the catch pattern to the scope as a variable.
         let oldFrees: {[key: string]: boolean} = this.frees;
         this.frees = {};
         this.scope.push({});
-        cb(node.param, state);
+        walk(node.variableDeclaration);
+
         for (let param of Object.keys(this.frees)) {
             if (this.frees[param]) {
                 this.scope[this.scope.length-1][param] = true;
@@ -424,89 +458,138 @@ class FreeVariableComputer {
         this.frees = oldFrees;
 
         // And then visit the block without adding them as free variables.
-        cb(node.body, state);
+        walk(node.block);
 
         // Relinquish the scope so the error patterns aren't available beyond the catch.
         this.scope.pop();
     }
 
-    private visitCallExpression(node: estree.SimpleCallExpression, state: any, cb: walkCallback): void {
+    private visitCallExpression(node: ts.CallExpression, walk: walkCallback): void {
         // Most call expressions are normal.  But we must special case one kind of function:
         // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0, function* (){})`,
         // which will cause us to attempt to capture and serialize the entire surrounding function in
         // which any lambda is created (thanks to `this`).  That spirals into craziness, and bottoms out on native
         // functions which we cannot serialize.  We only want to capture `this` if the user code mentioned it.
-        cb(node.callee, state);
-        let isAwaiterCall: boolean =
-            (node.callee.type === "Identifier" && (node.callee as estree.Identifier).name === "__awaiter");
+        walk(node.expression);
+
+        let isAwaiterCall = ts.isIdentifier(node.expression) && node.expression.text === "__awaiter";
         for (let i = 0; i < node.arguments.length; i++) {
             if (i > 0 || !isAwaiterCall) {
-                cb(node.arguments[i], state);
+                walk(node.arguments[i]);
             }
         }
     }
 
-    private visitVariableDeclaration(node: estree.VariableDeclaration, state: any, cb: walkCallback): void {
-        for (let decl of node.declarations) {
-            // Walk the declaration's `id` property (which may be an Identifier
-            // or Pattern) using a fresh AST walker which will capture any
-            // variables declared by this variable declaration. Pass the
-            // variable kind in as state for the walker so that variables can be
-            // registered into the right scope (function-wide for var and
-            // scope-wide for let/const).
-            acornwalk.recursive(decl.id, {varKind: node.kind}, {
-                Identifier: this.visitVariableDeclarationIdentifier.bind(this),
-                ObjectPattern: this.visitVariableDeclarationObjectPattern.bind(this),
-                ArrayPattern: this.visitVariableDeclarationArrayPattern.bind(this),
-                AssignmentPattern: this.visitVariableDeclarationAssignmentPattern.bind(this),
-                RestElement: this.visitVariableDeclarationRestPattern.bind(this),
-            });
-
-            // Make sure to walk the initializer.
-            if (decl.init) {
-                cb(decl.init, state);
-            }
+    private visitMethodDeclaration(node: ts.MethodDeclaration, walk: walkCallback): void {
+        if (ts.isComputedPropertyName(node.name)) {
+            // Don't walk down the 'name' part of the property assignment if it is an identifier.
+            // It is not a free variable.  If it is computed, then walk down it.
+            walk(node.name);
         }
     }
 
-    private visitVariableDeclarationIdentifier(node: estree.Identifier, state: any, cb: walkCallback): void {
+    private visitPropertyAssignment(node: ts.PropertyAssignment, walk: walkCallback): void {
+        if (ts.isComputedPropertyName(node.name)) {
+            // Don't walk down the 'name' part of the property assignment if it is an identifier.
+            // It is not a free variable.  If it is computed, then walk down it.
+            walk(node.name);
+        }
+    }
+
+    private visitPropertyAccessExpression(node: ts.PropertyAccessExpression, walk: walkCallback): void {
+        // Don't walk down the 'name' part of the property access.  It is not a free variable.
+        walk(node.expression);
+    }
+
+    private visitVariableDeclaration(node: ts.VariableDeclaration, walk: walkCallback): void {
+        const isLet = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Let) !== 0;
+        const isConst = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
+        const isVar = !isLet && !isConst;
+
+                // Walk the declaration's `id` property (which may be an Identifier
+                // or Pattern) using a fresh AST walker which will capture any
+                // variables declared by this variable declaration. Pass the
+                // variable kind in as state for the walker so that variables can be
+                // registered into the right scope (function-wide for var and
+                // scope-wide for let/const).
+
+        const nameWalk = (n: ts.Node): void => {
+            if (!n) {
+                return;
+            }
+
+            switch (n.kind) {
+                case ts.SyntaxKind.Identifier:
+                    return this.visitVariableDeclarationIdentifier(<ts.Identifier>n, isVar);
+                case ts.SyntaxKind.ObjectBindingPattern:
+                    return this.visitVariableDeclarationObjectPattern(<ts.ObjectBindingPattern>n, nameWalk);
+                case ts.SyntaxKind.ArrayBindingPattern:
+                    return this.visitVariableDeclarationArrayPattern(<ts.ArrayBindingPattern>n, nameWalk);
+                // case ts.SyntaxKind.BindingElement:
+                //     return this.visitBindingElement(<ts.BindingElement>n, nameWalk);
+                default:
+                    break;
+            }
+
+            return ts.forEachChild(n, nameWalk);
+        };
+
+        nameWalk(node.name);
+
+        walk(node.initializer);
+        //     for (let decl of node.name) {
+        //         switch (decl.)
+        //         acornwalk.recursive(decl.id, {varKind: node.kind}, {
+        //             Identifier: this.visitVariableDeclarationIdentifier.bind(this),
+        //             ObjectPattern: this.visitVariableDeclarationObjectPattern.bind(this),
+        //             ArrayPattern: this.visitVariableDeclarationArrayPattern.bind(this),
+        //             AssignmentPattern: this.visitVariableDeclarationAssignmentPattern.bind(this),
+        //             RestElement: this.visitVariableDeclarationRestPattern.bind(this),
+        //         });
+
+        //         // Make sure to walk the initializer.
+        //         if (decl.expression) {
+        //             walk(decl.expression);
+        //         }
+        //     }
+        // }
+    }
+
+    private visitVariableDeclarationIdentifier(node: ts.Identifier, isVar: boolean): void {
         // If the declaration is an identifier, it isn't a free variable, for whatever scope it
         // pertains to (function-wide for var and scope-wide for let/const).  Track it so we can
         // remove any subseqeunt references to that variable, so we know it isn't free.
-        if (state.varKind === "var") {
-            this.functionVars.push(node.name);
+        if (isVar) {
+            this.functionVars.push(node.text);
         } else {
-            this.scope[this.scope.length-1][node.name] = true;
+            this.scope[this.scope.length-1][node.text] = true;
         }
     }
 
-    private visitVariableDeclarationObjectPattern(node: estree.ObjectPattern, state: any, cb: walkCallback): void {
-        for (let prop of node.properties) {
-            // Recurse into each `value` pattern, which may contain nested variable bindings.
-            cb(prop.value, state);
+    private visitVariableDeclarationObjectPattern(node: ts.ObjectBindingPattern, walk: walkCallback): void {
+        for (let prop of node.elements) {
+            walk(prop.name);
         }
     }
 
-    private visitVariableDeclarationArrayPattern(node: estree.ArrayPattern, state: any, cb: walkCallback): void {
+    private visitVariableDeclarationArrayPattern(node: ts.ArrayBindingPattern, walk: walkCallback): void {
         for (let pattern of node.elements) {
             // Recurse into each nested pattern, which may contain nested
             // variable bindings.  Skip gaps in the array pattern.
-            if (pattern) {
-                cb(pattern, state);
-            }
+            walk(pattern);
         }
     }
 
-    private visitVariableDeclarationAssignmentPattern(node: estree.AssignmentPattern, state: any, cb: walkCallback)
-    : void {
-        // Recurse into the left side of this assignment pattern.
-        cb(node.left, state);
-    }
+    // private visitVariableDeclarationAssignmentPattern(node: estree.AssignmentPattern, state: any, cb: walkCallback)
+    // : void {
+    //     // Recurse into the left side of this assignment pattern.
+    //     cb(node.left, state);
+    // }
 
-    private visitVariableDeclarationRestPattern(node: estree.RestElement, state: any, cb: walkCallback): void {
-        // Recurse into the argument pattern of the rest pattern.
-        cb(node.argument, state);
-    }
+    // private visitVariableDeclarationRestPattern(node: estree.RestElement, state: any, cb: walkCallback): void {
+    //     // Recurse into the argument pattern of the rest pattern.
+    //     cb(node.argument, state);
+    // }
 }
 
 /**
