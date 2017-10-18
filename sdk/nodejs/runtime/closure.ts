@@ -1,6 +1,5 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as acorn from "acorn";
 import * as crypto from "crypto";
 import * as estree from "estree";
 import { relative as pathRelative } from "path";
@@ -8,7 +7,6 @@ import * as ts from "typescript";
 import * as log from "../log";
 import { debuggablePromise } from "./debuggable";
 
-const acornwalk = require("acorn/dist/walk");
 const nativeruntime = require("./native/build/Release/nativeruntime.node");
 
 /**
@@ -144,13 +142,15 @@ let entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
  * serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
  */
 function serializeClosureAsync(func: Function): AsyncClosure {
-    // Invoke the native runtime.  Note that we pass a callback to our function below to compute free variables.
-    // This must be a callback and not the result of this function alone, since we may recursively compute them.
+    // Invoke the native runtime.  Note that we pass a callback to our function below to compute
+    // free variables. This must be a callback and not the result of this function alone, since we
+    // may recursively compute them.
     //
-    // N.B.  We use the Acorn parser to compute them.  This has the downside that we now have two parsers in the game,
-    // V8 and Acorn (three if you include optional TypeScript), but has the significant advantage that V8's parser
-    // isn't designed to be stable for 3rd party consumtpion.  Hence it would be brittle and a maintenance challenge.
-    // This approach also avoids needing to write a big hunk of complex code in C++, which is nice.
+    // N.B.  We use the typescript parser to compute them.  This has the downside that we now have
+    // two parsers in the game, V8 and TypeScript, but has the significant advantage that V8's
+    // parser isn't designed to be stable for 3rd party consumtpion. Hence it would be brittle and a
+    // maintenance challenge. This approach also avoids needing to write a big hunk of complex code
+    // in C++, which is nice.
     return <AsyncClosure>nativeruntime.serializeClosure(func, computeFreeVariables, serializeCapturedObject);
 }
 
@@ -262,20 +262,6 @@ function computeFreeVariables(funcstr: string): string[] {
         throw new Error(`Cannot serialize native code function: "${funcstr}"`);
     }
 
-    let opts: acorn.Options = {
-        ecmaVersion: 8,
-        sourceType: "script",
-    };
-
-    let parser = new acorn.Parser(opts, funcstr);
-    let program2: estree.Program;
-    try {
-        program2 = parser.parse();
-    }
-    catch (err) {
-        throw new Error(`Could not parse function: ${err}\n${funcstr}`);
-    }
-
     const program = ts.createSourceFile(
         "", funcstr, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
@@ -311,7 +297,13 @@ class FreeVariableComputer {
         this.scope = [];
         this.functionVars = [];
 
-        // Recurse through the tree.
+        // Recurse through the tree.  We use typescript's AST here and generally walk the entire
+        // tree. One subtlety to be aware of is that we generally assume that when we hit an
+        // identifier that it either introduces a new variable, or it lexically references a
+        // variable.  This clearly doesn't make sense for *all* identifiers.  For example, if you
+        // have "console.log" then "console" tries to lexically reference a variable, but "log" does
+        // not.  So, to avoid that being an issue, we carefully decide when to recurse.  For
+        // example, for member access expressions (i.e. A.B) we do not recurse down the right side.
 
         const walk = (node: ts.Node) => {
             if (!node) {
@@ -482,22 +474,25 @@ class FreeVariableComputer {
 
     private visitMethodDeclaration(node: ts.MethodDeclaration, walk: walkCallback): void {
         if (ts.isComputedPropertyName(node.name)) {
-            // Don't walk down the 'name' part of the property assignment if it is an identifier.
-            // It is not a free variable.  If it is computed, then walk down it.
+            // Don't walk down the 'name' part of the property assignment if it is an identifier. It
+            // does not capture any variables.  However, if it is a computed property name, walk it
+            // as it may capture variables.
             walk(node.name);
         }
     }
 
     private visitPropertyAssignment(node: ts.PropertyAssignment, walk: walkCallback): void {
         if (ts.isComputedPropertyName(node.name)) {
-            // Don't walk down the 'name' part of the property assignment if it is an identifier.
-            // It is not a free variable.  If it is computed, then walk down it.
+            // Don't walk down the 'name' part of the property assignment if it is an identifier. It
+            // is not capturing any variables.  However, if it is a computed property name, walk it
+            // as it may capture variables.
             walk(node.name);
         }
     }
 
     private visitPropertyAccessExpression(node: ts.PropertyAccessExpression, walk: walkCallback): void {
-        // Don't walk down the 'name' part of the property access.  It is not a free variable.
+        // Don't walk down the 'name' part of the property access.  It could not capture a free variable.
+        // i.e. if you have "A.B", we should analyze the "A" part and not the "B" part.
         walk(node.expression);
     }
 
@@ -506,12 +501,8 @@ class FreeVariableComputer {
         const isConst = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
         const isVar = !isLet && !isConst;
 
-                // Walk the declaration's `id` property (which may be an Identifier
-                // or Pattern) using a fresh AST walker which will capture any
-                // variables declared by this variable declaration. Pass the
-                // variable kind in as state for the walker so that variables can be
-                // registered into the right scope (function-wide for var and
-                // scope-wide for let/const).
+        // Walk the declaration's `name` property (which may be an Identifier or Pattern) using a
+        // fresh walker which will capture any variables declared by this variable declaration.
 
         const nameWalk = (n: ts.Node): void => {
             if (!n) {
@@ -525,8 +516,6 @@ class FreeVariableComputer {
                     return this.visitVariableDeclarationObjectPattern(<ts.ObjectBindingPattern>n, nameWalk);
                 case ts.SyntaxKind.ArrayBindingPattern:
                     return this.visitVariableDeclarationArrayPattern(<ts.ArrayBindingPattern>n, nameWalk);
-                // case ts.SyntaxKind.BindingElement:
-                //     return this.visitBindingElement(<ts.BindingElement>n, nameWalk);
                 default:
                     break;
             }
@@ -536,23 +525,9 @@ class FreeVariableComputer {
 
         nameWalk(node.name);
 
+        // Also walk into the variable initializer with the original walker to make sure we see any
+        // captures on the right hand side.
         walk(node.initializer);
-        //     for (let decl of node.name) {
-        //         switch (decl.)
-        //         acornwalk.recursive(decl.id, {varKind: node.kind}, {
-        //             Identifier: this.visitVariableDeclarationIdentifier.bind(this),
-        //             ObjectPattern: this.visitVariableDeclarationObjectPattern.bind(this),
-        //             ArrayPattern: this.visitVariableDeclarationArrayPattern.bind(this),
-        //             AssignmentPattern: this.visitVariableDeclarationAssignmentPattern.bind(this),
-        //             RestElement: this.visitVariableDeclarationRestPattern.bind(this),
-        //         });
-
-        //         // Make sure to walk the initializer.
-        //         if (decl.expression) {
-        //             walk(decl.expression);
-        //         }
-        //     }
-        // }
     }
 
     private visitVariableDeclarationIdentifier(node: ts.Identifier, isVar: boolean): void {
@@ -579,17 +554,6 @@ class FreeVariableComputer {
             walk(pattern);
         }
     }
-
-    // private visitVariableDeclarationAssignmentPattern(node: estree.AssignmentPattern, state: any, cb: walkCallback)
-    // : void {
-    //     // Recurse into the left side of this assignment pattern.
-    //     cb(node.left, state);
-    // }
-
-    // private visitVariableDeclarationRestPattern(node: estree.RestElement, state: any, cb: walkCallback): void {
-    //     // Recurse into the argument pattern of the rest pattern.
-    //     cb(node.argument, state);
-    // }
 }
 
 /**
