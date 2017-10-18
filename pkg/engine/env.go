@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func (eng *Engine) planContextFromEnvironment(name tokens.QName, pkgarg string) (*planContext, error) {
+func (eng *Engine) planContextFromStack(name tokens.QName, pkgarg string) (*planContext, error) {
 	contract.Require(name != tokens.QName(""), "name")
 
 	// Read in the deployment information, bailing if an IO error occurs.
@@ -33,7 +33,7 @@ func (eng *Engine) planContextFromEnvironment(name tokens.QName, pkgarg string) 
 }
 
 type planContext struct {
-	Target     *deploy.Target   // the target environment.
-	Snapshot   *deploy.Snapshot // the environment's latest deployment snapshot
+	Target     *deploy.Target   // the target stack.
+	Snapshot   *deploy.Snapshot // the stack's latest deployment snapshot
 	PackageArg string           // an optional path to a package to pass to the compiler
 }

@@ -6,6 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/pack"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -25,46 +28,46 @@ func newWorkspace() (workspace.W, error) {
 	return workspace.New(pwd)
 }
 
-// explicitOrCurrent returns an environment name after ensuring the environment exists. When a empty
-// environment name is passed, the "current" ambient environment is returned
+// explicitOrCurrent returns an stack name after ensuring the stack exists. When a empty
+// stack name is passed, the "current" ambient stack is returned
 func explicitOrCurrent(name string) (tokens.QName, error) {
 	if name == "" {
-		return getCurrentEnv()
+		return getCurrentStack()
 	}
 
-	_, _, err := getEnvironment(tokens.QName(name))
+	_, _, err := getStack(tokens.QName(name))
 	return tokens.QName(name), err
 }
 
-// getCurrentEnv reads the current environment.
-func getCurrentEnv() (tokens.QName, error) {
+// getCurrentStack reads the current stack.
+func getCurrentStack() (tokens.QName, error) {
 	w, err := newWorkspace()
 	if err != nil {
 		return "", err
 	}
 
-	env := w.Settings().Env
-	if env == "" {
-		return "", errors.New("no current environment detected; please use `pulumi env init` to create one")
+	stack := w.Settings().Stack
+	if stack == "" {
+		return "", errors.New("no current stack detected; please use `pulumi stack init` to create one")
 	}
-	return env, nil
+	return stack, nil
 }
 
-// setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
-func setCurrentEnv(name tokens.QName, verify bool) error {
+// setCurrentStack changes the current stack to the given stack name, issuing an error if it doesn't exist.
+func setCurrentStack(name tokens.QName, verify bool) error {
 	if verify {
-		if _, _, err := getEnvironment(name); err != nil {
+		if _, _, err := getStack(name); err != nil {
 			return err
 		}
 	}
 
-	// Switch the current workspace to that environment.
+	// Switch the current workspace to that stack.
 	w, err := newWorkspace()
 	if err != nil {
 		return err
 	}
 
-	w.Settings().Env = name
+	w.Settings().Stack = name
 	return w.Save()
 }
 
@@ -98,4 +101,41 @@ func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
 			contract.Failf("unknown event type '%s'", event.Type)
 		}
 	}
+}
+
+func getPackage() (string, pack.Package, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	pkgPath, err := workspace.DetectPackage(dir)
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	if pkgPath == "" {
+		return "", pack.Package{}, errors.Errorf("could not find Pulumi.yaml, started search in %s", dir)
+	}
+
+	m, _ := encoding.Detect(pkgPath)
+
+	b, err := ioutil.ReadFile(pkgPath)
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	var pkg pack.Package
+
+	err = m.Unmarshal(b, &pkg)
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	err = pkg.Validate()
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	return pkgPath, pkg, err
 }

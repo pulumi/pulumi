@@ -9,8 +9,8 @@ export * from "./resource";
 
 // Export submodules individually.
 import * as asset from "./asset";
+import * as dynamic from "./dynamic";
 import * as log from "./log";
 import * as runtime from "./runtime";
-import * as testing from "./testing";
-export { asset, log, runtime, testing };
+export { asset, dynamic, log, runtime };
 

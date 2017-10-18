@@ -29,11 +29,11 @@ type DeployOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func (eng *Engine) Deploy(environment tokens.QName, events chan<- Event, opts DeployOptions) error {
-	contract.Require(environment != tokens.QName(""), "environment")
+func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOptions) error {
+	contract.Require(stack != tokens.QName(""), "stack")
 	contract.Require(events != nil, "events")
 
-	info, err := eng.planContextFromEnvironment(environment, opts.Package)
+	info, err := eng.planContextFromStack(stack, opts.Package)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (eng *Engine) Deploy(environment tokens.QName, events chan<- Event, opts De
 
 type deployOptions struct {
 	Create               bool         // true if we are creating resources.
-	Destroy              bool         // true if we are destroying the environment.
+	Destroy              bool         // true if we are destroying the stack.
 	DryRun               bool         // true if we should just print the plan without performing it.
 	Analyzers            []string     // an optional set of analyzers to run as part of this deployment.
 	Parallel             int          // the degree of parallelism for resource operations (<=1 for serial).

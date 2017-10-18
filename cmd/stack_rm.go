@@ -13,47 +13,47 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newEnvRmCmd() *cobra.Command {
+func newStackRmCmd() *cobra.Command {
 	var yes bool
 	var force bool
 	var cmd = &cobra.Command{
-		Use:   "rm <env>",
-		Short: "Remove an environment and its configuration",
-		Long: "Remove an environment and its configuration\n" +
+		Use:   "rm <stack>",
+		Short: "Remove an stack and its configuration",
+		Long: "Remove an stack and its configuration\n" +
 			"\n" +
-			"This command removes an environment and its configuration state.  Please refer to the\n" +
+			"This command removes an stack and its configuration state.  Please refer to the\n" +
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
-			"After this command completes, the environment will no longer be available for deployments.",
+			"After this command completes, the stack will no longer be available for deployments.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 
 			if len(args) == 0 || args[0] == "" {
-				return errors.Errorf("missing required environment name")
+				return errors.Errorf("missing required stack name")
 			}
 
-			envName := tokens.QName(args[0])
+			stackName := tokens.QName(args[0])
 
 			// Ensure the user really wants to do this.
 			if yes ||
-				confirmPrompt("This will permanently remove the '%v' environment!", envName.String()) {
+				confirmPrompt("This will permanently remove the '%v' stack!", stackName.String()) {
 
-				target, snapshot, err := getEnvironment(envName)
+				target, snapshot, err := getStack(stackName)
 				if err != nil {
 					return err
 				}
 
-				// Don't remove environments that still have resources.
+				// Don't remove stacks that still have resources.
 				if !force && snapshot != nil && len(snapshot.Resources) > 0 {
 					return errors.Errorf(
-						"'%v' still has resources; removal rejected; pass --force to override", envName)
+						"'%v' still has resources; removal rejected; pass --force to override", stackName)
 				}
 
-				err = removeEnvironment(target)
+				err = removeStack(target)
 				if err != nil {
 					return err
 				}
 
-				msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s", colors.SpecAttention, envName, colors.Reset)
+				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
 				fmt.Println(colors.ColorizeText(msg))
 			}
 
@@ -63,7 +63,7 @@ func newEnvRmCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
-		"By default, removal of a environment with resources will be rejected; this forces it")
+		"By default, removal of a stack with resources will be rejected; this forces it")
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with removal anyway")

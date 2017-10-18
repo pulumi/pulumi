@@ -13,7 +13,7 @@ func newUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
 	var dryRun bool
-	var env string
+	var stack string
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -22,20 +22,20 @@ func newUpdateCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "update",
 		Aliases: []string{"up"},
-		Short:   "Update the resources in an environment",
-		Long: "Update the resources in an environment\n" +
+		Short:   "Update the resources in an stack",
+		Long: "Update the resources in an stack\n" +
 			"\n" +
-			"This command updates an existing environment whose state is represented by the\n" +
+			"This command updates an existing stack whose state is represented by the\n" +
 			"existing snapshot file. The new desired state is computed by compiling and evaluating an\n" +
 			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
 			"These allocations are then compared against the existing state to determine what operations\n" +
 			"must take place to achieve the desired state. This command results in a full snapshot of the\n" +
-			"environment's new resource state, so that it may be updated incrementally again later.\n" +
+			"stack's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			envName, err := explicitOrCurrent(env)
+			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
@@ -45,7 +45,7 @@ func newUpdateCmd() *cobra.Command {
 
 			go displayEvents(events, done, debug)
 
-			err = lumiEngine.Deploy(envName, events, engine.DeployOptions{
+			err = lumiEngine.Deploy(stackName, events, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
@@ -67,8 +67,8 @@ func newUpdateCmd() *cobra.Command {
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
-		&env, "env", "e", "",
-		"Choose an environment other than the currently selected one")
+		&stack, "stack", "s", "",
+		"Choose an stack other than the currently selected one")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
@@ -81,8 +81,8 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVarP(
-		&summary, "summary", "s", false,
+	cmd.PersistentFlags().BoolVar(
+		&summary, "summary", false,
 		"Only display summarization of resources and operations")
 
 	return cmd

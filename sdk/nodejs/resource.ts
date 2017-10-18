@@ -25,10 +25,24 @@ export abstract class Resource {
     public readonly children: Resource[];
 
     /**
-     * withParent executes a callback, body, and any resources allocated within become parent's children.
+     * runInParentScope executes a callback, body, and any resources allocated within become parent's children.
      */
-    protected static withParent<T>(parent: Resource, body: () => T): T {
+    public static runInParentScope<T>(parent: Resource, body: () => T): T {
         Resource.parentScope.push(parent);
+        try {
+            return body();
+        }
+        finally {
+            Resource.parentScope.pop();
+        }
+    }
+
+    /**
+     * runInParentlessScope executes a callback, body, in a scope where no parent is active.  This can be useful
+     * if there's an active parent but you want to run some code that allocates "anonymous" resources.
+     */
+    public static runInParentlessScope<T>(body: () => T): T {
+        Resource.parentScope.push(undefined);
         try {
             return body();
         }
@@ -147,7 +161,7 @@ export abstract class ComponentResource extends Resource {
     constructor(t: string, name: string, props: ComputedValues,
                 init: () => void | ComputedValues | undefined, dependsOn?: Resource[]) {
         super();
-        const values: void | ComputedValues | undefined = Resource.withParent(this, init);
+        const values: void | ComputedValues | undefined = Resource.runInParentScope(this, init);
         // IDEA: in the future, it would be nice to split inputs and outputs in the Pulumi metadata.  This would let
         //     us display them differently.  That implies fairly sizable changes to the RPC interfaces, however, so
         //     for now we simply cram both values (outputs) and props (inputs) together into the same property bag.

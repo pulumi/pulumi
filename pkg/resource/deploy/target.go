@@ -8,6 +8,6 @@ import (
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name   tokens.QName                   // the target environment name.
+	Name   tokens.QName                   // the target stack name.
 	Config map[tokens.ModuleMember]string // optional configuration key/values.
 }

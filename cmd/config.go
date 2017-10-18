@@ -5,6 +5,9 @@ package cmd
 import (
 	"fmt"
 	"sort"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/pack"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
@@ -16,40 +19,40 @@ import (
 )
 
 func newConfigCmd() *cobra.Command {
-	var env string
+	var stack string
 	var unset bool
 	cmd := &cobra.Command{
 		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			envName, err := explicitOrCurrent(env)
+			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
 
 			if len(args) == 0 {
-				return listConfig(envName)
+				return listConfig(stackName)
 			}
 
-			key, err := tokens.ParseModuleMember(args[0])
+			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
 			if len(args) == 1 {
 				if !unset {
-					return getConfig(envName, key)
+					return getConfig(stackName, key)
 				}
-				return deleteConfiguration(envName, key)
+				return deleteConfiguration(stackName, key)
 			}
 
-			return setConfiguration(envName, key, args[1])
+			return setConfiguration(stackName, key, args[1])
 		}),
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&env, "env", "e", "",
-		"Choose an environment other than the currently selected one")
+		&stack, "stack", "s", "",
+		"Choose an stack other than the currently selected one")
 	cmd.PersistentFlags().BoolVar(
 		&unset, "unset", false,
 		"Unset a configuration value")
@@ -57,8 +60,44 @@ func newConfigCmd() *cobra.Command {
 	return cmd
 }
 
-func listConfig(envName tokens.QName) error {
-	config, err := getConfiguration(envName)
+func parseConfigKey(key string) (tokens.ModuleMember, error) {
+
+	// As a convience, we'll treat any key with no delimiter as if:
+	// <program-name>:config:<key> had been written instead
+	if !strings.Contains(key, tokens.TokenDelimiter) {
+		_, pkg, err := getPackage()
+		if err != nil {
+			return "", err
+		}
+
+		return tokens.ParseModuleMember(fmt.Sprintf("%s:config:%s", pkg.Name, key))
+	}
+
+	return tokens.ParseModuleMember(key)
+}
+
+func prettyKey(key string) string {
+	_, pkg, err := getPackage()
+	if err != nil {
+		return key
+	}
+
+	return prettyKeyForPackage(key, pkg)
+}
+
+func prettyKeyForPackage(key string, pkg pack.Package) string {
+	s := key
+	defaultPrefix := fmt.Sprintf("%s:config:", pkg.Name)
+
+	if strings.HasPrefix(s, defaultPrefix) {
+		return s[len(defaultPrefix):]
+	}
+
+	return s
+}
+
+func listConfig(stackName tokens.QName) error {
+	config, err := getConfiguration(stackName)
 	if err != nil {
 		return err
 	}
@@ -67,19 +106,21 @@ func listConfig(envName tokens.QName) error {
 		fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
 		var keys []string
 		for key := range config {
+			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure that all the config
+			// values for the current program are displayed next to one another in the output.
 			keys = append(keys, string(key))
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			fmt.Printf("%-32s %-32s\n", key, config[tokens.ModuleMember(key)])
+			fmt.Printf("%-32s %-32s\n", prettyKey(key), config[tokens.ModuleMember(key)])
 		}
 	}
 
 	return nil
 }
 
-func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
-	config, err := getConfiguration(envName)
+func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
+	config, err := getConfiguration(stackName)
 	if err != nil {
 		return err
 	}
@@ -91,11 +132,11 @@ func getConfig(envName tokens.QName, key tokens.ModuleMember) error {
 		}
 	}
 
-	return errors.Errorf("configuration key '%v' not found for environment '%v'", key, envName)
+	return errors.Errorf("configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stackName)
 }
 
-func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	target, _, err := getEnvironment(envName)
+func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
+	target, _, err := getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +145,8 @@ func getConfiguration(envName tokens.QName) (map[tokens.ModuleMember]string, err
 	return target.Config, nil
 }
 
-func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
-	target, snapshot, err := getEnvironment(envName)
+func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
+	target, snapshot, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -116,11 +157,11 @@ func deleteConfiguration(envName tokens.QName, key tokens.ModuleMember) error {
 		delete(target.Config, key)
 	}
 
-	return saveEnvironment(target, snapshot)
+	return saveStack(target, snapshot)
 }
 
-func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value string) error {
-	target, snapshot, err := getEnvironment(envName)
+func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value string) error {
+	target, snapshot, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -133,5 +174,5 @@ func setConfiguration(envName tokens.QName, key tokens.ModuleMember, value strin
 
 	target.Config[key] = value
 
-	return saveEnvironment(target, snapshot)
+	return saveStack(target, snapshot)
 }

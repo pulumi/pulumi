@@ -12,7 +12,7 @@ import (
 func newPreviewCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
-	var env string
+	var stack string
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -20,20 +20,20 @@ func newPreviewCmd() *cobra.Command {
 	var summary bool
 	var cmd = &cobra.Command{
 		Use:   "preview",
-		Short: "Show a preview of updates to an environment's resources",
-		Long: "Show a preview of updates an environment's resources\n" +
+		Short: "Show a preview of updates to an stack's resources",
+		Long: "Show a preview of updates an stack's resources\n" +
 			"\n" +
-			"This command displays a preview of the updates to an existing environment whose state is\n" +
+			"This command displays a preview of the updates to an existing stack whose state is\n" +
 			"represented by an existing snapshot file. The new desired state is computed by compiling\n" +
 			"and evaluating an executable package, and extracting all resource allocations from its\n" +
 			"resulting object graph. These allocations are then compared against the existing state to\n" +
 			"determine what operations must take place to achieve the desired state. No changes to the\n" +
-			"environment will actually take place.\n" +
+			"stack will actually take place.\n" +
 			"\n" +
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			envName, err := explicitOrCurrent(env)
+			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
@@ -43,7 +43,7 @@ func newPreviewCmd() *cobra.Command {
 
 			go displayEvents(events, done, debug)
 
-			err = lumiEngine.Preview(envName, events, engine.PreviewOptions{
+			err = lumiEngine.Preview(stackName, events, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
@@ -64,8 +64,8 @@ func newPreviewCmd() *cobra.Command {
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
-		&env, "env", "e", "",
-		"Choose an environment other than the currently selected one")
+		&stack, "stack", "s", "",
+		"Choose an stack other than the currently selected one")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
@@ -78,8 +78,8 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVarP(
-		&summary, "summary", "s", false,
+	cmd.PersistentFlags().BoolVar(
+		&summary, "summary", false,
 		"Only display summarization of resources and operations")
 
 	return cmd

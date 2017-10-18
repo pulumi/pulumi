@@ -21,7 +21,7 @@ var (
 	// `pulumi` command and the deployment engine in the pulumi-service. For `pulumi` we set
 	// the engine to write output and errors to os.Stdout and os.Stderr.
 	lumiEngine    engine.Engine
-	localProvider localEnvProvider
+	localProvider localStackProvider
 )
 
 func init() {
@@ -29,7 +29,7 @@ func init() {
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() *cobra.Command {
+func NewPulumiCmd(version string) *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var verbose int
@@ -59,12 +59,12 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newEnvCmd())
+	cmd.AddCommand(newStackCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newUpdateCmd())
-	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newVersionCmd(version))
 
-	// Tell flag about -C, so someone can do pulumi -C <working-directory> env and the call to cmdutil.InitLogging
+	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
 	// which calls flag.Parse under the hood doesn't yell at you.
 	//
 	// TODO[pulumi/pulumi#301]: when we move away from using glog, it should be safe to remove this.

@@ -15,10 +15,10 @@ type DestroyOptions struct {
 	Summary  bool
 }
 
-func (eng *Engine) Destroy(environment tokens.QName, events chan<- Event, opts DestroyOptions) error {
-	contract.Require(environment != tokens.QName(""), "environment")
+func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts DestroyOptions) error {
+	contract.Require(stack != tokens.QName(""), "stack")
 
-	info, err := eng.planContextFromEnvironment(environment, opts.Package)
+	info, err := eng.planContextFromStack(stack, opts.Package)
 	if err != nil {
 		return err
 	}

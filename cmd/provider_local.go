@@ -10,32 +10,32 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/environment"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-type localEnvProvider struct{}
+type localStackProvider struct{}
 
-func (p localEnvProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
+func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
 	contract.Require(name != "", "name")
 
-	target, _, err := getEnvironment(name)
+	target, _, err := getStack(name)
 
 	return target, err
 }
 
-func (p localEnvProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
+func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
 
-	_, snapshot, err := getEnvironment(name)
+	_, snapshot, err := getStack(name)
 
 	return snapshot, err
 }
 
-func (p localEnvProvider) SaveSnapshot(snapshot *deploy.Snapshot) error {
-	target, _, err := getEnvironment(snapshot.Namespace)
+func (p localStackProvider) SaveSnapshot(snapshot *deploy.Snapshot) error {
+	target, _, err := getStack(snapshot.Namespace)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -44,12 +44,12 @@ func (p localEnvProvider) SaveSnapshot(snapshot *deploy.Snapshot) error {
 		target = &deploy.Target{Name: snapshot.Namespace}
 	}
 
-	return saveEnvironment(target, snapshot)
+	return saveStack(target, snapshot)
 }
 
-func getEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
+func getStack(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
-	file := workspace.EnvPath(name)
+	file := workspace.StackPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
@@ -67,21 +67,21 @@ func getEnvironment(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error)
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
-	var checkpoint environment.Checkpoint
+	var checkpoint stack.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
 		return nil, nil, err
 	}
 
-	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
+	target, snapshot := stack.DeserializeCheckpoint(&checkpoint)
 	contract.Assert(target != nil)
 	return target, snapshot, nil
 }
 
-func saveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
-	contract.Require(env != nil, "env")
-	file := workspace.EnvPath(env.Name)
+func saveStack(target *deploy.Target, snap *deploy.Snapshot) error {
+	contract.Require(target != nil, "target")
+	file := workspace.StackPath(target.Name)
 
-	// Make a serializable environment and then use the encoder to encode it.
+	// Make a serializable stack and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		return errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
@@ -89,7 +89,7 @@ func saveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	dep := environment.SerializeCheckpoint(env, snap)
+	dep := stack.SerializeCheckpoint(target, snap)
 	b, err := m.Marshal(dep)
 	if err != nil {
 		return errors.Wrap(err, "An IO error occurred during the current operation")
@@ -111,10 +111,10 @@ func saveEnvironment(env *deploy.Target, snap *deploy.Snapshot) error {
 	return nil
 }
 
-func removeEnvironment(env *deploy.Target) error {
-	contract.Require(env != nil, "env")
+func removeStack(stack *deploy.Target) error {
+	contract.Require(stack != nil, "stack")
 	// Just make a backup of the file and don't write out anything new.
-	file := workspace.EnvPath(env.Name)
+	file := workspace.StackPath(stack.Name)
 	backupTarget(file)
 	return nil
 }

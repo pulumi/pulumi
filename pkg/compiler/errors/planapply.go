@@ -11,7 +11,7 @@ var (
 	ErrorIllegalMarkupExtension = newError(2004, "Resource serialization failed; illegal markup extension '%v'")
 	ErrorCantReadDeployment     = newError(2005, "Could not read deployment file '%v': %v")
 	ErrorDuplicateURNNames      = newError(2006, "Duplicate objects with the same URN: %v")
-	ErrorInvalidEnvName         = newError(2007, "Environment '%v' could not be found in the current workspace")
+	ErrorInvalidStackName       = newError(2007, "Stack '%v' could not be found in the current workspace")
 	ErrorIllegalConfigToken     = newError(2008,
 		"Configs may only target module properties and class static properties; '%v' is neither")
 	ErrorConfigApplyFailure           = newError(2009, "One or more errors occurred while applying '%v's configuration")

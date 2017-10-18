@@ -1,13 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as resource from "../resource";
-
-/**
- * ProvidersConfigKey is the configuration key used to provide the testing provider with the path to a JavaScript module
- * that exports a map from (unqualified) type names to `ResourceProvider`s. This map is then used to decide which
- * `ResourceProvider` should be used to implement the CRUD operations for a particular resource type.
- */
-export const ProvidersConfigKey = "testing:providers:module"
+import * as resource from "./resource";
+import * as runtime from "./runtime";
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
@@ -123,7 +117,7 @@ export class UpdateResult {
     public readonly outs: any | undefined;
 
     /**
-     * Constructs a new udpate result.
+     * Constructs a new update result.
      *
      * @param outs Any properties that were computed during updating.
      */
@@ -133,7 +127,7 @@ export class UpdateResult {
 }
 
 /**
- * ResourceProvider represents an object that provides CRUD operations for a particular
+ * ResourceProvider represents an object that provides CRUD operations for a particular type of resource.
  */
 export interface ResourceProvider {
     /**
@@ -141,7 +135,7 @@ export interface ResourceProvider {
      *
      * @param inputs The full properties to use for validation.
      */
-    check(inputs: any): Promise<CheckResult>;
+    check: (inputs: any) => Promise<CheckResult>;
 
     /**
      * Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -150,7 +144,7 @@ export interface ResourceProvider {
      * @param olds The old values of properties to diff.
      * @param news The new values of properties to diff.
      */
-    diff(id: resource.ID, olds: any, news: any): Promise<DiffResult>;
+    diff: (id: resource.ID, olds: any, news: any) => Promise<DiffResult>;
 
     /**
      * Create allocates a new instance of the provided resource and returns its unique ID afterwards.
@@ -158,7 +152,7 @@ export interface ResourceProvider {
      *
      * @param inputs The properties to set during creation.
      */
-    create(inputs: any): Promise<CreateResult>;
+    create: (inputs: any) => Promise<CreateResult>;
 
     /**
      * Update updates an existing resource with new values.
@@ -167,7 +161,7 @@ export interface ResourceProvider {
      * @param olds The old values of properties to update.
      * @param news The new values of properties to update.
      */
-    update(id: resource.ID, olds: any, news: any): Promise<UpdateResult>;
+    update: (id: resource.ID, olds: any, news: any) => Promise<UpdateResult>;
 
     /**
      * Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -175,5 +169,37 @@ export interface ResourceProvider {
      * @param id The ID of the resource to delete.
      * @param props The current properties on the resource.
      */
-    delete(id: resource.ID, props: any): Promise<void>;
+    delete: (id: resource.ID, props: any) => Promise<void>;
+}
+
+async function serializeProvider(provider: ResourceProvider): Promise<string> {
+    return runtime.serializeJavaScriptText(await runtime.serializeClosure(() => provider));
+}
+
+/**
+ * Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
+ */
+export abstract class Resource extends resource.CustomResource {
+    /**
+     * Creates a new dynamic resource.
+     *
+     * @param provider The implementation of the resource's CRUD operations.
+     * @param name The name of the resource.
+     * @param props The arguments to use to populate the new resource. Must not define the reserved
+     *              property "__provider".
+     * @param dependsOn Optional additional explicit dependencies on other resources.
+     */
+    public constructor(provider: ResourceProvider,
+                       name: string,
+                       props: resource.ComputedValues,
+                       dependsOn?: resource.Resource[]) {
+        const providerKey: string = "__provider";
+
+        if (props[providerKey]) {
+            throw new Error("A dynamic resource must not define the __provider key");
+        }
+        props[providerKey] = serializeProvider(provider);
+
+        super("pulumi-nodejs:dynamic:Resource", name, props, dependsOn);
+    }
 }

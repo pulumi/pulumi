@@ -21,7 +21,7 @@ type Step interface {
 	Logical() bool                   // true if this step represents a logical operation in the program.
 }
 
-// MutatingStep is a step that, when performed, will actually modify/mutate the target environment and its resources.
+// MutatingStep is a step that, when performed, will actually modify/mutate the target stack and its resources.
 type MutatingStep interface {
 	Step
 	URN() resource.URN    // the resource URN (for before and after).

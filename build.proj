@@ -7,7 +7,7 @@
     <NativeRuntimeModuleDirectory>$(NodeJSSdkDirectory)\runtime\native\</NativeRuntimeModuleDirectory>
     <NodeVersion>6.10.2</NodeVersion>
     <NodeArch>x64</NodeArch>
-    <TestParallelism>1</TestParallelism>
+    <TestParallelism>10</TestParallelism>
   </PropertyGroup>
  
   <Target Name="EnsureGoDependencies">
@@ -107,11 +107,11 @@
       <GoCmdsToBuild Include="github.com/pulumi/pulumi/cmd/lumidl" />
     </ItemGroup>
 
-    <Exec Command="go install %(GoCmdsToBuild.Identity)" />
+    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
 
-    <ItemGroup>
-      <GoCmdsToBuild />
-    </ItemGroup>
+    <Exec Command="go install -ldflags &quot;-X main.version=$(Version)&quot; %(GoCmdsToBuild.Identity)" />
   </Target>
 
   <Target Name="Build"
