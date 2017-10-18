@@ -24,13 +24,13 @@
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
         "node-gyp": "^3.6.2",
-        "tslint": "^5.7.0",
-        "typescript": "^2.5.2"
+        "tslint": "^5.7.0"
     },
     "dependencies": {
         "google-protobuf": "^3.4.0",
         "grpc": "^1.6.0",
         "minimist": "^1.2.0",
-        "source-map-support": "^0.4.16"
+        "source-map-support": "^0.4.16",
+        "typescript": "^2.5.2"
     }
 }
