@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -28,12 +27,10 @@ func newStackCmd() *cobra.Command {
 				return err
 			}
 
-			target, snapshot, err := getStack(stackName)
+			_, config, snapshot, err := getStack(stackName)
 			if err != nil {
 				return err
 			}
-
-			config := target.Config
 
 			fmt.Printf("Current stack is %v\n", stackName)
 			fmt.Printf("    (use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
@@ -43,13 +40,6 @@ func newStackCmd() *cobra.Command {
 			}
 			if snapshot != nil {
 				fmt.Printf("Last update at %v\n", snapshot.Time)
-				if snapshot.Info != nil {
-					info, err := json.MarshalIndent(snapshot.Info, "    ", "    ")
-					if err != nil {
-						return err
-					}
-					fmt.Printf("Additional update info:\n    %s\n", string(info))
-				}
 			}
 			if len(config) > 0 {
 				fmt.Printf("%v configuration variables set (see `pulumi config` for details)\n", len(config))

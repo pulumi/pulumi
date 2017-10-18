@@ -36,6 +36,8 @@ type ProgramTestOptions struct {
 	Dependencies []string
 	// Map of config keys and values to set (e.g. {"aws:config:region": "us-east-2"})
 	Config map[string]string
+	// Map of secure config keys and values to set on the Lumi stack (e.g. {"aws:config:region": "us-east-2"})
+	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []string
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
@@ -79,7 +81,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   yarn link <each opts.Depencies>
 //   yarn run build
 //   pulumi stack init integrationtesting
-//   pulumi config <each opts.Config>
+//   pulumi config text <each opts.Config>
+//   pulumi config secret <each opts.Secrets>
 //   pulumi preview
 //   pulumi update
 //   pulumi preview (expected to be empty)
@@ -101,7 +104,11 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.Bin, "stack", "init", testStackName}, dir, opts)
 	for key, value := range opts.Config {
-		RunCommand(t, []string{opts.Bin, "config", key, value}, dir, opts)
+		RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts)
+	}
+
+	for key, value := range opts.Secrets {
+		RunCommand(t, []string{opts.Bin, "config", "secret", key, value}, dir, opts)
 	}
 
 	// Now preview and update the real changes.
@@ -226,8 +233,8 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 	}()
 
 	env := append(os.Environ(), "PULUMI_RETAIN_CHECKPOINTS=true")
+	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
-	// Now run the command and wait for it to be finished.
 	cmd := exec.Cmd{
 		Path:   path,
 		Dir:    wd,

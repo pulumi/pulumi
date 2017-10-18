@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -34,15 +35,32 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
+			cfg, err := getConfiguration(stackName)
+			if err != nil {
+				return err
+			}
+
+			var decrypter config.ValueDecrypter = panicCrypter{}
+
+			if hasSecureValue(cfg) {
+				decrypter, err = getSymmetricCrypter()
+				if err != nil {
+					return err
+				}
+			}
+
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", stackName.String()) {
+
+				localProvider := localStackProvider{decrypter: decrypter}
+				pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
 
 				events := make(chan engine.Event)
 				done := make(chan bool)
 
 				go displayEvents(events, done, debug)
 
-				if err = lumiEngine.Destroy(stackName, events, engine.DestroyOptions{
+				if err := pulumiEngine.Destroy(stackName, events, engine.DestroyOptions{
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,

@@ -409,7 +409,7 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	// Always add the new resoures afterwards that got produced during the evaluation of the current plan.
 	resources = append(resources, iter.resources...)
 
-	return NewSnapshot(iter.p.Target().Name, time.Now(), resources, iter.p.source.Info())
+	return NewSnapshot(iter.p.Target().Name, time.Now(), resources)
 }
 
 // MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway

@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -20,30 +21,35 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-type localStackProvider struct{}
+type localStackProvider struct {
+	decrypter config.ValueDecrypter
+}
 
 func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
 	contract.Require(name != "", "name")
-
-	target, _, err := getStack(name)
-	if err != nil {
-		return nil, err
-	}
 
 	config, err := getConfiguration(name)
 	if err != nil {
 		return nil, err
 	}
 
-	target.Config = config
+	decryptedConfig := make(map[tokens.ModuleMember]string)
 
-	return target, err
+	for k, v := range config {
+		decrypted, err := v.Value(p.decrypter)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not decrypt configuration value")
+		}
+		decryptedConfig[k] = decrypted
+	}
+
+	return &deploy.Target{Name: name, Config: decryptedConfig}, nil
 }
 
 func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
 
-	_, snapshot, err := getStack(name)
+	_, _, snapshot, err := getStack(name)
 
 	return snapshot, err
 }
@@ -59,54 +65,49 @@ func (p localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMut
 func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
 	contract.Assert(m.name == snapshot.Namespace)
 
-	target, _, err := getStack(snapshot.Namespace)
+	name, config, _, err := getStack(snapshot.Namespace)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	if target == nil {
-		target = &deploy.Target{Name: snapshot.Namespace}
-	}
-
-	return saveStack(target, snapshot)
+	return saveStack(name, config, snapshot)
 }
 
-func getStack(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
+func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.Value, *deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
 	file := workspace.StackPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		return nil, nil, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
+		return "", nil, nil, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
 	}
 
 	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil, err
+			return "", nil, nil, err
 		}
-		return nil, nil, err
+		return "", nil, nil, err
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint stack.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		return nil, nil, err
+		return "", nil, nil, err
 	}
 
-	target, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
+	_, config, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, nil, err
 	}
-	contract.Assert(target != nil)
-	return target, snapshot, nil
+
+	return name, config, snapshot, nil
 }
 
-func saveStack(target *deploy.Target, snap *deploy.Snapshot) error {
-	contract.Require(target != nil, "target")
-	file := workspace.StackPath(target.Name)
+func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
+	file := workspace.StackPath(name)
 
 	// Make a serializable stack and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
@@ -116,7 +117,7 @@ func saveStack(target *deploy.Target, snap *deploy.Snapshot) error {
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	dep := stack.SerializeCheckpoint(target, snap)
+	dep := stack.SerializeCheckpoint(name, config, snap)
 	b, err := m.Marshal(dep)
 	if err != nil {
 		return errors.Wrap(err, "An IO error occurred during the current operation")
@@ -149,10 +150,10 @@ func isTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
 
-func removeStack(stack *deploy.Target) error {
-	contract.Require(stack != nil, "stack")
+func removeStack(name tokens.QName) error {
+	contract.Require(name != "", "name")
 	// Just make a backup of the file and don't write out anything new.
-	file := workspace.StackPath(stack.Name)
+	file := workspace.StackPath(name)
 	backupTarget(file)
 	return nil
 }

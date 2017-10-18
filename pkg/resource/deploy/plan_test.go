@@ -24,7 +24,7 @@ func TestNullPlan(t *testing.T) {
 	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
 	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
-	prev := NewSnapshot(targ.Name, time.Now(), nil, nil)
+	prev := NewSnapshot(targ.Name, time.Now(), nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
 	iter, err := plan.Start(Options{})
 	assert.Nil(t, err)
@@ -45,7 +45,7 @@ func TestErrorPlan(t *testing.T) {
 		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
-		prev := NewSnapshot(targ.Name, time.Now(), nil, nil)
+		prev := NewSnapshot(targ.Name, time.Now(), nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, iter)
@@ -60,7 +60,7 @@ func TestErrorPlan(t *testing.T) {
 		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
-		prev := NewSnapshot(targ.Name, time.Now(), nil, nil)
+		prev := NewSnapshot(targ.Name, time.Now(), nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, err)
@@ -188,7 +188,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		nil,
 	)
-	oldsnap := NewSnapshot(ns, time.Now(), []*resource.State{oldResB, oldResC, oldResD}, nil)
+	oldsnap := NewSnapshot(ns, time.Now(), []*resource.State{oldResB, oldResC, oldResD})
 
 	// Create the new resource objects a priori.
 	//     - A is created:

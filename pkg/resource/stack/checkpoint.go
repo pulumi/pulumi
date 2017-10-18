@@ -6,6 +6,7 @@ package stack
 
 import (
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -13,14 +14,13 @@ import (
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 type Checkpoint struct {
-	Target tokens.QName                   `json:"target" yaml:"target"`                     // the target stack name.
-	Config map[tokens.ModuleMember]string `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.
-	Latest *Deployment                    `json:"latest,omitempty" yaml:"latest,omitempty"` // the latest/current deployment information.
+	Target tokens.QName                         `json:"target" yaml:"target"`                     // the target stack name.
+	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.
+	Latest *Deployment                          `json:"latest,omitempty" yaml:"latest,omitempty"` // the latest/current deployment information.
 }
 
 // SerializeCheckpoint turns a snapshot into a LumiGL data structure suitable for serialization.
-func SerializeCheckpoint(targ *deploy.Target, snap *deploy.Snapshot) *Checkpoint {
-	contract.Requiref(targ != nil, "targ", "!= nil")
+func SerializeCheckpoint(target tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) *Checkpoint {
 
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *Deployment
@@ -29,14 +29,14 @@ func SerializeCheckpoint(targ *deploy.Target, snap *deploy.Snapshot) *Checkpoint
 	}
 
 	return &Checkpoint{
-		Target: targ.Name,
-		Config: targ.Config,
+		Target: target,
+		Config: config,
 		Latest: latest,
 	}
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapshot, error) {
+func DeserializeCheckpoint(chkpoint *Checkpoint) (tokens.QName, map[tokens.ModuleMember]config.Value, *deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 
 	var snap *deploy.Snapshot
@@ -47,17 +47,13 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 		for _, res := range latest.Resources {
 			desres, err := DeserializeResource(res)
 			if err != nil {
-				return nil, nil, err
+				return "", nil, nil, err
 			}
 			resources = append(resources, desres)
 		}
 
-		snap = deploy.NewSnapshot(name, chkpoint.Latest.Time, resources, latest.Info)
+		snap = deploy.NewSnapshot(name, chkpoint.Latest.Time, resources)
 	}
 
-	// Create a new target and snapshot objects to return.
-	return &deploy.Target{
-		Name:   name,
-		Config: chkpoint.Config,
-	}, snap, nil
+	return name, chkpoint.Config, snap, nil
 }
