@@ -22,7 +22,7 @@ func TestExamples(t *testing.T) {
 			Dir:          path.Join(cwd, "minimal"),
 			Dependencies: []string{"pulumi"},
 			Config: map[string]string{
-				"minimal:config:name": "Pulumi",
+				"name": "Pulumi",
 			},
 		},
 		{

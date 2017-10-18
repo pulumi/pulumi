@@ -6,6 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/pack"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -98,4 +101,41 @@ func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
 			contract.Failf("unknown event type '%s'", event.Type)
 		}
 	}
+}
+
+func getPackage() (string, pack.Package, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	pkgPath, err := workspace.DetectPackage(dir)
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	if pkgPath == "" {
+		return "", pack.Package{}, errors.Errorf("could not find Pulumi.yaml, started search in %s", dir)
+	}
+
+	m, _ := encoding.Detect(pkgPath)
+
+	b, err := ioutil.ReadFile(pkgPath)
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	var pkg pack.Package
+
+	err = m.Unmarshal(b, &pkg)
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	err = pkg.Validate()
+	if err != nil {
+		return "", pack.Package{}, err
+	}
+
+	return pkgPath, pkg, err
 }
