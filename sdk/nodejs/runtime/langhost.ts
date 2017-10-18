@@ -5,9 +5,9 @@ import * as os from "os";
 import * as path from "path";
 import * as runtime from "../runtime";
 
-let grpc = require("grpc");
-let langproto = require("../proto/languages_pb.js");
-let langrpc = require("../proto/languages_grpc_pb.js");
+const grpc = require("grpc");
+const langproto = require("../proto/languages_pb.js");
+const langrpc = require("../proto/languages_grpc_pb.js");
 
 /**
  * monitorAddr is the current resource monitor address.
@@ -29,9 +29,9 @@ export function serveLanguageHost(monitor: string, engine: string | undefined): 
     engineAddr = engine;
 
     // Now fire up the gRPC server and begin serving!
-    let server = new grpc.Server();
+    const server = new grpc.Server();
     server.addService(langrpc.LanguageRuntimeService, { run: runRPC });
-    let port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
+    const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 
     // Now we're done: the server is started, and gRPC keeps the even loop alive.
     server.start();
@@ -44,22 +44,22 @@ export function serveLanguageHost(monitor: string, engine: string | undefined): 
 function runRPC(call: any, callback: any): void {
     // Unpack the request and fire up the program.
     // IDEA: stick the monitor address in Run's RPC so that it's per invocation.
-    let req: any = call.request;
-    let resp = new langproto.RunResponse();
+    const req: any = call.request;
+    const resp = new langproto.RunResponse();
     let proc: childprocess.ChildProcess | undefined;
     try {
         // Create an args array to pass to spawn, starting with just the run.js program.
-        let args: string[] = [
+        const args: string[] = [
             path.join(__filename, "..", "..", "cmd", "run"),
         ];
 
         // Serialize the config args using an environment variable.
-        let env: {[key: string]: string} = {};
-        let config: any = req.getConfigMap();
+        const env: {[key: string]: string} = {};
+        const config: any = req.getConfigMap();
         if (config) {
             // First flatten the config into a regular (non-RPC) object.
-            let configForEnv: {[key: string]: string} = {};
-            for (let entry of config.entries()) {
+            const configForEnv: {[key: string]: string} = {};
+            for (const entry of config.entries()) {
                 configForEnv[(entry[0] as string)] = (entry[1] as string);
             }
             // Now JSON serialize the config into an environment variable.
@@ -72,14 +72,14 @@ function runRPC(call: any, callback: any): void {
         }
 
         // If parallel execution has been requested, propagate it.
-        let parallel: number | undefined = req.getParallel();
+        const parallel: number | undefined = req.getParallel();
         if (parallel !== undefined) {
             args.push("--parallel");
             args.push(parallel.toString());
         }
 
         // If a different working directory was requested, make sure to pass it too.
-        let pwd: string | undefined = req.getPwd();
+        const pwd: string | undefined = req.getPwd();
         if (pwd) {
             args.push("--pwd");
             args.push(pwd);
@@ -108,9 +108,9 @@ function runRPC(call: any, callback: any): void {
         args.push(program);
 
         // Serialize the args plainly, following the program.
-        let argsList: string[] | undefined = req.getArgsList();
+        const argsList: string[] | undefined = req.getArgsList();
         if (argsList) {
-            for (let arg of argsList) {
+            for (const arg of argsList) {
                 args.push(arg);
             }
         }
@@ -161,7 +161,7 @@ function stripEOL(data: string | Buffer): string {
     else {
         dataString = data.toString("utf-8");
     }
-    let eolIndex = dataString.lastIndexOf(os.EOL);
+    const eolIndex = dataString.lastIndexOf(os.EOL);
     if (eolIndex !== -1) {
         dataString = dataString.substring(0, eolIndex);
     }

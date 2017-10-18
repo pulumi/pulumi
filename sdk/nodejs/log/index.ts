@@ -3,7 +3,7 @@
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
 import { getEngine, rpcKeepAlive } from "../runtime";
-let engproto = require("../proto/engine_pb.js");
+const engproto = require("../proto/engine_pb.js");
 
 let errcnt = 0;
 let lastLog: Promise<any> = Promise.resolve();
@@ -19,7 +19,7 @@ export function hasErrors(): boolean {
  * debug logs a debug-level message that is generally hidden from end-users.
  */
 export function debug(msg: string): void {
-    let engine: Object | undefined = getEngine();
+    const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.DEBUG, msg);
     }
@@ -32,7 +32,7 @@ export function debug(msg: string): void {
  * info logs an informational message that is generally printed to stdout during resource operations.
  */
 export function info(msg: string): void {
-    let engine: Object | undefined = getEngine();
+    const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.INFO, msg);
     }
@@ -45,7 +45,7 @@ export function info(msg: string): void {
  * warn logs a warning to indicate that something went wrong, but not catastrophically so.
  */
 export function warn(msg: string): void {
-    let engine: Object | undefined = getEngine();
+    const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.WARNING, msg);
     }
@@ -60,7 +60,7 @@ export function warn(msg: string): void {
 export function error(msg: string): void {
     errcnt++; // remember the error so we can suppress leaks.
 
-    let engine: Object | undefined = getEngine();
+    const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.ERROR, msg);
     }
@@ -71,10 +71,10 @@ export function error(msg: string): void {
 
 export function log(engine: any, sev: any, msg: string): void {
     // Ensure we log everything in serial order.
-    let keepAlive: () => void = rpcKeepAlive();
+    const keepAlive: () => void = rpcKeepAlive();
     lastLog = lastLog.then(() => {
         return new Promise((resolve) => {
-            let req = new engproto.LogRequest();
+            const req = new engproto.LogRequest();
             req.setSeverity(sev);
             req.setMessage(msg);
             engine.log(req, () => {

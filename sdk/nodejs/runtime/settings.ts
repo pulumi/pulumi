@@ -81,7 +81,7 @@ export function configure(opts: Options): void {
  */
 export function disconnect(): void {
     let done: Promise<any> | undefined;
-    let closeCallback: () => Promise<void> = () => {
+    const closeCallback: () => Promise<void> = () => {
         if (done !== rpcDone) {
             // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
             done = rpcDone;
@@ -110,7 +110,7 @@ let rpcDone: Promise<any> = Promise.resolve();
  */
 export function rpcKeepAlive(): () => void {
     let done: (() => void) | undefined = undefined;
-    let donePromise = debuggablePromise(new Promise<void>((resolve) => { done = resolve; }));
+    const donePromise = debuggablePromise(new Promise<void>((resolve) => { done = resolve; }));
     rpcDone = rpcDone.then(() => donePromise);
     return done!;
 }

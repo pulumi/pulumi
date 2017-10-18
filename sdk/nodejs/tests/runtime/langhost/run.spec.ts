@@ -7,10 +7,10 @@ import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
 
-let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-let grpc = require("grpc");
-let langrpc = require("../../../proto/languages_grpc_pb.js");
-let langproto = require("../../../proto/languages_pb.js");
+const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+const grpc = require("grpc");
+const langrpc = require("../../../proto/languages_grpc_pb.js");
+const langproto = require("../../../proto/languages_pb.js");
 
 interface RunCase {
     pwd?: string;
@@ -25,8 +25,8 @@ interface RunCase {
 }
 
 describe("rpc", () => {
-    let base: string = path.join(path.dirname(__filename), "cases");
-    let cases: {[key: string]: RunCase} = {
+    const base: string = path.join(path.dirname(__filename), "cases");
+    const cases: {[key: string]: RunCase} = {
         // An empty program.
         "empty": {
             program: path.join(base, "000.empty"),
@@ -70,7 +70,7 @@ describe("rpc", () => {
                 const prefix = "testResource";
                 assert.strictEqual(name.substring(0, prefix.length), prefix,
                                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-                let seqnum = parseInt(name.substring(prefix.length), 10);
+                const seqnum = parseInt(name.substring(prefix.length), 10);
                 assert(!isNaN(seqnum),
                        `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
@@ -125,7 +125,7 @@ describe("rpc", () => {
                 const prefix = "testResource";
                 assert.strictEqual(name.substring(0, prefix.length), prefix,
                                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-                let seqnum = parseInt(name.substring(prefix.length), 10);
+                const seqnum = parseInt(name.substring(prefix.length), 10);
                 assert(!isNaN(seqnum),
                        `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
@@ -165,7 +165,7 @@ describe("rpc", () => {
                     case "test:index:ResourceA": {
                         assert.strictEqual(name, "resourceA");
                         assert.deepEqual(res, { inprop: 777 });
-                        let result: any = { urn: t + "::" + name };
+                        const result: any = { urn: t + "::" + name };
                         if (!dryrun) {
                             result.id = name;
                             result.props = { outprop: "output yeah" };
@@ -188,7 +188,7 @@ describe("rpc", () => {
                                 otherOut: "output yeah",
                             });
                         }
-                        let result: any = { urn: t + "::" + name };
+                        const result: any = { urn: t + "::" + name };
                         if (!dryrun) {
                             result.id = name;
                         }
@@ -243,7 +243,7 @@ describe("rpc", () => {
                 const prefix = "testResource";
                 assert.strictEqual(name.substring(0, prefix.length), prefix,
                                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
-                let seqnum = parseInt(name.substring(prefix.length), 10);
+                const seqnum = parseInt(name.substring(prefix.length), 10);
                 assert(!isNaN(seqnum),
                        `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
@@ -255,7 +255,7 @@ describe("rpc", () => {
             program: path.join(base, "009.invoke"),
             expectResourceCount: 0,
             invoke: (ctx: any, tok: string, args: any) => {
-                assert.strictEqual(tok, "invoke:index:echo")
+                assert.strictEqual(tok, "invoke:index:echo");
                 assert.deepEqual(args, {
                     a: "hello",
                     b: true,
@@ -271,23 +271,23 @@ describe("rpc", () => {
         },
     };
 
-    for (let casename of Object.keys(cases)) {
-        let opts: RunCase = cases[casename];
+    for (const casename of Object.keys(cases)) {
+        const opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // For each test case, run it twice: first to preview and then to update.
-            for (let dryrun of [ true, false ]) {
+            for (const dryrun of [ true, false ]) {
                 console.log(dryrun ? "PREVIEW:" : "UPDATE:");
 
                 // First we need to mock the resource monitor.
-                let ctx = {};
+                const ctx = {};
                 let rescnt = 0;
-                let monitor = createMockResourceMonitor(
+                const monitor = createMockResourceMonitor(
                     (call: any, callback: any) => {
-                        let resp = new langproto.InvokeResponse();
+                        const resp = new langproto.InvokeResponse();
                         if (opts.invoke) {
-                            let req: any = call.request;
-                            let args: any = req.getArgs().toJavaScript();
-                            let { failures, ret } =
+                            const req: any = call.request;
+                            const args: any = req.getArgs().toJavaScript();
+                            const { failures, ret } =
                                 opts.invoke(ctx, req.getTok(), args);
                             resp.setFailuresList(failures);
                             resp.setReturn(gstruct.Struct.fromJavaScript(ret));
@@ -295,11 +295,11 @@ describe("rpc", () => {
                         callback(undefined, resp);
                     },
                     (call: any, callback: any) => {
-                        let resp = new langproto.NewResourceResponse();
+                        const resp = new langproto.NewResourceResponse();
                         if (opts.createResource) {
-                            let req: any = call.request;
-                            let res: any = req.getObject().toJavaScript();
-                            let { id, urn, props } =
+                            const req: any = call.request;
+                            const res: any = req.getObject().toJavaScript();
+                            const { id, urn, props } =
                                 opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
                             resp.setId(id);
                             resp.setUrn(urn);
@@ -311,15 +311,16 @@ describe("rpc", () => {
                 );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
-                let langHost = serveLanguageHostProcess(monitor.addr);
-                let langHostAddr: string = await langHost.addr;
+                const langHost = serveLanguageHostProcess(monitor.addr);
+                const langHostAddr: string = await langHost.addr;
 
                 // Fake up a client RPC connection to the language host so that we can invoke run.
-                let langHostClient = new langrpc.LanguageRuntimeClient(langHostAddr, grpc.credentials.createInsecure());
+                const langHostClient = new langrpc.LanguageRuntimeClient(
+                    langHostAddr, grpc.credentials.createInsecure());
 
                 // Invoke our little test program; it will allocate a few resources, which we will record.  It will
                 // throw an error if anything doesn't look right, which gets reflected back in the run results.
-                let runError: string | undefined = await mockRun(langHostClient, opts, dryrun);
+                const runError: string | undefined = await mockRun(langHostClient, opts, dryrun);
 
                 // Validate that everything looks right.
                 let expectError: string | undefined = opts.expectError;
@@ -359,7 +360,7 @@ describe("rpc", () => {
 function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<string | undefined> {
     return new Promise<string | undefined>(
         (resolve, reject) => {
-            let runReq = new langproto.RunRequest();
+            const runReq = new langproto.RunRequest();
             if (opts.pwd) {
                 runReq.setPwd(opts.pwd);
             }
@@ -368,8 +369,8 @@ function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<s
                 runReq.setArgsList(opts.args);
             }
             if (opts.config) {
-                let cfgmap = runReq.getConfigMap();
-                for (let cfgkey of Object.keys(opts.config)) {
+                const cfgmap = runReq.getConfigMap();
+                for (const cfgkey of Object.keys(opts.config)) {
                     cfgmap.set(cfgkey, opts.config[cfgkey]);
                 }
             }
@@ -391,28 +392,28 @@ function createMockResourceMonitor(
         invokeCallback: (call: any, request: any) => any,
         newResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
-    let server = new grpc.Server();
+    const server = new grpc.Server();
     server.addService(langrpc.ResourceMonitorService, {
         invoke: invokeCallback,
         newResource: newResourceCallback,
     });
-    let port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
+    const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
     server.start();
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
 function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // Spawn the language host in a separate process so that each test case gets an isolated heap, globals, etc.
-    let proc = childProcess.spawn(process.argv[0], [
+    const proc = childProcess.spawn(process.argv[0], [
         path.join(__filename, "..", "..", "..", "..", "cmd", "langhost", "index.js"),
         monitorAddr,
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.
     let addrResolve: ((addr: string) => void) | undefined;
-    let addr = new Promise<string>((resolve) => { addrResolve = resolve; });
+    const addr = new Promise<string>((resolve) => { addrResolve = resolve; });
     proc.stdout.on("data", (data) => {
-        let dataString: string = stripEOL(data);
+        const dataString: string = stripEOL(data);
         if (addrResolve) {
             // The first line is the address; strip off the newline and resolve the promise.
             addrResolve(`0.0.0.0:${dataString}`);
@@ -434,7 +435,7 @@ function stripEOL(data: string | Buffer): string {
     else {
         dataString = data.toString("utf-8");
     }
-    let newLineIndex = dataString.lastIndexOf(os.EOL);
+    const newLineIndex = dataString.lastIndexOf(os.EOL);
     if (newLineIndex !== -1) {
         dataString = dataString.substring(0, newLineIndex);
     }

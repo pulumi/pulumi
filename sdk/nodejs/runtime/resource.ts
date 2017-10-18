@@ -1,12 +1,12 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { ID, Computed, ComputedValue, ComputedValues, Resource, URN } from "../resource";
-import { errorString, debuggablePromise } from "./debuggable";
-import { PropertyTransfer, transferProperties, resolveProperties } from "./rpc";
+import { Computed, ComputedValue, ComputedValues, ID, Resource, URN } from "../resource";
+import { debuggablePromise, errorString } from "./debuggable";
+import { PropertyTransfer, resolveProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
-let langproto = require("../proto/languages_pb.js");
+const langproto = require("../proto/languages_pb.js");
 
 /**
  * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
@@ -19,12 +19,12 @@ let resourceChain: Promise<void> = Promise.resolve();
 /**
  * registrations tracks all resources that have finished being registered.
  */
-let registrations = new Set<Resource>();
+const registrations = new Set<Resource>();
 
 /**
  * pendingRegistrations is used to track all unfinished resources so that we can resolve their URNs when done.
  */
-let pendingRegistrations = new Map<Resource, (urn: URN | undefined) => void>();
+const pendingRegistrations = new Map<Resource, (urn: URN | undefined) => void>();
 
 /**
  * isRegistered returns true if the resource has begun being registered (no guarantee that it has finished yet).
@@ -52,9 +52,11 @@ export function initResource(res: Resource): void {
  * and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(res: Resource, t: string, name: string, custom: boolean,
+export function registerResource(
+    res: Resource, t: string, name: string, custom: boolean,
     props: ComputedValues | undefined, children: Resource[], dependsOn: Resource[] | undefined): void {
-        log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
+
+    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
     // Ensure we're not registering more than once.
     if (registrations.has(res)) {
@@ -63,13 +65,13 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     registrations.add(res);
 
     // Look up to ensure that this resource has been initialized.
-    let resolveURN: ((url: URN | undefined) => void) | undefined = pendingRegistrations.get(res);
+    const resolveURN: ((url: URN | undefined) => void) | undefined = pendingRegistrations.get(res);
     if (!resolveURN) {
         throw new Error("Cannot register a resource that hasn't yet been initialized");
     }
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
-    let createError: Error = new Error(`Resouce '${name}' [${t}] could not be created`);
+    const createError: Error = new Error(`Resouce '${name}' [${t}] could not be created`);
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID | undefined) => void) | undefined;
@@ -89,11 +91,11 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     }
 
     // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
-    let transfer: Promise<PropertyTransfer> = debuggablePromise(
+    const transfer: Promise<PropertyTransfer> = debuggablePromise(
         transferProperties(res, `resource:${name}[${t}]`, props, allDependsOn));
 
     // Serialize the invocation if necessary.
-    let resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
+    const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
         // Make sure to propagate these no matter what.
         let urn: URN | undefined = undefined;
         let id: ID | undefined = undefined;
@@ -104,37 +106,37 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
         // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
         // time, we want to give the illusion of non-blocking code, so we return immediately.
-        let result: PropertyTransfer = await transfer;
+        const result: PropertyTransfer = await transfer;
         try {
-            let obj: any = result.obj;
+            const obj: any = result.obj;
             log.debug(`Resource RPC prepared: t=${t}, name=${name}` +
                 (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
             // Create a list of child URNs.
-            let childURNs: URN[] = [];
-            for (let child of children) {
+            const childURNs: URN[] = [];
+            for (const child of children) {
                 childURNs.push(await child.urn);
             }
 
             // Fetch the monitor and make an RPC request.
-            let monitor: any = getMonitor();
+            const monitor: any = getMonitor();
             if (monitor) {
-                let req = new langproto.NewResourceRequest();
+                const req = new langproto.NewResourceRequest();
                 req.setType(t);
                 req.setName(name);
                 req.setChildrenList(childURNs);
                 req.setCustom(custom);
                 req.setObject(obj);
 
-                let resp: any = await debuggablePromise(new Promise((resolve, reject) => {
-                    monitor.newResource(req, (err: Error, resp: any) => {
-                        log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${resp}`);
+                const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
+                    monitor.newResource(req, (err: Error, innerResponse: any) => {
+                        log.debug(`Resource RPC finished: t=${t}, name=${name}; err: ${err}, resp: ${innerResponse}`);
                         if (err) {
                             log.error(`Failed to register new resource '${name}' [${t}]: ${err}`);
                             reject(err);
                         }
                         else {
-                            resolve(resp);
+                            resolve(innerResponse);
                         }
                     });
                 }));
@@ -144,10 +146,10 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 propsStruct = resp.getObject();
                 stable = resp.getStable();
 
-                let stablesList: string[] | undefined = resp.getStablesList();
+                const stablesList: string[] | undefined = resp.getStablesList();
                 if (stablesList) {
                     stables = new Set<string>();
-                    for (let sta of stablesList) {
+                    for (const sta of stablesList) {
                         stables.add(sta);
                     }
                 }
@@ -174,7 +176,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     }));
 
     // If any errors make it this far, ensure we log them.
-    let finalOp: Promise<void> = debuggablePromise(resourceOp.catch((err: Error) => {
+    const finalOp: Promise<void> = debuggablePromise(resourceOp.catch((err: Error) => {
         // At this point, we've gone fully asynchronous, and the stack is missing.  To make it easier
         // to debug which resource this came from, we will emit the original stack trace too.
         log.error(errorString(createError));
@@ -182,7 +184,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     }));
 
     // Ensure the process won't exit until this registerResource call finishes and resolve it when appropriate.
-    let done: () => void = rpcKeepAlive();
+    const done: () => void = rpcKeepAlive();
     finalOp.then(() => { done(); }, () => { done(); });
 
     // If serialization is requested, wait for the prior resource operation to finish before we proceed, serializing

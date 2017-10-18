@@ -26,7 +26,7 @@ configure:
 .PHONY: lint
 lint:
 	@$(ECHO) "\033[0;32mLINT:\033[0m"
-	tslint -c tslint.json '{,!(bin|doc|node_modules|vendor)/!(bin|node_modules)**/}!(*.d).ts'
+	tslint -c tslint.json -p tsconfig.json
 
 .PHONY: clean
 clean:

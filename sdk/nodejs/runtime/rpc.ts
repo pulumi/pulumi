@@ -3,10 +3,10 @@
 import * as asset from "../asset";
 import * as log from "../log";
 import { ComputedValue, ComputedValues, CustomResource, Resource } from "../resource";
-import { errorString, debuggablePromise } from "./debuggable";
+import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, options } from "./settings";
 
-let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 /**
  * PropertyTransfer is the result of transferring all properties.
@@ -20,23 +20,24 @@ export interface PropertyTransfer {
  * transferProperties stores the properties on the resource object and returns a gRPC serializable
  * proto.google.protobuf.Struct out of a resource's properties.
  */
-export function transferProperties(onto: any | undefined, label: string, props: ComputedValues | undefined,
-    dependsOn: Resource[] | undefined): Promise<PropertyTransfer> {
+export function transferProperties(
+        onto: any | undefined, label: string, props: ComputedValues | undefined,
+        dependsOn: Resource[] | undefined): Promise<PropertyTransfer> {
     // First set up an array of all promises that we will await on before completing the transfer.
-    let eventuals: Promise<any>[] = [];
+    const eventuals: Promise<any>[] = [];
 
     // If the dependsOn array is present, make sure we wait on those.
     if (dependsOn) {
-        for (let dep of dependsOn) {
+        for (const dep of dependsOn) {
             eventuals.push(dep.urn);
         }
     }
 
     // Set up an object that will hold the serialized object properties and then serialize them.
-    let obj: any = {};
-    let resolvers: {[key: string]: ((v: any) => void)} = {};
+    const obj: any = {};
+    const resolvers: {[key: string]: ((v: any) => void)} = {};
     if (props) {
-        for (let k of Object.keys(props)) {
+        for (const k of Object.keys(props)) {
             // Skip "id" and "urn", since we handle those specially.
             if (k === "id" || k === "urn") {
                 continue;
@@ -62,7 +63,7 @@ export function transferProperties(onto: any | undefined, label: string, props: 
                         (err: Error) => {
                             throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
                         },
-                    )
+                    ),
                 );
             }
         }
@@ -82,9 +83,9 @@ export function transferProperties(onto: any | undefined, label: string, props: 
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  */
 export function deserializeProperties(outputsStruct: any): any {
-    let props: any = {};
-    let outputs: any = outputsStruct.toJavaScript();
-    for (let k of Object.keys(outputs)) {
+    const props: any = {};
+    const outputs: any = outputsStruct.toJavaScript();
+    for (const k of Object.keys(outputs)) {
         props[k] = deserializeProperty(outputs[k]);
     }
     return props;
@@ -95,18 +96,18 @@ export function deserializeProperties(outputsStruct: any): any {
  * resource's matching properties to the values inside.
  */
 export function resolveProperties(res: Resource, transfer: PropertyTransfer,
-    t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
-    stable: boolean, stables: Set<string> | undefined): void {
+                                  t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
+                                  stable: boolean, stables: Set<string> | undefined): void {
 
     // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same
     // property exists in the inputs and outputs states, the output wins.
-    let props: any = inputs || {};
+    const props: any = inputs || {};
     if (outputsStruct) {
         Object.assign(props, deserializeProperties(outputsStruct));
     }
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
-    for (let k of Object.keys(props)) {
+    for (const k of Object.keys(props)) {
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
             continue;
@@ -138,7 +139,7 @@ export function resolveProperties(res: Resource, transfer: PropertyTransfer,
 
     // Now latch all properties in case the inputs did not contain any values.  If we're doing a dry-run, we won't
     // actually propagate the provisional state, because we cannot know for sure that it is final yet.
-    for (let k of Object.keys(transfer.resolvers)) {
+    for (const k of Object.keys(transfer.resolvers)) {
         if (!props.hasOwnProperty(k)) {
             if (!options.dryRun) {
                 throw new Error(
@@ -188,7 +189,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         return prop;
     }
     else if (prop instanceof Array) {
-        let elems: any[] = [];
+        const elems: any[] = [];
         for (let i = 0; i < prop.length; i++) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
@@ -207,10 +208,10 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
     else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
-        let obj: any = {
+        const obj: any = {
             [specialSigKey]: (prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig),
         };
-        for (let k of Object.keys(prop)) {
+        for (const k of Object.keys(prop)) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: asset.${k}`);
             }
@@ -226,8 +227,8 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
         return serializeProperty(await prop, `promise<${ctx}>`);
     }
     else {
-        let obj: any = {};
-        for (let k of Object.keys(prop)) {
+        const obj: any = {};
+        for (const k of Object.keys(prop)) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
@@ -249,15 +250,15 @@ function deserializeProperty(prop: any): any {
         return prop;
     }
     else if (prop instanceof Array) {
-        let elems: any[] = [];
-        for (let e of prop) {
+        const elems: any[] = [];
+        for (const e of prop) {
             elems.push(deserializeProperty(e));
         }
         return elems;
     }
     else {
         // We need to recognize assets and archives specially, so we can produce the right runtime objects.
-        let sig: any = prop[specialSigKey];
+        const sig: any = prop[specialSigKey];
         if (sig) {
             switch (sig) {
                 case specialAssetSig:
@@ -275,9 +276,9 @@ function deserializeProperty(prop: any): any {
                     }
                 case specialArchiveSig:
                     if (prop["assets"]) {
-                        let assets: {[name: string]: asset.Asset} = {};
-                        for (let name of Object.keys(prop["assets"])) {
-                            let a = deserializeProperty(prop["assets"][name]);
+                        const assets: {[name: string]: asset.Asset} = {};
+                        for (const name of Object.keys(prop["assets"])) {
+                            const a = deserializeProperty(prop["assets"][name]);
                             if (!(a instanceof asset.Asset)) {
                                 throw new Error("Expected an AssetArchive's assets to be unmarshaled Asset objects");
                             }
@@ -300,8 +301,8 @@ function deserializeProperty(prop: any): any {
         }
 
         // If there isn't a signature, it's not a special type, and we can simply return the object as a map.
-        let obj: any = {};
-        for (let k of Object.keys(prop)) {
+        const obj: any = {};
+        for (const k of Object.keys(prop)) {
             obj[k] = deserializeProperty(prop[k]);
         }
         return obj;
