@@ -5,8 +5,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -32,14 +30,12 @@ func newStackInitCmd() *cobra.Command {
 
 			stackName := tokens.QName(args[0])
 
-			if _, _, err := getStack(stackName); err == nil {
+			if _, _, _, err := getStack(stackName); err == nil {
 				return fmt.Errorf("stack '%v' already exists", stackName)
 
 			}
 
-			target := deploy.Target{Name: stackName}
-
-			err := saveStack(&target, nil)
+			err := saveStack(stackName, nil, nil)
 			if err != nil {
 				return err
 			}

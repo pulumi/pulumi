@@ -17,9 +17,8 @@ import (
 // to the actual Snapshot structure, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deploys themselves.
 type Deployment struct {
-	Time      time.Time   `json:"time" yaml:"time"`                               // the time of the deploy.
-	Info      interface{} `json:"info,omitempty" yaml:"info,omitempty"`           // optional information about the source.
-	Resources []Resource  `json:"resources,omitempty" yaml:"resources,omitempty"` // an array of resources.
+	Time      time.Time  `json:"time" yaml:"time"`                               // the time of the deploy.
+	Resources []Resource `json:"resources,omitempty" yaml:"resources,omitempty"` // an array of resources.
 }
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
@@ -45,7 +44,6 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 
 	return &Deployment{
 		Time:      snap.Time,
-		Info:      snap.Info,
 		Resources: resources,
 	}
 }

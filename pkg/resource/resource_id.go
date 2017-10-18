@@ -3,7 +3,7 @@
 package resource
 
 import (
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 
@@ -54,7 +54,7 @@ func NewUniqueHex(prefix string, maxlen, randlen int) string {
 	}
 
 	bs := make([]byte, randlen)
-	n, err := rand.Read(bs)
+	n, err := cryptorand.Read(bs)
 	contract.Assert(err == nil)
 	contract.Assert(n == len(bs))
 

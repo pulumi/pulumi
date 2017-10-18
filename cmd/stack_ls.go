@@ -39,7 +39,7 @@ func newStackLsCmd() *cobra.Command {
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
 			for _, stack := range stacks {
-				_, snapshot, err := getStack(stack)
+				_, _, snapshot, err := getStack(stack)
 				if err != nil {
 					continue
 				}
@@ -88,7 +88,7 @@ func getStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, err := getStack(name)
+		_, _, _, err := getStack(name)
 		if err != nil {
 			continue // failure reading the stack information.
 		}

@@ -37,7 +37,7 @@ func newStackRmCmd() *cobra.Command {
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' stack!", stackName.String()) {
 
-				target, snapshot, err := getStack(stackName)
+				name, _, snapshot, err := getStack(stackName)
 				if err != nil {
 					return err
 				}
@@ -48,7 +48,7 @@ func newStackRmCmd() *cobra.Command {
 						"'%v' still has resources; removal rejected; pass --force to override", stackName)
 				}
 
-				err = removeStack(target)
+				err = removeStack(name)
 				if err != nil {
 					return err
 				}

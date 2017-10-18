@@ -12,21 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
-
-var (
-	// The lumi engine provides an API for common lumi tasks.  It's shared across the
-	// `pulumi` command and the deployment engine in the pulumi-service. For `pulumi` we set
-	// the engine to write output and errors to os.Stdout and os.Stderr.
-	lumiEngine    engine.Engine
-	localProvider localStackProvider
-)
-
-func init() {
-	lumiEngine = engine.Engine{Targets: localProvider, Snapshots: localProvider}
-}
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd(version string) *cobra.Command {

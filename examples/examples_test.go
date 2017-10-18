@@ -24,6 +24,9 @@ func TestExamples(t *testing.T) {
 			Config: map[string]string{
 				"name": "Pulumi",
 			},
+			Secrets: map[string]string{
+				"secret": "this is my secret message",
+			},
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/simple"),

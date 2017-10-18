@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -41,12 +42,29 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			cfg, err := getConfiguration(stackName)
+			if err != nil {
+				return err
+			}
+
+			var decrypter config.ValueDecrypter = panicCrypter{}
+
+			if hasSecureValue(cfg) {
+				decrypter, err = getSymmetricCrypter()
+				if err != nil {
+					return err
+				}
+			}
+
+			localProvider := localStackProvider{decrypter: decrypter}
+			pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
+
 			events := make(chan engine.Event)
 			done := make(chan bool)
 
 			go displayEvents(events, done, debug)
 
-			if err = lumiEngine.Deploy(stackName, events, engine.DeployOptions{
+			if err = pulumiEngine.Deploy(stackName, events, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pkg/errors"
@@ -33,7 +34,9 @@ type Package struct {
 
 	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
 
-	Config map[tokens.ModuleMember]string `json:"config,omitempty" yaml:"config,omitempty"` // optional config that applies to all stacks.
+	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"` // base64 encoded encryption salt.
+
+	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
 
 	Stacks map[tokens.QName]StackInfo `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
 
@@ -42,7 +45,7 @@ type Package struct {
 
 // StackInfo holds stack specific information about a package
 type StackInfo struct {
-	Config map[tokens.ModuleMember]string `json:"config,omitempty" yaml:"config,omitempty"` // optional config.
+	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config.
 }
 
 var _ diag.Diagable = (*Package)(nil)
