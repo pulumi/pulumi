@@ -324,6 +324,84 @@ return (function () { })
             closureHash: "__2806dcb0e9b815d3ada9417edbbc7a95438196b3",
         });
     }
+    {
+        // tslint:disable-next-line
+        let nocap1 = 1;
+        // tslint:disable-next-line
+        let cap1 = 100;
+
+        const functext = `(() => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    let [nocap1 = cap1] = [];
+    console.log(nocap1);
+})`;
+        cases.push({
+            title: "Complex capturing cases #1",
+            // tslint:disable-next-line
+            func: eval(functext),
+            expect: {
+                code: functext,
+                environment: {
+                    cap1: { json: 100 },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__cc9f19c19acef64729b266d4ca0b5ca8ba22b9a6",
+        });
+    }
+    {
+        // tslint:disable-next-line
+        let nocap1 = 1;
+        // tslint:disable-next-line
+        let cap1 = 100;
+
+        const functext = `(() => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    let {nocap1 = cap1} = {};
+    console.log(nocap1);
+})`;
+        cases.push({
+            title: "Complex capturing cases #2",
+            // tslint:disable-next-line
+            func: eval(functext),
+            expect: {
+                code: functext,
+                environment: {
+                    cap1: { json: 100 },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__c7fe4fd94a2ad6184ed066f022c481c32317e10a",
+        });
+    }
+    {
+        // tslint:disable-next-line
+        let nocap1 = 1;
+        // tslint:disable-next-line
+        let cap1 = 100;
+
+        const functext = `(() => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    let {x: nocap1 = cap1} = {};
+    console.log(nocap1);
+})`;
+        cases.push({
+            title: "Complex capturing cases #3",
+            // tslint:disable-next-line
+            func: eval(functext),
+            expect: {
+                code: functext,
+                environment: {
+                    cap1: { json: 100 },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__3f863abc6928cccb4bdfe8c7ec4fdc6d7995121c",
+        });
+    }
     cases.push({
         title: "Don't capture built-ins",
         // tslint:disable-next-line

@@ -515,10 +515,9 @@ class FreeVariableComputer {
             switch (n.kind) {
                 case ts.SyntaxKind.Identifier:
                     return this.visitVariableDeclarationIdentifier(<ts.Identifier>n, isVar);
+                case ts.SyntaxKind.BindingElement:
+                    return this.visitBindingElement(<ts.BindingElement>n, nameWalk, walk);
                 case ts.SyntaxKind.ObjectBindingPattern:
-                    return this.visitVariableDeclarationObjectPattern(<ts.ObjectBindingPattern>n, nameWalk, walk);
-                case ts.SyntaxKind.ArrayBindingPattern:
-                    return this.visitVariableDeclarationArrayPattern(<ts.ArrayBindingPattern>n, nameWalk);
                 default:
                     break;
             }
@@ -544,54 +543,50 @@ class FreeVariableComputer {
         }
     }
 
-    private visitVariableDeclarationObjectPattern(
-            node: ts.ObjectBindingPattern, nameWalk: walkCallback, valueWalk: walkCallback): void {
-        for (let prop of node.elements) {
-            // array and object patterns can be quite complex.  You can have:
-            //
-            //  var {t} = val;          // lookup a property in 'val' called 't' and place into a variable 't'.
-            //  var {t: m} = val;       // lookup a property in 'val' called 't' and place into a variable 'm'.
-            //  var {t: <pat>} = val;   // lookup a property in 'val' called 't' and decompose further into the pattern.
-            //
-            // And, for all of the above, you can have:
-            //
-            //  var {t = def} = val;
-            //  var {t: m = def} = val;
-            //  var {t: <pat> = def} = val;
-            //
-            // These are the same as the above, except that if there is no property 't' in 'val',
-            // then the default value will be used.
-            //
-            // You can also have at the end of the literal: { ...rest}
+    private visitBindingElement(
+            node: ts.BindingElement, nameWalk: walkCallback, valueWalk: walkCallback): void {
 
-            // Walk the name portion, looking for names to add.  for
-            //
-            //       var {t}   // this will be 't'.
-            //
-            // for
-            //
-            //      var {t: m} // this will be 'm'
-            //
-            // and for
-            //
-            //      var {t: <pat>} // this will recurse into the pattern.
-            //
-            // and for
-            //
-            //      ...rest // this will be 'rest'
-            nameWalk(prop.name);
+        // array and object patterns can be quite complex.  You can have:
+        //
+        //  var {t} = val;          // lookup a property in 'val' called 't' and place into a variable 't'.
+        //  var {t: m} = val;       // lookup a property in 'val' called 't' and place into a variable 'm'.
+        //  var {t: <pat>} = val;   // lookup a property in 'val' called 't' and decompose further into the pattern.
+        //
+        // And, for all of the above, you can have:
+        //
+        //  var {t = def} = val;
+        //  var {t: m = def} = val;
+        //  var {t: <pat> = def} = val;
+        //
+        // These are the same as the above, except that if there is no property 't' in 'val',
+        // then the default value will be used.
+        //
+        // You can also have at the end of the literal: { ...rest}
 
-            // if there is a default value, walk it as well, looking for captures.
-            valueWalk(prop.initializer);
-        }
-    }
+        // Walk the name portion, looking for names to add.  for
+        //
+        //       var {t}   // this will be 't'.
+        //
+        // for
+        //
+        //      var {t: m} // this will be 'm'
+        //
+        // and for
+        //
+        //      var {t: <pat>} // this will recurse into the pattern.
+        //
+        // and for
+        //
+        //      ...rest // this will be 'rest'
+        nameWalk(node.name);
 
-    private visitVariableDeclarationArrayPattern(node: ts.ArrayBindingPattern, walk: walkCallback): void {
-        for (let pattern of node.elements) {
-            // Recurse into each nested pattern, which may contain nested
-            // variable bindings.  Skip gaps in the array pattern.
-            walk(pattern);
-        }
+        // if there is a default value, walk it as well, looking for captures.
+        valueWalk(node.initializer);
+
+        // importantly, we do not walk into node.propertyName
+        // This Name defines what property will be retrieved from the value being pattern
+        // matched against.  Importantly, it does not define a new name put into scope,
+        // nor does it reference a variable in scope.
     }
 }
 
