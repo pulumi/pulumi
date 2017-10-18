@@ -116,9 +116,9 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
-		checkpointFile := path.Join(dir, ".pulumi", "env", testStackName+".json")
+		checkpointFile := path.Join(dir, ".pulumi", "stacks", testStackName+".json")
 		var byts []byte
-		byts, err = ioutil.ReadFile(path.Join(dir, ".pulumi", "env", testStackName+".json"))
+		byts, err = ioutil.ReadFile(path.Join(dir, ".pulumi", "stacks", testStackName+".json"))
 		if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
 			return
 		}
