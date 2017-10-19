@@ -172,6 +172,11 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 }
 
 func (s *CreateStep) Skip() error {
+	// Mark the old resource as pending deletion if necessary.
+	if s.replacing {
+		s.old.Delete = true
+	}
+
 	// In the case of a create, we don't know the ID or output properties.  But we do know the defaults and URN.
 	s.goal.Done(s.new, false, nil)
 	return nil
