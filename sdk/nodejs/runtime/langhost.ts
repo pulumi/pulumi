@@ -66,6 +66,18 @@ function runRPC(call: any, callback: any): void {
             env[runtime.configEnvKey] = JSON.stringify(configForEnv);
         }
 
+        const project: string | undefined = req.getProject();
+        if (project) {
+            args.push("--project");
+            args.push(project);
+        }
+
+        const stack: string | undefined = req.getStack();
+        if (stack) {
+            args.push("--stack");
+            args.push(stack);
+        }
+
         // If this is a dry-run, tell the program so.
         if (req.getDryrun()) {
             args.push("--dry-run");

@@ -17,6 +17,8 @@ function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
     console.error(``);
     console.error(`    where [flags] may include`);
+    console.error(`        --project=p         set the project name to p`);
+    console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
@@ -32,7 +34,7 @@ export function main(args: string[]): void {
     const config: {[key: string]: string} = {};
     const argv: minimist.ParsedArgs = minimist(args, {
         boolean: [ "dry-run" ],
-        string: [ "parallel", "pwd", "monitor", "engine" ],
+        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine" ],
         unknown: (arg: string) => {
             if (arg.indexOf("-") === 0) {
                 console.error(`fatal: Unrecognized flag ${arg}`);
@@ -50,6 +52,10 @@ export function main(args: string[]): void {
     for (const key of Object.keys(envObject)) {
         runtime.setConfig(key, envObject[key]);
     }
+
+    // If there is a --project=p, and/or a --stack=s, use them in the options.
+    const project: string | undefined = argv["project"];
+    const stack: string | undefined = argv["stack"];
 
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
@@ -87,6 +93,8 @@ export function main(args: string[]): void {
 
     // Now configure the runtime and get it ready to run the program.
     runtime.configure({
+        project: project,
+        stack: stack,
         dryRun: dryRun,
         parallel: parallel,
         monitor: monitor,

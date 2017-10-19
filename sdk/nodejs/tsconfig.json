@@ -20,6 +20,7 @@
         "config.ts",
         "dynamic.ts",
         "errors.ts",
+        "metadata.ts",
         "resource.ts",
 
         "asset/index.ts",

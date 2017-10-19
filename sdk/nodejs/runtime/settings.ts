@@ -11,11 +11,13 @@ export let excessiveDebugOutput: boolean = false;
  * Options is a bag of settings that controls the behavior of previews and deployments
  */
 export interface Options {
+    readonly project?: string; // the name of the current project.
+    readonly stack?: string; // the name of the current stack being deployed into.
     readonly engine?: Object; // a live connection to the engine, used for logging, etc.
     readonly monitor?: Object; // a live connection to the resource monitor that tracks deployments.
     readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
     readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
-    readonly includeStacks?: boolean; // whether we include full stack traces in resource errors or not.
+    readonly includeStackTraces?: boolean; // whether we include full stack traces in resource errors or not.
 }
 
 /**
@@ -23,7 +25,7 @@ export interface Options {
  */
 export let options: Options = {
     dryRun: false,
-    includeStacks: true,
+    includeStackTraces: true,
 };
 
 /**

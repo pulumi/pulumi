@@ -105,7 +105,7 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
  * errorString produces a string from an error, conditionally including additional diagnostics.
  */
 export function errorString(err: Error): string {
-    if (options.includeStacks && err.stack) {
+    if (options.includeStackTraces && err.stack) {
         return err.stack;
     }
     return err.toString();

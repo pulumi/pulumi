@@ -13,10 +13,12 @@ const langrpc = require("../../../proto/languages_grpc_pb.js");
 const langproto = require("../../../proto/languages_pb.js");
 
 interface RunCase {
+    project?: string;
+    stack?: string;
     pwd?: string;
     program?: string;
     args?: string[];
-    config?: {[key: string]: string};
+    config?: {[key: string]: any};
     expectError?: string;
     expectResourceCount?: number;
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
@@ -269,6 +271,17 @@ describe("rpc", () => {
                 return { id: undefined, urn: undefined, props: undefined };
             },
         },
+        // Simply test that certain runtime properties are available.
+        "runtimeSettings": {
+            project: "runtimeSettingsProject",
+            stack: "runtimeSettingsStack",
+            config: {
+                "myBag:A": 42,
+                "myBag:bbbb": "a string o' b's",
+            },
+            program: path.join(base, "010.runtime_settings"),
+            expectResourceCount: 0,
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -361,6 +374,12 @@ function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<s
     return new Promise<string | undefined>(
         (resolve, reject) => {
             const runReq = new langproto.RunRequest();
+            if (opts.project) {
+                runReq.setProject(opts.project);
+            }
+            if (opts.stack) {
+                runReq.setStack(opts.stack);
+            }
             if (opts.pwd) {
                 runReq.setPwd(opts.pwd);
             }

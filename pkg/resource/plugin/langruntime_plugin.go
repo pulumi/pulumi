@@ -54,6 +54,8 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		config[string(k)] = v
 	}
 	resp, err := h.client.Run(h.ctx.Request(), &lumirpc.RunRequest{
+		Project:  info.Project,
+		Stack:    info.Stack,
 		Pwd:      info.Pwd,
 		Program:  info.Program,
 		Args:     info.Args,

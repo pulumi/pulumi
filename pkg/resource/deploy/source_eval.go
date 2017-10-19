@@ -21,11 +21,11 @@ import (
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Pkg     *pack.Package                  `json:"pkg"`              // the package metadata.
-	Pwd     string                         `json:"pwd"`              // the package's working directory.
-	Program string                         `json:"program"`          // the path to the program we are executing.
-	Args    []string                       `json:"args,omitempty"`   // any arguments to pass to the package.
-	Config  map[tokens.ModuleMember]string `json:"config,omitempty"` // any configuration to pass to the program.
+	Pkg     *pack.Package `json:"pkg"`              // the package metadata.
+	Pwd     string        `json:"pwd"`              // the package's working directory.
+	Program string        `json:"program"`          // the path to the program we are executing.
+	Args    []string      `json:"args,omitempty"`   // any arguments to pass to the package.
+	Target  *Target       `json:"target,omitempty"` // the target being deployed into.
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -154,10 +154,11 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				// Now run the actual program.
 				var progerr string
 				progerr, err = langhost.Run(plugin.RunInfo{
+					Stack:    string(iter.src.runinfo.Target.Name),
 					Pwd:      iter.src.runinfo.Pwd,
 					Program:  iter.src.runinfo.Program,
 					Args:     iter.src.runinfo.Args,
-					Config:   iter.src.runinfo.Config,
+					Config:   iter.src.runinfo.Target.Config,
 					DryRun:   iter.src.dryRun,
 					Parallel: opts.Parallel,
 				})

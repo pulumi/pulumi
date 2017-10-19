@@ -41,7 +41,7 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
 		Pkg:    pkginfo.Pkg,
 		Pwd:    pkginfo.Root,
-		Config: info.Target.Config,
+		Target: info.Target,
 	}, opts.Destroy, opts.DryRun)
 
 	// If there are any analyzers in the project file, add them.

@@ -21,6 +21,8 @@ type LanguageRuntime interface {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
+	Project  string                         // the project name housing the program being run.
+	Stack    string                         // the stack name being evaluated.
 	Pwd      string                         // the program's working directory.
 	Program  string                         // the path to the program to execute.
 	Args     []string                       // any arguments to pass to the program.

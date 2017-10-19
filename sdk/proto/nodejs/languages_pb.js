@@ -40,7 +40,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RunRequest.repeatedFields_ = [3];
+proto.pulumirpc.RunRequest.repeatedFields_ = [5];
 
 
 
@@ -71,12 +71,14 @@ proto.pulumirpc.RunRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    pwd: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    program: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    argsList: jspb.Message.getRepeatedField(msg, 3),
+    project: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    stack: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    pwd: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    program: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    argsList: jspb.Message.getRepeatedField(msg, 5),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
-    dryrun: jspb.Message.getFieldWithDefault(msg, 5, false),
-    parallel: jspb.Message.getFieldWithDefault(msg, 6, 0)
+    dryrun: jspb.Message.getFieldWithDefault(msg, 7, false),
+    parallel: jspb.Message.getFieldWithDefault(msg, 8, 0)
   };
 
   if (includeInstance) {
@@ -115,27 +117,35 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPwd(value);
+      msg.setProject(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setProgram(value);
+      msg.setStack(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.addArgs(value);
+      msg.setPwd(value);
       break;
     case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProgram(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addArgs(value);
+      break;
+    case 6:
       var value = msg.getConfigMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
          });
       break;
-    case 5:
+    case 7:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setDryrun(value);
       break;
-    case 6:
+    case 8:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setParallel(value);
       break;
@@ -168,42 +178,56 @@ proto.pulumirpc.RunRequest.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPwd();
+  f = message.getProject();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getProgram();
+  f = message.getStack();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
+  f = message.getPwd();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+  f = message.getProgram();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
   f = message.getArgsList();
   if (f.length > 0) {
     writer.writeRepeatedString(
-      3,
+      5,
       f
     );
   }
   f = message.getConfigMap(true);
   if (f && f.getLength() > 0) {
-    f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+    f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
   f = message.getDryrun();
   if (f) {
     writer.writeBool(
-      5,
+      7,
       f
     );
   }
   f = message.getParallel();
   if (f !== 0) {
     writer.writeInt32(
-      6,
+      8,
       f
     );
   }
@@ -211,47 +235,77 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional string pwd = 1;
+ * optional string project = 1;
  * @return {string}
  */
-proto.pulumirpc.RunRequest.prototype.getPwd = function() {
+proto.pulumirpc.RunRequest.prototype.getProject = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.RunRequest.prototype.setPwd = function(value) {
+proto.pulumirpc.RunRequest.prototype.setProject = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
 
 /**
- * optional string program = 2;
+ * optional string stack = 2;
  * @return {string}
  */
-proto.pulumirpc.RunRequest.prototype.getProgram = function() {
+proto.pulumirpc.RunRequest.prototype.getStack = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.pulumirpc.RunRequest.prototype.setProgram = function(value) {
+proto.pulumirpc.RunRequest.prototype.setStack = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
 
 /**
- * repeated string args = 3;
+ * optional string pwd = 3;
+ * @return {string}
+ */
+proto.pulumirpc.RunRequest.prototype.getPwd = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.RunRequest.prototype.setPwd = function(value) {
+  jspb.Message.setField(this, 3, value);
+};
+
+
+/**
+ * optional string program = 4;
+ * @return {string}
+ */
+proto.pulumirpc.RunRequest.prototype.getProgram = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.RunRequest.prototype.setProgram = function(value) {
+  jspb.Message.setField(this, 4, value);
+};
+
+
+/**
+ * repeated string args = 5;
  * @return {!Array.<string>}
  */
 proto.pulumirpc.RunRequest.prototype.getArgsList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 3));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 5));
 };
 
 
 /** @param {!Array.<string>} value */
 proto.pulumirpc.RunRequest.prototype.setArgsList = function(value) {
-  jspb.Message.setField(this, 3, value || []);
+  jspb.Message.setField(this, 5, value || []);
 };
 
 
@@ -260,7 +314,7 @@ proto.pulumirpc.RunRequest.prototype.setArgsList = function(value) {
  * @param {number=} opt_index
  */
 proto.pulumirpc.RunRequest.prototype.addArgs = function(value, opt_index) {
-  jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+  jspb.Message.addToRepeatedField(this, 5, value, opt_index);
 };
 
 
@@ -270,14 +324,14 @@ proto.pulumirpc.RunRequest.prototype.clearArgsList = function() {
 
 
 /**
- * map<string, string> config = 4;
+ * map<string, string> config = 6;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,string>}
  */
 proto.pulumirpc.RunRequest.prototype.getConfigMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,string>} */ (
-      jspb.Message.getMapField(this, 4, opt_noLazyCreate,
+      jspb.Message.getMapField(this, 6, opt_noLazyCreate,
       null));
 };
 
@@ -288,34 +342,34 @@ proto.pulumirpc.RunRequest.prototype.clearConfigMap = function() {
 
 
 /**
- * optional bool dryRun = 5;
+ * optional bool dryRun = 7;
  * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
  * You should avoid comparisons like {@code val === true/false} in those cases.
  * @return {boolean}
  */
 proto.pulumirpc.RunRequest.prototype.getDryrun = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 5, false));
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 7, false));
 };
 
 
 /** @param {boolean} value */
 proto.pulumirpc.RunRequest.prototype.setDryrun = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setField(this, 7, value);
 };
 
 
 /**
- * optional int32 parallel = 6;
+ * optional int32 parallel = 8;
  * @return {number}
  */
 proto.pulumirpc.RunRequest.prototype.getParallel = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
 };
 
 
 /** @param {number} value */
 proto.pulumirpc.RunRequest.prototype.setParallel = function(value) {
-  jspb.Message.setField(this, 6, value);
+  jspb.Message.setField(this, 8, value);
 };
 
 

@@ -15,12 +15,14 @@ service LanguageRuntime {
 
 // RunRequest asks the interpreter to execute a program.
 message RunRequest {
-    string pwd = 1;                 // the program's working directory.
-    string program = 2;             // the path to the program to execute.
-    repeated string args = 3;       // any arguments to pass to the program.
-    map<string, string> config = 4; // the configuration variables to apply before running.
-    bool dryRun = 5;                // true if we're only doing a dryrun (preview).
-    int32 parallel = 6;             // the degree of parallelism for resource operations (<=1 for serial).
+    string project = 1;             // the project name.
+    string stack = 2;               // the name of the stack being deployed into.
+    string pwd = 3;                 // the program's working directory.
+    string program = 4;             // the path to the program to execute.
+    repeated string args = 5;       // any arguments to pass to the program.
+    map<string, string> config = 6; // the configuration variables to apply before running.
+    bool dryRun = 7;                // true if we're only doing a dryrun (preview).
+    int32 parallel = 8;             // the degree of parallelism for resource operations (<=1 for serial).
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
