@@ -65,7 +65,7 @@ func loginCmd() error {
 	// Try and use the credentials to see if they are valid.
 	valid, err := isValidAccessToken(accessToken)
 	if err != nil {
-		return fmt.Errorf("testing access token: %v", err)
+		return err
 	}
 	if !valid {
 		return fmt.Errorf("invalid access token")
