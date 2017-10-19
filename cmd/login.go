@@ -10,8 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-service/pkg/apitype"
-	"github.com/pulumi/pulumi/cmd/cloud"
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -32,7 +31,7 @@ func newLogoutCmd() *cobra.Command {
 		Short: "Log out of the Pulumi CLI",
 		Long:  "Log out of the Pulumi CLI. Deletes stored credentials on the local machine.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return cloud.DeleteStoredCredentials()
+			return DeleteStoredCredentials()
 		}),
 	}
 }
@@ -40,7 +39,7 @@ func newLogoutCmd() *cobra.Command {
 // loginCmd is the implementation of the login command.
 func loginCmd() error {
 	// Check if the the user is already logged in.
-	storedCreds, err := cloud.GetStoredCredentials()
+	storedCreds, err := GetStoredCredentials()
 	if storedCreds != nil && err == nil {
 		return fmt.Errorf("already logged in")
 	}
@@ -64,19 +63,19 @@ func loginCmd() error {
 
 	// We don't know if the access token is valid or not. So we'll use it and see if it checks out.
 	// Store the credentials and try to make an authenticated request to look up the user.
-	creds := cloud.AccountCredentials{
+	creds := AccountCredentials{
 		GitHubLogin: "???",
 		AccessToken: accessToken,
 	}
-	if err := cloud.StoreCredentials(creds); err != nil {
-		_ = cloud.DeleteStoredCredentials()
+	if err := StoreCredentials(creds); err != nil {
+		_ = DeleteStoredCredentials()
 		return fmt.Errorf("storing credentials (temporarily)")
 	}
 
 	var userResponse apitype.User
-	errResp, err := cloud.PulumiRESTCall("GET", "/user", nil, &userResponse)
+	errResp, err := PulumiRESTCall("GET", "/user", nil, &userResponse)
 	if err != nil {
-		_ = cloud.DeleteStoredCredentials()
+		_ = DeleteStoredCredentials()
 		return fmt.Errorf("error using access token: %v", err)
 	}
 	if errResp != nil {
@@ -88,5 +87,5 @@ func loginCmd() error {
 
 	// Store the credentials for later.
 	creds.GitHubLogin = userResponse.GitHubLogin
-	return cloud.StoreCredentials(creds)
+	return StoreCredentials(creds)
 }
