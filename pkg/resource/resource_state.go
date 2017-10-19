@@ -14,6 +14,7 @@ type State struct {
 	Type     tokens.Type // the resource's type.
 	URN      URN         // the resource's object urn, a human-friendly, unique name for the resource.
 	Custom   bool        // true if the resource is custom, managed by a plugin.
+	Delete   bool        // true if this resource is pending deletion due to a replacement.
 	ID       ID          // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
 	Inputs   PropertyMap // the resource's input properties (as specified by the program).
 	Defaults PropertyMap // the resource's default property values (if any, given by the provider).
@@ -22,7 +23,7 @@ type State struct {
 }
 
 // NewState creates a new resource value from existing resource state information.
-func NewState(t tokens.Type, urn URN, custom bool, id ID,
+func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	inputs PropertyMap, defaults PropertyMap, outputs PropertyMap, children []URN) *State {
 	contract.Assert(t != "")
 	contract.Assert(custom || id == "")
@@ -31,6 +32,7 @@ func NewState(t tokens.Type, urn URN, custom bool, id ID,
 		Type:     t,
 		URN:      urn,
 		Custom:   custom,
+		Delete:   del,
 		ID:       id,
 		Inputs:   inputs,
 		Defaults: defaults,

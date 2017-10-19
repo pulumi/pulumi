@@ -44,9 +44,11 @@ func NewSameStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new *
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Delete)
 	return &SameStep{
 		iter: iter,
 		goal: goal,
@@ -95,6 +97,7 @@ func NewCreateStep(iter *PlanIterator, goal SourceGoal, new *resource.State) Ste
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Delete)
 	return &CreateStep{
 		iter: iter,
 		goal: goal,
@@ -108,9 +111,11 @@ func NewCreateReplacementStep(iter *PlanIterator, goal SourceGoal,
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
 	return &CreateStep{
 		iter:      iter,
@@ -155,6 +160,11 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 		s.new.Outputs = outs
 	}
 
+	// Mark the old resource as pending deletion if necessary.
+	if s.replacing {
+		s.old.Delete = true
+	}
+
 	// And finish the overall operation.
 	s.goal.Done(s.new, false, nil)
 	s.iter.AppendStateSnapshot(s.new)
@@ -180,6 +190,7 @@ func NewDeleteStep(iter *PlanIterator, old *resource.State, replacing bool) Step
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!replacing || old.Delete)
 	return &DeleteStep{
 		iter:      iter,
 		old:       old,
@@ -237,9 +248,11 @@ func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State,
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
 	return &UpdateStep{
 		iter:    iter,
@@ -304,9 +317,11 @@ func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Delete)
 	return &ReplaceStep{
 		iter: iter,
 		old:  old,
@@ -326,6 +341,8 @@ func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *ReplaceStep) Logical() bool                { return true }
 
 func (s *ReplaceStep) Apply() (resource.Status, error) {
+	// We should have marked the old resource for deletion in the CreateReplacement step.
+	contract.Assert(s.old.Delete)
 	return resource.StatusOK, nil
 }
 

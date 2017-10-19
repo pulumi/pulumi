@@ -29,9 +29,9 @@ func TestExamples(t *testing.T) {
 			Dir:          path.Join(cwd, "dynamic-provider/simple"),
 			Dependencies: []string{"pulumi"},
 			Config: map[string]string{
-				"simple:config:w":          "1",
-				"simple:config:x":          "1",
-				"simple:config:y":          "1",
+				"simple:config:w": "1",
+				"simple:config:x": "1",
+				"simple:config:y": "1",
 			},
 		},
 	}

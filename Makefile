@@ -39,6 +39,10 @@ install:
 	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}
 	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}/cmd/lumidl
 
+.PHONY: format
+format:
+	find . -iname "*.go" -not -path "./vendor/*" | xargs gofmt -s -w
+
 .PHONY: lint
 lint:
 	@$(ECHO) "\033[0;32mLINT:\033[0m"
