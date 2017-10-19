@@ -38,8 +38,9 @@ func newLogoutCmd() *cobra.Command {
 
 // loginCmd is the implementation of the login command.
 func loginCmd() error {
+	var err error
 	// Check if the the user is already logged in.
-	_, err := GetStoredCredentials()
+	_, err = GetStoredCredentials()
 	if err == nil {
 		return fmt.Errorf("already logged in")
 	}
