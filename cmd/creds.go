@@ -21,8 +21,8 @@ const pulumiSettingsFolder = ".pulumi"
 // user has RWX access, and group and other have no access.
 const permUserAllRestNone = 0600
 
-// AccountCredentials hold the information necessary for authenticating Pulumi Cloud API requests.
-type AccountCredentials struct {
+// accountCredentials hold the information necessary for authenticating Pulumi Cloud API requests.
+type accountCredentials struct {
 	AccessToken string `json:"accessToken"`
 }
 
@@ -43,13 +43,13 @@ func getCredsFilePath() (string, error) {
 	return path.Join(pulumiFolder, "credentials.json"), nil
 }
 
-// ErrCredsNotFound is the error returned if the credentials file is not found.
-var ErrCredsNotFound = errors.New("credentials file not found")
+// errCredsNotFound is the error returned if the credentials file is not found.
+var errCredsNotFound = errors.New("credentials file not found")
 
-// GetStoredCredentials returns any credentials stored on the local machine. Returns any
-// IO error if found. ErrCredsNotFound if no credentials file is present.
-func GetStoredCredentials() (AccountCredentials, error) {
-	var creds AccountCredentials
+// getStoredCredentials returns any credentials stored on the local machine. Returns any
+// IO error if found. errCredsNotFound if no credentials file is present.
+func getStoredCredentials() (accountCredentials, error) {
+	var creds accountCredentials
 
 	credsFile, err := getCredsFilePath()
 	if err != nil {
@@ -58,7 +58,7 @@ func GetStoredCredentials() (AccountCredentials, error) {
 
 	// Creds file does not exist.
 	if _, err = os.Stat(credsFile); os.IsNotExist(err) {
-		return creds, ErrCredsNotFound
+		return creds, errCredsNotFound
 	}
 
 	c, err := ioutil.ReadFile(credsFile)
@@ -72,9 +72,9 @@ func GetStoredCredentials() (AccountCredentials, error) {
 	return creds, nil
 }
 
-// StoreCredentials updates the stored credentials on the machine, replacing the
+// storeCredentials updates the stored credentials on the machine, replacing the
 // existing set.
-func StoreCredentials(creds AccountCredentials) error {
+func storeCredentials(creds accountCredentials) error {
 	credsFile, err := getCredsFilePath()
 	if err != nil {
 		return err
@@ -87,8 +87,8 @@ func StoreCredentials(creds AccountCredentials) error {
 	return ioutil.WriteFile(credsFile, raw, permUserAllRestNone)
 }
 
-// DeleteStoredCredentials deletes the user's stored credentials.
-func DeleteStoredCredentials() error {
+// deleteStoredCredentials deletes the user's stored credentials.
+func deleteStoredCredentials() error {
 	credsFile, err := getCredsFilePath()
 	if err != nil {
 		return err

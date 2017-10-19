@@ -49,12 +49,12 @@ func pulumiAPICall(method string, path string, body []byte, accessToken string) 
 	return resp, nil
 }
 
-// PulumiRESTCall calls the pulumi REST API marshalling reqObj to JSON and using that as the
+// pulumiRESTCall calls the pulumi REST API marshalling reqObj to JSON and using that as the
 // request body (use nil for GETs), and if successful, marshalling the responseObj as JSON and
 // storing it in respObj (use nil for NoContent). The error return type might be an instance
 // of apitype.ErrorResponse, in which case will have the response code.
-func PulumiRESTCall(method, path string, reqObj interface{}, respObj interface{}) error {
-	creds, err := GetStoredCredentials()
+func pulumiRESTCall(method, path string, reqObj interface{}, respObj interface{}) error {
+	creds, err := getStoredCredentials()
 	if err != nil {
 		return fmt.Errorf("getting stored credentials: %v", err)
 	}

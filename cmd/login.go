@@ -31,7 +31,7 @@ func newLogoutCmd() *cobra.Command {
 		Short: "Log out of the Pulumi CLI",
 		Long:  "Log out of the Pulumi CLI. Deletes stored credentials on the local machine.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return DeleteStoredCredentials()
+			return deleteStoredCredentials()
 		}),
 	}
 }
@@ -40,7 +40,7 @@ func newLogoutCmd() *cobra.Command {
 func loginCmd() error {
 	var err error
 	// Check if the the user is already logged in.
-	_, err = GetStoredCredentials()
+	_, err = getStoredCredentials()
 	if err == nil {
 		return fmt.Errorf("already logged in")
 	}
@@ -72,10 +72,10 @@ func loginCmd() error {
 	}
 
 	// Save them.
-	creds := AccountCredentials{
+	creds := accountCredentials{
 		AccessToken: accessToken,
 	}
-	return StoreCredentials(creds)
+	return storeCredentials(creds)
 }
 
 // isValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
