@@ -24,9 +24,9 @@ type Deployment struct {
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Resource struct {
-	URN      resource.URN           `json:"URN"`                // the URN for this resource.
+	URN      resource.URN           `json:"urn"`                // the URN for this resource.
 	Custom   bool                   `json:"custom"`             // true if a custom resource managed by a plugin.
-	Delete   bool                   `json:"delete"`             // true if this resource should be deleted during the next update.
+	Delete   bool                   `json:"delete,omitempty"`   // true if this resource should be deleted during the next update.
 	ID       resource.ID            `json:"id,omitempty"`       // the provider ID for this resource, if any.
 	Type     tokens.Type            `json:"type"`               // this resource's full type token.
 	Inputs   map[string]interface{} `json:"inputs,omitempty"`   // the input properties from the program.
