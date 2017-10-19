@@ -17,8 +17,8 @@ import (
 func newLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
-		Short: "Log into the Pulumi CLI",
-		Long:  "Log into the Pulumi CLI. You can script by using PULUMI_ACCESS_TOKEN environment variable.",
+		Short: "Log into the Pulumi Cloud Console",
+		Long:  "Log into the Pulumi Cloud Console. You can script by using PULUMI_ACCESS_TOKEN environment variable.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return loginCmd()
 		}),
@@ -38,9 +38,8 @@ func newLogoutCmd() *cobra.Command {
 
 // loginCmd is the implementation of the login command.
 func loginCmd() error {
-	var err error
 	// Check if the the user is already logged in.
-	_, err = getStoredCredentials()
+	_, err := getStoredCredentials()
 	if err == nil {
 		return fmt.Errorf("already logged in")
 	}
@@ -55,8 +54,8 @@ func loginCmd() error {
 	} else {
 		fmt.Println("Enter Pulumi access token:")
 		reader := bufio.NewReader(os.Stdin)
-		raw, err := reader.ReadString('\n')
-		if err != nil {
+		raw, readErr := reader.ReadString('\n')
+		if readErr != nil {
 			return fmt.Errorf("reading STDIN: %v", err)
 		}
 		accessToken = strings.TrimSpace(raw)
