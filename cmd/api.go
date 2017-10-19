@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/pulumi/pulumi-service/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -23,7 +23,7 @@ func pulumiConsoleAPI() (string, error) {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(method string, path string, body []byte) (*http.Response, error) {
+func pulumiAPICall(method string, path string, body []byte, accessToken string) (*http.Response, error) {
 	apiEndpoint, err := pulumiConsoleAPI()
 	if err != nil {
 		return nil, fmt.Errorf("getting Pulumi API endpoint: %v", err)
@@ -36,10 +36,9 @@ func pulumiAPICall(method string, path string, body []byte) (*http.Response, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Apply stored credentials if possible.
-	creds, _ := GetStoredCredentials()
-	if creds != nil {
-		req.Header.Set("Authorization", "token "+creds.AccessToken)
+	// Apply credentials if provided.
+	if accessToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", accessToken))
 	}
 
 	client := &http.Client{}
@@ -52,28 +51,35 @@ func pulumiAPICall(method string, path string, body []byte) (*http.Response, err
 
 // PulumiRESTCall calls the pulumi REST API marshalling reqObj to JSON and using that as the
 // request body (use nil for GETs), and if successful, marshalling the responseObj as JSON and
-// storing it in respObj (use nil for NoContent).
-//
-// If the API request is made successfully, but the API returns an error, the ErrorResponse
-// valuewill be returned. error will be returned for any other type of IO error.
-func PulumiRESTCall(method, path string, reqObj interface{}, respObj interface{}) (*apitype.ErrorResponse, error) {
+// storing it in respObj (use nil for NoContent). The error return type might be an instance
+// of apitype.ErrorResponse, in which case will have the response code.
+func PulumiRESTCall(method, path string, reqObj interface{}, respObj interface{}) error {
+	creds, err := GetStoredCredentials()
+	if err != nil {
+		return fmt.Errorf("getting stored credentials: %v", err)
+	}
+	return pulumiRESTCallWithAccessToken(method, path, reqObj, respObj, creds.AccessToken)
+}
+
+// pulumiRESTCallWithAccessToken is the implementation of PulumiRESTCall.
+func pulumiRESTCallWithAccessToken(method, path string, reqObj interface{}, respObj interface{}, token string) error {
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
 		reqBody, err = json.Marshal(reqObj)
 		if err != nil {
-			return nil, fmt.Errorf("marshalling request object as JSON: %v", err)
+			return fmt.Errorf("marshalling request object as JSON: %v", err)
 		}
 	}
 
-	resp, err := pulumiAPICall(method, path, reqBody)
+	resp, err := pulumiAPICall(method, path, reqBody, token)
 	if err != nil {
-		return nil, fmt.Errorf("calling API: %v", err)
+		return fmt.Errorf("calling API: %v", err)
 	}
 	defer contract.IgnoreClose(resp.Body)
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading response from API: %v", err)
+		return fmt.Errorf("reading response from API: %v", err)
 	}
 
 	// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
@@ -81,16 +87,17 @@ func PulumiRESTCall(method, path string, reqObj interface{}, respObj interface{}
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
 		var errResp apitype.ErrorResponse
 		if err = json.Unmarshal(respBody, &errResp); err != nil {
-			return nil, fmt.Errorf("response error: %v", string(respBody))
+			errResp.Code = resp.StatusCode
+			errResp.Message = string(respBody)
 		}
-		return &errResp, nil
+		return &errResp
 	}
 
 	if respObj != nil {
 		if err = json.Unmarshal(respBody, respObj); err != nil {
-			return nil, fmt.Errorf("unmarshalling response object: %v", err)
+			return fmt.Errorf("unmarshalling response object: %v", err)
 		}
 	}
 
-	return nil, nil
+	return nil
 }

@@ -39,8 +39,8 @@ func newLogoutCmd() *cobra.Command {
 // loginCmd is the implementation of the login command.
 func loginCmd() error {
 	// Check if the the user is already logged in.
-	storedCreds, err := GetStoredCredentials()
-	if storedCreds != nil && err == nil {
+	_, err := GetStoredCredentials()
+	if err == nil {
 		return fmt.Errorf("already logged in")
 	}
 
@@ -61,31 +61,32 @@ func loginCmd() error {
 		accessToken = strings.TrimSpace(raw)
 	}
 
-	// We don't know if the access token is valid or not. So we'll use it and see if it checks out.
-	// Store the credentials and try to make an authenticated request to look up the user.
+	// Try and use the credentials to see if they are valid.
+	valid, err := isValidAccessToken(accessToken)
+	if err != nil {
+		return fmt.Errorf("testing access token: %v", err)
+	}
+	if !valid {
+		return fmt.Errorf("invalid access token")
+	}
+
+	// Save them.
 	creds := AccountCredentials{
-		GitHubLogin: "???",
 		AccessToken: accessToken,
 	}
-	if err := StoreCredentials(creds); err != nil {
-		_ = DeleteStoredCredentials()
-		return fmt.Errorf("storing credentials (temporarily)")
-	}
-
-	var userResponse apitype.User
-	errResp, err := PulumiRESTCall("GET", "/user", nil, &userResponse)
-	if err != nil {
-		_ = DeleteStoredCredentials()
-		return fmt.Errorf("error using access token: %v", err)
-	}
-	if errResp != nil {
-		if errResp.Code == 401 {
-			return fmt.Errorf("invalid access token")
-		}
-		return fmt.Errorf("error response from Pulumi API (%d): %s", errResp.Code, errResp.Message)
-	}
-
-	// Store the credentials for later.
-	creds.GitHubLogin = userResponse.GitHubLogin
 	return StoreCredentials(creds)
+}
+
+// isValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
+// or not. Returns error on any unexpected error.
+func isValidAccessToken(accessToken string) (bool, error) {
+	// Make a request to get the authenticated user. If it returns a successful result, the token
+	// checks out.
+	if err := pulumiRESTCallWithAccessToken("GET", "/user", nil, nil, accessToken); err != nil {
+		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+			return false, nil
+		}
+		return false, fmt.Errorf("testing access token: %v", err)
+	}
+	return true, nil
 }

@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/user"
 	"path"
+
+	"github.com/pkg/errors"
 )
 
 // pulumiSettingsFolder is the name of the folder we put in the user's home dir to store settings.
@@ -17,12 +19,11 @@ const pulumiSettingsFolder = ".pulumi"
 
 // permUserAllRestNone defines the file permissions that the
 // user has RWX access, and group and other have no access.
-const permUserAllRestNone = 0700
+const permUserAllRestNone = 0600
 
 // AccountCredentials hold the information necessary for authenticating Pulumi Cloud API requests.
 type AccountCredentials struct {
-	GitHubLogin string `json:"githubLogin"`
-	AccessToken string `json:"token"`
+	AccessToken string `json:"accessToken"`
 }
 
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
@@ -42,29 +43,33 @@ func getCredsFilePath() (string, error) {
 	return path.Join(pulumiFolder, "credentials.json"), nil
 }
 
-// GetStoredCredentials returns any credentials stored on the local machine. nil if
-// they are not present. Returns any IO errors which occur.
-func GetStoredCredentials() (*AccountCredentials, error) {
+// ErrCredsNotFound is the error returned if the credentials file is not found.
+var ErrCredsNotFound = errors.New("credentials file not found")
+
+// GetStoredCredentials returns any credentials stored on the local machine. Returns any
+// IO error if found. ErrCredsNotFound if no credentials file is present.
+func GetStoredCredentials() (AccountCredentials, error) {
+	var creds AccountCredentials
+
 	credsFile, err := getCredsFilePath()
 	if err != nil {
-		return nil, err
+		return creds, err
 	}
 
 	// Creds file does not exist.
 	if _, err = os.Stat(credsFile); os.IsNotExist(err) {
-		return nil, nil
+		return creds, ErrCredsNotFound
 	}
 
 	c, err := ioutil.ReadFile(credsFile)
 	if err != nil {
-		return nil, fmt.Errorf("reading '%s': %v", credsFile, err)
+		return creds, fmt.Errorf("reading '%s': %v", credsFile, err)
 	}
 
-	var accountCreds AccountCredentials
-	if err = json.Unmarshal(c, &accountCreds); err != nil {
-		return nil, fmt.Errorf("unmarshalling credentials file: %v", err)
+	if err = json.Unmarshal(c, &creds); err != nil {
+		return creds, fmt.Errorf("unmarshalling credentials file: %v", err)
 	}
-	return &accountCreds, nil
+	return creds, nil
 }
 
 // StoreCredentials updates the stored credentials on the machine, replacing the
