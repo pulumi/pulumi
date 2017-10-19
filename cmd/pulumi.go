@@ -64,6 +64,10 @@ func NewPulumiCmd(version string) *cobra.Command {
 	cmd.AddCommand(newUpdateCmd())
 	cmd.AddCommand(newVersionCmd(version))
 
+	// Commands specific to the Pulumi Cloud Management Console.
+	cmd.AddCommand(newLoginCmd())
+	cmd.AddCommand(newLogoutCmd())
+
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
 	// which calls flag.Parse under the hood doesn't yell at you.
 	//
