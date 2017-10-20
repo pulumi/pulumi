@@ -275,7 +275,9 @@ return (function () { })
         // tslint:disable-next-line
         let nocap8 = 8, nocap9 = 9, nocap10 = 10;
         // tslint:disable-next-line
-        let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400;
+        let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400, cap5 = 500, cap6 = 600, cap7 = 700;
+        // tslint:disable-next-line
+        let cap8 = 800;
 
         const functext = `((nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
@@ -306,6 +308,12 @@ return (function () { })
     }
     let [{t: [nocap8]},,nocap9 = "hello",...nocap10] = [{t: [true]},null,undefined,1,2];
     let vvv = [nocap8, nocap9, nocap10]; // not a capture; declarations from destructuring
+    let aaa = { // captures in property and method declarations
+        [cap5]: cap6,
+        [cap7]() {
+            cap8
+        }
+    }
 })`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",
@@ -318,10 +326,14 @@ return (function () { })
                     cap2: { json: 200 },
                     cap3: { json: 300 },
                     cap4: { json: 400 },
+                    cap5: { json: 500 },
+                    cap6: { json: 600 },
+                    cap7: { json: 700 },
+                    cap8: { json: 800 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__2806dcb0e9b815d3ada9417edbbc7a95438196b3",
+            closureHash: "__f919744848c6471a841a1de62afe7d3d7f7f208a",
         });
     }
     {

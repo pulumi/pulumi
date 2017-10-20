@@ -272,7 +272,9 @@ function computeFreeVariables(funcstr: string): string[] {
     }
 
     // Now that we've parsed the file, compute the free variables, and return them.
-    return new FreeVariableComputer().compute(file);
+    const freeVariables = new FreeVariableComputer().compute(file);
+    log.debug(`Found free variables: ${freeVariables}`);
+    return freeVariables;
 }
 
 type walkCallback = (node: ts.Node | undefined) => void;
@@ -485,6 +487,9 @@ class FreeVariableComputer {
             // as it may capture variables.
             walk(node.name);
         }
+
+        // Always walk the method.
+        this.visitBaseFunction(node, walk);
     }
 
     private visitPropertyAssignment(node: ts.PropertyAssignment, walk: walkCallback): void {
@@ -494,6 +499,9 @@ class FreeVariableComputer {
             // as it may capture variables.
             walk(node.name);
         }
+
+        // Always walk the property initializer.
+        walk(node.initializer);
     }
 
     private visitPropertyAccessExpression(node: ts.PropertyAccessExpression, walk: walkCallback): void {
