@@ -8,6 +8,6 @@ import (
 
 // Settings defines workspace settings shared amongst many related projects.
 type Settings struct {
-	Namespace string       `json:"namespace,omitempty"` // an optional namespace.
-	Stack     tokens.QName `json:"env,omitempty"`       // an optional default stack to use.
+	Namespace string       `json:"namespace,omitempty" yaml:"namespace,omitempty"` // an optional namespace.
+	Stack     tokens.QName `json:"env,omitempty" yaml:"env,omitempty"`             // an optional default stack to use.
 }

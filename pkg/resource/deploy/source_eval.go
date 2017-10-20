@@ -21,11 +21,11 @@ import (
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Pkg     *pack.Package `json:"pkg"`              // the package metadata.
-	Pwd     string        `json:"pwd"`              // the package's working directory.
-	Program string        `json:"program"`          // the path to the program we are executing.
-	Args    []string      `json:"args,omitempty"`   // any arguments to pass to the package.
-	Target  *Target       `json:"target,omitempty"` // the target being deployed into.
+	Pkg     *pack.Package `json:"pkg" yaml:"pkg"`                           // the package metadata.
+	Pwd     string        `json:"pwd" yaml:"pwd"`                           // the package's working directory.
+	Program string        `json:"program" yaml:"program"`                   // the path to the program we are executing.
+	Args    []string      `json:"args,omitempty" yaml:"args,omitempty"`     // any arguments to pass to the package.
+	Target  *Target       `json:"target,omitempty" yaml:"target,omitempty"` // the target being deployed into.
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and

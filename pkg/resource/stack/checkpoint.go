@@ -13,9 +13,9 @@ import (
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 type Checkpoint struct {
-	Target tokens.QName                   `json:"target"`           // the target stack name.
-	Config map[tokens.ModuleMember]string `json:"config,omitempty"` // optional configuration key/values.
-	Latest *Deployment                    `json:"latest,omitempty"` // the latest/current deployment information.
+	Target tokens.QName                   `json:"target" yaml:"target"`                     // the target stack name.
+	Config map[tokens.ModuleMember]string `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.
+	Latest *Deployment                    `json:"latest,omitempty" yaml:"latest,omitempty"` // the latest/current deployment information.
 }
 
 // SerializeCheckpoint turns a snapshot into a LumiGL data structure suitable for serialization.

@@ -23,11 +23,12 @@ import (
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
+//nolint: lll
 type Asset struct {
-	Sig  string `json:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Text string `json:"text,omitempty"`                   // a textual asset.
-	Path string `json:"path,omitempty"`                   // a file on the current filesystem.
-	URI  string `json:"uri,omitempty"`                    // a URI (file://, http://, https://, or custom).
+	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
+	Text string `json:"text,omitempty" yaml:"text,omitempty"`                                     // a textual asset.
+	Path string `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
+	URI  string `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a URI (file://, http://, https://, or custom).
 }
 
 const (
@@ -245,11 +246,12 @@ func (b bytesReader) Close() error {
 
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
 // helper routines exist as members in order to easily interact with archives of different kinds.
+//nolint: lll
 type Archive struct {
-	Sig    string           `json:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Assets map[string]Asset `json:"assets,omitempty"`                 // a collection of other assets.
-	Path   string           `json:"path,omitempty"`                   // a file on the current filesystem.
-	URI    string           `json:"uri,omitempty"`                    // a remote URI (file://, http://, https://, etc).
+	Sig    string           `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
+	Assets map[string]Asset `json:"assets,omitempty" yaml:"assets,omitempty"`                                 // a collection of other assets.
+	Path   string           `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
+	URI    string           `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a remote URI (file://, http://, https://, etc).
 }
 
 const (
