@@ -47,7 +47,7 @@ func newConfigCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Target a specific stack instead of all stacks")
+		"Target a specific stack instead of all of this project's stacks")
 	cmd.PersistentFlags().BoolVar(
 		&unset, "unset", false,
 		"Unset a configuration value")
