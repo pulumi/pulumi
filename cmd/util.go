@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/pack"
 
 	"github.com/pkg/errors"
@@ -103,39 +102,40 @@ func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
 	}
 }
 
-func getPackage() (string, pack.Package, error) {
+func getPackage() (*pack.Package, error) {
+	pkgPath, err := getPackageFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	pkg, err := pack.Load(pkgPath)
+
+	return pkg, err
+}
+
+func savePackage(pkg *pack.Package) error {
+	pkgPath, err := getPackageFilePath()
+	if err != nil {
+		return err
+	}
+
+	return pack.Save(pkgPath, pkg)
+}
+
+func getPackageFilePath() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", pack.Package{}, err
+		return "", err
 	}
 
 	pkgPath, err := workspace.DetectPackage(dir)
 	if err != nil {
-		return "", pack.Package{}, err
+		return "", err
 	}
 
 	if pkgPath == "" {
-		return "", pack.Package{}, errors.Errorf("could not find Pulumi.yaml, started search in %s", dir)
+		return "", errors.Errorf("could not find Pulumi.yaml, started search in %s", dir)
 	}
 
-	m, _ := encoding.Detect(pkgPath)
-
-	b, err := ioutil.ReadFile(pkgPath)
-	if err != nil {
-		return "", pack.Package{}, err
-	}
-
-	var pkg pack.Package
-
-	err = m.Unmarshal(b, &pkg)
-	if err != nil {
-		return "", pack.Package{}, err
-	}
-
-	err = pkg.Validate()
-	if err != nil {
-		return "", pack.Package{}, err
-	}
-
-	return pkgPath, pkg, err
+	return pkgPath, nil
 }

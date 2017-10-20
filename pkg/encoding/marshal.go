@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/ghodss/yaml"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var JSONExt = ".json"
@@ -93,5 +93,6 @@ func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
+
 	return yaml.Unmarshal(data, v)
 }

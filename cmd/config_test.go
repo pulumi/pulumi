@@ -12,7 +12,7 @@ import (
 )
 
 func TestPrettyKeyForPackage(t *testing.T) {
-	pkg := pack.Package{Name: tokens.PackageName("test-package"), Runtime: "nodejs"}
+	pkg := &pack.Package{Name: tokens.PackageName("test-package"), Runtime: "nodejs"}
 
 	assert.Equal(t, "foo", prettyKeyForPackage("test-package:config:foo", pkg))
 	assert.Equal(t, "other-package:config:bar", prettyKeyForPackage("other-package:config:bar", pkg))

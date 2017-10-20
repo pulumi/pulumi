@@ -17,22 +17,22 @@ import (
 // to the actual Snapshot structure, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deploys themselves.
 type Deployment struct {
-	Time      time.Time   `json:"time"`                // the time of the deploy.
-	Info      interface{} `json:"info,omitempty"`      // optional information about the source.
-	Resources []Resource  `json:"resources,omitempty"` // an array of resources.
+	Time      time.Time   `json:"time" yaml:"time"`                               // the time of the deploy.
+	Info      interface{} `json:"info,omitempty" yaml:"info,omitempty"`           // optional information about the source.
+	Resources []Resource  `json:"resources,omitempty" yaml:"resources,omitempty"` // an array of resources.
 }
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Resource struct {
-	URN      resource.URN           `json:"urn"`                // the URN for this resource.
-	Custom   bool                   `json:"custom"`             // true if a custom resource managed by a plugin.
-	Delete   bool                   `json:"delete,omitempty"`   // true if this resource should be deleted during the next update.
-	ID       resource.ID            `json:"id,omitempty"`       // the provider ID for this resource, if any.
-	Type     tokens.Type            `json:"type"`               // this resource's full type token.
-	Inputs   map[string]interface{} `json:"inputs,omitempty"`   // the input properties from the program.
-	Defaults map[string]interface{} `json:"defaults,omitempty"` // the default property values from the provider.
-	Outputs  map[string]interface{} `json:"outputs,omitempty"`  // the output properties from the resource provider.
-	Children []string               `json:"children,omitempty"` // an optional list of child resources.
+	URN      resource.URN           `json:"urn" yaml:"urn"`                               // the URN for this resource.
+	Custom   bool                   `json:"custom" yaml:"custom"`                         // if this is a custom resource managed by a plugin.
+	Delete   bool                   `json:"delete,omitempty" yaml:"delete,omitempty"`     // if this should be deleted during the next update.
+	ID       resource.ID            `json:"id,omitempty" yaml:"id,omitempty"`             // the provider ID for this resource, if any.
+	Type     tokens.Type            `json:"type" yaml:"type"`                             // this resource's full type token.
+	Inputs   map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the program.
+	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider.
+	Outputs  map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
+	Children []string               `json:"children,omitempty" yaml:"children,omitempty"` // an optional list of child resources.
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
