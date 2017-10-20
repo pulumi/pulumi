@@ -63,7 +63,6 @@ func (eng *Engine) readPackageFromStdin() (*pkginfo, error) {
 	m := encoding.Marshalers[".json"]
 	var pkg pack.Package
 	err = m.Unmarshal(b, &pkg)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "a problem occurred when unmarshaling stdin into a package")
 	}

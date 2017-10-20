@@ -56,7 +56,6 @@ func newConfigCmd() *cobra.Command {
 }
 
 func parseConfigKey(key string) (tokens.ModuleMember, error) {
-
 	// As a convience, we'll treat any key with no delimiter as if:
 	// <program-name>:config:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
