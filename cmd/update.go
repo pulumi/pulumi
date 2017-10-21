@@ -20,9 +20,10 @@ func newUpdateCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:     "update",
-		Aliases: []string{"up"},
-		Short:   "Update the resources in an stack",
+		Use:        "update",
+		Aliases:    []string{"up"},
+		SuggestFor: []string{"deploy", "push"},
+		Short:      "Update the resources in an stack",
 		Long: "Update the resources in an stack\n" +
 			"\n" +
 			"This command updates an existing stack whose state is represented by the\n" +

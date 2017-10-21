@@ -19,8 +19,9 @@ func newPreviewCmd() *cobra.Command {
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "preview",
-		Short: "Show a preview of updates to an stack's resources",
+		Use:        "preview",
+		SuggestFor: []string{"plan"},
+		Short:      "Show a preview of updates to an stack's resources",
 		Long: "Show a preview of updates an stack's resources\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
