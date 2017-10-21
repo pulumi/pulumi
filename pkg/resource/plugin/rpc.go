@@ -16,8 +16,9 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	SkipNulls     bool // true to skip nulls altogether in the resulting map.
-	AllowUnknowns bool // true if we are allowing unknown values (otherwise an error results).
+	SkipNulls          bool // true to skip nulls altogether in the resulting map.
+	AllowUnknowns      bool // true if we are allowing unknown values (otherwise an error results).
+	ComputeAssetHashes bool // true if we are computing missing asset hashes on the fly.
 }
 
 const (
@@ -242,9 +243,30 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (resource.Pr
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
 		objmap := obj.Mappable()
-		if asset, isasset := resource.DeserializeAsset(objmap); isasset {
+		asset, isasset, err := resource.DeserializeAsset(objmap, false)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		} else if isasset {
+			if opts.ComputeAssetHashes {
+				if err = asset.EnsureHash(); err != nil {
+					return resource.PropertyValue{}, errors.Wrapf(err, "failed to compute asset hash")
+				}
+			} else if asset.Hash == "" {
+				return resource.PropertyValue{}, errors.New("asset missing hash, and no compute requested")
+			}
 			return resource.NewAssetProperty(asset), nil
-		} else if archive, isarchive := resource.DeserializeArchive(objmap); isarchive {
+		}
+		archive, isarchive, err := resource.DeserializeArchive(objmap, false)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		} else if isarchive {
+			if opts.ComputeAssetHashes {
+				if err = archive.EnsureHash(); err != nil {
+					return resource.PropertyValue{}, errors.Wrapf(err, "failed to compute archive hash")
+				}
+			} else if archive.Hash == "" {
+				return resource.PropertyValue{}, errors.New("archive missing hash, and no compute requested")
+			}
 			return resource.NewArchiveProperty(archive), nil
 		}
 		return resource.NewObjectProperty(obj), nil
@@ -268,9 +290,9 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 	case UnknownArrayValue:
 		elem, unknown = resource.NewArrayProperty([]resource.PropertyValue{}), true
 	case UnknownAssetValue:
-		elem, unknown = resource.NewAssetProperty(resource.Asset{}), true
+		elem, unknown = resource.NewAssetProperty(&resource.Asset{}), true
 	case UnknownArchiveValue:
-		elem, unknown = resource.NewArchiveProperty(resource.Archive{}), true
+		elem, unknown = resource.NewArchiveProperty(&resource.Archive{}), true
 	case UnknownObjectValue:
 		elem, unknown = resource.NewObjectProperty(make(resource.PropertyMap)), true
 	}
@@ -309,7 +331,14 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 }
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
-func MarshalAsset(v resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
+	// Ensure a hash is present if needed.
+	if v.Hash == "" && opts.ComputeAssetHashes {
+		if err := v.EnsureHash(); err != nil {
+			return nil, errors.Wrapf(err, "failed to compute asset hash")
+		}
+	}
+
 	// To marshal an asset, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
@@ -317,7 +346,14 @@ func MarshalAsset(v resource.Asset, opts MarshalOptions) (*structpb.Value, error
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
-func MarshalArchive(v resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
+	// Ensure a hash is present if needed.
+	if v.Hash == "" && opts.ComputeAssetHashes {
+		if err := v.EnsureHash(); err != nil {
+			return nil, errors.Wrapf(err, "failed to compute archive hash")
+		}
+	}
+
 	// To marshal an archive, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)

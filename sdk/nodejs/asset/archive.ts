@@ -12,10 +12,10 @@ export abstract class Archive {
 /**
  * AssetMap is a map of assets.
  */
-export type AssetMap = {[name: string]: Asset};
+export type AssetMap = {[name: string]: Asset | Archive};
 
 /**
- * An AssetArchive is an archive created with a collection of named assets.
+ * An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
  */
 export class AssetArchive extends Archive {
     public readonly assets: Computed<AssetMap>; // a map of name to asset.
@@ -27,7 +27,8 @@ export class AssetArchive extends Archive {
 }
 
 /**
- * A FileArchive is an archive in a file-based archive in one of the supported formats (.tar, .tar.gz, or .zip).
+ * A FileArchive is a file-based archive, or a collection of file-based assets.  This can be a raw directory or a
+ * single archive file in one of the supported formats (.tar, .tar.gz, or .zip).
  */
 export class FileArchive extends Archive {
     public readonly path: Computed<string>; // the path to the asset file.
@@ -39,7 +40,7 @@ export class FileArchive extends Archive {
 }
 
 /**
- * A RemoteArchive is an archive in a file-based archive fetched from a remote location.  The URI's scheme dictates the
+ * A RemoteArchive is a file-based archive fetched from a remote location.  The URI's scheme dictates the
  * protocol for fetching the archive's contents: `file://` is a local file (just like a FileArchive), `http://` and
  * `https://` specify HTTP and HTTPS, respectively, and specific providers may recognize custom schemes.
  */

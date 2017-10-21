@@ -265,7 +265,7 @@ func (rm *resmon) NewResource(ctx context.Context,
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{AllowUnknowns: true})
+		req.GetObject(), plugin.MarshalOptions{AllowUnknowns: true, ComputeAssetHashes: true})
 	if err != nil {
 		return nil, err
 	}

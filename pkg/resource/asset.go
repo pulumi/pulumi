@@ -7,18 +7,22 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
@@ -26,6 +30,7 @@ import (
 //nolint: lll
 type Asset struct {
 	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
+	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA1 hash of the asset contents.
 	Text string `json:"text,omitempty" yaml:"text,omitempty"`                                     // a textual asset.
 	Path string `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
 	URI  string `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a URI (file://, http://, https://, or custom).
@@ -33,34 +38,52 @@ type Asset struct {
 
 const (
 	AssetSig          = "c44067f5952c0a294b673a41bacd8c17" // a randomly assigned type hash for assets.
+	AssetHashProperty = "hash"                             // the dynamic property for an asset's hash.
 	AssetTextProperty = "text"                             // the dynamic property for an asset's text.
 	AssetPathProperty = "path"                             // the dynamic property for an asset's path.
 	AssetURIProperty  = "uri"                              // the dynamic property for an asset's URI.
 )
 
-func NewTextAsset(text string) Asset { return Asset{Sig: AssetSig, Text: text} }
-func NewPathAsset(path string) Asset { return Asset{Sig: AssetSig, Path: path} }
-func NewURIAsset(uri string) Asset   { return Asset{Sig: AssetSig, URI: uri} }
+// NewTextAsset produces a new asset and its corresponding SHA1 hash from the given text.
+func NewTextAsset(text string) (*Asset, error) {
+	a := &Asset{Sig: AssetSig, Text: text}
+	err := a.EnsureHash()
+	return a, err
+}
 
-func (a Asset) IsText() bool { return a.Text != "" }
-func (a Asset) IsPath() bool { return a.Path != "" }
-func (a Asset) IsURI() bool  { return a.URI != "" }
+// NewPathAsset produces a new asset and its corresponding SHA1 hash from the given filesystem path.
+func NewPathAsset(path string) (*Asset, error) {
+	a := &Asset{Sig: AssetSig, Path: path}
+	err := a.EnsureHash()
+	return a, err
+}
 
-func (a Asset) GetText() (string, bool) {
+// NewURIAsset produces a new asset and its corresponding SHA1 hash from the given network URI.
+func NewURIAsset(uri string) (*Asset, error) {
+	a := &Asset{Sig: AssetSig, URI: uri}
+	err := a.EnsureHash()
+	return a, err
+}
+
+func (a *Asset) IsText() bool { return a.Text != "" }
+func (a *Asset) IsPath() bool { return a.Path != "" }
+func (a *Asset) IsURI() bool  { return a.URI != "" }
+
+func (a *Asset) GetText() (string, bool) {
 	if a.IsText() {
 		return a.Text, true
 	}
 	return "", false
 }
 
-func (a Asset) GetPath() (string, bool) {
+func (a *Asset) GetPath() (string, bool) {
 	if a.IsPath() {
 		return a.Path, true
 	}
 	return "", false
 }
 
-func (a Asset) GetURI() (string, bool) {
+func (a *Asset) GetURI() (string, bool) {
 	if a.IsURI() {
 		return a.URI, true
 	}
@@ -69,7 +92,7 @@ func (a Asset) GetURI() (string, bool) {
 
 // GetURIURL returns the underlying URI as a parsed URL, provided it is one.  If there was an error parsing the URI, it
 // will be returned as a non-nil error object.
-func (a Asset) GetURIURL() (*url.URL, bool, error) {
+func (a *Asset) GetURIURL() (*url.URL, bool, error) {
 	if uri, isuri := a.GetURI(); isuri {
 		url, err := url.Parse(uri)
 		if err != nil {
@@ -81,25 +104,50 @@ func (a Asset) GetURIURL() (*url.URL, bool, error) {
 }
 
 // Equals returns true if a is value-equal to other.
-func (a Asset) Equals(other Asset) bool {
-	return a.Text == other.Text && a.Path == other.Path && a.URI == other.URI
+func (a *Asset) Equals(other *Asset) bool {
+	if a == nil {
+		return other == nil
+	} else if other == nil {
+		return false
+	}
+	return a.Hash == other.Hash && a.Text == other.Text && a.Path == other.Path && a.URI == other.URI
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
-func (a Asset) Serialize() map[string]interface{} {
-	return map[string]interface{}{
-		string(SigKey):    AssetSig,
-		AssetTextProperty: a.Text,
-		AssetPathProperty: a.Path,
-		AssetURIProperty:  a.URI,
+func (a *Asset) Serialize() map[string]interface{} {
+	result := map[string]interface{}{
+		string(SigKey): AssetSig,
 	}
+	if a.Hash != "" {
+		result[AssetHashProperty] = a.Hash
+	}
+	if a.Text != "" {
+		result[AssetTextProperty] = a.Text
+	}
+	if a.Path != "" {
+		result[AssetPathProperty] = a.Path
+	}
+	if a.URI != "" {
+		result[AssetURIProperty] = a.URI
+	}
+	return result
 }
 
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
-func DeserializeAsset(obj map[string]interface{}) (Asset, bool) {
+func DeserializeAsset(obj map[string]interface{}, requireHash bool) (*Asset, bool, error) {
+	// If not an asset, return false immediately.
 	if obj[string(SigKey)] != AssetSig {
-		return Asset{}, false
+		return &Asset{}, false, nil
 	}
+
+	// Else, deserialize the possible fields.
+	var hash string
+	if v, has := obj[AssetHashProperty]; has {
+		hash = v.(string)
+	} else if requireHash {
+		return &Asset{}, false, errors.New("asset is missing a hash")
+	}
+
 	var text string
 	if v, has := obj[AssetTextProperty]; has {
 		text = v.(string)
@@ -112,15 +160,15 @@ func DeserializeAsset(obj map[string]interface{}) (Asset, bool) {
 	if v, has := obj[AssetURIProperty]; has {
 		uri = v.(string)
 	}
-	return Asset{
-		Text: text,
-		Path: path,
-		URI:  uri,
-	}, true
+	if text == "" && path == "" && uri == "" {
+		return &Asset{}, false, errors.New("asset is missing one of text, path, or URI")
+	}
+
+	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
 }
 
 // Read reads an asset's contents into memory.
-func (a Asset) Read() (*Blob, error) {
+func (a *Asset) Read() (*Blob, error) {
 	if a.IsText() {
 		return a.readText()
 	} else if a.IsPath() {
@@ -132,23 +180,32 @@ func (a Asset) Read() (*Blob, error) {
 	return nil, nil
 }
 
-func (a Asset) readText() (*Blob, error) {
+func (a *Asset) readText() (*Blob, error) {
 	text, istext := a.GetText()
 	contract.Assertf(istext, "Expected a text-based asset")
 	return NewByteBlob([]byte(text)), nil
 }
 
-func (a Asset) readPath() (*Blob, error) {
+func (a *Asset) readPath() (*Blob, error) {
 	path, ispath := a.GetPath()
 	contract.Assertf(ispath, "Expected a path-based asset")
+
+	// Do a quick check to make sure it's a file, so we can fail gracefully if someone passes a directory.
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open asset file '%v'", path)
+	} else if info.IsDir() {
+		return nil, errors.Errorf("asset path '%v' is a directory; try using an archive", path)
+	}
+
 	byts, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read asset file '%v'", path)
 	}
 	return NewByteBlob(byts), nil
 }
 
-func (a Asset) readURI() (*Blob, error) {
+func (a *Asset) readURI() (*Blob, error) {
 	url, isurl, err := a.GetURIURL()
 	if err != nil {
 		return nil, err
@@ -162,10 +219,12 @@ func (a Asset) readURI() (*Blob, error) {
 		}
 		return NewReadCloserBlob(resp.Body)
 	case "file":
-		contract.Assert(url.Host == "")
 		contract.Assert(url.User == nil)
 		contract.Assert(url.RawQuery == "")
 		contract.Assert(url.Fragment == "")
+		if url.Host != "" && url.Host != "localhost" {
+			return nil, errors.Errorf("file:// host '%v' not supported (only localhost)", url.Host)
+		}
 		f, err := os.Open(url.Path)
 		if err != nil {
 			return nil, err
@@ -174,6 +233,25 @@ func (a Asset) readURI() (*Blob, error) {
 	default:
 		return nil, errors.Errorf("Unrecognized or unsupported URI scheme: %v", s)
 	}
+}
+
+// EnsureHash computes the SHA1 hash of the asset's contents and stores it on the object.
+func (a *Asset) EnsureHash() error {
+	if a.Hash == "" {
+		blob, err := a.Read()
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(blob)
+
+		hash := sha256.New()
+		_, err = io.Copy(hash, blob)
+		if err != nil {
+			return err
+		}
+		a.Hash = hex.EncodeToString(hash.Sum(nil))
+	}
+	return nil
 }
 
 // SeekableReadCloser combines Read, Close, and Seek functionality into one interface.
@@ -248,42 +326,67 @@ func (b bytesReader) Close() error {
 // helper routines exist as members in order to easily interact with archives of different kinds.
 //nolint: lll
 type Archive struct {
-	Sig    string           `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Assets map[string]Asset `json:"assets,omitempty" yaml:"assets,omitempty"`                                 // a collection of other assets.
-	Path   string           `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
-	URI    string           `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a remote URI (file://, http://, https://, etc).
+	Sig    string                 `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
+	Hash   string                 `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA1 hash of the archive contents.
+	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`                                 // a collection of other assets/archives.
+	Path   string                 `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
+	URI    string                 `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a remote URI (file://, http://, https://, etc).
 }
 
 const (
 	ArchiveSig            = "0def7320c3a5731c473e5ecbe6d01bc7" // a randomly assigned archive type signature.
+	ArchiveHashProperty   = "hash"                             // the dynamic property for an archive's hash.
 	ArchiveAssetsProperty = "assets"                           // the dynamic property for an archive's assets.
 	ArchivePathProperty   = "path"                             // the dynamic property for an archive's path.
 	ArchiveURIProperty    = "uri"                              // the dynamic property for an archive's URI.
 )
 
-func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Sig: ArchiveSig, Assets: assets} }
-func NewPathArchive(path string) Archive              { return Archive{Sig: ArchiveSig, Path: path} }
-func NewURIArchive(uri string) Archive                { return Archive{Sig: ArchiveSig, URI: uri} }
+func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
+	// Ensure all elements are either assets or archives.
+	for _, asset := range assets {
+		switch t := asset.(type) {
+		case *Asset, *Archive:
+			// ok
+		default:
+			return &Archive{}, errors.Errorf("type %v is not a valid archive element", t)
+		}
+	}
+	a := &Archive{Sig: ArchiveSig, Assets: assets}
+	err := a.EnsureHash()
+	return a, err
+}
 
-func (a Archive) IsAssets() bool { return a.Assets != nil }
-func (a Archive) IsPath() bool   { return a.Path != "" }
-func (a Archive) IsURI() bool    { return a.URI != "" }
+func NewPathArchive(path string) (*Archive, error) {
+	a := &Archive{Sig: ArchiveSig, Path: path}
+	err := a.EnsureHash()
+	return a, err
+}
 
-func (a Archive) GetAssets() (map[string]Asset, bool) {
+func NewURIArchive(uri string) (*Archive, error) {
+	a := &Archive{Sig: ArchiveSig, URI: uri}
+	err := a.EnsureHash()
+	return a, err
+}
+
+func (a *Archive) IsAssets() bool { return a.Assets != nil }
+func (a *Archive) IsPath() bool   { return a.Path != "" }
+func (a *Archive) IsURI() bool    { return a.URI != "" }
+
+func (a *Archive) GetAssets() (map[string]interface{}, bool) {
 	if a.IsAssets() {
 		return a.Assets, true
 	}
 	return nil, false
 }
 
-func (a Archive) GetPath() (string, bool) {
+func (a *Archive) GetPath() (string, bool) {
 	if a.IsPath() {
 		return a.Path, true
 	}
 	return "", false
 }
 
-func (a Archive) GetURI() (string, bool) {
+func (a *Archive) GetURI() (string, bool) {
 	if a.IsURI() {
 		return a.URI, true
 	}
@@ -292,7 +395,7 @@ func (a Archive) GetURI() (string, bool) {
 
 // GetURIURL returns the underlying URI as a parsed URL, provided it is one.  If there was an error parsing the URI, it
 // will be returned as a non-nil error object.
-func (a Archive) GetURIURL() (*url.URL, bool, error) {
+func (a *Archive) GetURIURL() (*url.URL, bool, error) {
 	if uri, isuri := a.GetURI(); isuri {
 		url, err := url.Parse(uri)
 		if err != nil {
@@ -304,7 +407,12 @@ func (a Archive) GetURIURL() (*url.URL, bool, error) {
 }
 
 // Equals returns true if a is value-equal to other.
-func (a Archive) Equals(other Archive) bool {
+func (a *Archive) Equals(other *Archive) bool {
+	if a == nil {
+		return other == nil
+	} else if other == nil {
+		return false
+	}
 	if a.Assets != nil {
 		if other.Assets == nil {
 			return false
@@ -313,53 +421,107 @@ func (a Archive) Equals(other Archive) bool {
 			return false
 		}
 		for key, value := range a.Assets {
-			if other.Assets[key] != value {
+			otherv := other.Assets[key]
+			switch valuet := value.(type) {
+			case *Asset:
+				if othera, isAsset := otherv.(*Asset); isAsset {
+					if !valuet.Equals(othera) {
+						return false
+					}
+				} else {
+					return false
+				}
+			case *Archive:
+				if othera, isArchive := otherv.(*Archive); isArchive {
+					if !valuet.Equals(othera) {
+						return false
+					}
+				} else {
+					return false
+				}
+			default:
 				return false
 			}
 		}
 	} else if other.Assets != nil {
 		return false
 	}
-	return a.Path == other.Path && a.URI == other.URI
+	return a.Hash == other.Hash && a.Path == other.Path && a.URI == other.URI
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
-func (a Archive) Serialize() map[string]interface{} {
-	var assets map[string]interface{}
+func (a *Archive) Serialize() map[string]interface{} {
+	result := map[string]interface{}{
+		string(SigKey): ArchiveSig,
+	}
+	if a.Hash != "" {
+		result[ArchiveHashProperty] = a.Hash
+	}
 	if a.Assets != nil {
-		assets = make(map[string]interface{})
+		assets := make(map[string]interface{})
 		for k, v := range a.Assets {
-			assets[k] = v.Serialize()
+			switch t := v.(type) {
+			case *Asset:
+				assets[k] = t.Serialize()
+			case *Archive:
+				assets[k] = t.Serialize()
+			default:
+				contract.Failf("Unrecognized asset map type %v", reflect.TypeOf(t))
+			}
 		}
+		result[ArchiveAssetsProperty] = assets
 	}
-	return map[string]interface{}{
-		string(SigKey):        ArchiveSig,
-		ArchiveAssetsProperty: assets,
-		ArchivePathProperty:   a.Path,
-		ArchiveURIProperty:    a.URI,
+	if a.Path != "" {
+		result[ArchivePathProperty] = a.Path
 	}
+	if a.URI != "" {
+		result[ArchiveURIProperty] = a.URI
+	}
+	return result
 }
 
 // DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
-func DeserializeArchive(obj map[string]interface{}) (Archive, bool) {
+func DeserializeArchive(obj map[string]interface{}, requireHash bool) (*Archive, bool, error) {
+	// If not an archive, return false immediately.
 	if obj[string(SigKey)] != ArchiveSig {
-		return Archive{}, false
+		return &Archive{}, false, nil
 	}
-	var assets map[string]Asset
+
+	var hash string
+	if v, has := obj[ArchiveHashProperty]; has {
+		hash = v.(string)
+	} else if requireHash {
+		return &Archive{}, false, errors.New("archive is missing a hash")
+	}
+
+	var assets map[string]interface{}
 	if v, has := obj[ArchiveAssetsProperty]; has {
-		assets = make(map[string]Asset)
-		for k, v := range v.(map[string]interface{}) {
-			switch t := v.(type) {
-			case Asset:
-				assets[k] = t
-			case map[string]interface{}:
-				a, isa := DeserializeAsset(t)
-				if !isa {
-					return Archive{}, false
+		assets = make(map[string]interface{})
+		if v != nil {
+			for k, elem := range v.(map[string]interface{}) {
+				switch t := elem.(type) {
+				case *Asset:
+					assets[k] = t
+				case *Archive:
+					assets[k] = t
+				case map[string]interface{}:
+					a, isa, err := DeserializeAsset(t, requireHash)
+					if err != nil {
+						return &Archive{}, false, err
+					} else if isa {
+						assets[k] = a
+					} else {
+						arch, isarch, err := DeserializeArchive(t, requireHash)
+						if err != nil {
+							return &Archive{}, false, err
+						} else if !isarch {
+							return &Archive{}, false, errors.Errorf("archive member '%v' is not an asset or archive", k)
+						}
+						assets[k] = arch
+					}
+				default:
+					return &Archive{}, false, nil
 				}
-				assets[k] = a
-			default:
-				return Archive{}, false
 			}
 		}
 	}
@@ -371,15 +533,15 @@ func DeserializeArchive(obj map[string]interface{}) (Archive, bool) {
 	if v, has := obj[ArchiveURIProperty]; has {
 		uri = v.(string)
 	}
-	return Archive{
-		Assets: assets,
-		Path:   path,
-		URI:    uri,
-	}, true
+	if assets == nil && path == "" && uri == "" {
+		return &Archive{}, false, errors.New("archive is missing one of assets, path, or URI")
+	}
+
+	return &Archive{Hash: hash, Assets: assets, Path: path, URI: uri}, true, nil
 }
 
 // Read returns a map of asset name to its associated reader object (which can be used to perform reads/IO).
-func (a Archive) Read() (map[string]*Blob, error) {
+func (a *Archive) Read() (map[string]*Blob, error) {
 	if a.IsAssets() {
 		return a.readAssets()
 	} else if a.IsPath() {
@@ -391,59 +553,89 @@ func (a Archive) Read() (map[string]*Blob, error) {
 	return nil, nil
 }
 
-func (a Archive) readAssets() (map[string]*Blob, error) {
+func (a *Archive) readAssets() (map[string]*Blob, error) {
 	// To read a map-based archive, just produce a map from each asset to its associated reader.
 	m, isassets := a.GetAssets()
 	contract.Assertf(isassets, "Expected an asset map-based archive")
+
 	result := map[string]*Blob{}
 	for name, asset := range m {
-		// TODO[pulumi/pulumi#240]: It would be better to treat folders as a first class concept intead
-		//  of reusing a path Asset for this purpose.
-		path, isPath := asset.GetPath()
-		if isPath {
-			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
-				// Asset is a folder, expand it
-				if walkerr := filepath.Walk(path, func(filePath string, f os.FileInfo, fileerr error) error {
-					if fileerr != nil || f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
-						return fileerr
-					}
-
-					var err error
-					result[filePath], err = NewPathAsset(filePath).Read()
-					return err
-				}); walkerr != nil {
-					return nil, walkerr
-				}
-				continue
+		switch t := asset.(type) {
+		case *Asset:
+			// An asset can be added directly to the result.
+			blob, err := t.Read()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to expand archive asset '%v'", name)
 			}
-		}
-		var err error
-		if result[name], err = asset.Read(); err != nil {
-			return nil, err
+			result[name] = blob
+		case *Archive:
+			// An archive must be recursively walked in order to turn it into a flat result map.
+			subs, err := t.Read()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to expand sub-archive '%v'", name)
+			}
+			for sub, blob := range subs {
+				result[filepath.Join(name, sub)] = blob
+			}
 		}
 	}
 	return result, nil
 }
 
-func (a Archive) readPath() (map[string]*Blob, error) {
+func (a *Archive) readPath() (map[string]*Blob, error) {
 	// To read a path-based archive, read that file and use its extension to ascertain what format to use.
 	path, ispath := a.GetPath()
 	contract.Assertf(ispath, "Expected a path-based asset")
 
-	format, err := detectArchiveFormat(path)
-	if err != nil {
-		return nil, err
+	format := detectArchiveFormat(path)
+
+	if format == NotArchive {
+		// If not an archive, it could be a directory; if so, simply expand it out uncompressed as an archive.
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
+		} else if info.IsDir() {
+			return nil, errors.Wrapf(err, "'%v' is neither a recognized archive type nor a directory", path)
+		}
+		results := make(map[string]*Blob)
+		if walkerr := filepath.Walk(path, func(filePath string, f os.FileInfo, fileerr error) error {
+			// If there was an error, exit.
+			if fileerr != nil {
+				return fileerr
+			}
+			// If this was a directory or a symlink, skip it.
+			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+				return nil
+			}
+			// Finally, if this was a .pulumi directory, we will skip this by default.
+			// TODO[pulumi/pulumi#122]: when we support .pulumiignore, this will be customizable.
+			if !f.IsDir() && f.Name() == workspace.Dir {
+				return filepath.SkipDir
+			}
+
+			// Otherwise, add this asset to the list of blobs, and keep going.
+			file := &Asset{Path: filePath}
+			blob, err := file.Read()
+			if err != nil {
+				return err
+			}
+			results[filePath] = blob
+			return nil
+		}); walkerr != nil {
+			return nil, walkerr
+		}
+		return results, nil
 	}
 
+	// Otherwise, it's an archive file, and we will go ahead and open it up and read it.
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-
 	return readArchive(file, format)
 }
 
-func (a Archive) readURI() (map[string]*Blob, error) {
+func (a *Archive) readURI() (map[string]*Blob, error) {
 	// To read a URI-based archive, fetch the contents remotely and use the extension to pick the format to use.
 	url, isurl, err := a.GetURIURL()
 	if err != nil {
@@ -451,10 +643,10 @@ func (a Archive) readURI() (map[string]*Blob, error) {
 	}
 	contract.Assertf(isurl, "Expected a URI-based asset")
 
-	format, err := detectArchiveFormat(url.Path)
-	if err != nil {
+	format := detectArchiveFormat(url.Path)
+	if format == NotArchive {
 		// IDEA: support (a) hints and (b) custom providers that default to certain formats.
-		return nil, err
+		return nil, errors.Errorf("file at URL '%v' is not a recognized archive format", url)
 	}
 
 	ar, err := a.openURLStream(url)
@@ -464,7 +656,7 @@ func (a Archive) readURI() (map[string]*Blob, error) {
 	return readArchive(ar, format)
 }
 
-func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
+func (a *Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 	switch s := url.Scheme; s {
 	case "http", "https":
 		resp, err := http.Get(url.String())
@@ -486,7 +678,7 @@ func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 // Bytes fetches the archive contents as a byte slices.  This is almost certainly the least efficient way to deal with
 // the underlying streaming capabilities offered by assets and archives, but can be used in a pinch to interact with
 // APIs that demand []bytes.
-func (a Archive) Bytes(format ArchiveFormat) ([]byte, error) {
+func (a *Archive) Bytes(format ArchiveFormat) ([]byte, error) {
 	var data bytes.Buffer
 	if err := a.Archive(format, &data); err != nil {
 		return nil, err
@@ -496,7 +688,7 @@ func (a Archive) Bytes(format ArchiveFormat) ([]byte, error) {
 
 // Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
 // copying as is feasible, however if the desired format is different from the source, it will need to translate.
-func (a Archive) Archive(format ArchiveFormat, w io.Writer) error {
+func (a *Archive) Archive(format ArchiveFormat, w io.Writer) error {
 	// If the source format is the same, just return that.
 	if sf, ss, err := a.ReadSourceArchive(); sf != NotArchive && sf == format {
 		if err != nil {
@@ -519,7 +711,7 @@ func (a Archive) Archive(format ArchiveFormat, w io.Writer) error {
 	}
 }
 
-func (a Archive) archiveTar(w io.Writer) error {
+func (a *Archive) archiveTar(w io.Writer) error {
 	// Read the archive.
 	arch, err := a.Read()
 	if err != nil {
@@ -561,12 +753,12 @@ func (a Archive) archiveTar(w io.Writer) error {
 	return tw.Close()
 }
 
-func (a Archive) archiveTarGZIP(w io.Writer) error {
+func (a *Archive) archiveTarGZIP(w io.Writer) error {
 	z := gzip.NewWriter(w)
 	return a.archiveTar(z)
 }
 
-func (a Archive) archiveZIP(w io.Writer) error {
+func (a *Archive) archiveZIP(w io.Writer) error {
 	// Read the archive.
 	arch, err := a.Read()
 	if err != nil {
@@ -601,20 +793,52 @@ func (a Archive) archiveZIP(w io.Writer) error {
 	return zw.Close()
 }
 
-// ReadSourceArchive returns a stream to the underlying archive, if there eis one.
-func (a Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
+// ReadSourceArchive returns a stream to the underlying archive, if there is one.
+func (a *Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
-		if format, archerr := detectArchiveFormat(path); archerr != nil && format != NotArchive {
+		if format := detectArchiveFormat(path); format != NotArchive {
 			f, err := os.Open(path)
 			return format, f, err
 		}
 	} else if url, isurl, urlerr := a.GetURIURL(); urlerr == nil && isurl {
-		if format, archerr := detectArchiveFormat(url.Path); archerr == nil && format != NotArchive {
+		if format := detectArchiveFormat(url.Path); format != NotArchive {
 			s, err := a.openURLStream(url)
 			return format, s, err
 		}
 	}
 	return NotArchive, nil, nil
+}
+
+// EnsureHash computes the SHA1 hash of the archive's contents and stores it on the object.
+func (a *Archive) EnsureHash() error {
+	if a.Hash == "" {
+		hash := sha256.New()
+
+		// Attempt to compute the hash in the most efficient way.  First try to open the archive directly and copy it
+		// to the hash.  This avoids traversing any of the contents and just treats it as a byte stream.
+		f, r, err := a.ReadSourceArchive()
+		if err != nil {
+			return err
+		}
+		if f != NotArchive && r != nil {
+			defer contract.IgnoreClose(r)
+			_, err = io.Copy(hash, r)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Otherwise, it's not an archive; we'll need to transform it into one.  Pick tar since it avoids
+			// any superfluous compression which doesn't actually help us in this situation.
+			err := a.Archive(TarArchive, hash)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Finally, encode the resulting hash as a string and we're done.
+		a.Hash = hex.EncodeToString(hash.Sum(nil))
+	}
+	return nil
 }
 
 // ArchiveFormat indicates what archive and/or compression format an archive uses.
@@ -636,16 +860,16 @@ var ArchiveExts = map[string]ArchiveFormat{
 }
 
 // detectArchiveFormat takes a path and infers its archive format based on the file extension.
-func detectArchiveFormat(path string) (ArchiveFormat, error) {
+func detectArchiveFormat(path string) ArchiveFormat {
 	ext := filepath.Ext(path)
 	if moreext := filepath.Ext(strings.TrimRight(path, ext)); moreext != "" {
 		ext = moreext + ext // this ensures we detect ".tar.gz" correctly.
 	}
 	format, has := ArchiveExts[ext]
 	if !has {
-		return NotArchive, errors.Errorf("unrecognized archive format '%v'", ext)
+		return NotArchive
 	}
-	return format, nil
+	return format
 }
 
 // readArchive takes a stream to an existing archive and returns a map of names to readers for the inner assets.

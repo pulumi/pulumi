@@ -162,8 +162,8 @@ func NewBoolProperty(v bool) PropertyValue             { return PropertyValue{v}
 func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v} }
 func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
-func NewAssetProperty(v Asset) PropertyValue           { return PropertyValue{v} }
-func NewArchiveProperty(v Archive) PropertyValue       { return PropertyValue{v} }
+func NewAssetProperty(v *Asset) PropertyValue          { return PropertyValue{v} }
+func NewArchiveProperty(v *Archive) PropertyValue      { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
@@ -219,9 +219,9 @@ func NewPropertyValueRepl(v interface{},
 		return NewNumberProperty(t)
 	case string:
 		return NewStringProperty(t)
-	case Asset:
+	case *Asset:
 		return NewAssetProperty(t)
-	case Archive:
+	case *Archive:
 		return NewArchiveProperty(t)
 	case Computed:
 		return NewComputedProperty(t)
@@ -313,10 +313,10 @@ func (v PropertyValue) StringValue() string { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 
 // AssetValue fetches the underlying asset value (panicking if it isn't an asset).
-func (v PropertyValue) AssetValue() Asset { return v.V.(Asset) }
+func (v PropertyValue) AssetValue() *Asset { return v.V.(*Asset) }
 
 // ArchiveValue fetches the underlying archive value (panicking if it isn't an archive).
-func (v PropertyValue) ArchiveValue() Archive { return v.V.(Archive) }
+func (v PropertyValue) ArchiveValue() *Archive { return v.V.(*Archive) }
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
@@ -358,13 +358,13 @@ func (v PropertyValue) IsArray() bool {
 
 // IsAsset returns true if the underlying value is an object.
 func (v PropertyValue) IsAsset() bool {
-	_, is := v.V.(Asset)
+	_, is := v.V.(*Asset)
 	return is
 }
 
 // IsArchive returns true if the underlying value is an object.
 func (v PropertyValue) IsArchive() bool {
-	_, is := v.V.(Archive)
+	_, is := v.V.(*Archive)
 	return is
 }
 

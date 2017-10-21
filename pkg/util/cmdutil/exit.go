@@ -21,20 +21,40 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 	return func(cmd *cobra.Command, args []string) {
 		if err := run(cmd, args); err != nil {
 			msg := err.Error()
-			if stackerr, ok := err.(interface {
-				StackTrace() errors.StackTrace
-			}); ok {
-				// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug glog it.
-				stack := msg + "\n"
-				for _, f := range stackerr.StackTrace() {
-					stack += fmt.Sprintf("%+s\n", f)
+			stack := msg + "\n"
+			hasstack := false
+			for {
+				if stackerr, ok := err.(interface {
+					StackTrace() errors.StackTrace
+				}); ok {
+					if hasstack {
+						stack += "CAUSED BY...\n"
+					}
+					hasstack = true
+
+					// Append the stack trace.
+					for _, f := range stackerr.StackTrace() {
+						stack += fmt.Sprintf("%+v\n", f)
+					}
+
+					// Keep going up the causer chain, if any.
+					cause := errors.Cause(err)
+					if cause == err || cause == nil {
+						break
+					}
+					err = cause
 				}
+			}
+
+			// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug glog it.
+			if hasstack {
 				if LogToStderr {
 					msg = stack
 				} else {
 					glog.V(3).Infof(stack)
 				}
 			}
+
 			ExitError(msg)
 		}
 	}
