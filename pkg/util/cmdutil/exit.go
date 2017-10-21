@@ -6,19 +6,36 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 )
 
-// RunFunc wraps an error-returning run func with standard Lumi error handling.  All Lumi commands should wrap
+// RunFunc wraps an error-returning run func with standard Pulumi error handling.  All Lumi commands should wrap
 // themselves in this to ensure consistent and appropriate error behavior.  In particular, we want to avoid any calls to
 // os.Exit in the middle of a callstack which might prohibit reaping of child processes, resources, etc.  And we wish to
 // avoid the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly prints usage.
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if err := run(cmd, args); err != nil {
-			ExitError(err.Error())
+			msg := err.Error()
+			if stackerr, ok := err.(interface {
+				StackTrace() errors.StackTrace
+			}); ok {
+				// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug glog it.
+				stack := msg + "\n"
+				for _, f := range stackerr.StackTrace() {
+					stack += fmt.Sprintf("%+s\n", f)
+				}
+				if LogToStderr {
+					msg = stack
+				} else {
+					glog.V(3).Infof(stack)
+				}
+			}
+			ExitError(msg)
 		}
 	}
 }
