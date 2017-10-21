@@ -450,7 +450,7 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 	} else if v.IsOutput() {
 		return v.OutputValue()
 	}
-	contract.Assert(v.IsObject())
+	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)
 }
 
