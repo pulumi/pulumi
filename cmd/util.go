@@ -78,9 +78,9 @@ func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
 
 	for event := range events {
 		switch event.Type {
-		case "stdoutcolor":
+		case engine.StdoutColorEvent:
 			fmt.Print(colors.ColorizeText(event.Payload.(string)))
-		case "diag":
+		case engine.DiagEvent:
 			payload := event.Payload.(engine.DiagEventPayload)
 			var out io.Writer
 			out = os.Stdout

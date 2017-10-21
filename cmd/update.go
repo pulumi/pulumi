@@ -45,7 +45,7 @@ func newUpdateCmd() *cobra.Command {
 
 			go displayEvents(events, done, debug)
 
-			err = lumiEngine.Deploy(stackName, events, engine.DeployOptions{
+			if err = lumiEngine.Deploy(stackName, events, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
@@ -53,10 +53,12 @@ func newUpdateCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-			})
+			}); err != nil {
+				return err
+			}
 
 			<-done
-			return err
+			return nil
 		}),
 	}
 

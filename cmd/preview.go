@@ -43,17 +43,19 @@ func newPreviewCmd() *cobra.Command {
 
 			go displayEvents(events, done, debug)
 
-			err = lumiEngine.Preview(stackName, events, engine.PreviewOptions{
+			if err = lumiEngine.Preview(stackName, events, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-			})
+			}); err != nil {
+				return err
+			}
 
 			<-done
-			return err
+			return nil
 		}),
 	}
 

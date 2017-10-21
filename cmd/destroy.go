@@ -41,14 +41,15 @@ func newDestroyCmd() *cobra.Command {
 
 				go displayEvents(events, done, debug)
 
-				err := lumiEngine.Destroy(stackName, events, engine.DestroyOptions{
+				if err = lumiEngine.Destroy(stackName, events, engine.DestroyOptions{
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,
-				})
+				}); err != nil {
+					return err
+				}
 
 				<-done
-				return err
 			}
 
 			return nil
