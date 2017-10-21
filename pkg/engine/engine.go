@@ -17,8 +17,13 @@ type TargetProvider interface {
 	GetTarget(name tokens.QName) (*deploy.Target, error)
 }
 
-// SnapshotProvider abstracts away retriving and storing snapshots
+// Mutation abstracts away managing changes to snapshots
+type Mutation interface {
+	End(snapshot *deploy.Snapshot) error
+}
+
+// SnapshotProvider abstracts away retrieving and storing snapshots
 type SnapshotProvider interface {
 	GetSnapshot(name tokens.QName) (*deploy.Snapshot, error)
-	SaveSnapshot(snapshot *deploy.Snapshot) error
+	BeginMutation(name tokens.QName) (Mutation, error)
 }

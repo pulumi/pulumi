@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -44,7 +45,17 @@ func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, er
 	return snapshot, err
 }
 
-func (p localStackProvider) SaveSnapshot(snapshot *deploy.Snapshot) error {
+type localStackMutation struct {
+	name tokens.QName
+}
+
+func (p localStackProvider) BeginMutation(name tokens.QName) (engine.Mutation, error) {
+	return localStackMutation{name: name}, nil
+}
+
+func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
+	contract.Assert(m.name == snapshot.Namespace)
+
 	target, _, err := getStack(snapshot.Namespace)
 	if err != nil && !os.IsNotExist(err) {
 		return err
