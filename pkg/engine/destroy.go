@@ -18,6 +18,8 @@ type DestroyOptions struct {
 func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts DestroyOptions) error {
 	contract.Require(stack != tokens.QName(""), "stack")
 
+	defer func() { events <- cancelEvent() }()
+
 	info, err := eng.planContextFromStack(stack, opts.Package)
 	if err != nil {
 		return err

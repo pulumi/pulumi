@@ -74,10 +74,15 @@ func setCurrentStack(name tokens.QName, verify bool) error {
 // Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
 // await all the events being written.
 func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
-	defer close(done)
+	defer func() {
+		done <- true
+	}()
 
+Outer:
 	for event := range events {
 		switch event.Type {
+		case engine.CancelEvent:
+			break Outer
 		case engine.StdoutColorEvent:
 			fmt.Print(colors.ColorizeText(event.Payload.(string)))
 		case engine.DiagEvent:

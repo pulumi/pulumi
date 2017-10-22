@@ -19,9 +19,14 @@ type Event struct {
 type EventType string
 
 const (
+	CancelEvent      EventType = "cancel"
 	StdoutColorEvent EventType = "stdoutcolor"
-	DiagEvent        EventType = "Diag"
+	DiagEvent        EventType = "diag"
 )
+
+func cancelEvent() Event {
+	return Event{Type: CancelEvent}
+}
 
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {

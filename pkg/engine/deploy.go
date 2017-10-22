@@ -33,6 +33,8 @@ func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOp
 	contract.Require(stack != tokens.QName(""), "stack")
 	contract.Require(events != nil, "events")
 
+	defer func() { events <- cancelEvent() }()
+
 	info, err := eng.planContextFromStack(stack, opts.Package)
 	if err != nil {
 		return err

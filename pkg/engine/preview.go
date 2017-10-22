@@ -23,6 +23,8 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 	contract.Require(stack != tokens.QName(""), "stack")
 	contract.Require(events != nil, "events")
 
+	defer func() { events <- cancelEvent() }()
+
 	info, err := eng.planContextFromStack(stack, opts.Package)
 	if err != nil {
 		return err
