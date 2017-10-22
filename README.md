@@ -2,7 +2,7 @@
 
 The Pulumi Fabric ("Pulumi") is a framework and toolset for creating reusable cloud services.
 
-If you are learning about Pulumi for the first time, please see [the overview document](docs/overview.md).
+If you are learning about Pulumi for the first time, please [visit our docs website](https://docs.pulumi.com/).
 
 ## Build Status
 
