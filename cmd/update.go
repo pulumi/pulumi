@@ -3,14 +3,34 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newUpdateCmd() *cobra.Command {
+	// Swap out which update command to use based on whether or not the Console API is available.
+	_, err := pulumiConsoleAPI()
+	if err != nil {
+		return newFAFUpdateCmd()
+	}
+	return newCloudUpdateCmd()
+}
+
+// newFAFUpdateCmd returns the fire-and-forget version of the update command.
+func newFAFUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var debug bool
 	var dryRun bool
@@ -109,4 +129,137 @@ func newUpdateCmd() *cobra.Command {
 		"Only display summarization of resources and operations")
 
 	return cmd
+}
+
+func newCloudUpdateCmd() *cobra.Command {
+	var org string
+	var cloud string
+	var repo string
+	var project string
+	var stack string
+
+	var cmd = &cobra.Command{
+		Use:        "update",
+		Aliases:    []string{"up"},
+		SuggestFor: []string{"deploy", "push"},
+		Short:      "Update the resources in an stack",
+		Long: "Update a Pulumi Program\n" +
+			"\n" +
+			"This command creates or updates a Stack hosted in a Pulumi Cloud.",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// Zip up the Pulumi program's directory, which may be a parent of CWD.
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %v", err)
+			}
+			programPath, err := workspace.DetectPackage(cwd)
+			if err != nil {
+				return fmt.Errorf("looking for Pulumi package: %v", err)
+			}
+			if programPath == "" {
+				return fmt.Errorf("no Pulumi package found")
+			}
+			// programPath is the path to the pulumi.yaml file. Need its parent folder.
+			programFolder := filepath.Dir(programPath)
+			archive, err := archiveAndEncodePath(programFolder)
+			if err != nil {
+				return fmt.Errorf("creating archive: %v", err)
+			}
+
+			// Gather up configuration.
+			stackToken := tokens.QName(stack)
+			config, err := getConfiguration(stackToken)
+			if err != nil {
+				return fmt.Errorf("getting configuration: %v", err)
+			}
+
+			// Update the program in the Pulumi Cloud
+			updateRequest := apitype.UpdateProgramRequest{
+				ProgramArchive: archive,
+				Config:         config,
+			}
+			var updateResponse apitype.UpdateProgramResponse
+			path := fmt.Sprintf("/orgs/%s/clouds/%s/programs/%s/%s/%s/update", org, cloud, repo, project, stack)
+			if err = pulumiRESTCall("POST", path, &updateRequest, &updateResponse); err != nil {
+				return err
+			}
+			fmt.Printf("Updating Stack '%s' to version %d...\n", stack, updateResponse.Version)
+
+			// Wait for the update to complete.
+			result, err := waitForUpdate(path)
+			if err != nil {
+				return fmt.Errorf("waiting for update: %v", err)
+			}
+			fmt.Printf("Final result: %s\n", result)
+
+			return nil
+		}),
+	}
+
+	cmd.PersistentFlags().StringVarP(
+		&org, "organization", "o", "",
+		"Target organization")
+	cmd.PersistentFlags().StringVarP(
+		&cloud, "cloud", "c", "",
+		"Target cloud")
+	cmd.PersistentFlags().StringVarP(
+		&repo, "repo", "r", "",
+		"Target Pulumi repo")
+	cmd.PersistentFlags().StringVarP(
+		&project, "project", "p", "",
+		"Target Pulumi project")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"Name of the stack to deploy")
+
+	// We need all of these flags to be set. In the future we'll get some of these from the .pulumi folder, and have
+	// a meaningful default for others. So in practice users won't need to specify all of these. (Ideally none.)
+	contract.AssertNoError(cmd.MarkPersistentFlagRequired("organization"))
+	contract.AssertNoError(cmd.MarkPersistentFlagRequired("cloud"))
+	contract.AssertNoError(cmd.MarkPersistentFlagRequired("repo"))
+	contract.AssertNoError(cmd.MarkPersistentFlagRequired("project"))
+	contract.AssertNoError(cmd.MarkPersistentFlagRequired("stack"))
+
+	return cmd
+}
+
+// waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the state
+// description. (e.g. "failed" or "succeeded".) path is the URL endpoint to poll for updates, events and done
+// are channels to emit output events to.
+func waitForUpdate(path string) (string, error) {
+	time.Sleep(3 * time.Second)
+
+	// Events occur in sequence, filter out all the ones we have seen before in each request.
+	eventIndex := 0
+	for {
+		time.Sleep(2 * time.Second)
+
+		var updateResults apitype.UpdateResults
+		pathWithIndex := fmt.Sprintf("%s?afterIndex=%d", path, eventIndex)
+		if err := pulumiRESTCall("GET", pathWithIndex, nil, &updateResults); err != nil {
+			return "", err
+		}
+
+		for _, event := range updateResults.Events {
+			printEvent(event)
+			eventIndex = event.Index
+		}
+
+		// Check if in termal state.
+		switch updateResults.Status {
+		case apitype.StatusFailed:
+			fallthrough
+		case apitype.StatusSucceeded:
+			return updateResults.Status, nil
+		}
+	}
+}
+
+func printEvent(event apitype.UpdateEvent) {
+	stream := os.Stdout // Ignoring event.Kind which could be StderrEvent.
+	text := event.Fields["text"].(string)
+	if colorize, ok := event.Fields["colorize"].(bool); ok && colorize {
+		text = colors.ColorizeText(text)
+	}
+	fmt.Fprint(stream, text)
 }
