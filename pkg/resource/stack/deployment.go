@@ -201,13 +201,13 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 			}
 			// This could be an asset or archive; if so, recover its type.
 			objmap := obj.Mappable()
-			asset, isasset, err := resource.DeserializeAsset(objmap, true)
+			asset, isasset, err := resource.DeserializeAsset(objmap)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			} else if isasset {
 				return resource.NewAssetProperty(asset), nil
 			}
-			archive, isarchive, err := resource.DeserializeArchive(objmap, true)
+			archive, isarchive, err := resource.DeserializeArchive(objmap)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			} else if isarchive {

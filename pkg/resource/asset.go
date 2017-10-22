@@ -134,7 +134,7 @@ func (a *Asset) Serialize() map[string]interface{} {
 }
 
 // DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
-func DeserializeAsset(obj map[string]interface{}, requireHash bool) (*Asset, bool, error) {
+func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	// If not an asset, return false immediately.
 	if obj[string(SigKey)] != AssetSig {
 		return &Asset{}, false, nil
@@ -144,10 +144,7 @@ func DeserializeAsset(obj map[string]interface{}, requireHash bool) (*Asset, boo
 	var hash string
 	if v, has := obj[AssetHashProperty]; has {
 		hash = v.(string)
-	} else if requireHash {
-		return &Asset{}, false, errors.New("asset is missing a hash")
 	}
-
 	var text string
 	if v, has := obj[AssetTextProperty]; has {
 		text = v.(string)
@@ -481,7 +478,7 @@ func (a *Archive) Serialize() map[string]interface{} {
 }
 
 // DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
-func DeserializeArchive(obj map[string]interface{}, requireHash bool) (*Archive, bool, error) {
+func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	// If not an archive, return false immediately.
 	if obj[string(SigKey)] != ArchiveSig {
 		return &Archive{}, false, nil
@@ -490,8 +487,6 @@ func DeserializeArchive(obj map[string]interface{}, requireHash bool) (*Archive,
 	var hash string
 	if v, has := obj[ArchiveHashProperty]; has {
 		hash = v.(string)
-	} else if requireHash {
-		return &Archive{}, false, errors.New("archive is missing a hash")
 	}
 
 	var assets map[string]interface{}
@@ -505,13 +500,13 @@ func DeserializeArchive(obj map[string]interface{}, requireHash bool) (*Archive,
 				case *Archive:
 					assets[k] = t
 				case map[string]interface{}:
-					a, isa, err := DeserializeAsset(t, requireHash)
+					a, isa, err := DeserializeAsset(t)
 					if err != nil {
 						return &Archive{}, false, err
 					} else if isa {
 						assets[k] = a
 					} else {
-						arch, isarch, err := DeserializeArchive(t, requireHash)
+						arch, isarch, err := DeserializeArchive(t)
 						if err != nil {
 							return &Archive{}, false, err
 						} else if !isarch {
