@@ -3,9 +3,12 @@
 package resource
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func TestNullPropertyValueDiffs(t *testing.T) {
@@ -270,10 +273,12 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 
 func TestAssetPropertyValueDiffs(t *testing.T) {
 	t.Parallel()
-	a1 := NewTextAsset("test")
+	a1, err := NewTextAsset("test")
+	assert.Nil(t, err)
 	d1 := NewAssetProperty(a1).Diff(NewAssetProperty(a1))
 	assert.Nil(t, d1)
-	a2 := NewTextAsset("test2")
+	a2, err := NewTextAsset("test2")
+	assert.Nil(t, err)
 	d2 := NewAssetProperty(a1).Diff(NewAssetProperty(a2))
 	assert.NotNil(t, d2)
 	assert.Nil(t, d2.Array)
@@ -293,23 +298,31 @@ func TestAssetPropertyValueDiffs(t *testing.T) {
 
 func TestArchivePropertyValueDiffs(t *testing.T) {
 	t.Parallel()
-	a1 := NewPathArchive("/dev/null")
+	path, err := tempArchive("test")
+	assert.Nil(t, err)
+	defer func() { contract.IgnoreError(os.Remove(path)) }()
+	a1, err := NewPathArchive(path)
+	assert.Nil(t, err)
 	d1 := NewArchiveProperty(a1).Diff(NewArchiveProperty(a1))
 	assert.Nil(t, d1)
-	a2 := NewPathArchive("/dev/tty1")
+	path2, err := tempArchive("test2")
+	assert.Nil(t, err)
+	defer func() { contract.IgnoreError(os.Remove(path)) }()
+	a2, err := NewPathArchive(path2)
+	assert.Nil(t, err)
 	d2 := NewArchiveProperty(a1).Diff(NewArchiveProperty(a2))
 	assert.NotNil(t, d2)
 	assert.Nil(t, d2.Array)
 	assert.Nil(t, d2.Object)
 	assert.True(t, d2.Old.IsArchive())
-	assert.Equal(t, "/dev/null", d2.Old.ArchiveValue().Path)
+	assert.Equal(t, path, d2.Old.ArchiveValue().Path)
 	assert.True(t, d2.New.IsArchive())
-	assert.Equal(t, "/dev/tty1", d2.New.ArchiveValue().Path)
+	assert.Equal(t, path2, d2.New.ArchiveValue().Path)
 	d3 := NewArchiveProperty(a1).Diff(NewNullProperty())
 	assert.NotNil(t, d3)
 	assert.Nil(t, d3.Array)
 	assert.Nil(t, d3.Object)
 	assert.True(t, d3.Old.IsArchive())
-	assert.Equal(t, "/dev/null", d3.Old.ArchiveValue().Path)
+	assert.Equal(t, path, d3.Old.ArchiveValue().Path)
 	assert.True(t, d3.New.IsNull())
 }

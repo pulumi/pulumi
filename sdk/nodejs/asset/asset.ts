@@ -3,7 +3,7 @@
 import { Computed, ComputedValue } from "../resource";
 
 /**
- * Asset represents a blob of text or data that is managed as a first class entity.
+ * Asset represents a single blob of text or data that is managed as a first class entity.
  */
 export abstract class Asset {
 }

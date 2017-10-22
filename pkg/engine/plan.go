@@ -5,6 +5,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -470,23 +471,23 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 	} else if v.IsAsset() {
 		a := v.AssetValue()
 		if text, has := a.GetText(); has {
-			b.WriteString("asset {\n")
+			b.WriteString(fmt.Sprintf("asset(text:%s) {\n", shortHash(a.Hash)))
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(text, "\n")
 			for _, line := range lines {
-				b.WriteString(fmt.Sprintf("%v    \"%v\"\n", indent, line))
+				b.WriteString(fmt.Sprintf("%s    \"%s\"\n", indent, line))
 			}
 			b.WriteString(fmt.Sprintf("%v}", indent))
 		} else if path, has := a.GetPath(); has {
-			b.WriteString(fmt.Sprintf("asset { file://%v }", path))
+			b.WriteString(fmt.Sprintf("asset(file:%s) { %s }", shortHash(a.Hash), path))
 		} else {
 			contract.Assert(a.IsURI())
-			b.WriteString(fmt.Sprintf("asset { %v }", a.URI))
+			b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }", shortHash(a.Hash), a.URI))
 		}
 	} else if v.IsArchive() {
 		a := v.ArchiveValue()
 		if assets, has := a.GetAssets(); has {
-			b.WriteString("archive {\n")
+			b.WriteString(fmt.Sprintf("archive(assets:%s) {\n", shortHash(a.Hash)))
 			var names []string
 			for name := range assets {
 				names = append(names, name)
@@ -494,14 +495,21 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 			sort.Strings(names)
 			for _, name := range names {
 				b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
-				printPropertyValue(b, resource.NewAssetProperty(assets[name]), planning, indent+"    ")
+				switch t := assets[name].(type) {
+				case *resource.Asset:
+					printPropertyValue(b, resource.NewAssetProperty(t), planning, indent+"    ")
+				case *resource.Archive:
+					printPropertyValue(b, resource.NewArchiveProperty(t), planning, indent+"    ")
+				default:
+					contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
+				}
 			}
 			b.WriteString(fmt.Sprintf("%v}", indent))
 		} else if path, has := a.GetPath(); has {
-			b.WriteString(fmt.Sprintf("archive { file://%v }", path))
+			b.WriteString(fmt.Sprintf("archive(file:%s) { %s }", shortHash(a.Hash), path))
 		} else {
 			contract.Assert(a.IsURI())
-			b.WriteString(fmt.Sprintf("archive { %v }", a.URI))
+			b.WriteString(fmt.Sprintf("archive(uri:%s) { %v }", shortHash(a.Hash), a.URI))
 		}
 	} else if v.IsComputed() || v.IsOutput() {
 		b.WriteString(v.TypeString())
@@ -517,6 +525,13 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 		}
 	}
 	b.WriteString("\n")
+}
+
+func shortHash(hash string) string {
+	if len(hash) > 7 {
+		return hash[:7]
+	}
+	return hash
 }
 
 func getArrayElemHeader(b *bytes.Buffer, i int, indent string) (string, string) {

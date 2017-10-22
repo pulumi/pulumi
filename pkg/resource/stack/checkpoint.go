@@ -36,7 +36,7 @@ func SerializeCheckpoint(targ *deploy.Target, snap *deploy.Snapshot) *Checkpoint
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapshot) {
+func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 
 	var snap *deploy.Snapshot
@@ -45,7 +45,11 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 		// For every serialized resource vertex, create a ResourceDeployment out of it.
 		var resources []*resource.State
 		for _, res := range latest.Resources {
-			resources = append(resources, DeserializeResource(res))
+			desres, err := DeserializeResource(res)
+			if err != nil {
+				return nil, nil, err
+			}
+			resources = append(resources, desres)
 		}
 
 		snap = deploy.NewSnapshot(name, chkpoint.Latest.Time, resources, latest.Info)
@@ -55,5 +59,5 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 	return &deploy.Target{
 		Name:   name,
 		Config: chkpoint.Config,
-	}, snap
+	}, snap, nil
 }

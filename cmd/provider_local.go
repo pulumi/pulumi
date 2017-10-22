@@ -82,7 +82,10 @@ func getStack(name tokens.QName) (*deploy.Target, *deploy.Snapshot, error) {
 		return nil, nil, err
 	}
 
-	target, snapshot := stack.DeserializeCheckpoint(&checkpoint)
+	target, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
+	if err != nil {
+		return nil, nil, err
+	}
 	contract.Assert(target != nil)
 	return target, snapshot, nil
 }

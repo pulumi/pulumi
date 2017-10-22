@@ -137,60 +137,88 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res Resource) *resource.State {
+func DeserializeResource(res Resource) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
-	inputs := DeserializeProperties(res.Inputs)
-	defaults := DeserializeProperties(res.Defaults)
-	outputs := DeserializeProperties(res.Outputs)
+	inputs, err := DeserializeProperties(res.Inputs)
+	if err != nil {
+		return nil, err
+	}
+	defaults, err := DeserializeProperties(res.Defaults)
+	if err != nil {
+		return nil, err
+	}
+	outputs, err := DeserializeProperties(res.Outputs)
+	if err != nil {
+		return nil, err
+	}
 
 	var children []resource.URN
 	for _, child := range res.Children {
 		children = append(children, resource.URN(child))
 	}
 
-	return resource.NewState(res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, defaults, outputs, children)
+	return resource.NewState(
+		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, defaults, outputs, children), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
-func DeserializeProperties(props map[string]interface{}) resource.PropertyMap {
+func DeserializeProperties(props map[string]interface{}) (resource.PropertyMap, error) {
 	result := make(resource.PropertyMap)
 	for k, prop := range props {
-		result[resource.PropertyKey(k)] = DeserializePropertyValue(prop)
+		desprop, err := DeserializePropertyValue(prop)
+		if err != nil {
+			return nil, err
+		}
+		result[resource.PropertyKey(k)] = desprop
 	}
-	return result
+	return result, nil
 }
 
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
-func DeserializePropertyValue(v interface{}) resource.PropertyValue {
+func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return resource.NewBoolProperty(w)
+			return resource.NewBoolProperty(w), nil
 		case float64:
-			return resource.NewNumberProperty(w)
+			return resource.NewNumberProperty(w), nil
 		case string:
-			return resource.NewStringProperty(w)
+			return resource.NewStringProperty(w), nil
 		case []interface{}:
 			var arr []resource.PropertyValue
 			for _, elem := range w {
-				arr = append(arr, DeserializePropertyValue(elem))
+				ev, err := DeserializePropertyValue(elem)
+				if err != nil {
+					return resource.PropertyValue{}, err
+				}
+				arr = append(arr, ev)
 			}
-			return resource.NewArrayProperty(arr)
+			return resource.NewArrayProperty(arr), nil
 		case map[string]interface{}:
-			obj := DeserializeProperties(w)
+			obj, err := DeserializeProperties(w)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
 			// This could be an asset or archive; if so, recover its type.
 			objmap := obj.Mappable()
-			if asset, isasset := resource.DeserializeAsset(objmap); isasset {
-				return resource.NewAssetProperty(asset)
-			} else if archive, isarchive := resource.DeserializeArchive(objmap); isarchive {
-				return resource.NewArchiveProperty(archive)
+			asset, isasset, err := resource.DeserializeAsset(objmap, true)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			} else if isasset {
+				return resource.NewAssetProperty(asset), nil
+			}
+			archive, isarchive, err := resource.DeserializeArchive(objmap, true)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			} else if isarchive {
+				return resource.NewArchiveProperty(archive), nil
 			}
 			// Otherwise, it's just a weakly typed object map.
-			return resource.NewObjectProperty(obj)
+			return resource.NewObjectProperty(obj), nil
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
 		}
 	}
 
-	return resource.NewNullProperty()
+	return resource.NewNullProperty(), nil
 }
