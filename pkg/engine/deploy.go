@@ -38,12 +38,6 @@ func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOp
 		return err
 	}
 
-	diag := newEventSink(events, diag.FormatOptions{
-		Colors: true,
-	})
-
-	defer close(events)
-
 	return eng.deployLatest(info, deployOptions{
 		Destroy:              false,
 		DryRun:               opts.DryRun,
@@ -54,7 +48,9 @@ func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOp
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
 		Events:               events,
-		Diag:                 diag,
+		Diag: newEventSink(events, diag.FormatOptions{
+			Colors: true,
+		}),
 	})
 }
 

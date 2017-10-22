@@ -28,11 +28,7 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 		return err
 	}
 
-	diag := newEventSink(events, diag.FormatOptions{
-		Colors: true,
-	})
-
-	deployOpts := deployOptions{
+	return eng.previewLatest(info, deployOptions{
 		Destroy:              false,
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,
@@ -42,12 +38,10 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
 		Events:               events,
-		Diag:                 diag,
-	}
-
-	defer close(events)
-
-	return eng.previewLatest(info, deployOpts)
+		Diag: newEventSink(events, diag.FormatOptions{
+			Colors: true,
+		}),
+	})
 }
 
 func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {

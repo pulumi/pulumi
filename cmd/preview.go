@@ -56,6 +56,8 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			<-done
+			close(events)
+			close(done)
 			return nil
 		}),
 	}

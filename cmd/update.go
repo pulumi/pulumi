@@ -59,6 +59,8 @@ func newUpdateCmd() *cobra.Command {
 			}
 
 			<-done
+			close(events)
+			close(done)
 			return nil
 		}),
 	}

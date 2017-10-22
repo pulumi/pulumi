@@ -23,18 +23,14 @@ func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts Destroy
 		return err
 	}
 
-	diag := newEventSink(events, diag.FormatOptions{
-		Colors: true,
-	})
-
-	defer close(events)
-
 	return eng.deployLatest(info, deployOptions{
 		Destroy:  true,
 		DryRun:   opts.DryRun,
 		Parallel: opts.Parallel,
 		Summary:  opts.Summary,
 		Events:   events,
-		Diag:     diag,
+		Diag: newEventSink(events, diag.FormatOptions{
+			Colors: true,
+		}),
 	})
 }
