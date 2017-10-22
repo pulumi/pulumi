@@ -243,7 +243,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (resource.Pr
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
 		objmap := obj.Mappable()
-		asset, isasset, err := resource.DeserializeAsset(objmap, false)
+		asset, isasset, err := resource.DeserializeAsset(objmap)
 		if err != nil {
 			return resource.PropertyValue{}, err
 		} else if isasset {
@@ -251,12 +251,10 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (resource.Pr
 				if err = asset.EnsureHash(); err != nil {
 					return resource.PropertyValue{}, errors.Wrapf(err, "failed to compute asset hash")
 				}
-			} else if asset.Hash == "" {
-				return resource.PropertyValue{}, errors.New("asset missing hash, and no compute requested")
 			}
 			return resource.NewAssetProperty(asset), nil
 		}
-		archive, isarchive, err := resource.DeserializeArchive(objmap, false)
+		archive, isarchive, err := resource.DeserializeArchive(objmap)
 		if err != nil {
 			return resource.PropertyValue{}, err
 		} else if isarchive {
@@ -264,8 +262,6 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (resource.Pr
 				if err = archive.EnsureHash(); err != nil {
 					return resource.PropertyValue{}, errors.Wrapf(err, "failed to compute archive hash")
 				}
-			} else if archive.Hash == "" {
-				return resource.PropertyValue{}, errors.New("archive missing hash, and no compute requested")
 			}
 			return resource.NewArchiveProperty(archive), nil
 		}
