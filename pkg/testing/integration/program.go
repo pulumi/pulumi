@@ -19,7 +19,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 const (
@@ -70,9 +72,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	return opts
 }
 
-// ProgramTest runs a lifecycle of Pulumi commands in a program working directory.
-// Uses the `pulumi` and `yarn` binaries available on PATH. Executes the following
-// workflow:
+// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
+// binaries available on PATH.  It essentially executes the following workflow:
+//
 //   yarn install
 //   yarn link <each opts.Depencies>
 //   yarn run build
@@ -84,6 +86,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi update (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
+//
 // All commands must return success return codes for the test to succeed.
 func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	t.Parallel()
@@ -117,9 +120,9 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
-		checkpointFile := path.Join(dir, ".pulumi", "stacks", testStackName+".json")
+		checkpointFile := path.Join(dir, workspace.Dir, "stacks", testStackName+".json")
 		var byts []byte
-		byts, err = ioutil.ReadFile(path.Join(dir, ".pulumi", "stacks", testStackName+".json"))
+		byts, err = ioutil.ReadFile(path.Join(dir, workspace.Dir, "stacks", testStackName+".json"))
 		if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
 			return
 		}
@@ -232,31 +235,41 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 	}
 	runerr := cmd.Run()
 	finished = true
+	if runerr != nil {
+		_, err = fmt.Fprintf(opts.Stdout, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+		contract.IgnoreError(err)
+	}
 	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
 }
 
-// prepareProject copies the source directory, srcDir (excluding .pulumi), to a new temporary directory.  It then
-// copies the .pulumi/ directory from the given lumiSrc, if any.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts ProgramTestOptions) (string, error) {
+// prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
+// .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
+func prepareProject(t *testing.T, src string, origin string, opts ProgramTestOptions) (string, error) {
 	// Create a new temp directory.
 	dir, err := ioutil.TempDir("", "lumi-integration-test-")
 	if err != nil {
 		return "", err
 	}
 
-	// Now copy the source into it, ignoring .pulumi.
-	if copyerr := copyFile(dir, srcDir, ".pulumi"); copyerr != nil {
+	// Now copy the source into it, ignoring .pulumi/ and Pulumi.yaml if there's an origin.
+	wdir := workspace.Dir
+	proj := workspace.ProjectFile + ".yaml"
+	excl := make(map[string]bool)
+	if origin != "" {
+		excl[wdir] = true
+		excl[proj] = true
+	}
+	if copyerr := copyFile(dir, src, excl); copyerr != nil {
 		return "", copyerr
 	}
 
-	// If there's a lumi source directory, copy it atop the target.
-	if lumiSrc != "" {
-		lumiDir := filepath.Join(lumiSrc, ".pulumi")
-		if info, err := os.Stat(lumiDir); err == nil && info.IsDir() {
-			copyerr := copyFile(filepath.Join(dir, ".pulumi"), lumiDir, "")
-			if copyerr != nil {
-				return "", copyerr
-			}
+	// Now, copy back the original project's .pulumi/ and Pulumi.yaml atop the target.
+	if origin != "" {
+		if copyerr := copyFile(filepath.Join(dir, proj), filepath.Join(origin, proj), nil); copyerr != nil {
+			return "", copyerr
+		}
+		if copyerr := copyFile(filepath.Join(dir, wdir), filepath.Join(origin, wdir), nil); copyerr != nil {
+			return "", copyerr
 		}
 	}
 
@@ -293,10 +306,14 @@ func withOptionalYarnFlags(args []string) []string {
 // copyFile is a braindead simple function that copies a src file to a dst file.  Note that it is not general purpose:
 // it doesn't handle symbolic links, it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
 // and it makes no attempt to preserve file permissions.  It is what we need for this test package, no more, no less.
-func copyFile(dst string, src string, excl string) error {
+func copyFile(dst string, src string, excl map[string]bool) error {
 	info, err := os.Lstat(src)
-	if err != nil {
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
 		return err
+	} else if excl[info.Name()] {
+		return nil
 	}
 	if info.IsDir() {
 		// Recursively copy all files in a directory.
@@ -306,11 +323,9 @@ func copyFile(dst string, src string, excl string) error {
 		}
 		for _, file := range files {
 			name := file.Name()
-			if name != excl {
-				copyerr := copyFile(filepath.Join(dst, name), filepath.Join(src, name), excl)
-				if copyerr != nil {
-					return copyerr
-				}
+			copyerr := copyFile(filepath.Join(dst, name), filepath.Join(src, name), excl)
+			if copyerr != nil {
+				return copyerr
 			}
 		}
 	} else if info.Mode().IsRegular() {
