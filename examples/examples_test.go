@@ -17,7 +17,7 @@ func TestExamples(t *testing.T) {
 	if !assert.NoError(t, err, "expected a valid working directory: %v", err) {
 		return
 	}
-	examples := []integration.LumiProgramTestOptions{
+	examples := []integration.ProgramTestOptions{
 		{
 			Dir:          path.Join(cwd, "minimal"),
 			Dependencies: []string{"pulumi"},
@@ -38,7 +38,7 @@ func TestExamples(t *testing.T) {
 	for _, ex := range examples {
 		example := ex
 		t.Run(example.Dir, func(t *testing.T) {
-			integration.LumiProgramTest(t, example)
+			integration.ProgramTest(t, example)
 		})
 	}
 }
