@@ -177,7 +177,7 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
             log.debug(`Serialize property [${ctx}]: undefined`);
         }
         if (!options.dryRun) {
-            log.error(`Unexpected unknown property during deployment`);
+            log.error(`Unexpected unknown property [${ctx}] during deployment`);
         }
         return unknownComputedValue;
     }
