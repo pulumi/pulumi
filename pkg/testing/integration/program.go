@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -25,13 +26,13 @@ const (
 	testStackName = "integrationtesting"
 )
 
-// LumiProgramTestOptions provides options for LumiProgramTest
-type LumiProgramTestOptions struct {
+// ProgramTestOptions provides options for ProgramTest
+type ProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
 	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
 	Dependencies []string
-	// Map of config keys and values to set on the Lumi stack (e.g. {"aws:config:region": "us-east-2"})
+	// Map of config keys and values to set (e.g. {"aws:config:region": "us-east-2"})
 	Config map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []string
@@ -43,14 +44,14 @@ type LumiProgramTestOptions struct {
 	// Stderr is the writer to use for all stderr messages.
 	Stderr io.Writer
 
-	// LumiBin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
-	LumiBin string
+	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
+	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
 }
 
 // With combines a source set of options with a set of overrides.
-func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiProgramTestOptions {
+func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOptions {
 	if overrides.Dir != "" {
 		opts.Dir = overrides.Dir
 	}
@@ -69,7 +70,7 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 	return opts
 }
 
-// LumiProgramTest runs a lifecylce of Lumi commands in a Lumi program working directory.
+// ProgramTest runs a lifecycle of Pulumi commands in a program working directory.
 // Uses the `pulumi` and `yarn` binaries available on PATH. Executes the following
 // workflow:
 //   yarn install
@@ -84,7 +85,7 @@ func (opts LumiProgramTestOptions) With(overrides LumiProgramTestOptions) LumiPr
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
 // All commands must return success return codes for the test to succeed.
-func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
+func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	t.Parallel()
 
 	dir, err := CopyTestToTemporaryDirectory(t, &opts)
@@ -95,17 +96,17 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
-	RunCommand(t, []string{opts.LumiBin, "stack", "init", testStackName}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "stack", "init", testStackName}, dir, opts)
 	for key, value := range opts.Config {
-		RunCommand(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
+		RunCommand(t, []string{opts.Bin, "config", key, value}, dir, opts)
 	}
 
 	// Now preview and update the real changes.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
 	previewAndUpdate := func(d string) {
-		RunCommand(t, []string{opts.LumiBin, "preview"}, d, opts)
-		RunCommand(t, []string{opts.LumiBin, "update"}, d, opts)
+		RunCommand(t, []string{opts.Bin, "preview"}, d, opts)
+		RunCommand(t, []string{opts.Bin, "update"}, d, opts)
 	}
 	previewAndUpdate(dir)
 
@@ -144,21 +145,20 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	// Finally, tear down the stack, and clean up the stack.
 	_, err = fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 	contract.IgnoreError(err)
-	RunCommand(t, []string{opts.LumiBin, "destroy", "--yes"}, dir, opts)
-	RunCommand(t, []string{opts.LumiBin, "stack", "rm", "--yes", testStackName}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", testStackName}, dir, opts)
 }
 
-// CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test
-// to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *LumiProgramTestOptions) (dir string, err error) {
+// CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
+func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir string, err error) {
 	// Ensure the required programs are present.
-	if opts.LumiBin == "" {
+	if opts.Bin == "" {
 		var lumi string
 		lumi, err = exec.LookPath("pulumi")
 		if !assert.NoError(t, err, "Expected to find `pulumi` binary on $PATH: %v", err) {
 			return dir, err
 		}
-		opts.LumiBin = lumi
+		opts.Bin = lumi
 	}
 	if opts.YarnBin == "" {
 		var yarn string
@@ -186,7 +186,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *LumiProgramTestOptions) (d
 
 	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
 	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.LumiBin)
+	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
 	contract.IgnoreError(err)
 	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 	contract.IgnoreError(err)
@@ -203,12 +203,26 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *LumiProgramTestOptions) (d
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, args []string, wd string, opts LumiProgramTestOptions) {
+func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions) {
 	path := args[0]
 	command := strings.Join(args, " ")
-	var err error
-	_, err = fmt.Fprintf(opts.Stdout, "\n**** Invoke '%v' in %v\n", command, wd)
+
+	_, err := fmt.Fprintf(opts.Stdout, "\n**** Invoke '%v' in %v\n", command, wd)
 	contract.IgnoreError(err)
+
+	// Spawn a goroutine to print out "still running..." messages.
+	finished := false
+	go func() {
+		for !finished {
+			time.Sleep(30 * time.Second)
+			if !finished {
+				_, err := fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
+				contract.IgnoreError(err)
+			}
+		}
+	}()
+
+	// Now run the command and wait for it to be finished.
 	cmd := exec.Cmd{
 		Path:   path,
 		Dir:    wd,
@@ -216,13 +230,14 @@ func RunCommand(t *testing.T, args []string, wd string, opts LumiProgramTestOpti
 		Stdout: opts.Stdout,
 		Stderr: opts.Stderr,
 	}
-	err = cmd.Run()
-	assert.NoError(t, err, "Expected to successfully invoke '%v' in %v: %v", command, wd, err)
+	runerr := cmd.Run()
+	finished = true
+	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
 }
 
 // prepareProject copies the source directory, srcDir (excluding .pulumi), to a new temporary directory.  It then
 // copies the .pulumi/ directory from the given lumiSrc, if any.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts LumiProgramTestOptions) (string, error) {
+func prepareProject(t *testing.T, srcDir string, lumiSrc string, opts ProgramTestOptions) (string, error) {
 	// Create a new temp directory.
 	dir, err := ioutil.TempDir("", "lumi-integration-test-")
 	if err != nil {
