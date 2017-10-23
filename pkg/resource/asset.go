@@ -30,7 +30,7 @@ import (
 //nolint: lll
 type Asset struct {
 	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA1 hash of the asset contents.
+	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the asset contents.
 	Text string `json:"text,omitempty" yaml:"text,omitempty"`                                     // a textual asset.
 	Path string `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
 	URI  string `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a URI (file://, http://, https://, or custom).
@@ -44,21 +44,21 @@ const (
 	AssetURIProperty  = "uri"                              // the dynamic property for an asset's URI.
 )
 
-// NewTextAsset produces a new asset and its corresponding SHA1 hash from the given text.
+// NewTextAsset produces a new asset and its corresponding SHA256 hash from the given text.
 func NewTextAsset(text string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, Text: text}
 	err := a.EnsureHash()
 	return a, err
 }
 
-// NewPathAsset produces a new asset and its corresponding SHA1 hash from the given filesystem path.
+// NewPathAsset produces a new asset and its corresponding SHA256 hash from the given filesystem path.
 func NewPathAsset(path string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, Path: path}
 	err := a.EnsureHash()
 	return a, err
 }
 
-// NewURIAsset produces a new asset and its corresponding SHA1 hash from the given network URI.
+// NewURIAsset produces a new asset and its corresponding SHA256 hash from the given network URI.
 func NewURIAsset(uri string) (*Asset, error) {
 	a := &Asset{Sig: AssetSig, URI: uri}
 	err := a.EnsureHash()
@@ -232,7 +232,7 @@ func (a *Asset) readURI() (*Blob, error) {
 	}
 }
 
-// EnsureHash computes the SHA1 hash of the asset's contents and stores it on the object.
+// EnsureHash computes the SHA256 hash of the asset's contents and stores it on the object.
 func (a *Asset) EnsureHash() error {
 	if a.Hash == "" {
 		blob, err := a.Read()
@@ -324,7 +324,7 @@ func (b bytesReader) Close() error {
 //nolint: lll
 type Archive struct {
 	Sig    string                 `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
-	Hash   string                 `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA1 hash of the archive contents.
+	Hash   string                 `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the archive contents.
 	Assets map[string]interface{} `json:"assets,omitempty" yaml:"assets,omitempty"`                                 // a collection of other assets/archives.
 	Path   string                 `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
 	URI    string                 `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a remote URI (file://, http://, https://, etc).
@@ -804,7 +804,7 @@ func (a *Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
 	return NotArchive, nil, nil
 }
 
-// EnsureHash computes the SHA1 hash of the archive's contents and stores it on the object.
+// EnsureHash computes the SHA256 hash of the archive's contents and stores it on the object.
 func (a *Archive) EnsureHash() error {
 	if a.Hash == "" {
 		hash := sha256.New()
