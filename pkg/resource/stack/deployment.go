@@ -102,11 +102,9 @@ func SerializeProperties(props resource.PropertyMap) map[string]interface{} {
 
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
 func SerializePropertyValue(prop resource.PropertyValue) interface{} {
-	contract.Assert(!prop.IsComputed())
-
 	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
 	// that hasn't materialized (either because we're serializing inputs or the provider didn't give us the value).
-	if !prop.HasValue() {
+	if prop.IsComputed() || !prop.HasValue() {
 		return nil
 	}
 

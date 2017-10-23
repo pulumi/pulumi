@@ -171,13 +171,10 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-async function serializeProperty(prop: any, ctx?: string): Promise<any> {
+async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: undefined`);
-        }
-        if (!options.dryRun) {
-            log.error(`Unexpected unknown property [${ctx}] during deployment`);
         }
         return unknownComputedValue;
     }
@@ -243,10 +240,15 @@ async function serializeProperty(prop: any, ctx?: string): Promise<any> {
  */
 function deserializeProperty(prop: any): any {
     if (prop === undefined) {
-        throw new Error("Unexpected unknown property value");
+        return undefined;
     }
-    else if (prop === null || typeof prop === "boolean" ||
-            typeof prop === "number" || typeof prop === "string") {
+    else if (prop === null || typeof prop === "boolean" || typeof prop === "number") {
+        return prop;
+    }
+    else if (typeof prop === "string") {
+        if (prop === unknownComputedValue) {
+            return undefined;
+        }
         return prop;
     }
     else if (prop instanceof Array) {
