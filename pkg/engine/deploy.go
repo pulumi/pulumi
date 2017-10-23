@@ -151,6 +151,16 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
+	// Inform the snapshot service that we are about to perform a step.
+	var mutation SnapshotMutation
+	if _, ismut := step.(deploy.MutatingStep); ismut {
+		m, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+		mutation = m
+	}
+
 	// Apply the step's changes.
 	status, err := step.Apply()
 
@@ -193,11 +203,12 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 	}
 
-	// Write out the current snapshot. Note that even if a failure has occurred, we should still have
-	// a safe checkpoint. Note that any error that occurs when writing the checkpoint trumps the error
-	// reported above.
-	if saveErr := acts.Engine.Snapshots.SaveSnapshot(step.Iterator().Snap()); saveErr != nil {
-		err = saveErr
+	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a safe checkpoint.
+	// Note that any error that occurs when writing the checkpoint trumps the error reported above.
+	if mutation != nil {
+		if endErr := mutation.End(step.Iterator().Snap()); endErr != nil {
+			return status, endErr
+		}
 	}
 
 	return status, err
