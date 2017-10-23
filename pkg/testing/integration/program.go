@@ -219,8 +219,8 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		for !finished {
 			time.Sleep(30 * time.Second)
 			if !finished {
-				_, err := fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
-				contract.IgnoreError(err)
+				_, stillerr := fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
+				contract.IgnoreError(stillerr)
 			}
 		}
 	}()
