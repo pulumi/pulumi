@@ -49,7 +49,7 @@ type localStackMutation struct {
 	name tokens.QName
 }
 
-func (p localStackProvider) BeginMutation(name tokens.QName) (engine.Mutation, error) {
+func (p localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMutation, error) {
 	return localStackMutation{name: name}, nil
 }
 

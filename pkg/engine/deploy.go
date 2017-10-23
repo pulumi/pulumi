@@ -154,7 +154,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	var mutation Mutation
+	var mutation SnapshotMutation
 	if _, ismut := step.(deploy.MutatingStep); ismut {
 		m, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
 		if err != nil {
