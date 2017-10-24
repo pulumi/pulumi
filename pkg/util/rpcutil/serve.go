@@ -4,11 +4,8 @@ package rpcutil
 
 import (
 	"net"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/pkg/errors"
 
@@ -51,28 +48,16 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (in
 		port = tcpa.Port
 	}
 
-	// Now register some signals to gracefully terminate the program upon request.
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
-	go func() {
-		if cancel == nil {
-			// make a channel that will never resolve.
-			cancel = make(chan bool)
-		}
+	// If the caller provided a cancellation channel, start a goroutine that will gracefully terminate the gRPC server when
+	// that channel is closed or receives a `true` value.
+	if cancel != nil {
+		go func() {
+			for v, ok := <-cancel; !v && ok; v, ok = <-cancel {
+			}
 
-		for {
-			var stop bool
-			select {
-			case <-sigs:
-				stop = true
-			case c := <-cancel:
-				stop = c
-			}
-			if stop {
-				srv.GracefulStop()
-			}
-		}
-	}()
+			srv.GracefulStop()
+		}()
+	}
 
 	// Finally, serve; this returns only once the server shuts down (e.g., due to a signal).
 	done := make(chan error)
