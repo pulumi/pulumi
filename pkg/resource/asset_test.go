@@ -4,7 +4,9 @@ package resource
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -143,14 +145,6 @@ func TestAssetSerialize(t *testing.T) {
 	}
 }
 
-func TestDeserializeMissingHash(t *testing.T) {
-	assetSer := (&Asset{Text: "asset"}).Serialize()
-	assetDes, isasset, err := DeserializeAsset(assetSer)
-	assert.Nil(t, err)
-	assert.True(t, isasset)
-	assert.Equal(t, "asset", assetDes.Text)
-}
-
 func tempArchive(prefix string) (string, error) {
 	for {
 		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32()))
@@ -165,4 +159,113 @@ func tempArchive(prefix string) (string, error) {
 			return path, err
 		}
 	}
+}
+
+func TestDeserializeMissingHash(t *testing.T) {
+	assetSer := (&Asset{Text: "asset"}).Serialize()
+	assetDes, isasset, err := DeserializeAsset(assetSer)
+	assert.Nil(t, err)
+	assert.True(t, isasset)
+	assert.Equal(t, "asset", assetDes.Text)
+}
+
+func TestAssetFile(t *testing.T) {
+	asset, err := NewPathAsset("./testdata/Fox.txt")
+	assert.Nil(t, err)
+	assert.Equal(t, "85e5f2698ac92d10d50e2f2802ed0d51a13e7c81d0d0a5998a75349469e774c5", asset.Hash)
+	assertAssetTextEquals(t, asset,
+		`The quick brown 🦊 jumps over
+the lazy 🐶.  The quick brown
+asset jumps over the archive.
+
+`)
+}
+
+func TestArchiveDir(t *testing.T) {
+	arch, err := NewPathArchive("./testdata/test_dir")
+	assert.Nil(t, err)
+	assert.Equal(t, "35ddf9c48ce6ac5ba657573d388db6ce41f3ed6965346a3086fb70a550fe0864", arch.Hash)
+	validateTestDirArchive(t, arch)
+}
+
+func TestArchiveTar(t *testing.T) {
+	arch, err := NewPathArchive("./testdata/test_dir.tar")
+	assert.Nil(t, err)
+	assert.Equal(t, "c618d74a40f87de3092ca6a6c4cca834aa5c6a3956c6ceb2054b40d04bb4cd76", arch.Hash)
+	validateTestDirArchive(t, arch)
+}
+
+func TestArchiveTgz(t *testing.T) {
+	arch, err := NewPathArchive("./testdata/test_dir.tgz")
+	assert.Nil(t, err)
+	assert.Equal(t, "f9b33523b6a3538138aff0769ff9e7d522038e33c5cfe28b258332b3f15790c8", arch.Hash)
+	validateTestDirArchive(t, arch)
+}
+
+func TestArchiveZip(t *testing.T) {
+	arch, err := NewPathArchive("./testdata/test_dir.zip")
+	assert.Nil(t, err)
+	assert.Equal(t, "343da72cec1302441efd4a490d66f861d393fb270afb3ced27f92a0d96abc068", arch.Hash)
+	validateTestDirArchive(t, arch)
+}
+
+func validateTestDirArchive(t *testing.T, arch *Archive) {
+	subs, err := arch.Read()
+	assert.Nil(t, err)
+
+	assert.Equal(t, 3, len(subs))
+
+	lorem := subs["Lorem_ipsum.txt"]
+	assert.NotNil(t, lorem)
+	assertAssetBlobEquals(t, lorem,
+		`Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
+aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis
+aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+`)
+
+	butimust := subs["sub_dir/But_I_must"]
+	assert.NotNil(t, butimust)
+	assertAssetBlobEquals(t, butimust,
+		`Sed ut perspiciatis, unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem
+aperiam eaque ipsa, quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt, explicabo. Nemo enim
+ipsam voluptatem, quia voluptas sit, aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos, qui ratione
+voluptatem sequi nesciunt, neque porro quisquam est, qui dolorem ipsum, quia dolor sit amet consectetur adipisci[ng]
+velit, sed quia non numquam [do] eius modi tempora inci[di]dunt, ut labore et dolore magnam aliquam quaerat voluptatem.
+Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi
+consequatur? Quis autem vel eum iure reprehenderit, qui in ea voluptate velit esse, quam nihil molestiae consequatur,
+vel illum, qui dolorem eum fugiat, quo voluptas nulla pariatur?
+
+`)
+
+	ontheother := subs["sub_dir/On_the_other_hand.md"]
+	assert.NotNil(t, ontheother)
+	assertAssetBlobEquals(t, ontheother,
+		`At vero eos et accusamus et iusto odio dignissimos ducimus, qui blanditiis praesentium voluptatum deleniti atque
+corrupti, quos dolores et quas molestias excepturi sint, obcaecati cupiditate non provident, similique sunt in culpa,
+qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita
+distinctio. Nam libero tempore, cum soluta nobis est eligendi optio, cumque nihil impedit, quo minus id, quod maxime
+placeat, facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut
+officiis debitis aut rerum necessitatibus saepe eveniet, ut et voluptates repudiandae sint et molestiae non recusandae.
+Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut
+perferendis doloribus asperiores repellat…
+
+`)
+}
+
+func assertAssetTextEquals(t *testing.T, asset *Asset, expect string) {
+	blob, err := asset.Read()
+	assert.Nil(t, err)
+	assert.NotNil(t, blob)
+	assertAssetBlobEquals(t, blob, expect)
+}
+
+func assertAssetBlobEquals(t *testing.T, blob *Blob, expect string) {
+	var text bytes.Buffer
+	_, err := io.Copy(&text, blob)
+	assert.Nil(t, err)
+	assert.Equal(t, expect, text.String())
+	err = blob.Close()
+	assert.Nil(t, err)
 }

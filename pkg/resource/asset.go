@@ -589,7 +589,7 @@ func (a *Archive) readPath() (map[string]*Blob, error) {
 		info, err := os.Stat(path)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
-		} else if info.IsDir() {
+		} else if !info.IsDir() {
 			return nil, errors.Wrapf(err, "'%v' is neither a recognized archive type nor a directory", path)
 		}
 		results := make(map[string]*Blob)
@@ -598,10 +598,12 @@ func (a *Archive) readPath() (map[string]*Blob, error) {
 			if fileerr != nil {
 				return fileerr
 			}
+
 			// If this was a directory or a symlink, skip it.
 			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
 				return nil
 			}
+
 			// Finally, if this was a .pulumi directory, we will skip this by default.
 			// TODO[pulumi/pulumi#122]: when we support .pulumiignore, this will be customizable.
 			if !f.IsDir() && f.Name() == workspace.Dir {
@@ -609,11 +611,19 @@ func (a *Archive) readPath() (map[string]*Blob, error) {
 			}
 
 			// Otherwise, add this asset to the list of blobs, and keep going.
-			file := &Asset{Path: filePath}
-			blob, err := file.Read()
+			blob, err := (&Asset{Path: filePath}).Read()
 			if err != nil {
 				return err
 			}
+
+			// Crop the filePath so that it is relative to the path, and put the blob into the map.
+			filePath, err = filepath.Rel(path, filePath)
+			if err != nil {
+				return err
+			}
+			filePath = filepath.Clean(filePath)
+			contract.Assertf(results[filePath] == nil,
+				"Unexpected duplicate blob in map: path=%v filePath=%v", path, filePath)
 			results[filePath] = blob
 			return nil
 		}); walkerr != nil {
@@ -926,7 +936,8 @@ func readTarArchive(ar io.ReadCloser) (map[string]*Blob, error) {
 				return nil, err
 			}
 			contract.Assert(int64(n) == file.Size)
-			assets[file.Name] = NewByteBlob(data)
+			name := filepath.Clean(file.Name)
+			assets[name] = NewByteBlob(data)
 		default:
 			contract.Failf("Unrecognized tar header typeflag: %v", file.Typeflag)
 		}
@@ -953,21 +964,28 @@ func readZIPArchive(ar io.ReaderAt, size int64) (map[string]*Blob, error) {
 	assets := make(map[string]*Blob)
 	z, err := zip.NewReader(ar, size)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read ZIP")
 	}
 	for _, file := range z.File {
+		// Skip directories, since they aren't included in TAR and other archives above.
+		if file.FileInfo().IsDir() {
+			continue
+		}
+
 		body, err := file.Open()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to read ZIP inner file %v", file.Name)
 		}
+		defer contract.IgnoreClose(body)
 		size := file.UncompressedSize64
 		data := make([]byte, size)
 		n, err := body.Read(data)
-		if err != nil {
-			return nil, err
+		if err != nil && err != io.EOF {
+			return nil, errors.Wrapf(err, "unexpected early ZIP termination %v", file.Name)
 		}
 		contract.Assert(uint64(n) == size)
-		assets[file.Name] = NewByteBlob(data)
+		name := filepath.Clean(file.Name)
+		assets[name] = NewByteBlob(data)
 	}
 	return assets, nil
 }
