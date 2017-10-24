@@ -225,11 +225,14 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		}
 	}()
 
+	env := append(os.Environ(), "PULUMI_RETAIN_CHECKPOINTS=true")
+
 	// Now run the command and wait for it to be finished.
 	cmd := exec.Cmd{
 		Path:   path,
 		Dir:    wd,
 		Args:   args,
+		Env:    env,
 		Stdout: opts.Stdout,
 		Stderr: opts.Stderr,
 	}
