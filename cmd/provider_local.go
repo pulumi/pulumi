@@ -3,9 +3,12 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
@@ -132,7 +135,18 @@ func saveStack(target *deploy.Target, snap *deploy.Snapshot) error {
 		return errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
+	// And if we are retaining historical checkpoint information, write it out again
+	if isTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
+		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), b, 0600); err != nil {
+			return errors.Wrap(err, "An IO error occurred during the current operation")
+		}
+	}
+
 	return nil
+}
+
+func isTruthy(s string) bool {
+	return s == "1" || strings.EqualFold(s, "true")
 }
 
 func removeStack(stack *deploy.Target) error {
