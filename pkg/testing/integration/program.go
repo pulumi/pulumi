@@ -133,6 +133,8 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		return
 	}
 
+	defer removeDirIfPassed(t, dir)
+
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
@@ -208,6 +210,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
+		defer removeDirIfPassed(t, dir)
 		if err = previewAndUpdate(dir); err != nil {
 			return
 		}
@@ -235,6 +238,12 @@ func performExtraRuntimeValidation(
 	}
 	extraRuntimeValidation(t, *chk)
 	return nil
+}
+
+func removeDirIfPassed(t *testing.T, dir string) {
+	if !t.Failed() {
+		contract.IgnoreError(os.RemoveAll(dir))
+	}
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
