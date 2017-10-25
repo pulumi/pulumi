@@ -311,7 +311,18 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		}
 	}()
 
-	env := append(os.Environ(), "PULUMI_RETAIN_CHECKPOINTS=true")
+	env := make([]string, 0, len(os.Environ())+2)
+
+	for _, envEntry := range os.Environ() {
+		// TODO(pulumi/pulumi#471) Force local execution now, but we'll have to do something better later
+		if strings.HasPrefix(envEntry, "PULUMI_API=") {
+			continue
+		}
+
+		env = append(env, envEntry)
+	}
+
+	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
 	cmd := exec.Cmd{
