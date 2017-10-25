@@ -282,15 +282,13 @@ func getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string,
 		}
 	}
 
-	textConfig := make(map[tokens.ModuleMember]string, 0)
-	if cfg != nil {
-		for key := range cfg {
-			decrypted, err := cfg[tokens.ModuleMember(key)].Value(decrypter)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not decrypt configuration value")
-			}
-			textConfig[key] = decrypted
+	textConfig := make(map[tokens.ModuleMember]string)
+	for key := range cfg {
+		decrypted, err := cfg[key].Value(decrypter)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not decrypt configuration value")
 		}
+		textConfig[key] = decrypted
 	}
 	return textConfig, nil
 }
