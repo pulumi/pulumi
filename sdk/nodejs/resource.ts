@@ -170,23 +170,17 @@ export abstract class ComponentResource extends Resource {
 }
 
 /**
- * Maybe is a union of either a T or undefined.
- */
-export type Maybe<T> = T | undefined;
-
-/**
  * Computed is a property output for a resource.  It is just a promise that also permits undefined values.  The
  * undefined values are used during planning, when the actual final value of a resource may not yet be known.
  */
-export type Computed<T> = Promise<Maybe<T>>;
+export type Computed<T> = Promise<T | undefined>;
 
 /**
  * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise for one.
  */
-export type ComputedValue<T> = Maybe<T> | Computed<T> | Promise<T>;
+export type ComputedValue<T> = T | undefined | Promise<T | undefined>;
 
 /**
  * ComputedValues is a map of property name to optional property input, one for each resource property value.
  */
-export type ComputedValues = {[key: string]: ComputedValue<any> | undefined};
-
+export type ComputedValues = { [key: string]: ComputedValue<any> };
