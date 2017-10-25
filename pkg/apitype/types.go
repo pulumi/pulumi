@@ -45,12 +45,14 @@ type UpdateProgramResponse struct {
 	Version int `json:"version"`
 }
 
-// UpdateEvent Kind values.
+// UpdateEventKind is an enum for the type of update events.
+type UpdateEventKind string
+
 const (
 	// StdoutEvent is used to mark the event being emitted to STDOUT.
-	StdoutEvent = "stdout"
+	StdoutEvent UpdateEventKind = "stdout"
 	// StderrEvent is used to mark the event being emitted to STDERR.
-	StderrEvent = "stderr"
+	StderrEvent UpdateEventKind = "stderr"
 )
 
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
@@ -60,18 +62,20 @@ type UpdateEvent struct {
 	Fields map[string]interface{} `json:"fields"`
 }
 
-// UpdateResults Status field values.
+// UpdateStatus is an enum describing the current state during the lifecycle of an update.
+type UpdateStatus string
+
 const (
 	// StatusNotStarted is returned when the Update has been created but not applied.
-	StatusNotStarted = "not started"
+	StatusNotStarted UpdateStatus = "not started"
 	// StatusRequested is returned when the Update application has been requested but not started.
-	StatusRequested = "requested"
+	StatusRequested UpdateStatus = "requested"
 	// StatusRunning is returned when the Update is in progress.
-	StatusRunning = "running"
+	StatusRunning UpdateStatus = "running"
 	// StatusFailed is returned when the update has failed.
-	StatusFailed = "failed"
+	StatusFailed UpdateStatus = "failed"
 	// StatusSucceeded is returned when the update has succeeded.
-	StatusSucceeded = "succeeded"
+	StatusSucceeded UpdateStatus = "succeeded"
 )
 
 // UpdateResults returns a series of events and the current status of an update. The vents can

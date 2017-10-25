@@ -189,13 +189,15 @@ func newCloudUpdateCmd() *cobra.Command {
 			fmt.Printf("Updating Stack '%s' to version %d...\n", stack, updateResponse.Version)
 
 			// Wait for the update to complete.
-			result, err := waitForUpdate(path)
+			status, err := waitForUpdate(path)
 			if err != nil {
 				return fmt.Errorf("waiting for update: %v", err)
 			}
-			fmt.Printf("Final result: %s\n", result)
-
-			return nil
+			if status == apitype.StatusSucceeded {
+				fmt.Print("Update completed successfully.")
+				return nil
+			}
+			return fmt.Errorf("update unsuccessful: status %v", status)
 		}),
 	}
 
@@ -226,11 +228,10 @@ func newCloudUpdateCmd() *cobra.Command {
 	return cmd
 }
 
-// waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the state
-// description. (e.g. "failed" or "succeeded".) path is the URL endpoint to poll for updates, events and done
-// are channels to emit output events to.
-func waitForUpdate(path string) (string, error) {
-	time.Sleep(3 * time.Second)
+// waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
+// final state. "path" is the URL endpoint to poll for updates.
+func waitForUpdate(path string) (apitype.UpdateStatus, error) {
+	time.Sleep(5 * time.Second)
 
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
 	eventIndex := 0
@@ -249,11 +250,12 @@ func waitForUpdate(path string) (string, error) {
 		}
 
 		// Check if in termal state.
-		switch updateResults.Status {
+		updateStatus := apitype.UpdateStatus(updateResults.Status)
+		switch updateStatus {
 		case apitype.StatusFailed:
 			fallthrough
 		case apitype.StatusSucceeded:
-			return updateResults.Status, nil
+			return updateStatus, nil
 		}
 	}
 }
