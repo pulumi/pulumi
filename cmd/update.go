@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -167,16 +168,17 @@ func newCloudUpdateCmd() *cobra.Command {
 			}
 
 			// Gather up configuration.
+			// TODO(pulumi-service/issues/221): Have pulumi.com handle the encryption/decryption.
 			stackToken := tokens.QName(stack)
-			config, err := getConfiguration(stackToken)
+			textConfig, err := getDecryptedConfig(stackToken)
 			if err != nil {
-				return fmt.Errorf("getting configuration: %v", err)
+				return errors.Wrap(err, "getting decrypted configuration")
 			}
 
 			// Update the program in the Pulumi Cloud
 			updateRequest := apitype.UpdateProgramRequest{
 				ProgramArchive: archive,
-				Config:         config,
+				Config:         textConfig,
 			}
 			var updateResponse apitype.UpdateProgramResponse
 			path := fmt.Sprintf("/orgs/%s/clouds/%s/programs/%s/%s/%s/update", org, cloud, repo, project, stack)
@@ -262,4 +264,32 @@ func printEvent(event apitype.UpdateEvent) {
 		text = colors.ColorizeText(text)
 	}
 	fmt.Fprint(stream, text)
+}
+
+// getDecryptedConfig returns the stack's configuration with any secrets in plain-text.
+func getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
+	cfg, err := getConfiguration(stackName)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting configuration")
+	}
+
+	var decrypter config.ValueDecrypter = panicCrypter{}
+	if hasSecureValue(cfg) {
+		decrypter, err = getSymmetricCrypter()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting symmetric crypter")
+		}
+	}
+
+	textConfig := make(map[tokens.ModuleMember]string, 0)
+	if cfg != nil {
+		for key := range cfg {
+			decrypted, err := cfg[tokens.ModuleMember(key)].Value(decrypter)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not decrypt configuration value")
+			}
+			textConfig[key] = decrypted
+		}
+	}
+	return textConfig, nil
 }
