@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -162,7 +163,7 @@ func newCloudUpdateCmd() *cobra.Command {
 			}
 			// programPath is the path to the pulumi.yaml file. Need its parent folder.
 			programFolder := filepath.Dir(programPath)
-			archive, err := archiveAndEncodePath(programFolder)
+			archive, err := archive.EncodePath(programFolder)
 			if err != nil {
 				return fmt.Errorf("creating archive: %v", err)
 			}
