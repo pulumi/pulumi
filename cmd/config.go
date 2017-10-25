@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 
@@ -38,7 +40,10 @@ func newConfigLsCmd() *cobra.Command {
 		Short: "List configuration for a stack",
 		Args:  cobra.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(stack)
+			stackName, err := explicitOrCurrent(stack)
+			if err != nil {
+				return err
+			}
 
 			if len(args) == 1 {
 				key, err := parseConfigKey(args[0])
@@ -252,16 +257,20 @@ func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
 }
 
 func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]config.Value, error) {
+	contract.Require(stackName != "", "stackName")
+
 	pkg, err := getPackage()
 	if err != nil {
 		return nil, err
 	}
 
-	if stackName == "" {
+	stackInfo, hasStackInfo := pkg.Stacks[stackName]
+
+	if !hasStackInfo {
 		return pkg.Config, nil
 	}
 
-	return mergeConfigs(pkg.Config, pkg.Stacks[stackName].Config), nil
+	return mergeConfigs(pkg.Config, stackInfo.Config), nil
 }
 
 func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
