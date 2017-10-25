@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 
@@ -66,8 +65,14 @@ func newStackLsCmd() *cobra.Command {
 func getStacks() ([]tokens.QName, error) {
 	var stacks []tokens.QName
 
+	w, err := newWorkspace()
+	if err != nil {
+		return nil, err
+	}
+
 	// Read the stack directory.
-	path := workspace.StackPath("")
+	path := w.StackPath("")
+
 	files, err := ioutil.ReadDir(path)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, errors.Errorf("could not read stacks: %v", err)

@@ -50,6 +50,7 @@ func NewPulumiCmd(version string) *cobra.Command {
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newUpdateCmd())
 	cmd.AddCommand(newVersionCmd(version))
+	cmd.AddCommand(newInitCmd())
 
 	// Commands specific to the Pulumi Cloud Management Console.
 	cmd.AddCommand(newLoginCmd())

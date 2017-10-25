@@ -606,7 +606,7 @@ func (a *Archive) readPath() (map[string]*Blob, error) {
 
 			// Finally, if this was a .pulumi directory, we will skip this by default.
 			// TODO[pulumi/pulumi#122]: when we support .pulumiignore, this will be customizable.
-			if !f.IsDir() && f.Name() == workspace.Dir {
+			if !f.IsDir() && f.Name() == workspace.BookkeepingDir {
 				return filepath.SkipDir
 			}
 
