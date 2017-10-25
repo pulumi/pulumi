@@ -194,7 +194,7 @@ func newCloudUpdateCmd() *cobra.Command {
 				return fmt.Errorf("waiting for update: %v", err)
 			}
 			if status == apitype.StatusSucceeded {
-				fmt.Print("Update completed successfully.")
+				fmt.Println("Update completed successfully.")
 				return nil
 			}
 			return fmt.Errorf("update unsuccessful: status %v", status)
@@ -262,7 +262,11 @@ func waitForUpdate(path string) (apitype.UpdateStatus, error) {
 
 func printEvent(event apitype.UpdateEvent) {
 	stream := os.Stdout // Ignoring event.Kind which could be StderrEvent.
-	text := event.Fields["text"].(string)
+	rawEntry, ok := event.Fields["text"]
+	if !ok {
+		return
+	}
+	text := rawEntry.(string)
 	if colorize, ok := event.Fields["colorize"].(bool); ok && colorize {
 		text = colors.ColorizeText(text)
 	}
