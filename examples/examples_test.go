@@ -37,6 +37,10 @@ func TestExamples(t *testing.T) {
 				"simple:config:y": "1",
 			},
 		},
+		{
+			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
+			Dependencies: []string{"pulumi"},
+		},
 	}
 	for _, ex := range examples {
 		example := ex

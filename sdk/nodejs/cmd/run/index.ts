@@ -124,26 +124,24 @@ export function main(args: string[]): void {
     const programArgs: string[] = argv._.slice(1);
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
-    // Now go ahead and execute the code.  This keeps the process alive until the message loop exits.
-    log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
-    try {
-        require(program);
-    }
-    catch (err) {
+    // Set up the process unhandled exception handler and the program exit handler.
+    process.on("uncaughtException", (err: Error) => {
         if (err instanceof RunError) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
             // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
             log.error(err.message);
         }
         else {
-            log.debug(`Running program '${program}' failed with an unhandled exception:`);
-            log.debug(err);
-            throw err;
+            console.log(`Running program '${program}' failed with an unhandled exception:`);
+            console.log(err);
         }
-    }
-    finally {
-        runtime.disconnect();
-    }
+    });
+
+    process.on("exit", () => { runtime.disconnectSync(); });
+
+    // Now go ahead and execute the code. The process will remain alive until the message loop empties.
+    console.log(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+    require(program);
 }
 
 main(process.argv.slice(2));
