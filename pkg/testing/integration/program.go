@@ -28,6 +28,12 @@ const (
 	testStackName = "integrationtesting"
 )
 
+// EditDir is an optional edit to apply to the example, as subsequent deployments.
+type EditDir struct {
+	Dir                    string
+	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+}
+
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
@@ -39,10 +45,7 @@ type ProgramTestOptions struct {
 	// Map of secure config keys and values to set on the Lumi stack (e.g. {"aws:config:region": "us-east-2"})
 	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
-	EditDirs []struct {
-		dir                    string
-		ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
-	}
+	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
 
@@ -140,7 +143,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	for _, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
-		dir, err = prepareProject(t, edit.dir, dir, opts)
+		dir, err = prepareProject(t, edit.Dir, dir, opts)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
