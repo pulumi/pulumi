@@ -39,7 +39,10 @@ type ProgramTestOptions struct {
 	// Map of secure config keys and values to set on the Lumi stack (e.g. {"aws:config:region": "us-east-2"})
 	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
-	EditDirs []string
+	EditDirs []struct {
+		dir                    string
+		ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+	}
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
 
@@ -127,29 +130,28 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 
 	// Run additional validation provided by the test options, passing in the
 	if opts.ExtraRuntimeValidation != nil {
-		checkpointFile := path.Join(dir, workspace.Dir, "stacks", testStackName+".json")
-		var byts []byte
-		byts, err = ioutil.ReadFile(path.Join(dir, workspace.Dir, "stacks", testStackName+".json"))
-		if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
+		err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir)
+		if err != nil {
 			return
 		}
-		var checkpoint stack.Checkpoint
-		err = json.Unmarshal(byts, &checkpoint)
-		if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
-			return
-		}
-		opts.ExtraRuntimeValidation(t, checkpoint)
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
 	for _, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
-		dir, err = prepareProject(t, edit, dir, opts)
+		dir, err = prepareProject(t, edit.dir, dir, opts)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
 		previewAndUpdate(dir)
+
+		if edit.ExtraRuntimeValidation != nil {
+			err = performExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, dir)
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	// Finally, tear down the stack, and clean up the stack.
@@ -157,6 +159,26 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
 	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", testStackName}, dir, opts)
+}
+
+func performExtraRuntimeValidation(
+	t *testing.T,
+	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
+	dir string) (err error) {
+
+	checkpointFile := path.Join(dir, workspace.Dir, "stacks", testStackName+".json")
+	var byts []byte
+	byts, err = ioutil.ReadFile(path.Join(dir, workspace.Dir, "stacks", testStackName+".json"))
+	if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
+		return err
+	}
+	var checkpoint stack.Checkpoint
+	err = json.Unmarshal(byts, &checkpoint)
+	if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
+		return err
+	}
+	extraRuntimeValidation(t, checkpoint)
+	return nil
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
