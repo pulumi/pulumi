@@ -145,7 +145,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 	if glog.V(9) {
 		glog.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.writers[Debug], msg)
+	fmt.Fprint(d.writers[Debug], msg)
 	d.incrementCount(Debug)
 }
 
@@ -154,7 +154,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.writers[Info], msg)
+	fmt.Fprint(d.writers[Info], msg)
 	d.incrementCount(Info)
 }
 
@@ -163,7 +163,7 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.writers[Infoerr], msg)
+	fmt.Fprint(d.writers[Infoerr], msg)
 	d.incrementCount(Infoerr)
 }
 
@@ -172,7 +172,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.writers[Error], msg)
+	fmt.Fprint(d.writers[Error], msg)
 	d.incrementCount(Error)
 }
 
@@ -181,7 +181,7 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.writers[Warning], msg)
+	fmt.Fprint(d.writers[Warning], msg)
 	d.incrementCount(Warning)
 }
 
