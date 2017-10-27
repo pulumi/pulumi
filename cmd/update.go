@@ -192,6 +192,8 @@ func newCloudUpdateCmd() *cobra.Command {
 
 			// Wait for the update to complete.
 			status, err := waitForUpdate(path)
+			fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
+
 			if err != nil {
 				return fmt.Errorf("waiting for update: %v", err)
 			}
