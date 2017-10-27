@@ -206,7 +206,6 @@ func newCloudUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
-
 	cmd.PersistentFlags().StringVarP(
 		&org, "organization", "o", "",
 		"Target organization")

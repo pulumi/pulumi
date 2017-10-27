@@ -5,8 +5,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/tokens"
 
@@ -26,17 +24,13 @@ func newStackInitCmd() *cobra.Command {
 func newFAFStackInitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init <stack>",
+		Args:  cobra.ExactArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Read in the name of the stack to use.
-			if len(args) == 0 {
-				return errors.New("missing required stack name")
-			}
-
 			stackName := tokens.QName(args[0])
 
 			if _, _, _, err := getStack(stackName); err == nil {
@@ -61,18 +55,14 @@ func newCloudStackInitCmd() *cobra.Command {
 	var project string
 
 	cmd := &cobra.Command{
-		Use:   "init",
+		Use:   "init <stack>",
+		Args:  cobra.ExactArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Read in the name of the stack to use.
-			if len(args) == 0 {
-				return errors.New("missing required stack name")
-			}
-
 			stackName := args[0]
 			createStackReq := apitype.CreateStackRequest{
 				CloudName: cloud,
@@ -87,9 +77,6 @@ func newCloudStackInitCmd() *cobra.Command {
 			fmt.Printf("Created Stack '%s' hosted in Cloud '%s'\n", stackName, createStackResp.CloudName)
 
 			stackQName := tokens.QName(stackName)
-			if err := saveStack(stackQName, nil, nil); err != nil {
-				return err
-			}
 			return setCurrentStack(stackQName, false)
 		}),
 	}
