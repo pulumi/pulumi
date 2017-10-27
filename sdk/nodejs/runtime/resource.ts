@@ -156,7 +156,7 @@ export function registerResource(
             }
             else {
                 // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-                log.debug(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
+                log.warn(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
             }
         }
         finally {

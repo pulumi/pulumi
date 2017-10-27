@@ -89,16 +89,24 @@ export function disconnect(): void {
             done = rpcDone;
             return debuggablePromise(done.then(closeCallback));
         }
-        // Otherwise, actually perform the close activities.
-        if (options.monitor) {
-            (<any>options.monitor).close();
-        }
-        if (options.engine) {
-            (<any>options.engine).close();
-        }
+        disconnectSync();
         return Promise.resolve();
     };
     closeCallback();
+}
+
+/**
+ * disconnectSync permanently disconnects from the server, closing the connections. Unlike `disconnect`. it does not
+ * wait for the existing RPC queue to drain. Any RPCs that come in after this call will crash the process.
+ */
+export function disconnectSync(): void {
+    // Otherwise, actually perform the close activities.
+    if (options.monitor) {
+        (<any>options.monitor).close();
+    }
+    if (options.engine) {
+        (<any>options.engine).close();
+    }
 }
 
 /**
