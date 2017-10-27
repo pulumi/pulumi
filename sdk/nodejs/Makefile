@@ -1,7 +1,6 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-ec
 ECHO=echo -e
-PROCCNT=$(shell nproc --all)
 
 export PATH:=$(shell yarn bin):$(PATH)
 
