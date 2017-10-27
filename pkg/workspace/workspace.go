@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -60,6 +61,10 @@ func NewProjectWorkspace(dir string) (W, error) {
 		return nil, err
 	}
 
+	if w.settings.Config == nil {
+		w.settings.Config = make(map[tokens.QName]map[tokens.ModuleMember]config.Value)
+	}
+
 	return &w, nil
 }
 
@@ -76,6 +81,13 @@ func (pw *projectWorkspace) DetectPackage() (string, error) {
 }
 
 func (pw *projectWorkspace) Save() error {
+	// let's remove all the empty entries from the config array
+	for k, v := range pw.settings.Config {
+		if len(v) == 0 {
+			delete(pw.settings.Config, k)
+		}
+	}
+
 	settingsFile := pw.settingsPath()
 
 	// ensure the path exists

@@ -61,7 +61,7 @@ func newConfigLsCmd() *cobra.Command {
 
 	lsCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Target a specific stack instead of all of this project's stacks")
+		"List configuration for a different stack than the currently selected stack")
 	lsCmd.PersistentFlags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
@@ -70,6 +70,8 @@ func newConfigLsCmd() *cobra.Command {
 }
 
 func newConfigRmCmd() *cobra.Command {
+	var all bool
+	var save bool
 	var stack string
 
 	rmCmd := &cobra.Command{
@@ -77,25 +79,47 @@ func newConfigRmCmd() *cobra.Command {
 		Short: "Remove configuration value",
 		Args:  cobra.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(stack)
+			if all && stack != "" {
+				return errors.New("if --all is specified, an explicit stack can not be provided")
+			}
+
+			var stackName tokens.QName
+			if !all {
+				var err error
+				if stackName, err = explicitOrCurrent(stack, backend); err != nil {
+					return err
+				}
+			}
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			return deleteConfiguration(stackName, key)
+			if save {
+				return deleteProjectConfiguration(stackName, key)
+			}
+
+			return deleteWorkspaceConfiguration(stackName, key)
 		}),
 	}
 
 	rmCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Target a specific stack instead of all of this project's stacks")
+		"Target a specific stack instead of the default stack")
+	rmCmd.PersistentFlags().BoolVar(
+		&save, "save", false,
+		"Remove the configuration value in the project file instead instead of a locally set value")
+	rmCmd.PersistentFlags().BoolVar(
+		&all, "all", false,
+		"Remove a project wide configuration value that applies to all stacks")
 
 	return rmCmd
 }
 
 func newConfigTextCmd() *cobra.Command {
+	var all bool
+	var save bool
 	var stack string
 
 	textCmd := &cobra.Command{
@@ -103,25 +127,43 @@ func newConfigTextCmd() *cobra.Command {
 		Short: "Set configuration value",
 		Args:  cobra.ExactArgs(2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(stack)
+			if all && stack != "" {
+				return errors.New("if --all is specified, an explicit stack can not be provided")
+			}
+
+			var stackName tokens.QName
+			if !all {
+				var err error
+				if stackName, err = explicitOrCurrent(stack, backend); err != nil {
+					return err
+				}
+			}
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			return setConfiguration(stackName, key, config.NewValue(args[1]))
+			return setConfiguration(stackName, key, config.NewValue(args[1]), save)
 		}),
 	}
 
 	textCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Target a specific stack instead of all of this project's stacks")
+		"Target a specific stack instead of the default stack")
+	textCmd.PersistentFlags().BoolVar(
+		&save, "save", false,
+		"Save the configuration value in the project file instead of locally")
+	textCmd.PersistentFlags().BoolVar(
+		&all, "all", false,
+		"Set a configuration value for all stacks for this project")
 
 	return textCmd
 }
 
 func newConfigSecretCmd() *cobra.Command {
+	var all bool
+	var save bool
 	var stack string
 
 	secretCmd := &cobra.Command{
@@ -129,7 +171,17 @@ func newConfigSecretCmd() *cobra.Command {
 		Short: "Set an encrypted configuration value",
 		Args:  cobra.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(stack)
+			if all && stack != "" {
+				return errors.New("if --all is specified, an explicit stack can not be provided")
+			}
+
+			var stackName tokens.QName
+			if !all {
+				var err error
+				if stackName, err = explicitOrCurrent(stack, backend); err != nil {
+					return err
+				}
+			}
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
@@ -156,13 +208,19 @@ func newConfigSecretCmd() *cobra.Command {
 				return err
 			}
 
-			return setConfiguration(stackName, key, config.NewSecureValue(encryptedValue))
+			return setConfiguration(stackName, key, config.NewSecureValue(encryptedValue), save)
 		}),
 	}
 
 	secretCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Target a specific stack instead of all of this project's stacks")
+		"Target a specific stack instead of the default stack")
+	secretCmd.PersistentFlags().BoolVar(
+		&save, "save", false,
+		"Save the configuration value in the project file instead of locally")
+	secretCmd.PersistentFlags().BoolVar(
+		&all, "all", false,
+		"Set a configuration value for all stacks for this project")
 
 	return secretCmd
 }
@@ -200,6 +258,14 @@ func prettyKeyForPackage(key string, pkg *pack.Package) string {
 	}
 
 	return s
+}
+
+func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value, save bool) error {
+	if save {
+		return setProjectConfiguration(stackName, key, value)
+	}
+
+	return setWorkspaceConfiguration(stackName, key, value)
 }
 
 func listConfig(stackName tokens.QName, showSecrets bool) error {
@@ -273,20 +339,35 @@ func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
 func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]config.Value, error) {
 	contract.Require(stackName != "", "stackName")
 
+	workspace, err := newWorkspace()
+	if err != nil {
+		return nil, err
+	}
+
 	pkg, err := getPackage()
 	if err != nil {
 		return nil, err
 	}
 
-	stackInfo, hasStackInfo := pkg.Stacks[stackName]
-	if !hasStackInfo {
-		return pkg.Config, nil
+	configs := make([]map[tokens.ModuleMember]config.Value, 4)
+	configs = append(configs, pkg.Config)
+
+	if stackInfo, has := pkg.Stacks[stackName]; has {
+		configs = append(configs, stackInfo.Config)
 	}
 
-	return mergeConfigs(pkg.Config, stackInfo.Config), nil
+	if localAllStackConfig, has := workspace.Settings().Config[""]; has {
+		configs = append(configs, localAllStackConfig)
+	}
+
+	if localStackConfig, has := workspace.Settings().Config[stackName]; has {
+		configs = append(configs, localStackConfig)
+	}
+
+	return mergeConfigs(configs...), nil
 }
 
-func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
+func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
 	pkg, err := getPackage()
 	if err != nil {
 		return err
@@ -305,7 +386,20 @@ func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error 
 	return savePackage(pkg)
 }
 
-func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
+func deleteWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
+	workspace, err := newWorkspace()
+	if err != nil {
+		return err
+	}
+
+	if config, has := workspace.Settings().Config[stackName]; has {
+		delete(config, key)
+	}
+
+	return workspace.Save()
+}
+
+func setProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
 	pkg, err := getPackage()
 	if err != nil {
 		return err
@@ -334,22 +428,28 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value con
 	return savePackage(pkg)
 }
 
-func mergeConfigs(global, stack map[tokens.ModuleMember]config.Value) map[tokens.ModuleMember]config.Value {
-	if stack == nil {
-		return global
+func setWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
+	workspace, err := newWorkspace()
+	if err != nil {
+		return err
 	}
 
-	if global == nil {
-		return stack
+	if _, has := workspace.Settings().Config[stackName]; !has {
+		workspace.Settings().Config[stackName] = make(map[tokens.ModuleMember]config.Value)
 	}
 
+	workspace.Settings().Config[stackName][key] = value
+
+	return workspace.Save()
+}
+
+func mergeConfigs(configs ...map[tokens.ModuleMember]config.Value) map[tokens.ModuleMember]config.Value {
 	merged := make(map[tokens.ModuleMember]config.Value)
-	for key, value := range global {
-		merged[key] = value
-	}
 
-	for key, value := range stack {
-		merged[key] = value
+	for _, config := range configs {
+		for key, value := range config {
+			merged[key] = value
+		}
 	}
 
 	return merged
