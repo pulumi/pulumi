@@ -33,7 +33,13 @@ func isGitFolder(path string) bool {
 
 func isRepositoryFolder(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && info.IsDir() && info.Name() == BookkeepingDir
+	if err == nil && info.IsDir() && info.Name() == BookkeepingDir {
+		// make sure it has a settings.json file in it
+		info, err := os.Stat(filepath.Join(path, RepoFile))
+		return err == nil && !info.IsDir()
+	}
+
+	return false
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like
