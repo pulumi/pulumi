@@ -140,7 +140,7 @@ export function main(args: string[]): void {
     process.on("exit", () => { runtime.disconnectSync(); });
 
     // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-    console.log(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+    log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
     require(program);
 }
 
