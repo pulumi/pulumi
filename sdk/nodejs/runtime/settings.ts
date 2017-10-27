@@ -103,9 +103,11 @@ export function disconnectSync(): void {
     // Otherwise, actually perform the close activities.
     if (options.monitor) {
         (<any>options.monitor).close();
+        (<any>options).monitor = null;
     }
     if (options.engine) {
         (<any>options.engine).close();
+        (<any>options).engine = null;
     }
 }
 
