@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 type localStackProvider struct {
@@ -74,6 +73,11 @@ func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
 }
 
 func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.Value, *deploy.Snapshot, error) {
+	workspace, err := newWorkspace()
+	if err != nil {
+		return "", nil, nil, err
+	}
+
 	contract.Require(name != "", "name")
 	file := workspace.StackPath(name)
 
@@ -107,6 +111,11 @@ func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.V
 }
 
 func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
+	workspace, err := newWorkspace()
+	if err != nil {
+		return err
+	}
+
 	file := workspace.StackPath(name)
 
 	// Make a serializable stack and then use the encoder to encode it.
@@ -152,6 +161,12 @@ func isTruthy(s string) bool {
 
 func removeStack(name tokens.QName) error {
 	contract.Require(name != "", "name")
+
+	workspace, err := newWorkspace()
+	if err != nil {
+		return err
+	}
+
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.StackPath(name)
 	backupTarget(file)

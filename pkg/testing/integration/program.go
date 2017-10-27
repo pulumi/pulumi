@@ -86,6 +86,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   yarn install
 //   yarn link <each opts.Depencies>
 //   yarn run build
+//   pulumi init
 //   pulumi stack init integrationtesting
 //   pulumi config text <each opts.Config>
 //   pulumi config secret <each opts.Secrets>
@@ -108,6 +109,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
+	RunCommand(t, []string{opts.Bin, "init"}, dir, opts)
 	RunCommand(t, []string{opts.Bin, "stack", "init", testStackName}, dir, opts)
 	for key, value := range opts.Config {
 		RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts)
@@ -169,9 +171,9 @@ func performExtraRuntimeValidation(
 	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
 	dir string) (err error) {
 
-	checkpointFile := path.Join(dir, workspace.Dir, "stacks", testStackName+".json")
+	checkpointFile := path.Join(dir, workspace.BookkeepingDir, "stacks", filepath.Base(dir), testStackName+".json")
 	var byts []byte
-	byts, err = ioutil.ReadFile(path.Join(dir, workspace.Dir, "stacks", testStackName+".json"))
+	byts, err = ioutil.ReadFile(checkpointFile)
 	if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
 		return err
 	}
@@ -287,7 +289,7 @@ func prepareProject(t *testing.T, src string, origin string, opts ProgramTestOpt
 	}
 
 	// Now copy the source into it, ignoring .pulumi/ and Pulumi.yaml if there's an origin.
-	wdir := workspace.Dir
+	wdir := workspace.BookkeepingDir
 	proj := workspace.ProjectFile + ".yaml"
 	excl := make(map[string]bool)
 	if origin != "" {
