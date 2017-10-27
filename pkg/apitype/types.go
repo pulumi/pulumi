@@ -31,6 +31,18 @@ func (err ErrorResponse) Error() string {
 	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
 }
 
+// CreateStackRequest defines the request body for creating a new Stack
+type CreateStackRequest struct {
+	CloudName string `json:"cloudName"`
+	StackName string `json:"stackName"`
+}
+
+// CreateStackResponse is the response from a create Stack request.
+type CreateStackResponse struct {
+	// The name of the cloud used if the default was sent.
+	CloudName string `json:"cloudName"`
+}
+
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
 	// Base-64 encoded Zip archive of the program's root directory.

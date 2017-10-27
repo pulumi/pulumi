@@ -22,6 +22,12 @@ func pulumiConsoleAPI() (string, error) {
 	return envVar, nil
 }
 
+// usePulumiCloudCommands returns whether or not to use the "Pulumi Cloud" version of CLI commands.
+func usePulumiCloudCommands() bool {
+	_, err := pulumiConsoleAPI()
+	return err == nil
+}
+
 // pulumiAPICall makes an HTTP request to the Pulumi API.
 func pulumiAPICall(method string, path string, body []byte, accessToken string) (*http.Response, error) {
 	apiEndpoint, err := pulumiConsoleAPI()
