@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 
@@ -32,13 +34,17 @@ func newConfigCmd() *cobra.Command {
 
 func newConfigLsCmd() *cobra.Command {
 	var stack string
+	var showSecrets bool
 
 	lsCmd := &cobra.Command{
 		Use:   "ls [key]",
 		Short: "List configuration for a stack",
 		Args:  cobra.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(stack)
+			stackName, err := explicitOrCurrent(stack)
+			if err != nil {
+				return err
+			}
 
 			if len(args) == 1 {
 				key, err := parseConfigKey(args[0])
@@ -49,13 +55,16 @@ func newConfigLsCmd() *cobra.Command {
 				return getConfig(stackName, key)
 			}
 
-			return listConfig(stackName)
+			return listConfig(stackName, showSecrets)
 		}),
 	}
 
 	lsCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Target a specific stack instead of all of this project's stacks")
+	lsCmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false,
+		"Show secret values when listing config instead of displaying blinded values")
 
 	return lsCmd
 }
@@ -101,7 +110,7 @@ func newConfigTextCmd() *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			return setConfiguration(stackName, key, args[1], false /*secure*/)
+			return setConfiguration(stackName, key, config.NewValue(args[1]))
 		}),
 	}
 
@@ -127,6 +136,11 @@ func newConfigSecretCmd() *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
+			c, err := getSymmetricCrypter()
+			if err != nil {
+				return err
+			}
+
 			var value string
 			if len(args) == 2 {
 				value = args[1]
@@ -137,7 +151,12 @@ func newConfigSecretCmd() *cobra.Command {
 				}
 			}
 
-			return setConfiguration(stackName, key, value, true /*secure*/)
+			encryptedValue, err := c.EncryptValue(value)
+			if err != nil {
+				return err
+			}
+
+			return setConfiguration(stackName, key, config.NewSecureValue(encryptedValue))
 		}),
 	}
 
@@ -183,15 +202,15 @@ func prettyKeyForPackage(key string, pkg *pack.Package) string {
 	return s
 }
 
-func listConfig(stackName tokens.QName) error {
+func listConfig(stackName tokens.QName, showSecrets bool) error {
 	cfg, err := getConfiguration(stackName)
 	if err != nil {
 		return err
 	}
 
-	var decrypter config.ValueDecrypter = panicCrypter{}
+	var decrypter config.ValueDecrypter = blindingDecrypter{}
 
-	if hasSecureValue(cfg) {
+	if hasSecureValue(cfg) && showSecrets {
 		decrypter, err = getSymmetricCrypter()
 		if err != nil {
 			return err
@@ -252,16 +271,19 @@ func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
 }
 
 func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]config.Value, error) {
+	contract.Require(stackName != "", "stackName")
+
 	pkg, err := getPackage()
 	if err != nil {
 		return nil, err
 	}
 
-	if stackName == "" {
+	stackInfo, hasStackInfo := pkg.Stacks[stackName]
+	if !hasStackInfo {
 		return pkg.Config, nil
 	}
 
-	return mergeConfigs(pkg.Config, pkg.Stacks[stackName].Config), nil
+	return mergeConfigs(pkg.Config, stackInfo.Config), nil
 }
 
 func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
@@ -283,27 +305,10 @@ func deleteConfiguration(stackName tokens.QName, key tokens.ModuleMember) error 
 	return savePackage(pkg)
 }
 
-func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value string, secure bool) error {
+func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
 	pkg, err := getPackage()
 	if err != nil {
 		return err
-	}
-
-	var v config.Value
-	if secure {
-		c, err := getSymmetricCrypterForPackage(pkg)
-		if err != nil {
-			return err
-		}
-
-		secret, err := c.EncryptValue(value)
-		if err != nil {
-			return err
-		}
-
-		v = config.NewSecureValue(secret)
-	} else {
-		v = config.NewValue(value)
 	}
 
 	if stackName == "" {
@@ -311,7 +316,7 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value str
 			pkg.Config = make(map[tokens.ModuleMember]config.Value)
 		}
 
-		pkg.Config[key] = v
+		pkg.Config[key] = value
 	} else {
 		if pkg.Stacks == nil {
 			pkg.Stacks = make(map[tokens.QName]pack.StackInfo)
@@ -323,7 +328,7 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value str
 			pkg.Stacks[stackName] = si
 		}
 
-		pkg.Stacks[stackName].Config[key] = v
+		pkg.Stacks[stackName].Config[key] = value
 	}
 
 	return savePackage(pkg)

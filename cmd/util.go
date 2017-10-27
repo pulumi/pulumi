@@ -174,14 +174,10 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 		return nil, err
 	}
 
-	return getSymmetricCrypterForPackage(pkg)
-}
-
-func getSymmetricCrypterForPackage(pkg *pack.Package) (config.ValueEncrypterDecrypter, error) {
 	if pkg.EncryptionSalt != "" {
-		phrase, err := readPassPhrase("passphrase")
-		if err != nil {
-			return nil, err
+		phrase, phraseErr := readPassPhrase("passphrase")
+		if phraseErr != nil {
+			return nil, phraseErr
 		}
 
 		return symmetricCrypterFromPhraseAndState(phrase, pkg.EncryptionSalt)
@@ -214,6 +210,11 @@ func getSymmetricCrypterForPackage(pkg *pack.Package) (config.ValueEncrypterDecr
 	contract.Assert(err == nil)
 
 	pkg.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
+
+	err = savePackage(pkg)
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }

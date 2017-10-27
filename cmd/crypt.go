@@ -16,6 +16,15 @@ import (
 
 const aes256GCMKeyBytes = 32
 
+// blindingDecrypter is a config.ValueDecrypter that instead of decrypting data, just returns "********", it can
+// be used when you want to display configuration information to a user but don't want to prompt for a password
+// so secrets will not be decrypted.
+type blindingDecrypter struct{}
+
+func (b blindingDecrypter) DecryptValue(ciphertext string) (string, error) {
+	return "********", nil
+}
+
 // This implements to config.EncrypterDecrypter interface but panics if any methods are called.
 type panicCrypter struct{}
 
