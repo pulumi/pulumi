@@ -24,11 +24,10 @@ import (
 
 func newUpdateCmd() *cobra.Command {
 	// Swap out which update command to use based on whether or not the Console API is available.
-	_, err := pulumiConsoleAPI()
-	if err != nil {
-		return newFAFUpdateCmd()
+	if usePulumiCloudCommands() {
+		return newCloudUpdateCmd()
 	}
-	return newCloudUpdateCmd()
+	return newFAFUpdateCmd()
 }
 
 // newFAFUpdateCmd returns the fire-and-forget version of the update command.
