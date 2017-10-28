@@ -14,16 +14,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 const (
-	testStackName = "integrationtesting"
+	TestStackName = tokens.QName("integrationtesting")
 )
 
 // EditDir is an optional edit to apply to the example, as subsequent deployments.
@@ -108,7 +110,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.Bin, "init"}, dir, opts)
-	RunCommand(t, []string{opts.Bin, "stack", "init", testStackName}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "stack", "init", string(TestStackName)}, dir, opts)
 	for key, value := range opts.Config {
 		RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts)
 	}
@@ -131,7 +133,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	contract.IgnoreError(err)
 	previewAndUpdate(dir)
 
-	// Run additional validation provided by the test options, passing in the
+	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if opts.ExtraRuntimeValidation != nil {
 		err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir)
 		if err != nil {
@@ -161,7 +163,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
-	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", testStackName}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", string(TestStackName)}, dir, opts)
 }
 
 func performExtraRuntimeValidation(
@@ -171,9 +173,11 @@ func performExtraRuntimeValidation(
 	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
 		return err
 	}
-	chk, err := stack.GetCheckpoint(ws, testStackName)
-	if !assert.NoError(t, err, "expected to load checkpoint file for target %v: %v", testStackName, err) {
+	chk, err := stack.GetCheckpoint(ws, TestStackName)
+	if !assert.NoError(t, err, "expected to load checkpoint file for target %v: %v", TestStackName, err) {
 		return err
+	} else if !assert.NotNil(t, chk, "expected checkpoint file to be populated from %v: %v", TestStackName, err) {
+		return errors.New("missing checkpoint")
 	}
 	extraRuntimeValidation(t, *chk)
 	return nil
