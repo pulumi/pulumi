@@ -6,7 +6,7 @@ const pulumi = require("../../../../../");
 assert.equal(pulumi.getProject(), "runtimeSettingsProject");
 assert.equal(pulumi.getStack(), "runtimeSettingsStack");
 
-const config = new pulumi.Config("myBag");
+const config = new pulumi.Config("myBag:config");
 assert.equal(config.getNumber("A"), 42);
 assert.equal(config.requireNumber("A"), 42);
 assert.equal(config.get("bbbb"), "a string o' b's");

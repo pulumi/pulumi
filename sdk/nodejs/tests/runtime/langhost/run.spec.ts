@@ -276,11 +276,17 @@ describe("rpc", () => {
             project: "runtimeSettingsProject",
             stack: "runtimeSettingsStack",
             config: {
-                "myBag:A": 42,
-                "myBag:bbbb": "a string o' b's",
+                "myBag:config:A": "42",
+                "myBag:config:bbbb": "a string o' b's",
             },
             program: path.join(base, "010.runtime_settings"),
             expectResourceCount: 0,
+        },
+        // A program that throws an ordinary unhandled error.
+        "unhandled_error": {
+            program: path.join(base, "011.unhandled_error"),
+            expectResourceCount: 0,
+            expectError: "Program exited with non-zero exit code: 1",
         },
     };
 
