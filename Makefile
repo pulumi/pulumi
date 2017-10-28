@@ -72,7 +72,7 @@ vet:
 .PHONY: test
 test:
 	@$(ECHO) "\033[0;32mTEST:\033[0m"
-	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -timeout 2m -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 .PHONY: integrationtest
 integrationtest:

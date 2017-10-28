@@ -127,13 +127,21 @@
     <Error Message="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
            Condition="$(WhereLangHostExitCode) != 0"/>
 
-    <Exec Command="go test -cover -parallel $(TestParallelism) .\examples"
-          WorkingDirectory="$(RepoRootDirectory)" />
+    <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
+         fails. Otherwise, the AppVeyor job would hang until it reached the timeout -->
+    <Exec Command="go test -timeout 2m -cover -parallel $(TestParallelism) .\examples"
+          IgnoreExitCode="true"
+          WorkingDirectory="$(RepoRootDirectory)">
+      <Output TaskParameter="ExitCode" PropertyName="GoTestExitCode" />
+    </Exec>
 
     <!-- Work around pulumi/pulumi#371 by killing all lingering node.exe processes. Yes, in the limit
          this may kill too much, but we assume for now folks hacking on pulumi on windows are not running
          additional node.exe processes -->
     <Exec Command="taskkill /f /im node.exe" />
+
+    <Error Message="go test failed, exit code: $(GoTestExitCode)"
+           Condition="'$(GoTestExitCode)' != '0'"/>
   </Target>
 
   <Target Name="Publish">
