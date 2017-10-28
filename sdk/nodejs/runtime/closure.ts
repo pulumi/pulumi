@@ -2,6 +2,7 @@
 
 import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
+import { sep as pathSep } from "path";
 import * as ts from "typescript";
 import * as log from "../log";
 import { debuggablePromise } from "./debuggable";
@@ -245,7 +246,7 @@ function findRequirableModuleName(obj: any): string | undefined  {
         if (require.cache[path].exports === obj) {
             // Rewrite the path to be a local module reference relative to the
             // current working directory
-            const modPath = pathRelative(process.cwd(), path);
+            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
             return "./" + modPath;
         }
     }
