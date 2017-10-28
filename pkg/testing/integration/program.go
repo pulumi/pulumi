@@ -4,13 +4,11 @@ package integration
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -167,22 +165,17 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 }
 
 func performExtraRuntimeValidation(
-	t *testing.T,
-	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
-	dir string) (err error) {
-
-	checkpointFile := path.Join(dir, workspace.BookkeepingDir, "stacks", filepath.Base(dir), testStackName+".json")
-	var byts []byte
-	byts, err = ioutil.ReadFile(checkpointFile)
-	if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
+	t *testing.T, extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
+	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
+	ws, err := workspace.NewProjectWorkspace(dir)
+	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
 		return err
 	}
-	var checkpoint stack.Checkpoint
-	err = json.Unmarshal(byts, &checkpoint)
-	if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
+	chk, err := stack.GetCheckpoint(ws, testStackName)
+	if !assert.NoError(t, err, "expected to load checkpoint file for target %v: %v", testStackName, err) {
 		return err
 	}
-	extraRuntimeValidation(t, checkpoint)
+	extraRuntimeValidation(t, *chk)
 	return nil
 }
 

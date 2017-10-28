@@ -15,10 +15,10 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings                     // returns a mutable pointer to the optional workspace settings info.
-	Repository() *Repository                 // the repository this project belongs to
-	StackPath(stackName tokens.QName) string // returns the path to store stack information
-	Save() error                             // saves any modifications to the workspace.
+	Settings() *Settings                 // returns a mutable pointer to the optional workspace settings info.
+	Repository() *Repository             // the repository this project belongs to
+	StackPath(stack tokens.QName) string // returns the path to store stack information
+	Save() error                         // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
@@ -86,10 +86,10 @@ func (pw *projectWorkspace) Save() error {
 	return ioutil.WriteFile(settingsFile, b, 0600)
 }
 
-func (pw *projectWorkspace) StackPath(stackName tokens.QName) string {
+func (pw *projectWorkspace) StackPath(stack tokens.QName) string {
 	path := filepath.Join(pw.Repository().Root, StackDir, pw.name.String())
-	if stackName != "" {
-		path = filepath.Join(path, qnamePath(stackName)+".json")
+	if stack != "" {
+		path = filepath.Join(path, qnamePath(stack)+".json")
 	}
 	return path
 }
