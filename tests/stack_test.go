@@ -40,6 +40,24 @@ func TestStackCommands(t *testing.T) {
 		assert.Equal(t, 0, len(stacks))
 	})
 
+	t.Run("Errors", func(test *testing.T) {
+		t := NewPulumiTest(test)
+		defer t.DeleteTestDirectory()
+
+		// Have not ran `pulumi init` yet.
+		out, err := t.RunCommandExpectError("pulumi", "stack", "ls")
+		assert.Nil(t, out)
+		assertConstainsSubstring(t.T, err, "error: no repository")
+
+		// Create git repo so the .pulumi folder doesn't wind up on a parent directory.
+		// `pulumi stack ls` now fails because it cannot locate a Pulumi.yaml project file.
+		t.RunCommand("git", "init")
+		t.RunCommand("pulumi", "init")
+		out, err = t.RunCommandExpectError("pulumi", "stack", "ls")
+		assert.Nil(t, out)
+		assertConstainsSubstring(t.T, err, "error: no Pulumi program found (or in any of the parent directories)")
+	})
+
 	t.Run("StackSelect", func(test *testing.T) {
 		t := NewPulumiTest(test)
 		defer t.DeleteTestDirectory()
