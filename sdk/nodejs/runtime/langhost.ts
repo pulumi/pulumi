@@ -179,4 +179,3 @@ function stripEOL(data: string | Buffer): string {
     }
     return dataString;
 }
-

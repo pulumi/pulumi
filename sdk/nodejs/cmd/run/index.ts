@@ -126,6 +126,7 @@ export function main(args: string[]): void {
 
     // Set up the process unhandled exception handler and the program exit handler.
     process.on("uncaughtException", (err: Error) => {
+        // First, log the error.
         if (err instanceof RunError) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
             // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
@@ -135,6 +136,8 @@ export function main(args: string[]): void {
             console.log(`Running program '${program}' failed with an unhandled exception:`);
             console.log(err);
         }
+        // And next, exit with a non-zero exit code.
+        process.exit(1);
     });
 
     process.on("exit", () => { runtime.disconnectSync(); });
