@@ -74,17 +74,13 @@ func GetRepository(root string) (*Repository, error) {
 	return &repo, nil
 }
 
+// getDotPulumiDirectoryPath returns the path of the .pulumi Workspace directory starting at the
+// given location. Will stop its search at the first directory with a .git or .pulumi folder, and
+// if none are found, simply returns the provided directory + "/.pulumi".
 func getDotPulumiDirectoryPath(dir string) string {
-	// First, let's look to see if there's an existing .pulumi folder
-	dotpulumipath, _ := fsutil.WalkUp(dir, isRepositoryFolder, nil)
-	if dotpulumipath != "" {
-		return dotpulumipath
-	}
-
-	// If there's a .git folder, put .pulumi there
-	dotgitpath, _ := fsutil.WalkUp(dir, isGitFolder, nil)
-	if dotgitpath != "" {
-		return filepath.Join(filepath.Dir(dotgitpath), ".pulumi")
+	folder, _ := fsutil.WalkUp(dir, isGitOrRepositoryFolder, nil)
+	if folder != "" {
+		return filepath.Join(filepath.Dir(folder), ".pulumi")
 	}
 
 	return filepath.Join(dir, ".pulumi")

@@ -26,9 +26,10 @@ func DetectPackage(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool { return !isRepositoryFolder(filepath.Join(s, BookkeepingDir)) })
 }
 
-func isGitFolder(path string) bool {
+// isGitOrRepositoryFolder returns whether or not the provided path is a .git or .pulumi directory.
+func isGitOrRepositoryFolder(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && info.IsDir() && info.Name() == ".git"
+	return err == nil && info.IsDir() && (info.Name() == ".git" || info.Name() == BookkeepingDir)
 }
 
 func isRepositoryFolder(path string) bool {
