@@ -7,73 +7,75 @@ import (
 	"path"
 	"testing"
 
+	ptesting "github.com/pulumi/pulumi/pkg/testing"
+	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPulumiInit(t *testing.T) {
-	t.Run("SanityTest", func(test *testing.T) {
-		t := NewPulumiTest(test)
-		defer t.DeleteTestDirectory()
+	t.Run("SanityTest", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteEnvironment()
 
 		// With a .git folder in the test root, `pulumi init` sets up shop there.
-		t.RunCommand("git", "init")
-		assert.False(t, t.PathExists(".pulumi"), "expecting no .pulumi folder yet")
-		t.RunCommand("pulumi", "init")
-		assert.True(t, t.PathExists(".pulumi"), "expecting .pulumi folder to be created")
+		e.RunCommand("git", "init")
+		assert.False(t, e.PathExists(".pulumi"), "expecting no .pulumi folder yet")
+		e.RunCommand("pulumi", "init")
+		assert.True(t, e.PathExists(".pulumi"), "expecting .pulumi folder to be created")
 	})
 
-	t.Run("WalkUpToGitFolder", func(test *testing.T) {
-		t := NewPulumiTest(test)
-		defer t.DeleteTestDirectory()
+	t.Run("WalkUpToGitFolder", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteEnvironment()
 
 		// Create a git repo in the root.
-		t.RunCommand("git", "init")
-		assert.True(t, t.PathExists(".git"), "expecting .git folder")
+		e.RunCommand("git", "init")
+		assert.True(t, e.PathExists(".git"), "expecting .git folder")
 
 		// Create a subdirectory and CD into it.,
-		subdir := path.Join(t.RootPath, "/foo/bar/baz/")
+		subdir := path.Join(e.RootPath, "/foo/bar/baz/")
 		err := os.MkdirAll(subdir, os.ModePerm)
 		assert.NoError(t, err, "error creating subdirectory")
-		t.CWD = subdir
+		e.CWD = subdir
 
 		// Confirm we are in the new location (no .git folder found.)
-		assert.False(t, t.PathExists(".git"), "expecting no .git folder (in new dir)")
+		assert.False(t, e.PathExists(".git"), "expecting no .git folder (in new dir)")
 
 		// pulumi init won't create the folder here, but rather along side .git.
-		assert.False(t, t.PathExists(".pulumi"), "expecting no .pulumi folder")
-		t.RunCommand("pulumi", "init")
-		assert.False(t, t.PathExists(".pulumi"), "expecting no .pulumi folder. still")
+		assert.False(t, e.PathExists(".pulumi"), "expecting no .pulumi folder")
+		e.RunCommand("pulumi", "init")
+		assert.False(t, e.PathExists(".pulumi"), "expecting no .pulumi folder. still")
 
-		t.CWD = t.RootPath
-		assert.True(t, t.PathExists(".pulumi"), "expecting .pulumi folder to be created")
+		e.CWD = e.RootPath
+		assert.True(t, e.PathExists(".pulumi"), "expecting .pulumi folder to be created")
 	})
 
-	t.Run("DefaultRepositoryInfo", func(test *testing.T) {
-		t := NewPulumiTest(test)
-		defer t.DeleteTestDirectory()
+	t.Run("DefaultRepositoryInfo", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteEnvironment()
 
-		t.RunCommand("git", "init")
-		t.RunCommand("pulumi", "init")
+		e.RunCommand("git", "init")
+		e.RunCommand("pulumi", "init")
 
 		// Defaults
-		settings := t.GetSettings()
-		testRootName := path.Base(t.RootPath)
+		settings := integration.GetSettings(e)
+		testRootName := path.Base(e.RootPath)
 		assert.Equal(t, os.Getenv("USER"), settings.Owner)
 		assert.Equal(t, testRootName, settings.Name)
 		assert.Equal(t, "", settings.Root)
 	})
 
-	t.Run("ReadRemoteInfo", func(test *testing.T) {
-		t := NewPulumiTest(test)
-		defer t.DeleteTestDirectory()
+	t.Run("ReadRemoteInfo", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteEnvironment()
 
-		t.RunCommand("git", "init")
-		t.RunCommand("git", "remote", "add", "not-origin", "git@github.com:moolumi/pasture.git")
-		t.RunCommand("git", "remote", "add", "origin", "git@github.com:pulumi/pulumi-cloud.git")
-		t.RunCommand("pulumi", "init")
+		e.RunCommand("git", "init")
+		e.RunCommand("git", "remote", "add", "not-origin", "git@github.com:moolumi/pasture.git")
+		e.RunCommand("git", "remote", "add", "origin", "git@github.com:pulumi/pulumi-cloud.git")
+		e.RunCommand("pulumi", "init")
 
 		// We pick up the settings from "origin", not any other remote name.
-		settings := t.GetSettings()
+		settings := integration.GetSettings(e)
 		assert.Equal(t, "pulumi", settings.Owner)
 		assert.Equal(t, "pulumi-cloud", settings.Name)
 		assert.Equal(t, "", settings.Root)

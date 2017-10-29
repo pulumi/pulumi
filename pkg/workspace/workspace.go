@@ -42,7 +42,7 @@ func NewProjectWorkspace(dir string) (W, error) {
 		return nil, err
 	}
 	if project == "" {
-		return nil, errors.New("no Pulumi project found (or in any of the parent directories)")
+		return nil, errors.New("no Pulumi project file found, are you missing a Pulumi.yaml file?")
 	}
 
 	pkg, err := pack.Load(project)
