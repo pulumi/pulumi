@@ -217,5 +217,5 @@ func createBasicPulumiRepo(pt *PulumiTest) {
 	contents := "name: pulumi-test\ndescription: a test\nruntime: nodejs\n"
 	pulumiFile := path.Join(pt.CWD, "Pulumi.yaml")
 	err := ioutil.WriteFile(pulumiFile, []byte(contents), os.ModePerm)
-	assert.NoError(pt, err, "writing pulumi.yaml file")
+	assert.NoError(pt, err, "writing Pulumi.yaml file")
 }
