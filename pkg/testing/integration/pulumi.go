@@ -2,6 +2,7 @@ package integration
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"path"
 	"strings"
@@ -11,26 +12,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// GetSettings returns the contents of the settings.json in the .pulumi folder located in the
-// current working directory of the provided environment. Any IO errors fails the test.
-func GetSettings(e *testing.Environment) workspace.Repository {
-	if !e.PathExists(".pulumi/settings.json") {
+// GetRepository returns the contents of the workspace's repository settings file. Assumes the
+// bookkeeping dir (.pulumi) is in the CWD. Any IO errors fails the test.
+func GetRepository(e *testing.Environment) workspace.Repository {
+	relativePathToRepoFile := fmt.Sprintf("%s/%s", workspace.BookkeepingDir, workspace.RepoFile)
+	if !e.PathExists(relativePathToRepoFile) {
 		e.Fatalf("did not find .pulumi/settings.json")
 	}
 
-	path := path.Join(e.CWD, ".pulumi/settings.json")
+	path := path.Join(e.CWD, relativePathToRepoFile)
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {
-		e.Fatalf("error reading settings.json: %v", err)
+		e.Fatalf("error reading %s: %v", workspace.RepoFile, err)
 	}
 
-	var settings workspace.Repository
-	err = json.Unmarshal(contents, &settings)
+	var repo workspace.Repository
+	err = json.Unmarshal(contents, &repo)
 	if err != nil {
 		e.Fatalf("error unmarshalling JSON: %v", err)
 	}
 
-	return settings
+	return repo
 }
 
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.
@@ -47,6 +49,8 @@ func GetStacks(e *testing.Environment) ([]string, *string) {
 		e.Fatalf("command didn't output as expected")
 	}
 	// Confirm header row matches.
+	// TODO(pulumi/pulumi/issues/496): Provide structured output for pulumi commands. e.g., so we can avoid this
+	// err-prone scraping with just deserializings a JSON object.
 	assert.Equal(e, outLines[0], "NAME                 LAST UPDATE                                      RESOURCE COUNT")
 
 	if len(outLines) >= 2 {
