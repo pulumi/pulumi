@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -28,6 +29,8 @@ type projectWorkspace struct {
 	repo     *Repository        // the repo this workspace is associated with.
 }
 
+// NewProjectWorkspace creates a new Pulumi workspace in the given directory. Requires a
+// Pulumi.yaml file be present in the folder hierarchy between dir and the .pulumi folder.
 func NewProjectWorkspace(dir string) (W, error) {
 	repo, err := GetRepository(dir)
 	if err != nil {
@@ -37,6 +40,9 @@ func NewProjectWorkspace(dir string) (W, error) {
 	project, err := DetectPackage(dir)
 	if err != nil {
 		return nil, err
+	}
+	if project == "" {
+		return nil, errors.New("no Pulumi project file found, are you missing a Pulumi.yaml file?")
 	}
 
 	pkg, err := pack.Load(project)
