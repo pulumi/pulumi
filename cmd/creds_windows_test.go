@@ -15,9 +15,9 @@ import (
 // Test to check creds FilePath ...
 func TestgetCredsFilePath(t *testing.T) {
 
-	want := registry.ExpandEnv("%APPDATA%")
+	want := registry.ExpandEnv(localAppData)
 
-	want = path.Join(want, pulumiSettingsFolder)
+	want = path.Join(path.Join(want, pulumiAppName), pulumiSettingsFolder)
 
 	got, err := getCredsFilePath()
 

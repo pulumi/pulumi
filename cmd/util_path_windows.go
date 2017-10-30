@@ -8,14 +8,22 @@ import (
 	"path"
 )
 
+var localAppData = "%LOCALAPPDATA"
+var pulumiAppName = "pulumi"
+
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
 // exists. Otherwise nil and the related OS error.
 func getCredsFilePath() (string, error) {
-	appData := registry.ExpandString("%APPDATA")
 
-	pulumiFolder := path.Join(appData, pulumiSettingsFolder)
+	// get the local appdata folder for Windows
+	// %users%\AppData\Local\
+	appData := registry.ExpandString(localAppData)
+
+	// .Pulumi directory will be under %LOCALAPPDATA%\%pulumiAppName%
+	pulumiFolder := path.Join(path.Join(appData, pulumiAppName), pulumiSettingsFolder)
 
 	err = os.MkdirAll(pulumiFolder, permUserAllRestNone)
+
 	if err != nil {
 		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
 	}
