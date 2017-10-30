@@ -15,7 +15,7 @@ try { $PublishTargets += $(git describe --tags 2>$null) } catch { }
 function RunGoBuild($goPackage) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
     $outputName = Split-Path -Leaf $(go list -f "{{.Target}}" $goPackage)
-    go build -o $binRoot\${outputName}.exe $goPackage
+    go build -o $binRoot\${outputName} $goPackage
 }
 
 function CopyPackage($pathToModule, $moduleName) {
@@ -32,6 +32,12 @@ CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 Copy-Item "$Root\dist\sdk\nodejs\pulumi-langhost-nodejs.cmd" "$PublishDir\bin"
 New-Item -ItemType Directory -Force -Path "$PublishDir\bin\node" | Out-Null
 Copy-Item "$Root\sdk\nodejs\custom_node\node.exe" "$PublishDir\bin\node"
+
+
+Remove-Item "$PublishDir\node_modules\pulumi\pulumi-langhost-nodejs"
+Remove-Item "$PublishDir\node_modules\pulumi\pulumi-langhost-nodejs.cmd"
+Remove-Item "$PublishDir\node_modules\pulumi\pulumi-provider-pulumi-nodejs"
+Remove-Item "$PublishDir\node_modules\pulumi\pulumi-provider-pulumi-nodejs.cmd"
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing
 # archive if it exists.
