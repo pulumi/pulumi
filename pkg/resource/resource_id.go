@@ -71,9 +71,9 @@ func NewUniqueHex(prefix string, maxlen, randlen int) string {
 
 	if maxlen != -1 && strLen > maxlen {
 		// Our string is longer than the length requested.  We can't just truncate from the left, as
-		// there may not be enough randomness in the string.  If we can get at least 8 characters of
-		// randomness, then attempt to keep the prefix in.  Otherwise, we just take from the right
-		// side of the string to keep as much randomness as possible.
+		// there may not be enough randomness in the string (due to the fixed prefix).  If we can
+		// get at least 8 characters of randomness, then attempt to keep the prefix in.  Otherwise,
+		// we just take from the right side of the string to keep as much randomness as possible.
 		if maxlen-len(prefix) >= 8 {
 			return str[:maxlen]
 		}
