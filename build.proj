@@ -124,7 +124,7 @@
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>
 
-    <Error Message="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
+    <Error Text="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
            Condition="$(WhereLangHostExitCode) != 0"/>
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
@@ -140,7 +140,7 @@
          additional node.exe processes -->
     <Exec Command="taskkill /f /im node.exe" />
 
-    <Error Message="go test failed, exit code: $(GoTestExitCode)"
+    <Error Text="go test failed, exit code: $(GoTestExitCode)"
            Condition="'$(GoTestExitCode)' != '0'"/>
   </Target>
 
