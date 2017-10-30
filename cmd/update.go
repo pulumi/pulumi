@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -133,9 +132,6 @@ func newFAFUpdateCmd() *cobra.Command {
 }
 
 func newCloudUpdateCmd() *cobra.Command {
-	var org string
-	var repo string
-	var project string
 	var stack string
 
 	var cmd = &cobra.Command{
@@ -147,9 +143,23 @@ func newCloudUpdateCmd() *cobra.Command {
 			"\n" +
 			"This command creates or updates a Stack hosted in a Pulumi Cloud.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack)
+			// Look up the owner, repository, and project from the workspace and nearest package.
+			w, err := newWorkspace()
 			if err != nil {
 				return err
+			}
+			projID, err := getCloudProjectIdentifier(w)
+			if err != nil {
+				return err
+			}
+
+			// Default to the workspace settings if stack isn't provided.
+			stackName := tokens.QName(stack)
+			if stackName == "" {
+				stackName = w.Settings().Stack
+			}
+			if stackName == "" {
+				return errors.New("stack argument not set and workspace does not have selected stack")
 			}
 
 			// Zip up the Pulumi program's directory, which may be a parent of CWD.
@@ -184,7 +194,8 @@ func newCloudUpdateCmd() *cobra.Command {
 				Config:         textConfig,
 			}
 			var updateResponse apitype.UpdateProgramResponse
-			path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/update", org, repo, project, string(stackName))
+			path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/update",
+				projID.Owner, projID.Repository, projID.Project, string(stackName))
 			if err = pulumiRESTCall("POST", path, &updateRequest, &updateResponse); err != nil {
 				return err
 			}
@@ -208,21 +219,6 @@ func newCloudUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
-	cmd.PersistentFlags().StringVarP(
-		&org, "organization", "o", "",
-		"Target organization")
-	cmd.PersistentFlags().StringVarP(
-		&repo, "repo", "r", "",
-		"Target Pulumi repo")
-	cmd.PersistentFlags().StringVarP(
-		&project, "project", "p", "",
-		"Target Pulumi project")
-
-	// We need all of these flags to be set. In the future we'll get some of these from the .pulumi folder, and have
-	// a meaningful default for others. So in practice users won't need to specify all of these. (Ideally none.)
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("organization"))
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("repo"))
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("project"))
 
 	return cmd
 }

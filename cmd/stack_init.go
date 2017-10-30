@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func newStackInitCmd() *cobra.Command {
@@ -43,16 +42,13 @@ func newFAFStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			return setCurrentStack(stackName, false)
+			return setCurrentStack(stackName)
 		}),
 	}
 }
 
 func newCloudStackInitCmd() *cobra.Command {
-	var org string
 	var cloud string
-	var repo string
-	var project string
 
 	cmd := &cobra.Command{
 		Use:   "init <stack>",
@@ -63,6 +59,16 @@ func newCloudStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// Look up the owner, repository, and project from the workspace and nearest package.
+			w, err := newWorkspace()
+			if err != nil {
+				return err
+			}
+			projID, err := getCloudProjectIdentifier(w)
+			if err != nil {
+				return err
+			}
+
 			stackName := args[0]
 			createStackReq := apitype.CreateStackRequest{
 				CloudName: cloud,
@@ -70,37 +76,21 @@ func newCloudStackInitCmd() *cobra.Command {
 			}
 
 			var createStackResp apitype.CreateStackResponse
-			path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", org, repo, project)
+			path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
 			if err := pulumiRESTCall("POST", path, &createStackReq, &createStackResp); err != nil {
 				return err
 			}
 			fmt.Printf("Created Stack '%s' hosted in Cloud '%s'\n", stackName, createStackResp.CloudName)
 
 			stackQName := tokens.QName(stackName)
-			return setCurrentStack(stackQName, false)
+			return setCurrentStack(stackQName)
 		}),
 	}
 
-	// "cloud" is not a persistent flag. If not set will use the "default" cloud for the organization.
+	// If not set will use the "default" cloud for the organization.
 	cmd.PersistentFlags().StringVarP(
 		&cloud, "cloud", "c", "",
 		"Target cloud")
-
-	cmd.PersistentFlags().StringVarP(
-		&org, "organization", "o", "",
-		"Target organization")
-	cmd.PersistentFlags().StringVarP(
-		&repo, "repo", "r", "",
-		"Target Pulumi repo")
-	cmd.PersistentFlags().StringVarP(
-		&project, "project", "p", "",
-		"Target Pulumi project")
-
-	// We need all of these flags to be set. In the future we'll get some of these from the .pulumi folder, and have
-	// a meaningful default for others. So in practice users won't need to specify all of these. (Ideally none.)
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("organization"))
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("repo"))
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("project"))
 
 	return cmd
 }

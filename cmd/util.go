@@ -66,14 +66,8 @@ func getCurrentStack() (tokens.QName, error) {
 	return stack, nil
 }
 
-// setCurrentStack changes the current stack to the given stack name, issuing an error if it doesn't exist.
-func setCurrentStack(name tokens.QName, verify bool) error {
-	if verify {
-		if _, _, _, err := getStack(name); err != nil {
-			return err
-		}
-	}
-
+// setCurrentStack changes the current stack to the given stack name.
+func setCurrentStack(name tokens.QName) error {
 	// Switch the current workspace to that stack.
 	w, err := newWorkspace()
 	if err != nil {
