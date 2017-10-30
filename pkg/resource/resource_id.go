@@ -66,8 +66,7 @@ func NewUniqueHex(prefix string, maxlen, randlen int) string {
 	contract.Assert(err == nil)
 	contract.Assert(n == len(bs))
 
-	suffix := hex.EncodeToString(bs)
-	str := prefix + suffix
+	str := prefix + hex.EncodeToString(bs)
 	strLen := len(str)
 
 	if maxlen != -1 && strLen > maxlen {
