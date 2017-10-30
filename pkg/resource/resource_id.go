@@ -46,8 +46,16 @@ func MaybeID(s *string) *ID {
 	return ret
 }
 
-// NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and
-// the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
+// NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given
+// optional prefix and the total length is capped to the maxlen.
+//
+// Notes:
+//  1. capping to maxlen necessarily increases the risk of collisions.
+//  2. If there isn't enough room for the prefix, it will be dropped to ensure an reasonably unique
+//     hex.
+//  3. When there isn't enough room for the prefix and the amount of randomness asked for,
+//     an attempt will be kept to preserve the prefix.  However, if the randomness drops too
+//     low, then the prefix will be dropped to ensure uniqueness.
 func NewUniqueHex(prefix string, maxlen, randlen int) string {
 	if randlen == -1 {
 		randlen = sha1.Size // default to SHA1 size.
@@ -58,15 +66,31 @@ func NewUniqueHex(prefix string, maxlen, randlen int) string {
 	contract.Assert(err == nil)
 	contract.Assert(n == len(bs))
 
-	str := prefix + hex.EncodeToString(bs)
-	if maxlen != -1 && len(str) > maxlen {
-		str = str[:maxlen]
+	suffix := hex.EncodeToString(bs)
+	str := prefix + suffix
+	strLen := len(str)
+
+	if maxlen != -1 && strLen > maxlen {
+		// Our string is longer than the length requested.  We can't just truncate from the left, as
+		// there may not be enough randomness in the string.  If we can get at least 8 characters of
+		// randomness, then attempt to keep the prefix in.  Otherwise, we just take from the right
+		// side of the string to keep as much randomness as possible.
+		if maxlen-len(prefix) >= 8 {
+			return str[:maxlen]
+		}
+
+		// The string we've generated is larger than the requested string.  Ensure the least change
+		// of collisions by extracting from the right side of the string (the part with the most
+		// randomness).
+		return str[strLen-maxlen:]
 	}
+
 	return str
 }
 
-// NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given optional prefix and
-// the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
+// NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given
+// optional prefix and the total length is capped to the maxlen.  Note that capping to maxlen
+// necessarily increases the risk of collisions.
 func NewUniqueHexID(prefix string, maxlen, randlen int) ID {
 	return ID(NewUniqueHex(prefix, maxlen, randlen))
 }

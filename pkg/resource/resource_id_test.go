@@ -28,6 +28,36 @@ func TestNewUniqueHexMaxLen(t *testing.T) {
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
 
+func TestNewUniqueHexEnsureRandomness1(t *testing.T) {
+	prefix := "prefix"
+	randlen := 20
+	// not enough space for the prefix if we want randomness
+	maxlen := 6
+	id := NewUniqueHex(prefix, maxlen, randlen)
+	assert.Equal(t, maxlen, len(id))
+	assert.Equal(t, false, strings.HasPrefix(id, prefix))
+}
+
+func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
+	prefix := "prefix"
+	randlen := 20
+	// not enough space for the prefix if we want randomness
+	maxlen := 13
+	id := NewUniqueHex(prefix, maxlen, randlen)
+	assert.Equal(t, maxlen, len(id))
+	assert.Equal(t, false, strings.HasPrefix(id, prefix))
+}
+
+func TestNewUniqueHexEnsureRandomness3(t *testing.T) {
+	prefix := "prefix"
+	randlen := 20
+	// Just enough space to have 8 chars of randomenss
+	maxlen := 14
+	id := NewUniqueHex(prefix, maxlen, randlen)
+	assert.Equal(t, maxlen, len(id))
+	assert.Equal(t, true, strings.HasPrefix(id, prefix))
+}
+
 func TestNewUniqueDefaults(t *testing.T) {
 	prefix := "prefix"
 	id := NewUniqueHex(prefix, -1, -1)
