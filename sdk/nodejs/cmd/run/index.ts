@@ -125,6 +125,7 @@ export function main(args: string[]): void {
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
     // Set up the process unhandled exception handler and the program exit handler.
+    let uncaught: Error | undefined;
     process.on("uncaughtException", (err: Error) => {
         // First, log the error.
         if (err instanceof RunError) {
@@ -133,14 +134,22 @@ export function main(args: string[]): void {
             log.error(err.message);
         }
         else {
-            console.log(`Running program '${program}' failed with an unhandled exception:`);
-            console.log(err);
+            log.error(`Running program '${program}' failed with an unhandled exception:`);
+            log.error(err.toString());
         }
-        // And next, exit with a non-zero exit code.
-        process.exit(1);
+
+        // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
+        uncaught = err;
     });
 
-    process.on("exit", () => { runtime.disconnectSync(); });
+    process.on("exit", (code: number) => {
+        runtime.disconnectSync();
+
+        // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
+        if (code === 0 && uncaught) {
+            process.exit(1);
+        }
+    });
 
     // Now go ahead and execute the code. The process will remain alive until the message loop empties.
     log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
