@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -195,6 +196,7 @@ func execPlugin(bin string, args []string) (*plugin, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+
 	return &plugin{
 		Proc:   cmd.Process,
 		Stdin:  in,
@@ -207,6 +209,15 @@ func (p *plugin) Close() error {
 	if p.Conn != nil {
 		closerr := p.Conn.Close()
 		contract.IgnoreError(closerr)
+	}
+
+	// On windows, plugins are not loaded directly, instead a cmd script launches each plugin as a child process, so instead
+	// We need kill all the children of the PID we have recorded, as well. Otherwise we will end up waiting forver.
+	if runtime.GOOS == "windows" {
+		err := cmdutil.KillChildren(p.Proc.Pid)
+		if err != nil {
+			return err
+		}
 	}
 
 	// IDEA: consider a more graceful termination than just SIGKILL.
