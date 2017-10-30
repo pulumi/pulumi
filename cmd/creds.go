@@ -11,8 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// pulumiSettingsFolder is the name of the folder we put in the user's home dir to store settings.
-// TODO(pulumi/pulumi-service#49): Return this from a function that takes OS-idioms into account.
+// pulumiSettingsFolder is the name of the folder we put in the user's home dir to store settings for non-windows
+// and under %APPLOCALDATA%\Pulumi for windows
+
 const pulumiSettingsFolder = ".pulumi"
 const pulumiCredentialsFileName = "credentials.json"
 
@@ -31,6 +32,11 @@ type accountCredentials struct {
 
 // errCredsNotFound is the error returned if the credentials file is not found.
 var errCredsNotFound = errors.New("credentials file not found")
+
+// returns the name of the file where credentials are stored for pulumi
+func getCredsFileName() string {
+	return "credentials.json"
+}
 
 // getStoredCredentials returns any credentials stored on the local machine. Returns any
 // IO error if found. errCredsNotFound if no credentials file is present.

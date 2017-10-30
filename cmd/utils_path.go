@@ -10,8 +10,8 @@ import (
 	"path"
 )
 
-// getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
-// exists. Otherwise nil and the related OS error.
+// getCredsFilePath returns the path to the Pulumi credentials file would be on disk and returns
+// any OS rellated error. It doesnt guarantee if the file actually exists
 func getCredsFilePath() (string, error) {
 	user, err := user.Current()
 	if user == nil || err != nil {

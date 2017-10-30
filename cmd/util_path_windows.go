@@ -8,11 +8,11 @@ import (
 	"path"
 )
 
-var localAppData = "%LOCALAPPDATA"
+var localAppData = "%LOCALAPPDATA%"
 var pulumiAppName = "pulumi"
 
-// getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
-// exists. Otherwise nil and the related OS error.
+// getCredsFilePath returns the path to the Pulumi credentials file would be on disk and returns
+// any OS rellated error. It doesnt guarantee if the file actually exists
 func getCredsFilePath() (string, error) {
 
 	// get the local appdata folder for Windows

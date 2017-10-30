@@ -22,11 +22,14 @@ func TestGetCredsFilePath(t *testing.T) {
 
 	got, err := getCredsFilePath()
 	if err != nil {
-		assert.Fail(t, "getCredsFilePath Failed")
-		return
+		t.Fatalf("getCredsFilePath failed with error %v ", err)
 	}
 
 	got, _ = filepath.Split(got)
-	got, _ = filepath.Abs(got)
+
+	got, err = filepath.Abs(got)
+	if !assert.NoError(t, err, "filePath.Abs failed with error %v ", err) {
+		return
+	}
 	assert.Equal(t, want, got)
 }
