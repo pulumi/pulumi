@@ -43,7 +43,7 @@ func NewEnvironment(t *testing.T) *Environment {
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
 	err := os.RemoveAll(e.RootPath)
-	assert.NoError(e, err, "error while cleaning up the test directory '%v'", e.RootPath)
+	assert.NoError(e, err, "cleaning up the test directory")
 }
 
 // PathExists returns whether or not a file or directory exists relative to Environment's working directory.
@@ -68,7 +68,7 @@ func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string,
 
 func runCommand(t *testing.T, expectSuccess bool, command, cwd string, args ...string) (string, string) {
 	t.Helper()
-	t.Logf("Running command '%v'", strings.Join(append(args, command), " "))
+	t.Logf("Running command %v %v", command, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
 	var outBuffer bytes.Buffer
@@ -82,6 +82,8 @@ func runCommand(t *testing.T, expectSuccess bool, command, cwd string, args ...s
 	runErr := cmd.Run()
 	if (runErr == nil) != expectSuccess {
 		t.Errorf("Finished with unexpected result. Expected success: %v, got error: %v", expectSuccess, runErr)
+		t.Logf("STDOUT: %v", outBuffer.String())
+		t.Logf("STDERR: %v", errBuffer.String())
 	}
 	return outBuffer.String(), errBuffer.String()
 }
