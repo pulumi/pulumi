@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
-	"path"
 
 	"github.com/pkg/errors"
 )
@@ -16,6 +14,7 @@ import (
 // pulumiSettingsFolder is the name of the folder we put in the user's home dir to store settings.
 // TODO(pulumi/pulumi-service#49): Return this from a function that takes OS-idioms into account.
 const pulumiSettingsFolder = ".pulumi"
+const pulumiCredentialsFileName = "credentials.json"
 
 // permUserAllRestNone defines the file permissions that the
 // user has RWX access, and group and other have no access.
@@ -24,23 +23,6 @@ const permUserAllRestNone = 0600
 // accountCredentials hold the information necessary for authenticating Pulumi Cloud API requests.
 type accountCredentials struct {
 	AccessToken string `json:"accessToken"`
-}
-
-// getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
-// exists. Otherwise nil and the related OS error.
-func getCredsFilePath() (string, error) {
-	user, err := user.Current()
-	if user == nil || err != nil {
-		return "", fmt.Errorf("getting creds file path: failed to get current user")
-	}
-
-	pulumiFolder := path.Join(user.HomeDir, pulumiSettingsFolder)
-	err = os.MkdirAll(pulumiFolder, permUserAllRestNone)
-	if err != nil {
-		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
-	}
-
-	return path.Join(pulumiFolder, "credentials.json"), nil
 }
 
 // errCredsNotFound is the error returned if the credentials file is not found.
