@@ -16,9 +16,13 @@ import (
 const pulumiSettingsFolder = ".pulumi"
 const pulumiCredentialsFileName = "credentials.json"
 
+// permUserRWRestNone defines the file permissions that the
+// user has RW access, and group and other have no access.
+const permUserRWRestNone = 0600
+
 // permUserAllRestNone defines the file permissions that the
 // user has RWX access, and group and other have no access.
-const permUserAllRestNone = 0600
+const permUserAllRestNone = 0700
 
 // accountCredentials hold the information necessary for authenticating Pulumi Cloud API requests.
 type accountCredentials struct {
@@ -66,7 +70,7 @@ func storeCredentials(creds accountCredentials) error {
 	if err != nil {
 		return fmt.Errorf("marshalling credentials object: %v", err)
 	}
-	return ioutil.WriteFile(credsFile, raw, permUserAllRestNone)
+	return ioutil.WriteFile(credsFile, raw, permUserRWRestNone)
 }
 
 // deleteStoredCredentials deletes the user's stored credentials.

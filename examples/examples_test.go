@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
@@ -26,6 +27,10 @@ func TestExamples(t *testing.T) {
 			},
 			Secrets: map[string]string{
 				"secret": "this is my secret message",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				// Simple runtime validation that just ensures the checkpoint was written and read.
+				assert.Equal(t, integration.TestStackName, checkpoint.Target)
 			},
 		},
 		{

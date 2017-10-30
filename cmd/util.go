@@ -10,6 +10,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/user"
+	"path/filepath"
+	"strings"
+
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -23,15 +28,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
+
+	git "gopkg.in/src-d/go-git.v4"
 )
 
 // newWorkspace creates a new workspace using the current working directory.
 func newWorkspace() (workspace.W, error) {
-	pwd, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-	return workspace.New(pwd)
+	return workspace.NewProjectWorkspace(cwd)
 }
 
 // explicitOrCurrent returns an stack name after ensuring the stack exists. When a empty
@@ -232,4 +239,64 @@ func hasSecureValue(config map[tokens.ModuleMember]config.Value) bool {
 	}
 
 	return false
+}
+
+func detectOwnerAndName(dir string) (string, string, error) {
+	owner, repo, err := getGitHubProjectForOrigin(dir)
+	if err == nil {
+		return owner, repo, nil
+	}
+
+	user, err := user.Current()
+	if err != nil {
+		return "", "", err
+	}
+
+	return user.Username, filepath.Base(dir), nil
+}
+
+func getGitHubProjectForOrigin(dir string) (string, string, error) {
+
+	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
+	if err != nil {
+		return "", "", errors.Wrap(err, "could not detect git repository")
+	}
+	if gitRoot == "" {
+		return "", "", errors.Errorf("could not locate git repository starting at: %s", dir)
+	}
+
+	repo, err := git.NewFilesystemRepository(gitRoot)
+	if err != nil {
+		return "", "", err
+	}
+
+	remote, err := repo.Remote("origin")
+	if err != nil {
+		return "", "", errors.Wrap(err, "could not read origin information")
+	}
+
+	remoteURL := remote.Config().URL
+	project := ""
+
+	const GitHubSSHPrefix = "git@github.com:"
+	const GitHubHTTPSPrefix = "https://github.com/"
+	const GitHubRepositorySuffix = ".git"
+
+	if strings.HasPrefix(remoteURL, GitHubSSHPrefix) {
+		project = trimGitRemoteURL(remoteURL, GitHubSSHPrefix, GitHubRepositorySuffix)
+	} else if strings.HasPrefix(remoteURL, GitHubHTTPSPrefix) {
+		project = trimGitRemoteURL(remoteURL, GitHubHTTPSPrefix, GitHubRepositorySuffix)
+	}
+
+	split := strings.Split(project, "/")
+
+	if len(split) != 2 {
+		return "", "", errors.Errorf("could not detect GitHub project from url: %v", remote)
+	}
+
+	return split[0], split[1], nil
+}
+
+func trimGitRemoteURL(url string, prefix string, suffix string) string {
+	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }

@@ -4,28 +4,28 @@ package integration
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 const (
-	testStackName = "integrationtesting"
+	TestStackName = tokens.QName("integrationtesting")
 )
 
 // EditDir is an optional edit to apply to the example, as subsequent deployments.
@@ -86,6 +86,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   yarn install
 //   yarn link <each opts.Depencies>
 //   yarn run build
+//   pulumi init
 //   pulumi stack init integrationtesting
 //   pulumi config text <each opts.Config>
 //   pulumi config secret <each opts.Secrets>
@@ -108,7 +109,8 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
-	RunCommand(t, []string{opts.Bin, "stack", "init", testStackName}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "init"}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "stack", "init", string(TestStackName)}, dir, opts)
 	for key, value := range opts.Config {
 		RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts)
 	}
@@ -131,7 +133,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	contract.IgnoreError(err)
 	previewAndUpdate(dir)
 
-	// Run additional validation provided by the test options, passing in the
+	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if opts.ExtraRuntimeValidation != nil {
 		err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir)
 		if err != nil {
@@ -161,26 +163,23 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
-	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", testStackName}, dir, opts)
+	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", string(TestStackName)}, dir, opts)
 }
 
 func performExtraRuntimeValidation(
-	t *testing.T,
-	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
-	dir string) (err error) {
-
-	checkpointFile := path.Join(dir, workspace.Dir, "stacks", testStackName+".json")
-	var byts []byte
-	byts, err = ioutil.ReadFile(path.Join(dir, workspace.Dir, "stacks", testStackName+".json"))
-	if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
+	t *testing.T, extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
+	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
+	ws, err := workspace.NewProjectWorkspace(dir)
+	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
 		return err
 	}
-	var checkpoint stack.Checkpoint
-	err = json.Unmarshal(byts, &checkpoint)
-	if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
+	chk, err := stack.GetCheckpoint(ws, TestStackName)
+	if !assert.NoError(t, err, "expected to load checkpoint file for target %v: %v", TestStackName, err) {
 		return err
+	} else if !assert.NotNil(t, chk, "expected checkpoint file to be populated from %v: %v", TestStackName, err) {
+		return errors.New("missing checkpoint")
 	}
-	extraRuntimeValidation(t, checkpoint)
+	extraRuntimeValidation(t, *chk)
 	return nil
 }
 
@@ -287,7 +286,7 @@ func prepareProject(t *testing.T, src string, origin string, opts ProgramTestOpt
 	}
 
 	// Now copy the source into it, ignoring .pulumi/ and Pulumi.yaml if there's an origin.
-	wdir := workspace.Dir
+	wdir := workspace.BookkeepingDir
 	proj := workspace.ProjectFile + ".yaml"
 	excl := make(map[string]bool)
 	if origin != "" {

@@ -3,106 +3,128 @@
 package workspace
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/golang/glog"
-	homedir "github.com/mitchellh/go-homedir"
-
-	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// W offers functionality for interacting with Lumi workspaces.  A workspace influences compilation; for example, it
-// can specify default versions of dependencies, easing the process of working with multiple projects.
+// W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Path() string                   // the base path of the current workspace.
-	Root() string                   // the root path of the current workspace.
-	Settings() *Settings            // returns a mutable pointer to the optional workspace settings info.
-	DetectPackage() (string, error) // locates the nearest project file in the directory hierarchy.
-	Save() error                    // saves any modifications to the workspace.
+	Settings() *Settings                 // returns a mutable pointer to the optional workspace settings info.
+	Repository() *Repository             // the repository this project belongs to
+	StackPath(stack tokens.QName) string // returns the path to store stack information
+	Save() error                         // saves any modifications to the workspace.
 }
 
-// New creates a new workspace from the given starting path.
-func New(path string) (W, error) {
-	// First normalize the path to an absolute one.
-	var err error
-	path, err = filepath.Abs(path)
+type projectWorkspace struct {
+	name     tokens.PackageName // the project this workspace is associated with.
+	project  string             // the path to the Pulumi.[yaml|json] file for this project.
+	settings *Settings          // settings for this workspace.
+	repo     *Repository        // the repo this workspace is associated with.
+}
+
+// NewProjectWorkspace creates a new Pulumi workspace in the given directory. Requires a
+// Pulumi.yaml file be present in the folder hierarchy between dir and the .pulumi folder.
+func NewProjectWorkspace(dir string) (W, error) {
+	repo, err := GetRepository(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	home, err := homedir.Dir()
+	project, err := DetectPackage(dir)
+	if err != nil {
+		return nil, err
+	}
+	if project == "" {
+		return nil, errors.New("no Pulumi project file found, are you missing a Pulumi.yaml file?")
+	}
+
+	pkg, err := pack.Load(project)
 	if err != nil {
 		return nil, err
 	}
 
-	ws := workspace{
-		path: path,
-		home: home,
-	}
+	w := projectWorkspace{
+		name:    pkg.Name,
+		project: project,
+		repo:    repo}
 
-	// Perform our I/O: memoize the root directory and load up any settings before returning.
-	if err := ws.init(); err != nil {
+	err = w.readSettings()
+	if err != nil {
 		return nil, err
 	}
 
-	return &ws, nil
+	return &w, nil
 }
 
-type workspace struct {
-	path     string   // the path at which the workspace was constructed.
-	home     string   // the home directory to use for this workspace.
-	root     string   // the root of the workspace.
-	settings Settings // an optional bag of workspace-wide settings.
+func (pw *projectWorkspace) Settings() *Settings {
+	return pw.settings
 }
 
-// init finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
-func (w *workspace) init() error {
-	if w.root == "" {
-		// Detect the root of the workspace and cache it.
-		root := pathDir(w.path)
-	Search:
-		for {
-			files, err := ioutil.ReadDir(root)
-			if err != nil {
-				return err
-			}
-			for _, file := range files {
-				// A lumi directory delimits the root of the workspace.
-				lumidir := filepath.Join(root, file.Name())
-				if IsLumiDir(lumidir) {
-					glog.V(3).Infof("Lumi workspace detected; setting root to %v", root)
-					w.root = root                      // remember the root.
-					w.settings, err = w.readSettings() // load up optional settings.
-					if err != nil {
-						return err
-					}
-					break Search
-				}
-			}
+func (pw *projectWorkspace) Repository() *Repository {
+	return pw.repo
+}
 
-			// If neither succeeded, keep looking in our parent directory.
-			if root = filepath.Dir(root); isTop(root) {
-				// We reached the top of the filesystem.  Just set root back to the path and stop.
-				glog.V(3).Infof("No Lumi workspace found; defaulting to current path %v", w.root)
-				w.root = w.path
-				break
-			}
-		}
+func (pw *projectWorkspace) DetectPackage() (string, error) {
+	return pw.project, nil
+}
+
+func (pw *projectWorkspace) Save() error {
+	settingsFile := pw.settingsPath()
+
+	// ensure the path exists
+	err := os.MkdirAll(filepath.Dir(settingsFile), 0700)
+	if err != nil {
+		return err
 	}
 
+	b, err := json.Marshal(pw.settings)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(settingsFile, b, 0600)
+}
+
+func (pw *projectWorkspace) StackPath(stack tokens.QName) string {
+	path := filepath.Join(pw.Repository().Root, StackDir, pw.name.String())
+	if stack != "" {
+		path = filepath.Join(path, qnamePath(stack)+".json")
+	}
+	return path
+}
+
+func (pw *projectWorkspace) readSettings() error {
+	settingsPath := pw.settingsPath()
+
+	b, err := ioutil.ReadFile(settingsPath)
+	if err != nil && os.IsNotExist(err) {
+		// not an error to not have an existing settings file.
+		pw.settings = &Settings{}
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	var settings Settings
+
+	err = json.Unmarshal(b, &settings)
+	if err != nil {
+		return err
+	}
+
+	pw.settings = &settings
 	return nil
 }
 
-func (w *workspace) Path() string        { return w.path }
-func (w *workspace) Root() string        { return w.root }
-func (w *workspace) Settings() *Settings { return &w.settings }
-
-func (w *workspace) DetectPackage() (string, error) {
-	return DetectPackage(w.path)
+func (pw *projectWorkspace) settingsPath() string {
+	return filepath.Join(pw.Repository().Root, WorkspaceDir, pw.name.String(), WorkspaceFile)
 }
 
 // qnamePath just cleans a name and makes sure it's appropriate to use as a path.
@@ -113,52 +135,4 @@ func qnamePath(nm tokens.QName) string {
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
 	return strings.Replace(nm, tokens.QNameDelimiter, string(os.PathSeparator), -1)
-}
-
-// Save persists any in-memory changes made to the workspace.
-func (w *workspace) Save() error {
-	// For now, the only changes to commit are the settings file changes.
-	return w.saveSettings()
-}
-
-// settingsFile returns the settings file location for this workspace.
-func (w *workspace) settingsFile(ext string) string {
-	return filepath.Join(w.root, Dir, SettingsFile+ext)
-}
-
-// readSettings loads a settings file from the workspace, probing for all available extensions.
-func (w *workspace) readSettings() (Settings, error) {
-	// Attempt to load the raw bytes from all available extensions.
-	var settings Settings
-	for _, ext := range encoding.Exts {
-		// See if the file exists.
-		path := w.settingsFile(ext)
-		b, err := ioutil.ReadFile(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue // try the next extension
-			}
-			return settings, err
-		}
-
-		// If it does, go ahead and decode it.
-		m := encoding.Marshalers[ext]
-		if err := m.Unmarshal(b, &settings); err != nil {
-			return settings, err
-		}
-	}
-	return settings, nil
-}
-
-// saveSettings saves the settings into a file for this workspace, committing any in-memory changes that have been made.
-// IDEA: right now, we only support JSON.  It'd be ideal if we supported YAML too (and it would be quite easy).
-func (w *workspace) saveSettings() error {
-	m := encoding.Default()
-	settings := w.Settings()
-	b, err := m.Marshal(settings)
-	if err != nil {
-		return err
-	}
-	path := w.settingsFile(encoding.DefaultExt())
-	return ioutil.WriteFile(path, b, 0644)
 }
