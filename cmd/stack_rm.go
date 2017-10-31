@@ -55,7 +55,9 @@ func newFAFStackRmCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				printStackRemoved(stackName)
+
+				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
+				fmt.Println(colors.ColorizeText(msg))
 			}
 
 			return nil
@@ -74,7 +76,7 @@ func newFAFStackRmCmd() *cobra.Command {
 
 func newCloudStackRmCmd() *cobra.Command {
 	var yes bool
-
+	var force bool
 	var cmd = &cobra.Command{
 		Use:   "rm <stack>",
 		Args:  cobra.ExactArgs(1),
@@ -101,8 +103,12 @@ func newCloudStackRmCmd() *cobra.Command {
 				}
 
 				// Query all stacks for the project on Pulumi.
-				path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s",
-					projID.Owner, projID.Repository, projID.Project, string(stackName))
+				queryParam := ""
+				if force {
+					queryParam = "?force=true"
+				}
+				path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s%s",
+					projID.Owner, projID.Repository, projID.Project, string(stackName), queryParam)
 				if err = pulumiRESTCall("DELETE", path, nil, nil); err != nil {
 					return err
 				}
@@ -112,23 +118,21 @@ func newCloudStackRmCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				printStackRemoved(stackName)
+
+				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
+				fmt.Println(colors.ColorizeText(msg))
 			}
 
 			return nil
 		}),
 	}
 
-	// Unlike the local variant of this command, there is no --force argument. You cannot delete
-	// a stack hosted by Pulumi without first removing its resources.
+	cmd.PersistentFlags().BoolVarP(
+		&force, "force", "f", false,
+		"By default, removal of a stack with resources will be rejected; this forces it")
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 
 	return cmd
-}
-
-func printStackRemoved(stackName tokens.QName) {
-	msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
-	fmt.Println(colors.ColorizeText(msg))
 }
