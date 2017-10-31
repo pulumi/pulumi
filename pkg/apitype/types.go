@@ -1,3 +1,7 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
+// Package apitype contains the type definitions for JSON objects returned from the Pulumi Cloud
+// Console's REST API. Thes
 package apitype
 
 import (
@@ -5,10 +9,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
-
-/**
- * Go type declarations for REST objects returned from the Pulumi Console API.
- */
 
 // User represents a Pulumi user.
 type User struct {
@@ -29,18 +29,6 @@ type ErrorResponse struct {
 // Error implements the Error interface.
 func (err ErrorResponse) Error() string {
 	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
-}
-
-// CreateStackRequest defines the request body for creating a new Stack
-type CreateStackRequest struct {
-	CloudName string `json:"cloudName"`
-	StackName string `json:"stackName"`
-}
-
-// CreateStackResponse is the response from a create Stack request.
-type CreateStackResponse struct {
-	// The name of the cloud used if the default was sent.
-	CloudName string `json:"cloudName"`
 }
 
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
