@@ -17,7 +17,7 @@ all: banner_all core sdk/nodejs integrationtest
 nightly: all gocover
 
 .PHONY: core
-core: vet test install lint_quiet
+core: vet test install lint
 
 .PHONY: banner
 banner:
@@ -43,26 +43,24 @@ install:
 format:
 	find . -iname "*.go" -not -path "./vendor/*" | xargs gofmt -s -w
 
-.PHONY: lint
-lint:
-	@$(ECHO) "\033[0;32mLINT:\033[0m"
+.PHONY: lint_full
+lint_full:
+	@$(ECHO) "\033[0;32mLINT (full):\033[0m"
 	$(GOMETALINTER) main.go | sort ; exit "$${PIPESTATUS[0]}"
 	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
 	$(GOMETALINTER) ./cmd/... | sort ; exit "$${PIPESTATUS[0]}"
 
 # In quiet mode, suppress some messages.
 #    - "or be unexported": TODO[pulumi/pulumi#191]: will fix when we write all of our API docs
-#    - "Subprocess launching with variable": we intentionally launch processes dynamically.
-#    - "cyclomatic complexity" (disabled in config): TODO[pulumi/pulumi#259]: need to fix many of these.
-LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
+LINT_SUPPRESS="or be unexported"
 
-.PHONY: lint_quiet
-lint_quiet:
-	@$(ECHO) "\033[0;32mLINT (quiet):\033[0m"
+.PHONY: lint
+lint:
+	@$(ECHO) "\033[0;32mLINT:\033[0m"
 	$(GOMETALINTER) main.go | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	@$(ECHO) "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
+	@$(ECHO) "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint_full'\033[0m"
 
 .PHONY: vet
 vet:
