@@ -342,24 +342,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let [nocap1 = cap1] = [];
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #1",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let [nocap1 = cap1] = [];
+                console.log(nocap1);
+            },
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let [nocap1 = cap1] = [];
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__cc9f19c19acef64729b266d4ca0b5ca8ba22b9a6",
+            closureHash: "__ef48a2e2962bd53acef1b2cda244ae8c72972c05",
         });
     }
     {
