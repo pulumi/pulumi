@@ -95,7 +95,7 @@ func TestStackCommands(t *testing.T) {
 		// Error
 		out, err := e.RunCommandExpectError("pulumi", "stack", "select", "anor-londo")
 		assert.Empty(t, out)
-		assert.Contains(t, err, ".pulumi/stacks/pulumi-test/anor-londo.json: no such file or directory")
+		assert.Contains(t, err, "no stack with name 'anor-londo' found")
 	})
 
 	t.Run("StackRm", func(t *testing.T) {
