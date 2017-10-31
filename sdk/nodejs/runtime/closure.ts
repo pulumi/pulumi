@@ -2,7 +2,6 @@
 
 import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
-import { sep as pathSep } from "path";
 import * as ts from "typescript";
 import * as log from "../log";
 import { debuggablePromise } from "./debuggable";
