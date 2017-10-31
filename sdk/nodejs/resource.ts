@@ -54,9 +54,9 @@ export abstract class Resource {
     /**
      * Creates a new initialized resource object.
      */
-    constructor() {
+    constructor(t: string, name: string) {
         this.children = [];
-        runtime.initResource(this);
+        runtime.initResource(this, t, name);
 
         // If there is a parent scope, automatically add this to it as a child.
         if (Resource.parentScope.length) {
@@ -136,7 +136,7 @@ export abstract class CustomResource extends Resource {
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
     constructor(t: string, name: string, props: ComputedValues, dependsOn?: Resource[]) {
-        super();
+        super(t, name);
         this.register(t, name, true, props, dependsOn);
     }
 }
@@ -160,7 +160,7 @@ export abstract class ComponentResource extends Resource {
      */
     constructor(t: string, name: string, props: ComputedValues,
                 init: () => void | ComputedValues | undefined, dependsOn?: Resource[]) {
-        super();
+        super(t, name);
         const values: void | ComputedValues | undefined = Resource.runInParentScope(this, init);
         // IDEA: in the future, it would be nice to split inputs and outputs in the Pulumi metadata.  This would let
         //     us display them differently.  That implies fairly sizable changes to the RPC interfaces, however, so
