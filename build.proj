@@ -8,6 +8,7 @@
     <NodeVersion>6.10.2</NodeVersion>
     <NodeArch>x64</NodeArch>
     <TestParallelism>10</TestParallelism>
+    <MSVSVersion>2017</MSVSVersion>
   </PropertyGroup>
  
   <Target Name="EnsureGoDependencies">
@@ -40,7 +41,7 @@
           DependsOnTargets="EnsureNodeDependencies">
     <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
           WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version 2015 --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
           WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
     <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node.lib"
           DestinationFiles="$(NativeRuntimeModuleDirectory)\node_dev\$(NodeVersion)\$(NodeArch)\node.lib" />
@@ -48,7 +49,7 @@
 
   <Target Name="BuildNativeRuntimeModule"
           DependsOnTargets="ConfigureNativeRuntimeModule">
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version 2015 --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
           WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
   </Target>
 
