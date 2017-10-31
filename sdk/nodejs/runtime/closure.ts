@@ -245,7 +245,7 @@ function findRequirableModuleName(obj: any): string | undefined  {
         if (require.cache[path].exports === obj) {
             // Rewrite the path to be a local module reference relative to the
             // current working directory
-            const modPath = pathRelative(process.cwd(), path);
+            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
             return "./" + modPath;
         }
     }
