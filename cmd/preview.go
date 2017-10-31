@@ -141,8 +141,8 @@ func newCloudPreviewCmd() *cobra.Command {
 			"\n" +
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error { // Look up the owner, repository, and project from the workspace and nearest package.
-			// Get the project being previewed.
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// Look up the owner, repository, and project from the workspace and nearest package.
 			w, err := newWorkspace()
 			if err != nil {
 				return err
