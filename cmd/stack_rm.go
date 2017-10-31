@@ -128,7 +128,7 @@ func newCloudStackRmCmd() *cobra.Command {
 	return cmd
 }
 
-func printStackRemoved(stackName token.QName) {
+func printStackRemoved(stackName tokens.QName) {
 	msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
 	fmt.Println(colors.ColorizeText(msg))
 }
