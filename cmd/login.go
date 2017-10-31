@@ -14,6 +14,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
+// PulumiAccessTokenEnvVar is the environment variable used to bypass a prompt on login.
+const PulumiAccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
+
 func newLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
@@ -38,24 +41,16 @@ func newLogoutCmd() *cobra.Command {
 
 // loginCmd is the implementation of the login command.
 func loginCmd() error {
-	// Check if the the user is already logged in.
-	_, err := getStoredCredentials()
-	if err == nil {
-		return fmt.Errorf("already logged in")
-	}
-
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
-	//
-	// However, if PULUMI_ACCESS_TOKEN is available, we'll use that.
-	accessToken := os.Getenv("PULUMI_ACCESS_TOKEN")
+	accessToken := os.Getenv(PulumiAccessTokenEnvVar)
 	if accessToken != "" {
-		fmt.Println("Using access token from PULUMI_ACCESS_TOKEN.")
+		fmt.Printf("Using access token from %s.\n", PulumiAccessTokenEnvVar)
 	} else {
-		fmt.Println("Enter Pulumi access token:")
+		fmt.Print("Enter Pulumi access token: ")
 		reader := bufio.NewReader(os.Stdin)
-		raw, readErr := reader.ReadString('\n')
-		if readErr != nil {
+		raw, err := reader.ReadString('\n')
+		if err != nil {
 			return fmt.Errorf("reading STDIN: %v", err)
 		}
 		accessToken = strings.TrimSpace(raw)
