@@ -76,8 +76,7 @@ test:
 integrationtest:
 	@$(ECHO) "\033[0;32mINTEGRATION TEST:\033[0m"
 	@if [ -z "`which pulumi-langhost-nodejs`" ]; then $(ECHO) Please add "`pwd`/sdk/nodejs/bin" to your path before running integration tests. && exit 1; fi
-	go test -cover -parallel ${TESTPARALLELISM} ./examples
-	go test ./tests/...
+	go test -cover -parallel ${TESTPARALLELISM} ./examples ./tests
 
 sdk/nodejs:
 	@cd ./sdk/nodejs && $(MAKE)
