@@ -17,7 +17,7 @@ all: banner_all core sdk/nodejs integrationtest
 nightly: all gocover
 
 .PHONY: core
-core: vet test install lint
+core: test install lint
 
 .PHONY: banner
 banner:
@@ -61,11 +61,6 @@ lint:
 	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	@$(ECHO) "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint_full'\033[0m"
-
-.PHONY: vet
-vet:
-	@$(ECHO) "\033[0;32mVET:\033[0m"
-	go tool vet -printf=false cmd/ pkg/
 
 .PHONY: test
 test:
