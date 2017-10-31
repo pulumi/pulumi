@@ -15,6 +15,7 @@ const langproto = require("../proto/languages_pb.js");
  * pulumi/pulumi#335 tracks coming up with a long-term solution here.
  */
 let resourceChain: Promise<void> = Promise.resolve();
+let resourceChainLabel: string | undefined = undefined;
 
 /**
  * registrations tracks all resources that have finished being registered.
@@ -96,6 +97,11 @@ export function registerResource(
 
     // Serialize the invocation if necessary.
     const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
+        if (serialize()) {
+            resourceChainLabel = `${name} [${t}]`;
+            log.debug(`Resource serialization requested: ${resourceChainLabel} is current`);
+        }
+
         // Make sure to propagate these no matter what.
         let urn: URN | undefined = undefined;
         let id: ID | undefined = undefined;
@@ -191,6 +197,9 @@ export function registerResource(
     // them, and make this the current resource operation so that everybody piles up on it.
     if (serialize()) {
         resourceChain = finalOp;
+        if (resourceChainLabel) {
+            log.debug(`Resource serialization requested: ${name} [${t}] is behind ${resourceChainLabel}`);
+        }
     }
 }
 
