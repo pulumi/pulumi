@@ -373,24 +373,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let {nocap1 = cap1} = {};
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #2",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    // tslint:disable-next-line
+    let {nocap1 = cap1} = {};
+    console.log(nocap1);
+},
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let { nocap1 = cap1 } = {};
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__c7fe4fd94a2ad6184ed066f022c481c32317e10a",
+            closureHash: "__b409f3bd837d513df07525bef43e57597154625e",
         });
     }
     {
@@ -399,24 +404,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let {x: nocap1 = cap1} = {};
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #3",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    // tslint:disable-next-line
+    let {x: nocap1 = cap1} = {};
+    console.log(nocap1);
+},
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let { x: nocap1 = cap1 } = {};
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__3f863abc6928cccb4bdfe8c7ec4fdc6d7995121c",
+            closureHash: "__5fa215795194604118a7543ce20b8e273837ae79",
         });
     }
     cases.push({
