@@ -11,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
+// newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
 func newStackSelectCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "select [<stack>]",
@@ -21,7 +22,7 @@ func newStackSelectCmd() *cobra.Command {
 			"\n" +
 			"If no <stack> argument is supplied, the current stack is printed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Read in the name of the stack to switch to.
+			// Display the name of the current stack if a new one isn't specified.
 			if len(args) == 0 {
 				name, err := getCurrentStack()
 				if err != nil {
@@ -32,9 +33,22 @@ func newStackSelectCmd() *cobra.Command {
 				return nil
 			}
 
-			allStacks, err := getStacks()
-			if err != nil {
-				return err
+			// Gather the list of possible stack names.
+			var allStacks []tokens.QName
+			var err error
+			if !usePulumiCloudCommands() {
+				allStacks, err = getStacks()
+				if err != nil {
+					return err
+				}
+			} else {
+				cloudStacks, err := getCloudStacks()
+				if err != nil {
+					return err
+				}
+				for _, cloudStack := range cloudStacks {
+					allStacks = append(allStacks, cloudStack.StackName)
+				}
 			}
 
 			// Confirm the stack name is valid.
