@@ -138,7 +138,9 @@
     <!-- Work around pulumi/pulumi#371 by killing all lingering node.exe processes. Yes, in the limit
          this may kill too much, but we assume for now folks hacking on pulumi on windows are not running
          additional node.exe processes -->
-    <Exec Command="taskkill /f /im node.exe" />
+    <Exec Command="taskkill /f /im node.exe"
+          IgnoreStandardErrorWarningFormat="true"
+          IgnoreExitCode="true" />
 
     <Error Text="go test failed, exit code: $(GoTestExitCode)"
            Condition="'$(GoTestExitCode)' != '0'"/>
