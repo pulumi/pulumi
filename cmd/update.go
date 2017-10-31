@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/archive"
@@ -167,18 +168,24 @@ func newCloudUpdateCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting working directory: %v", err)
 			}
-			programPath, err := workspace.DetectPackage(cwd)
+			packagePath, err := workspace.DetectPackage(cwd)
 			if err != nil {
 				return fmt.Errorf("looking for Pulumi package: %v", err)
 			}
-			if programPath == "" {
+			if packagePath == "" {
 				return fmt.Errorf("no Pulumi package found")
 			}
-			// programPath is the path to the pulumi.yaml file. Need its parent folder.
-			programFolder := filepath.Dir(programPath)
-			archive, err := archive.EncodePath(programFolder)
+			// packagePath is the path to the pulumi.yaml file. Need its parent folder.
+			packageFolder := filepath.Dir(packagePath)
+			archive, err := archive.EncodePath(packageFolder)
 			if err != nil {
 				return fmt.Errorf("creating archive: %v", err)
+			}
+
+			// Load the package, since we now require passing the Runtime with the update request.
+			pkg, err := pack.Load(packagePath)
+			if err != nil {
+				return err
 			}
 
 			// Gather up configuration.
@@ -190,6 +197,8 @@ func newCloudUpdateCmd() *cobra.Command {
 
 			// Update the program in the Pulumi Cloud
 			updateRequest := apitype.UpdateProgramRequest{
+				Name:           pkg.Name,
+				Runtime:        pkg.Runtime,
 				ProgramArchive: archive,
 				Config:         textConfig,
 			}
