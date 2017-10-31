@@ -6,6 +6,7 @@ package cmdutil
 import (
 	"os"
 
+	multierror "github.com/hashicorp/go-multierror"
 	ps "github.com/mitchellh/go-ps"
 )
 
@@ -17,19 +18,21 @@ func KillChildren(pid int) error {
 		return err
 	}
 
+	var result error
+
 	for _, proc := range procs {
 		if proc.PPid() == pid {
 			toKill, err := os.FindProcess(proc.Pid())
 			if err != nil {
-				return err
+				result = multierror.Append(result, err)
 			}
 
 			err = toKill.Kill()
 			if err != nil {
-				return err
+				result = multierror.Append(result, err)
 			}
 		}
 	}
 
-	return nil
+	return result
 }
