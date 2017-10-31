@@ -462,13 +462,17 @@ return (function () { })
     cases.push({
         title: "Don't capture catch variables",
         // tslint:disable-next-line
-        func: eval(`() => { try { } catch (err) { console.log(err); } }`),
+        func: () => { try { } catch (err) { console.log(err); } },
         expect: {
-            code: `(() => { try { } catch (err) { console.log(err); } })`,
+            code:
+`(() => { try { }
+        catch (err) {
+            console.log(err);
+        } })`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__6b8e43947115e731ff7808be1ff6bf9b18aaa67d",
+        closureHash: "__040426f0dc90fa8f115c1a7ed52793515564fa98",
     });
 
     // Recursive function serialization.
@@ -482,17 +486,21 @@ return (function () { })
                 a: [ (a1: any, a2: any) => { console.log(a1 + a2); } ],
             },
         };
-        const functext = `(() => {
+        const func = () => {
     xcap.fff();
     xcap.ggg();
     xcap.zzz.a[0]("x", "y");
-})`;
+};
         cases.push({
             title: "Serializes recursive function captures",
             // tslint:disable-next-line
-            func: eval(functext),
+            func: func,
             expect: {
-                code: functext,
+                code: `(() => {
+            xcap.fff();
+            xcap.ggg();
+            xcap.zzz.a[0]("x", "y");
+        })`,
                 environment: {
                     xcap: {
                         obj: {
@@ -530,7 +538,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__53324dfdeb155ad763635ace1384fa8e1d397e72",
+            closureHash: "__1b6ae6abb4d8b2676bccb50507a0276f5be90371",
         });
     }
 
