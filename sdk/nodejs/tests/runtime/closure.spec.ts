@@ -342,24 +342,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let [nocap1 = cap1] = [];
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #1",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let [nocap1 = cap1] = [];
+                console.log(nocap1);
+            },
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let [nocap1 = cap1] = [];
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__cc9f19c19acef64729b266d4ca0b5ca8ba22b9a6",
+            closureHash: "__ef48a2e2962bd53acef1b2cda244ae8c72972c05",
         });
     }
     {
@@ -368,24 +373,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let {nocap1 = cap1} = {};
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #2",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    // tslint:disable-next-line
+    let {nocap1 = cap1} = {};
+    console.log(nocap1);
+},
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let { nocap1 = cap1 } = {};
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__c7fe4fd94a2ad6184ed066f022c481c32317e10a",
+            closureHash: "__b409f3bd837d513df07525bef43e57597154625e",
         });
     }
     {
@@ -394,24 +404,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let {x: nocap1 = cap1} = {};
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #3",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    // tslint:disable-next-line
+    let {x: nocap1 = cap1} = {};
+    console.log(nocap1);
+},
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let { x: nocap1 = cap1 } = {};
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__3f863abc6928cccb4bdfe8c7ec4fdc6d7995121c",
+            closureHash: "__5fa215795194604118a7543ce20b8e273837ae79",
         });
     }
     cases.push({
@@ -462,13 +477,17 @@ return (function () { })
     cases.push({
         title: "Don't capture catch variables",
         // tslint:disable-next-line
-        func: eval(`() => { try { } catch (err) { console.log(err); } }`),
+        func: () => { try { } catch (err) { console.log(err); } },
         expect: {
-            code: `(() => { try { } catch (err) { console.log(err); } })`,
+            code:
+`(() => { try { }
+        catch (err) {
+            console.log(err);
+        } })`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__6b8e43947115e731ff7808be1ff6bf9b18aaa67d",
+        closureHash: "__040426f0dc90fa8f115c1a7ed52793515564fa98",
     });
 
     // Recursive function serialization.
@@ -482,17 +501,21 @@ return (function () { })
                 a: [ (a1: any, a2: any) => { console.log(a1 + a2); } ],
             },
         };
-        const functext = `(() => {
+        const func = () => {
     xcap.fff();
     xcap.ggg();
     xcap.zzz.a[0]("x", "y");
-})`;
+};
         cases.push({
             title: "Serializes recursive function captures",
             // tslint:disable-next-line
-            func: eval(functext),
+            func: func,
             expect: {
-                code: functext,
+                code: `(() => {
+            xcap.fff();
+            xcap.ggg();
+            xcap.zzz.a[0]("x", "y");
+        })`,
                 environment: {
                     xcap: {
                         obj: {
@@ -530,7 +553,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__53324dfdeb155ad763635ace1384fa8e1d397e72",
+            closureHash: "__1b6ae6abb4d8b2676bccb50507a0276f5be90371",
         });
     }
 
