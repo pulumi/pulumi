@@ -45,6 +45,10 @@ type CreateStackResponse struct {
 
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
+	// Properties from the Project file.
+	Name    tokens.PackageName `json:"name"`
+	Runtime string             `json:"runtime"`
+
 	// Base-64 encoded Zip archive of the program's root directory.
 	ProgramArchive string `json:"programArchive"`
 

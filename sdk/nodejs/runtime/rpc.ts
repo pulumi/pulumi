@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
 import { ComputedValue, ComputedValues, CustomResource, Resource } from "../resource";
@@ -49,22 +50,27 @@ export function transferProperties(
                     throw new Error(`Property '${k}' is already initialized on target '${label}`);
                 }
                 onto[k] =
-                    debuggablePromise(new Promise<any>((resolve) => { resolvers[k] = resolve; }));
+                    debuggablePromise(
+                        new Promise<any>((resolve) => { resolvers[k] = resolve; }),
+                        `transferProperty(${label}, ${k}, ${props[k]})`,
+                    );
             }
 
             // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
             // after all properties have settled, and we may need to wait for them before this transfer finishes.
             if (props[k] !== undefined) {
-                eventuals.push(
-                    serializeProperty(props[k], label).then(
-                        (v: any) => {
-                            obj[k] = v;
-                        },
-                        (err: Error) => {
-                            throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
-                        },
-                    ),
+                const serialize: Promise<any> = serializeProperty(props[k], `${label}.${k}`).then(
+                    (v: any) => {
+                        assert(!(v instanceof Promise),
+                            `Expected value '${label}.${k}' to settle; instead, it's a promise`);
+                        obj[k] = v;
+                    },
+                    (err: Error) => {
+                        throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
+                    },
                 );
+                eventuals.push(
+                    debuggablePromise(serialize, `serializeProperty(${label}, ${k}, ${props[k]})`));
             }
         }
     }
@@ -221,7 +227,9 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: promise<T>`);
         }
-        return serializeProperty(await prop, `promise<${ctx}>`);
+        const subctx = `promise<${ctx}>`;
+        return serializeProperty(
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx);
     }
     else {
         const obj: any = {};
@@ -310,4 +318,3 @@ function deserializeProperty(prop: any): any {
         return obj;
     }
 }
-

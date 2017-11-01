@@ -15,6 +15,7 @@ const langproto = require("../proto/languages_pb.js");
  * pulumi/pulumi#335 tracks coming up with a long-term solution here.
  */
 let resourceChain: Promise<void> = Promise.resolve();
+let resourceChainLabel: string | undefined = undefined;
 
 /**
  * registrations tracks all resources that have finished being registered.
@@ -36,7 +37,7 @@ export function isRegistered(res: Resource): boolean {
 /**
  * initResource initializes a new resource object.
  */
-export function initResource(res: Resource): void {
+export function initResource(res: Resource, t: string, name: string): void {
     if (registrations.has(res) || pendingRegistrations.has(res)) {
         throw new Error("Illegal attempt to initialize resource more than once");
     }
@@ -44,7 +45,7 @@ export function initResource(res: Resource): void {
     // Simply initialize the URN property and get prepared to resolve it later on.
     (res as any).urn = debuggablePromise(new Promise<URN | undefined>((resolve) => {
         pendingRegistrations.set(res, resolve);
-    }));
+    }), `initResource/resolveURN(resource:${name}[${t}])`);
 }
 
 /**
@@ -52,12 +53,13 @@ export function initResource(res: Resource): void {
  * and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(
-    res: Resource, t: string, name: string, custom: boolean,
-    props: ComputedValues | undefined, children: Resource[], dependsOn: Resource[] | undefined): void {
-
+export function registerResource(res: Resource, t: string, name: string, custom: boolean,
+                                 props: ComputedValues | undefined, children: Resource[],
+                                 dependsOn: Resource[] | undefined): void {
+    const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
     // Ensure we're not registering more than once.
     if (registrations.has(res)) {
         throw new Error("Illegal attempt to register resource more than once");
@@ -76,7 +78,10 @@ export function registerResource(
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID | undefined) => void) | undefined;
     if (custom) {
-        (res as any).id = debuggablePromise(new Promise<ID | undefined>((resolve) => { resolveID = resolve; }));
+        (res as any).id = debuggablePromise(
+            new Promise<ID | undefined>((resolve) => { resolveID = resolve; }),
+            `resolveID(${label})`,
+        );
     }
 
     // Ensure we depend on any children plus any explicit dependsOns.
@@ -92,10 +97,15 @@ export function registerResource(
 
     // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
     const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(res, `resource:${name}[${t}]`, props, allDependsOn));
+        transferProperties(res, label, props, allDependsOn), `transferProperties(${label})`);
 
     // Serialize the invocation if necessary.
     const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
+        if (serialize()) {
+            resourceChainLabel = `${name} [${t}]`;
+            log.debug(`Resource serialization requested: ${resourceChainLabel} is current`);
+        }
+
         // Make sure to propagate these no matter what.
         let urn: URN | undefined = undefined;
         let id: ID | undefined = undefined;
@@ -139,7 +149,7 @@ export function registerResource(
                             resolve(innerResponse);
                         }
                     });
-                }));
+                }), `monitor.newResource(${label})`);
 
                 urn = resp.getUrn();
                 id = resp.getId();
@@ -191,6 +201,8 @@ export function registerResource(
     // them, and make this the current resource operation so that everybody piles up on it.
     if (serialize()) {
         resourceChain = finalOp;
+        if (resourceChainLabel) {
+            log.debug(`Resource serialization requested: ${name} [${t}] is behind ${resourceChainLabel}`);
+        }
     }
 }
-

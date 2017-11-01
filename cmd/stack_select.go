@@ -29,9 +29,23 @@ func newStackSelectCmd() *cobra.Command {
 				}
 
 				fmt.Printf("%v\n", name)
+				return nil
 			}
 
-			return setCurrentStack(tokens.QName(args[0]), true)
+			allStacks, err := getStacks()
+			if err != nil {
+				return err
+			}
+
+			// Confirm the stack name is valid.
+			selectedStack := tokens.QName(args[0])
+			for _, stack := range allStacks {
+				if stack == selectedStack {
+					return setCurrentStack(selectedStack)
+				}
+			}
+
+			return fmt.Errorf("no stack with name '%v' found", selectedStack)
 		}),
 	}
 }

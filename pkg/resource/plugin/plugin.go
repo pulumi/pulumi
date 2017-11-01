@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
+
+	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -195,6 +198,7 @@ func execPlugin(bin string, args []string) (*plugin, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+
 	return &plugin{
 		Proc:   cmd.Process,
 		Stdin:  in,
@@ -209,12 +213,25 @@ func (p *plugin) Close() error {
 		contract.IgnoreError(closerr)
 	}
 
+	var result error
+
+	// On windows, plugins are not loaded directly, instead a cmd script launches each plugin as a child process, so instead
+	// we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting for the child
+	// processes to close.
+	if runtime.GOOS == "windows" {
+		err := cmdutil.KillChildren(p.Proc.Pid)
+		if err != nil {
+			result = multierror.Append(result, err)
+		}
+	}
+
 	// IDEA: consider a more graceful termination than just SIGKILL.
 	err := p.Proc.Kill()
+	result = multierror.Append(result, err)
 
 	// Wait for stdout and stderr to drain
 	<-p.stdoutDone
 	<-p.stderrDone
 
-	return err
+	return result
 }
