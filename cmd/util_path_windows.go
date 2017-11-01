@@ -1,9 +1,9 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 // +build windows
+
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path"
 )
@@ -13,20 +13,11 @@ var pulumiAppName = "pulumi"
 
 // getCredsFilePath returns the path to the Pulumi credentials file would be on disk and returns
 // any OS rellated error. It doesnt guarantee if the file actually exists
-func getCredsFilePath() (string, error) {
+func getCredsFileRoot() (string, error) {
 
 	// get the local appdata folder for Windows
 	// %users%\AppData\Local\
-	appData := registry.ExpandString(localAppData)
+	appData := os.ExpandEnv("$(LOCALAPPDATA)")
 
-	// .Pulumi directory will be under %LOCALAPPDATA%\%pulumiAppName%
-	pulumiFolder := path.Join(path.Join(appData, pulumiAppName), pulumiSettingsFolder)
-
-	err = os.MkdirAll(pulumiFolder, permUserAllRestNone)
-
-	if err != nil {
-		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
-	}
-
-	return path.Join(pulumiFolder, pulumiCredentialsFileName), nil
+	return path.Join(appData, pulumiAppName)
 }

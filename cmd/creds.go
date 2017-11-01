@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/pkg/errors"
 )
@@ -35,7 +36,22 @@ var errCredsNotFound = errors.New("credentials file not found")
 
 // returns the name of the file where credentials are stored for pulumi
 func getCredsFileName() string {
-	return "credentials.json"
+	return pulumiCredentialsFileName
+}
+
+func getCredsFilePath() (string, error) {
+
+	root, err := getCredsFileRoot()
+	// .Pulumi directory will be under %LOCALAPPDATA%\%pulumiAppName%
+	pulumiFolder := path.Join(root, pulumiSettingsFolder)
+
+	err = os.MkdirAll(pulumiFolder, permUserAllRestNone)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
+	}
+
+	return path.Join(pulumiFolder, getCredsFileName()), nil
 }
 
 // getStoredCredentials returns any credentials stored on the local machine. Returns any
