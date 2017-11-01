@@ -129,8 +129,7 @@ func (b *pulumiCloudPulumiBackend) Update(stackName tokens.QName, debug bool, op
 	}
 
 	var updateResponse apitype.UpdateProgramResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/update",
-		projID.Owner, projID.Repository, projID.Project, string(stackName))
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/update", projID.Owner, projID.Repository, projID.Project, string(stackName))
 	if err = pulumiRESTCall("POST", path, &updateRequest, &updateResponse); err != nil {
 		return err
 	}
@@ -165,10 +164,9 @@ func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, o
 		return err
 	}
 
-	var updateResponse apitype.UpdateProgramResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/destroy",
-		projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("POST", path, &updateRequest, &updateResponse); err != nil {
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/destroy", projID.Owner, projID.Repository, projID.Project, string(stackName))
+
+	if err = pulumiRESTCall("POST", path, &updateRequest, nil /*destroy does not return data upon success*/); err != nil {
 		return err
 	}
 	fmt.Printf("Destroying Stack '%s'...\n", string(stackName))
