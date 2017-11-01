@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
@@ -46,47 +45,21 @@ func newFAFDestroyCmd() *cobra.Command {
 			"Warning: although old snapshots can be used to recreate an stack, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			var backend pulumiBackend = &localPulumiBackend{}
+
 			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
 
-			cfg, err := getConfiguration(stackName)
-			if err != nil {
-				return err
-			}
-
-			var decrypter config.ValueDecrypter = panicCrypter{}
-
-			if hasSecureValue(cfg) {
-				decrypter, err = getSymmetricCrypter()
-				if err != nil {
-					return err
-				}
-			}
-
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", stackName.String()) {
 
-				localProvider := localStackProvider{decrypter: decrypter}
-				pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
-
-				events := make(chan engine.Event)
-				done := make(chan bool)
-
-				go displayEvents(events, done, debug)
-
-				if err := pulumiEngine.Destroy(stackName, events, engine.DestroyOptions{
+				return backend.Destroy(stackName, debug, engine.DestroyOptions{
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,
-				}); err != nil {
-					return err
-				}
-
-				<-done
-				close(events)
-				close(done)
+				})
 			}
 
 			return nil

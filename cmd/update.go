@@ -58,34 +58,14 @@ func newFAFUpdateCmd() *cobra.Command {
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			var backend pulumiBackend = &localPulumiBackend{}
+
 			stackName, err := explicitOrCurrent(stack)
 			if err != nil {
 				return err
 			}
 
-			cfg, err := getConfiguration(stackName)
-			if err != nil {
-				return err
-			}
-
-			var decrypter config.ValueDecrypter = panicCrypter{}
-
-			if hasSecureValue(cfg) {
-				decrypter, err = getSymmetricCrypter()
-				if err != nil {
-					return err
-				}
-			}
-
-			localProvider := localStackProvider{decrypter: decrypter}
-			pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
-
-			events := make(chan engine.Event)
-			done := make(chan bool)
-
-			go displayEvents(events, done, debug)
-
-			if err = pulumiEngine.Deploy(stackName, events, engine.DeployOptions{
+			return backend.Update(stackName, debug, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,
@@ -93,14 +73,7 @@ func newFAFUpdateCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-			}); err != nil {
-				return err
-			}
-
-			<-done
-			close(events)
-			close(done)
-			return nil
+			})
 		}),
 	}
 

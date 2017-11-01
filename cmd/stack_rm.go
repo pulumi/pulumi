@@ -34,25 +34,19 @@ func newFAFStackRmCmd() *cobra.Command {
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			var backend pulumiBackend = &localPulumiBackend{}
+
 			stackName := tokens.QName(args[0])
 
 			// Ensure the user really wants to do this.
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' stack!", stackName.String()) {
 
-				name, _, snapshot, err := getStack(stackName)
-				if err != nil {
-					return err
-				}
-
-				// Don't remove stacks that still have resources.
-				if !force && snapshot != nil && len(snapshot.Resources) > 0 {
+				err := backend.RemoveStack(stackName, force)
+				if err == errHasResources {
 					return errors.Errorf(
 						"'%v' still has resources; removal rejected; pass --force to override", stackName)
-				}
-
-				err = removeStack(name)
-				if err != nil {
+				} else if err != nil {
 					return err
 				}
 

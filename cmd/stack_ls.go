@@ -32,6 +32,8 @@ func newFAFStackLsCmd() *cobra.Command {
 		Use:   "ls",
 		Short: "List all known stacks",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			var backend pulumiBackend = &localPulumiBackend{}
+
 			currentStack, err := getCurrentStack()
 			if err != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later
@@ -39,27 +41,9 @@ func newFAFStackLsCmd() *cobra.Command {
 				currentStack = tokens.QName("")
 			}
 
-			stacks, err := getStacks()
+			summaries, err := backend.GetStacks()
 			if err != nil {
 				return err
-			}
-
-			var summaries []stackSummary
-			for _, stack := range stacks {
-				summary := stackSummary{
-					Name:          stack,
-					LastDeploy:    "n/a",
-					ResourceCount: "n/a",
-				}
-
-				// Ignore errors, just leave display settings as "n/a".
-				_, _, snapshot, err := getStack(stack)
-				if err == nil && snapshot != nil {
-					summary.LastDeploy = snapshot.Time.String()
-					summary.ResourceCount = strconv.Itoa(len(snapshot.Resources))
-				}
-
-				summaries = append(summaries, summary)
 			}
 
 			displayStacks(summaries, currentStack)
@@ -166,13 +150,6 @@ func getCloudStacks() ([]apitype.Stack, error) {
 		return nil, err
 	}
 	return stacks, nil
-}
-
-type stackSummary struct {
-	Name tokens.QName
-	// May be "n/a" for an undeployed stack.
-	LastDeploy    string
-	ResourceCount string
 }
 
 // displayStacks prints the list of stacks to STDOUT. An optional current stack name,

@@ -30,15 +30,11 @@ func newFAFStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			var backend pulumiBackend = &localPulumiBackend{}
+
 			stackName := tokens.QName(args[0])
 
-			if _, _, _, err := getStack(stackName); err == nil {
-				return fmt.Errorf("stack '%v' already exists", stackName)
-
-			}
-
-			err := saveStack(stackName, nil, nil)
-			if err != nil {
+			if err := backend.CreateStack(stackName); err != nil {
 				return err
 			}
 
