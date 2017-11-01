@@ -43,13 +43,31 @@ func newWorkspace() (workspace.W, error) {
 
 // explicitOrCurrent returns an stack name after ensuring the stack exists. When a empty
 // stack name is passed, the "current" ambient stack is returned
-func explicitOrCurrent(name string) (tokens.QName, error) {
-	if name == "" {
-		return getCurrentStack()
+func explicitOrCurrent(name string, backend pulumiBackend) (tokens.QName, error) {
+	stackName := tokens.QName(name)
+
+	if stackName == "" {
+		curStack, err := getCurrentStack()
+		if err != nil {
+			return "", nil
+		}
+
+		stackName = curStack
 	}
 
-	_, _, _, err := getStack(tokens.QName(name))
-	return tokens.QName(name), err
+	// validate it's a stack the backend knows about
+	stacks, err := backend.GetStacks()
+	if err != nil {
+		return "", err
+	}
+
+	for _, stack := range stacks {
+		if stack.Name == stackName {
+			return stackName, nil
+		}
+	}
+
+	return "", errors.Errorf("no stack named '%v' found", stackName)
 }
 
 // getCurrentStack reads the current stack.

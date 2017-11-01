@@ -31,6 +31,13 @@ func (err ErrorResponse) Error() string {
 	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
 }
 
+// PreviewUpdateResponse is returned when previewing a potential update.
+// Since multiple previews can be running concurrently, the caller must keep
+// track of the opaque preview ID for future requests.
+type PreviewUpdateResponse struct {
+	PreviewID string `json:"previewID"`
+}
+
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
 	// Properties from the Project file.

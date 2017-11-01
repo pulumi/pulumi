@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/spf13/cobra"
 
@@ -21,6 +22,7 @@ func newStackSelectCmd() *cobra.Command {
 			"stack name each and every time.\n" +
 			"\n" +
 			"If no <stack> argument is supplied, the current stack is printed.",
+		Args: cobra.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Display the name of the current stack if a new one isn't specified.
 			if len(args) == 0 {
@@ -33,33 +35,21 @@ func newStackSelectCmd() *cobra.Command {
 				return nil
 			}
 
-			// Gather the list of possible stack names.
-			var allStacks []tokens.QName
-			var err error
-			if !usePulumiCloudCommands() {
-				allStacks, err = getStacks()
-				if err != nil {
-					return err
-				}
-			} else {
-				cloudStacks, err := getCloudStacks()
-				if err != nil {
-					return err
-				}
-				for _, cloudStack := range cloudStacks {
-					allStacks = append(allStacks, cloudStack.StackName)
-				}
-			}
+			selectedStack := tokens.QName(args[0])
 
 			// Confirm the stack name is valid.
-			selectedStack := tokens.QName(args[0])
-			for _, stack := range allStacks {
-				if stack == selectedStack {
+			summeries, err := backend.GetStacks()
+			if err != nil {
+				return err
+			}
+
+			for _, stack := range summeries {
+				if stack.Name == selectedStack {
 					return setCurrentStack(selectedStack)
 				}
 			}
 
-			return fmt.Errorf("no stack with name '%v' found", selectedStack)
+			return errors.Errorf("no stack with name '%v' found", selectedStack)
 		}),
 	}
 }

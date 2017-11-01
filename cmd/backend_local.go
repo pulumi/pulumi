@@ -3,8 +3,14 @@
 package cmd
 
 import (
-	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
+
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -14,16 +20,18 @@ import (
 
 type localPulumiBackend struct{}
 
-func (b *localPulumiBackend) CreateStack(stackName tokens.QName) error {
+func (b *localPulumiBackend) CreateStack(stackName tokens.QName, cloud string) error {
+	contract.Requiref(cloud == "", "cloud", "local backend does not support clouds, cloud must be empty")
+
 	if _, _, _, err := getStack(stackName); err == nil {
-		return fmt.Errorf("stack '%v' already exists", stackName)
+		return errors.Errorf("stack '%v' already exists", stackName)
 	}
 
 	return saveStack(stackName, nil, nil)
 }
 
 func (b *localPulumiBackend) GetStacks() ([]stackSummary, error) {
-	stacks, err := getStacks()
+	stacks, err := getLocalStacks()
 	if err != nil {
 		return nil, err
 	}
@@ -161,4 +169,46 @@ func (b *localPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts en
 	close(done)
 
 	return nil
+}
+
+func getLocalStacks() ([]tokens.QName, error) {
+	var stacks []tokens.QName
+
+	w, err := newWorkspace()
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the stack directory.
+	path := w.StackPath("")
+
+	files, err := ioutil.ReadDir(path)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Errorf("could not read stacks: %v", err)
+	}
+
+	for _, file := range files {
+		// Ignore directories.
+		if file.IsDir() {
+			continue
+		}
+
+		// Skip files without valid extensions (e.g., *.bak files).
+		stackfn := file.Name()
+		ext := filepath.Ext(stackfn)
+		if _, has := encoding.Marshalers[ext]; !has {
+			continue
+		}
+
+		// Read in this stack's information.
+		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
+		_, _, _, err := getStack(name)
+		if err != nil {
+			continue // failure reading the stack information.
+		}
+
+		stacks = append(stacks, name)
+	}
+
+	return stacks, nil
 }

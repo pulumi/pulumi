@@ -11,10 +11,8 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // pulumiCloudEndpoint returns the endpoint for the Pulumi Cloud Management Console API.
@@ -39,31 +37,6 @@ type cloudProjectIdentifier struct {
 	Owner      string
 	Repository string
 	Project    tokens.PackageName
-}
-
-// getCloudProjectIdentifiers returns the owner, repo name, and project name of the current package and workspace.
-func getCloudProjectIdentifier(w workspace.W) (*cloudProjectIdentifier, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	path, err := workspace.DetectPackage(cwd)
-	if err != nil {
-		return nil, err
-	}
-
-	pkg, err := pack.Load(path)
-	if err != nil {
-		return nil, err
-	}
-
-	repo := w.Repository()
-	return &cloudProjectIdentifier{
-		Owner:      repo.Owner,
-		Repository: repo.Name,
-		Project:    pkg.Name,
-	}, nil
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.

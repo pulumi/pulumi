@@ -14,13 +14,6 @@ import (
 )
 
 func newStackRmCmd() *cobra.Command {
-	if usePulumiCloudCommands() {
-		return newCloudStackRmCmd()
-	}
-	return newFAFStackRmCmd()
-}
-
-func newFAFStackRmCmd() *cobra.Command {
 	var yes bool
 	var force bool
 	var cmd = &cobra.Command{
@@ -34,8 +27,6 @@ func newFAFStackRmCmd() *cobra.Command {
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			var backend pulumiBackend = &localPulumiBackend{}
-
 			stackName := tokens.QName(args[0])
 
 			// Ensure the user really wants to do this.
@@ -47,69 +38,6 @@ func newFAFStackRmCmd() *cobra.Command {
 					return errors.Errorf(
 						"'%v' still has resources; removal rejected; pass --force to override", stackName)
 				} else if err != nil {
-					return err
-				}
-
-				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
-				fmt.Println(colors.ColorizeText(msg))
-			}
-
-			return nil
-		}),
-	}
-
-	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
-		"By default, removal of a stack with resources will be rejected; this forces it")
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
-		"Skip confirmation prompts, and proceed with removal anyway")
-
-	return cmd
-}
-
-func newCloudStackRmCmd() *cobra.Command {
-	var yes bool
-	var force bool
-	var cmd = &cobra.Command{
-		Use:   "rm <stack>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Remove an stack and its configuration",
-		Long: "Remove an stack and its configuration\n" +
-			"\n" +
-			"This command removes an stack and its configuration state.  Please refer to the\n" +
-			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
-			"\n" +
-			"After this command completes, the stack will no longer be available for updates.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(args[0])
-
-			// Ensure the user really wants to do this.
-			if yes || confirmPrompt("This will permanently remove the '%v' stack!", stackName.String()) {
-				// Look up the owner, repository, and project from the workspace and nearest package.
-				w, err := newWorkspace()
-				if err != nil {
-					return err
-				}
-				projID, err := getCloudProjectIdentifier(w)
-				if err != nil {
-					return err
-				}
-
-				// Query all stacks for the project on Pulumi.
-				queryParam := ""
-				if force {
-					queryParam = "?force=true"
-				}
-				path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s%s",
-					projID.Owner, projID.Repository, projID.Project, string(stackName), queryParam)
-				if err = pulumiRESTCall("DELETE", path, nil, nil); err != nil {
-					return err
-				}
-
-				// Delete the reference to the stack in the current workspace settings.
-				err = removeStack(stackName)
-				if err != nil {
 					return err
 				}
 

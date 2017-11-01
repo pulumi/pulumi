@@ -14,7 +14,11 @@ import (
 func TestStackErrors(t *testing.T) {
 	t.Run("NoRepository", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "does-not-exist", "--yes")
 		assert.Empty(t, stdout, "expected nothing to be written to stdout")
@@ -26,7 +30,11 @@ func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "stack", "init", "foo")
@@ -50,7 +58,11 @@ func TestStackCommands(t *testing.T) {
 
 	t.Run("StackSelect", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
@@ -82,7 +94,11 @@ func TestStackCommands(t *testing.T) {
 
 	t.Run("StackRm", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		integration.CreateBasicPulumiRepo(e)
 

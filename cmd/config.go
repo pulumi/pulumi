@@ -41,7 +41,7 @@ func newConfigLsCmd() *cobra.Command {
 		Short: "List configuration for a stack",
 		Args:  cobra.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack)
+			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
 				return err
 			}
