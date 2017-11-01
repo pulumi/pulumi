@@ -9,13 +9,18 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"runtime"
 
 	"github.com/pkg/errors"
 )
 
-// pulumiSettingsFolder is the name of the folder we put in the user's home dir to store settings.
-// TODO(pulumi/pulumi-service#49): Return this from a function that takes OS-idioms into account.
+// pulumiSettingsFolder is the name of the folder we put in the user's home dir to store settings for non-windows
+// and under %APPLOCALDATA%\Pulumi for windows
+
 const pulumiSettingsFolder = ".pulumi"
+const pulumiCredentialsFileName = "credentials.json"
+const localAppData = "${LOCALAPPDATA}"
+const appName = "pulumi"
 
 // permUserRWRestNone defines the file permissions that the
 // user has RW access, and group and other have no access.
@@ -30,21 +35,30 @@ type accountCredentials struct {
 	AccessToken string `json:"accessToken"`
 }
 
-// getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
-// exists. Otherwise nil and the related OS error.
+// returns the name of the file where credentials are stored for pulumi
+func getCredsFileName() string {
+	return pulumiCredentialsFileName
+}
+
 func getCredsFilePath() (string, error) {
-	user, err := user.Current()
-	if user == nil || err != nil {
-		return "", fmt.Errorf("getting creds file path: failed to get current user")
+	var pulumiFolder string
+
+	if runtime.GOOS == "windows" {
+		pulumiFolder = path.Join(os.ExpandEnv(localAppData), appName)
+	} else {
+		user, err := user.Current()
+		if user == nil || err != nil {
+			return "", fmt.Errorf("getting creds file path: failed to get current user")
+		}
+		pulumiFolder = path.Join(user.HomeDir, pulumiSettingsFolder)
 	}
 
-	pulumiFolder := path.Join(user.HomeDir, pulumiSettingsFolder)
-	err = os.MkdirAll(pulumiFolder, permUserAllRestNone)
+	err := os.MkdirAll(pulumiFolder, permUserAllRestNone)
 	if err != nil {
 		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
 	}
 
-	return path.Join(pulumiFolder, "credentials.json"), nil
+	return path.Join(pulumiFolder, getCredsFileName()), nil
 }
 
 // errCredsNotFound is the error returned if the credentials file is not found.
