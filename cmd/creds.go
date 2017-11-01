@@ -42,6 +42,10 @@ func getCredsFileName() string {
 func getCredsFilePath() (string, error) {
 
 	root, err := getCredsFileRoot()
+
+	if err != nil {
+		return "", fmt.Errorf("failed to create '%s'", root)
+	}
 	// .Pulumi directory will be under %LOCALAPPDATA%\%pulumiAppName%
 	pulumiFolder := path.Join(root, pulumiSettingsFolder)
 

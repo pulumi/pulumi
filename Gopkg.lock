@@ -160,10 +160,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-<<<<<<< HEAD
-  inputs-digest = "fe3d0fbaf39fd26bce1a57405107f7d8163f94a5809cb3faff49e439b36b1186"
-=======
-  inputs-digest = "b70d8a8b886c12e564dac07df8c1f042f6b85f3873e46569894e0c48a1f9f82b"
->>>>>>> dfcc165840ce7a9eee0a9d3760c87fb989f92547
+  inputs-digest = "cc79e9dd9f86ecd339b4354a7335d37374ab59a76ce994a645491cb8fa6be25c"
   solver-name = "gps-cdcl"
   solver-version = 1

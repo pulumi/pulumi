@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-var localAppData = "%LOCALAPPDATA%"
+// var localAppData = "%LOCALAPPDATA%"
 var pulumiAppName = "pulumi"
 
 // getCredsFilePath returns the path to the Pulumi credentials file would be on disk and returns
