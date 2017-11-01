@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path"
+	"runtime"
 
 	"github.com/pkg/errors"
 )
@@ -17,6 +19,8 @@ import (
 
 const pulumiSettingsFolder = ".pulumi"
 const pulumiCredentialsFileName = "credentials.json"
+const localAppData = "${LOCALAPPDATA}"
+const appName = "pulumi"
 
 // permUserRWRestNone defines the file permissions that the
 // user has RW access, and group and other have no access.
@@ -41,15 +45,18 @@ func getCredsFileName() string {
 
 func getCredsFilePath() (string, error) {
 
-	root, err := getCredsFileRoot()
-
-	if err != nil {
-		return "", fmt.Errorf("failed to create '%s'", root)
+	var pulumiFolder string
+	if runtime.GOOS == "windows" {
+		pulumiFolder = path.Join(os.ExpandEnv(localAppData), appName)
+	} else {
+		user, err := user.Current()
+		if user == nil || err != nil {
+			return "", fmt.Errorf("getting creds file path: failed to get current user")
+		}
+		pulumiFolder = path.Join(user.HomeDir, pulumiSettingsFolder)
 	}
-	// .Pulumi directory will be under %LOCALAPPDATA%\%pulumiAppName%
-	pulumiFolder := path.Join(root, pulumiSettingsFolder)
 
-	err = os.MkdirAll(pulumiFolder, permUserAllRestNone)
+	err := os.MkdirAll(pulumiFolder, permUserAllRestNone)
 
 	if err != nil {
 		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
