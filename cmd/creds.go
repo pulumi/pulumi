@@ -40,6 +40,8 @@ func getCredsFileName() string {
 	return pulumiCredentialsFileName
 }
 
+// getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
+// exists. Otherwise nil and the related OS error.
 func getCredsFilePath() (string, error) {
 	var pulumiFolder string
 
