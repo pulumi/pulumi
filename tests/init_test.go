@@ -16,7 +16,11 @@ import (
 func TestPulumiInit(t *testing.T) {
 	t.Run("SanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		// With a .git folder in the test root, `pulumi init` sets up shop there.
 		const dirName = workspace.BookkeepingDir
@@ -28,7 +32,11 @@ func TestPulumiInit(t *testing.T) {
 
 	t.Run("WalkUpToGitFolder", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		// Create a git repo in the root.
 		e.RunCommand("git", "init")
@@ -55,7 +63,11 @@ func TestPulumiInit(t *testing.T) {
 
 	t.Run("DefaultRepositoryInfo", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		e.RunCommand("git", "init")
 		e.RunCommand("pulumi", "init")
@@ -70,7 +82,11 @@ func TestPulumiInit(t *testing.T) {
 
 	t.Run("ReadRemoteInfo", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		e.RunCommand("git", "init")
 		e.RunCommand("git", "remote", "add", "not-origin", "git@github.com:moolumi/pasture.git")

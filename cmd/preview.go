@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -35,48 +34,19 @@ func newPreviewCmd() *cobra.Command {
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack)
+			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
 				return err
 			}
 
-			cfg, err := getConfiguration(stackName)
-			if err != nil {
-				return err
-			}
-
-			var decrypter config.ValueDecrypter = panicCrypter{}
-
-			if hasSecureValue(cfg) {
-				decrypter, err = getSymmetricCrypter()
-				if err != nil {
-					return err
-				}
-			}
-
-			localProvider := localStackProvider{decrypter: decrypter}
-			pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
-
-			events := make(chan engine.Event)
-			done := make(chan bool)
-
-			go displayEvents(events, done, debug)
-
-			if err = pulumiEngine.Preview(stackName, events, engine.PreviewOptions{
+			return backend.Preview(stackName, debug, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-			}); err != nil {
-				return err
-			}
-
-			<-done
-			close(events)
-			close(done)
-			return nil
+			})
 		}),
 	}
 

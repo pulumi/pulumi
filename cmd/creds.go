@@ -30,8 +30,13 @@ type accountCredentials struct {
 	AccessToken string `json:"accessToken"`
 }
 
-// getCredsFilePath returns the path to the Pulumi credentials file on disk, if it
-// exists. Otherwise nil and the related OS error.
+// UseAltCredentialsLocationEnvVar is the name of an environment variable which if set, will cause
+// pulumi to use an alternative file path for saving and updating user credentials. This allows for
+// a script or testcase to login/logout without impacting regular usage.
+const UseAltCredentialsLocationEnvVar = "PULUMI_USE_ALT_CREDENTIALS_LOCATION"
+
+// getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
+// whether it exists or not.
 func getCredsFilePath() (string, error) {
 	user, err := user.Current()
 	if user == nil || err != nil {
@@ -44,7 +49,14 @@ func getCredsFilePath() (string, error) {
 		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
 	}
 
-	return path.Join(pulumiFolder, "credentials.json"), nil
+	// If we are running as part of unit tests, we want to save/restore a different set
+	// of credentials as to not modify the developer's machine.
+	credentialsFile := "credentials.json"
+	if os.Getenv(UseAltCredentialsLocationEnvVar) != "" {
+		credentialsFile = "alt-credentials.json"
+	}
+
+	return path.Join(pulumiFolder, credentialsFile), nil
 }
 
 // errCredsNotFound is the error returned if the credentials file is not found.
