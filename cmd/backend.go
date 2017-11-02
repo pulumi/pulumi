@@ -15,10 +15,14 @@ type stackSummary struct {
 	ResourceCount string
 }
 
+type StackCreationOptions struct {
+	Cloud string
+}
+
 var errHasResources = errors.New("stack has existing resources and force was false")
 
 type pulumiBackend interface {
-	CreateStack(stackName tokens.QName, cloud string) error
+	CreateStack(stackName tokens.QName, opts StackCreationOptions) error
 	GetStacks() ([]stackSummary, error)
 	RemoveStack(stackName tokens.QName, force bool) error
 

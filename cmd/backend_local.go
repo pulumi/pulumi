@@ -20,8 +20,8 @@ import (
 
 type localPulumiBackend struct{}
 
-func (b *localPulumiBackend) CreateStack(stackName tokens.QName, cloud string) error {
-	contract.Requiref(cloud == "", "cloud", "local backend does not support clouds, cloud must be empty")
+func (b *localPulumiBackend) CreateStack(stackName tokens.QName, opts StackCreationOptions) error {
+	contract.Requiref(opts.Cloud == "", "cloud", "local backend does not support clouds, cloud must be empty")
 
 	if _, _, _, err := getStack(stackName); err == nil {
 		return errors.Errorf("stack '%v' already exists", stackName)

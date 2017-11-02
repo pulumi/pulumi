@@ -24,7 +24,7 @@ func newStackInitCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName := tokens.QName(args[0])
 
-			if err := backend.CreateStack(stackName, cloud); err != nil {
+			if err := backend.CreateStack(stackName, StackCreationOptions{Cloud: cloud}); err != nil {
 				return err
 			}
 

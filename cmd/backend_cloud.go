@@ -23,14 +23,14 @@ import (
 
 type pulumiCloudPulumiBackend struct{}
 
-func (b *pulumiCloudPulumiBackend) CreateStack(stackName tokens.QName, cloud string) error {
+func (b *pulumiCloudPulumiBackend) CreateStack(stackName tokens.QName, opts StackCreationOptions) error {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return err
 	}
 
 	createStackReq := apitype.CreateStackRequest{
-		CloudName: cloud,
+		CloudName: opts.Cloud,
 		StackName: stackName.String(),
 	}
 
