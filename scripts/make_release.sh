@@ -4,13 +4,14 @@ set -o nounset -o errexit -o pipefail
 
 ROOT=$(dirname $0)/..
 PUBDIR=$(mktemp -du)
-GITVER=$(git rev-parse HEAD)
-PUBFILE=$(dirname ${PUBDIR})/${GITVER}.tgz
+GITHASH=$(git rev-parse HEAD)
+PUBFILE=$(dirname ${PUBDIR})/${GITHASH}.tgz
+VERSION=$(git describe --tags 2>/dev/null)
 
 # Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
 # Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
 BRANCH=${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
-declare -a PUBTARGETS=(${GITVER} $(git describe --tags 2>/dev/null) ${BRANCH})
+declare -a PUBTARGETS=(${GITHASH} ${VERSION} ${BRANCH})
 
 # usage: run_go_build <path-to-package-to-build>
 function run_go_build() {
@@ -21,7 +22,7 @@ function run_go_build() {
     fi
 
     mkdir -p "${PUBDIR}/bin"
-    go build -o "${PUBDIR}/bin/${output_name}${bin_suffix}" "$1"
+    go build -ldflags "-X main.version=${VERSION}" -o "${PUBDIR}/bin/${output_name}${bin_suffix}" "$1"
 }
 
 # usage: copy_package <path-to-module> <module-name>
