@@ -18,6 +18,7 @@ const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we 
 const StackDir = "stacks"              // the name of the directory that holds stack information for projects.
 const WorkspaceDir = "workspaces"      // the name of the directory that holds workspace information for projects.
 const RepoFile = "settings.json"       // the name of the file that holds information specific to the entire repository.
+const ConfigDir = "config"             // the name of the folder that holds local configuration information.
 const WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
