@@ -62,7 +62,11 @@ func (p *Plan) configure() error {
 		pkgconfig[k] = v
 	}
 	sort.Strings(pkgs)
+	initialized := make(map[string]bool)
 	for _, pkg := range pkgs {
+		if _, ready := initialized[pkg]; ready {
+			continue
+		}
 		pkgt := tokens.Package(pkg)
 		prov, err := p.Provider(pkgt)
 		if err != nil {
@@ -74,6 +78,7 @@ func (p *Plan) configure() error {
 				return goerr.Wrapf(err, "failed to configure pkg '%v' resource provider", pkg)
 			}
 		}
+		initialized[pkg] = true
 	}
 	return nil
 }
