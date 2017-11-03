@@ -308,12 +308,12 @@ func waitForUpdate(path string) (apitype.UpdateStatus, error) {
 	time.Sleep(5 * time.Second)
 
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
-	eventIndex := 0
+	eventIndex := "0"
 	for {
 		time.Sleep(2 * time.Second)
 
 		var updateResults apitype.UpdateResults
-		pathWithIndex := fmt.Sprintf("%s?afterIndex=%d", path, eventIndex)
+		pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
 		if err := pulumiRESTCall("GET", pathWithIndex, nil, &updateResults); err != nil {
 			return "", err
 		}
