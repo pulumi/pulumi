@@ -47,7 +47,7 @@ func TestAssetSerialize(t *testing.T) {
 
 func TestComputedSerialize(t *testing.T) {
 	// Ensure that computed properties survive round trips.
-	opts := MarshalOptions{AllowUnknowns: true}
+	opts := MarshalOptions{KeepUnknowns: true}
 	{
 		cprop, err := MarshalPropertyValue(
 			resource.NewComputedProperty(
@@ -67,5 +67,24 @@ func TestComputedSerialize(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.ComputedValue().Element.IsNumber())
+	}
+}
+
+func TestComputedSkip(t *testing.T) {
+	// Ensure that computed properties are skipped when KeepUnknowns == false.
+	opts := MarshalOptions{KeepUnknowns: false}
+	{
+		cprop, err := MarshalPropertyValue(
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+		assert.Nil(t, err)
+		assert.Nil(t, cprop)
+	}
+	{
+		cprop, err := MarshalPropertyValue(
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
+		assert.Nil(t, err)
+		assert.Nil(t, cprop)
 	}
 }
