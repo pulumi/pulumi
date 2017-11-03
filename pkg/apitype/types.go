@@ -68,7 +68,7 @@ const (
 
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
 type UpdateEvent struct {
-	Index  int                    `json:"index"`
+	Index  string                 `json:"index"`
 	Kind   string                 `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`
 }
