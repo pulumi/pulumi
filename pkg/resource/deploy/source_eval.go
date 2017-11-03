@@ -234,7 +234,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 
 	// Now unpack all of the arguments and prepare to perform the invocation.
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{AllowUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -245,7 +245,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{AllowUnknowns: true})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
 	}
@@ -265,7 +265,7 @@ func (rm *resmon) NewResource(ctx context.Context,
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{AllowUnknowns: true, ComputeAssetHashes: true})
+		req.GetObject(), plugin.MarshalOptions{KeepUnknowns: true, ComputeAssetHashes: true})
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (rm *resmon) NewResource(ctx context.Context,
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	outs, err := plugin.MarshalProperties(outprops, plugin.MarshalOptions{AllowUnknowns: true})
+	outs, err := plugin.MarshalProperties(outprops, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}

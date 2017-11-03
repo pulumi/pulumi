@@ -65,7 +65,7 @@ func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(urn=%v,#props=%v) executing", p.pkg, urn, len(props))
-	mprops, err := MarshalProperties(props, MarshalOptions{AllowUnknowns: true})
+	mprops, err := MarshalProperties(props, MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,7 +82,7 @@ func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource
 	// Unmarshal any defaults.
 	var defaults resource.PropertyMap
 	if defs := resp.GetDefaults(); defs != nil {
-		defaults, err = UnmarshalProperties(defs, MarshalOptions{AllowUnknowns: true})
+		defaults, err = UnmarshalProperties(defs, MarshalOptions{KeepUnknowns: true})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -113,7 +113,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{AllowUnknowns: true})
+	mnews, err := MarshalProperties(news, MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -253,7 +253,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	[]CheckFailure, error) {
 	contract.Assert(tok != "")
 
-	margs, err := MarshalProperties(args, MarshalOptions{AllowUnknowns: true})
+	margs, err := MarshalProperties(args, MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -266,7 +266,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	// Unmarshal any return values.
-	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{AllowUnknowns: true})
+	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
