@@ -3,6 +3,8 @@
 package provider
 
 import (
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -19,7 +21,22 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	interceptor := grpc.WithUnaryInterceptor(
+		otgrpc.OpenTracingClientInterceptor(
+			// Use the globally installed tracer
+			opentracing.GlobalTracer(),
+			// Log full payloads along with trace spans
+			otgrpc.LogPayloads(),
+			// Customize which gRPC calls are included in trace
+			otgrpc.IncludingSpans(func(
+				parentSpanCtx opentracing.SpanContext,
+				method string,
+				req, resp interface{}) bool {
+				return true
+			}),
+		),
+	)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), interceptor)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +52,7 @@ func (host *HostClient) Close() error {
 }
 
 // Log logs a global message, including errors and warnings.
-func (host *HostClient) Log(sev diag.Severity, msg string) error {
+func (host *HostClient) Log(context context.Context, sev diag.Severity, msg string) error {
 	var rpcsev lumirpc.LogSeverity
 	switch sev {
 	case diag.Debug:
@@ -49,7 +66,7 @@ func (host *HostClient) Log(sev diag.Severity, msg string) error {
 	default:
 		contract.Failf("Unrecognized log severity type: %v", sev)
 	}
-	_, err := host.client.Log(context.TODO(), &lumirpc.LogRequest{
+	_, err := host.client.Log(context, &lumirpc.LogRequest{
 		Severity: rpcsev,
 		Message:  msg,
 	})

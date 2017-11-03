@@ -16,9 +16,11 @@ import (
 
 // Main is the typical entrypoint for a resource provider plugin.  Using it isn't required but can cut down
 // significantly on the amount of boilerplate necessary to fire up a new resource provider.
-func Main(provMaker func(*HostClient) (lumirpc.ResourceProviderServer, error)) error {
+func Main(name string, provMaker func(*HostClient) (lumirpc.ResourceProviderServer, error)) error {
 	// Initialize loggers before going any further.
 	cmdutil.InitLogging(false, 0, false)
+	// BUGBUG: Need to pass the tracingEndpoint through from the parent process
+	cmdutil.InitTracing(name, "http://localhost:9411/api/v1/spans")
 
 	// Read the non-flags args and connect to the engine.
 	flag.Parse()

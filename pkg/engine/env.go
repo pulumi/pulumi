@@ -3,12 +3,14 @@
 package engine
 
 import (
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// Callers must call Close on the resulting planContext once they have completed the associated planning operation
 func (eng *Engine) planContextFromStack(name tokens.QName, pkgarg string) (*planContext, error) {
 	contract.Require(name != tokens.QName(""), "name")
 
@@ -25,15 +27,24 @@ func (eng *Engine) planContextFromStack(name tokens.QName, pkgarg string) (*plan
 
 	contract.Assert(target != nil)
 
+	// Create a root span for the operation
+	tracingSpan := opentracing.StartSpan("pulumi-plan")
+
 	return &planContext{
-		Target:     target,
-		Snapshot:   snapshot,
-		PackageArg: pkgarg,
+		Target:      target,
+		Snapshot:    snapshot,
+		PackageArg:  pkgarg,
+		TracingSpan: tracingSpan,
 	}, nil
 }
 
 type planContext struct {
-	Target     *deploy.Target   // the target stack.
-	Snapshot   *deploy.Snapshot // the stack's latest deployment snapshot
-	PackageArg string           // an optional path to a package to pass to the compiler
+	Target      *deploy.Target   // the target stack.
+	Snapshot    *deploy.Snapshot // the stack's latest deployment snapshot
+	PackageArg  string           // an optional path to a package to pass to the compiler
+	TracingSpan opentracing.Span // An OpenTracing span to parent plan operations within.
+}
+
+func (ctx *planContext) Close() {
+	ctx.TracingSpan.Finish()
 }

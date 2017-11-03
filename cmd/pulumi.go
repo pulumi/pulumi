@@ -32,6 +32,7 @@ func init() {
 func NewPulumiCmd(version string) *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
+	var tracing string
 	var verbose int
 	var cwd string
 	cmd := &cobra.Command{
@@ -45,15 +46,18 @@ func NewPulumiCmd(version string) *cobra.Command {
 			}
 
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
+			cmdutil.InitTracing("pulumi-cli", tracing)
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()
+			cmdutil.CloseTracing()
 		},
 	}
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
+	cmd.PersistentFlags().StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
