@@ -284,7 +284,9 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 		if err != nil {
 			return resource.StatusOK, err
 		}
-		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.AllInputs(), s.new.AllInputs())
+		// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
+		news := s.old.All().Merge(s.new.Inputs)
+		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), news)
 		if upderr != nil {
 			return rst, upderr
 		}
