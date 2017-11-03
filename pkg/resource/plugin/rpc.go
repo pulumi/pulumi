@@ -115,7 +115,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		if opts.AllowUnknowns {
 			return marshalUnknownProperty(elem, opts), nil
 		}
-		return nil, errors.Errorf("unpexected computed property during marshaling: %v", elem)
+		return nil, errors.Errorf("unexpected computed property during marshaling: %v", elem)
 	} else if v.IsOutput() {
 		// Note that at the moment we don't differentiate between computed and output properties on the wire.  As
 		// a result, they will show up as computed on the other end.  This distinction isn't currently interesting.
