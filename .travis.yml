@@ -9,6 +9,8 @@ language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
+    # Travis only fetches 50 commits by default, and we want them all so we can do git describe --tags
+    - git fetch --unshallow
     # Dep for Go dependency management.
     - go get -v github.com/golang/dep/cmd/dep
     # Gometalinter for good Go linting/hygiene.
