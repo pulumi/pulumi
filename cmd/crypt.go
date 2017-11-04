@@ -93,12 +93,10 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Val
 		return nil, err
 	}
 
-	key := keyFromPassPhrase(phrase, salt, aes256GCMKeyBytes)
-
+	key := keyFromPassphrase(phrase, salt, aes256GCMKeyBytes)
 	decrypter := symmetricCrypter{key: key}
 
 	decrypted, err := decrypter.DecryptValue(state[indexN(state, ":", 2)+1:])
-
 	if err != nil || decrypted != "pulumi" {
 		return nil, errors.New("incorrect passphrase")
 	}

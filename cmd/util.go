@@ -179,11 +179,10 @@ func readConsoleNoEchoWithPrompt(prompt string) (string, error) {
 	return readConsoleNoEcho()
 }
 
-func readPassPhrase(prompt string) (string, error) {
-	if phrase, has := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); has {
+func readPassphrase(prompt string) (string, error) {
+	if phrase, _ := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); phrase != "" {
 		return phrase, nil
 	}
-
 	return readConsoleNoEchoWithPrompt(prompt)
 }
 
@@ -194,7 +193,8 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	}
 
 	if pkg.EncryptionSalt != "" {
-		phrase, phraseErr := readPassPhrase("passphrase")
+		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
 		if phraseErr != nil {
 			return nil, phraseErr
 		}
@@ -202,13 +202,12 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 		return symmetricCrypterFromPhraseAndState(phrase, pkg.EncryptionSalt)
 	}
 
-	phrase, err := readPassPhrase("passphrase")
+	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets: ")
 	if err != nil {
 		return nil, err
-
 	}
 
-	confirm, err := readPassPhrase("passphrase (confirm)")
+	confirm, err := readPassphrase("Re-enter your passphrase to confirm: ")
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +221,7 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	_, err = cryptorand.Read(salt)
 	contract.Assertf(err == nil, "could not read from system random")
 
-	c := symmetricCrypter{key: keyFromPassPhrase(phrase, salt, aes256GCMKeyBytes)}
+	c := symmetricCrypter{key: keyFromPassphrase(phrase, salt, aes256GCMKeyBytes)}
 
 	// Encrypt a message and store it with the salt so we can test if the password is correct later
 	msg, err := c.EncryptValue("pulumi")
@@ -238,7 +237,7 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	return c, nil
 }
 
-func keyFromPassPhrase(phrase string, salt []byte, keyLength int) []byte {
+func keyFromPassphrase(phrase string, salt []byte, keyLength int) []byte {
 	// 1,000,000 iterations was chosen because it took a little over a second on an i7-7700HQ Quad Core procesor
 	return pbkdf2.Key([]byte(phrase), salt, 1000000, keyLength, sha256.New)
 }
