@@ -18,21 +18,25 @@ func TestExamples(t *testing.T) {
 	if !assert.NoError(t, err, "expected a valid working directory: %v", err) {
 		return
 	}
-	examples := []integration.ProgramTestOptions{
-		{
-			Dir:          path.Join(cwd, "minimal"),
-			Dependencies: []string{"pulumi"},
-			Config: map[string]string{
-				"name": "Pulumi",
-			},
-			Secrets: map[string]string{
-				"secret": "this is my secret message",
-			},
-			ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
-				// Simple runtime validation that just ensures the checkpoint was written and read.
-				assert.Equal(t, integration.TestStackName, checkpoint.Target)
-			},
+
+	var minimal integration.ProgramTestOptions
+	minimal = integration.ProgramTestOptions{
+		Dir:          path.Join(cwd, "minimal"),
+		Dependencies: []string{"pulumi"},
+		Config: map[string]string{
+			"name": "Pulumi",
 		},
+		Secrets: map[string]string{
+			"secret": "this is my secret message",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+			// Simple runtime validation that just ensures the checkpoint was written and read.
+			assert.Equal(t, minimal.StackName(), checkpoint.Target)
+		},
+	}
+
+	examples := []integration.ProgramTestOptions{
+		minimal,
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/simple"),
 			Dependencies: []string{"pulumi"},
@@ -47,6 +51,7 @@ func TestExamples(t *testing.T) {
 			Dependencies: []string{"pulumi"},
 		},
 	}
+
 	for _, ex := range examples {
 		example := ex
 		t.Run(example.Dir, func(t *testing.T) {
