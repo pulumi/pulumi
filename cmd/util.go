@@ -202,12 +202,12 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 		return symmetricCrypterFromPhraseAndState(phrase, pkg.EncryptionSalt)
 	}
 
-	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets: ")
+	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets")
 	if err != nil {
 		return nil, err
 	}
 
-	confirm, err := readPassphrase("Re-enter your passphrase to confirm: ")
+	confirm, err := readPassphrase("Re-enter your passphrase to confirm")
 	if err != nil {
 		return nil, err
 	}

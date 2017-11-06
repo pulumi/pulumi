@@ -53,6 +53,8 @@ type ProgramTestOptions struct {
 	Stdout io.Writer
 	// Stderr is the writer to use for all stderr messages.
 	Stderr io.Writer
+	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
+	Verbose bool
 
 	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
 	Bin string
@@ -241,7 +243,7 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 	path := args[0]
 	command := strings.Join(args, " ")
 
-	_, err := fmt.Fprintf(opts.Stdout, "\n**** Invoke '%v' in %v\n", command, wd)
+	_, err := fmt.Fprintf(opts.Stdout, "\n**** Invoke '%v' in '%v'\n", command, wd)
 	contract.IgnoreError(err)
 
 	// Spawn a goroutine to print out "still running..." messages.
@@ -260,18 +262,30 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
 	cmd := exec.Cmd{
-		Path:   path,
-		Dir:    wd,
-		Args:   args,
-		Env:    env,
-		Stdout: opts.Stdout,
-		Stderr: opts.Stderr,
+		Path: path,
+		Dir:  wd,
+		Args: args,
+		Env:  env,
 	}
-	runerr := cmd.Run()
+
+	var runout []byte
+	var runerr error
+	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
+		cmd.Stdout = opts.Stdout
+		cmd.Stderr = opts.Stderr
+		runerr = cmd.Run()
+	} else {
+		runout, runerr = cmd.CombinedOutput()
+	}
+
 	finished = true
 	if runerr != nil {
-		_, err = fmt.Fprintf(opts.Stdout, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+		_, err = fmt.Fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 		contract.IgnoreError(err)
+		if !opts.Verbose {
+			_, err = fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
+			contract.IgnoreError(err)
+		}
 	}
 	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
 }
