@@ -136,34 +136,66 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
-	RunCommand(t, []string{opts.Bin, "init"}, dir, opts)
-	RunCommand(t, []string{opts.Bin, "stack", "init", string(stackName)}, dir, opts)
+	if err = RunCommand(t, []string{opts.Bin, "init"}, dir, opts); err != nil {
+		return
+	}
+	if err = RunCommand(t, []string{opts.Bin, "stack", "init", string(stackName)}, dir, opts); err != nil {
+		return
+	}
 	for key, value := range opts.Config {
-		RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts)
+		if err = RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts); err != nil {
+			return
+		}
 	}
 
 	for key, value := range opts.Secrets {
-		RunCommand(t, []string{opts.Bin, "config", "secret", key, value}, dir, opts)
+		if err = RunCommand(t, []string{opts.Bin, "config", "secret", key, value}, dir, opts); err != nil {
+			return
+		}
 	}
 
 	// Now preview and update the real changes.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
-	previewAndUpdate := func(d string) {
-		RunCommand(t, []string{opts.Bin, "preview"}, d, opts)
-		RunCommand(t, []string{opts.Bin, "update"}, d, opts)
+	previewAndUpdate := func(d string) error {
+		if preerr := RunCommand(t, []string{opts.Bin, "preview"}, d, opts); preerr != nil {
+			return preerr
+		}
+		if upderr := RunCommand(t, []string{opts.Bin, "update"}, d, opts); upderr != nil {
+			return upderr
+		}
+		return nil
 	}
-	previewAndUpdate(dir)
+
+	// Perform the initial stack creation.
+	initErr := previewAndUpdate(dir)
+
+	// Ensure that before we exit, we attempt to destroy and remove the stack.
+	defer func() {
+		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
+		_, derr := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
+		contract.IgnoreError(derr)
+		derr = RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
+		contract.IgnoreError(derr)
+		derr = RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
+		contract.IgnoreError(derr)
+	}()
+
+	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
+	if initErr != nil {
+		return
+	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 	contract.IgnoreError(err)
-	previewAndUpdate(dir)
+	if err = previewAndUpdate(dir); err != nil {
+		return
+	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if opts.ExtraRuntimeValidation != nil {
-		err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir, stackName)
-		if err != nil {
+		if err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir, stackName); err != nil {
 			return
 		}
 	}
@@ -176,21 +208,15 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
-		previewAndUpdate(dir)
-
+		if err = previewAndUpdate(dir); err != nil {
+			return
+		}
 		if edit.ExtraRuntimeValidation != nil {
-			err = performExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, dir, stackName)
-			if err != nil {
+			if err = performExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, dir, stackName); err != nil {
 				return
 			}
 		}
 	}
-
-	// Finally, tear down the stack, and clean up the stack.
-	_, err = fmt.Fprintf(opts.Stdout, "Destroying stack\n")
-	contract.IgnoreError(err)
-	RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
-	RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
 }
 
 func performExtraRuntimeValidation(
@@ -216,12 +242,12 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 	stackName tokens.QName) (dir string, err error) {
 	// Ensure the required programs are present.
 	if opts.Bin == "" {
-		var lumi string
-		lumi, err = exec.LookPath("pulumi")
+		var pulumi string
+		pulumi, err = exec.LookPath("pulumi")
 		if !assert.NoError(t, err, "Expected to find `pulumi` binary on $PATH: %v", err) {
 			return dir, err
 		}
-		opts.Bin = lumi
+		opts.Bin = pulumi
 	}
 	if opts.YarnBin == "" {
 		var yarn string
@@ -266,7 +292,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions) {
+func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
 
@@ -315,6 +341,7 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		}
 	}
 	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
+	return runerr
 }
 
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
@@ -358,13 +385,22 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 	}
 
 	// Now ensure dependencies are present.
-	RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), dir, opts)
+	if insterr := RunCommand(t,
+		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), dir, opts); insterr != nil {
+		return "", insterr
+	}
 	for _, dependency := range opts.Dependencies {
-		RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), dir, opts)
+		if linkerr := RunCommand(t,
+			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), dir, opts); linkerr != nil {
+			return "", linkerr
+		}
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	RunCommand(t, withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), dir, opts)
+	if builderr := RunCommand(t,
+		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), dir, opts); builderr != nil {
+		return "", builderr
+	}
 
 	return dir, nil
 }
