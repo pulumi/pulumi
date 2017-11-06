@@ -180,7 +180,7 @@ func readConsoleNoEchoWithPrompt(prompt string) (string, error) {
 }
 
 func readPassphrase(prompt string) (string, error) {
-	if phrase, _ := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); phrase != "" {
+	if phrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE"); phrase != "" {
 		return phrase, nil
 	}
 	return readConsoleNoEchoWithPrompt(prompt)
