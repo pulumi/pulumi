@@ -133,6 +133,8 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		return
 	}
 
+	defer removeDirIfPassed(t, dir)
+
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
@@ -208,6 +210,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
+		defer removeDirIfPassed(t, dir)
 		if err = previewAndUpdate(dir); err != nil {
 			return
 		}
@@ -235,6 +238,12 @@ func performExtraRuntimeValidation(
 	}
 	extraRuntimeValidation(t, *chk)
 	return nil
+}
+
+func removeDirIfPassed(t *testing.T, dir string) {
+	if !t.Failed() {
+		contract.IgnoreError(os.RemoveAll(dir))
+	}
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
@@ -311,7 +320,18 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		}
 	}()
 
-	env := append(os.Environ(), "PULUMI_RETAIN_CHECKPOINTS=true")
+	env := make([]string, 0, len(os.Environ())+2)
+
+	for _, envEntry := range os.Environ() {
+		// TODO(pulumi/pulumi#471) Force local execution now, but we'll have to do something better later
+		if strings.HasPrefix(envEntry, "PULUMI_API=") {
+			continue
+		}
+
+		env = append(env, envEntry)
+	}
+
+	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
 	cmd := exec.Cmd{
