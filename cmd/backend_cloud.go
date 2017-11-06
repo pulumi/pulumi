@@ -315,7 +315,13 @@ func waitForUpdate(path string) (apitype.UpdateStatus, error) {
 		var updateResults apitype.UpdateResults
 		pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
 		if err := pulumiRESTCall("GET", pathWithIndex, nil, &updateResults); err != nil {
-			return "", err
+			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it
+			// and keep continuing.
+			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
+			if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 504 {
+				time.Sleep(5 * time.Second)
+				continue
+			}
 		}
 
 		for _, event := range updateResults.Events {
