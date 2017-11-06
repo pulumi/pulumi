@@ -243,7 +243,7 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 	path := args[0]
 	command := strings.Join(args, " ")
 
-	_, err := fmt.Fprintf(opts.Stdout, "\n**** Invoke '%v' in '%v'\n", command, wd)
+	_, err := fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 	contract.IgnoreError(err)
 
 	// Spawn a goroutine to print out "still running..." messages.
