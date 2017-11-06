@@ -96,16 +96,16 @@ func (b *pulumiCloudPulumiBackend) Preview(stackName tokens.QName, debug bool, o
 		return err
 	}
 
-	var updateResponse apitype.PreviewUpdateResponse
+	var response apitype.PreviewUpdateResponse
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/preview",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("POST", path, &updateRequest, &updateResponse); err != nil {
+	if err = pulumiRESTCall("POST", path, &updateRequest, &response); err != nil {
 		return err
 	}
 	fmt.Printf("Previewing update to Stack '%s'...\n", string(stackName))
 
 	// Wait for the update to complete.
-	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, updateResponse.PreviewID))
+	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, response.UpdateID))
 	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
 
 	if err != nil {
@@ -128,15 +128,15 @@ func (b *pulumiCloudPulumiBackend) Update(stackName tokens.QName, debug bool, op
 		return err
 	}
 
-	var updateResponse apitype.UpdateProgramResponse
+	var response apitype.UpdateProgramResponse
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/update", projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("POST", path, &updateRequest, &updateResponse); err != nil {
+	if err = pulumiRESTCall("POST", path, &updateRequest, &response); err != nil {
 		return err
 	}
-	fmt.Printf("Updating Stack '%s' to version %d...\n", string(stackName), updateResponse.Version)
+	fmt.Printf("Updating Stack '%s' to version %d...\n", string(stackName), response.Version)
 
 	// Wait for the update to complete.
-	status, err := waitForUpdate(path)
+	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, response.UpdateID))
 	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
 
 	if err != nil {
@@ -164,15 +164,15 @@ func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, o
 		return err
 	}
 
+	var response apitype.DestroyProgramResponse
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/destroy", projID.Owner, projID.Repository, projID.Project, string(stackName))
-
-	if err = pulumiRESTCall("POST", path, &updateRequest, nil /*destroy does not return data upon success*/); err != nil {
+	if err = pulumiRESTCall("POST", path, &updateRequest, &response); err != nil {
 		return err
 	}
 	fmt.Printf("Destroying Stack '%s'...\n", string(stackName))
 
 	// Wait for the update to complete.
-	status, err := waitForUpdate(path)
+	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, response.UpdateID))
 	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
 
 	if err != nil {
