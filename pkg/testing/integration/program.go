@@ -65,6 +65,9 @@ func (opts ProgramTestOptions) StackName() tokens.QName {
 	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
 	var test string
 	for _, c := range filepath.Base(opts.Dir) {
+		if len(test) >= 10 {
+			break
+		}
 		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 			(c >= '0' && c <= '9') || c == '-' || c == '_' {
 			test += string(c)
@@ -72,6 +75,9 @@ func (opts ProgramTestOptions) StackName() tokens.QName {
 	}
 	var host string
 	for _, c := range hostname {
+		if len(host) >= 10 {
+			break
+		}
 		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 			(c >= '0' && c <= '9') || c == '-' || c == '_' {
 			host += string(c)
