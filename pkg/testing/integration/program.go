@@ -63,18 +63,18 @@ func (opts ProgramTestOptions) StackName() tokens.QName {
 	// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
 	hostname, err := os.Hostname()
 	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
-	var host string
-	for _, c := range hostname {
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') || c == '-' || c == '_' {
-			host += string(c)
-		}
-	}
 	var test string
 	for _, c := range filepath.Base(opts.Dir) {
 		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 			(c >= '0' && c <= '9') || c == '-' || c == '_' {
 			test += string(c)
+		}
+	}
+	var host string
+	for _, c := range hostname {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '-' || c == '_' {
+			host += string(c)
 		}
 	}
 	return tokens.QName(strings.ToLower("p-it-" + host + "-" + test))
@@ -121,13 +121,13 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	t.Parallel()
 
-	dir, err := CopyTestToTemporaryDirectory(t, &opts)
+	stackName := opts.StackName()
+	dir, err := CopyTestToTemporaryDirectory(t, &opts, stackName)
 	if !assert.NoError(t, err) {
 		return
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	stackName := opts.StackName()
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
 	RunCommand(t, []string{opts.Bin, "init"}, dir, opts)
@@ -166,7 +166,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	for _, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
-		dir, err = prepareProject(t, edit.Dir, dir, opts)
+		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
@@ -206,7 +206,8 @@ func performExtraRuntimeValidation(
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir string, err error) {
+func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
+	stackName tokens.QName) (dir string, err error) {
 	// Ensure the required programs are present.
 	if opts.Bin == "" {
 		var lumi string
@@ -248,7 +249,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, dir, "", *opts)
+	dir, err = prepareProject(t, stackName, dir, "", *opts)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -312,9 +313,10 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, src string, origin string, opts ProgramTestOptions) (string, error) {
+func prepareProject(t *testing.T, stackName tokens.QName,
+	src string, origin string, opts ProgramTestOptions) (string, error) {
 	// Create a new temp directory.
-	dir, err := ioutil.TempDir("", "lumi-integration-test-")
+	dir, err := ioutil.TempDir("", string(stackName)+"-")
 	if err != nil {
 		return "", err
 	}
