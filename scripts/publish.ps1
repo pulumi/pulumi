@@ -11,6 +11,6 @@ if (!(Test-Path $PublishScript)) {
 $ReleaseInfo=& $PSScriptRoot\make_release.ps1
 
 $PublishTargets=${ReleaseInfo}.Targets
-& $PublishScript $ReleaseInfo.ArchivePath "pulumi/windows/x64" @PublishTargets
+& $PublishScript $ReleaseInfo.ArchivePath "pulumi/windows/amd64" @PublishTargets
 
 Remove-Item -Force $ReleaseInfo.ArchivePath

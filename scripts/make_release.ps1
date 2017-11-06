@@ -4,18 +4,16 @@ $ErrorActionPreference="Stop"
 
 $Root=Join-Path $PSScriptRoot ".."
 $PublishDir=New-Item -ItemType Directory -Path "$env:TEMP\$([System.IO.Path]::GetRandomFileName())"
-$GitVersion=$(git rev-parse HEAD)
-$PublishFile="$(Split-Path -Parent -Path $PublishDir)\$GitVersion.zip"
+$GitHash=$(git rev-parse HEAD)
+$PublishFile="$(Split-Path -Parent -Path $PublishDir)\$GitHash.zip"
+$Version = $(git describe --tags 2>$null)
 $Branch = $(if (Test-Path env:APPVEYOR_REPO_BRANCH) { $env:APPVEYOR_REPO_BRANCH } else { $(git rev-parse --abbrev-ref HEAD) })
-$PublishTargets = @($GitVersion, $Branch)
-
-# If there's a tag, publish using that description as well
-try { $PublishTargets += $(git describe --tags 2>$null) } catch { }
+$PublishTargets = @($GitHash, $Version, $Branch)
 
 function RunGoBuild($goPackage) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
     $outputName = Split-Path -Leaf $(go list -f "{{.Target}}" $goPackage)
-    go build -o $binRoot\${outputName} $goPackage
+    go build -ldflags "-X main.version=$Version" -o "$binRoot\$outputName" $goPackage
 }
 
 function CopyPackage($pathToModule, $moduleName) {
