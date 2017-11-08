@@ -523,7 +523,7 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 // ArchiveReader presents the contents of an archive as a stream of named blobs.
 type ArchiveReader interface {
 	// Next returns the name and contents of the next member of the archive. If there are no more members in the archive, this function
-	// returns ("", nil, io.EOF). The blov returnesd by a call to Next() must be read in full before the next call to Next().
+	// returns ("", nil, io.EOF). The blob returned by a call to Next() must be read in full before the next call to Next().
 	Next() (string, *Blob, error)
 
 	// Close terminates the stream.
@@ -599,9 +599,7 @@ func (r *assetsArchiveReader) Next() (string, *Blob, error) {
 
 func (r *assetsArchiveReader) Close() error {
 	if r.archive != nil {
-		if err := r.archive.Close(); err != nil {
-			return err
-		}
+		return r.archive.Close()
 	}
 	return nil
 }
