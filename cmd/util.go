@@ -49,7 +49,7 @@ func explicitOrCurrent(name string, backend pulumiBackend) (tokens.QName, error)
 	if stackName == "" {
 		curStack, err := getCurrentStack()
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 
 		stackName = curStack

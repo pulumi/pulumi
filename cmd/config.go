@@ -51,7 +51,6 @@ func newConfigLsCmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "invalid configuration key")
 				}
-
 				return getConfig(stackName, key)
 			}
 
