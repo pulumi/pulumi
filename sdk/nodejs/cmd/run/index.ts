@@ -25,6 +25,7 @@ function usage(): void {
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
+    console.error(`        --tracing=url       a Zipkin-compatible endpoint to send tracing data to`);
     console.error(``);
     console.error(`    and [program] is a JavaScript program to run in Node.js, and [arg]... optional args to it.`);
 }
@@ -34,7 +35,7 @@ export function main(args: string[]): void {
     const config: {[key: string]: string} = {};
     const argv: minimist.ParsedArgs = minimist(args, {
         boolean: [ "dry-run" ],
-        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine" ],
+        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             if (arg.indexOf("-") === 0) {
                 console.error(`fatal: Unrecognized flag ${arg}`);

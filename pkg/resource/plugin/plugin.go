@@ -182,8 +182,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	return plug, nil
 }
 
-func execPlugin(bin string, args []string) (*plugin, error) {
+func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
 	// Flow the logging information if set.
+	var args []string
 	if cmdutil.LogFlow {
 		if cmdutil.LogToStderr {
 			args = append(args, "--logtostderr")
@@ -195,6 +196,7 @@ func execPlugin(bin string, args []string) (*plugin, error) {
 			args = append(args, "--tracing", cmdutil.TracingEndpoint)
 		}
 	}
+	args = append(args, pluginArgs...)
 
 	cmd := exec.Command(bin, args...)
 	in, _ := cmd.StdinPipe()

@@ -17,16 +17,21 @@ let monitorAddr: string | undefined;
  * engineAddr is the current resource engine address, if any.
  */
 let engineAddr: string | undefined;
+/**
+ * tracingUrl is the current resource engine address, if any.
+ */
+let tracingUrl: string | undefined;
 
 /**
  * serveLanguageHost spawns a language host that connects to the resource monitor and listens on port.
  */
-export function serveLanguageHost(monitor: string, engine: string | undefined): { server: any, port: number } {
+export function serveLanguageHost(monitor: string, engine?: string, tracing?: string): { server: any, port: number } {
     if (monitorAddr) {
         throw new Error("Already connected to a resource monitor; cannot serve two hosts in one process");
     }
     monitorAddr = monitor;
     engineAddr = engine;
+    tracingUrl = tracing;
 
     // Now fire up the gRPC server and begin serving!
     // TODO: Wire up to OpenTracing. Tracing the gRPC calls themselves is pending
@@ -111,6 +116,12 @@ function runRPC(call: any, callback: any): void {
         if (engineAddr) {
             args.push("--engine");
             args.push(engineAddr);
+        }
+
+        // Push the tracing url, if there is one.
+        if (tracingUrl) {
+            args.push("--tracing");
+            args.push(tracingUrl);
         }
 
         // Now get a path to the program.
