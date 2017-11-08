@@ -210,14 +210,40 @@ func TestArchiveZip(t *testing.T) {
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive) {
-	subs, err := arch.Read()
+	r, err := arch.Open()
 	assert.Nil(t, err)
+	defer func() {
+		assert.Nil(t, r.Close())
+	}()
+
+	subs := make(map[string]string)
+	for {
+		name, blob, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		assert.NotNil(t, blob)
+
+		// Check for duplicates
+		_, ok := subs[name]
+		assert.False(t, ok)
+
+		// Read the blob
+		var text bytes.Buffer
+		_, err = io.Copy(&text, blob)
+		assert.Nil(t, err)
+		err = blob.Close()
+		assert.Nil(t, err)
+
+		// Store its contents in subs
+		subs[name] = text.String()
+	}
 
 	assert.Equal(t, 3, len(subs))
 
 	lorem := subs["Lorem_ipsum.txt"]
-	assert.NotNil(t, lorem)
-	assertAssetBlobEquals(t, lorem,
+	assert.Equal(t, lorem,
 		`Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
 aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis
 aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
@@ -226,8 +252,7 @@ occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim 
 `)
 
 	butimust := subs["sub_dir/But_I_must"]
-	assert.NotNil(t, butimust)
-	assertAssetBlobEquals(t, butimust,
+	assert.Equal(t, butimust,
 		`Sed ut perspiciatis, unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem
 aperiam eaque ipsa, quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt, explicabo. Nemo enim
 ipsam voluptatem, quia voluptas sit, aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos, qui ratione
@@ -240,8 +265,7 @@ vel illum, qui dolorem eum fugiat, quo voluptas nulla pariatur?
 `)
 
 	ontheother := subs["sub_dir/On_the_other_hand.md"]
-	assert.NotNil(t, ontheother)
-	assertAssetBlobEquals(t, ontheother,
+	assert.Equal(t, ontheother,
 		`At vero eos et accusamus et iusto odio dignissimos ducimus, qui blanditiis praesentium voluptatum deleniti atque
 corrupti, quos dolores et quas molestias excepturi sint, obcaecati cupiditate non provident, similique sunt in culpa,
 qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita
