@@ -3,13 +3,12 @@
 package provider
 
 import (
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
@@ -21,22 +20,9 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	interceptor := grpc.WithUnaryInterceptor(
-		otgrpc.OpenTracingClientInterceptor(
-			// Use the globally installed tracer
-			opentracing.GlobalTracer(),
-			// Log full payloads along with trace spans
-			otgrpc.LogPayloads(),
-			// Customize which gRPC calls are included in trace
-			otgrpc.IncludingSpans(func(
-				parentSpanCtx opentracing.SpanContext,
-				method string,
-				req, resp interface{}) bool {
-				return true
-			}),
-		),
-	)
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), interceptor)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+		rpcutil.OpenTracingClientInterceptor(),
+	))
 	if err != nil {
 		return nil, err
 	}

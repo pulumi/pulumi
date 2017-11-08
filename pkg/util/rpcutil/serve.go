@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -34,23 +32,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (in
 	}
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
-	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(
-			otgrpc.OpenTracingServerInterceptor(
-				// Use the globally installed tracer
-				opentracing.GlobalTracer(),
-				// Log full payloads along with trace spans
-				otgrpc.LogPayloads(),
-				// Customize which gRPC calls are included in trace
-				otgrpc.IncludingSpans(func(
-					parentSpanCtx opentracing.SpanContext,
-					method string,
-					req, resp interface{}) bool {
-					return true
-				}),
-			),
-		),
-	)
+	srv := grpc.NewServer(grpc.UnaryInterceptor(OpenTracingServerInterceptor()))
 	for _, register := range registers {
 		if err := register(srv); err != nil {
 			return port, nil, errors.Errorf("failed to register RPC handler: %v", err)

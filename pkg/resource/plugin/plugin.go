@@ -12,9 +12,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -25,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 )
 
 type plugin struct {
@@ -128,25 +127,10 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
-	// Create an OpenTracing gRPC interceptor to trace gRPC traffic.
-	interceptor := grpc.WithUnaryInterceptor(
-		otgrpc.OpenTracingClientInterceptor(
-			// Use the globally installed tracer
-			opentracing.GlobalTracer(),
-			// Log full payloads along with trace spans
-			otgrpc.LogPayloads(),
-			// Customize which gRPC calls are included in trace
-			otgrpc.IncludingSpans(func(
-				parentSpanCtx opentracing.SpanContext,
-				method string,
-				req, resp interface{}) bool {
-				return true
-			}),
-		),
-	)
-
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(":"+port, grpc.WithInsecure(), interceptor)
+	conn, err := grpc.Dial(":"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+		rpcutil.OpenTracingClientInterceptor(),
+	))
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
