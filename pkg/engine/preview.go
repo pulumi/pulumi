@@ -29,6 +29,7 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 	if err != nil {
 		return err
 	}
+	defer info.Close()
 
 	return eng.previewLatest(info, deployOptions{
 		Destroy:              false,

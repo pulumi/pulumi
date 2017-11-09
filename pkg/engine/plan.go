@@ -25,7 +25,7 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	contract.Assert(info.Target != nil)
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(opts.Diag, nil)
+	ctx, err := plugin.NewContext(opts.Diag, nil, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}

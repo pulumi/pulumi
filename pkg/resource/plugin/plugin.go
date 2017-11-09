@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -19,11 +20,10 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/status"
 
-	multierror "github.com/hashicorp/go-multierror"
-
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 )
 
 type plugin struct {
@@ -128,7 +128,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	go runtrace(plug.Stdout, false, stdoutDone)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
+	conn, err := grpc.Dial(":"+port, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+		rpcutil.OpenTracingClientInterceptor(),
+	))
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
@@ -180,7 +182,8 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	return plug, nil
 }
 
-func execPlugin(bin string, args []string) (*plugin, error) {
+func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
+	var args []string
 	// Flow the logging information if set.
 	if cmdutil.LogFlow {
 		if cmdutil.LogToStderr {
@@ -190,6 +193,11 @@ func execPlugin(bin string, args []string) (*plugin, error) {
 			args = append(args, "-v="+strconv.Itoa(cmdutil.Verbose))
 		}
 	}
+	// Always flow tracing settings.
+	if cmdutil.TracingEndpoint != "" {
+		args = append(args, "--tracing", cmdutil.TracingEndpoint)
+	}
+	args = append(args, pluginArgs...)
 
 	cmd := exec.Command(bin, args...)
 	in, _ := cmd.StdinPipe()

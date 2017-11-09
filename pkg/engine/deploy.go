@@ -39,6 +39,7 @@ func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOp
 	if err != nil {
 		return err
 	}
+	defer info.Close()
 
 	return eng.deployLatest(info, deployOptions{
 		Destroy:              false,
