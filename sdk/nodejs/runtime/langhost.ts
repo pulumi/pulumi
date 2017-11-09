@@ -33,10 +33,11 @@ export function serveLanguageHost(monitor: string, engine?: string, tracing?: st
     engineAddr = engine;
     tracingUrl = tracing;
 
-    // Now fire up the gRPC server and begin serving!
-    // TODO: Wire up to OpenTracing. Tracing the gRPC calls themselves is pending
+    // TODO[pulumi/pulumi#545]: Wire up to OpenTracing. Automatic tracing of gRPC calls themselves is pending
     // https://github.com/grpc-ecosystem/grpc-opentracing/issues/11 which is pending
     // https://github.com/grpc/grpc-node/pull/59.
+
+    // Now fire up the gRPC server and begin serving!
     const server = new grpc.Server();
     server.addService(langrpc.LanguageRuntimeService, { run: runRPC });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
