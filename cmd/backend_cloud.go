@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/component"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/pack"
@@ -183,6 +184,31 @@ func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, o
 		return nil
 	}
 	return errors.Errorf("destroy unsuccessful: status %v", status)
+}
+
+func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query component.LogQuery) ([]component.LogEntry, error) {
+	// TODO[pulumi/pulumi-service#227]: Relax these conditions once the service can take these arguments.
+	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
+		return nil, errors.New("not implemented")
+	}
+
+	projID, err := getCloudProjectIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	var response apitype.LogsResult
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/logs", projID.Owner, projID.Repository, projID.Project, string(stackName))
+	if err = pulumiRESTCall("GET", path, nil, &response); err != nil {
+		return nil, err
+	}
+
+	logs := make([]component.LogEntry, 0, len(response.Logs))
+	for _, entry := range response.Logs {
+		logs = append(logs, component.LogEntry(entry))
+	}
+
+	return logs, nil
 }
 
 // getCloudStacks returns all stacks for the current repository x workspace on the Pulumi Cloud.

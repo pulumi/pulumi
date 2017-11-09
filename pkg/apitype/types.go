@@ -100,3 +100,15 @@ type UpdateResults struct {
 	Status string        `json:"status"`
 	Events []UpdateEvent `json:"events"`
 }
+
+// LogsResult is the JSON shape of responses to a Logs operation.
+type LogsResult struct {
+	Logs []LogEntry `json:"logs"`
+}
+
+// LogEntry is the individual entries in a JSON response to a Logs operation.
+type LogEntry struct {
+	ID        string `json:"id"`
+	Timestamp int64  `json:"timestamp"`
+	Message   string `json:"message"`
+}

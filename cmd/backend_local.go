@@ -9,7 +9,9 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/component"
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/pulumiframework"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -18,7 +20,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-type localPulumiBackend struct{}
+type localPulumiBackend struct {
+	engineCache map[tokens.QName]engine.Engine
+}
 
 func (b *localPulumiBackend) CreateStack(stackName tokens.QName, opts StackCreationOptions) error {
 	contract.Requiref(opts.Cloud == "", "cloud", "local backend does not support clouds, cloud must be empty")
@@ -72,22 +76,10 @@ func (b *localPulumiBackend) RemoveStack(stackName tokens.QName, force bool) err
 }
 
 func (b *localPulumiBackend) Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error {
-	cfg, err := getConfiguration(stackName)
+	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return err
 	}
-
-	var decrypter config.ValueDecrypter = panicCrypter{}
-
-	if hasSecureValue(cfg) {
-		decrypter, err = getSymmetricCrypter()
-		if err != nil {
-			return err
-		}
-	}
-
-	localProvider := localStackProvider{decrypter: decrypter}
-	pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
 
 	events := make(chan engine.Event)
 	done := make(chan bool)
@@ -105,22 +97,10 @@ func (b *localPulumiBackend) Preview(stackName tokens.QName, debug bool, opts en
 }
 
 func (b *localPulumiBackend) Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error {
-	cfg, err := getConfiguration(stackName)
+	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return err
 	}
-
-	var decrypter config.ValueDecrypter = panicCrypter{}
-
-	if hasSecureValue(cfg) {
-		decrypter, err = getSymmetricCrypter()
-		if err != nil {
-			return err
-		}
-	}
-
-	localProvider := localStackProvider{decrypter: decrypter}
-	pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
 
 	events := make(chan engine.Event)
 	done := make(chan bool)
@@ -138,22 +118,10 @@ func (b *localPulumiBackend) Update(stackName tokens.QName, debug bool, opts eng
 }
 
 func (b *localPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error {
-	cfg, err := getConfiguration(stackName)
+	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return err
 	}
-
-	var decrypter config.ValueDecrypter = panicCrypter{}
-
-	if hasSecureValue(cfg) {
-		decrypter, err = getSymmetricCrypter()
-		if err != nil {
-			return err
-		}
-	}
-
-	localProvider := localStackProvider{decrypter: decrypter}
-	pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
 
 	events := make(chan engine.Event)
 	done := make(chan bool)
@@ -169,6 +137,64 @@ func (b *localPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts en
 	close(done)
 
 	return nil
+}
+
+func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query component.LogQuery) ([]component.LogEntry, error) {
+	pulumiEngine, err := b.getEngine(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	snap, err := pulumiEngine.Snapshots.GetSnapshot(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	target, err := pulumiEngine.Targets.GetTarget(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	contract.Assert(snap != nil)
+	contract.Assert(target != nil)
+
+	// TODO[pulumi/pulumi#54]: replace this with a call into a generalized operations provider.
+	components := pulumiframework.GetComponents(snap.Resources)
+	ops, err := pulumiframework.OperationsProviderForComponents(target.Config, components)
+	if err != nil {
+		return nil, err
+	}
+
+	return ops.GetLogs(query)
+}
+
+func (b *localPulumiBackend) getEngine(stackName tokens.QName) (engine.Engine, error) {
+	if b.engineCache == nil {
+		b.engineCache = make(map[tokens.QName]engine.Engine)
+	}
+
+	if engine, has := b.engineCache[stackName]; has {
+		return engine, nil
+	}
+
+	cfg, err := getConfiguration(stackName)
+	if err != nil {
+		return engine.Engine{}, err
+	}
+
+	var decrypter config.ValueDecrypter = panicCrypter{}
+
+	if hasSecureValue(cfg) {
+		decrypter, err = getSymmetricCrypter()
+		if err != nil {
+			return engine.Engine{}, err
+		}
+	}
+
+	localProvider := localStackProvider{decrypter: decrypter}
+	pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
+	b.engineCache[stackName] = pulumiEngine
+	return pulumiEngine, nil
 }
 
 func getLocalStacks() ([]tokens.QName, error) {
