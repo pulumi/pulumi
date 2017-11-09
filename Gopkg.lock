@@ -41,7 +41,7 @@
   branch = "master"
   name = "github.com/grpc-ecosystem/grpc-opentracing"
   packages = ["go/otgrpc"]
-  revision = "a570af39704b9f3d4bb530d83192a99ea6337d5a"
+  revision = "01f8541d537215b2867e2745a1eb85c58c7c6b81"
 
 [[projects]]
   branch = "master"
@@ -95,13 +95,13 @@
   branch = "master"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
-  revision = "832b50675c70d6d59e5cf2d939a5cf0045f1afe5"
+  revision = "2fc9cd33b5f86077aa3e0f442fa0476a9fa9a1dc"
 
 [[projects]]
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "b3426bbac13d7110c4d8fce456ea0012f79f3b8b"
+  revision = "f63432717259fda2ff0da668dccdfaa3de837ee6"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -137,19 +137,19 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["curve25519","ed25519","ed25519/internal/edwards25519","pbkdf2","ssh","ssh/agent","ssh/terminal"]
-  revision = "bd6f299fb381e4c3393d1c4b1f0b94f5e77650c8"
+  revision = "6a293f2d4b14b8e6d3f0539e383f6d0d30fce3fd"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
-  revision = "01c190206fbdffa42f334f4b2bf2220f50e64920"
+  revision = "a337091b0525af65de94df2eb7e98bd9962dcbe2"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
-  revision = "feaf45c67f9c91e1d7491b4148217803b9900015"
+  revision = "4b45465282a4624cf39876842a017334f13b8aff"
 
 [[projects]]
   branch = "master"
@@ -161,19 +161,19 @@
   branch = "master"
   name = "golang.org/x/tools"
   packages = ["go/ast/astutil","go/buildutil","go/loader"]
-  revision = "9b61fcc4c548d69663d915801fc4b42a43b6cd9c"
+  revision = "05e91d06384e3a4eb0aba75560d254b8d5a7b431"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "03951f3b52582ecab79e5a37a86b5a20c5f64df7"
+  revision = "11c7f9e547da6db876260ce49ea7536985904c9b"
 
 [[projects]]
   name = "google.golang.org/grpc"
   packages = [".","balancer","codes","connectivity","credentials","grpclb/grpc_lb_v1/messages","grpclog","internal","keepalive","metadata","naming","peer","reflection","reflection/grpc_reflection_v1alpha","resolver","stats","status","tap","transport"]
-  revision = "61d37c5d657a47e4404fd6823bd598341a2595de"
-  version = "v1.7.1"
+  revision = "5ffe3083946d5603a0578721101dc8165b1d5b5f"
+  version = "v1.7.2"
 
 [[projects]]
   name = "gopkg.in/src-d/go-git.v4"

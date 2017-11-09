@@ -183,8 +183,8 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 }
 
 func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
-	// Flow the logging information if set.
 	var args []string
+	// Flow the logging information if set.
 	if cmdutil.LogFlow {
 		if cmdutil.LogToStderr {
 			args = append(args, "--logtostderr")
@@ -192,9 +192,10 @@ func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
 		if cmdutil.Verbose > 0 {
 			args = append(args, "-v="+strconv.Itoa(cmdutil.Verbose))
 		}
-		if cmdutil.TracingEndpoint != "" {
-			args = append(args, "--tracing", cmdutil.TracingEndpoint)
-		}
+	}
+	// Always flow tracing settings.
+	if cmdutil.TracingEndpoint != "" {
+		args = append(args, "--tracing", cmdutil.TracingEndpoint)
 	}
 	args = append(args, pluginArgs...)
 
