@@ -5,7 +5,7 @@
 import * as runtime from "./runtime";
 
 /**
- * getStack returns the current project name, or the empty string if there is none.
+ * getProject returns the current project name, or the empty string if there is none.
  */
 export function getProject(): string {
     return runtime.options.project || "";
@@ -16,4 +16,3 @@ export function getProject(): string {
 export function getStack(): string {
     return runtime.options.stack || "";
 }
-

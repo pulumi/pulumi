@@ -157,4 +157,3 @@ export function main(args: string[]): void {
 }
 
 main(process.argv.slice(2));
-
