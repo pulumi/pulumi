@@ -9,6 +9,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -807,7 +808,10 @@ func addNextFileToTar(r ArchiveReader, tw *tar.Writer) error {
 	}); err != nil {
 		return err
 	}
-	_, err = io.Copy(tw, data)
+	n, err := io.Copy(tw, data)
+	if err == tar.ErrWriteTooLong {
+		return errors.Wrap(err, fmt.Sprintf("incorrect blob size for %v: expected %v, got %v", file, sz, n))
+	}
 	return err
 }
 
@@ -1000,11 +1004,10 @@ func (r *tarArchiveReader) Next() (string, *Blob, error) {
 		case tar.TypeDir:
 			continue // skip directories
 		case tar.TypeReg:
-			// Return the tar reader limited to this file's contents.
-			sz := file.Size
+			// Return the tar reader for this file's contents.
 			data := &Blob{
-				rd: ioutil.NopCloser(io.LimitReader(r.tr, sz)),
-				sz: sz,
+				rd: ioutil.NopCloser(r.tr),
+				sz: file.Size,
 			}
 			name := filepath.Clean(file.Name)
 			return name, data, nil
