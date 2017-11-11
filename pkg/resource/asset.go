@@ -683,15 +683,18 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 				return fileerr
 			}
 
-			// If this was a directory or a symlink, skip it.
-			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+			// If this is a .pulumi directory, we will skip this by default.
+			// TODO[pulumi/pulumi#122]: when we support .pulumiignore, this will be customizable.
+			if f.Name() == workspace.BookkeepingDir {
+				if f.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 
-			// Finally, if this was a .pulumi directory, we will skip this by default.
-			// TODO[pulumi/pulumi#122]: when we support .pulumiignore, this will be customizable.
-			if !f.IsDir() && f.Name() == workspace.BookkeepingDir {
-				return filepath.SkipDir
+			// If this was a directory or a symlink, skip it.
+			if f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+				return nil
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.
