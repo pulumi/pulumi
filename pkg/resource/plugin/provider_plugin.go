@@ -109,7 +109,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	glog.V(7).Infof("resource[%v].Diff(id=%v,urn=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, urn, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{})
+	molds, err := MarshalProperties(olds, MarshalOptions{ElideAssetContents: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -191,7 +191,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, urn, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{})
+	molds, err := MarshalProperties(olds, MarshalOptions{ElideAssetContents: true})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
@@ -227,7 +227,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
-	mprops, err := MarshalProperties(props, MarshalOptions{})
+	mprops, err := MarshalProperties(props, MarshalOptions{ElideAssetContents: true})
 	if err != nil {
 		return resource.StatusOK, err
 	}

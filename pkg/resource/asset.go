@@ -111,7 +111,15 @@ func (a *Asset) Equals(other *Asset) bool {
 	} else if other == nil {
 		return false
 	}
-	return a.Hash == other.Hash && a.Text == other.Text && a.Path == other.Path && a.URI == other.URI
+
+	// If we can't get a hash for both assets, treat them as differing.
+	if err := a.EnsureHash(); err != nil {
+		return false
+	}
+	if err := other.EnsureHash(); err != nil {
+		return false
+	}
+	return a.Hash == other.Hash
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
@@ -158,15 +166,34 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	if v, has := obj[AssetURIProperty]; has {
 		uri = v.(string)
 	}
-	if text == "" && path == "" && uri == "" {
-		return &Asset{}, false, errors.New("asset is missing one of text, path, or URI")
-	}
 
 	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
 }
 
+// HasContents indicates whether or not an asset's contents can be read.
+func (a *Asset) HasContents() bool {
+	return a.IsText() || a.IsPath() || a.IsURI()
+}
+
+// Bytes returns the contents of the asset as a byte slice.
+func (a *Asset) Bytes() ([]byte, error) {
+	// If this is a text asset, just return its bytes directly.
+	if a.IsText() {
+		text, istext := a.GetText()
+		contract.Assertf(istext, "Expected a text-based asset")
+		return []byte(text), nil
+	}
+
+	blob, err := a.Read()
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(blob)
+}
+
 // Read begins reading an asset.
 func (a *Asset) Read() (*Blob, error) {
+	contract.Assertf(a.HasContents(), "cannot read an asset that has no contents")
 	if a.IsText() {
 		return a.readText()
 	} else if a.IsPath() {
@@ -174,7 +201,6 @@ func (a *Asset) Read() (*Blob, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	contract.Failf("Invalid asset; one of Text, Path, or URI must be non-nil")
 	return nil, nil
 }
 
@@ -396,40 +422,15 @@ func (a *Archive) Equals(other *Archive) bool {
 	} else if other == nil {
 		return false
 	}
-	if a.Assets != nil {
-		if other.Assets == nil {
-			return false
-		}
-		if len(a.Assets) != len(other.Assets) {
-			return false
-		}
-		for key, value := range a.Assets {
-			otherv := other.Assets[key]
-			switch valuet := value.(type) {
-			case *Asset:
-				if othera, isAsset := otherv.(*Asset); isAsset {
-					if !valuet.Equals(othera) {
-						return false
-					}
-				} else {
-					return false
-				}
-			case *Archive:
-				if othera, isArchive := otherv.(*Archive); isArchive {
-					if !valuet.Equals(othera) {
-						return false
-					}
-				} else {
-					return false
-				}
-			default:
-				return false
-			}
-		}
-	} else if other.Assets != nil {
+
+	// If we can't get a hash for both archives, treat them as differing.
+	if err := a.EnsureHash(); err != nil {
 		return false
 	}
-	return a.Hash == other.Hash && a.Path == other.Path && a.URI == other.URI
+	if err := other.EnsureHash(); err != nil {
+		return false
+	}
+	return a.Hash == other.Hash
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
@@ -514,11 +515,13 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	if v, has := obj[ArchiveURIProperty]; has {
 		uri = v.(string)
 	}
-	if assets == nil && path == "" && uri == "" {
-		return &Archive{}, false, errors.New("archive is missing one of assets, path, or URI")
-	}
 
 	return &Archive{Hash: hash, Assets: assets, Path: path, URI: uri}, true, nil
+}
+
+// HasContents indicates whether or not an archive's contents can be read.
+func (a *Archive) HasContents() bool {
+	return a.IsAssets() || a.IsPath() || a.IsURI()
 }
 
 // ArchiveReader presents the contents of an archive as a stream of named blobs.
@@ -533,6 +536,7 @@ type ArchiveReader interface {
 
 // Open returns an ArchiveReader that can be used to iterate over the named blobs that comprise the archive.
 func (a *Archive) Open() (ArchiveReader, error) {
+	contract.Assertf(a.HasContents(), "cannot read an archive that has no contents")
 	if a.IsAssets() {
 		return a.readAssets()
 	} else if a.IsPath() {
@@ -540,7 +544,6 @@ func (a *Archive) Open() (ArchiveReader, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	contract.Failf("Invalid archive; one of Assets, Path, or URI must be non-nil")
 	return nil, nil
 }
 
