@@ -18,6 +18,7 @@ import (
 type MarshalOptions struct {
 	SkipNulls          bool // true to skip nulls altogether in the resulting map.
 	KeepUnknowns       bool // true if we are keeping unknown values (otherwise we skip them).
+	ElideAssetContents bool // true if we are eliding the contents of assets.
 	ComputeAssetHashes bool // true if we are computing missing asset hashes on the fly.
 }
 
@@ -336,10 +337,16 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
 func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
-	// Ensure a hash is present if needed.
-	if v.Hash == "" && opts.ComputeAssetHashes {
-		if err := v.EnsureHash(); err != nil {
-			return nil, errors.Wrapf(err, "failed to compute asset hash")
+	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed. Serialize the
+	// asset with only its hash (if present).
+	if opts.ElideAssetContents {
+		v = &resource.Asset{Hash: v.Hash}
+	} else {
+		// Ensure a hash is present if needed.
+		if v.Hash == "" && opts.ComputeAssetHashes {
+			if err := v.EnsureHash(); err != nil {
+				return nil, errors.Wrapf(err, "failed to compute asset hash")
+			}
 		}
 	}
 
@@ -351,10 +358,16 @@ func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, erro
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
 func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
-	// Ensure a hash is present if needed.
-	if v.Hash == "" && opts.ComputeAssetHashes {
-		if err := v.EnsureHash(); err != nil {
-			return nil, errors.Wrapf(err, "failed to compute archive hash")
+	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed. Serialize the
+	// asset with only its hash (if present).
+	if opts.ElideAssetContents {
+		v = &resource.Archive{Hash: v.Hash}
+	} else {
+		// Ensure a hash is present if needed.
+		if v.Hash == "" && opts.ComputeAssetHashes {
+			if err := v.EnsureHash(); err != nil {
+				return nil, errors.Wrapf(err, "failed to compute archive hash")
+			}
 		}
 	}
 

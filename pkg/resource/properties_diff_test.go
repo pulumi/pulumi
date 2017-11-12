@@ -298,14 +298,14 @@ func TestAssetPropertyValueDiffs(t *testing.T) {
 
 func TestArchivePropertyValueDiffs(t *testing.T) {
 	t.Parallel()
-	path, err := tempArchive("test")
+	path, err := tempArchive("test", false)
 	assert.Nil(t, err)
 	defer func() { contract.IgnoreError(os.Remove(path)) }()
 	a1, err := NewPathArchive(path)
 	assert.Nil(t, err)
 	d1 := NewArchiveProperty(a1).Diff(NewArchiveProperty(a1))
 	assert.Nil(t, d1)
-	path2, err := tempArchive("test2")
+	path2, err := tempArchive("test2", true)
 	assert.Nil(t, err)
 	defer func() { contract.IgnoreError(os.Remove(path)) }()
 	a2, err := NewPathArchive(path2)
