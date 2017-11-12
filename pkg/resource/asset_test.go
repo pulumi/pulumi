@@ -143,6 +143,44 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, url, archDes.URI)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", archDes.Hash)
 	}
+	{
+		file1, err := tempArchive("test", false)
+		assert.Nil(t, err)
+		defer func() { contract.IgnoreError(os.Remove(file1)) }()
+		file2, err := tempArchive("test2", false)
+		assert.Nil(t, err)
+		defer func() { contract.IgnoreError(os.Remove(file2)) }()
+		arch1, err := NewPathArchive(file1)
+		assert.Nil(t, err)
+		arch2, err := NewPathArchive(file2)
+		assert.Nil(t, err)
+		assert.True(t, arch1.Equals(arch2))
+		url := "file:///" + file1
+		arch3, err := NewURIArchive(url)
+		assert.Nil(t, err)
+		assert.True(t, arch1.Equals(arch3))
+	}
+	{
+		file, err := tempArchive("test", true)
+		assert.Nil(t, err)
+		arch1, err := NewPathArchive(file)
+		assert.Nil(t, err)
+		assert.Nil(t, arch1.EnsureHash())
+		url := "file:///" + file
+		arch2, err := NewURIArchive(url)
+		assert.Nil(t, err)
+		assert.Nil(t, arch2.EnsureHash())
+
+		assert.Nil(t, os.Truncate(file, 0))
+		arch3, err := NewPathArchive(file)
+		assert.Nil(t, err)
+		assert.Nil(t, arch3.EnsureHash())
+		assert.False(t, arch1.Equals(arch3))
+		arch4, err := NewURIArchive(url)
+		assert.Nil(t, err)
+		assert.Nil(t, arch4.EnsureHash())
+		assert.False(t, arch2.Equals(arch4))
+	}
 }
 
 func tempArchive(prefix string, fill bool) (string, error) {

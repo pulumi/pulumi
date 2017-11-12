@@ -104,7 +104,9 @@ func (a *Asset) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
-// Equals returns true if a is value-equal to other.
+// Equals returns true if a is value-equal to other. In this case, value equality is determined only by the hash: even if the contents of
+// two assets come from different sources, they are treated as equal if their hashes match. Similarly, if the contents of two assets
+// come from the same source but the assets have different hashes, the assets are not equal.
 func (a *Asset) Equals(other *Asset) bool {
 	if a == nil {
 		return other == nil
@@ -178,9 +180,7 @@ func (a *Asset) HasContents() bool {
 // Bytes returns the contents of the asset as a byte slice.
 func (a *Asset) Bytes() ([]byte, error) {
 	// If this is a text asset, just return its bytes directly.
-	if a.IsText() {
-		text, istext := a.GetText()
-		contract.Assertf(istext, "Expected a text-based asset")
+	if text, istext := a.GetText(); istext {
 		return []byte(text), nil
 	}
 
@@ -415,7 +415,9 @@ func (a *Archive) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
-// Equals returns true if a is value-equal to other.
+// Equals returns true if a is value-equal to other. In this case, value equality is determined only by the hash: even if the contents of
+// two archives come from different sources, they are treated as equal if their hashes match. Similarly, if the contents of two archives
+// come from the same source but the archives have different hashes, the archives are not equal.
 func (a *Archive) Equals(other *Archive) bool {
 	if a == nil {
 		return other == nil
