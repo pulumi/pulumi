@@ -34,18 +34,18 @@ copy_package() {
     if [ -e "${MODULE_ROOT}/node_modules" ]; then
         rm -rf "${MODULE_ROOT}/node_modules"
     fi
+    if [ -e "${MODULE_ROOT}/tests" ]; then
+        rm -rf "${MODULE_ROOT}/tests"
+    fi
 }
 
 
 # Build binaries
 run_go_build "${ROOT}"
 
-# Copy over the langhost
-if [ "$(go env GOOS)" != "windows" ]; then
-    cp ${ROOT}/dist/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
-else
-    cp ${ROOT}/dist/sdk/nodejs/pulumi-langhost-nodejs.cmd ${PUBDIR}/bin/
-fi
+# Copy over the langhost and dynamic provider
+cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
+cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
 
 # Copy packages
 copy_package "${ROOT}/sdk/nodejs/bin/." "pulumi"
