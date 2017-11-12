@@ -9,6 +9,9 @@ language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
+    - export PULUMI_ROOT=/opt/pulumi
+    # on OSX, /opt/ is not writeable by normal users, so we create /opt/pulumi as root and take ownership of it
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then sudo mkdir /opt/pulumi && sudo chown $USER /opt/pulumi; fi
     # Travis only fetches 50 commits by default, and we want them all so we can do git describe --tags
     - git fetch --unshallow
     # Dep for Go dependency management.
@@ -31,9 +34,7 @@ cache:
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
-    - dep ensure -v
-before_script:
-    - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/bin:$PATH
+    - make ensure
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
 notifications:

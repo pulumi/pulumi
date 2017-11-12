@@ -1,39 +1,17 @@
-SHELL=/bin/bash
-.SHELLFLAGS=-ec
-ECHO=echo -e
+PROJECT_NAME := Pulumi Node.JS SDK
+NODE_MODULE_NAME := pulumi
+include ../../build/common.mk
 
-export PATH:=$(shell yarn bin):$(PATH)
+export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-.PHONY: default
-default: banner ensure configure build lint test install
-
-.PHONY: banner
-banner:
-	@$(ECHO) "\033[1;37m==================\033[0m"
-	@$(ECHO) "\033[1;37mPulumi Node.js SDK\033[0m"
-	@$(ECHO) "\033[1;37m==================\033[0m"
-
-.PHONY: ensure
-ensure:
-	yarn install
-
-.PHONY: configure
-configure:
+ensure::
 	cd runtime/native && ./ensure_node_v8.sh
-	cd runtime/native && node-gyp configure
 
-.PHONY: lint
-lint:
-	@$(ECHO) "\033[0;32mLINT:\033[0m"
+lint::
 	tslint -c tslint.json -p tsconfig.json
 
-.PHONY: clean
-clean:
-	rm -rf ./bin
-
-.PHONY: build
-build:
-	@$(ECHO) "\033[0;32mBUILD:\033[0m"
+build::
+	cd runtime/native && node-gyp configure
 	cp -R ../proto/nodejs/. proto/
 	cd runtime/native/ && node-gyp build
 	tsc
@@ -43,16 +21,12 @@ build:
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-.PHONY: test
-test:
-	@$(ECHO) "\033[0;32mTEST:\033[0m"
+install::
+	cp pulumi-langhost-nodejs "$(PULUMI_BIN)"
+	cp pulumi-provider-pulumi-nodejs "$(PULUMI_BIN)"
+	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
+
+test_fast::
 	istanbul cover --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
-
-.PHONY: install
-install:
-	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
-	cp package.json bin/
-	cd bin/ && (yarn unlink > /dev/null 2>&1 || true) && yarn link
-
