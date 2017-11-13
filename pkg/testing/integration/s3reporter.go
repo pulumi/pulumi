@@ -24,8 +24,10 @@ type S3Reporter struct {
 var _ TestStatsReporter = (*S3Reporter)(nil)
 
 // NewS3Reporter creates a new S3Reporter that puts test results in the given bucket using the keyPrefix.
-func NewS3Reporter(bucket string, keyPrefix string) *S3Reporter {
-	sess, err := session.NewSession()
+func NewS3Reporter(region string, bucket string, keyPrefix string) *S3Reporter {
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	})
 	if err != nil {
 		fmt.Printf("Failed to connect to S3 for test results reporting: %v\n", err)
 		return nil
