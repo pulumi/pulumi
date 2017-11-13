@@ -130,8 +130,20 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Config[k] = v
 	}
+	for k, v := range overrides.Secrets {
+		if opts.Secrets == nil {
+			opts.Secrets = make(map[string]string)
+		}
+		opts.Secrets[k] = v
+	}
 	if overrides.EditDirs != nil {
 		opts.EditDirs = overrides.EditDirs
+	}
+	if overrides.ExtraRuntimeValidation != nil {
+		opts.ExtraRuntimeValidation = overrides.ExtraRuntimeValidation
+	}
+	if overrides.ReportStats != nil {
+		opts.ReportStats = overrides.ReportStats
 	}
 	return opts
 }
