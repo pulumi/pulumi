@@ -3,8 +3,10 @@
 package examples
 
 import (
+	"bytes"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,6 +37,7 @@ func TestExamples(t *testing.T) {
 		},
 	}
 
+	var formattableStdout, formattableStderr bytes.Buffer
 	examples := []integration.ProgramTestOptions{
 		minimal,
 		{
@@ -49,6 +52,17 @@ func TestExamples(t *testing.T) {
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
 			Dependencies: []string{"pulumi"},
+		},
+		{
+			Dir:          path.Join(cwd, "formattable"),
+			Dependencies: []string{"pulumi"},
+			ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
+				stdout := formattableStdout.String()
+				assert.False(t, strings.Contains(stdout, "MISSING"))
+			},
+			Stdout: &formattableStdout,
+			Stderr: &formattableStderr,
 		},
 	}
 

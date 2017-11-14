@@ -357,7 +357,7 @@ func (host *testProviderHost) ServerAddr() string {
 	return ""
 }
 func (host *testProviderHost) Log(sev diag.Severity, msg string) {
-	cmdutil.Diag().Logf(sev, diag.Message(msg))
+	cmdutil.Diag().Logf(sev, diag.RawMessage(msg))
 }
 func (host *testProviderHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
 	return resource.PropertyValue{}, errors.New("Invalid location")

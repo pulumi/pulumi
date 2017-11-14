@@ -246,7 +246,11 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 		buffer.WriteString(colors.SpecNote)
 	}
 
-	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
+	if diag.Raw {
+		buffer.WriteString(diag.Message)
+	} else {
+		buffer.WriteString(fmt.Sprintf(diag.Message, args...))
+	}
 
 	if d.useColor(sev) {
 		buffer.WriteString(colors.Reset)

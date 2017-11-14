@@ -126,7 +126,7 @@ Outer:
 			if payload.UseColor {
 				msg = colors.ColorizeText(msg)
 			}
-			fmt.Fprintf(out, msg)
+			fmt.Fprint(out, msg)
 		default:
 			contract.Failf("unknown event type '%s'", event.Type)
 		}

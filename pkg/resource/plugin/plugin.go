@@ -81,9 +81,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 			}
 			msg := line[:len(line)-1]
 			if stderr {
-				ctx.Diag.Infoerrf(diag.Message("%s"), msg)
+				ctx.Diag.Infoerrf(diag.RawMessage(msg))
 			} else {
-				ctx.Diag.Infof(diag.Message("%s"), msg)
+				ctx.Diag.Infof(diag.RawMessage(msg))
 			}
 		}
 		close(done)
