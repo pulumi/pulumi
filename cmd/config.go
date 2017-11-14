@@ -20,72 +20,78 @@ import (
 )
 
 func newConfigCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Manage configuration",
-	}
-	cmd.AddCommand(newConfigLsCmd())
-	cmd.AddCommand(newConfigRmCmd())
-	cmd.AddCommand(newConfigTextCmd())
-	cmd.AddCommand(newConfigSecretCmd())
-
-	return cmd
-}
-
-func newConfigLsCmd() *cobra.Command {
 	var stack string
 	var showSecrets bool
 
-	lsCmd := &cobra.Command{
-		Use:   "ls [key]",
-		Short: "List configuration for a stack",
-		Args:  cobra.MaximumNArgs(1),
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Manage configuration",
+		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
+			"'pulumi config set', to remove and existing value run 'pulumi config rm'. To get the value of\n" +
+			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
 				return err
 			}
 
-			if len(args) == 1 {
-				key, err := parseConfigKey(args[0])
-				if err != nil {
-					return errors.Wrap(err, "invalid configuration key")
-				}
-				return getConfig(stackName, key)
-			}
-
 			return listConfig(stackName, showSecrets)
 		}),
 	}
 
-	lsCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"List configuration for a different stack than the currently selected stack")
-	lsCmd.PersistentFlags().BoolVar(
+	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"Operate on a different stack than the currently selected stack")
 
-	return lsCmd
+	cmd.AddCommand(newConfigGetCmd(&stack))
+	cmd.AddCommand(newConfigRmCmd(&stack))
+	cmd.AddCommand(newConfigSetCmd(&stack))
+
+	return cmd
 }
 
-func newConfigRmCmd() *cobra.Command {
+func newConfigGetCmd(stack *string) *cobra.Command {
+	getCmd := &cobra.Command{
+		Use:   "get <key>",
+		Short: "Get a single configuration value",
+		Args:  cobra.ExactArgs(1),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			stackName, err := explicitOrCurrent(*stack, backend)
+			if err != nil {
+				return err
+			}
+
+			key, err := parseConfigKey(args[0])
+			if err != nil {
+				return errors.Wrap(err, "invalid configuration key")
+			}
+			return getConfig(stackName, key)
+		}),
+	}
+
+	return getCmd
+}
+
+func newConfigRmCmd(stack *string) *cobra.Command {
 	var all bool
 	var save bool
-	var stack string
 
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
 		Args:  cobra.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if all && stack != "" {
+			if all && *stack != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
 			}
 
 			var stackName tokens.QName
 			if !all {
 				var err error
-				if stackName, err = explicitOrCurrent(stack, backend); err != nil {
+				if stackName, err = explicitOrCurrent(*stack, backend); err != nil {
 					return err
 				}
 			}
@@ -103,9 +109,6 @@ func newConfigRmCmd() *cobra.Command {
 		}),
 	}
 
-	rmCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"Target a specific stack instead of the default stack")
 	rmCmd.PersistentFlags().BoolVar(
 		&save, "save", false,
 		"Remove the configuration value in the project file instead instead of a locally set value")
@@ -116,68 +119,24 @@ func newConfigRmCmd() *cobra.Command {
 	return rmCmd
 }
 
-func newConfigTextCmd() *cobra.Command {
+func newConfigSetCmd(stack *string) *cobra.Command {
 	var all bool
 	var save bool
-	var stack string
+	var secret bool
 
-	textCmd := &cobra.Command{
-		Use:   "text <key> <value>",
+	setCmd := &cobra.Command{
+		Use:   "set <key> [value]",
 		Short: "Set configuration value",
-		Args:  cobra.ExactArgs(2),
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if all && stack != "" {
-				return errors.New("if --all is specified, an explicit stack can not be provided")
-			}
-
-			var stackName tokens.QName
-			if !all {
-				var err error
-				if stackName, err = explicitOrCurrent(stack, backend); err != nil {
-					return err
-				}
-			}
-
-			key, err := parseConfigKey(args[0])
-			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
-			}
-
-			return setConfiguration(stackName, key, config.NewValue(args[1]), save)
-		}),
-	}
-
-	textCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"Target a specific stack instead of the default stack")
-	textCmd.PersistentFlags().BoolVar(
-		&save, "save", false,
-		"Save the configuration value in the project file instead of locally")
-	textCmd.PersistentFlags().BoolVar(
-		&all, "all", false,
-		"Set a configuration value for all stacks for this project")
-
-	return textCmd
-}
-
-func newConfigSecretCmd() *cobra.Command {
-	var all bool
-	var save bool
-	var stack string
-
-	secretCmd := &cobra.Command{
-		Use:   "secret <key> [value]",
-		Short: "Set an encrypted configuration value",
 		Args:  cobra.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if all && stack != "" {
+			if all && *stack != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
 			}
 
 			var stackName tokens.QName
 			if !all {
 				var err error
-				if stackName, err = explicitOrCurrent(stack, backend); err != nil {
+				if stackName, err = explicitOrCurrent(*stack, backend); err != nil {
 					return err
 				}
 			}
@@ -187,14 +146,22 @@ func newConfigSecretCmd() *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			c, err := getSymmetricCrypter()
-			if err != nil {
-				return err
+			var c config.ValueEncrypter
+			if secret {
+				c, err = getSymmetricCrypter()
+				if err != nil {
+					return err
+				}
 			}
 
 			var value string
 			if len(args) == 2 {
 				value = args[1]
+			} else if !secret {
+				value, err = readConsole("value")
+				if err != nil {
+					return err
+				}
 			} else {
 				value, err = readConsoleNoEchoWithPrompt("value")
 				if err != nil {
@@ -202,26 +169,41 @@ func newConfigSecretCmd() *cobra.Command {
 				}
 			}
 
-			encryptedValue, err := c.EncryptValue(value)
+			if !secret {
+				err = setConfiguration(stackName, key, config.NewValue(value), save)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Set key '%s' with value '%s' as plaintext\n", args[0], value)
+				return nil
+			}
+
+			enc, err := c.EncryptValue(value)
 			if err != nil {
 				return err
 			}
 
-			return setConfiguration(stackName, key, config.NewSecureValue(encryptedValue), save)
+			err = setConfiguration(stackName, key, config.NewSecureValue(enc), save)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Set key '%s' with with encrypted value\n", args[0])
+			return nil
 		}),
 	}
 
-	secretCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"Target a specific stack instead of the default stack")
-	secretCmd.PersistentFlags().BoolVar(
+	setCmd.PersistentFlags().BoolVar(
+		&secret, "secret", false,
+		"Encrypt the value instead of storing it in plaintext")
+	setCmd.PersistentFlags().BoolVar(
 		&save, "save", false,
 		"Save the configuration value in the project file instead of locally")
-	secretCmd.PersistentFlags().BoolVar(
+	setCmd.PersistentFlags().BoolVar(
 		&all, "all", false,
 		"Set a configuration value for all stacks for this project")
 
-	return secretCmd
+	return setCmd
 }
 
 func parseConfigKey(key string) (tokens.ModuleMember, error) {
