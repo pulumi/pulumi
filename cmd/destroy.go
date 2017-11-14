@@ -18,7 +18,7 @@ func newDestroyCmd() *cobra.Command {
 	var yes bool
 	var cmd = &cobra.Command{
 		Use:        "destroy",
-		SuggestFor: []string{"delete", "down", "remove", "rm", "stop"},
+		SuggestFor: []string{"delete", "down", "kill", "remove", "rm", "stop"},
 		Short:      "Destroy an existing stack and its resources",
 		Long: "Destroy an existing stack and its resources\n" +
 			"\n" +
