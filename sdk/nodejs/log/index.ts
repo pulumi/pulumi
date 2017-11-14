@@ -2,6 +2,7 @@
 
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
+import * as util from "util";
 import { getEngine, rpcKeepAlive } from "../runtime";
 const engproto = require("../proto/engine_pb.js");
 
@@ -18,7 +19,8 @@ export function hasErrors(): boolean {
 /**
  * debug logs a debug-level message that is generally hidden from end-users.
  */
-export function debug(msg: string): void {
+export function debug(format: any, ...args: any[]): void {
+    const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.DEBUG, msg);
@@ -31,7 +33,8 @@ export function debug(msg: string): void {
 /**
  * info logs an informational message that is generally printed to stdout during resource operations.
  */
-export function info(msg: string): void {
+export function info(format: any, ...args: any[]): void {
+    const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.INFO, msg);
@@ -44,7 +47,8 @@ export function info(msg: string): void {
 /**
  * warn logs a warning to indicate that something went wrong, but not catastrophically so.
  */
-export function warn(msg: string): void {
+export function warn(format: any, ...args: any[]): void {
+    const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.WARNING, msg);
@@ -57,9 +61,10 @@ export function warn(msg: string): void {
 /**
  * error logs a fatal error to indicate that the tool should stop processing resource operations immediately.
  */
-export function error(msg: string): void {
+export function error(format: any, ...args: any[]): void {
     errcnt++; // remember the error so we can suppress leaks.
 
+    const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
         log(engine, engproto.LogSeverity.ERROR, msg);
@@ -69,8 +74,9 @@ export function error(msg: string): void {
     }
 }
 
-export function log(engine: any, sev: any, msg: string): void {
+export function log(engine: any, sev: any, format: any, ...args: any[]): void {
     // Ensure we log everything in serial order.
+    const msg: string = util.format(format, ...args);
     const keepAlive: () => void = rpcKeepAlive();
     lastLog = lastLog.then(() => {
         return new Promise((resolve) => {
