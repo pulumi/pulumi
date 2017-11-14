@@ -53,6 +53,7 @@ func (r *S3Reporter) ReportCommand(stats TestCommandStats) {
 		Bucket: aws.String(r.bucket),
 		Key:    aws.String(path.Join(r.keyPrefix, name)),
 		Body:   bytes.NewReader(byts),
+		ACL:    aws.String(s3.ObjectCannedACLBucketOwnerFullControl),
 	})
 	if err != nil {
 		fmt.Printf("Failed to upload test command report to S3: %v\n", err)
