@@ -72,6 +72,6 @@ func ExitError(msg string, args ...interface{}) {
 
 // ExitErrorCode issues an error and exists with the given error exit code.
 func ExitErrorCode(code int, msg string, args ...interface{}) {
-	Diag().Errorf(diag.Message(fmt.Sprintf(msg, args...)))
+	Diag().Errorf(diag.Message(msg), args...)
 	os.Exit(code)
 }

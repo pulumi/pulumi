@@ -63,7 +63,7 @@ func (host *defaultHost) ServerAddr() string {
 }
 
 func (host *defaultHost) Log(sev diag.Severity, msg string) {
-	host.ctx.Diag.Logf(sev, diag.Message(msg))
+	host.ctx.Diag.Logf(sev, diag.RawMessage(msg))
 }
 
 func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
