@@ -33,6 +33,7 @@ func TestExamples(t *testing.T) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			assert.Equal(t, minimal.StackName(), checkpoint.Target)
 		},
+		ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
 	}
 
 	examples := []integration.ProgramTestOptions{

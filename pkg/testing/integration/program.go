@@ -30,6 +30,33 @@ type EditDir struct {
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
 }
 
+// TestCommandStats is a collection of data related to running a single command during a test.
+type TestCommandStats struct {
+	// StartTime is the time at which the command was started
+	StartTime string `json:"startTime"`
+	// EndTime is the time at which the command exited
+	EndTime string `json:"endTime"`
+	// ElapsedSeconds is the time at which the command exited
+	ElapsedSeconds float64 `json:"elapsedSeconds"`
+	// StackName is the name of the stack
+	StackName string `json:"stackName"`
+	// TestId is the unique ID of the test run
+	TestID string `json:"testId"`
+	// StepName is the command line which was invoked1
+	StepName string `json:"stepName"`
+	// CommandLine is the command line which was invoked1
+	CommandLine string `json:"commandLine"`
+	// TestName is the name of the directory in which the test was executed
+	TestName string `json:"testName"`
+	// IsError is true if the command failed
+	IsError bool `json:"isError"`
+}
+
+// TestStatsReporter reports results and metadata from a test run.
+type TestStatsReporter interface {
+	ReportCommand(stats TestCommandStats)
+}
+
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
@@ -44,6 +71,9 @@ type ProgramTestOptions struct {
 	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+
+	// ReportStats optionally specifies how to report results from the test for external collection.
+	ReportStats TestStatsReporter
 
 	// Stdout is the writer to use for all stdout messages.
 	Stdout io.Writer
@@ -100,8 +130,20 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Config[k] = v
 	}
+	for k, v := range overrides.Secrets {
+		if opts.Secrets == nil {
+			opts.Secrets = make(map[string]string)
+		}
+		opts.Secrets[k] = v
+	}
 	if overrides.EditDirs != nil {
 		opts.EditDirs = overrides.EditDirs
+	}
+	if overrides.ExtraRuntimeValidation != nil {
+		opts.ExtraRuntimeValidation = overrides.ExtraRuntimeValidation
+	}
+	if overrides.ReportStats != nil {
+		opts.ReportStats = overrides.ReportStats
 	}
 	return opts
 }
@@ -136,20 +178,20 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
-	if err = RunCommand(t, []string{opts.Bin, "init"}, dir, opts); err != nil {
+	if err = RunCommand(t, "pulumi-init", []string{opts.Bin, "init"}, dir, opts); err != nil {
 		return
 	}
-	if err = RunCommand(t, []string{opts.Bin, "stack", "init", string(stackName)}, dir, opts); err != nil {
+	if err = RunCommand(t, "pulumi-stack-init", []string{opts.Bin, "stack", "init", string(stackName)}, dir, opts); err != nil {
 		return
 	}
 	for key, value := range opts.Config {
-		if err = RunCommand(t, []string{opts.Bin, "config", "text", key, value}, dir, opts); err != nil {
+		if err = RunCommand(t, "pulumi-config", []string{opts.Bin, "config", "text", key, value}, dir, opts); err != nil {
 			return
 		}
 	}
 
 	for key, value := range opts.Secrets {
-		if err = RunCommand(t, []string{opts.Bin, "config", "secret", key, value}, dir, opts); err != nil {
+		if err = RunCommand(t, "pulumi-config", []string{opts.Bin, "config", "secret", key, value}, dir, opts); err != nil {
 			return
 		}
 	}
@@ -157,27 +199,27 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Now preview and update the real changes.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
-	previewAndUpdate := func(d string) error {
-		if preerr := RunCommand(t, []string{opts.Bin, "preview"}, d, opts); preerr != nil {
+	previewAndUpdate := func(d string, name string) error {
+		if preerr := RunCommand(t, "pulumi-preview-"+name, []string{opts.Bin, "preview"}, d, opts); preerr != nil {
 			return preerr
 		}
-		if upderr := RunCommand(t, []string{opts.Bin, "update"}, d, opts); upderr != nil {
+		if upderr := RunCommand(t, "pulumi-update-"+name, []string{opts.Bin, "update"}, d, opts); upderr != nil {
 			return upderr
 		}
 		return nil
 	}
 
 	// Perform the initial stack creation.
-	initErr := previewAndUpdate(dir)
+	initErr := previewAndUpdate(dir, "initial")
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
 		_, derr := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 		contract.IgnoreError(derr)
-		derr = RunCommand(t, []string{opts.Bin, "destroy", "--yes"}, dir, opts)
+		derr = RunCommand(t, "pulumi-destroy", []string{opts.Bin, "destroy", "--yes"}, dir, opts)
 		contract.IgnoreError(derr)
-		derr = RunCommand(t, []string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
+		derr = RunCommand(t, "pulumi-stack-rm", []string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
 		contract.IgnoreError(derr)
 	}()
 
@@ -189,7 +231,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Perform an empty preview and update; nothing is expected to happen here.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 	contract.IgnoreError(err)
-	if err = previewAndUpdate(dir); err != nil {
+	if err = previewAndUpdate(dir, "empty"); err != nil {
 		return
 	}
 
@@ -201,14 +243,14 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
-	for _, edit := range opts.EditDirs {
+	for i, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
 		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
-		if err = previewAndUpdate(dir); err != nil {
+		if err = previewAndUpdate(dir, fmt.Sprintf("edit%d", i)); err != nil {
 			return
 		}
 		if edit.ExtraRuntimeValidation != nil {
@@ -292,7 +334,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions) error {
+func RunCommand(t *testing.T, name string, args []string, wd string, opts ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
 
@@ -332,6 +374,8 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		Env:  env,
 	}
 
+	startTime := time.Now()
+
 	var runout []byte
 	var runerr error
 	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
@@ -340,6 +384,24 @@ func RunCommand(t *testing.T, args []string, wd string, opts ProgramTestOptions)
 		runerr = cmd.Run()
 	} else {
 		runout, runerr = cmd.CombinedOutput()
+	}
+
+	endTime := time.Now()
+
+	if opts.ReportStats != nil {
+		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
+		// of this data.
+		opts.ReportStats.ReportCommand(TestCommandStats{
+			StartTime:      startTime.Format("2006/01/02 15:04:05"),
+			EndTime:        endTime.Format("2006/01/02 15:04:05"),
+			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,
+			StepName:       name,
+			CommandLine:    command,
+			StackName:      string(opts.StackName()),
+			TestID:         wd,
+			TestName:       filepath.Base(opts.Dir),
+			IsError:        runerr != nil,
+		})
 	}
 
 	finished = true
@@ -397,11 +459,13 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 
 	// Now ensure dependencies are present.
 	if insterr := RunCommand(t,
+		"yarn-install",
 		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), dir, opts); insterr != nil {
 		return "", insterr
 	}
 	for _, dependency := range opts.Dependencies {
 		if linkerr := RunCommand(t,
+			"yarn-link",
 			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), dir, opts); linkerr != nil {
 			return "", linkerr
 		}
@@ -409,6 +473,7 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 
 	// And finally compile it using whatever build steps are in the package.json file.
 	if builderr := RunCommand(t,
+		"yarn-build",
 		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), dir, opts); builderr != nil {
 		return "", builderr
 	}
