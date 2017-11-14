@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -22,7 +23,7 @@ func pulumiConsoleAPI() (string, error) {
 	if envVar == "" {
 		return "", fmt.Errorf("PULUMI_API env var not set")
 	}
-	return envVar, nil
+	return strings.TrimSuffix(envVar, "/"), nil
 }
 
 // usePulumiCloudCommands returns whether or not to use the "Pulumi Cloud" version of CLI commands.
@@ -46,7 +47,11 @@ func pulumiAPICall(method string, path string, body []byte, accessToken string) 
 		return nil, fmt.Errorf("getting Pulumi API endpoint: %v", err)
 	}
 
-	url := fmt.Sprintf("%s/api%s", apiEndpoint, path)
+	// Normalize URL components
+	apiEndpoint = strings.TrimSuffix(apiEndpoint, "/")
+	path = strings.TrimPrefix(path, "/")
+
+	url := fmt.Sprintf("%s/api/%s", apiEndpoint, path)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("creating new HTTP request: %v", err)
