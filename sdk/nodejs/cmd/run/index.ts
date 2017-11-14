@@ -136,7 +136,7 @@ export function main(args: string[]): void {
         }
         else {
             log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(err.toString());
+            log.error(err);
         }
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
