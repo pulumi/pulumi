@@ -3,10 +3,8 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -47,13 +45,11 @@ func loginCmd() error {
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s.\n", PulumiAccessTokenEnvVar)
 	} else {
-		fmt.Print("Enter Pulumi access token: ")
-		reader := bufio.NewReader(os.Stdin)
-		raw, err := reader.ReadString('\n')
+		token, err := readConsole("Enter Pulumi access token")
 		if err != nil {
-			return fmt.Errorf("reading STDIN: %v", err)
+			return err
 		}
-		accessToken = strings.TrimSpace(raw)
+		accessToken = token
 	}
 
 	// Try and use the credentials to see if they are valid.

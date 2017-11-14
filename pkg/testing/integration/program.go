@@ -167,8 +167,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   yarn run build
 //   pulumi init
 //   pulumi stack init integrationtesting
-//   pulumi config text <each opts.Config>
-//   pulumi config secret <each opts.Secrets>
+//   pulumi config set <each opts.Config>
+//   pulumi config set --secret <each opts.Secrets>
 //   pulumi preview
 //   pulumi update
 //   pulumi preview (expected to be empty)
@@ -204,14 +204,14 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	}
 	for key, value := range opts.Config {
 		if err = RunCommand(t, "pulumi-config",
-			[]string{opts.Bin, "config", "text", key, value}, dir, opts); err != nil {
+			[]string{opts.Bin, "config", "set", key, value}, dir, opts); err != nil {
 			return
 		}
 	}
 
 	for key, value := range opts.Secrets {
 		if err = RunCommand(t, "pulumi-config",
-			[]string{opts.Bin, "config", "secret", key, value}, dir, opts); err != nil {
+			[]string{opts.Bin, "config", "set", "--secret", key, value}, dir, opts); err != nil {
 			return
 		}
 	}

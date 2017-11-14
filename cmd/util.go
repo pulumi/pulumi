@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bufio"
 	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -177,6 +178,20 @@ func readConsoleNoEchoWithPrompt(prompt string) (string, error) {
 	}
 
 	return readConsoleNoEcho()
+}
+
+func readConsole(prompt string) (string, error) {
+	if prompt != "" {
+		fmt.Printf("%s: ", prompt)
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	raw, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(raw), nil
 }
 
 func readPassphrase(prompt string) (string, error) {
