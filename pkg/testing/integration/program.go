@@ -389,6 +389,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts Progra
 	endTime := time.Now()
 
 	if opts.ReportStats != nil {
+		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
+		// of this data.
 		opts.ReportStats.ReportCommand(TestCommandStats{
 			StartTime:      startTime.Format("2006/01/02 15:04:05"),
 			EndTime:        endTime.Format("2006/01/02 15:04:05"),
