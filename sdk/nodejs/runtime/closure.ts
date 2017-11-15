@@ -619,14 +619,16 @@ export function serializeJavaScriptText(c: Closure): string {
     const funcs = funcsForClosure.funcs;
     let text = "exports.handler = " + funcsForClosure.root + ";\n\n";
     for (const name of Object.keys(funcs)) {
+        const thisCapture = funcs[name].env.this;
+        delete funcs[name].env.this;
+
         text +=
             "function " + name + "() {\n" +
-            "  var _this;\n" +
-            "  with(" + envObjToString(funcs[name].env) + ") {\n" +
-            "    return (function() {\n\n" +
+            "  return (function() {\n" +
+            "    with(" + envObjToString(funcs[name].env) + ") {\n\n" +
             "return " + funcs[name].code + "\n\n" +
-            "    }).apply(_this).apply(this, arguments);\n" +
-            "  }\n" +
+            "    }\n" +
+            "  }).apply(" + thisCapture + ").apply(this, arguments);\n" +
             "}\n" +
             "\n";
     }
@@ -810,13 +812,8 @@ class FuncsForClosure {
 function envObjToString(envObj: { [key: string]: string; }): string {
     let result = "";
     let first = true;
-    for (let key of Object.keys(envObj)) {
+    for (const key of Object.keys(envObj)) {
         const val = envObj[key];
-
-        // Rewrite references to `this` to the special name `_this`.  This will get rewritten to use `.apply` later.
-        if (key === "this") {
-            key = "_this";
-        }
 
         if (!first) {
             result += ", ";
