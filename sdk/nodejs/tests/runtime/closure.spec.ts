@@ -170,13 +170,13 @@ describe("closure", () => {
         expectText: `exports.handler = __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6;
 
 function __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6() {
-  with({  }) {
-    return (function() {
+  return (function() {
+    with({  }) {
 
 return (function () { })
 
-    }).apply(undefined).apply(this, arguments);
-  }
+    }
+  }).apply(undefined).apply(this, arguments);
 }
 
 `,
@@ -194,13 +194,13 @@ return (function () { })
         expectText: `exports.handler = __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e;
 
 function __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e() {
-  with({  }) {
-    return (function() {
+  return (function() {
+    with({  }) {
 
 return (function () { console.log(this); })
 
-    }).apply(undefined).apply(this, arguments);
-  }
+    }
+  }).apply(undefined).apply(this, arguments);
 }
 
 `,
@@ -218,13 +218,13 @@ return (function () { console.log(this); })
         expectText: `exports.handler = __b135b11756da3f7aecaaa23a36898c0d6d2845ab;
 
 function __b135b11756da3f7aecaaa23a36898c0d6d2845ab() {
-  with({  }) {
-    return (function() {
+  return (function() {
+    with({  }) {
 
 return (() => { })
 
-    }).apply(undefined).apply(this, arguments);
-  }
+    }
+  }).apply(undefined).apply(this, arguments);
 }
 
 `,
@@ -242,13 +242,13 @@ return (() => { })
         expectText: `exports.handler = __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8;
 
 function __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8() {
-  with({  }) {
-    return (function() {
+  return (function() {
+    with({  }) {
 
 return (() => { console.log(this); })
 
-    }).apply(require("./bin/tests/runtime/closure.spec.js")).apply(this, arguments);
-  }
+    }
+  }).apply(require("./bin/tests/runtime/closure.spec.js")).apply(this, arguments);
 }
 
 `,
@@ -266,13 +266,13 @@ return (() => { console.log(this); })
         expectText: `exports.handler = __6668edd6db8c98baacaf1a227150aa18ce2ae872;
 
 function __6668edd6db8c98baacaf1a227150aa18ce2ae872() {
-  with({  }) {
-    return (function() {
+  return (function() {
+    with({  }) {
 
 return (function () { () => { console.log(this); }; })
 
-    }).apply(undefined).apply(this, arguments);
-  }
+    }
+  }).apply(undefined).apply(this, arguments);
 }
 
 `,
