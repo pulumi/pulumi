@@ -254,6 +254,30 @@ return (() => { console.log(this); })
 `,
     });
     cases.push({
+        title: "Arrow closure with this capture inside function closure",
+        // tslint:disable-next-line
+        func: function () { () => { console.log(this); } },
+        expect: {
+            code: "(function () { () => { console.log(this); }; })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__6668edd6db8c98baacaf1a227150aa18ce2ae872",
+        expectText: `exports.handler = __6668edd6db8c98baacaf1a227150aa18ce2ae872;
+
+function __6668edd6db8c98baacaf1a227150aa18ce2ae872() {
+  with({  }) {
+    return (function() {
+
+return (function () { () => { console.log(this); }; })
+
+    }).apply(undefined).apply(this, arguments);
+  }
+}
+
+`,
+    });
+    cases.push({
         title: "Empty function closure w/ args",
         // tslint:disable-next-line
         func: function (x: any, y: any, z: any) { },
