@@ -205,6 +205,31 @@ return (function () { console.log(this); })
 
 `,
     });
+
+    cases.push({
+        title: "Function closure with this and arguments capture",
+        // tslint:disable-next-line
+        func: function () { console.log(this + arguments); },
+        expect: {
+            code: "(function () { console.log(this + arguments); })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__05437ec790248221e1167f1da8e9a9ffbfe11ebf",
+        expectText: `exports.handler = __05437ec790248221e1167f1da8e9a9ffbfe11ebf;
+
+function __05437ec790248221e1167f1da8e9a9ffbfe11ebf() {
+  with({  }) {
+    return (function() {
+
+return (function () { console.log(this + arguments); })
+
+    }).apply(undefined, undefined).apply(this, arguments);
+  }
+}
+
+`,
+    });
     cases.push({
         title: "Empty arrow closure",
         // tslint:disable-next-line
@@ -254,6 +279,33 @@ return (() => { console.log(this); })
 `,
     });
     cases.push({
+        title: "Arrow closure with this and arguments capture",
+        // tslint:disable-next-line
+        func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
+        expect: {
+            code: "(() => { console.log(this + arguments); })",
+            environment: {
+                this: { module: "./bin/tests/runtime/closure.spec.js" },
+                arguments: { obj: { 0: { json: 0 }, 1: { json: 1 } } },
+            },
+            runtime: "nodejs",
+        },
+        closureHash: "__5303efb47547f1b75d5093d20adbe8d48e696f8d",
+        expectText: `exports.handler = __5303efb47547f1b75d5093d20adbe8d48e696f8d;
+
+function __5303efb47547f1b75d5093d20adbe8d48e696f8d() {
+  with({  }) {
+    return (function() {
+
+return (() => { console.log(this + arguments); })
+
+    }).apply(require("./bin/tests/runtime/closure.spec.js"), { 0: 0, 1: 1 }).apply(this, arguments);
+  }
+}
+
+`,
+    });
+    cases.push({
         title: "Arrow closure with this capture inside function closure",
         // tslint:disable-next-line
         func: function () { () => { console.log(this); } },
@@ -270,6 +322,30 @@ function __6668edd6db8c98baacaf1a227150aa18ce2ae872() {
     return (function() {
 
 return (function () { () => { console.log(this); }; })
+
+    }).apply(undefined, undefined).apply(this, arguments);
+  }
+}
+
+`,
+    });
+    cases.push({
+        title: "Arrow closure with this and arguments capture inside function closure",
+        // tslint:disable-next-line
+        func: function () { () => { console.log(this + arguments); } },
+        expect: {
+            code: "(function () { () => { console.log(this + arguments); }; })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__de8ce937834140441c7413a7e97b67bda12d7205",
+        expectText: `exports.handler = __de8ce937834140441c7413a7e97b67bda12d7205;
+
+function __de8ce937834140441c7413a7e97b67bda12d7205() {
+  with({  }) {
+    return (function() {
+
+return (function () { () => { console.log(this + arguments); }; })
 
     }).apply(undefined, undefined).apply(this, arguments);
   }
