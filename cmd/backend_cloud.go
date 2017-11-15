@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/archive"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -94,21 +95,21 @@ func (b *pulumiCloudPulumiBackend) RemoveStack(stackName tokens.QName, force boo
 type updateKind = int
 
 const (
-	regularUpdate updateKind = iota
-	previewUpdate
-	destroyUpdate
+	update updateKind = iota
+	preview
+	destroy
 )
 
 func (b *pulumiCloudPulumiBackend) Preview(stackName tokens.QName, debug bool, _ engine.PreviewOptions) error {
-	return updateStack(previewUpdate, stackName, debug)
+	return updateStack(preview, stackName, debug)
 }
 
 func (b *pulumiCloudPulumiBackend) Update(stackName tokens.QName, debug bool, _ engine.DeployOptions) error {
-	return updateStack(regularUpdate, stackName, debug)
+	return updateStack(update, stackName, debug)
 }
 
 func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, _ engine.DestroyOptions) error {
-	return updateStack(destroyUpdate, stackName, debug)
+	return updateStack(destroy, stackName, debug)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
@@ -126,12 +127,14 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 	// Generate the URL we'll use for all the REST calls.
 	var action string
 	switch kind {
-	case regularUpdate:
+	case update:
 		action = "update"
-	case previewUpdate:
+	case preview:
 		action = "preview"
-	case destroyUpdate:
+	case destroy:
 		action = "destroy"
+	default:
+		contract.Failf("unsupported update kind: %v", kind)
 	}
 	restURLRoot := fmt.Sprintf(
 		"/orgs/%s/programs/%s/%s/stacks/%s/%s",
@@ -144,7 +147,7 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 	}
 
 	// Upload the program's contents to the signed URL if appropriate.
-	if kind != destroyUpdate {
+	if kind != destroy {
 		err = uploadProgram(updateResponse.UploadURL, debug /* print upload size to STDOUT */)
 		if err != nil {
 			return err
@@ -157,7 +160,7 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 	if err = pulumiRESTCall("POST", restURLWithUpdateID, nil /* no req body */, &startUpdateResponse); err != nil {
 		return err
 	}
-	if kind == regularUpdate {
+	if kind == update {
 		fmt.Printf("Updating Stack '%s' to version %d...\n", string(stackName), startUpdateResponse.Version)
 	}
 

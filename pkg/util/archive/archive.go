@@ -1,9 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// Package archive provides support for creating zip archives of local folders and returning them
-// as string. (Which may be rather large.) This is how we pass Pulumi program source to the Cloud
-// for hosted scenarios, so the program can execute in a different environment and create the
-// resources off of the local machine.
+// Package archive provides support for creating zip archives of local folders and returning the
+// in-memory buffer. This is how we pass Pulumi program source to the Cloud for hosted scenarios,
+// for execution in a different environment and creating the resources off of the local machine.
 package archive
 
 import (
