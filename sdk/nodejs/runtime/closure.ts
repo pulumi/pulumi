@@ -812,13 +812,8 @@ class FuncsForClosure {
 function envObjToString(envObj: { [key: string]: string; }): string {
     let result = "";
     let first = true;
-    for (let key of Object.keys(envObj)) {
+    for (const key of Object.keys(envObj)) {
         const val = envObj[key];
-
-        // Rewrite references to `this` to the special name `_this`.  This will get rewritten to use `.apply` later.
-        if (key === "this") {
-            key = "_this";
-        }
 
         if (!first) {
             result += ", ";
