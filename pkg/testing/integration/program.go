@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -71,6 +72,8 @@ type ProgramTestOptions struct {
 	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
+	RelativeWorkDir string
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
@@ -142,6 +145,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.ExtraRuntimeValidation != nil {
 		opts.ExtraRuntimeValidation = overrides.ExtraRuntimeValidation
 	}
+	if overrides.RelativeWorkDir != "" {
+		opts.RelativeWorkDir = overrides.RelativeWorkDir
+	}
 	if overrides.ReportStats != nil {
 		opts.ReportStats = overrides.ReportStats
 	}
@@ -173,6 +179,11 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	dir, err := CopyTestToTemporaryDirectory(t, &opts, stackName)
 	if !assert.NoError(t, err) {
 		return
+	}
+
+	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
+	if opts.RelativeWorkDir != "" {
+		dir = path.Join(dir, opts.RelativeWorkDir)
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
@@ -457,16 +468,21 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 		return "", yarnrcerr
 	}
 
+	cwd := dir
+	if opts.RelativeWorkDir != "" {
+		cwd = path.Join(cwd, opts.RelativeWorkDir)
+	}
+
 	// Now ensure dependencies are present.
 	if insterr := RunCommand(t,
 		"yarn-install",
-		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), dir, opts); insterr != nil {
+		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), cwd, opts); insterr != nil {
 		return "", insterr
 	}
 	for _, dependency := range opts.Dependencies {
 		if linkerr := RunCommand(t,
 			"yarn-link",
-			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), dir, opts); linkerr != nil {
+			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), cwd, opts); linkerr != nil {
 			return "", linkerr
 		}
 	}
@@ -474,7 +490,7 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 	// And finally compile it using whatever build steps are in the package.json file.
 	if builderr := RunCommand(t,
 		"yarn-build",
-		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), dir, opts); builderr != nil {
+		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd, opts); builderr != nil {
 		return "", builderr
 	}
 
