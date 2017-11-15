@@ -426,10 +426,11 @@ class FreeVariableComputer {
             this.frees[v] = false;
         }
 
-        // If the function is not an arrow, then its `this` is also a
-        // function-scoped variable and should be removed.
+        // If the function is not an arrow function, then its `this` and `arguments` are also
+        // function-scoped variables and should be removed.
         if (!ts.isArrowFunction(node)) {
             this.frees["this"] = false;
+            this.frees["arguments"] = false;
         }
 
         // Restore the prior context and merge our free list with the previous one.
@@ -619,15 +620,19 @@ export function serializeJavaScriptText(c: Closure): string {
     const funcs = funcsForClosure.funcs;
     let text = "exports.handler = " + funcsForClosure.root + ";\n\n";
     for (const name of Object.keys(funcs)) {
-        const thisCapture = funcs[name].env.this;
-        delete funcs[name].env.this;
+        const environment = funcs[name].env;
+        const thisCapture = environment.this;
+        const argumentsCapture = environment.arguments;
+
+        delete environment.this;
+        delete environment.arguments;
 
         text +=
             "function " + name + "() {\n" +
-            "  with(" + envObjToString(funcs[name].env) + ") {\n" +
+            "  with(" + envObjToString(environment) + ") {\n" +
             "    return (function() {\n\n" +
             "return " + funcs[name].code + "\n\n" +
-            "    }).apply(" + thisCapture + ").apply(this, arguments);\n" +
+            "    }).apply(" + thisCapture + ", " + argumentsCapture + ").apply(this, arguments);\n" +
             "  }\n" +
             "}\n" +
             "\n";
