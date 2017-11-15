@@ -286,20 +286,20 @@ return (() => { console.log(this); })
             code: "(() => { console.log(this + arguments); })",
             environment: {
                 this: { module: "./bin/tests/runtime/closure.spec.js" },
-                arguments: { obj: { 0: { json: 0 }, 1: { json: 1 } } },
+                arguments: { arr: [{ json: 0 }, { json: 1 }] },
             },
             runtime: "nodejs",
         },
-        closureHash: "__5303efb47547f1b75d5093d20adbe8d48e696f8d",
-        expectText: `exports.handler = __5303efb47547f1b75d5093d20adbe8d48e696f8d;
+        closureHash: "__20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a",
+        expectText: `exports.handler = __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a;
 
-function __5303efb47547f1b75d5093d20adbe8d48e696f8d() {
+function __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a() {
   with({  }) {
     return (function() {
 
 return (() => { console.log(this + arguments); })
 
-    }).apply(require("./bin/tests/runtime/closure.spec.js"), { 0: 0, 1: 1 }).apply(this, arguments);
+    }).apply(require("./bin/tests/runtime/closure.spec.js"), [ 0, 1 ]).apply(this, arguments);
   }
 }
 

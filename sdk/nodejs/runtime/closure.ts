@@ -182,36 +182,45 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
-        resolve({ json: obj });
+        return resolve({ json: obj });
     }
-    else if (moduleName) {
+
+    if (moduleName) {
         // Serialize any value which was found as a requirable module name as a reference to the module
-        resolve({module: moduleName});
+        return resolve({module: moduleName});
     }
-    else if (obj instanceof Array) {
+
+    // tslint:disable-next-line:max-line-length
+    // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
+    if (obj instanceof Array ||
+        Object.prototype.toString.call(obj) === "[object Arguments]") {
+
         // Recursively serialize elements of an array.
         const arr: Promise<AsyncEnvironmentEntry>[] = [];
         for (const elem of obj) {
             arr.push(serializeCapturedObject(elem));
         }
-        resolve({ arr: arr });
+
+        return resolve({ arr: arr });
     }
-    else if (obj instanceof Function) {
+
+    if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
-        resolve({ closure: serializeClosureAsync(obj) });
+        return resolve({ closure: serializeClosureAsync(obj) });
     }
-    else if (obj instanceof Promise) {
+
+    if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
         obj.then((v) => serializeCapturedObjectAsync(v, resolve));
+        return;
     }
-    else {
-        // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
-        const env: AsyncEnvironment = {};
-        for (const key of Object.keys(obj)) {
-            env[key] = serializeCapturedObject(obj[key]);
-        }
-        resolve({ obj: env });
+
+    // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
+    const env: AsyncEnvironment = {};
+    for (const key of Object.keys(obj)) {
+        env[key] = serializeCapturedObject(obj[key]);
     }
+    resolve({ obj: env });
 }
 
 // These modules are built-in to Node.js, and are available via `require(...)`
