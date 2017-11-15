@@ -619,13 +619,15 @@ export function serializeJavaScriptText(c: Closure): string {
     const funcs = funcsForClosure.funcs;
     let text = "exports.handler = " + funcsForClosure.root + ";\n\n";
     for (const name of Object.keys(funcs)) {
+        const thisCapture = funcs[name].env.this;
+        delete funcs[name].env.this;
+
         text +=
             "function " + name + "() {\n" +
-            "  var _this;\n" +
             "  with(" + envObjToString(funcs[name].env) + ") {\n" +
             "    return (function() {\n\n" +
             "return " + funcs[name].code + "\n\n" +
-            "    }).apply(_this).apply(this, arguments);\n" +
+            "    }).apply(" + thisCapture + ").apply(this, arguments);\n" +
             "  }\n" +
             "}\n" +
             "\n";
