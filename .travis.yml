@@ -37,5 +37,5 @@ before_script:
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
 notifications:
-  webhooks: https://mv7ysv9978.execute-api.us-west-2.amazonaws.com/stage/travis
+    webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
 
