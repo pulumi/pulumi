@@ -4,6 +4,9 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -87,75 +90,30 @@ func (b *pulumiCloudPulumiBackend) RemoveStack(stackName tokens.QName, force boo
 	return pulumiRESTCall("DELETE", path, nil, nil)
 }
 
-func (b *pulumiCloudPulumiBackend) Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error {
-	projID, err := getCloudProjectIdentifier()
-	if err != nil {
-		return err
-	}
-	updateRequest, err := makeProgramUpdateRequest(stackName)
-	if err != nil {
-		return err
-	}
+// updateKind is an enum for describing the kinds of updates we support.
+type updateKind = int
 
-	var response apitype.PreviewUpdateResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/preview",
-		projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("POST", path, &updateRequest, &response); err != nil {
-		return err
-	}
-	fmt.Printf("Previewing update to Stack '%s'...\n", string(stackName))
+const (
+	regularUpdate updateKind = iota
+	previewUpdate
+	destroyUpdate
+)
 
-	// Wait for the update to complete.
-	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, response.UpdateID))
-	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
-
-	if err != nil {
-		return errors.Errorf("waiting for preview: %v", err)
-	}
-	if status == apitype.StatusSucceeded {
-		fmt.Println("Preview resulted in success.")
-		return nil
-	}
-	return errors.Errorf("preview result was unsuccessful: status %v", status)
+func (b *pulumiCloudPulumiBackend) Preview(stackName tokens.QName, debug bool, _ engine.PreviewOptions) error {
+	return updateStack(previewUpdate, stackName, debug)
 }
 
-func (b *pulumiCloudPulumiBackend) Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error {
-	projID, err := getCloudProjectIdentifier()
-	if err != nil {
-		return err
-	}
-	updateRequest, err := makeProgramUpdateRequest(stackName)
-	if err != nil {
-		return err
-	}
-
-	var response apitype.UpdateProgramResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/update", projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("POST", path, &updateRequest, &response); err != nil {
-		return err
-	}
-	fmt.Printf("Updating Stack '%s' to version %d...\n", string(stackName), response.Version)
-
-	// Wait for the update to complete.
-	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, response.UpdateID))
-	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
-
-	if err != nil {
-		return errors.Errorf("waiting for update: %v", err)
-	}
-	if status == apitype.StatusSucceeded {
-		fmt.Println("Update completed successfully.")
-		return nil
-	}
-	return errors.Errorf("update unsuccessful: status %v", status)
+func (b *pulumiCloudPulumiBackend) Update(stackName tokens.QName, debug bool, _ engine.DeployOptions) error {
+	return updateStack(regularUpdate, stackName, debug)
 }
 
-func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error {
-	// TODO[pulumi/pulumi#516]: Once pulumi.com supports previews of destroys, remove this code
-	if opts.DryRun {
-		return errors.New("Pulumi.com does not support previewing destroy operations yet")
-	}
+func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, _ engine.DestroyOptions) error {
+	return updateStack(destroyUpdate, stackName, debug)
+}
 
+// updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
+func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
+	// First create the update object.
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return err
@@ -165,25 +123,103 @@ func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, o
 		return err
 	}
 
-	var response apitype.DestroyProgramResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/destroy", projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("POST", path, &updateRequest, &response); err != nil {
+	// Generate the URL we'll use for all the REST calls.
+	var action string
+	switch kind {
+	case regularUpdate:
+		action = "update"
+	case previewUpdate:
+		action = "preview"
+	case destroyUpdate:
+		action = "destroy"
+	}
+	restURLRoot := fmt.Sprintf(
+		"/orgs/%s/programs/%s/%s/stacks/%s/%s",
+		projID.Owner, projID.Repository, projID.Project, string(stackName), action)
+
+	// Create the initial update object.
+	var updateResponse apitype.UpdateProgramResponse
+	if err = pulumiRESTCall("POST", restURLRoot, &updateRequest, &updateResponse); err != nil {
 		return err
 	}
-	fmt.Printf("Destroying Stack '%s'...\n", string(stackName))
 
-	// Wait for the update to complete.
-	status, err := waitForUpdate(fmt.Sprintf("%s/%s", path, response.UpdateID))
+	// Upload the program's contents to the signed URL if appropriate.
+	if kind != destroyUpdate {
+		err = uploadProgram(updateResponse.UploadURL, debug /* print upload size to STDOUT */)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Start the update.
+	restURLWithUpdateID := fmt.Sprintf("%s/%s", restURLRoot, updateResponse.UpdateID)
+	var startUpdateResponse apitype.StartUpdateResponse
+	if err = pulumiRESTCall("POST", restURLWithUpdateID, nil /* no req body */, &startUpdateResponse); err != nil {
+		return err
+	}
+	if kind == regularUpdate {
+		fmt.Printf("Updating Stack '%s' to version %d...\n", string(stackName), startUpdateResponse.Version)
+	}
+
+	// Wait for the update to complete, which also polls and renders event output to STDOUT.
+	status, err := waitForUpdate(restURLWithUpdateID)
 	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
 
 	if err != nil {
-		return errors.Errorf("waiting for destroy: %v", err)
+		return errors.Wrapf(err, "waiting for %s", action)
 	}
-	if status == apitype.StatusSucceeded {
-		fmt.Println("destroy complete.")
-		return nil
+	if status != apitype.StatusSucceeded {
+		return errors.Errorf("%s unsuccessful: status %v", action, status)
 	}
-	return errors.Errorf("destroy unsuccessful: status %v", status)
+	fmt.Printf("%s completed successfully.\n", action)
+	return nil
+}
+
+// uploadProgram archives the current Pulumi program and uploads it to a signed URL. "current"
+// meaning whatever Pulumi program is found in the CWD or parent directory.
+// If set, printSize will print the size of the data being uploaded.
+func uploadProgram(uploadURL string, printSize bool) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "getting working directory")
+	}
+	programPath, err := workspace.DetectPackage(cwd)
+	if err != nil {
+		return errors.Wrap(err, "looking for Pulumi package")
+	}
+	if programPath == "" {
+		return errors.New("no Pulumi package found")
+	}
+	// programPath is the path to the Pulumi.yaml file. Need its parent folder.
+	programFolder := filepath.Dir(programPath)
+	archiveContents, err := archive.Process(programFolder)
+	if err != nil {
+		return errors.Wrap(err, "creating archive")
+	}
+
+	if printSize {
+		mb := float32(archiveContents.Len()) / (1024.0 * 1024.0)
+		fmt.Printf("Uploading %.2fMiB\n", mb)
+	}
+
+	parsedURL, err := url.Parse(uploadURL)
+	if err != nil {
+		return errors.Wrap(err, "parsing URL")
+	}
+
+	resp, err := http.DefaultClient.Do(&http.Request{
+		Method:        "PUT",
+		URL:           parsedURL,
+		ContentLength: int64(archiveContents.Len()),
+		Body:          ioutil.NopCloser(archiveContents),
+	})
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(err, "upload failed")
+	}
+	return nil
 }
 
 func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query component.LogQuery) ([]component.LogEntry, error) {
@@ -284,9 +320,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 	}, nil
 }
 
-// makeProgramUpdateRequest handles detecting the program, building a zip file of it, base64 encoding
-// that and then returning an apitype.UpdateProgramRequest with all the relevant information to send
-// to Pulumi.com
+// makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
 func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequest, error) {
 	// Zip up the Pulumi program's directory, which may be a parent of CWD.
 	cwd, err := os.Getwd()
@@ -300,17 +334,15 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 	if programPath == "" {
 		return apitype.UpdateProgramRequest{}, errors.Errorf("no Pulumi package found")
 	}
-	// programPath is the path to the pulumi.yaml file. Need its parent folder.
-	programFolder := filepath.Dir(programPath)
-	archive, err := archive.EncodePath(programFolder)
-	if err != nil {
-		return apitype.UpdateProgramRequest{}, errors.Errorf("creating archive: %v", err)
-	}
 
 	// Load the package, since we now require passing the Runtime with the update request.
 	pkg, err := pack.Load(programPath)
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, err
+	}
+	description := ""
+	if pkg.Description != nil {
+		description = *pkg.Description
 	}
 
 	// Gather up configuration.
@@ -321,10 +353,10 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 	}
 
 	return apitype.UpdateProgramRequest{
-		Name:           pkg.Name,
-		Runtime:        pkg.Runtime,
-		ProgramArchive: archive,
-		Config:         textConfig,
+		Name:        pkg.Name,
+		Runtime:     pkg.Runtime,
+		Description: description,
+		Config:      textConfig,
 	}, nil
 }
 

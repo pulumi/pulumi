@@ -6,8 +6,6 @@ package apitype
 
 import (
 	"fmt"
-
-	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // User represents a Pulumi user.
@@ -29,36 +27,6 @@ type ErrorResponse struct {
 // Error implements the Error interface.
 func (err ErrorResponse) Error() string {
 	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
-}
-
-// UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
-type UpdateProgramRequest struct {
-	// Properties from the Project file.
-	Name    tokens.PackageName `json:"name"`
-	Runtime string             `json:"runtime"`
-
-	// Base-64 encoded Zip archive of the program's root directory.
-	ProgramArchive string `json:"programArchive"`
-
-	// Configuration values.
-	Config map[tokens.ModuleMember]string `json:"config"`
-}
-
-// PreviewUpdateResponse is returned when previewing a potential update.
-type PreviewUpdateResponse struct {
-	UpdateID string `json:"updateID"`
-}
-
-// UpdateProgramResponse is the response type when updating a Pulumi program.
-type UpdateProgramResponse struct {
-	UpdateID string `json:"updateID"`
-	// Version is the program's new version being updated to.
-	Version int `json:"version"`
-}
-
-// DestroyProgramResponse is the response type when destroying a Pulumi program's resources.
-type DestroyProgramResponse struct {
-	UpdateID string `json:"updateID"`
 }
 
 // UpdateEventKind is an enum for the type of update events.

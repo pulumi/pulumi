@@ -1,15 +1,14 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 // Package archive provides support for creating zip archives of local folders and returning them
-// as a base-64 encoded string. (Which may be rather large.) This is how we pass Pulumi program
-// source to the Cloud for hosted scenarios, so the program can execute in a different environment
-// and create the resources off of the local machine.
+// as string. (Which may be rather large.) This is how we pass Pulumi program source to the Cloud
+// for hosted scenarios, so the program can execute in a different environment and create the
+// resources off of the local machine.
 package archive
 
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -17,25 +16,19 @@ import (
 	"strings"
 )
 
-// EncodePath returns a base-64 encoded archive of the provided file path.
-func EncodePath(path string) (string, error) {
-
+// Process returns an in-memory buffer with the archived contents of the provided file path.
+func Process(path string) (*bytes.Buffer, error) {
 	buffer := &bytes.Buffer{}
-	encoder := base64.NewEncoder(base64.StdEncoding, buffer)
-	writer := zip.NewWriter(encoder)
+	writer := zip.NewWriter(buffer)
 
 	if err := addPathToZip(writer, path, path); err != nil {
-		return "", err
+		return nil, err
 	}
-
 	if err := writer.Close(); err != nil {
-		return "", err
-	}
-	if err := encoder.Close(); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return buffer.String(), nil
+	return buffer, nil
 }
 
 // addPathToZip adds all the files in a given directory to a zip archive. All files in the archive are relative to the
