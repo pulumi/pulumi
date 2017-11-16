@@ -75,6 +75,8 @@ type ProgramTestOptions struct {
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
 	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
 	RelativeWorkDir string
+	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
+	Quick bool
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
@@ -218,9 +220,11 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
 	previewAndUpdate := func(d string, name string) error {
-		if preerr := RunCommand(t, "pulumi-preview-"+name,
-			[]string{opts.Bin, "preview"}, d, opts); preerr != nil {
-			return preerr
+		if !opts.Quick {
+			if preerr := RunCommand(t, "pulumi-preview-"+name,
+				[]string{opts.Bin, "preview"}, d, opts); preerr != nil {
+				return preerr
+			}
 		}
 		if upderr := RunCommand(t, "pulumi-update-"+name,
 			[]string{opts.Bin, "update"}, d, opts); upderr != nil {
@@ -251,10 +255,12 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-	contract.IgnoreError(err)
-	if err = previewAndUpdate(dir, "empty"); err != nil {
-		return
+	if !opts.Quick {
+		_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		contract.IgnoreError(err)
+		if err = previewAndUpdate(dir, "empty"); err != nil {
+			return
+		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
