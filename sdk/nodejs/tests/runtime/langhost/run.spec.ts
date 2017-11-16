@@ -301,6 +301,7 @@ describe("rpc", () => {
                 const ctx = {};
                 let rescnt = 0;
                 const monitor = createMockResourceMonitor(
+                    // Invoke callback
                     (call: any, callback: any) => {
                         const resp = new langproto.InvokeResponse();
                         if (opts.invoke) {
@@ -313,18 +314,22 @@ describe("rpc", () => {
                         }
                         callback(undefined, resp);
                     },
+                    // NewResources callback
                     (call: any, callback: any) => {
                         const resp = new langproto.NewResourceResponse();
-                        if (opts.createResource) {
-                            const req: any = call.request;
-                            const res: any = req.getObject().toJavaScript();
-                            const { id, urn, props } =
-                                opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
-                            resp.setId(id);
-                            resp.setUrn(urn);
-                            resp.setObject(gstruct.Struct.fromJavaScript(props));
+                        const req: any = call.request;
+                        // Skip the automatically generated `pulumi:pulumi:Stack` resource.
+                        if (req.getType() !== "pulumi:pulumi:Stack") {
+                            if (opts.createResource) {
+                                const res: any = req.getObject().toJavaScript();
+                                const { id, urn, props } =
+                                    opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
+                                resp.setId(id);
+                                resp.setUrn(urn);
+                                resp.setObject(gstruct.Struct.fromJavaScript(props));
+                            }
+                            rescnt++;
                         }
-                        rescnt++;
                         callback(undefined, resp);
                     },
                 );
