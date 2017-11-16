@@ -155,6 +155,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				var progerr string
 				progerr, err = langhost.Run(plugin.RunInfo{
 					Stack:    string(iter.src.runinfo.Target.Name),
+					Project:  string(iter.src.runinfo.Pkg.Name),
 					Pwd:      iter.src.runinfo.Pwd,
 					Program:  iter.src.runinfo.Program,
 					Args:     iter.src.runinfo.Args,
