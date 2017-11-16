@@ -8,23 +8,51 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-type pkginfo struct {
+type Pkginfo struct {
 	Pkg  *pack.Package
 	Root string
 }
 
-// readPackageFromArg reads a package from an argument value.  It can be "-" to request reading from Stdin, and is
+// GetPwdMain returns the working directory and main entrypoint to use for this package.
+func (pkginfo *Pkginfo) GetPwdMain() (string, string, error) {
+	pwd := pkginfo.Root
+	main := pkginfo.Pkg.Main
+	if main != "" {
+		// The path might be relative from the package root; if so, make it absolute.
+		if !filepath.IsAbs(main) {
+			main = filepath.Join(pwd, main)
+		}
+
+		// So that any relative paths inside of the program are correct, we still need to pass the pwd
+		// of the main program's parent directory.  How we do this depends on if the target is a dir or not.
+		maininfo, err := os.Stat(main)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "project 'main' could not be read")
+		}
+		if maininfo.IsDir() {
+			pwd = main
+			main = ""
+		} else {
+			pwd = filepath.Dir(main)
+			main = filepath.Base(main)
+		}
+	}
+	return pwd, main, nil
+}
+
+// ReadPackageFromArg reads a package from an argument value.  It can be "-" to request reading from Stdin, and is
 // interpreted as a path otherwise.  If an error occurs, it is printed to Stderr, and the returned value will be nil.
 // In addition to the package, a root directory is returned that the compiler should be formed over, if any.
-func (eng *Engine) readPackageFromArg(arg string) (*pkginfo, error) {
+func ReadPackageFromArg(arg string) (*Pkginfo, error) {
 	// If the arg is "-", read from stdin.
 	if arg == "-" {
-		return eng.readPackageFromStdin()
+		return ReadPackageFromStdin()
 	}
 
 	// If the path is empty, we need to detect it based on the current working directory.
@@ -48,12 +76,12 @@ func (eng *Engine) readPackageFromArg(arg string) (*pkginfo, error) {
 	}
 
 	// Finally, go ahead and load the package directly from the path that we ended up with.
-	return eng.readPackage(path)
+	return ReadPackage(path)
 }
 
-// readPackageFromStdin attempts to read a package from Stdin; if an error occurs, it will be printed to Stderr, and
+// ReadPackageFromStdin attempts to read a package from Stdin; if an error occurs, it will be printed to Stderr, and
 // the returned value will be nil.
-func (eng *Engine) readPackageFromStdin() (*pkginfo, error) {
+func ReadPackageFromStdin() (*Pkginfo, error) {
 	// If stdin, read the package from text, and then create a compiler using the working directory.
 	b, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
@@ -70,21 +98,21 @@ func (eng *Engine) readPackageFromStdin() (*pkginfo, error) {
 		return nil, err
 	}
 
-	return &pkginfo{
+	return &Pkginfo{
 		Pkg:  &pkg,
 		Root: "",
 	}, nil
 }
 
-// readPackage attempts to read a package from the given path; if an error occurs, it will be printed to Stderr, and
+// ReadPackage attempts to read a package from the given path; if an error occurs, it will be printed to Stderr, and
 // the returned value will be nil.  If the path is a directory, nil is returned.
-func (eng *Engine) readPackage(path string) (*pkginfo, error) {
+func ReadPackage(path string) (*Pkginfo, error) {
 	// If the path refers to a directory, bail early.
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not read path '%v'", path)
 	} else if info.IsDir() {
-		return nil, errors.Wrapf(err, "path '%v' is a directory and not a path to package file", path)
+		return nil, errors.Errorf("path '%v' is a directory and not a path to package file", path)
 	}
 
 	pkg, err := pack.Load(path)
@@ -92,7 +120,7 @@ func (eng *Engine) readPackage(path string) (*pkginfo, error) {
 		return nil, err
 	}
 
-	return &pkginfo{
+	return &Pkginfo{
 		Pkg:  pkg,
 		Root: filepath.Dir(path),
 	}, nil

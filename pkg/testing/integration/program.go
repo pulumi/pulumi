@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -96,16 +97,6 @@ func (opts ProgramTestOptions) StackName() tokens.QName {
 	// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
 	hostname, err := os.Hostname()
 	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
-	var test string
-	for _, c := range filepath.Base(opts.Dir) {
-		if len(test) >= 10 {
-			break
-		}
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') || c == '-' || c == '_' {
-			test += string(c)
-		}
-	}
 	var host string
 	for _, c := range hostname {
 		if len(host) >= 10 {
@@ -116,6 +107,18 @@ func (opts ProgramTestOptions) StackName() tokens.QName {
 			host += string(c)
 		}
 	}
+
+	var test string
+	for _, c := range filepath.Base(opts.Dir) {
+		if len(test) >= 10 {
+			break
+		}
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '-' || c == '_' {
+			test += string(c)
+		}
+	}
+
 	return tokens.QName(strings.ToLower("p-it-" + host + "-" + test))
 }
 
@@ -189,20 +192,24 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
-	if err = RunCommand(t, "pulumi-init", []string{opts.Bin, "init"}, dir, opts); err != nil {
+	if err = RunCommand(t, "pulumi-init",
+		[]string{opts.Bin, "init"}, dir, opts); err != nil {
 		return
 	}
-	if err = RunCommand(t, "pulumi-stack-init", []string{opts.Bin, "stack", "init", string(stackName)}, dir, opts); err != nil {
+	if err = RunCommand(t, "pulumi-stack-init",
+		[]string{opts.Bin, "stack", "init", string(stackName)}, dir, opts); err != nil {
 		return
 	}
 	for key, value := range opts.Config {
-		if err = RunCommand(t, "pulumi-config", []string{opts.Bin, "config", "text", key, value}, dir, opts); err != nil {
+		if err = RunCommand(t, "pulumi-config",
+			[]string{opts.Bin, "config", "text", key, value}, dir, opts); err != nil {
 			return
 		}
 	}
 
 	for key, value := range opts.Secrets {
-		if err = RunCommand(t, "pulumi-config", []string{opts.Bin, "config", "secret", key, value}, dir, opts); err != nil {
+		if err = RunCommand(t, "pulumi-config",
+			[]string{opts.Bin, "config", "secret", key, value}, dir, opts); err != nil {
 			return
 		}
 	}
@@ -211,10 +218,12 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
 	previewAndUpdate := func(d string, name string) error {
-		if preerr := RunCommand(t, "pulumi-preview-"+name, []string{opts.Bin, "preview"}, d, opts); preerr != nil {
+		if preerr := RunCommand(t, "pulumi-preview-"+name,
+			[]string{opts.Bin, "preview"}, d, opts); preerr != nil {
 			return preerr
 		}
-		if upderr := RunCommand(t, "pulumi-update-"+name, []string{opts.Bin, "update"}, d, opts); upderr != nil {
+		if upderr := RunCommand(t, "pulumi-update-"+name,
+			[]string{opts.Bin, "update"}, d, opts); upderr != nil {
 			return upderr
 		}
 		return nil
@@ -228,9 +237,11 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
 		_, derr := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 		contract.IgnoreError(derr)
-		derr = RunCommand(t, "pulumi-destroy", []string{opts.Bin, "destroy", "--yes"}, dir, opts)
+		derr = RunCommand(t, "pulumi-destroy",
+			[]string{opts.Bin, "destroy", "--yes"}, dir, opts)
 		contract.IgnoreError(derr)
-		derr = RunCommand(t, "pulumi-stack-rm", []string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
+		derr = RunCommand(t, "pulumi-stack-rm",
+			[]string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
 		contract.IgnoreError(derr)
 	}()
 
@@ -314,7 +325,12 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
 	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
 	dir = opts.Dir
-	prefix := fmt.Sprintf("[ %30.30s ] ", dir[len(dir)-30:])
+	var prefix string
+	if len(dir) <= 30 {
+		prefix = fmt.Sprintf("[ %30.30s ] ", dir)
+	} else {
+		prefix = fmt.Sprintf("[ %30.30s ] ", dir[len(dir)-30:])
+	}
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = newPrefixer(os.Stdout, prefix)
@@ -451,8 +467,9 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 	}
 
 	// Now, copy back the original project's .pulumi/ and Pulumi.yaml atop the target.
+	projfile := filepath.Join(dir, proj)
 	if origin != "" {
-		if copyerr := copyFile(filepath.Join(dir, proj), filepath.Join(origin, proj), nil); copyerr != nil {
+		if copyerr := copyFile(projfile, filepath.Join(origin, proj), nil); copyerr != nil {
 			return "", copyerr
 		}
 		if copyerr := copyFile(filepath.Join(dir, wdir), filepath.Join(origin, wdir), nil); copyerr != nil {
@@ -468,7 +485,16 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 		return "", yarnrcerr
 	}
 
-	cwd := dir
+	// Load up the package so we can run Yarn in the correct location.
+	pkginfo, err := engine.ReadPackage(projfile)
+	if err != nil {
+		return "", err
+	}
+	cwd, _, err := pkginfo.GetPwdMain()
+	if err != nil {
+		return "", err
+	}
+
 	if opts.RelativeWorkDir != "" {
 		cwd = path.Join(cwd, opts.RelativeWorkDir)
 	}
