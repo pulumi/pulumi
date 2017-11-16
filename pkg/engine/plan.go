@@ -31,18 +31,25 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	}
 
 	// First, load the package metadata, in preparation for executing it and creating resources.
-	pkginfo, err := eng.readPackageFromArg(info.PackageArg)
+	pkginfo, err := ReadPackageFromArg(info.PackageArg)
 	if err != nil {
 		return nil, errors.Errorf("Error loading package: %v", err)
 	}
 	contract.Assert(pkginfo != nil)
 
+	// If the package contains an override for the main entrypoint, use it.
+	pwd, main, err := pkginfo.GetPwdMain()
+	if err != nil {
+		return nil, err
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
-		Pkg:    pkginfo.Pkg,
-		Pwd:    pkginfo.Root,
-		Target: info.Target,
+		Pkg:     pkginfo.Pkg,
+		Pwd:     pwd,
+		Program: main,
+		Target:  info.Target,
 	}, opts.Destroy, opts.DryRun)
 
 	// If there are any analyzers in the project file, add them.

@@ -109,16 +109,9 @@ export function main(args: string[]): void {
         process.exit(-1);
     }
     let program: string = argv._[0];
-    if (program.indexOf(".") === 0) {
-        // If there was a pwd change, make this relative to it.
-        if (pwd) {
-            program = path.join(pwd, program);
-        }
-    } else if (program.indexOf("/") !== 0) {
-        // Neither absolute nor relative module, we refuse to execute it.
-        console.error(`fatal: Program path '${program}' must be an absolute or relative path to the program`);
-        usage();
-        process.exit(-1);
+    if (program.indexOf("/") !== 0) {
+        // If this isn't an absolute path, make it relative to the working directory.
+        program = path.join(process.cwd(), program);
     }
 
     // Now fake out the process-wide argv, to make the program think it was run normally.

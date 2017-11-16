@@ -227,15 +227,15 @@ func (p *plugin) Close() error {
 	// we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting for the child
 	// processes to close.
 	if runtime.GOOS == "windows" {
-		err := cmdutil.KillChildren(p.Proc.Pid)
-		if err != nil {
+		if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
 			result = multierror.Append(result, err)
 		}
 	}
 
 	// IDEA: consider a more graceful termination than just SIGKILL.
-	err := p.Proc.Kill()
-	result = multierror.Append(result, err)
+	if err := p.Proc.Kill(); err != nil {
+		result = multierror.Append(result, err)
+	}
 
 	// Wait for stdout and stderr to drain
 	<-p.stdoutDone
