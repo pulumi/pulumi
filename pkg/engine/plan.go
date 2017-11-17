@@ -732,24 +732,12 @@ func printArchiveDiff(
 		newPath, has := newArchive.GetPath()
 		contract.Assert(has)
 
-		var path string
-		if oldPath == newPath {
-			path = oldPath
-		} else {
-			path = fmt.Sprintf("%s->%s", oldPath, newPath)
-		}
-		b.WriteString(fmt.Sprintf("archive(file:%s) { %s }\n", hashChange, path))
+		b.WriteString(fmt.Sprintf("archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath)))
 	} else if oldURI, has := oldArchive.GetURI(); has {
 		newURI, has := newArchive.GetURI()
 		contract.Assert(has)
 
-		var uri string
-		if oldURI == newURI {
-			uri = oldURI
-		} else {
-			uri = fmt.Sprintf("%s->%s", oldURI, newURI)
-		}
-		b.WriteString(fmt.Sprintf("archive(uri:%s) { %s }\n", hashChange, uri))
+		b.WriteString(fmt.Sprintf("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI)))
 	} else {
 		contract.Assert(oldArchive.IsAssets() && newArchive.IsAssets())
 		b.WriteString(fmt.Sprintf("archive(assets:%s) {\n", hashChange))
@@ -905,14 +893,7 @@ func printAssetDiff(
 		newPath, has := newAsset.GetPath()
 		contract.Assert(has)
 
-		var path string
-		if oldPath == newPath {
-			path = oldPath
-		} else {
-			path = fmt.Sprintf("%s->%s", oldPath, newPath)
-		}
-
-		b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hashChange, path))
+		b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath)))
 	} else {
 		contract.Assert(oldAsset.IsURI())
 
@@ -921,15 +902,16 @@ func printAssetDiff(
 		newURI, has := newAsset.GetURI()
 		contract.Assert(has)
 
-		var uri string
-		if oldURI == newURI {
-			uri = oldURI
-		} else {
-			uri = fmt.Sprintf("%s->%s", oldURI, newURI)
-		}
-
-		b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hashChange, uri))
+		b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI)))
 	}
+}
+
+func getTextChangeString(old string, new string) string {
+	if old == new {
+		return old
+	}
+
+	return fmt.Sprintf("%s->%s", old, new)
 }
 
 func massageText(text string) string {
