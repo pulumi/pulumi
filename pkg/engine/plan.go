@@ -606,15 +606,15 @@ func printObjectDiff(
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
 				b.WriteString(colors.SpecCreate)
-				title(addIndent(indent))
-				printPropertyValue(b, add, planning, addIndent(indent))
+				title(addedIndentString(indent))
+				printPropertyValue(b, add, planning, addedIndentString(indent))
 				b.WriteString(colors.Reset)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
 				b.WriteString(colors.SpecDelete)
-				title(deleteIndent(indent))
-				printPropertyValue(b, delete, planning, deleteIndent(indent))
+				title(deletedIndentString(indent))
+				printPropertyValue(b, delete, planning, deletedIndentString(indent))
 				b.WriteString(colors.Reset)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
@@ -644,14 +644,11 @@ func printPropertyValueDiff(
 			_, newIndent := getArrayElemHeader(b, i, indent)
 			titleFunc := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
-				b.WriteString(deploy.OpCreate.Color())
-				titleFunc(addIndent(indent))
-				printPropertyValue(b, add, planning, addIndent(newIndent))
-				b.WriteString(colors.Reset)
+				printAdd(b, add, title, true, planning, indent, newIndent)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
 				b.WriteString(deploy.OpDelete.Color())
-				titleFunc(deleteIndent(indent))
-				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
+				titleFunc(deletedIndentString(indent))
+				printPropertyValue(b, delete, planning, deletedIndentString(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
@@ -685,7 +682,7 @@ func printPropertyValueDiff(
 			printDelete(b, diff.Old, title, causedReplace, planning, indent)
 		}
 		if shouldPrintNew {
-			printAdd(b, diff.New, title, causedReplace, planning, indent)
+			printAdd(b, diff.New, title, causedReplace, planning, indent, indent)
 		}
 	}
 }
@@ -700,13 +697,14 @@ func printDelete(
 		color = deploy.OpUpdate.Color()
 	}
 	b.WriteString(color)
-	title(deleteIndent(indent))
-	printPropertyValue(b, v, planning, deleteIndent(indent))
+	title(deletedIndentString(indent))
+	printPropertyValue(b, v, planning, deletedIndentString(indent))
 	b.WriteString(colors.Reset)
 }
 
 func printAdd(
-	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool, planning bool, indent string) {
+	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool,
+	planning bool, indent string, newIndent string) {
 
 	var color string
 	if causedReplace {
@@ -714,9 +712,10 @@ func printAdd(
 	} else {
 		color = deploy.OpUpdate.Color()
 	}
+
 	b.WriteString(color)
-	title(addIndent(indent))
-	printPropertyValue(b, v, planning, addIndent(indent))
+	title(addedIndentString(indent))
+	printPropertyValue(b, v, planning, addedIndentString(newIndent))
 	b.WriteString(colors.Reset)
 }
 
@@ -730,7 +729,7 @@ func printArchiveDiff(
 
 	color := deploy.OpUpdate.Color()
 	b.WriteString(color)
-	title(changedIndent(indent))
+	title(changedIndentString(indent))
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 	if oldPath, has := oldArchive.GetPath(); has {
@@ -843,7 +842,7 @@ func printAssetsDiff(
 			contract.Assert(addNew)
 			newName := newNames[j]
 			title := func(id string) { printPropertyTitle(b, "\""+newName+"\"", maxkey, id) }
-			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, indent+"    ")
+			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, indent+"    ", indent+"    ")
 			j++
 		}
 
@@ -859,7 +858,7 @@ func printAssetDiff(
 	// If the assets aren't changed, just print out: = assetName: type(hash)
 	if oldAsset.Hash == newAsset.Hash {
 		b.WriteString(colors.Reset)
-		title(unchangedIndent(indent))
+		title(unchangedIndentString(indent))
 
 		hash := shortHash(oldAsset.Hash)
 		if path, has := oldAsset.GetPath(); has {
@@ -875,7 +874,7 @@ func printAssetDiff(
 	}
 
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
-	title(changedIndent(indent))
+	title(changedIndentString(indent))
 
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
@@ -1018,7 +1017,20 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff) string {
 	return buff.String()
 }
 
-func addIndent(indent string) string       { return indent[:len(indent)-2] + "+ " }
-func deleteIndent(indent string) string    { return indent[:len(indent)-2] + "- " }
-func changedIndent(indent string) string   { return indent[:len(indent)-2] + "~ " }
-func unchangedIndent(indent string) string { return indent[:len(indent)-2] + "= " }
+func addedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "+ ")
+}
+func deletedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "- ")
+}
+func changedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "~ ")
+}
+func unchangedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "= ")
+}
+
+func indentStringWithPrefix(currentIndent string, prefix string) string {
+	contract.Assert(len(prefix) == 2)
+	return currentIndent[:len(currentIndent)-2] + prefix
+}
