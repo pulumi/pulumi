@@ -533,6 +533,11 @@ func printPropertyValue(
 	b.WriteString("\n")
 }
 
+func printAssetOrArchive(b *bytes.Buffer, v interface{}, name string, indent string, planning bool) {
+	b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
+	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+"    ")
+}
+
 func shortHash(hash string) string {
 	if len(hash) > 7 {
 		return hash[:7]
@@ -1000,11 +1005,6 @@ func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
 		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
 		return resource.PropertyValue{V: nil}
 	}
-}
-
-func printAssetOrArchive(b *bytes.Buffer, v interface{}, name string, indent string, planning bool) {
-	b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
-	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+"    ")
 }
 
 func addIndent(indent string) string       { return indent[:len(indent)-2] + "+ " }
