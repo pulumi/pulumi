@@ -724,6 +724,7 @@ func printArchiveDiff(
 	title(changedIndentString(indent))
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
+
 	if oldPath, has := oldArchive.GetPath(); has {
 		newPath, has := newArchive.GetPath()
 		contract.Assert(has)
@@ -753,6 +754,12 @@ func printAssetsDiff(
 	b *bytes.Buffer,
 	oldAssets map[string]interface{}, newAssets map[string]interface{},
 	planning bool, indent string) {
+
+	// Diffing assets proceeds by getting the sorted list of asset names from both the old and
+	// new assets, and then stepwise processing each.  For any asset in old that isn't in new,
+	// we print this out as a delete.  For any asset in new that isn't in old, we print this out
+	// as an add.  For any asset in both we print out of it is unchanged or not.  If so, we
+	// recurse on that data to print out how it changed.
 
 	var oldNames []string
 	var newNames []string
