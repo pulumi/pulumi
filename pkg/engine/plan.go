@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -373,7 +374,7 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, ind
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
 		if v := props[k]; shouldPrintPropertyValue(v, planning) {
-			printPropertyTitle(b, k, maxkey, indent)
+			printPropertyTitle(b, string(k), maxkey, indent)
 			printPropertyValue(b, v, planning, indent, isFunction)
 		}
 	}
@@ -432,7 +433,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 					b.WriteString(fmt.Sprintf("%v---outputs:---\n", indent))
 					firstout = false
 				}
-				printPropertyTitle(b, k, maxkey, indent)
+				printPropertyTitle(b, string(k), maxkey, indent)
 				printPropertyValue(b, newout, false, indent, isFunction)
 			}
 		}
@@ -453,8 +454,8 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	return true
 }
 
-func printPropertyTitle(b *bytes.Buffer, k resource.PropertyKey, align int, indent string) {
-	b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(align)+"s: ", indent, k))
+func printPropertyTitle(b *bytes.Buffer, name string, align int, indent string) {
+	b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(align)+"s: ", indent, name))
 }
 
 func printPropertyValue(
@@ -512,15 +513,7 @@ func printPropertyValue(
 			}
 			sort.Strings(names)
 			for _, name := range names {
-				b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
-				switch t := assets[name].(type) {
-				case *resource.Asset:
-					printPropertyValue(b, resource.NewAssetProperty(t), planning, indent+"    ", isFunction)
-				case *resource.Archive:
-					printPropertyValue(b, resource.NewArchiveProperty(t), planning, indent+"    ", isFunction)
-				default:
-					contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
-				}
+				printAssetOrArchive(b, assets[name], name, indent, planning, isFunction)
 			}
 			b.WriteString(fmt.Sprintf("%v}", indent))
 		} else if path, has := a.GetPath(); has {
@@ -599,7 +592,7 @@ func printObjectDiff(
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
-		title := func(id string) { printPropertyTitle(b, k, maxkey, id) }
+		title := func(id string) { printPropertyTitle(b, string(k), maxkey, id) }
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
 				b.WriteString(colors.SpecCreate)
@@ -673,8 +666,12 @@ func printPropertyValueDiff(
 		b.WriteString(fmt.Sprintf("printPropertyValueDiff:diff.else: %v %v %v %v\n",
 			isFunction, causedReplace, shouldPrintOld, shouldPrintNew))
 
-		if isFunction && !causedReplace && shouldPrintOld && shouldPrintNew {
-			printFunctionCodeDiff(b, title, diff, planning, indent)
+		if diff.Old.IsArchive() &&
+			diff.New.IsArchive() &&
+			!causedReplace &&
+			shouldPrintOld &&
+			shouldPrintNew {
+			printArchiveDiff(b, title, diff.Old.ArchiveValue(), diff.New.ArchiveValue(), planning, indent)
 			b.WriteString("\n\n")
 			//return
 		}
@@ -682,49 +679,301 @@ func printPropertyValueDiff(
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintOld {
-			var color string
-			if causedReplace {
-				color = deploy.OpDelete.Color() // this property triggered replacement; color as a delete
-			} else {
-				color = deploy.OpUpdate.Color()
-			}
-			b.WriteString(color)
-			title(deleteIndent(indent))
-			printPropertyValue(b, diff.Old, planning, deleteIndent(indent), isFunction)
-			b.WriteString(colors.Reset)
+			printDelete(b, diff.Old, title, causedReplace, planning, indent, isFunction)
 		}
 		if shouldPrintNew {
-			var color string
-			if causedReplace {
-				color = deploy.OpCreate.Color() // this property triggered replacement; color as a create
-			} else {
-				color = deploy.OpUpdate.Color()
-			}
-			b.WriteString(color)
-			title(addIndent(indent))
-			printPropertyValue(b, diff.New, planning, addIndent(indent), isFunction)
-			b.WriteString(colors.Reset)
+			printAdd(b, diff.New, title, causedReplace, planning, indent, isFunction)
 		}
 	}
 }
 
-func printFunctionCodeDiff(
-	b *bytes.Buffer, title func(string), diff resource.ValueDiff,
+func printDelete(
+	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool, planning bool, indent string, isFunction bool) {
+
+	var color string
+	if causedReplace {
+		color = deploy.OpDelete.Color() // this property triggered replacement; color as a delete
+	} else {
+		color = deploy.OpUpdate.Color()
+	}
+	b.WriteString(color)
+	title(deleteIndent(indent))
+	printPropertyValue(b, v, planning, deleteIndent(indent), isFunction)
+	b.WriteString(colors.Reset)
+}
+
+func printAdd(
+	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool, planning bool, indent string, isFunction bool) {
+
+	var color string
+	if causedReplace {
+		color = deploy.OpCreate.Color() // this property triggered replacement; color as a create
+	} else {
+		color = deploy.OpUpdate.Color()
+	}
+	b.WriteString(color)
+	title(addIndent(indent))
+	printPropertyValue(b, v, planning, addIndent(indent), isFunction)
+	b.WriteString(colors.Reset)
+}
+
+func printArchiveDiff(
+	b *bytes.Buffer, title func(string),
+	oldArchive *resource.Archive, newArchive *resource.Archive,
 	planning bool, indent string) {
 
 	color := deploy.OpUpdate.Color()
 	b.WriteString(color)
 	title(changeIndent(indent))
 
-	contract.Assert(diff.Old.IsArchive() && diff.New.IsArchive())
-	oldArchive := diff.Old.ArchiveValue()
-	newArchive := diff.New.ArchiveValue()
+	hashChange := fmt.Sprintf("%s->%s", shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
+	if oldPath, has := oldArchive.GetPath(); has {
+		newPath, has := newArchive.GetPath()
+		contract.Assert(has)
 
-	contract.Assert(oldArchive.IsAssets() && newArchive.IsAssets())
-	b.WriteString(fmt.Sprintf("archive(assets:%s->%s) {\n", shortHash(oldArchive.Hash), shortHash(newArchive.Hash)))
+		var path string
+		if oldPath == newPath {
+			path = oldPath
+		} else {
+			path = fmt.Sprintf("%s->%s", oldPath, newPath)
+		}
+		b.WriteString(fmt.Sprintf("archive(file:%s) { %s }\n", hashChange, path))
+	} else if oldURI, has := oldArchive.GetURI(); has {
+		newURI, has := newArchive.GetURI()
+		contract.Assert(has)
 
-	b.WriteString(fmt.Sprintf("%v}", indent))
+		var uri string
+		if oldURI == newURI {
+			uri = oldURI
+		} else {
+			uri = fmt.Sprintf("%s->%s", oldURI, newURI)
+		}
+		b.WriteString(fmt.Sprintf("archive(uri:%s) { %s }\n", hashChange, uri))
+	} else {
+		contract.Assert(oldArchive.IsAssets() && newArchive.IsAssets())
+		b.WriteString(fmt.Sprintf("archive(assets:%s) {\n", hashChange))
+
+		oldAssets, _ := oldArchive.GetAssets()
+		newAssets, _ := newArchive.GetAssets()
+
+		printAssetsDiff(b, oldAssets, newAssets, planning, indent+"    ")
+
+		b.WriteString(fmt.Sprintf("%v}\n", indent))
+	}
+
 	b.WriteString(colors.Reset)
+}
+
+func printAssetsDiff(
+	b *bytes.Buffer,
+	oldAssets map[string]interface{}, newAssets map[string]interface{},
+	planning bool, indent string) {
+
+	var oldNames []string
+	var newNames []string
+
+	for name := range oldAssets {
+		oldNames = append(oldNames, name)
+	}
+
+	for name := range newAssets {
+		newNames = append(newNames, name)
+	}
+
+	sort.Strings(oldNames)
+	sort.Strings(newNames)
+
+	i := 0
+	j := 0
+
+	var keys []resource.PropertyKey
+	for _, name := range oldNames {
+		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
+	}
+	for _, name := range newNames {
+		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
+	}
+
+	maxkey := maxKey(keys)
+
+	for i < len(oldNames) || j < len(newNames) {
+		color := deploy.OpUpdate.Color()
+		b.WriteString(color)
+
+		deleteOld := false
+		addNew := false
+		if i < len(oldNames) && j < len(newNames) {
+			oldName := oldNames[i]
+			newName := newNames[j]
+
+			if oldName == newName {
+				title := func(id string) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, id) }
+
+				oldAsset := oldAssets[oldName]
+				newAsset := newAssets[newName]
+
+				// b.WriteString(fmt.Sprintf("%v\"%v\": ", indent, oldName))
+
+				switch t := oldAsset.(type) {
+				case *resource.Archive:
+					printArchiveDiff(b, title, t, newAsset.(*resource.Archive), planning, indent+"    ")
+					break
+				case *resource.Asset:
+					printAssetDiff(b, title, t, newAsset.(*resource.Asset), planning, indent+"    ")
+					break
+				}
+				i++
+				j++
+				continue
+			}
+
+			if oldName < newName {
+				deleteOld = true
+			} else {
+				addNew = true
+			}
+		} else if i < len(oldNames) {
+			deleteOld = true
+		} else {
+			addNew = true
+		}
+
+		if deleteOld {
+			oldName := oldNames[i]
+			title := func(id string) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, id) }
+			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, indent+"    ", true)
+			i++
+			continue
+		} else {
+			contract.Assert(addNew)
+			newName := newNames[j]
+			title := func(id string) { printPropertyTitle(b, "\""+newName+"\"", maxkey, id) }
+			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, indent+"    ", true)
+			j++
+		}
+
+		b.WriteString(colors.Reset)
+	}
+}
+
+func printAssetDiff(
+	b *bytes.Buffer, title func(string),
+	oldAsset *resource.Asset, newAsset *resource.Asset,
+	planning bool, indent string) {
+
+	title(changeIndent(indent))
+
+	hashChange := fmt.Sprintf("%s->%s", shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
+
+	if oldText, has := oldAsset.GetText(); has {
+		newText, has := newAsset.GetText()
+		contract.Assert(has)
+
+		// if isFunction {
+		// 	printFunctionValue()
+		// } else {
+		b.WriteString(fmt.Sprintf("asset(text:%s) {\n\n", hashChange))
+
+		differ := diffmatchpatch.New()
+		differ.DiffTimeout = 0
+
+		hashed1, hashed2, lineArray := differ.DiffLinesToChars(oldText, newText)
+		diffs1 := differ.DiffMain(hashed1, hashed2, false)
+		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
+
+		b.WriteString(diffPrettyText(diffs2))
+		/*
+		   var a = dmp.diff_linesToChars_(text1, text2);
+		     var lineText1 = a[0];
+		     var lineText2 = a[1];
+		     var lineArray = a[2];
+
+		     var diffs = dmp.diff_main(lineText1, lineText2, false);
+
+		     dmp.diff_charsToLines_(diffs, lineArray);
+		     return diffs;
+		*/
+
+		//diffs := differ.DiffMain(oldText, newText, true)
+		//b.WriteString(differ.DiffPrettyText(diffs))
+
+		// pretty print the text, line by line, with proper breaks.
+		// lines := strings.Split(text, "\n")
+		// for _, line := range lines {
+		// 	b.WriteString(fmt.Sprintf("%s    \"%s\"\n", indent, line))
+		// }
+		b.WriteString(fmt.Sprintf("\n%v}\n", indent))
+		//}
+	} else if oldPath, has := oldAsset.GetPath(); has {
+		newPath, has := newAsset.GetPath()
+		contract.Assert(has)
+
+		var path string
+		if oldPath == newPath {
+			path = oldPath
+		} else {
+			path = fmt.Sprintf("%s->%s", oldPath, newPath)
+		}
+
+		b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hashChange, path))
+	} else {
+		contract.Assert(oldAsset.IsURI())
+
+		oldURI, has := oldAsset.GetURI()
+		contract.Assert(has)
+		newURI, has := newAsset.GetURI()
+		contract.Assert(has)
+
+		var uri string
+		if oldURI == newURI {
+			uri = oldURI
+		} else {
+			uri = fmt.Sprintf("%s->%s", oldURI, newURI)
+		}
+
+		b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hashChange, uri))
+	}
+}
+
+func diffPrettyText(diffs []diffmatchpatch.Diff) string {
+	var buff bytes.Buffer
+	for _, diff := range diffs {
+		text := diff.Text
+
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			_, _ = buff.WriteString(deploy.OpCreate.Color())
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString(colors.Reset)
+		case diffmatchpatch.DiffDelete:
+			_, _ = buff.WriteString(deploy.OpDelete.Color())
+			_, _ = buff.WriteString(text)
+			_, _ = buff.WriteString(colors.Reset)
+		case diffmatchpatch.DiffEqual:
+			_, _ = buff.WriteString(deploy.OpUpdate.Color())
+			_, _ = buff.WriteString("...\n")
+			_, _ = buff.WriteString(colors.Reset)
+		}
+	}
+
+	return buff.String()
+}
+
+func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
+	switch t := v.(type) {
+	case *resource.Asset:
+		return resource.NewAssetProperty(t)
+	case *resource.Archive:
+		return resource.NewArchiveProperty(t)
+	default:
+		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
+		return resource.PropertyValue{V: nil}
+	}
+}
+
+func printAssetOrArchive(b *bytes.Buffer, v interface{}, name string, indent string, planning bool, isFunction bool) {
+	b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
+	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+"    ", isFunction)
 }
 
 func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }
