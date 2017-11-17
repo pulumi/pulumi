@@ -138,12 +138,23 @@ type previewActions struct {
 	Summary bytes.Buffer
 	Ops     map[deploy.StepOp]int
 	Opts    deployOptions
+	Seen    map[resource.URN]deploy.Step
+	Shown   map[resource.URN]bool
+}
+
+func newPreviewActions(opts deployOptions) *previewActions {
+	return &previewActions{
+		Ops:   make(map[deploy.StepOp]int),
+		Opts:  opts,
+		Seen:  make(map[resource.URN]deploy.Step),
+		Shown: make(map[resource.URN]bool),
+	}
 }
 
 func (acts *previewActions) Run(step deploy.Step) (resource.Status, error) {
 	// Print this step information (resource and all its properties).
-	if shouldShow(step, acts.Opts) {
-		printStep(&acts.Summary, step, acts.Opts.Summary, true, "")
+	if shouldShow(acts.Seen, step, acts.Opts) {
+		printStep(&acts.Summary, acts.Seen, acts.Shown, step, acts.Opts.Summary, acts.Opts.Detailed, true, "")
 	}
 
 	// Be sure to skip the step so that in-memory state updates are performed.
@@ -169,10 +180,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	result.Options.Events <- stdOutEventWithColor(&prelude)
 
-	actions := &previewActions{
-		Ops:  make(map[deploy.StepOp]int),
-		Opts: result.Options,
-	}
+	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions)
 	if err != nil {
 		return errors.Errorf("An error occurred while advancing the preview: %v", err)
@@ -191,7 +199,10 @@ func (eng *Engine) printPlan(result *planResult) error {
 }
 
 // shouldShow returns true if a step should show in the output.
-func shouldShow(step deploy.Step, opts deployOptions) bool {
+func shouldShow(seen map[resource.URN]deploy.Step, step deploy.Step, opts deployOptions) bool {
+	// Ensure we've marked this step as observed.
+	seen[step.URN()] = step
+
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op() == deploy.OpSame {
 		return opts.ShowSames
@@ -288,7 +299,32 @@ func plural(s string, c int) string {
 
 const detailsIndent = "      " // 4 spaces, plus 2 for "+ ", "- ", and " " leaders
 
-func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, indent string) {
+func printStep(b *bytes.Buffer, seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
+	step deploy.Step, summary bool, detailed bool, planning bool, indent string) {
+	// First, indent to the same level as this resource has parents, and toggle the level of detail accordingly.
+	// TODO[pulumi/pulumi#340]: this isn't entirely correct.  Conventionally, all children are created adjacent to
+	//     their parents, so this often does the right thing, but not always.  For instance, we can have interleaved
+	//     infrastructure that gets emitted in the middle of the flow, making things look like they are parented
+	//     incorrectly.  The real solution here is to have a more first class way of structuring the output.
+	for p := step.Res().Parent; p != ""; {
+		par := seen[p]
+		if par == nil {
+			// This can happen during deletes, since we delete children before parents.
+			// TODO[pulumi/pulumi#340]: we need to figure out how best to display this sequence; at the very
+			//     least, it would be ideal to preserve the indentation.
+			break
+		}
+		if !shown[p] {
+			// If the parent isn't yet shown, print it now as a summary.
+			printStep(b, seen, shown, par, true, false, planning, indent)
+		}
+		indent = "    " + indent
+		p = par.Res().Parent
+	}
+
+	// Print the indentation.
+	b.WriteString(indent)
+
 	// First print out the operation's prefix.
 	b.WriteString(step.Op().Prefix())
 
@@ -297,20 +333,17 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 	b.WriteString(step.Op().Suffix())
 
 	// Next print the resource URN, properties, etc.
-	if mut, ismut := step.(deploy.MutatingStep); ismut {
-		var replaces []resource.PropertyKey
-		if step.Op() == deploy.OpCreateReplacement {
-			replaces = step.(*deploy.CreateStep).Keys()
-		} else if step.Op() == deploy.OpReplace {
-			replaces = step.(*deploy.ReplaceStep).Keys()
-		}
-		printResourceProperties(b, mut.URN(), mut.Old(), mut.New(), replaces, summary, planning, indent)
-	} else {
-		contract.Failf("Expected each step to either be mutating or read-only")
+	var replaces []resource.PropertyKey
+	if step.Op() == deploy.OpCreateReplacement {
+		replaces = step.(*deploy.CreateStep).Keys()
+	} else if step.Op() == deploy.OpReplace {
+		replaces = step.(*deploy.ReplaceStep).Keys()
 	}
+	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces, summary, detailed, planning, indent)
 
-	// Finally make sure to reset the color.
+	// Reset the color and mark this as shown -- we're done.
 	b.WriteString(colors.Reset)
+	shown[step.URN()] = true
 }
 
 func printStepHeader(b *bytes.Buffer, step deploy.Step) {
@@ -318,7 +351,7 @@ func printStepHeader(b *bytes.Buffer, step deploy.Step) {
 }
 
 func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.State,
-	replaces []resource.PropertyKey, summary bool, planning bool, indent string) {
+	replaces []resource.PropertyKey, summary bool, detailed bool, planning bool, indent string) {
 	indent += detailsIndent
 
 	// Print out the URN and, if present, the ID, as "pseudo-properties".
@@ -333,17 +366,6 @@ func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.St
 		b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, urn))
 	}
 
-	// If this resource has children, also print a summary of those out too.
-	var children []resource.URN
-	if new != nil {
-		children = new.Children
-	} else {
-		children = old.Children
-	}
-	for _, child := range children {
-		b.WriteString(fmt.Sprintf("%s=> %s\n", indent, child))
-	}
-
 	if !summary {
 		// Print all of the properties associated with this resource.
 		if old == nil && new != nil {
@@ -351,7 +373,7 @@ func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.St
 		} else if new == nil && old != nil {
 			printObject(b, old.AllInputs(), planning, indent)
 		} else {
-			printOldNewDiffs(b, old.AllInputs(), new.AllInputs(), replaces, planning, indent)
+			printOldNewDiffs(b, old.AllInputs(), new.AllInputs(), replaces, detailed, planning, indent)
 		}
 	}
 }
@@ -384,11 +406,9 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, ind
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent string) {
 	// Only certain kinds of steps have output properties associated with them.
-	mut := step.(deploy.MutatingStep)
-	if mut == nil ||
-		(step.Op() != deploy.OpCreate &&
-			step.Op() != deploy.OpCreateReplacement &&
-			step.Op() != deploy.OpUpdate) {
+	if step.Op() != deploy.OpCreate &&
+		step.Op() != deploy.OpCreateReplacement &&
+		step.Op() != deploy.OpUpdate {
 		return
 	}
 
@@ -397,10 +417,10 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 	b.WriteString(step.Op().Suffix())
 
 	// First fetch all the relevant property maps that we may consult.
-	newins := mut.New().Inputs
-	newouts := mut.New().Outputs
+	newins := step.New().Inputs
+	newouts := step.New().Outputs
 	var oldouts resource.PropertyMap
-	if old := mut.Old(); old != nil {
+	if old := step.Old(); old != nil {
 		oldouts = old.Outputs
 	}
 
@@ -444,8 +464,19 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 
 func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	if v.IsNull() {
-		// by default, don't print nulls (they just clutter up the output)
-		return false
+		return false // don't print nulls (they just clutter up the output).
+	}
+	if v.IsString() && v.StringValue() == "" {
+		return false // don't print empty strings either.
+	}
+	if v.IsArray() && len(v.ArrayValue()) == 0 {
+		return false // skip empty arrays, since they are often uninteresting default values.
+	}
+	if v.IsObject() && len(v.ObjectValue()) == 0 {
+		return false // skip objects with no properties, since they are also uninteresting.
+	}
+	if v.IsObject() && len(v.ObjectValue()) == 0 {
+		return false // skip objects with no properties, since they are also uninteresting.
 	}
 	if v.IsOutput() && !outs {
 		// also don't show output properties until the outs parameter tells us to.
@@ -557,16 +588,16 @@ func printArrayElemHeader(b *bytes.Buffer, i int, indent string) string {
 }
 
 func printOldNewDiffs(b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
-	replaces []resource.PropertyKey, planning bool, indent string) {
+	replaces []resource.PropertyKey, detailed bool, planning bool, indent string) {
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, replaces, false, planning, indent)
-	} else {
+		printObjectDiff(b, *diff, detailed, replaces, false, planning, indent)
+	} else if detailed {
 		printObject(b, news, planning, indent)
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
+func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, detailed bool,
 	replaces []resource.PropertyKey, causedReplace bool, planning bool, indent string) {
 	contract.Assert(len(indent) > 2)
 
@@ -604,15 +635,17 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 			if !causedReplace && replaceMap != nil {
 				causedReplace = replaceMap[k]
 			}
-			printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
-		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same, planning) {
-			title(indent)
-			printPropertyValue(b, diff.Sames[k], planning, indent)
+			printPropertyValueDiff(b, title, update, detailed, causedReplace, planning, indent)
+		} else if detailed {
+			if same := diff.Sames[k]; shouldPrintPropertyValue(same, planning) {
+				title(indent)
+				printPropertyValue(b, diff.Sames[k], planning, indent)
+			}
 		}
 	}
 }
 
-func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.ValueDiff,
+func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.ValueDiff, detailed bool,
 	causedReplace bool, planning bool, indent string) {
 	contract.Assert(len(indent) > 2)
 
@@ -635,8 +668,8 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
-			} else {
+				printPropertyValueDiff(b, title, update, detailed, causedReplace, planning, indent)
+			} else if detailed {
 				titleFunc(indent)
 				printPropertyValue(b, a.Sames[i], planning, newIndent)
 			}
@@ -645,7 +678,7 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 	} else if diff.Object != nil {
 		title(indent)
 		b.WriteString("{\n")
-		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+"    ")
+		printObjectDiff(b, *diff.Object, detailed, nil, causedReplace, planning, indent+"    ")
 		b.WriteString(fmt.Sprintf("%s}\n", indent))
 	} else {
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will

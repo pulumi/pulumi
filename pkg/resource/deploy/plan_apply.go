@@ -195,7 +195,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil, nil, res.Children)
+	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil, nil, res.Parent)
 
 	// If there is an old resource, apply its default properties before going any further.
 	old, hasold := iter.p.Olds()[urn]
