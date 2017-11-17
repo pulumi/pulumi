@@ -484,18 +484,14 @@ func printPropertyValue(
 	} else if v.IsAsset() {
 		a := v.AssetValue()
 		if text, has := a.GetText(); has {
-			// if isFunction {
-			// 	printFunctionValue()
-			// } else {
-			b.WriteString(fmt.Sprintf("isFunction: %v\n"))
 			b.WriteString(fmt.Sprintf("asset(text:%s) {\n", shortHash(a.Hash)))
+
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(text, "\n")
 			for _, line := range lines {
 				b.WriteString(fmt.Sprintf("%s    \"%s\"\n", indent, line))
 			}
 			b.WriteString(fmt.Sprintf("%v}", indent))
-			//}
 		} else if path, has := a.GetPath(); has {
 			b.WriteString(fmt.Sprintf("asset(file:%s) { %s }", shortHash(a.Hash), path))
 		} else {
@@ -559,7 +555,6 @@ func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
 	replaces []resource.PropertyKey, planning bool, indent string) {
 
-	b.WriteString(fmt.Sprintf("printObjectDiff: %v\n"))
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
 		printObjectDiff(b, *diff, replaces, false, planning, indent)
@@ -573,7 +568,6 @@ func printObjectDiff(
 	replaces []resource.PropertyKey, causedReplace bool, planning bool,
 	indent string) {
 
-	b.WriteString(fmt.Sprintf("printObjectDiff: %v\n"))
 	contract.Assert(len(indent) > 2)
 
 	// Compute the maximum with of property keys so we can justify everything.
@@ -622,7 +616,6 @@ func printPropertyValueDiff(
 	b *bytes.Buffer, title func(string), diff resource.ValueDiff,
 	causedReplace bool, planning bool, indent string) {
 
-	b.WriteString(fmt.Sprintf("printPropertyValueDiff: %v\n"))
 	contract.Assert(len(indent) > 2)
 
 	if diff.Array != nil {
@@ -652,8 +645,6 @@ func printPropertyValueDiff(
 		}
 		b.WriteString(fmt.Sprintf("%s]\n", indent))
 	} else if diff.Object != nil {
-		b.WriteString(fmt.Sprintf("printPropertyValueDiff:diff.Object: %v\n"))
-
 		title(indent)
 		b.WriteString("{\n")
 		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+"    ")
