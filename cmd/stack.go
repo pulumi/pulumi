@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -44,6 +46,7 @@ func newStackCmd() *cobra.Command {
 			if len(config) > 0 {
 				fmt.Printf("%v configuration variables set (see `pulumi config` for details)\n", len(config))
 			}
+			var stackResource *resource.State
 			if snapshot == nil || len(snapshot.Resources) == 0 {
 				fmt.Printf("No resources currently in this stack\n")
 			} else {
@@ -51,6 +54,10 @@ func newStackCmd() *cobra.Command {
 				fmt.Printf("\n")
 				fmt.Printf("%-48s %s\n", "TYPE", "NAME")
 				for _, res := range snapshot.Resources {
+					if res.Type == stack.RootPulumiStackTypeName {
+						stackResource = res
+						continue
+					}
 					fmt.Printf("%-48s %s\n", res.Type, res.URN.Name())
 
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do this
@@ -60,6 +67,22 @@ func newStackCmd() *cobra.Command {
 					}
 					if showURNs {
 						fmt.Printf("\tURN: %s\n", res.URN)
+					}
+				}
+				if stackResource != nil {
+					fmt.Printf("\n")
+					// Note: Currently, components place their output properties into the `Inputs` of the resource, so
+					// we need to extract the outputs from the `Inputs`.
+					outputs := stack.SerializeResource(stackResource).Inputs
+					if len(outputs) == 0 {
+						fmt.Printf("No output values currently in this stack\n")
+					} else {
+						fmt.Printf("%v output values currently in this stack:\n", len(outputs))
+						fmt.Printf("\n")
+						fmt.Printf("%-48s %s\n", "OUTPUT", "VALUE")
+						for key, val := range outputs {
+							fmt.Printf("%-48s %s\n", key, val)
+						}
 					}
 				}
 			}

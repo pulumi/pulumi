@@ -318,8 +318,8 @@ describe("rpc", () => {
                     (call: any, callback: any) => {
                         const resp = new langproto.NewResourceResponse();
                         const req: any = call.request;
-                        // Skip the automatically generated `pulumi:pulumi:Stack` resource.
-                        if (req.getType() !== "pulumi:pulumi:Stack") {
+                        // Skip the automatically generated root component resource.
+                        if (req.getType() !== runtime.rootPulumiStackTypeName) {
                             if (opts.createResource) {
                                 const res: any = req.getObject().toJavaScript();
                                 const { id, urn, props } =

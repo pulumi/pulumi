@@ -147,21 +147,13 @@ export function main(args: string[]): void {
     });
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    //
-    // TODO: This should probably be moved into the engine.  I imagine we would allow Run to return a property bag, and
-    // then pass `outputs` through the property bag.  Then this special `Stack` resources could be generated after the
-    // Run call completes in the engine.  That would ensure that this special resource kind is avaialble for any
-    // language, and can be relied on to exist in any stack by clients like the CLI or web console.
     const stackResource = new pulumi.ComponentResource(
-        // TODO: What name should this use?  We want this to stand out clearly as a "special" resource.
-        "pulumi:pulumi:Stack",
-        // TODO: We need the `|| "stack"` here for unit tests - are there other cases where `getStack()` returns ""?
-        pulumi.getStack() || "stack",
-        // TODO: Should `config` be input properties?
+        runtime.rootPulumiStackTypeName,
+        `${pulumi.getProject()}-${pulumi.getStack()}`,
         [],
         // We run the program inside this context so that it adopts all resources.
         //
-        // TODO: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
+        // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
         // problem with the current Component design though - not sure what else we could do here.
         () => {
             // Now go ahead and execute the code. The process will remain alive until the message loop empties.
