@@ -27,15 +27,16 @@ function run_go_build() {
 
 # usage: copy_package <path-to-module> <module-name>
 copy_package() {
-    local MODULE_ROOT=${PUBDIR}/node_modules/${2}
+    local module_root=${PUBDIR}/node_modules/$2
 
-    mkdir -p "${MODULE_ROOT}"   
-    cp -R "${1}" "${MODULE_ROOT}/"
-    if [ -e "${MODULE_ROOT}/node_modules" ]; then
-        rm -rf "${MODULE_ROOT}/node_modules"
+    mkdir -p "${module_root}"
+    cp -R "$1" "${module_root}/"
+    cp "$1/../package.json" "${module_root}"
+    if [ -e "${module_root}/node_modules" ]; then
+        rm -rf "${module_root}/node_modules"
     fi
-    if [ -e "${MODULE_ROOT}/tests" ]; then
-        rm -rf "${MODULE_ROOT}/tests"
+    if [ -e "${module_root}/tests" ]; then
+        rm -rf "${module_root}/tests"
     fi
 }
 
