@@ -725,11 +725,14 @@ func printArchiveDiff(
 	oldArchive *resource.Archive, newArchive *resource.Archive,
 	planning bool, indent string) {
 
+	// TODO: this could be called recursively from itself.  In the recursive case, we might have an
+	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
+
 	color := deploy.OpUpdate.Color()
 	b.WriteString(color)
 	title(changedIndent(indent))
 
-	hashChange := fmt.Sprintf("%s->%s", shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
+	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 	if oldPath, has := oldArchive.GetPath(); has {
 		newPath, has := newArchive.GetPath()
 		contract.Assert(has)
