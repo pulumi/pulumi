@@ -165,7 +165,7 @@ class ConfigMissingError extends RunError {
     constructor(public key: string) {
         super(
             `Missing required configuration variable '${key}'\n` +
-            `\tplease set a value using the command \`pulumi config text ${key} <value>\``,
+            `\tplease set a value using the command \`pulumi config set ${key} <value>\``,
         );
     }
 }
