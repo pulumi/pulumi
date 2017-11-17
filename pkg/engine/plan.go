@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -874,10 +875,13 @@ func printAssetDiff(
 		// } else {
 		b.WriteString(fmt.Sprintf("asset(text:%s) {\n\n", hashChange))
 
+		massagedOldText := massageText(oldText)
+		massagedNewText := massageText(newText)
+
 		differ := diffmatchpatch.New()
 		differ.DiffTimeout = 0
 
-		hashed1, hashed2, lineArray := differ.DiffLinesToChars(oldText, newText)
+		hashed1, hashed2, lineArray := differ.DiffLinesToChars(massagedOldText, massagedNewText)
 		diffs1 := differ.DiffMain(hashed1, hashed2, false)
 		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
@@ -936,6 +940,25 @@ func printAssetDiff(
 	}
 }
 
+func massageText(text string) string {
+	for true {
+		newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
+		if len(newText) == len(text) {
+			break
+		}
+
+		text = newText
+	}
+
+	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
+	closureRegexp, _ := regexp.Compile("    with\\(\\{ .* \\}\\) \\{")
+
+	text = shaRegexp.ReplaceAllString(text, "__shaHash")
+	text = closureRegexp.ReplaceAllString(text, "    with (__closure) {")
+
+	return text
+}
+
 func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 	var buff bytes.Buffer
 	for index, diff := range diffs {
@@ -951,37 +974,45 @@ func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 			buff.WriteString(text)
 			buff.WriteString(colors.Reset)
 		case diffmatchpatch.DiffEqual:
-			lines := strings.Split(text, "\n")
+			lines := strings.SplitAfter(text, "\n")
+			var trimmedLines []string
+			for _, line := range lines {
+				if strings.TrimSpace(line) != "" {
+					trimmedLines = append(trimmedLines, line)
+				}
+			}
 
-			buff.WriteString(deploy.OpUpdate.Color())
+			lines = trimmedLines
+
+			buff.WriteString(colors.Reset)
 			if index == 0 {
 				// First chunk of the file.
 				if len(lines) > 4 {
 					buff.WriteString("...\n")
-					buff.WriteString(lines[len(lines)-3] + "\n")
-					buff.WriteString(lines[len(lines)-2] + "\n")
-					buff.WriteString(lines[len(lines)-1] + "\n")
+					buff.WriteString(lines[len(lines)-3])
+					buff.WriteString(lines[len(lines)-2])
+					buff.WriteString(lines[len(lines)-1])
 				} else {
 					buff.WriteString(text)
 				}
 			} else if index == len(diffs)-1 {
 				if len(lines) > 4 {
-					buff.WriteString(lines[0] + "\n")
-					buff.WriteString(lines[1] + "\n")
-					buff.WriteString(lines[2] + "\n")
+					buff.WriteString(lines[0])
+					buff.WriteString(lines[1])
+					buff.WriteString(lines[2])
 					buff.WriteString("...\n")
 				} else {
 					buff.WriteString(text)
 				}
 			} else {
 				if len(lines) > 7 {
-					buff.WriteString(lines[0] + "\n")
-					buff.WriteString(lines[1] + "\n")
-					buff.WriteString(lines[2] + "\n")
+					buff.WriteString(lines[0])
+					buff.WriteString(lines[1])
+					buff.WriteString(lines[2])
 					buff.WriteString("...\n")
-					buff.WriteString(lines[len(lines)-3] + "\n")
-					buff.WriteString(lines[len(lines)-2] + "\n")
-					buff.WriteString(lines[len(lines)-1] + "\n")
+					buff.WriteString(lines[len(lines)-3])
+					buff.WriteString(lines[len(lines)-2])
+					buff.WriteString(lines[len(lines)-1])
 				} else {
 					buff.WriteString(text)
 				}
@@ -989,7 +1020,6 @@ func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 
 			// buff.WriteString(deploy.OpUpdate.Color())
 			// buff.WriteString("...\n")
-			buff.WriteString(colors.Reset)
 		}
 	}
 
