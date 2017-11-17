@@ -845,6 +845,7 @@ func printAssetDiff(
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent string) {
 
+	// If the assets aren't changed, just print out: = assetName: type(hash)
 	if oldAsset.Hash == newAsset.Hash {
 		b.WriteString(colors.Reset)
 		title(unchangedIndent(indent))
@@ -862,9 +863,10 @@ func printAssetDiff(
 		return
 	}
 
+	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
 	title(changedIndent(indent))
 
-	hashChange := fmt.Sprintf("%s->%s", shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
+	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
 	if oldText, has := oldAsset.GetText(); has {
 		newText, has := newAsset.GetText()
