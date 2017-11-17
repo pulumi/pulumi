@@ -4,7 +4,6 @@ package stack
 
 import (
 	"reflect"
-	"sort"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -31,7 +30,7 @@ type Resource struct {
 	Inputs   map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the program.
 	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider.
 	Outputs  map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
-	Children []string               `json:"children,omitempty" yaml:"children,omitempty"` // an optional list of child resources.
+	Parent   resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
 }
 
 // RootPulumiStackTypeName is the type name that will be used for the root component in the Pulumi resource tree.
@@ -70,20 +69,13 @@ func SerializeResource(res *resource.State) Resource {
 		outputs = SerializeProperties(outp)
 	}
 
-	// Sort the list of children.
-	var children []string
-	for _, child := range res.Children {
-		children = append(children, string(child))
-	}
-	sort.Strings(children)
-
 	return Resource{
 		URN:      res.URN,
 		Custom:   res.Custom,
 		Delete:   res.Delete,
 		ID:       res.ID,
 		Type:     res.Type,
-		Children: children,
+		Parent:   res.Parent,
 		Inputs:   inputs,
 		Defaults: defaults,
 		Outputs:  outputs,
@@ -151,13 +143,8 @@ func DeserializeResource(res Resource) (*resource.State, error) {
 		return nil, err
 	}
 
-	var children []resource.URN
-	for _, child := range res.Children {
-		children = append(children, resource.URN(child))
-	}
-
 	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, defaults, outputs, children), nil
+		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, defaults, outputs, res.Parent), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

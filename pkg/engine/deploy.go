@@ -67,6 +67,7 @@ type deployOptions struct {
 	ShowReplacementSteps bool         // true to show the replacement steps in the plan.
 	ShowSames            bool         // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool         // true if we should only summarize resources and operations.
+	Detailed             bool         // true to show very detailed output, like properties that haven't changed.
 	DOT                  bool         // true if we should print the DOT file for this plan.
 	Events               chan<- Event // the channel to write events from the engine to.
 	Diag                 diag.Sink    // the sink to use for diag'ing.
@@ -93,12 +94,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := &deployActions{
-				Ops:    make(map[deploy.StepOp]int),
-				Opts:   opts,
-				Target: result.Info.Target,
-				Engine: eng,
-			}
+			actions := newDeployActions(opts, result.Info.Target, eng)
 			summary, _, _, err := result.Walk(actions)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
@@ -138,28 +134,37 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 type deployActions struct {
 	Steps        int
 	Ops          map[deploy.StepOp]int
+	Seen         map[resource.URN]deploy.Step
+	Shown        map[resource.URN]bool
 	MaybeCorrupt bool
 	Opts         deployOptions
 	Target       *deploy.Target
 	Engine       *Engine
 }
 
+func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine) *deployActions {
+	return &deployActions{
+		Ops:    make(map[deploy.StepOp]int),
+		Seen:   make(map[resource.URN]deploy.Step),
+		Shown:  make(map[resource.URN]bool),
+		Opts:   opts,
+		Target: target,
+		Engine: engine,
+	}
+}
+
 func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	// Report the beginning of the step if appropriate.
-	if shouldShow(step, acts.Opts) {
+	if shouldShow(acts.Seen, step, acts.Opts) {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Opts.Summary, false, 0 /*indent*/)
+		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	var mutation SnapshotMutation
-	if _, ismut := step.(deploy.MutatingStep); ismut {
-		m, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
-		if err != nil {
-			return resource.StatusOK, err
-		}
-		mutation = m
+	mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	if err != nil {
+		return resource.StatusOK, err
 	}
 
 	// Apply the step's changes.
@@ -197,7 +202,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 
 		// Print out any output properties that got created as a result of this operation.
-		if shouldShow(step, acts.Opts) && !acts.Opts.Summary {
+		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, 0 /*indent*/)
 			acts.Opts.Events <- stdOutEventWithColor(&b)

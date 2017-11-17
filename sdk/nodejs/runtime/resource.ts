@@ -6,7 +6,7 @@ import { debuggablePromise, errorString } from "./debuggable";
 import { PropertyTransfer, resolveProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
-const langproto = require("../proto/languages_pb.js");
+const resproto = require("../proto/resource_pb.js");
 
 /**
  * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
@@ -18,62 +18,26 @@ let resourceChain: Promise<void> = Promise.resolve();
 let resourceChainLabel: string | undefined = undefined;
 
 /**
- * registrations tracks all resources that have finished being registered.
- */
-const registrations = new Set<Resource>();
-
-/**
- * pendingRegistrations is used to track all unfinished resources so that we can resolve their URNs when done.
- */
-const pendingRegistrations = new Map<Resource, (urn: URN | undefined) => void>();
-
-/**
- * isRegistered returns true if the resource has begun being registered (no guarantee that it has finished yet).
- */
-export function isRegistered(res: Resource): boolean {
-    return registrations.has(res);
-}
-
-/**
- * initResource initializes a new resource object.
- */
-export function initResource(res: Resource, t: string, name: string): void {
-    if (registrations.has(res) || pendingRegistrations.has(res)) {
-        throw new Error("Illegal attempt to initialize resource more than once");
-    }
-
-    // Simply initialize the URN property and get prepared to resolve it later on.
-    (res as any).urn = debuggablePromise(new Promise<URN | undefined>((resolve) => {
-        pendingRegistrations.set(res, resolve);
-    }), `initResource/resolveURN(resource:${name}[${t}])`);
-}
-
-/**
  * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
  * and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: ComputedValues | undefined, children: Resource[],
+                                 props: ComputedValues | undefined, parent: Resource | undefined,
                                  dependsOn: Resource[] | undefined): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
-    // Ensure we're not registering more than once.
-    if (registrations.has(res)) {
-        throw new Error("Illegal attempt to register resource more than once");
-    }
-    registrations.add(res);
-
-    // Look up to ensure that this resource has been initialized.
-    const resolveURN: ((url: URN | undefined) => void) | undefined = pendingRegistrations.get(res);
-    if (!resolveURN) {
-        throw new Error("Cannot register a resource that hasn't yet been initialized");
-    }
-
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     const createError: Error = new Error(`Resouce '${name}' [${t}] could not be created`);
+
+    // Simply initialize the URN property and get prepared to resolve it later on.
+    let resolveURN: ((urn: URN | undefined) => void) | undefined;
+    (res as any).urn = debuggablePromise(
+        new Promise<URN | undefined>((resolve) => { resolveURN = resolve; }),
+        `resolveURN(${label})`,
+    );
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID | undefined) => void) | undefined;
@@ -85,14 +49,12 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     }
 
     // Ensure we depend on any children plus any explicit dependsOns.
-    let allDependsOn: Resource[] | undefined;
-    for (const depends of [ children, dependsOn ]) {
-        if (depends && depends.length) {
-            if (!allDependsOn) {
-                allDependsOn = [];
-            }
-            allDependsOn = allDependsOn.concat(depends);
-        }
+    const allDependsOn: Resource[] = [];
+    if (parent) {
+        allDependsOn.push(parent);
+    }
+    if (dependsOn) {
+        allDependsOn.push(...dependsOn);
     }
 
     // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
@@ -122,19 +84,18 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             log.debug(`Resource RPC prepared: t=${t}, name=${name}` +
                 (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
-            // Create a list of child URNs.
-            const childURNs: URN[] = [];
-            for (const child of children) {
-                childURNs.push(await child.urn);
-            }
-
             // Fetch the monitor and make an RPC request.
             const monitor: any = getMonitor();
             if (monitor) {
-                const req = new langproto.NewResourceRequest();
+                let parentURN: URN | undefined;
+                if (parent) {
+                    parentURN = await parent.urn;
+                }
+
+                const req = new resproto.NewResourceRequest();
                 req.setType(t);
                 req.setName(name);
-                req.setChildrenList(childURNs);
+                req.setParent(parentURN);
                 req.setCustom(custom);
                 req.setObject(obj);
 
