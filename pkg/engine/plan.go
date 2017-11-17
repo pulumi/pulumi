@@ -746,7 +746,6 @@ func printArchiveDiff(
 		b.WriteString(fmt.Sprintf("%v}\n", indent))
 	}
 
-	b.WriteString("\n")
 	b.WriteString(colors.Reset)
 }
 
