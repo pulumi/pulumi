@@ -725,7 +725,7 @@ func printArchiveDiff(
 
 	color := deploy.OpUpdate.Color()
 	b.WriteString(color)
-	title(changeIndent(indent))
+	title(changedIndent(indent))
 
 	hashChange := fmt.Sprintf("%s->%s", shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 	if oldPath, has := oldArchive.GetPath(); has {
@@ -862,7 +862,24 @@ func printAssetDiff(
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent string) {
 
-	title(changeIndent(indent))
+	if oldAsset.Hash == newAsset.Hash {
+		b.WriteString(colors.Reset)
+		title(unchangedIndent(indent))
+
+		hash := shortHash(oldAsset.Hash)
+		if path, has := oldAsset.GetPath(); has {
+			b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hash, path))
+		} else if uri, has := oldAsset.GetURI(); has {
+			b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hash, uri))
+		} else {
+			b.WriteString(fmt.Sprintf("asset(text:%s)\n", hash))
+		}
+
+		b.WriteString(deploy.OpUpdate.Color())
+		return
+	}
+
+	title(changedIndent(indent))
 
 	hashChange := fmt.Sprintf("%s->%s", shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
@@ -870,9 +887,6 @@ func printAssetDiff(
 		newText, has := newAsset.GetText()
 		contract.Assert(has)
 
-		// if isFunction {
-		// 	printFunctionValue()
-		// } else {
 		b.WriteString(fmt.Sprintf("asset(text:%s) {\n\n", hashChange))
 
 		massagedOldText := massageText(oldText)
@@ -886,29 +900,7 @@ func printAssetDiff(
 		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
 		b.WriteString(diffPrettyText(diffs2))
-
-		/*
-		   var a = dmp.diff_linesToChars_(text1, text2);
-		     var lineText1 = a[0];
-		     var lineText2 = a[1];
-		     var lineArray = a[2];
-
-		     var diffs = dmp.diff_main(lineText1, lineText2, false);
-
-		     dmp.diff_charsToLines_(diffs, lineArray);
-		     return diffs;
-		*/
-
-		//diffs := differ.DiffMain(oldText, newText, true)
-		//b.WriteString(differ.DiffPrettyText(diffs))
-
-		// pretty print the text, line by line, with proper breaks.
-		// lines := strings.Split(text, "\n")
-		// for _, line := range lines {
-		// 	b.WriteString(fmt.Sprintf("%s    \"%s\"\n", indent, line))
-		// }
 		b.WriteString(fmt.Sprintf("\n%v}\n", indent))
-		//}
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		newPath, has := newAsset.GetPath()
 		contract.Assert(has)
@@ -1045,6 +1037,7 @@ func printAssetOrArchive(b *bytes.Buffer, v interface{}, name string, indent str
 	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+"    ", isFunction)
 }
 
-func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }
-func deleteIndent(indent string) string { return indent[:len(indent)-2] + "- " }
-func changeIndent(indent string) string { return indent[:len(indent)-2] + "~ " }
+func addIndent(indent string) string       { return indent[:len(indent)-2] + "+ " }
+func deleteIndent(indent string) string    { return indent[:len(indent)-2] + "- " }
+func changedIndent(indent string) string   { return indent[:len(indent)-2] + "~ " }
+func unchangedIndent(indent string) string { return indent[:len(indent)-2] + "= " }
