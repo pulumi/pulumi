@@ -34,6 +34,9 @@ type Resource struct {
 	Children []string               `json:"children,omitempty" yaml:"children,omitempty"` // an optional list of child resources.
 }
 
+// RootPulumiStackTypeName is the type name that will be used for the root component in the Pulumi resource tree.
+const RootPulumiStackTypeName tokens.Type = "pulumi:pulumi:Stack"
+
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	// Serialize all vertices and only include a vertex section if non-empty.

@@ -145,7 +145,7 @@ export abstract class CustomResource extends Resource {
  * ComponentResource is a resource that aggregates one or more other child resources into a higher level abstraction.
  * The component resource itself is a resource, but does not require custom CRUD operations for provisioning.
  */
-export abstract class ComponentResource extends Resource {
+export class ComponentResource extends Resource {
     /**
      * Creates and registers a new component resource.  t is the fully qualified type token and name is the "name" part
      * to use in creating a stable and globally unique URN for the object.  init is used to generate whatever children

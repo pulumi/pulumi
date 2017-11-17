@@ -4,6 +4,7 @@
 
 import * as minimist from "minimist";
 import * as path from "path";
+import * as pulumi from "../../";
 import { RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
@@ -145,9 +146,22 @@ export function main(args: string[]): void {
         }
     });
 
-    // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-    log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
-    require(program);
+    // Construct a `Stack` resource to represent the outputs of the program.
+    const stackResource = new pulumi.ComponentResource(
+        runtime.rootPulumiStackTypeName,
+        `${pulumi.getProject()}-${pulumi.getStack()}`,
+        [],
+        // We run the program inside this context so that it adopts all resources.
+        //
+        // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
+        // problem with the current Component design though - not sure what else we could do here.
+        () => {
+            // Now go ahead and execute the code. The process will remain alive until the message loop empties.
+            log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+            const outputs = require(program);
+            return outputs;
+         },
+    );
 }
 
 main(process.argv.slice(2));
