@@ -809,10 +809,8 @@ func printAssetsDiff(
 				switch t := oldAsset.(type) {
 				case *resource.Archive:
 					printArchiveDiff(b, title, t, newAsset.(*resource.Archive), planning, indent+"    ")
-					break
 				case *resource.Asset:
 					printAssetDiff(b, title, t, newAsset.(*resource.Asset), planning, indent+"    ")
-					break
 				}
 				i++
 				j++
@@ -926,7 +924,7 @@ func getTextChangeString(old string, new string) string {
 //   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
 //   3. it elides the with-capture headers, as changes there are not generally meaningful.
 func massageText(text string) string {
-	for true {
+	for {
 		newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
 		if len(newText) == len(text) {
 			break
@@ -936,7 +934,7 @@ func massageText(text string) string {
 	}
 
 	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
-	closureRegexp, _ := regexp.Compile("    with\\(\\{ .* \\}\\) \\{")
+	closureRegexp, _ := regexp.Compile(`    with\(\{ .* \}\) \{`)
 
 	text = shaRegexp.ReplaceAllString(text, "__shaHash")
 	text = closureRegexp.ReplaceAllString(text, "    with (__closure) {")
