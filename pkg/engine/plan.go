@@ -676,7 +676,6 @@ func printPropertyValueDiff(
 			shouldPrintOld &&
 			shouldPrintNew {
 			printArchiveDiff(b, title, diff.Old.ArchiveValue(), diff.New.ArchiveValue(), planning, indent)
-			b.WriteString("\n\n")
 			return
 		}
 
@@ -753,6 +752,7 @@ func printArchiveDiff(
 		b.WriteString(fmt.Sprintf("%v}\n", indent))
 	}
 
+	b.WriteString("\n")
 	b.WriteString(colors.Reset)
 }
 
