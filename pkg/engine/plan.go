@@ -882,6 +882,7 @@ func printAssetDiff(
 		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
 		b.WriteString(diffPrettyText(diffs2))
+
 		/*
 		   var a = dmp.diff_linesToChars_(text1, text2);
 		     var lineText1 = a[0];
@@ -937,24 +938,62 @@ func printAssetDiff(
 
 func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 	var buff bytes.Buffer
-	for _, diff := range diffs {
+	for index, diff := range diffs {
 		text := diff.Text
 
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
-			_, _ = buff.WriteString(deploy.OpCreate.Color())
-			_, _ = buff.WriteString(text)
-			_, _ = buff.WriteString(colors.Reset)
+			buff.WriteString(deploy.OpCreate.Color())
+			buff.WriteString(text)
+			buff.WriteString(colors.Reset)
 		case diffmatchpatch.DiffDelete:
-			_, _ = buff.WriteString(deploy.OpDelete.Color())
-			_, _ = buff.WriteString(text)
-			_, _ = buff.WriteString(colors.Reset)
+			buff.WriteString(deploy.OpDelete.Color())
+			buff.WriteString(text)
+			buff.WriteString(colors.Reset)
 		case diffmatchpatch.DiffEqual:
-			_, _ = buff.WriteString(deploy.OpUpdate.Color())
-			_, _ = buff.WriteString("...\n")
-			_, _ = buff.WriteString(colors.Reset)
+			lines := strings.Split(text, "\n")
+
+			buff.WriteString(deploy.OpUpdate.Color())
+			if index == 0 {
+				// First chunk of the file.
+				if len(lines) > 4 {
+					buff.WriteString("...\n")
+					buff.WriteString(lines[len(lines)-3] + "\n")
+					buff.WriteString(lines[len(lines)-2] + "\n")
+					buff.WriteString(lines[len(lines)-1] + "\n")
+				} else {
+					buff.WriteString(text)
+				}
+			} else if index == len(diffs)-1 {
+				if len(lines) > 4 {
+					buff.WriteString(lines[0] + "\n")
+					buff.WriteString(lines[1] + "\n")
+					buff.WriteString(lines[2] + "\n")
+					buff.WriteString("...\n")
+				} else {
+					buff.WriteString(text)
+				}
+			} else {
+				if len(lines) > 7 {
+					buff.WriteString(lines[0] + "\n")
+					buff.WriteString(lines[1] + "\n")
+					buff.WriteString(lines[2] + "\n")
+					buff.WriteString("...\n")
+					buff.WriteString(lines[len(lines)-3] + "\n")
+					buff.WriteString(lines[len(lines)-2] + "\n")
+					buff.WriteString(lines[len(lines)-1] + "\n")
+				} else {
+					buff.WriteString(text)
+				}
+			}
+
+			// buff.WriteString(deploy.OpUpdate.Color())
+			// buff.WriteString("...\n")
+			buff.WriteString(colors.Reset)
 		}
 	}
+
+	buff.WriteString(deploy.OpUpdate.Color())
 
 	return buff.String()
 }
