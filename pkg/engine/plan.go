@@ -644,12 +644,9 @@ func printPropertyValueDiff(
 			_, newIndent := getArrayElemHeader(b, i, indent)
 			titleFunc := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
-				printAdd(b, add, title, true, planning, indent, newIndent)
+				printAdd(b, add, titleFunc, true, planning, indent, newIndent)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				b.WriteString(deploy.OpDelete.Color())
-				titleFunc(deletedIndentString(indent))
-				printPropertyValue(b, delete, planning, deletedIndentString(newIndent))
-				b.WriteString(colors.Reset)
+				printDelete(b, delete, titleFunc, true, planning, indent, newIndent)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
 			} else {
@@ -679,7 +676,7 @@ func printPropertyValueDiff(
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintOld {
-			printDelete(b, diff.Old, title, causedReplace, planning, indent)
+			printDelete(b, diff.Old, title, causedReplace, planning, indent, indent)
 		}
 		if shouldPrintNew {
 			printAdd(b, diff.New, title, causedReplace, planning, indent, indent)
@@ -688,7 +685,8 @@ func printPropertyValueDiff(
 }
 
 func printDelete(
-	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool, planning bool, indent string) {
+	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool,
+	planning bool, indent string, newIndent string) {
 
 	var color string
 	if causedReplace {
@@ -698,7 +696,7 @@ func printDelete(
 	}
 	b.WriteString(color)
 	title(deletedIndentString(indent))
-	printPropertyValue(b, v, planning, deletedIndentString(indent))
+	printPropertyValue(b, v, planning, deletedIndentString(newIndent))
 	b.WriteString(colors.Reset)
 }
 
@@ -832,17 +830,18 @@ func printAssetsDiff(
 			addNew = true
 		}
 
+		newIndent := indent + "    "
 		if deleteOld {
 			oldName := oldNames[i]
 			title := func(id string) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, id) }
-			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, indent+"    ")
+			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, newIndent, newIndent)
 			i++
 			continue
 		} else {
 			contract.Assert(addNew)
 			newName := newNames[j]
 			title := func(id string) { printPropertyTitle(b, "\""+newName+"\"", maxkey, id) }
-			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, indent+"    ", indent+"    ")
+			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent, newIndent)
 			j++
 		}
 
