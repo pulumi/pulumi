@@ -605,17 +605,11 @@ func printObjectDiff(
 		title := func(id string) { printPropertyTitle(b, string(k), maxkey, id) }
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
-				b.WriteString(colors.SpecCreate)
-				title(addedIndentString(indent))
-				printPropertyValue(b, add, planning, addedIndentString(indent))
-				b.WriteString(colors.Reset)
+				printAdd(b, add, title, true, planning, indent, indent)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
-				b.WriteString(colors.SpecDelete)
-				title(deletedIndentString(indent))
-				printPropertyValue(b, delete, planning, deletedIndentString(indent))
-				b.WriteString(colors.Reset)
+				printDelete(b, delete, title, true, planning, indent, indent)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
 			if !causedReplace && replaceMap != nil {
@@ -690,9 +684,9 @@ func printDelete(
 
 	var color string
 	if causedReplace {
-		color = deploy.OpDelete.Color() // this property triggered replacement; color as a delete
+		color = colors.SpecDelete
 	} else {
-		color = deploy.OpUpdate.Color()
+		color = colors.SpecUpdate
 	}
 	b.WriteString(color)
 	title(deletedIndentString(indent))
@@ -706,9 +700,9 @@ func printAdd(
 
 	var color string
 	if causedReplace {
-		color = deploy.OpCreate.Color() // this property triggered replacement; color as a create
+		color = colors.SpecCreate
 	} else {
-		color = deploy.OpUpdate.Color()
+		color = colors.SpecUpdate
 	}
 
 	b.WriteString(color)
