@@ -538,6 +538,18 @@ func printAssetOrArchive(b *bytes.Buffer, v interface{}, name string, indent str
 	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+"    ")
 }
 
+func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
+	switch t := v.(type) {
+	case *resource.Asset:
+		return resource.NewAssetProperty(t)
+	case *resource.Archive:
+		return resource.NewArchiveProperty(t)
+	default:
+		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
+		return resource.PropertyValue{V: nil}
+	}
+}
+
 func shortHash(hash string) string {
 	if len(hash) > 7 {
 		return hash[:7]
@@ -993,18 +1005,6 @@ func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 	buff.WriteString(deploy.OpUpdate.Color())
 
 	return buff.String()
-}
-
-func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
-	switch t := v.(type) {
-	case *resource.Asset:
-		return resource.NewAssetProperty(t)
-	case *resource.Archive:
-		return resource.NewArchiveProperty(t)
-	default:
-		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
-		return resource.PropertyValue{V: nil}
-	}
 }
 
 func addIndent(indent string) string       { return indent[:len(indent)-2] + "+ " }
