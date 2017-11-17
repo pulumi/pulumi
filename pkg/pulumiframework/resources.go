@@ -187,7 +187,7 @@ func (ops *componentOpsProvider) GetLogs(query component.LogQuery) ([]component.
 	switch ops.component.Type {
 	case pulumiFunctionType:
 		functionName := ops.component.Resources["function"].Outputs["name"].StringValue()
-		logResult := ops.awsConnection.getLogsForFunction(functionName)
+		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{functionName}, []string{"/aws/lambda/" + functionName})
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return logResult, nil
 	default:
@@ -295,19 +295,28 @@ type componentsOpsProvider struct {
 
 var _ component.OperationsProvider = (*componentsOpsProvider)(nil)
 
-// GetLogs for a collection of Components returns combined logs from all Pulumi Function
-// components in the collection.
+// GetLogs returns combined logs for all Pulumi compute components.
 func (ops *componentsOpsProvider) GetLogs(query component.LogQuery) ([]component.LogEntry, error) {
 	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
 		contract.Failf("not yet implemented - StartTime, Endtime, Query")
 	}
-	var functionNames []string
-	functionComponents := ops.components.FilterByType(pulumiFunctionType)
-	for _, v := range functionComponents {
-		functionName := v.Resources["function"].Outputs["name"].StringValue()
-		functionNames = append(functionNames, functionName)
+
+	// Collect names and log groups that we want to query
+	var resourceNames []string
+	var logGroupNames []string
+	for _, v := range ops.components {
+		switch v.Type {
+		case pulumiFunctionType:
+			functionName := v.Resources["function"].Outputs["name"].StringValue()
+			resourceNames = append(resourceNames, functionName)
+			logGroupNames = append(logGroupNames, "/aws/lambda/"+functionName)
+		}
 	}
-	logResults := ops.awsConnection.getLogsForFunctionsConcurrently(functionNames)
+
+	// Concurrently read logs from CloudWatch
+	logResults := ops.awsConnection.getLogsForLogGroupsConcurrently(resourceNames, logGroupNames)
+
+	// Sort and return log results
 	sort.SliceStable(logResults, func(i, j int) bool { return logResults[i].Timestamp < logResults[j].Timestamp })
 	return logResults, nil
 }
