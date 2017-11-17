@@ -895,7 +895,7 @@ func printAssetDiff(
 		diffs1 := differ.DiffMain(hashed1, hashed2, false)
 		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
-		b.WriteString(diffPrettyText(diffs2))
+		b.WriteString(diffToPrettyString(diffs2))
 		b.WriteString(fmt.Sprintf("\n%v}\n", indent))
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		newPath, has := newAsset.GetPath()
@@ -922,6 +922,11 @@ func getTextChangeString(old string, new string) string {
 	return fmt.Sprintf("%s->%s", old, new)
 }
 
+// massageText takes the text for a function and cleans it up a bit to make the user visible diffs
+// less noisy.  Specifically:
+//   1. it tries to condense things by changling multiple blank lines into a single blank line.
+//   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
+//   3. it elides the with-capture headers, as changes there are not generally meaningful.
 func massageText(text string) string {
 	for true {
 		newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
@@ -941,7 +946,12 @@ func massageText(text string) string {
 	return text
 }
 
-func diffPrettyText(diffs []diffmatchpatch.Diff) string {
+// diffToPrettyString takes the full diff produed by diffmatchpatch and condenses it into something
+// useful we can print to the console.  Specifically, while it includes any adds/removes in
+// green/red, it will also show portions of the unchanged text to help give surrounding context to
+// those add/removes. Because the unchanged portions may be very large, it only included around 3
+// lines before/after the change.
+func diffToPrettyString(diffs []diffmatchpatch.Diff) string {
 	var buff bytes.Buffer
 	for index, diff := range diffs {
 		text := diff.Text
@@ -966,6 +976,7 @@ func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 
 			lines = trimmedLines
 
+			// Show the unchanged text in white.
 			buff.WriteString(colors.Reset)
 			if index == 0 {
 				// First chunk of the file.
@@ -999,9 +1010,6 @@ func diffPrettyText(diffs []diffmatchpatch.Diff) string {
 					buff.WriteString(text)
 				}
 			}
-
-			// buff.WriteString(deploy.OpUpdate.Color())
-			// buff.WriteString("...\n")
 		}
 	}
 
