@@ -199,7 +199,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		// Print out any output properties that got created as a result of this operation.
 		if shouldShow(step, acts.Opts) && !acts.Opts.Summary {
 			var b bytes.Buffer
-			printResourceOutputProperties(&b, step, "", false)
+			printResourceOutputProperties(&b, step, "")
 			acts.Opts.Events <- stdOutEventWithColor(&b)
 		}
 	}
