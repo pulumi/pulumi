@@ -294,7 +294,6 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	printStepHeader(b, step)
-	b.WriteString(op.Suffix())
 
 	// Next print the resource URN, properties, etc.
 	if mut, ismut := step.(deploy.MutatingStep); ismut {
@@ -377,11 +376,11 @@ func printResourceProperties(
 		id = old.ID
 	}
 	if id != "" {
-		writeWithIndent(b, indent, op, "[id=%s]\n", string(id))
+		writeWithIndent(b, indent, considerSameIfNotCreateOrDelete(op), "[id=%s]\n", string(id))
 	}
 
 	if urn != "" {
-		writeWithIndent(b, indent, op, "[urn=%s]\n", urn)
+		writeWithIndent(b, indent, considerSameIfNotCreateOrDelete(op), "[urn=%s]\n", urn)
 	}
 
 	// If this resource has children, also print a summary of those out too.
@@ -449,7 +448,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent int
 		return
 	}
 
-	write(b, op, "%s", op.Suffix())
+	op = considerSameIfNotCreateOrDelete(op)
 
 	// First fetch all the relevant property maps that we may consult.
 	newins := mut.New().Inputs
@@ -493,6 +492,14 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent int
 			}
 		}
 	}
+}
+
+func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
+	if op == deploy.OpCreate || op == deploy.OpDelete || op == deploy.OpDeleteReplaced {
+		return op
+	}
+
+	return deploy.OpSame
 }
 
 func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
