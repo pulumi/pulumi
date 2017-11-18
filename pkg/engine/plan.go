@@ -667,14 +667,16 @@ func printObjectDiff(
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
-		title := func(_indent int, _op deploy.StepOp) { printPropertyTitle(b, string(k), maxkey, _indent, _op) }
+		title := func(_op deploy.StepOp) {
+			printPropertyTitle(b, string(k), maxkey, indent, _op)
+		}
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
-				printAdd(b, add, title, true, planning, indent, indent)
+				printAdd(b, add, title, true, planning, indent)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
-				printDelete(b, delete, title, true, planning, indent, indent)
+				printDelete(b, delete, title, true, planning, indent)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
 			if !causedReplace && replaceMap != nil {
@@ -682,14 +684,14 @@ func printObjectDiff(
 			}
 			printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
 		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same, planning) {
-			title(indent, deploy.OpSame)
+			title(deploy.OpSame)
 			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame)
 		}
 	}
 }
 
 func printPropertyValueDiff(
-	b *bytes.Buffer, title func(int, deploy.StepOp), diff resource.ValueDiff,
+	b *bytes.Buffer, title func(deploy.StepOp), diff resource.ValueDiff,
 	causedReplace bool, planning bool, indent int) {
 
 	op := deploy.OpUpdate
@@ -697,30 +699,30 @@ func printPropertyValueDiff(
 	// contract.Assert(len(indent) > 2)
 
 	if diff.Array != nil {
-		title(indent, op)
+		title(op)
 		writeVerbatim(b, op, "[\n")
 
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			newIndent := indent + 2
 
-			titleFunc := func(_indent int, _op deploy.StepOp) {
+			titleFunc := func(_op deploy.StepOp) {
 				writeWithIndent(b, indent+1, _op, "[%d]: ", i)
 			}
 			if add, isadd := a.Adds[i]; isadd {
-				printAdd(b, add, titleFunc, true, planning, indent, newIndent)
+				printAdd(b, add, titleFunc, true, planning, newIndent)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				printDelete(b, delete, titleFunc, true, planning, indent, newIndent)
+				printDelete(b, delete, titleFunc, true, planning, newIndent)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
+				printPropertyValueDiff(b, titleFunc, update, causedReplace, planning, indent)
 			} else {
-				titleFunc(indent, deploy.OpSame)
+				titleFunc(deploy.OpSame)
 				printPropertyValue(b, a.Sames[i], planning, newIndent, deploy.OpSame)
 			}
 		}
 		writeWithIndent(b, indent, op, "]\n")
 	} else if diff.Object != nil {
-		title(indent, op)
+		title(op)
 		writeVerbatim(b, op, "{\n")
 		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+1)
 		writeWithIndent(b, indent, op, "}\n")
@@ -740,17 +742,17 @@ func printPropertyValueDiff(
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintOld {
-			printDelete(b, diff.Old, title, causedReplace, planning, indent, indent)
+			printDelete(b, diff.Old, title, causedReplace, planning, indent)
 		}
 		if shouldPrintNew {
-			printAdd(b, diff.New, title, causedReplace, planning, indent, indent)
+			printAdd(b, diff.New, title, causedReplace, planning, indent)
 		}
 	}
 }
 
 func printDelete(
-	b *bytes.Buffer, v resource.PropertyValue, title func(int, deploy.StepOp), causedReplace bool,
-	planning bool, titleIndent int, valueIndent int) {
+	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp),
+	causedReplace bool, planning bool, indent int) {
 
 	var op deploy.StepOp
 	if causedReplace {
@@ -759,13 +761,13 @@ func printDelete(
 		op = deploy.OpUpdate
 	}
 
-	title(titleIndent, op)
-	printPropertyValue(b, v, planning, valueIndent, op)
+	title(op)
+	printPropertyValue(b, v, planning, indent, op)
 }
 
 func printAdd(
-	b *bytes.Buffer, v resource.PropertyValue, title func(int, deploy.StepOp), causedReplace bool,
-	planning bool, titleIndent int, valueIndent int) {
+	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp),
+	causedReplace bool, planning bool, indent int) {
 
 	var op deploy.StepOp
 	if causedReplace {
@@ -774,8 +776,8 @@ func printAdd(
 		op = deploy.OpUpdate
 	}
 
-	title(titleIndent, op)
-	printPropertyValue(b, v, planning, valueIndent, op)
+	title(op)
+	printPropertyValue(b, v, planning, indent, op)
 }
 
 func makeArchiveHeader(archive *resource.Archive) string {
@@ -799,7 +801,7 @@ func makeArchiveHeader(archive *resource.Archive) string {
 }
 
 func printArchiveDiff(
-	b *bytes.Buffer, title func(int, deploy.StepOp),
+	b *bytes.Buffer, title func(deploy.StepOp),
 	oldArchive *resource.Archive, newArchive *resource.Archive,
 	planning bool, indent int) {
 
@@ -807,7 +809,7 @@ func printArchiveDiff(
 	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
 
 	op := deploy.OpUpdate
-	title(indent, op)
+	title(op)
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 
@@ -883,7 +885,9 @@ func printAssetsDiff(
 			newName := newNames[j]
 
 			if oldName == newName {
-				title := func(_indent int, _op deploy.StepOp) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, _op) }
+				title := func(_op deploy.StepOp) {
+					printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, _op)
+				}
 
 				oldAsset := oldAssets[oldName]
 				newAsset := newAssets[newName]
@@ -913,19 +917,19 @@ func printAssetsDiff(
 		newIndent := indent + 1
 		if deleteOld {
 			oldName := oldNames[i]
-			title := func(_indent int, _op deploy.StepOp) {
+			title := func(_op deploy.StepOp) {
 				printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, _op)
 			}
-			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, newIndent, newIndent)
+			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, newIndent)
 			i++
 			continue
 		} else {
 			contract.Assert(addNew)
 			newName := newNames[j]
-			title := func(_indent int, _op deploy.StepOp) {
+			title := func(_op deploy.StepOp) {
 				printPropertyTitle(b, "\""+newName+"\"", maxkey, indent, _op)
 			}
-			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent, newIndent)
+			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent)
 			j++
 		}
 	}
@@ -950,7 +954,7 @@ func makeAssetHeader(asset *resource.Asset) string {
 }
 
 func printAssetDiff(
-	b *bytes.Buffer, title func(int, deploy.StepOp),
+	b *bytes.Buffer, title func(deploy.StepOp),
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent int) {
 
@@ -959,13 +963,13 @@ func printAssetDiff(
 	// If the assets aren't changed, just print out: = assetName: type(hash)
 	if oldAsset.Hash == newAsset.Hash {
 		op = deploy.OpSame
-		title(indent, op)
+		title(op)
 		write(b, op, makeAssetHeader(oldAsset))
 		return
 	}
 
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
-	title(indent, deploy.OpUpdate)
+	title(deploy.OpUpdate)
 
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
