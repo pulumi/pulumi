@@ -148,7 +148,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	// Report the beginning of the step if appropriate.
 	if shouldShow(step, acts.Opts) {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Opts.Summary, false, "")
+		printStep(&b, step, acts.Opts.Summary, false, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
@@ -199,7 +199,7 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		// Print out any output properties that got created as a result of this operation.
 		if shouldShow(step, acts.Opts) && !acts.Opts.Summary {
 			var b bytes.Buffer
-			printResourceOutputProperties(&b, step, "")
+			printResourceOutputProperties(&b, step, 0 /*indent*/)
 			acts.Opts.Events <- stdOutEventWithColor(&b)
 		}
 	}

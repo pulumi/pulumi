@@ -317,6 +317,34 @@ func printStepHeader(b *bytes.Buffer, step deploy.Step) {
 	b.WriteString(fmt.Sprintf("%s: (%s)\n", string(step.Type()), step.Op()))
 }
 
+func getIdentationString(indent int, op deploy.StepOp) string {
+	result := ""
+
+	for i := 0; i < indent; i++ {
+		result += "    "
+	}
+
+	if result == "" {
+		return result
+	}
+
+	switch op {
+	case deploy.OpSame:
+		return unchangedIndentString(result)
+	case deploy.OpCreate:
+		return addedIndentString(result)
+	case deploy.OpUpdate:
+	case deploy.OpReplace:
+	case deploy.OpCreateReplacement:
+	case deploy.OpDeleteReplaced:
+		return changedIndentString(result)
+	case deploy.OpDelete:
+		return deletedIndentString(result)
+	}
+
+	return result
+}
+
 func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
 	b.WriteString(colors.Reset)
 	b.WriteString(op.Color())
@@ -534,25 +562,25 @@ func printPropertyValue(
 			}
 			writeWithIndent(b, indent, op, "}")
 		} else if path, has := a.GetPath(); has {
-			write(b.WriteString(fmt.Sprintf("archive(file:%s) { %s }", shortHash(a.Hash), path))
+			write(b, op, "archive(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
 			contract.Assert(a.IsURI())
-			b.WriteString(fmt.Sprintf("archive(uri:%s) { %v }", shortHash(a.Hash), a.URI))
+			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
 	} else if v.IsComputed() || v.IsOutput() {
-		b.WriteString(v.TypeString())
+		writeVerbatim(b, op, v.TypeString())
 	} else {
 		contract.Assert(v.IsObject())
 		obj := v.ObjectValue()
 		if len(obj) == 0 {
-			b.WriteString("{}")
+			writeVerbatim(b, op, "{}")
 		} else {
-			b.WriteString("{\n")
+			writeVerbatim(b, op, "{\n")
 			printObject(b, obj, planning, indent+1, op)
 			writeWithIndent(b, indent, op, "}")
 		}
 	}
-	b.WriteString("\n")
+	writeVerbatim(b, op, "\n")
 }
 
 func printAssetOrArchive(
@@ -658,12 +686,15 @@ func printPropertyValueDiff(
 
 	if diff.Array != nil {
 		title(indent, op)
-		b.WriteString("[\n")
+		writeVerbatim(b, op, "[\n")
 
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
-			_, newIndent := getArrayElemHeader(b, i, indent)
-			titleFunc := func(id string) { printArrayElemHeader(b, i, id) }
+			newIndent := indent + 2
+
+			titleFunc := func(_indent int, _op deploy.StepOp) {
+				writeWithIndent(b, indent+1, _op, "[%d]: ", i)
+			}
 			if add, isadd := a.Adds[i]; isadd {
 				printAdd(b, add, titleFunc, true, planning, indent, newIndent)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
@@ -671,14 +702,14 @@ func printPropertyValueDiff(
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
 			} else {
-				titleFunc(indent)
-				printPropertyValue(b, a.Sames[i], planning, newIndent)
+				titleFunc(indent, deploy.OpSame)
+				printPropertyValue(b, a.Sames[i], planning, newIndent, deploy.OpSame)
 			}
 		}
 		writeWithIndent(b, indent, op, "]\n")
 	} else if diff.Object != nil {
 		title(indent, op)
-		b.WriteString("{\n")
+		writeVerbatim(b, op, "{\n")
 		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+1)
 		writeWithIndent(b, indent, op, "}\n")
 	} else {
@@ -707,7 +738,7 @@ func printPropertyValueDiff(
 
 func printDelete(
 	b *bytes.Buffer, v resource.PropertyValue, title func(int, deploy.StepOp), causedReplace bool,
-	planning bool, indent int, newIndent int) {
+	planning bool, titleIndent int, valueIndent int) {
 
 	var op deploy.StepOp
 	if causedReplace {
@@ -716,8 +747,8 @@ func printDelete(
 		op = deploy.OpUpdate
 	}
 
-	title(indent, op)
-	printPropertyValue(b, v, planning, newIndent, op)
+	title(titleIndent, op)
+	printPropertyValue(b, v, planning, valueIndent, op)
 	// b.WriteString(color)
 	// title(deletedIndentString(indent))
 	// printPropertyValue(b, v, planning, deletedIndentString(newIndent))
@@ -726,7 +757,7 @@ func printDelete(
 
 func printAdd(
 	b *bytes.Buffer, v resource.PropertyValue, title func(int, deploy.StepOp), causedReplace bool,
-	planning bool, indent int, newIndent int) {
+	planning bool, titleIndent int, valueIndent int) {
 
 	var op deploy.StepOp
 	if causedReplace {
@@ -735,8 +766,8 @@ func printAdd(
 		op = deploy.OpUpdate
 	}
 
-	title(indent, op)
-	printPropertyValue(b, v, planning, newIndent, op)
+	title(titleIndent, op)
+	printPropertyValue(b, v, planning, valueIndent, op)
 	// b.WriteString(color)
 	// title(addedIndentString(indent))
 	// printPropertyValue(b, v, planning, addedIndentString(newIndent))
@@ -753,7 +784,8 @@ func printArchiveDiff(
 
 	// color := deploy.OpUpdate.Color()
 	// b.WriteString(color)
-	title(indent, deploy.OpUpdate)
+	op := deploy.OpUpdate
+	title(indent, op)
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 
@@ -761,15 +793,15 @@ func printArchiveDiff(
 		newPath, has := newArchive.GetPath()
 		contract.Assert(has)
 
-		b.WriteString(fmt.Sprintf("archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath)))
+		write(b, op, "archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 	} else if oldURI, has := oldArchive.GetURI(); has {
 		newURI, has := newArchive.GetURI()
 		contract.Assert(has)
 
-		b.WriteString(fmt.Sprintf("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI)))
+		write(b, op, "archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 	} else {
 		contract.Assert(oldArchive.IsAssets() && newArchive.IsAssets())
-		b.WriteString(fmt.Sprintf("archive(assets:%s) {\n", hashChange))
+		write(b, op, "archive(assets:%s) {\n", hashChange)
 
 		oldAssets, _ := oldArchive.GetAssets()
 		newAssets, _ := newArchive.GetAssets()
@@ -821,9 +853,6 @@ func printAssetsDiff(
 	maxkey := maxKey(keys)
 
 	for i < len(oldNames) || j < len(newNames) {
-		color := deploy.OpUpdate.Color()
-		b.WriteString(color)
-
 		deleteOld := false
 		addNew := false
 		if i < len(oldNames) && j < len(newNames) {
@@ -860,17 +889,21 @@ func printAssetsDiff(
 			addNew = true
 		}
 
-		newIndent := indent + "    "
+		newIndent := indent + 1
 		if deleteOld {
 			oldName := oldNames[i]
-			title := func(id string) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, id) }
+			title := func(_indent int, _op deploy.StepOp) {
+				printPropertyTitle(b, "\""+oldName+"\"", maxkey, _indent, _op)
+			}
 			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, newIndent, newIndent)
 			i++
 			continue
 		} else {
 			contract.Assert(addNew)
 			newName := newNames[j]
-			title := func(id string) { printPropertyTitle(b, "\""+newName+"\"", maxkey, id) }
+			title := func(_indent int, _op deploy.StepOp) {
+				printPropertyTitle(b, "\""+newName+"\"", maxkey, _indent, _op)
+			}
 			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent, newIndent)
 			j++
 		}
@@ -884,18 +917,20 @@ func printAssetDiff(
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent int) {
 
+	op := deploy.OpUpdate
+
 	// If the assets aren't changed, just print out: = assetName: type(hash)
 	if oldAsset.Hash == newAsset.Hash {
 		// b.WriteString(colors.Reset)
-		title(unchangedIndentString(indent))
+		title(indent, deploy.OpSame)
 
 		hash := shortHash(oldAsset.Hash)
 		if path, has := oldAsset.GetPath(); has {
-			b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hash, path))
+			write(b, op, "asset(file:%s) { %s }\n", hash, path)
 		} else if uri, has := oldAsset.GetURI(); has {
-			b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hash, uri))
+			write(b, op, "asset(uri:%s) { %s }\n", hash, uri)
 		} else {
-			b.WriteString(fmt.Sprintf("asset(text:%s)\n", hash))
+			write(b, op, "asset(text:%s)\n", hash)
 		}
 
 		// b.WriteString(deploy.OpUpdate.Color())
@@ -903,7 +938,7 @@ func printAssetDiff(
 	}
 
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
-	title(changedIndentString(indent))
+	title(indent, deploy.OpUpdate)
 
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
@@ -911,7 +946,7 @@ func printAssetDiff(
 		newText, has := newAsset.GetText()
 		contract.Assert(has)
 
-		b.WriteString(fmt.Sprintf("asset(text:%s) {\n\n", hashChange))
+		write(b, op, "asset(text:%s) {\n\n", hashChange)
 
 		massagedOldText := massageText(oldText)
 		massagedNewText := massageText(newText)
@@ -924,13 +959,14 @@ func printAssetDiff(
 		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
 		b.WriteString(diffToPrettyString(diffs2))
-		b.WriteString("\n")
+
+		writeVerbatim(b, op, "\n")
 		writeWithIndent(b, indent, op, "}\n")
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		newPath, has := newAsset.GetPath()
 		contract.Assert(has)
 
-		b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath)))
+		write(b, op, "asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 	} else {
 		contract.Assert(oldAsset.IsURI())
 
@@ -939,7 +975,7 @@ func printAssetDiff(
 		newURI, has := newAsset.GetURI()
 		contract.Assert(has)
 
-		b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI)))
+		write(b, op, "asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 	}
 }
 
