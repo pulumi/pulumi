@@ -531,7 +531,7 @@ func printPropertyValue(
 			writeVerbatim(b, op, "[\n")
 			for i, elem := range arr {
 				writeWithIndent(b, indent, op, "    [%d]: ", i)
-				printPropertyValue(b, elem, planning, indent+2, op)
+				printPropertyValue(b, elem, planning, indent+1, op)
 			}
 			writeWithIndent(b, indent, op, "]")
 		}
@@ -864,7 +864,7 @@ func printAssetsDiff(
 			newName := newNames[j]
 
 			if oldName == newName {
-				title := func(_indent int, _op deploy.StepOp) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, _indent, _op) }
+				title := func(_indent int, _op deploy.StepOp) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, _op) }
 
 				oldAsset := oldAssets[oldName]
 				newAsset := newAssets[newName]
@@ -873,9 +873,9 @@ func printAssetsDiff(
 
 				switch t := oldAsset.(type) {
 				case *resource.Archive:
-					printArchiveDiff(b, title, t, newAsset.(*resource.Archive), planning, indent+1)
+					printArchiveDiff(b, title, t, newAsset.(*resource.Archive), planning, indent)
 				case *resource.Asset:
-					printAssetDiff(b, title, t, newAsset.(*resource.Asset), planning, indent+1)
+					printAssetDiff(b, title, t, newAsset.(*resource.Asset), planning, indent)
 				}
 				i++
 				j++
@@ -897,7 +897,7 @@ func printAssetsDiff(
 		if deleteOld {
 			oldName := oldNames[i]
 			title := func(_indent int, _op deploy.StepOp) {
-				printPropertyTitle(b, "\""+oldName+"\"", maxkey, _indent, _op)
+				printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, _op)
 			}
 			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, newIndent, newIndent)
 			i++
@@ -906,7 +906,7 @@ func printAssetsDiff(
 			contract.Assert(addNew)
 			newName := newNames[j]
 			title := func(_indent int, _op deploy.StepOp) {
-				printPropertyTitle(b, "\""+newName+"\"", maxkey, _indent, _op)
+				printPropertyTitle(b, "\""+newName+"\"", maxkey, indent, _op)
 			}
 			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent, newIndent)
 			j++
@@ -949,7 +949,7 @@ func printAssetDiff(
 		newText, has := newAsset.GetText()
 		contract.Assert(has)
 
-		write(b, op, "asset(text:%s) {\n\n", hashChange)
+		write(b, op, "asset(text:%s) {\n", hashChange)
 
 		massagedOldText := massageText(oldText)
 		massagedNewText := massageText(newText)
@@ -963,7 +963,6 @@ func printAssetDiff(
 
 		b.WriteString(diffToPrettyString(diffs2, indent+1))
 
-		writeVerbatim(b, op, "\n")
 		writeWithIndent(b, indent, op, "}\n")
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		newPath, has := newAsset.GetPath()
