@@ -768,6 +768,26 @@ func printAdd(
 	printPropertyValue(b, v, planning, valueIndent, op)
 }
 
+func makeArchiveHeader(archive *resource.Archive) string {
+
+	var archiveType string
+	var contents string
+
+	if path, has := archive.GetPath(); has {
+		archiveType = "file"
+		contents = path
+	} else if uri, has := archive.GetURI(); has {
+		archiveType = "uri"
+		contents = uri
+	} else {
+		contract.Assert(archive.IsAssets())
+		archiveType = "assets"
+		contents = "..."
+	}
+
+	return fmt.Sprintf("archive(%s:%s) { %s }\n", archiveType, shortHash(archive.Hash), contents)
+}
+
 func printArchiveDiff(
 	b *bytes.Buffer, title func(int, deploy.StepOp),
 	oldArchive *resource.Archive, newArchive *resource.Archive,
@@ -782,26 +802,29 @@ func printArchiveDiff(
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 
 	if oldPath, has := oldArchive.GetPath(); has {
-		newPath, has := newArchive.GetPath()
-		contract.Assert(has)
-
-		write(b, op, "archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+		if newPath, has := newArchive.GetPath(); has {
+			write(b, op, "archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+			return
+		}
 	} else if oldURI, has := oldArchive.GetURI(); has {
-		newURI, has := newArchive.GetURI()
-		contract.Assert(has)
-
-		write(b, op, "archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+		if newURI, has := newArchive.GetURI(); has {
+			write(b, op, "archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+			return
+		}
 	} else {
-		contract.Assert(oldArchive.IsAssets() && newArchive.IsAssets())
-		write(b, op, "archive(assets:%s) {\n", hashChange)
-
+		contract.Assert(oldArchive.IsAssets())
 		oldAssets, _ := oldArchive.GetAssets()
-		newAssets, _ := newArchive.GetAssets()
 
-		printAssetsDiff(b, oldAssets, newAssets, planning, indent+1)
-
-		writeWithIndent(b, indent, deploy.OpUpdate, "}\n")
+		if newAssets, has := newArchive.GetAssets(); has {
+			write(b, op, "archive(assets:%s) {\n", hashChange)
+			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1)
+			writeWithIndent(b, indent, deploy.OpUpdate, "}\n")
+			return
+		}
 	}
+
+	// Type of archive changed.  Just print out what it changed from and to.
+	write(b, op, "%s -> %s", makeArchiveHeader(oldArchive), makeArchiveHeader(newArchive))
 }
 
 func printAssetsDiff(
