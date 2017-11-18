@@ -284,8 +284,6 @@ func plural(s string, c int) string {
 	return s
 }
 
-// const detailsIndent = "      " // 4 spaces, plus 2 for "+ ", "- ", and " " leaders
-
 func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, indent int) {
 	op := step.Op()
 
