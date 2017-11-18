@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -325,6 +327,7 @@ func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.St
 	if id != "" {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
+
 	if urn != "" {
 		b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, urn))
 	}
@@ -370,7 +373,7 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, ind
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
 		if v := props[k]; shouldPrintPropertyValue(v, planning) {
-			printPropertyTitle(b, k, maxkey, indent)
+			printPropertyTitle(b, string(k), maxkey, indent)
 			printPropertyValue(b, v, planning, indent)
 		}
 	}
@@ -429,7 +432,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 					b.WriteString(fmt.Sprintf("%v---outputs:---\n", indent))
 					firstout = false
 				}
-				printPropertyTitle(b, k, maxkey, indent)
+				printPropertyTitle(b, string(k), maxkey, indent)
 				printPropertyValue(b, newout, false, indent)
 			}
 		}
@@ -450,11 +453,14 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	return true
 }
 
-func printPropertyTitle(b *bytes.Buffer, k resource.PropertyKey, align int, indent string) {
-	b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(align)+"s: ", indent, k))
+func printPropertyTitle(b *bytes.Buffer, name string, align int, indent string) {
+	b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(align)+"s: ", indent, name))
 }
 
-func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool, indent string) {
+func printPropertyValue(
+	b *bytes.Buffer, v resource.PropertyValue, planning bool,
+	indent string) {
+
 	if v.IsNull() {
 		b.WriteString("<null>")
 	} else if v.IsBool() {
@@ -479,6 +485,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 		a := v.AssetValue()
 		if text, has := a.GetText(); has {
 			b.WriteString(fmt.Sprintf("asset(text:%s) {\n", shortHash(a.Hash)))
+
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(text, "\n")
 			for _, line := range lines {
@@ -501,15 +508,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 			}
 			sort.Strings(names)
 			for _, name := range names {
-				b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
-				switch t := assets[name].(type) {
-				case *resource.Asset:
-					printPropertyValue(b, resource.NewAssetProperty(t), planning, indent+"    ")
-				case *resource.Archive:
-					printPropertyValue(b, resource.NewArchiveProperty(t), planning, indent+"    ")
-				default:
-					contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
-				}
+				printAssetOrArchive(b, assets[name], name, indent, planning)
 			}
 			b.WriteString(fmt.Sprintf("%v}", indent))
 		} else if path, has := a.GetPath(); has {
@@ -534,6 +533,23 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 	b.WriteString("\n")
 }
 
+func printAssetOrArchive(b *bytes.Buffer, v interface{}, name string, indent string, planning bool) {
+	b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
+	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+"    ")
+}
+
+func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
+	switch t := v.(type) {
+	case *resource.Asset:
+		return resource.NewAssetProperty(t)
+	case *resource.Archive:
+		return resource.NewArchiveProperty(t)
+	default:
+		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
+		return resource.PropertyValue{V: nil}
+	}
+}
+
 func shortHash(hash string) string {
 	if len(hash) > 7 {
 		return hash[:7]
@@ -552,8 +568,10 @@ func printArrayElemHeader(b *bytes.Buffer, i int, indent string) string {
 	return newIndent
 }
 
-func printOldNewDiffs(b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
+func printOldNewDiffs(
+	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
 	replaces []resource.PropertyKey, planning bool, indent string) {
+
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
 		printObjectDiff(b, *diff, replaces, false, planning, indent)
@@ -562,8 +580,11 @@ func printOldNewDiffs(b *bytes.Buffer, olds resource.PropertyMap, news resource.
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
-	replaces []resource.PropertyKey, causedReplace bool, planning bool, indent string) {
+func printObjectDiff(
+	b *bytes.Buffer, diff resource.ObjectDiff,
+	replaces []resource.PropertyKey, causedReplace bool, planning bool,
+	indent string) {
+
 	contract.Assert(len(indent) > 2)
 
 	// Compute the maximum with of property keys so we can justify everything.
@@ -581,20 +602,14 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
-		title := func(id string) { printPropertyTitle(b, k, maxkey, id) }
+		title := func(id string) { printPropertyTitle(b, string(k), maxkey, id) }
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
-				b.WriteString(colors.SpecCreate)
-				title(addIndent(indent))
-				printPropertyValue(b, add, planning, addIndent(indent))
-				b.WriteString(colors.Reset)
+				printAdd(b, add, title, true, planning, indent, indent)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
-				b.WriteString(colors.SpecDelete)
-				title(deleteIndent(indent))
-				printPropertyValue(b, delete, planning, deleteIndent(indent))
-				b.WriteString(colors.Reset)
+				printDelete(b, delete, title, true, planning, indent, indent)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
 			if !causedReplace && replaceMap != nil {
@@ -608,8 +623,10 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 	}
 }
 
-func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.ValueDiff,
+func printPropertyValueDiff(
+	b *bytes.Buffer, title func(string), diff resource.ValueDiff,
 	causedReplace bool, planning bool, indent string) {
+
 	contract.Assert(len(indent) > 2)
 
 	if diff.Array != nil {
@@ -621,15 +638,9 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 			_, newIndent := getArrayElemHeader(b, i, indent)
 			titleFunc := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
-				b.WriteString(deploy.OpCreate.Color())
-				titleFunc(addIndent(indent))
-				printPropertyValue(b, add, planning, addIndent(newIndent))
-				b.WriteString(colors.Reset)
+				printAdd(b, add, titleFunc, true, planning, indent, newIndent)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				b.WriteString(deploy.OpDelete.Color())
-				titleFunc(deleteIndent(indent))
-				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
-				b.WriteString(colors.Reset)
+				printDelete(b, delete, titleFunc, true, planning, indent, newIndent)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
 			} else {
@@ -644,34 +655,379 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+"    ")
 		b.WriteString(fmt.Sprintf("%s}\n", indent))
 	} else {
+		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
+		shouldPrintNew := shouldPrintPropertyValue(diff.New, false)
+
+		if diff.Old.IsArchive() &&
+			diff.New.IsArchive() &&
+			!causedReplace &&
+			shouldPrintOld &&
+			shouldPrintNew {
+			printArchiveDiff(b, title, diff.Old.ArchiveValue(), diff.New.ArchiveValue(), planning, indent)
+			return
+		}
+
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
-		if shouldPrintPropertyValue(diff.Old, false) {
-			var color string
-			if causedReplace {
-				color = deploy.OpDelete.Color() // this property triggered replacement; color as a delete
-			} else {
-				color = deploy.OpUpdate.Color()
-			}
-			b.WriteString(color)
-			title(deleteIndent(indent))
-			printPropertyValue(b, diff.Old, planning, deleteIndent(indent))
-			b.WriteString(colors.Reset)
+		if shouldPrintOld {
+			printDelete(b, diff.Old, title, causedReplace, planning, indent, indent)
 		}
-		if shouldPrintPropertyValue(diff.New, false) {
-			var color string
-			if causedReplace {
-				color = deploy.OpCreate.Color() // this property triggered replacement; color as a create
-			} else {
-				color = deploy.OpUpdate.Color()
-			}
-			b.WriteString(color)
-			title(addIndent(indent))
-			printPropertyValue(b, diff.New, planning, addIndent(indent))
-			b.WriteString(colors.Reset)
+		if shouldPrintNew {
+			printAdd(b, diff.New, title, causedReplace, planning, indent, indent)
 		}
 	}
 }
 
-func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }
-func deleteIndent(indent string) string { return indent[:len(indent)-2] + "- " }
+func printDelete(
+	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool,
+	planning bool, indent string, newIndent string) {
+
+	var color string
+	if causedReplace {
+		color = colors.SpecDelete
+	} else {
+		color = colors.SpecUpdate
+	}
+	b.WriteString(color)
+	title(deletedIndentString(indent))
+	printPropertyValue(b, v, planning, deletedIndentString(newIndent))
+	b.WriteString(colors.Reset)
+}
+
+func printAdd(
+	b *bytes.Buffer, v resource.PropertyValue, title func(string), causedReplace bool,
+	planning bool, indent string, newIndent string) {
+
+	var color string
+	if causedReplace {
+		color = colors.SpecCreate
+	} else {
+		color = colors.SpecUpdate
+	}
+
+	b.WriteString(color)
+	title(addedIndentString(indent))
+	printPropertyValue(b, v, planning, addedIndentString(newIndent))
+	b.WriteString(colors.Reset)
+}
+
+func printArchiveDiff(
+	b *bytes.Buffer, title func(string),
+	oldArchive *resource.Archive, newArchive *resource.Archive,
+	planning bool, indent string) {
+
+	// TODO: this could be called recursively from itself.  In the recursive case, we might have an
+	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
+
+	color := deploy.OpUpdate.Color()
+	b.WriteString(color)
+	title(changedIndentString(indent))
+
+	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
+
+	if oldPath, has := oldArchive.GetPath(); has {
+		newPath, has := newArchive.GetPath()
+		contract.Assert(has)
+
+		b.WriteString(fmt.Sprintf("archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath)))
+	} else if oldURI, has := oldArchive.GetURI(); has {
+		newURI, has := newArchive.GetURI()
+		contract.Assert(has)
+
+		b.WriteString(fmt.Sprintf("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI)))
+	} else {
+		contract.Assert(oldArchive.IsAssets() && newArchive.IsAssets())
+		b.WriteString(fmt.Sprintf("archive(assets:%s) {\n", hashChange))
+
+		oldAssets, _ := oldArchive.GetAssets()
+		newAssets, _ := newArchive.GetAssets()
+
+		printAssetsDiff(b, oldAssets, newAssets, planning, indent+"    ")
+
+		b.WriteString(fmt.Sprintf("%v}\n", indent))
+	}
+
+	b.WriteString(colors.Reset)
+}
+
+func printAssetsDiff(
+	b *bytes.Buffer,
+	oldAssets map[string]interface{}, newAssets map[string]interface{},
+	planning bool, indent string) {
+
+	// Diffing assets proceeds by getting the sorted list of asset names from both the old and
+	// new assets, and then stepwise processing each.  For any asset in old that isn't in new,
+	// we print this out as a delete.  For any asset in new that isn't in old, we print this out
+	// as an add.  For any asset in both we print out of it is unchanged or not.  If so, we
+	// recurse on that data to print out how it changed.
+
+	var oldNames []string
+	var newNames []string
+
+	for name := range oldAssets {
+		oldNames = append(oldNames, name)
+	}
+
+	for name := range newAssets {
+		newNames = append(newNames, name)
+	}
+
+	sort.Strings(oldNames)
+	sort.Strings(newNames)
+
+	i := 0
+	j := 0
+
+	var keys []resource.PropertyKey
+	for _, name := range oldNames {
+		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
+	}
+	for _, name := range newNames {
+		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
+	}
+
+	maxkey := maxKey(keys)
+
+	for i < len(oldNames) || j < len(newNames) {
+		color := deploy.OpUpdate.Color()
+		b.WriteString(color)
+
+		deleteOld := false
+		addNew := false
+		if i < len(oldNames) && j < len(newNames) {
+			oldName := oldNames[i]
+			newName := newNames[j]
+
+			if oldName == newName {
+				title := func(id string) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, id) }
+
+				oldAsset := oldAssets[oldName]
+				newAsset := newAssets[newName]
+
+				// b.WriteString(fmt.Sprintf("%v\"%v\": ", indent, oldName))
+
+				switch t := oldAsset.(type) {
+				case *resource.Archive:
+					printArchiveDiff(b, title, t, newAsset.(*resource.Archive), planning, indent+"    ")
+				case *resource.Asset:
+					printAssetDiff(b, title, t, newAsset.(*resource.Asset), planning, indent+"    ")
+				}
+				i++
+				j++
+				continue
+			}
+
+			if oldName < newName {
+				deleteOld = true
+			} else {
+				addNew = true
+			}
+		} else if i < len(oldNames) {
+			deleteOld = true
+		} else {
+			addNew = true
+		}
+
+		newIndent := indent + "    "
+		if deleteOld {
+			oldName := oldNames[i]
+			title := func(id string) { printPropertyTitle(b, "\""+oldName+"\"", maxkey, id) }
+			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), title, false, planning, newIndent, newIndent)
+			i++
+			continue
+		} else {
+			contract.Assert(addNew)
+			newName := newNames[j]
+			title := func(id string) { printPropertyTitle(b, "\""+newName+"\"", maxkey, id) }
+			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent, newIndent)
+			j++
+		}
+
+		b.WriteString(colors.Reset)
+	}
+}
+
+func printAssetDiff(
+	b *bytes.Buffer, title func(string),
+	oldAsset *resource.Asset, newAsset *resource.Asset,
+	planning bool, indent string) {
+
+	// If the assets aren't changed, just print out: = assetName: type(hash)
+	if oldAsset.Hash == newAsset.Hash {
+		b.WriteString(colors.Reset)
+		title(unchangedIndentString(indent))
+
+		hash := shortHash(oldAsset.Hash)
+		if path, has := oldAsset.GetPath(); has {
+			b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hash, path))
+		} else if uri, has := oldAsset.GetURI(); has {
+			b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hash, uri))
+		} else {
+			b.WriteString(fmt.Sprintf("asset(text:%s)\n", hash))
+		}
+
+		b.WriteString(deploy.OpUpdate.Color())
+		return
+	}
+
+	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
+	title(changedIndentString(indent))
+
+	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
+
+	if oldText, has := oldAsset.GetText(); has {
+		newText, has := newAsset.GetText()
+		contract.Assert(has)
+
+		b.WriteString(fmt.Sprintf("asset(text:%s) {\n\n", hashChange))
+
+		massagedOldText := massageText(oldText)
+		massagedNewText := massageText(newText)
+
+		differ := diffmatchpatch.New()
+		differ.DiffTimeout = 0
+
+		hashed1, hashed2, lineArray := differ.DiffLinesToChars(massagedOldText, massagedNewText)
+		diffs1 := differ.DiffMain(hashed1, hashed2, false)
+		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
+
+		b.WriteString(diffToPrettyString(diffs2))
+		b.WriteString(fmt.Sprintf("\n%v}\n", indent))
+	} else if oldPath, has := oldAsset.GetPath(); has {
+		newPath, has := newAsset.GetPath()
+		contract.Assert(has)
+
+		b.WriteString(fmt.Sprintf("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath)))
+	} else {
+		contract.Assert(oldAsset.IsURI())
+
+		oldURI, has := oldAsset.GetURI()
+		contract.Assert(has)
+		newURI, has := newAsset.GetURI()
+		contract.Assert(has)
+
+		b.WriteString(fmt.Sprintf("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI)))
+	}
+}
+
+func getTextChangeString(old string, new string) string {
+	if old == new {
+		return old
+	}
+
+	return fmt.Sprintf("%s->%s", old, new)
+}
+
+// massageText takes the text for a function and cleans it up a bit to make the user visible diffs
+// less noisy.  Specifically:
+//   1. it tries to condense things by changling multiple blank lines into a single blank line.
+//   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
+//   3. it elides the with-capture headers, as changes there are not generally meaningful.
+func massageText(text string) string {
+	for {
+		newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
+		if len(newText) == len(text) {
+			break
+		}
+
+		text = newText
+	}
+
+	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
+	closureRegexp, _ := regexp.Compile(`    with\(\{ .* \}\) \{`)
+
+	text = shaRegexp.ReplaceAllString(text, "__shaHash")
+	text = closureRegexp.ReplaceAllString(text, "    with (__closure) {")
+
+	return text
+}
+
+// diffToPrettyString takes the full diff produed by diffmatchpatch and condenses it into something
+// useful we can print to the console.  Specifically, while it includes any adds/removes in
+// green/red, it will also show portions of the unchanged text to help give surrounding context to
+// those add/removes. Because the unchanged portions may be very large, it only included around 3
+// lines before/after the change.
+func diffToPrettyString(diffs []diffmatchpatch.Diff) string {
+	var buff bytes.Buffer
+	for index, diff := range diffs {
+		text := diff.Text
+
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			buff.WriteString(deploy.OpCreate.Color())
+			buff.WriteString(text)
+			buff.WriteString(colors.Reset)
+		case diffmatchpatch.DiffDelete:
+			buff.WriteString(deploy.OpDelete.Color())
+			buff.WriteString(text)
+			buff.WriteString(colors.Reset)
+		case diffmatchpatch.DiffEqual:
+			lines := strings.SplitAfter(text, "\n")
+			var trimmedLines []string
+			for _, line := range lines {
+				if strings.TrimSpace(line) != "" {
+					trimmedLines = append(trimmedLines, line)
+				}
+			}
+
+			lines = trimmedLines
+
+			// Show the unchanged text in white.
+			buff.WriteString(colors.Reset)
+			if index == 0 {
+				// First chunk of the file.
+				if len(lines) > 4 {
+					buff.WriteString("...\n")
+					buff.WriteString(lines[len(lines)-3])
+					buff.WriteString(lines[len(lines)-2])
+					buff.WriteString(lines[len(lines)-1])
+				} else {
+					buff.WriteString(text)
+				}
+			} else if index == len(diffs)-1 {
+				if len(lines) > 4 {
+					buff.WriteString(lines[0])
+					buff.WriteString(lines[1])
+					buff.WriteString(lines[2])
+					buff.WriteString("...\n")
+				} else {
+					buff.WriteString(text)
+				}
+			} else {
+				if len(lines) > 7 {
+					buff.WriteString(lines[0])
+					buff.WriteString(lines[1])
+					buff.WriteString(lines[2])
+					buff.WriteString("...\n")
+					buff.WriteString(lines[len(lines)-3])
+					buff.WriteString(lines[len(lines)-2])
+					buff.WriteString(lines[len(lines)-1])
+				} else {
+					buff.WriteString(text)
+				}
+			}
+		}
+	}
+
+	buff.WriteString(deploy.OpUpdate.Color())
+
+	return buff.String()
+}
+
+func addedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "+ ")
+}
+func deletedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "- ")
+}
+func changedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "~ ")
+}
+func unchangedIndentString(currentIndent string) string {
+	return indentStringWithPrefix(currentIndent, "= ")
+}
+
+func indentStringWithPrefix(currentIndent string, prefix string) string {
+	contract.Assert(len(prefix) == 2)
+	return currentIndent[:len(currentIndent)-2] + prefix
+}
