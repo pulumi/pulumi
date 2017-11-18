@@ -975,6 +975,14 @@ func getTextChangeString(old string, new string) string {
 //   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
 //   3. it elides the with-capture headers, as changes there are not generally meaningful.
 func massageText(text string) string {
+	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
+	closureRegexp, _ := regexp.Compile(`    with\(\{ .* \}\) \{`)
+
+	// Only do this for strings that match our serialized function pattern.
+	if !shaRegexp.MatchString(text) || !closureRegexp.MatchString(text) {
+		return text
+	}
+
 	for {
 		newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
 		if len(newText) == len(text) {
@@ -983,9 +991,6 @@ func massageText(text string) string {
 
 		text = newText
 	}
-
-	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
-	closureRegexp, _ := regexp.Compile(`    with\(\{ .* \}\) \{`)
 
 	text = shaRegexp.ReplaceAllString(text, "__shaHash")
 	text = closureRegexp.ReplaceAllString(text, "    with (__closure) {")
