@@ -921,6 +921,24 @@ func printAssetsDiff(
 	}
 }
 
+func makeAssetHeader(asset *resource.Asset) string {
+	var assetType string
+	var contents string
+
+	if path, has := asset.GetPath(); has {
+		assetType = "file"
+		contents = path
+	} else if uri, has := asset.GetURI(); has {
+		assetType = "uri"
+		contents = uri
+	} else {
+		assetType = "text"
+		contents = "..."
+	}
+
+	return fmt.Sprintf("asset(%s:%s) { %s }\n", assetType, shortHash(asset.Hash), contents)
+}
+
 func printAssetDiff(
 	b *bytes.Buffer, title func(int, deploy.StepOp),
 	oldAsset *resource.Asset, newAsset *resource.Asset,
@@ -932,16 +950,7 @@ func printAssetDiff(
 	if oldAsset.Hash == newAsset.Hash {
 		op = deploy.OpSame
 		title(indent, op)
-
-		hash := shortHash(oldAsset.Hash)
-		if path, has := oldAsset.GetPath(); has {
-			write(b, op, "asset(file:%s) { %s }\n", hash, path)
-		} else if uri, has := oldAsset.GetURI(); has {
-			write(b, op, "asset(uri:%s) { %s }\n", hash, uri)
-		} else {
-			write(b, op, "asset(text:%s)\n", hash)
-		}
-
+		write(b, op, makeAssetHeader(oldAsset))
 		return
 	}
 
@@ -951,39 +960,41 @@ func printAssetDiff(
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
 	if oldText, has := oldAsset.GetText(); has {
-		newText, has := newAsset.GetText()
-		contract.Assert(has)
+		if newText, has := newAsset.GetText(); has {
+			write(b, op, "asset(text:%s) {\n", hashChange)
 
-		write(b, op, "asset(text:%s) {\n", hashChange)
+			massagedOldText := massageText(oldText)
+			massagedNewText := massageText(newText)
 
-		massagedOldText := massageText(oldText)
-		massagedNewText := massageText(newText)
+			differ := diffmatchpatch.New()
+			differ.DiffTimeout = 0
 
-		differ := diffmatchpatch.New()
-		differ.DiffTimeout = 0
+			hashed1, hashed2, lineArray := differ.DiffLinesToChars(massagedOldText, massagedNewText)
+			diffs1 := differ.DiffMain(hashed1, hashed2, false)
+			diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
-		hashed1, hashed2, lineArray := differ.DiffLinesToChars(massagedOldText, massagedNewText)
-		diffs1 := differ.DiffMain(hashed1, hashed2, false)
-		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
+			b.WriteString(diffToPrettyString(diffs2, indent+1))
 
-		b.WriteString(diffToPrettyString(diffs2, indent+1))
-
-		writeWithIndent(b, indent, op, "}\n")
+			writeWithIndent(b, indent, op, "}\n")
+			return
+		}
 	} else if oldPath, has := oldAsset.GetPath(); has {
-		newPath, has := newAsset.GetPath()
-		contract.Assert(has)
-
-		write(b, op, "asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+		if newPath, has := newAsset.GetPath(); has {
+			write(b, op, "asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+			return
+		}
 	} else {
 		contract.Assert(oldAsset.IsURI())
 
-		oldURI, has := oldAsset.GetURI()
-		contract.Assert(has)
-		newURI, has := newAsset.GetURI()
-		contract.Assert(has)
-
-		write(b, op, "asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+		oldURI, _ := oldAsset.GetURI()
+		if newURI, has := newAsset.GetURI(); has {
+			write(b, op, "asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+			return
+		}
 	}
+
+	// Type of asset changed.  Just print out what it changed from and to.
+	write(b, op, "%s -> %s", makeAssetHeader(oldAsset), makeAssetHeader(newAsset))
 }
 
 func getTextChangeString(old string, new string) string {
