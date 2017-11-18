@@ -1078,9 +1078,6 @@ func deletedIndentString(currentIndent string) string {
 func changedIndentString(currentIndent string) string {
 	return indentStringWithPrefix(currentIndent, "~ ")
 }
-func unchangedIndentString(currentIndent string) string {
-	return indentStringWithPrefix(currentIndent, "= ")
-}
 
 func indentStringWithPrefix(currentIndent string, prefix string) string {
 	contract.Assert(len(prefix) == 2)
