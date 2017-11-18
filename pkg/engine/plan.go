@@ -329,8 +329,8 @@ func getIdentationString(indent int, op deploy.StepOp) string {
 	}
 
 	switch op {
-	case deploy.OpSame:
-		return unchangedIndentString(result)
+	// case deploy.OpSame:
+	// 	return unchangedIndentString(result)
 	case deploy.OpCreate:
 		return addedIndentString(result)
 	case deploy.OpUpdate:
@@ -526,7 +526,7 @@ func printPropertyValue(
 		} else {
 			writeVerbatim(b, op, "[\n")
 			for i, elem := range arr {
-				writeWithIndent(b, indent+1, op, "[%d]: ", i)
+				writeWithIndent(b, indent, op, "    [%d]: ", i)
 				printPropertyValue(b, elem, planning, indent+2, op)
 			}
 			writeWithIndent(b, indent, op, "]")
