@@ -344,12 +344,24 @@ func getIdentationString(indent int, op deploy.StepOp) string {
 	return result
 }
 
-func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
+func writeWithSpecificIndentAndPrefix(
+	b *bytes.Buffer, indent int,
+	colorOp deploy.StepOp, prefixOp deploy.StepOp,
+	format string, a ...interface{}) {
+
 	b.WriteString(colors.Reset)
-	b.WriteString(op.Color())
-	b.WriteString(getIdentationString(indent, op))
+	b.WriteString(colorOp.Color())
+	b.WriteString(getIdentationString(indent, prefixOp))
 	b.WriteString(fmt.Sprintf(format, a...))
 	b.WriteString(colors.Reset)
+}
+
+func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
+	writeWithSpecificIndentAndPrefix(b, indent, op, op, format, a...)
+}
+
+func writeWithIndentAndNoPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
+	writeWithSpecificIndentAndPrefix(b, indent, op, deploy.OpSame, format, a...)
 }
 
 func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
@@ -552,7 +564,7 @@ func printPropertyValue(
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(massaged, "\n")
 			for _, line := range lines {
-				writeWithIndent(b, indent, op, "    %s\n", line)
+				writeWithIndentAndNoPrefix(b, indent, op, "    %s\n", line)
 			}
 			writeWithIndent(b, indent, op, "}")
 		} else if path, has := a.GetPath(); has {
@@ -1043,11 +1055,7 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 	var buff bytes.Buffer
 
 	writeDiff := func(op deploy.StepOp, text string) {
-		buff.WriteString(colors.Reset)
-		buff.WriteString(op.Color())
-		buff.WriteString(getIdentationString(indent, deploy.OpSame))
-		buff.WriteString(text)
-		buff.WriteString(colors.Reset)
+		writeWithIndentAndNoPrefix(&buff, indent, op, "%s", text)
 	}
 
 	for index, diff := range diffs {
