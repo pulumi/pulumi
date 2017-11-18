@@ -621,17 +621,6 @@ func shortHash(hash string) string {
 	return hash
 }
 
-// func getArrayElemHeader(b *bytes.Buffer, i int, indent string) (string, string) {
-// 	prefix := fmt.Sprintf("    %s[%d]: ", indent, i)
-// 	return prefix, fmt.Sprintf("%-"+strconv.Itoa(len(prefix))+"s", "")
-// }
-
-// func printArrayElemHeader(b *bytes.Buffer, i int, indent string) string {
-// 	prefix, newIndent := getArrayElemHeader(b, i, indent)
-// 	b.WriteString(prefix)
-// 	return newIndent
-// }
-
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
 	replaces []resource.PropertyKey, planning bool, indent int, op deploy.StepOp) {
@@ -760,10 +749,6 @@ func printDelete(
 
 	title(titleIndent, op)
 	printPropertyValue(b, v, planning, valueIndent, op)
-	// b.WriteString(color)
-	// title(deletedIndentString(indent))
-	// printPropertyValue(b, v, planning, deletedIndentString(newIndent))
-	// b.WriteString(colors.Reset)
 }
 
 func printAdd(
@@ -779,10 +764,6 @@ func printAdd(
 
 	title(titleIndent, op)
 	printPropertyValue(b, v, planning, valueIndent, op)
-	// b.WriteString(color)
-	// title(addedIndentString(indent))
-	// printPropertyValue(b, v, planning, addedIndentString(newIndent))
-	// b.WriteString(colors.Reset)
 }
 
 func printArchiveDiff(
@@ -793,8 +774,6 @@ func printArchiveDiff(
 	// TODO: this could be called recursively from itself.  In the recursive case, we might have an
 	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
 
-	// color := deploy.OpUpdate.Color()
-	// b.WriteString(color)
 	op := deploy.OpUpdate
 	title(indent, op)
 
@@ -821,8 +800,6 @@ func printArchiveDiff(
 
 		writeWithIndent(b, indent, deploy.OpUpdate, "}\n")
 	}
-
-	// b.WriteString(colors.Reset)
 }
 
 func printAssetsDiff(
@@ -876,8 +853,6 @@ func printAssetsDiff(
 				oldAsset := oldAssets[oldName]
 				newAsset := newAssets[newName]
 
-				// b.WriteString(fmt.Sprintf("%v\"%v\": ", indent, oldName))
-
 				switch t := oldAsset.(type) {
 				case *resource.Archive:
 					printArchiveDiff(b, title, t, newAsset.(*resource.Archive), planning, indent)
@@ -918,8 +893,6 @@ func printAssetsDiff(
 			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), title, false, planning, newIndent, newIndent)
 			j++
 		}
-
-		// b.WriteString(colors.Reset)
 	}
 }
 
