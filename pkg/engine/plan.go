@@ -547,10 +547,12 @@ func printPropertyValue(
 		if text, has := a.GetText(); has {
 			write(b, op, "asset(text:%s) {\n", shortHash(a.Hash))
 
+			massaged := massageText(text)
+
 			// pretty print the text, line by line, with proper breaks.
-			lines := strings.Split(text, "\n")
+			lines := strings.Split(massaged, "\n")
 			for _, line := range lines {
-				writeWithIndent(b, indent, op, "    \"%s\"\n", line)
+				writeWithIndent(b, indent, op, "    %s\n", line)
 			}
 			writeWithIndent(b, indent, op, "}")
 		} else if path, has := a.GetPath(); has {
