@@ -358,7 +358,11 @@ func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
 }
 
 func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
-	write(b, op, "%s", value)
+	writeVerbatimWithIndent(b, 0, op, value)
+}
+
+func writeVerbatimWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, value string) {
+	writeWithIndent(b, indent, op, "%s", value)
 }
 
 func printResourceProperties(
@@ -921,8 +925,8 @@ func printAssetDiff(
 
 	// If the assets aren't changed, just print out: = assetName: type(hash)
 	if oldAsset.Hash == newAsset.Hash {
-		// b.WriteString(colors.Reset)
-		title(indent, deploy.OpSame)
+		op = deploy.OpSame
+		title(indent, op)
 
 		hash := shortHash(oldAsset.Hash)
 		if path, has := oldAsset.GetPath(); has {
@@ -933,7 +937,6 @@ func printAssetDiff(
 			write(b, op, "asset(text:%s)\n", hash)
 		}
 
-		// b.WriteString(deploy.OpUpdate.Color())
 		return
 	}
 
@@ -958,7 +961,7 @@ func printAssetDiff(
 		diffs1 := differ.DiffMain(hashed1, hashed2, false)
 		diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
-		b.WriteString(diffToPrettyString(diffs2))
+		b.WriteString(diffToPrettyString(diffs2, indent+1))
 
 		writeVerbatim(b, op, "\n")
 		writeWithIndent(b, indent, op, "}\n")
@@ -1016,20 +1019,25 @@ func massageText(text string) string {
 // green/red, it will also show portions of the unchanged text to help give surrounding context to
 // those add/removes. Because the unchanged portions may be very large, it only included around 3
 // lines before/after the change.
-func diffToPrettyString(diffs []diffmatchpatch.Diff) string {
+func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 	var buff bytes.Buffer
+
+	writeDiff := func(op deploy.StepOp, text string) {
+		buff.WriteString(colors.Reset)
+		buff.WriteString(op.Color())
+		buff.WriteString(getIdentationString(indent, deploy.OpSame))
+		buff.WriteString(text)
+		buff.WriteString(colors.Reset)
+	}
+
 	for index, diff := range diffs {
 		text := diff.Text
 
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
-			buff.WriteString(deploy.OpCreate.Color())
-			buff.WriteString(text)
-			buff.WriteString(colors.Reset)
+			writeDiff(deploy.OpCreate, text)
 		case diffmatchpatch.DiffDelete:
-			buff.WriteString(deploy.OpDelete.Color())
-			buff.WriteString(text)
-			buff.WriteString(colors.Reset)
+			writeDiff(deploy.OpDelete, text)
 		case diffmatchpatch.DiffEqual:
 			lines := strings.SplitAfter(text, "\n")
 			var trimmedLines []string
@@ -1042,43 +1050,42 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff) string {
 			lines = trimmedLines
 
 			// Show the unchanged text in white.
-			buff.WriteString(colors.Reset)
+
 			if index == 0 {
 				// First chunk of the file.
 				if len(lines) > 4 {
-					buff.WriteString("...\n")
-					buff.WriteString(lines[len(lines)-3])
-					buff.WriteString(lines[len(lines)-2])
-					buff.WriteString(lines[len(lines)-1])
-				} else {
-					buff.WriteString(text)
+					writeDiff(deploy.OpSame, "...\n")
+					writeDiff(deploy.OpSame, lines[len(lines)-3])
+					writeDiff(deploy.OpSame, lines[len(lines)-2])
+					writeDiff(deploy.OpSame, lines[len(lines)-1])
+					continue
 				}
 			} else if index == len(diffs)-1 {
 				if len(lines) > 4 {
-					buff.WriteString(lines[0])
-					buff.WriteString(lines[1])
-					buff.WriteString(lines[2])
-					buff.WriteString("...\n")
-				} else {
-					buff.WriteString(text)
+					writeDiff(deploy.OpSame, lines[0])
+					writeDiff(deploy.OpSame, lines[1])
+					writeDiff(deploy.OpSame, lines[2])
+					writeDiff(deploy.OpSame, "...\n")
+					continue
 				}
 			} else {
 				if len(lines) > 7 {
-					buff.WriteString(lines[0])
-					buff.WriteString(lines[1])
-					buff.WriteString(lines[2])
-					buff.WriteString("...\n")
-					buff.WriteString(lines[len(lines)-3])
-					buff.WriteString(lines[len(lines)-2])
-					buff.WriteString(lines[len(lines)-1])
-				} else {
-					buff.WriteString(text)
+					writeDiff(deploy.OpSame, lines[0])
+					writeDiff(deploy.OpSame, lines[1])
+					writeDiff(deploy.OpSame, lines[2])
+					writeDiff(deploy.OpSame, "...\n")
+					writeDiff(deploy.OpSame, lines[len(lines)-3])
+					writeDiff(deploy.OpSame, lines[len(lines)-2])
+					writeDiff(deploy.OpSame, lines[len(lines)-1])
+					continue
 				}
+			}
+
+			for _, line := range lines {
+				writeDiff(deploy.OpSame, line)
 			}
 		}
 	}
-
-	buff.WriteString(deploy.OpUpdate.Color())
 
 	return buff.String()
 }
