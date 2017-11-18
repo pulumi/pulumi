@@ -1012,13 +1012,21 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 	for index, diff := range diffs {
 		text := diff.Text
 
+		lines := strings.Split(text, "\n")
+
+		printLines := func(op deploy.StepOp, startInclusive int, endExclusive int) {
+			for i := startInclusive; i < endExclusive; i++ {
+				writeDiff(op, lines[i])
+				buff.WriteString("\n")
+			}
+		}
+
 		switch diff.Type {
 		case diffmatchpatch.DiffInsert:
-			writeDiff(deploy.OpCreate, text)
+			printLines(deploy.OpCreate, 0, len(lines))
 		case diffmatchpatch.DiffDelete:
-			writeDiff(deploy.OpDelete, text)
+			printLines(deploy.OpDelete, 0, len(lines))
 		case diffmatchpatch.DiffEqual:
-			lines := strings.SplitAfter(text, "\n")
 			var trimmedLines []string
 			for _, line := range lines {
 				if strings.TrimSpace(line) != "" {
@@ -1034,35 +1042,25 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 				// First chunk of the file.
 				if len(lines) > 4 {
 					writeDiff(deploy.OpSame, "...\n")
-					writeDiff(deploy.OpSame, lines[len(lines)-3])
-					writeDiff(deploy.OpSame, lines[len(lines)-2])
-					writeDiff(deploy.OpSame, lines[len(lines)-1])
+					printLines(deploy.OpSame, len(lines)-3, len(lines))
 					continue
 				}
 			} else if index == len(diffs)-1 {
 				if len(lines) > 4 {
-					writeDiff(deploy.OpSame, lines[0])
-					writeDiff(deploy.OpSame, lines[1])
-					writeDiff(deploy.OpSame, lines[2])
+					printLines(deploy.OpSame, 0, 3)
 					writeDiff(deploy.OpSame, "...\n")
 					continue
 				}
 			} else {
 				if len(lines) > 7 {
-					writeDiff(deploy.OpSame, lines[0])
-					writeDiff(deploy.OpSame, lines[1])
-					writeDiff(deploy.OpSame, lines[2])
+					printLines(deploy.OpSame, 0, 3)
 					writeDiff(deploy.OpSame, "...\n")
-					writeDiff(deploy.OpSame, lines[len(lines)-3])
-					writeDiff(deploy.OpSame, lines[len(lines)-2])
-					writeDiff(deploy.OpSame, lines[len(lines)-1])
+					printLines(deploy.OpSame, len(lines)-3, len(lines))
 					continue
 				}
 			}
 
-			for _, line := range lines {
-				writeDiff(deploy.OpSame, line)
-			}
+			printLines(deploy.OpSame, 0, len(lines))
 		}
 	}
 
