@@ -389,15 +389,20 @@ func printResourceProperties(
 
 	// Print out the URN and, if present, the ID, as "pseudo-properties".
 	var id resource.ID
+
+	// For these simple properties, print them as 'same' if they're just an update or replace.
+	var simplePropOp = considerSameIfNotCreateOrDelete(op)
+
 	if old != nil {
 		id = old.ID
 	}
+
 	if id != "" {
-		writeWithIndent(b, indent, considerSameIfNotCreateOrDelete(op), "[id=%s]\n", string(id))
+		writeWithIndent(b, indent, simplePropOp, "[id=%s]\n", string(id))
 	}
 
 	if urn != "" {
-		writeWithIndent(b, indent, considerSameIfNotCreateOrDelete(op), "[urn=%s]\n", urn)
+		writeWithIndent(b, indent, simplePropOp, "[urn=%s]\n", urn)
 	}
 
 	// If this resource has children, also print a summary of those out too.
@@ -408,7 +413,7 @@ func printResourceProperties(
 		children = old.Children
 	}
 	for _, child := range children {
-		writeWithIndent(b, indent, op, "=> %s\n", indent, child)
+		writeWithIndent(b, indent, simplePropOp, "=> %s\n", indent, child)
 	}
 
 	if !summary {
