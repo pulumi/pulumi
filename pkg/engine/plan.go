@@ -793,7 +793,6 @@ func printAdd(
 }
 
 func makeArchiveHeader(archive *resource.Archive) string {
-
 	var archiveType string
 	var contents string
 
