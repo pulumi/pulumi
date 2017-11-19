@@ -1030,6 +1030,14 @@ func getTextChangeString(old string, new string) string {
 //   1. it tries to condense things by changling multiple blank lines into a single blank line.
 //   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
 //   3. it elides the with-capture headers, as changes there are not generally meaningful.
+//
+// TODO(https://github.com/pulumi/pulumi/issues/592) this is baking in a lot of knowledge about
+// pulumi serialized functions.  We should try to move to an alternative mode that isn't so brittle.
+// Options include:
+//   1. Have a documented delimeter format that plan.go will look for.  Have the function serializer
+//      emit those delimeters around code that should be ignored.
+//   2. Have our resource generation code supply not just the resource, but the "user presentable"
+//      resource that cuts out a lot of cruft.  We could then just diff that content here.
 func massageText(text string) string {
 	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
 	closureRegexp, _ := regexp.Compile(`    with\(\{ .* \}\) \{`)
