@@ -820,17 +820,18 @@ func printArchiveDiff(
 	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
 
 	op := deploy.OpUpdate
-	title(op)
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 
 	if oldPath, has := oldArchive.GetPath(); has {
 		if newPath, has := newArchive.GetPath(); has {
+			title(op)
 			write(b, op, "archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
 	} else if oldURI, has := oldArchive.GetURI(); has {
 		if newURI, has := newArchive.GetURI(); has {
+			title(op)
 			write(b, op, "archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
@@ -839,6 +840,7 @@ func printArchiveDiff(
 		oldAssets, _ := oldArchive.GetAssets()
 
 		if newAssets, has := newArchive.GetAssets(); has {
+			title(op)
 			write(b, op, "archive(assets:%s) {\n", hashChange)
 			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1)
 			writeWithIndent(b, indent, deploy.OpUpdate, "}\n")
@@ -846,8 +848,13 @@ func printArchiveDiff(
 		}
 	}
 
-	// Type of archive changed.  Just print out what it changed from and to.
-	write(b, op, "%s -> %s", makeArchiveHeader(oldArchive), makeArchiveHeader(newArchive))
+	// Type of archive changed, print this out as an remove and an add.
+	printDelete(
+		b, assetOrArchiveToPropertyValue(oldArchive),
+		title, false /*causedReplace*/, planning, indent)
+	printAdd(
+		b, assetOrArchiveToPropertyValue(newArchive),
+		title, false /*causedReplace*/, planning, indent)
 }
 
 func printAssetsDiff(
