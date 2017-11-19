@@ -792,25 +792,6 @@ func printAdd(
 	printPropertyValue(b, v, planning, indent, op)
 }
 
-func makeArchiveHeader(archive *resource.Archive) string {
-	var archiveType string
-	var contents string
-
-	if path, has := archive.GetPath(); has {
-		archiveType = "file"
-		contents = path
-	} else if uri, has := archive.GetURI(); has {
-		archiveType = "uri"
-		contents = uri
-	} else {
-		contract.Assert(archive.IsAssets())
-		archiveType = "assets"
-		contents = "..."
-	}
-
-	return fmt.Sprintf("archive(%s:%s) { %s }\n", archiveType, shortHash(archive.Hash), contents)
-}
-
 func printArchiveDiff(
 	b *bytes.Buffer, title func(deploy.StepOp),
 	oldArchive *resource.Archive, newArchive *resource.Archive,
