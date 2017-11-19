@@ -398,9 +398,41 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 // failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
 // preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
 func (iter *PlanIterator) Snap() *Snapshot {
-	var resources []*resource.State
 
-	// If we didn't finish the execution, we must produce a partial snapshot of old plus new states.
+	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
+	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
+	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
+	//
+	// - Begin with an empty merged DAG.
+	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG.
+	// - For each resource r in the base DAG:
+	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the current
+	//       DAG, which accurately captures its current dependencies.
+	//     - If r is not in the merged DAG, insert it and its outgoing edges into the merged DAG.
+	//
+	// Physically, however, each DAG is represented as list of resources without explicit dependency edges. In place of
+	// edges, it is assumed that the list represents a valid topological sort of its source DAG. Thus, any resource r at
+	// index i in a list L must be assumed to be dependent on all resources in L with index j s.t. j < i. Due to this
+	// representation, we implement the algorithm above as follows to produce a merged list that represents a valid
+	// topological sort of the merged DAG:
+	//
+	// - Begin with an empty merged list.
+	// - For each resource r in the current list, append r to the merged list. r must be in a correct location in the merged
+	//   list, as its position relative to its assumed dependencies has not changed.
+	// - For each resource r in the base list:
+	//     - If r is in the merged list, we are done by the logic given in the original algorithm.
+	//     - If r is not in the merged list, append r to the merged list. r must be in a correct location in the merged list:
+	//         - If any of r's dependencies were in the current list, they must already be in the merged list and their
+	//           relative order w.r.t. r has not changed.
+	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as they
+	//           would have been appended to the list before r.
+
+	// Start with a copy of the resources produced during the evaluation of the current plan.
+	resources := make([]*resource.State, len(iter.resources))
+	copy(resources, iter.resources)
+
+	// If the plan has not finished executing, append any resources from the base plan that were not produced by the current
+	// plan.
 	if !iter.done {
 		if prev := iter.p.prev; prev != nil {
 			for _, res := range prev.Resources {
@@ -410,9 +442,6 @@ func (iter *PlanIterator) Snap() *Snapshot {
 			}
 		}
 	}
-
-	// Always add the new resoures afterwards that got produced during the evaluation of the current plan.
-	resources = append(resources, iter.resources...)
 
 	return NewSnapshot(iter.p.Target().Name, time.Now(), resources)
 }

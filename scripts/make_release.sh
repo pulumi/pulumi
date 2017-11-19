@@ -27,12 +27,16 @@ function run_go_build() {
 
 # usage: copy_package <path-to-module> <module-name>
 copy_package() {
-    local MODULE_ROOT=${PUBDIR}/node_modules/${2}
+    local module_root=${PUBDIR}/node_modules/$2
 
-    mkdir -p "${MODULE_ROOT}"   
-    cp -R "${1}" "${MODULE_ROOT}/"
-    if [ -e "${MODULE_ROOT}/node_modules" ]; then
-        rm -rf "${MODULE_ROOT}/node_modules"
+    mkdir -p "${module_root}"
+    cp -R "$1" "${module_root}/"
+    cp "$1/../package.json" "${module_root}"
+    if [ -e "${module_root}/node_modules" ]; then
+        rm -rf "${module_root}/node_modules"
+    fi
+    if [ -e "${module_root}/tests" ]; then
+        rm -rf "${module_root}/tests"
     fi
 }
 
@@ -40,12 +44,9 @@ copy_package() {
 # Build binaries
 run_go_build "${ROOT}"
 
-# Copy over the langhost
-if [ "$(go env GOOS)" != "windows" ]; then
-    cp ${ROOT}/dist/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
-else
-    cp ${ROOT}/dist/sdk/nodejs/pulumi-langhost-nodejs.cmd ${PUBDIR}/bin/
-fi
+# Copy over the langhost and dynamic provider
+cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
+cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
 
 # Copy packages
 copy_package "${ROOT}/sdk/nodejs/bin/." "pulumi"
