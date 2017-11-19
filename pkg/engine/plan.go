@@ -247,7 +247,11 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview b
 		changesLabel = strconv.Itoa(changes)
 	}
 
-	b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v:\n",
+	if changes > 0 || counts[deploy.OpSame] > 0 {
+		kind += ":"
+	}
+
+	b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v\n",
 		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changes), kind))
 
 	var planTo string
