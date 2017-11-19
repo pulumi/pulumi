@@ -331,8 +331,8 @@ func getIdentationString(indent int, op deploy.StepOp) string {
 	}
 
 	switch op {
-	// case deploy.OpSame:
-	// 	return unchangedIndentString(result)
+	case deploy.OpSame:
+		return result
 	case deploy.OpCreate:
 		return addedIndentString(result)
 	case deploy.OpUpdate:
@@ -342,6 +342,8 @@ func getIdentationString(indent int, op deploy.StepOp) string {
 		return changedIndentString(result)
 	case deploy.OpDelete:
 		return deletedIndentString(result)
+	default:
+		contract.Assertf(false, "Switch case not handled: %v", op)
 	}
 
 	return result
