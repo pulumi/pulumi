@@ -47,18 +47,18 @@ func (h *langhost) Runtime() string { return h.runtime }
 // the code must not assume that side-effects or final values resulting from resource deployments are actually
 // available.  If it is false, on the other hand, a real deployment is occurring and it may safely depend on these.
 func (h *langhost) Run(info RunInfo) (string, error) {
-	glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,#config=%v,dryrun=%v) executing",
-		h.runtime, info.Pwd, info.Program, len(info.Args), len(info.Config), info.DryRun)
+	glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
+		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string)
 	for k, v := range info.Config {
 		config[string(k)] = v
 	}
 	resp, err := h.client.Run(h.ctx.Request(), &lumirpc.RunRequest{
-		Project:  info.Project,
-		Stack:    info.Stack,
 		Pwd:      info.Pwd,
 		Program:  info.Program,
 		Args:     info.Args,
+		Project:  info.Project,
+		Stack:    info.Stack,
 		Config:   config,
 		DryRun:   info.DryRun,
 		Parallel: int32(info.Parallel),
