@@ -968,12 +968,12 @@ func printAssetDiff(
 	}
 
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
-	title(deploy.OpUpdate)
 
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
 	if oldText, has := oldAsset.GetText(); has {
 		if newText, has := newAsset.GetText(); has {
+			title(deploy.OpUpdate)
 			write(b, op, "asset(text:%s) {\n", hashChange)
 
 			massagedOldText := massageText(oldText)
@@ -993,6 +993,7 @@ func printAssetDiff(
 		}
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		if newPath, has := newAsset.GetPath(); has {
+			title(deploy.OpUpdate)
 			write(b, op, "asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
@@ -1001,13 +1002,19 @@ func printAssetDiff(
 
 		oldURI, _ := oldAsset.GetURI()
 		if newURI, has := newAsset.GetURI(); has {
+			title(deploy.OpUpdate)
 			write(b, op, "asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
 	}
 
-	// Type of asset changed.  Just print out what it changed from and to.
-	write(b, op, "%s -> %s", makeAssetHeader(oldAsset), makeAssetHeader(newAsset))
+	// Type of asset changed, print this out as an remove and an add.
+	printDelete(
+		b, assetOrArchiveToPropertyValue(oldAsset),
+		title, false /*causedReplace*/, planning, indent)
+	printAdd(
+		b, assetOrArchiveToPropertyValue(newAsset),
+		title, false /*causedReplace*/, planning, indent)
 }
 
 func getTextChangeString(old string, new string) string {
