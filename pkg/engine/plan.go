@@ -221,6 +221,7 @@ func printConfig(b *bytes.Buffer, config map[tokens.ModuleMember]string) {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
+			// 4 spaces, plus 2 for "+ ", "- ", and " " leaders
 			b.WriteString(fmt.Sprintf("      %v: %v\n", key, config[tokens.ModuleMember(key)]))
 		}
 	}
