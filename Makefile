@@ -38,7 +38,7 @@ publish:
 .PHONY: coverage
 coverage:
 	$(call STEP_MESSAGE)
-	./scripts/cocover.sh
+	./scripts/gocover.sh
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api
