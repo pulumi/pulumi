@@ -6,7 +6,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -17,30 +21,21 @@ func AWSOperationsProvider(
 	config map[tokens.ModuleMember]string,
 	component *Resource) (Provider, error) {
 
-	sess, err := createSessionFromConfig(config)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create AWS session")
-	}
-
-	prov := &awsOpsProvider{
-		awsConnection: newAWSConnection(sess),
-		component:     component,
-	}
-	return prov, nil
-}
-
-// This function grovels through the given configuration bag, extracts the bits necessary to create an AWS session
-// (currently just the AWS region to target), and creates and returns the session. If the bag does not contain the
-// necessary properties or if session creation fails, this function returns `nil, error`.
-func createSessionFromConfig(config map[tokens.ModuleMember]string) (*session.Session, error) {
 	awsRegion, ok := config[regionKey]
 	if !ok {
 		return nil, errors.New("no AWS region found")
 	}
 
-	awsConfig := aws.NewConfig()
-	awsConfig.Region = aws.String(awsRegion)
-	return session.NewSession(awsConfig)
+	awsConnection, err := getAWSConnection(awsRegion)
+	if err != nil {
+		return nil, err
+	}
+
+	prov := &awsOpsProvider{
+		awsConnection: awsConnection,
+		component:     component,
+	}
+	return prov, nil
 }
 
 type awsOpsProvider struct {
@@ -80,4 +75,65 @@ func (ops *awsOpsProvider) ListMetrics() []MetricName {
 
 func (ops *awsOpsProvider) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
 	return nil, fmt.Errorf("Not yet implmeneted: GetMetricStatistics")
+}
+
+type awsConnection struct {
+	sess      *session.Session
+	logSvc    *cloudwatchlogs.CloudWatchLogs
+	metricSvc *cloudwatch.CloudWatch
+}
+
+var awsConnectionCache = map[string]*awsConnection{}
+
+func getAWSConnection(awsRegion string) (*awsConnection, error) {
+	connection, ok := awsConnectionCache[awsRegion]
+	if !ok {
+		awsConfig := aws.NewConfig()
+		awsConfig.Region = aws.String(awsRegion)
+		sess, err := session.NewSession(awsConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create AWS session")
+		}
+		connection = &awsConnection{
+			sess:      sess,
+			logSvc:    cloudwatchlogs.New(sess),
+			metricSvc: cloudwatch.New(sess),
+		}
+		awsConnectionCache[awsRegion] = connection
+	}
+	return connection, nil
+}
+
+func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string) []LogEntry {
+
+	// Create a channel for collecting log event outputs
+	ch := make(chan []*cloudwatchlogs.FilteredLogEvent)
+
+	// Run FilterLogEvents for each log group in parallel
+	for _, logGroup := range logGroups {
+		go func(logGroup string) {
+			resp, err := p.logSvc.FilterLogEvents(&cloudwatchlogs.FilterLogEventsInput{
+				LogGroupName: aws.String(logGroup),
+			})
+			if err != nil {
+				glog.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+			}
+			ch <- resp.Events
+		}(logGroup)
+	}
+
+	// Collect responses on the channel and append logs into combined log array
+	var logs []LogEntry
+	for i := 0; i < len(logGroups); i++ {
+		logEvents := <-ch
+		for _, event := range logEvents {
+			logs = append(logs, LogEntry{
+				ID:        names[i],
+				Message:   aws.StringValue(event.Message),
+				Timestamp: aws.Int64Value(event.Timestamp),
+			})
+		}
+	}
+
+	return logs
 }
