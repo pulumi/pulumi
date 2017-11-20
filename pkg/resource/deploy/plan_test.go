@@ -165,7 +165,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		},
 		make(resource.PropertyMap),
 		nil,
-		nil,
+		"",
 	)
 	oldResC := resource.NewState(typC, urnC, true, false, resource.ID("c-c-c"),
 		resource.PropertyMap{
@@ -177,7 +177,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			"outta1":   resource.NewStringProperty("populated during skip/step"),
 			"outta234": resource.NewNumberProperty(99881122),
 		},
-		nil,
+		"",
 	)
 	oldResD := resource.NewState(typD, urnD, true, false, resource.ID("d-d-d"),
 		resource.PropertyMap{
@@ -186,7 +186,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		},
 		make(resource.PropertyMap),
 		nil,
-		nil,
+		"",
 	)
 	oldsnap := NewSnapshot(ns, time.Now(), []*resource.State{oldResB, oldResC, oldResD})
 
@@ -195,20 +195,20 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newResA := resource.NewGoal(typA, namA, true, resource.PropertyMap{
 		"af1": resource.NewStringProperty("a-value"),
 		"af2": resource.NewNumberProperty(42),
-	}, nil)
+	}, "")
 	newStateA := &testSourceGoal{Goal: newResA}
 	//     - B is updated:
 	newResB := resource.NewGoal(typB, namB, true, resource.PropertyMap{
 		"bf1": resource.NewStringProperty("b-value"),
 		// delete the bf2 field, and add bf3.
 		"bf3": resource.NewBoolProperty(true),
-	}, nil)
+	}, "")
 	newStateB := &testSourceGoal{Goal: newResB}
 	//     - C has no changes:
 	newResC := resource.NewGoal(typC, namC, true, resource.PropertyMap{
 		"cf1": resource.NewStringProperty("c-value"),
 		"cf2": resource.NewNumberProperty(83),
-	}, nil)
+	}, "")
 	newStateC := &testSourceGoal{Goal: newResC}
 	//     - No D; it is deleted.
 

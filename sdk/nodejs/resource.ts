@@ -26,13 +26,18 @@ export abstract class Resource {
      * @param parent An optional parent resource to which this resource belongs.
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
-    constructor(t: string, name: string, custom: boolean, props: ComputedValues,
+    constructor(t: string, name: string, custom: boolean, props?: ComputedValues,
                 parent?: Resource, dependsOn?: Resource[]) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
         if (!name) {
             throw new Error("Missing resource name argument (for URN creation)");
+        }
+
+        // If there wasn't an explicit parent, and a root stack exists, parent to that.
+        if (!parent) {
+            parent = runtime.rootPulumiStack;
         }
 
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
@@ -67,7 +72,7 @@ export abstract class CustomResource extends Resource {
      * @param parent An optional parent resource to which this resource belongs.
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
-    constructor(t: string, name: string, props: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
+    constructor(t: string, name: string, props?: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
         super(t, name, true, props, parent, dependsOn);
     }
 }
@@ -89,14 +94,20 @@ export class ComponentResource extends Resource {
      * @param parent An optional parent resource to which this resource belongs.
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
-    constructor(t: string, name: string, props: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
+    constructor(t: string, name: string, props?: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
         super(t, name, false, props, parent, dependsOn);
-        // TODO[pulumi/pulumi#340]: we do not currently persist component output properties that are "derived"
-        //     from its children.  This would be very useful because many times an essential property of a
-        //     component -- like an endpoint URL, to take one example -- won't be known until we have finished
-        //     initializing its children.  Fixing this, however, requires fairly dramatic changes to the engine,
-        //     since a resource's full state won't be known until after a two-phase process has completed.  As
-        //     part of fixing pulumi/pulumi#340 overall, we will find a way to address this.
+    }
+
+    // recordOutput sets a property named key to the value val in this component's output properties.
+    protected recordOutput(key: string, val: any): void {
+        // TODO[pulumi/pulumi#340]: communicate outputs back to the engine via RPC so that it can record them
+        //     inside of the resulting checkpoint file.
+    }
+
+    // recordOutputs sets all object keys and values from obj as properties in this component's output properties.
+    protected recordOutputs(obj: any): void {
+        // TODO[pulumi/pulumi#340]: communicate outputs back to the engine via RPC so that it can record them
+        //     inside of the resulting checkpoint file.
     }
 }
 

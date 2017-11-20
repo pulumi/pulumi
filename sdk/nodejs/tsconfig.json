@@ -39,6 +39,7 @@
         "runtime/resource.ts",
         "runtime/rpc.ts",
         "runtime/settings.ts",
+        "runtime/stack.ts",
 
         "cmd/dynamic-provider/index.ts",
         "cmd/langhost/index.ts",

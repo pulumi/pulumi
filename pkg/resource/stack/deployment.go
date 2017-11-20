@@ -21,6 +21,7 @@ type Deployment struct {
 }
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
+// nolint: lll
 type Resource struct {
 	URN      resource.URN           `json:"urn" yaml:"urn"`                               // the URN for this resource.
 	Custom   bool                   `json:"custom" yaml:"custom"`                         // if this is a custom resource managed by a plugin.
