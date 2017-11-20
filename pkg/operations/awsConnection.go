@@ -1,8 +1,6 @@
 package operations
 
 import (
-	"regexp"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
@@ -23,8 +21,6 @@ func newAWSConnection(sess *session.Session) *awsConnection {
 		metricSvc: cloudwatch.New(sess),
 	}
 }
-
-var logRegexp = regexp.MustCompile(".*Z\t[a-g0-9\\-]*\t(.*)")
 
 func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string) []LogEntry {
 
@@ -49,15 +45,11 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroup
 	for i := 0; i < len(logGroups); i++ {
 		logEvents := <-ch
 		for _, event := range logEvents {
-			innerMatches := logRegexp.FindAllStringSubmatch(aws.StringValue(event.Message), -1)
-			glog.V(5).Infof("[getLogs] Inner matches: %v\n", innerMatches)
-			if len(innerMatches) > 0 {
-				logs = append(logs, LogEntry{
-					ID:        names[i],
-					Message:   innerMatches[0][1],
-					Timestamp: aws.Int64Value(event.Timestamp),
-				})
-			}
+			logs = append(logs, LogEntry{
+				ID:        names[i],
+				Message:   aws.StringValue(event.Message),
+				Timestamp: aws.Int64Value(event.Timestamp),
+			})
 		}
 	}
 

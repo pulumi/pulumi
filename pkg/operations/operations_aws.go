@@ -7,14 +7,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// CloudOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
+// AWSOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/cloud-aws` implementation.
-func CloudOperationsProvider(
+func AWSOperationsProvider(
 	config map[tokens.ModuleMember]string,
 	component *Resource) (Provider, error) {
 
@@ -23,7 +22,7 @@ func CloudOperationsProvider(
 		return nil, errors.Wrap(err, "failed to create AWS session")
 	}
 
-	prov := &cloudOpsProvider{
+	prov := &awsOpsProvider{
 		awsConnection: newAWSConnection(sess),
 		component:     component,
 	}
@@ -44,31 +43,28 @@ func createSessionFromConfig(config map[tokens.ModuleMember]string) (*session.Se
 	return session.NewSession(awsConfig)
 }
 
-type cloudOpsProvider struct {
+type awsOpsProvider struct {
 	awsConnection *awsConnection
 	component     *Resource
 }
 
-var _ Provider = (*cloudOpsProvider)(nil)
+var _ Provider = (*awsOpsProvider)(nil)
 
 const (
 	// AWS config keys
 	regionKey = "aws:config:region"
 
-	// Pulumi Framework component types
-	pulumiFunctionType = tokens.Type("cloud:function:Function")
+	// AWS resource types
+	awsFunctionType = tokens.Type("aws:lambda/function:Function")
 )
 
-func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
 		contract.Failf("not yet implemented - StartTime, Endtime, Query")
 	}
 	switch ops.component.state.Type {
-	case pulumiFunctionType:
-		urn := ops.component.state.URN
-		serverlessFunction := ops.component.GetChild("aws:serverless:Function", string(urn.Name()))
-		awsFunction := serverlessFunction.GetChild("aws:lambda/function:Function", string(urn.Name()))
-		functionName := awsFunction.state.Outputs["name"].StringValue()
+	case awsFunctionType:
+		functionName := ops.component.state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{functionName}, []string{"/aws/lambda/" + functionName})
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return &logResult, nil
@@ -78,10 +74,10 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	}
 }
 
-func (ops *cloudOpsProvider) ListMetrics() []MetricName {
+func (ops *awsOpsProvider) ListMetrics() []MetricName {
 	return nil
 }
 
-func (ops *cloudOpsProvider) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
+func (ops *awsOpsProvider) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
 	return nil, fmt.Errorf("Not yet implmeneted: GetMetricStatistics")
 }

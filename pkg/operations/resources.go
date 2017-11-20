@@ -2,6 +2,7 @@ package operations
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -76,18 +77,6 @@ func (r *Resource) OperationsProvider(config map[tokens.ModuleMember]string) Pro
 	}
 }
 
-func getOperationsProvider(resource *Resource, config map[tokens.ModuleMember]string) (Provider, error) {
-	if resource == nil || resource.state == nil {
-		return nil, nil
-	}
-	switch resource.state.Type.Package() {
-	case "cloud":
-		return CloudOperationsProvider(config, resource)
-	default:
-		return nil, nil
-	}
-}
-
 // ResourceOperations is an OperationsProvider for Resources
 type resourceOperations struct {
 	resource *Resource
@@ -98,7 +87,7 @@ var _ Provider = (*resourceOperations)(nil)
 
 // GetLogs gets logs for a Resource
 func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
-	opsProvider, err := getOperationsProvider(ops.resource, ops.config)
+	opsProvider, err := ops.getOperationsProvider()
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +109,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			resource: child,
 			config:   ops.config,
 		}
+		// TODO: Parallelize these calls to child GetLogs
 		childLogs, err := childOps.GetLogs(query)
 		if err != nil {
 			return &logs, err
@@ -128,7 +118,19 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			logs = append(logs, *childLogs...)
 		}
 	}
-	return &logs, nil
+	// Sort
+	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
+	// Remove duplicates
+	var retLogs []LogEntry
+	var lastLog LogEntry
+	for _, log := range logs {
+		if log.Message == lastLog.Message && log.Timestamp == lastLog.Timestamp {
+			continue
+		}
+		lastLog = log
+		retLogs = append(retLogs, log)
+	}
+	return &retLogs, nil
 }
 
 // ListMetrics lists metrics for a Resource
@@ -139,4 +141,18 @@ func (ops *resourceOperations) ListMetrics() []MetricName {
 // GetMetricStatistics gets metric statistics for a Resource
 func (ops *resourceOperations) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
 	return nil, fmt.Errorf("not yet implemented")
+}
+
+func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
+	if ops.resource == nil || ops.resource.state == nil {
+		return nil, nil
+	}
+	switch ops.resource.state.Type.Package() {
+	case "cloud":
+		return CloudOperationsProvider(ops.config, ops.resource)
+	case "aws":
+		return AWSOperationsProvider(ops.config, ops.resource)
+	default:
+		return nil, nil
+	}
 }
