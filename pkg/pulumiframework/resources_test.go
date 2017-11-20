@@ -5,92 +5,77 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/component"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-var sess *session.Session
-
-func init() {
-	var err error
-	config := aws.NewConfig()
-	config.Region = aws.String("eu-west-1")
-	sess, err = session.NewSession(config)
-	if err != nil {
-		panic("Could not create AWS session")
-	}
-}
-
-func getPulumiResources(t *testing.T, path string) (component.Components, tokens.QName) {
+func getPulumiResources(t *testing.T, path string) *Resource {
 	var checkpoint stack.Checkpoint
 	byts, err := ioutil.ReadFile(path)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)
 	assert.NoError(t, err)
-	name, _, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
+	_, _, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
 	assert.NoError(t, err)
-	resources := GetComponents(snapshot.Resources)
+	resources := NewResource(snapshot.Resources)
 	spew.Dump(resources)
-	return resources, name
+	return resources
 }
 
 func TestTodo(t *testing.T) {
-	components, targetName := getPulumiResources(t, "testdata/todo.json")
-	assert.Equal(t, 5, len(components))
+	components := getPulumiResources(t, "testdata/todo.json")
+	assert.Equal(t, 4, len(components.children))
 
-	rawURN := resource.NewURN(targetName, "todo", "aws:dynamodb/table:Table:", "todo")
-
-	tableArn := newPulumiFrameworkURN(rawURN, tokens.Type(pulumiTableType), tokens.QName("todo"))
-	table, ok := components[tableArn]
-	if !assert.True(t, ok) {
+	// Table child
+	table := components.GetChild("cloud:table:Table", "todo")
+	if !assert.NotNil(t, table) {
 		return
 	}
-	assert.Equal(t, 1, len(table.Properties))
-	assert.Equal(t, "id", table.Properties[resource.PropertyKey("primaryKey")].StringValue())
-	assert.Equal(t, 1, len(table.Resources))
-	assert.Equal(t, pulumiTableType, table.Type)
+	assert.Equal(t, 2, len(table.state.Inputs))
+	assert.Equal(t, "id", table.state.Inputs["primaryKey"].StringValue())
+	assert.Equal(t, 1, len(table.children))
+	assert.NotNil(t, table.GetChild("aws:dynamodb/table:Table", "todo"))
 
-	endpointArn := newPulumiFrameworkURN(rawURN, tokens.Type(pulumiEndpointType), tokens.QName("todo"))
-	endpoint, ok := components[endpointArn]
-	if !assert.True(t, ok) {
+	// Endpoint child
+	endpoint := components.GetChild("cloud:http:HttpEndpoint", "todo")
+	if !assert.NotNil(t, endpoint) {
 		return
 	}
-	assert.Equal(t, 1, len(endpoint.Properties))
-	assert.Equal(t, "https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/stage/",
-		endpoint.Properties[resource.PropertyKey("url")].StringValue())
-	assert.Equal(t, 3, len(endpoint.Resources))
-	assert.Equal(t, pulumiEndpointType, endpoint.Type)
+	assert.Equal(t, 5, len(endpoint.state.Inputs))
+	assert.Equal(t, "https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/", endpoint.state.Inputs["url"].StringValue())
+	assert.Equal(t, 14, len(endpoint.children))
+	assert.NotNil(t, endpoint.GetChild("aws:apigateway/restApi:RestApi", "todo"))
 }
 
 func TestCrawler(t *testing.T) {
-	components, targetName := getPulumiResources(t, "testdata/crawler.json")
-	assert.Equal(t, 4, len(components))
+	components := getPulumiResources(t, "testdata/crawler.json")
+	assert.Equal(t, 7, len(components.children))
 
-	rawURN := resource.NewURN(targetName, "countdown", "aws:sns/topic:Topic", "countDown")
-
-	countDownArn := newPulumiFrameworkURN(rawURN, tokens.Type(pulumiTopicType), tokens.QName("countDown"))
-	countDown, ok := components[countDownArn]
-	if !assert.True(t, ok) {
+	// Topic child
+	topic := components.GetChild("cloud:topic:Topic", "countDown")
+	if !assert.NotNil(t, topic) {
 		return
 	}
-	assert.Equal(t, 0, len(countDown.Properties))
-	assert.Equal(t, 1, len(countDown.Resources))
-	assert.Equal(t, pulumiTopicType, countDown.Type)
+	assert.Equal(t, 0, len(topic.state.Inputs))
+	assert.Equal(t, 1, len(topic.children))
+	assert.NotNil(t, topic.GetChild("aws:sns/topic:Topic", "countDown"))
 
-	heartbeatArn := newPulumiFrameworkURN(rawURN, tokens.Type(pulumiTimerType), tokens.QName("heartbeat"))
-	heartbeat, ok := components[heartbeatArn]
-	if !assert.True(t, ok) {
+	// Timer child
+	heartbeat := components.GetChild("cloud:timer:Timer", "heartbeat")
+	if !assert.NotNil(t, heartbeat) {
 		return
 	}
-	assert.Equal(t, 1, len(heartbeat.Properties))
-	assert.Equal(t, "rate(5 minutes)", heartbeat.Properties[resource.PropertyKey("schedule")].StringValue())
-	assert.Equal(t, 3, len(heartbeat.Resources))
-	assert.Equal(t, pulumiTimerType, heartbeat.Type)
+	assert.Equal(t, 1, len(heartbeat.state.Inputs))
+	assert.Equal(t, "rate(5 minutes)", heartbeat.state.Inputs["scheduleExpression"].StringValue())
+	assert.Equal(t, 4, len(heartbeat.children))
+
+	// Function child of timer
+	function := heartbeat.GetChild("cloud:function:Function", "heartbeat")
+	if !assert.NotNil(t, function) {
+		return
+	}
+	assert.Equal(t, 1, len(function.state.Inputs))
+	assert.Equal(t, 3, len(function.children))
 }

@@ -50,17 +50,15 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroup
 	var logs []component.LogEntry
 	for i := 0; i < len(logGroups); i++ {
 		logEvents := <-ch
-		if logEvents != nil {
-			for _, event := range logEvents {
-				innerMatches := logRegexp.FindAllStringSubmatch(aws.StringValue(event.Message), -1)
-				glog.V(5).Infof("[getLogs] Inner matches: %v\n", innerMatches)
-				if len(innerMatches) > 0 {
-					logs = append(logs, component.LogEntry{
-						ID:        names[i],
-						Message:   innerMatches[0][1],
-						Timestamp: aws.Int64Value(event.Timestamp),
-					})
-				}
+		for _, event := range logEvents {
+			innerMatches := logRegexp.FindAllStringSubmatch(aws.StringValue(event.Message), -1)
+			glog.V(5).Infof("[getLogs] Inner matches: %v\n", innerMatches)
+			if len(innerMatches) > 0 {
+				logs = append(logs, component.LogEntry{
+					ID:        names[i],
+					Message:   innerMatches[0][1],
+					Timestamp: aws.Int64Value(event.Timestamp),
+				})
 			}
 		}
 	}

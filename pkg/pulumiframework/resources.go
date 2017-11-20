@@ -3,11 +3,9 @@ package pulumiframework
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/component"
@@ -18,88 +16,6 @@ import (
 
 // This file contains the implementation of the component.Components interface for the
 // AWS implementation of the Pulumi Framework defined in this repo.
-
-// GetComponents extracts the Pulumi Framework components from a checkpoint
-// file, based on the raw resources created by the implementation of the Pulumi Framework
-// in this repo.
-func GetComponents(source []*resource.State) component.Components {
-	sourceMap := makeIDLookup(source)
-	components := make(component.Components)
-	for _, res := range source {
-		name := string(res.URN.Name())
-		if res.Type == stageType {
-			stage := res
-			deployment := lookup(sourceMap, deploymentType, stage.Inputs["deployment"].StringValue())
-			restAPI := lookup(sourceMap, restAPIType, stage.Inputs["restApi"].StringValue())
-			baseURL := deployment.Outputs["invokeUrl"].StringValue() + stage.Inputs["stageName"].StringValue() + "/"
-			restAPIName := restAPI.URN.Name()
-			urn := newPulumiFrameworkURN(res.URN, pulumiEndpointType, restAPIName)
-			components[urn] = &component.Component{
-				Type: pulumiEndpointType,
-				Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
-					"url": baseURL,
-				}),
-				Resources: map[string]*resource.State{
-					"restapi":    restAPI,
-					"deployment": deployment,
-					"stage":      stage,
-				},
-			}
-		} else if res.Type == eventRuleType {
-			urn := newPulumiFrameworkURN(res.URN, pulumiTimerType, tokens.QName(name))
-			components[urn] = &component.Component{
-				Type: pulumiTimerType,
-				Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
-					"schedule": res.Inputs["scheduleExpression"].StringValue(),
-				}),
-				Resources: map[string]*resource.State{
-					"rule":       res,
-					"target":     nil,
-					"permission": nil,
-				},
-			}
-		} else if res.Type == tableType {
-			urn := newPulumiFrameworkURN(res.URN, pulumiTableType, tokens.QName(name))
-			components[urn] = &component.Component{
-				Type: pulumiTableType,
-				Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
-					"primaryKey": res.Inputs["hashKey"].StringValue(),
-				}),
-				Resources: map[string]*resource.State{
-					"table": res,
-				},
-			}
-		} else if res.Type == topicType {
-			if !strings.HasSuffix(name, "unhandled-error-topic") {
-				urn := newPulumiFrameworkURN(res.URN, pulumiTopicType, tokens.QName(name))
-				components[urn] = &component.Component{
-					Type:       pulumiTopicType,
-					Properties: resource.NewPropertyMapFromMap(map[string]interface{}{}),
-					Resources: map[string]*resource.State{
-						"topic": res,
-					},
-				}
-			}
-		} else if res.Type == functionType {
-			if !strings.HasSuffix(name, "-log-collector") {
-				urn := newPulumiFrameworkURN(res.URN, pulumiFunctionType, tokens.QName(name))
-				components[urn] = &component.Component{
-					Type:       pulumiFunctionType,
-					Properties: resource.NewPropertyMapFromMap(map[string]interface{}{}),
-					Resources: map[string]*resource.State{
-						"function":              res,
-						"role":                  nil,
-						"roleAttachment":        nil,
-						"logGroup":              nil,
-						"logSubscriptionFilter": nil,
-						"permission":            nil,
-					},
-				}
-			}
-		}
-	}
-	return components
-}
 
 // This function grovels through the given configuration bag, extracts the bits necessary to create an AWS session
 // (currently just the AWS region to target), and creates and returns the session. If the bag does not contain the
@@ -119,7 +35,7 @@ func createSessionFromConfig(config map[tokens.ModuleMember]string) (*session.Se
 // operational queries based on the underlying resources of the AWS  Pulumi Framework implementation.
 func OperationsProviderForComponent(
 	config map[tokens.ModuleMember]string,
-	component *component.Component) (component.OperationsProvider, error) {
+	component *Resource) (component.OperationsProvider, error) {
 
 	sess, err := createSessionFromConfig(config)
 	if err != nil {
@@ -135,7 +51,7 @@ func OperationsProviderForComponent(
 
 type componentOpsProvider struct {
 	awsConnection *awsConnection
-	component     *component.Component
+	component     *Resource
 }
 
 var _ component.OperationsProvider = (*componentOpsProvider)(nil)
@@ -143,15 +59,6 @@ var _ component.OperationsProvider = (*componentOpsProvider)(nil)
 const (
 	// AWS config keys
 	regionKey = "aws:config:region"
-
-	// AWS Resource Types
-	stageType      = "aws:apigateway/stage:Stage"
-	deploymentType = "aws:apigateway/deployment:Deployment"
-	restAPIType    = "aws:apigateway/restApi:RestApi"
-	eventRuleType  = "aws:cloudwatch/eventRule:EventRule"
-	tableType      = "aws:dynamodb/table:Table"
-	topicType      = "aws:sns/topic:Topic"
-	functionType   = "aws:lambda/function:Function"
 
 	// Pulumi Framework "virtual" types
 	pulumiEndpointType = tokens.Type("pulumi:framework:Endpoint")
@@ -184,19 +91,23 @@ func (ops *componentOpsProvider) GetLogs(query component.LogQuery) ([]component.
 	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
 		contract.Failf("not yet implemented - StartTime, Endtime, Query")
 	}
-	switch ops.component.Type {
+	fmt.Printf("[GetLogs] type = %v", ops.component.state.Type)
+	switch ops.component.state.Type {
 	case pulumiFunctionType:
-		functionName := ops.component.Resources["function"].Outputs["name"].StringValue()
+		urn := ops.component.state.URN
+		serverlessFunction := ops.component.GetChild("aws:serverless:Function", string(urn.Name()))
+		awsFunction := serverlessFunction.GetChild("aws:lambda/function:Function", string(urn.Name()))
+		functionName := awsFunction.state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{functionName}, []string{"/aws/lambda/" + functionName})
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return logResult, nil
 	default:
-		return nil, fmt.Errorf("Logs not supported for component type: %s", ops.component.Type)
+		return nil, fmt.Errorf("Logs not supported for component type: %s", ops.component.state.Type)
 	}
 }
 
 func (ops *componentOpsProvider) ListMetrics() []component.MetricName {
-	switch ops.component.Type {
+	switch ops.component.state.Type {
 	case pulumiFunctionType:
 		// Don't include these which are internal implementation metrics: DLQ delivery errors
 		return []component.MetricName{functionInvocations, functionDuration, functionErrors, functionThrottles}
@@ -219,135 +130,187 @@ func (ops *componentOpsProvider) ListMetrics() []component.MetricName {
 
 func (ops *componentOpsProvider) GetMetricStatistics(metric component.MetricRequest) ([]component.MetricDataPoint, error) {
 
-	var dimensions []*cloudwatch.Dimension
-	var namespace string
+	return nil, fmt.Errorf("Not yet implmeneted: GetMetricStatistics")
 
-	switch ops.component.Type {
-	case pulumiFunctionType:
-		dimensions = append(dimensions, &cloudwatch.Dimension{
-			Name:  aws.String("FunctionName"),
-			Value: aws.String(string(ops.component.Resources["function"].ID)),
-		})
-		namespace = "AWS/Lambda"
-	case pulumiEndpointType:
-		contract.Failf("not yet implemented")
-	case pulumiTopicType:
-		contract.Failf("not yet implemented")
-	case pulumiTimerType:
-		contract.Failf("not yet implemented")
-	case pulumiTableType:
-		contract.Failf("not yet implemented")
-	default:
-		contract.Failf("invalid component type")
-	}
+	// var dimensions []*cloudwatch.Dimension
+	// var namespace string
 
-	resp, err := ops.awsConnection.metricSvc.GetMetricStatistics(&cloudwatch.GetMetricStatisticsInput{
-		Namespace:  aws.String(namespace),
-		MetricName: aws.String(metric.Name),
-		Dimensions: dimensions,
-		Statistics: []*string{
-			aws.String("Sum"), aws.String("SampleCount"), aws.String("Average"),
-			aws.String("Maximum"), aws.String("Minimum"),
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
+	// switch ops.component.state.Type {
+	// case pulumiFunctionType:
+	// 	dimensions = append(dimensions, &cloudwatch.Dimension{
+	// 		Name:  aws.String("FunctionName"),
+	// 		Value: aws.String(string(ops.component.Resources["function"].ID)),
+	// 	})
+	// 	namespace = "AWS/Lambda"
+	// case pulumiEndpointType:
+	// 	contract.Failf("not yet implemented")
+	// case pulumiTopicType:
+	// 	contract.Failf("not yet implemented")
+	// case pulumiTimerType:
+	// 	contract.Failf("not yet implemented")
+	// case pulumiTableType:
+	// 	contract.Failf("not yet implemented")
+	// default:
+	// 	contract.Failf("invalid component type")
+	// }
 
-	var metrics []component.MetricDataPoint
-	for _, datapoint := range resp.Datapoints {
-		metrics = append(metrics, component.MetricDataPoint{
-			Timestamp:   aws.TimeValue(datapoint.Timestamp),
-			Unit:        aws.StringValue(datapoint.Unit),
-			Sum:         aws.Float64Value(datapoint.Sum),
-			SampleCount: aws.Float64Value(datapoint.SampleCount),
-			Average:     aws.Float64Value(datapoint.Average),
-			Maximum:     aws.Float64Value(datapoint.Maximum),
-			Minimum:     aws.Float64Value(datapoint.Minimum),
-		})
-	}
-	return metrics, nil
+	// resp, err := ops.awsConnection.metricSvc.GetMetricStatistics(&cloudwatch.GetMetricStatisticsInput{
+	// 	Namespace:  aws.String(namespace),
+	// 	MetricName: aws.String(metric.Name),
+	// 	Dimensions: dimensions,
+	// 	Statistics: []*string{
+	// 		aws.String("Sum"), aws.String("SampleCount"), aws.String("Average"),
+	// 		aws.String("Maximum"), aws.String("Minimum"),
+	// 	},
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// var metrics []component.MetricDataPoint
+	// for _, datapoint := range resp.Datapoints {
+	// 	metrics = append(metrics, component.MetricDataPoint{
+	// 		Timestamp:   aws.TimeValue(datapoint.Timestamp),
+	// 		Unit:        aws.StringValue(datapoint.Unit),
+	// 		Sum:         aws.Float64Value(datapoint.Sum),
+	// 		SampleCount: aws.Float64Value(datapoint.SampleCount),
+	// 		Average:     aws.Float64Value(datapoint.Average),
+	// 		Maximum:     aws.Float64Value(datapoint.Maximum),
+	// 		Minimum:     aws.Float64Value(datapoint.Minimum),
+	// 	})
+	// }
+	// return metrics, nil
 }
 
-// OperationsProviderForComponents creates an OperationsProvider capable of answering
-// operational queries about a collection of Pulumi Framework Components based on the
-// underlying resources of the AWS  Pulumi Framework implementation.
-func OperationsProviderForComponents(
-	config map[tokens.ModuleMember]string,
-	components component.Components) (component.OperationsProvider, error) {
-
-	sess, err := createSessionFromConfig(config)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create AWS session")
-	}
-
-	prov := &componentsOpsProvider{
-		awsConnection: newAWSConnection(sess),
-		components:    components,
-	}
-	return prov, nil
+// Resource is a tree representation of a resource/component hierarchy
+type Resource struct {
+	ns       tokens.QName
+	alloc    tokens.PackageName
+	state    *resource.State
+	parent   *Resource
+	children map[resource.URN]*Resource
 }
 
-type componentsOpsProvider struct {
-	awsConnection *awsConnection
-	components    component.Components
-}
+// NewResource constructs a tree representation of a resource/component hierarchy
+func NewResource(source []*resource.State) *Resource {
+	treeNodes := map[resource.URN]*Resource{}
+	var ns tokens.QName
+	var alloc tokens.PackageName
 
-var _ component.OperationsProvider = (*componentsOpsProvider)(nil)
-
-// GetLogs returns combined logs for all Pulumi compute components.
-func (ops *componentsOpsProvider) GetLogs(query component.LogQuery) ([]component.LogEntry, error) {
-	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
-		contract.Failf("not yet implemented - StartTime, Endtime, Query")
+	// Walk the ordered resource list and build tree nodes based on child relationships
+	for _, state := range source {
+		ns = state.URN.Namespace()
+		alloc = state.URN.Alloc()
+		newTree := &Resource{
+			ns:       ns,
+			alloc:    alloc,
+			state:    state,
+			parent:   nil,
+			children: map[resource.URN]*Resource{},
+		}
+		for _, childURN := range state.Children {
+			childTree, ok := treeNodes[childURN]
+			contract.Assertf(ok, "Expected children to be before parents in resource checkpoint")
+			childTree.parent = newTree
+			newTree.children[childTree.state.URN] = childTree
+		}
+		treeNodes[state.URN] = newTree
 	}
 
-	// Collect names and log groups that we want to query
-	var resourceNames []string
-	var logGroupNames []string
-	for _, v := range ops.components {
-		switch v.Type {
-		case pulumiFunctionType:
-			functionName := v.Resources["function"].Outputs["name"].StringValue()
-			resourceNames = append(resourceNames, functionName)
-			logGroupNames = append(logGroupNames, "/aws/lambda/"+functionName)
+	// Create a single root node which is the parent of all unparented nodes
+	root := &Resource{
+		ns:       ns,
+		alloc:    alloc,
+		state:    nil,
+		parent:   nil,
+		children: map[resource.URN]*Resource{},
+	}
+	for _, node := range treeNodes {
+		if node.parent == nil {
+			root.children[node.state.URN] = node
+			node.parent = root
 		}
 	}
 
-	// Concurrently read logs from CloudWatch
-	logResults := ops.awsConnection.getLogsForLogGroupsConcurrently(resourceNames, logGroupNames)
-
-	// Sort and return log results
-	sort.SliceStable(logResults, func(i, j int) bool { return logResults[i].Timestamp < logResults[j].Timestamp })
-	return logResults, nil
+	// Return the root node
+	return root
 }
 
-func (ops *componentsOpsProvider) ListMetrics() []component.MetricName {
+// GetChild find a child with the given type and name or returns `nil`.
+func (r *Resource) GetChild(typ string, name string) *Resource {
+	childURN := resource.NewURN(r.ns, r.alloc, tokens.Type(typ), tokens.QName(name))
+	return r.children[childURN]
+}
+
+func getOperationsProvider(resource *Resource, config map[tokens.ModuleMember]string) (component.OperationsProvider, error) {
+	if resource == nil || resource.state == nil {
+		return nil, nil
+	}
+	switch resource.state.Type {
+	case "cloud:function:Function":
+		return cloudFunctionOperationsProvider(resource, config)
+	default:
+		return nil, nil
+	}
+}
+
+func cloudFunctionOperationsProvider(resource *Resource, config map[tokens.ModuleMember]string) (component.OperationsProvider, error) {
+	return OperationsProviderForComponent(config, resource)
+}
+
+// ResourceOperations is an OperationsProvider for Resources
+type ResourceOperations struct {
+	resource *Resource
+	config   map[tokens.ModuleMember]string
+}
+
+var _ component.OperationsProvider = (*ResourceOperations)(nil)
+
+// NewResourceOperations constructs an OperationsProvider for a resource and configuration options
+func NewResourceOperations(config map[tokens.ModuleMember]string, resource *Resource) *ResourceOperations {
+	return &ResourceOperations{
+		resource: resource,
+		config:   config,
+	}
+}
+
+// GetLogs gets logs for a Resource
+func (ops *ResourceOperations) GetLogs(query component.LogQuery) ([]component.LogEntry, error) {
+	fmt.Printf("[ResourceOperations.GetLogs]: %v\n", query)
+	opsProvider, err := getOperationsProvider(ops.resource, ops.config)
+	if err != nil {
+		return nil, err
+	}
+	if opsProvider != nil {
+		// If this resource has an operations provider - use it and don't recur into children.  It is the responsibility
+		// of it's GetLogs implementation to aggregate all logs from children, either by passing them through or by
+		// filtering specific content out.
+		//
+		// Note: We should also allow it to have a resource provider but to elect not to
+		// handle GetLogs.
+		return opsProvider.GetLogs(query)
+	}
+	var logs []component.LogEntry
+	for _, child := range ops.resource.children {
+		childOps := &ResourceOperations{
+			resource: child,
+			config:   ops.config,
+		}
+		childLogs, err := childOps.GetLogs(query)
+		if err != nil {
+			return logs, err
+		}
+		logs = append(logs, childLogs...)
+	}
+	return logs, nil
+}
+
+// ListMetrics lists metrics for a Resource
+func (ops *ResourceOperations) ListMetrics() []component.MetricName {
 	return []component.MetricName{}
 }
 
-func (ops *componentsOpsProvider) GetMetricStatistics(metric component.MetricRequest) ([]component.MetricDataPoint, error) {
+// GetMetricStatistics gets metric statistics for a Resource
+func (ops *ResourceOperations) GetMetricStatistics(metric component.MetricRequest) ([]component.MetricDataPoint, error) {
 	return nil, fmt.Errorf("not yet implemented")
-}
-
-type typeid struct {
-	Type tokens.Type
-	ID   resource.ID
-}
-
-func makeIDLookup(source []*resource.State) map[typeid]*resource.State {
-	ret := make(map[typeid]*resource.State)
-	for _, state := range source {
-		tid := typeid{Type: state.Type, ID: state.ID}
-		ret[tid] = state
-	}
-	return ret
-}
-
-func lookup(m map[typeid]*resource.State, t string, id string) *resource.State {
-	return m[typeid{Type: tokens.Type(t), ID: resource.ID(id)}]
-}
-
-func newPulumiFrameworkURN(resourceURN resource.URN, t tokens.Type, name tokens.QName) resource.URN {
-	namespace := resourceURN.Namespace()
-	return resource.NewURN(namespace, resourceURN.Alloc(), t, name)
 }
