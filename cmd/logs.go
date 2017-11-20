@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/component"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -29,7 +29,7 @@ func newLogsCmd() *cobra.Command {
 			highestTimeSeen := time.Unix(0, 0)
 
 			for {
-				logs, err := backend.GetLogs(stackName, component.LogQuery{})
+				logs, err := backend.GetLogs(stackName, operations.LogQuery{})
 				if err != nil {
 					return err
 				}

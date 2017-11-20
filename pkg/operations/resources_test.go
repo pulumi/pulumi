@@ -1,4 +1,4 @@
-package pulumiframework
+package operations
 
 import (
 	"encoding/json"

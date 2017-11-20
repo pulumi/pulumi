@@ -1,4 +1,4 @@
-package pulumiframework
+package operations
 
 import (
 	"regexp"
@@ -8,8 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/golang/glog"
-
-	"github.com/pulumi/pulumi/pkg/component"
 )
 
 type awsConnection struct {
@@ -28,7 +26,7 @@ func newAWSConnection(sess *session.Session) *awsConnection {
 
 var logRegexp = regexp.MustCompile(".*Z\t[a-g0-9\\-]*\t(.*)")
 
-func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string) []component.LogEntry {
+func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string) []LogEntry {
 
 	// Create a channel for collecting log event outputs
 	ch := make(chan []*cloudwatchlogs.FilteredLogEvent)
@@ -47,14 +45,14 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroup
 	}
 
 	// Collect responses on the channel and append logs into combined log array
-	var logs []component.LogEntry
+	var logs []LogEntry
 	for i := 0; i < len(logGroups); i++ {
 		logEvents := <-ch
 		for _, event := range logEvents {
 			innerMatches := logRegexp.FindAllStringSubmatch(aws.StringValue(event.Message), -1)
 			glog.V(5).Infof("[getLogs] Inner matches: %v\n", innerMatches)
 			if len(innerMatches) > 0 {
-				logs = append(logs, component.LogEntry{
+				logs = append(logs, LogEntry{
 					ID:        names[i],
 					Message:   innerMatches[0][1],
 					Timestamp: aws.Int64Value(event.Timestamp),
