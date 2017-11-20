@@ -122,12 +122,25 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
 	// Remove duplicates
 	var retLogs []LogEntry
-	var lastLog LogEntry
+	var lastLogTimestamp int64
+	var lastLogs []LogEntry
 	for _, log := range logs {
-		if log.Message == lastLog.Message && log.Timestamp == lastLog.Timestamp {
+		shouldContinue := false
+		if log.Timestamp == lastLogTimestamp {
+			for _, lastLog := range lastLogs {
+				if log.Message == lastLog.Message {
+					shouldContinue = true
+					break
+				}
+			}
+		} else {
+			lastLogs = nil
+		}
+		if shouldContinue {
 			continue
 		}
-		lastLog = log
+		lastLogs = append(lastLogs, log)
+		lastLogTimestamp = log.Timestamp
 		retLogs = append(retLogs, log)
 	}
 	return &retLogs, nil

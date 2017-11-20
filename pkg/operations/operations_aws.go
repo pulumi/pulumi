@@ -51,6 +51,7 @@ const (
 
 	// AWS resource types
 	awsFunctionType = tokens.Type("aws:lambda/function:Function")
+	awsLogGroupType = tokens.Type("aws:cloudwatch/logGroup:LogGroup")
 )
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
@@ -61,6 +62,11 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	case awsFunctionType:
 		functionName := ops.component.state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{functionName}, []string{"/aws/lambda/" + functionName})
+		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		return &logResult, nil
+	case awsLogGroupType:
+		name := ops.component.state.Outputs["name"].StringValue()
+		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{name}, []string{name})
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return &logResult, nil
 	default:

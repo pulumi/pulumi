@@ -29,11 +29,14 @@ var _ Provider = (*cloudOpsProvider)(nil)
 
 const (
 	// Pulumi Framework component types
-	pulumiFunctionType = tokens.Type("cloud:function:Function")
-	logCollectorType   = tokens.Type("cloud:logCollector:LogCollector")
+	cloudFunctionType     = tokens.Type("cloud:function:Function")
+	cloudLogCollectorType = tokens.Type("cloud:logCollector:LogCollector")
+	cloudServiceType      = tokens.Type("cloud:service:Service")
+	cloudTaskType         = tokens.Type("cloud:task:Task")
 
 	// AWS resource types
-	serverlessFunctionType = "aws:serverless:Function"
+	awsServerlessFunctionTypeName = "aws:serverless:Function"
+	awsLogGroupTypeName           = "aws:cloudwatch/logGroup:LogGroup"
 )
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
@@ -41,9 +44,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		contract.Failf("not yet implemented - StartTime, Endtime, Query")
 	}
 	switch ops.component.state.Type {
-	case pulumiFunctionType:
-		urn := ops.component.state.URN
-		serverlessFunction := ops.component.GetChild(serverlessFunctionType, string(urn.Name()))
+	case cloudFunctionType:
+		// We get the aws:serverless:Function child and request it's logs, parsing out the user-visible content from
+		// those logs to project into our own log output, but leaving out explicit Lambda metadata.
+		name := string(ops.component.state.URN.Name())
+		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
@@ -51,15 +56,23 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		contract.Assertf(rawLogs != nil, "expect aws:serverless:Function to provide logs")
 		var logs []LogEntry
 		for _, rawLog := range *rawLogs {
-			extractedLog := extractLambdaLogMessage(rawLog.Message)
+			extractedLog := extractLambdaLogMessage(rawLog.Message, name)
 			if extractedLog != nil {
 				logs = append(logs, *extractedLog)
 			}
 		}
 		return &logs, nil
-	case logCollectorType:
-		urn := ops.component.state.URN
-		serverlessFunction := ops.component.GetChild(serverlessFunctionType, string(urn.Name()))
+	case cloudLogCollectorType:
+		// A LogCollector has an aws:serverless:Function which is wired up to receive logs from all other compute in the
+		// program.  These logs are batched and then console.log'd into the log collector lambdas own logs, so we must
+		// get those logs and then decode through two layers of Lambda logging to extract the original messages.  These
+		// logs are delayed somewhat more than raw lambda logs, but can survive even after the source lambda is deleted.
+		// In addition, we set the Lambda logs to automatically delete after 24 hours, which is safe because we have
+		// centrally archived into the log collector. As a result, we will combine reading these logs with reading the
+		// live Lambda logs from individual functions, de-duplicating the results, to piece together the full set of
+		// logs.
+		name := string(ops.component.state.URN.Name())
+		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
@@ -69,20 +82,30 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		var logs []LogEntry
 		for _, rawLog := range *rawLogs {
 			var logMessage encodedLogMessage
-			extractedLog := extractLambdaLogMessage(rawLog.Message)
+			extractedLog := extractLambdaLogMessage(rawLog.Message, name)
 			if extractedLog != nil {
 				err := json.Unmarshal([]byte(extractedLog.Message), &logMessage)
 				if err != nil {
 					return nil, err
 				}
 				for _, logEvent := range logMessage.LogEvents {
-					if extracted := extractLambdaLogMessage(logEvent.Message); extracted != nil {
+					if extracted := extractLambdaLogMessage(logEvent.Message, name); extracted != nil {
 						logs = append(logs, *extracted)
 					}
 				}
 			}
 		}
 		return &logs, nil
+	case cloudServiceType, cloudTaskType:
+		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only populated by user
+		// code withing containers, so we can safely project these logs back unmodified.
+		urn := ops.component.state.URN
+		logGroup := ops.component.GetChild(awsLogGroupTypeName, string(urn.Name()+"-task-logs"))
+		logs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
+		if err != nil {
+			return nil, err
+		}
+		return logs, nil
 	default:
 		// Else this resource kind does not produce any logs.
 		return nil, nil
@@ -123,14 +146,14 @@ var logRegexp = regexp.MustCompile("(.*Z)\t[a-g0-9\\-]*\t(.*)")
 //  END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723
 //  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	Memory Size: 128 MB	Max Memory Used: 33 MB
 // ```
-func extractLambdaLogMessage(message string) *LogEntry {
+func extractLambdaLogMessage(message string, id string) *LogEntry {
 	innerMatches := logRegexp.FindAllStringSubmatch(message, -1)
 	if len(innerMatches) > 0 {
 		contract.Assertf(len(innerMatches[0]) >= 3, "expected log regexp to always produce at least two capture groups")
 		timestamp, err := time.Parse(time.RFC3339Nano, innerMatches[0][1])
 		contract.Assertf(err == nil, "expected to be able to parse timestamp")
 		return &LogEntry{
-			ID:        "hmm",
+			ID:        id,
 			Message:   innerMatches[0][2],
 			Timestamp: timestamp.UnixNano() / 1000000, // milliseconds
 		}

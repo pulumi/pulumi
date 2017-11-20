@@ -37,9 +37,8 @@ func newLogsCmd() *cobra.Command {
 				for _, logEntry := range logs {
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 					if eventTime.After(sinceTime) {
-						fmt.Printf("[%v] %v\n", eventTime, logEntry.Message)
+						fmt.Printf("%29v[%25v] %v\n", eventTime.Format(time.RFC3339Nano), logEntry.ID, logEntry.Message)
 					}
-
 					if eventTime.After(highestTimeSeen) {
 						highestTimeSeen = eventTime
 					}
