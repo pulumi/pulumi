@@ -3,13 +3,6 @@
 import { debuggablePromise } from "./debuggable";
 
 /**
- * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
- * resources allocated by a deployment.  This must be kept up to date with
- * `github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName`.
- */
-export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
-
-/**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
  */
 export let excessiveDebugOutput: boolean = false;
