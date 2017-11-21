@@ -9,8 +9,10 @@ import { asyncTest } from "../../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const grpc = require("grpc");
-const langrpc = require("../../../proto/languages_grpc_pb.js");
-const langproto = require("../../../proto/languages_pb.js");
+const langrpc = require("../../../proto/language_grpc_pb.js");
+const langproto = require("../../../proto/language_pb.js");
+const resrpc = require("../../../proto/resource_grpc_pb.js");
+const resproto = require("../../../proto/resource_pb.js");
 
 interface RunCase {
     project?: string;
@@ -303,7 +305,7 @@ describe("rpc", () => {
                 const monitor = createMockResourceMonitor(
                     // Invoke callback
                     (call: any, callback: any) => {
-                        const resp = new langproto.InvokeResponse();
+                        const resp = new resproto.InvokeResponse();
                         if (opts.invoke) {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();
@@ -316,7 +318,7 @@ describe("rpc", () => {
                     },
                     // NewResources callback
                     (call: any, callback: any) => {
-                        const resp = new langproto.NewResourceResponse();
+                        const resp = new resproto.NewResourceResponse();
                         const req: any = call.request;
                         // Skip the automatically generated root component resource.
                         if (req.getType() !== runtime.rootPulumiStackTypeName) {
@@ -423,7 +425,7 @@ function createMockResourceMonitor(
         newResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
-    server.addService(langrpc.ResourceMonitorService, {
+    server.addService(resrpc.ResourceMonitorService, {
         invoke: invokeCallback,
         newResource: newResourceCallback,
     });

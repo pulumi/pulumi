@@ -37,7 +37,7 @@ export abstract class Resource {
 
         // If there wasn't an explicit parent, and a root stack exists, parent to that.
         if (!parent) {
-            parent = runtime.rootPulumiStack;
+            parent = runtime.getRootPulumiStack();
         }
 
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
@@ -99,13 +99,13 @@ export class ComponentResource extends Resource {
     }
 
     // recordOutput sets a property named key to the value val in this component's output properties.
-    protected recordOutput(key: string, val: any): void {
+    protected recordOutput(key: string, val: ComputedValue<any>): void {
         // TODO[pulumi/pulumi#340]: communicate outputs back to the engine via RPC so that it can record them
         //     inside of the resulting checkpoint file.
     }
 
     // recordOutputs sets all object keys and values from obj as properties in this component's output properties.
-    protected recordOutputs(obj: any): void {
+    protected recordOutputs(obj: ComputedValues): void {
         // TODO[pulumi/pulumi#340]: communicate outputs back to the engine via RPC so that it can record them
         //     inside of the resulting checkpoint file.
     }

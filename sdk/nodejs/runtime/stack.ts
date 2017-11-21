@@ -1,13 +1,18 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as log from "../log";
 import { getProject, getStack } from "../metadata";
-import { ComponentResource, Resource } from "../resource";
+import { ComponentResource, ComputedValues, Resource } from "../resource";
+
+let rootPulumiStack: Resource | undefined;
 
 /**
- * rootPulumiStack is a root stack that will be used automatically as resource parents.  This ensures that all
+ * getRootPulumiStack returns a root stack that will be used automatically as resource parents.  This ensures that all
  * resources without explicit parents are parented to a common stack type.
  */
-export let rootPulumiStack: Resource | undefined;
+export function getRootPulumiStack(): Resource | undefined {
+    return rootPulumiStack;
+}
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -25,7 +30,7 @@ export function runInPulumiStack(init: () => any): void {
 }
 
 class Stack extends ComponentResource {
-    constructor(init: () => any) {
+    constructor(init: () => ComputedValues) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
 
         if (rootPulumiStack) {
@@ -35,6 +40,14 @@ class Stack extends ComponentResource {
             rootPulumiStack = this;       // install ourselves as the current root.
             const outputs = init();       // run the init code.
             super.recordOutputs(outputs); // save the outputs for this component to whatever the init returned.
+
+            // TODO[pulumi/pulumi#340]: until output properties for components are working again, just print them out.
+            for (const key of Object.keys(outputs)) {
+                const value = outputs[key];
+                (async () => {
+                    log.info(`stack output: ${key}: ${await value}`);
+                })();
+            }
         }
         finally {
             rootPulumiStack = undefined;
