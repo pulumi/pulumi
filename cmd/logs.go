@@ -44,7 +44,7 @@ func newLogsCmd() *cobra.Command {
 				for _, logEntry := range logs {
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 					if eventTime.After(sinceTime) {
-						fmt.Printf("%29v[%25v] %v\n", eventTime.Format(time.RFC3339Nano), logEntry.ID, logEntry.Message)
+						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(time.RFC3339Nano), logEntry.ID, logEntry.Message)
 					}
 					if eventTime.After(highestTimeSeen) {
 						highestTimeSeen = eventTime
@@ -84,12 +84,12 @@ func parseRelativeDuration(duration string) *time.Time {
 	}
 	parts := durationRegexp.FindStringSubmatch(duration)
 	if parts == nil {
-		fmt.Printf("Err: %v\n", duration)
+		fmt.Printf("Warning: duration could not be parsed: '%v'\n", duration)
 		return nil
 	}
 	num, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		fmt.Printf("Err: %v\n", err)
+		fmt.Printf("Warning: duration could not be parsed: '%v'\n", duration)
 		return nil
 	}
 	d := time.Duration(-num)
@@ -107,10 +107,9 @@ func parseRelativeDuration(duration string) *time.Time {
 	case "s":
 		d *= time.Second
 	default:
+		fmt.Printf("Warning: duration could not be parsed: '%v'\n", duration)
 		return nil
 	}
-	// fmt.Printf("Duration: %v\n", d)
 	ret := now.Add(d)
-	fmt.Printf("Since: %v\n", ret.Format(time.RFC3339Nano))
 	return &ret
 }

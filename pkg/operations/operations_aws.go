@@ -138,15 +138,27 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroup
 	// Run FilterLogEvents for each log group in parallel
 	for _, logGroup := range logGroups {
 		go func(logGroup string) {
-			resp, err := p.logSvc.FilterLogEvents(&cloudwatchlogs.FilterLogEventsInput{
-				LogGroupName: aws.String(logGroup),
-				StartTime:    startMilli,
-				EndTime:      endMilli,
-			})
-			if err != nil {
-				glog.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+			var nextToken *string
+			var ret []*cloudwatchlogs.FilteredLogEvent
+			for {
+				resp, err := p.logSvc.FilterLogEvents(&cloudwatchlogs.FilterLogEventsInput{
+					LogGroupName: aws.String(logGroup),
+					StartTime:    startMilli,
+					EndTime:      endMilli,
+					NextToken:    nextToken,
+				})
+				if err != nil {
+					glog.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+				}
+				ret = append(ret, resp.Events...)
+				nextToken = resp.NextToken
+				if resp.NextToken == nil {
+					break
+				} else {
+					fmt.Printf("Getting more logs for %v...\n", logGroup)
+				}
 			}
-			ch <- resp.Events
+			ch <- ret
 		}(logGroup)
 	}
 
