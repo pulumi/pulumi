@@ -90,7 +90,24 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string, ignores *ign
 		}
 
 		if info.Mode().IsDir() {
-			err := addDirectoryToZip(writer, root, fullName, ignores)
+			// Work around an issue that will be addressed by pulumi/pulumi-ppc#95, by ensuring
+			// our zip files contain directory entries instead of just having files with paths.
+			// When the PPC fix is everywhere, we can delete this code in favor of just calling
+			// addDirectoryToZip recursively
+			zh, err := zip.FileInfoHeader(info)
+			if err != nil {
+				return err
+			}
+
+			// Add a trailing slash since this is a directory.
+			zh.Name = convertPathsForZip(strings.TrimPrefix(fullName, root)) + "/"
+
+			_, err = writer.CreateHeader(zh)
+			if err != nil {
+				return err
+			}
+
+			err = addDirectoryToZip(writer, root, fullName, ignores)
 			if err != nil {
 				return err
 			}

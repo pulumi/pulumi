@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -92,6 +93,12 @@ func checkFiles(t *testing.T, expected []fileContents, actual []*zip.File) {
 	}
 
 	for _, f := range actual {
+
+		// Ignore any directories (we only care that the files themselves are correct)
+		if strings.HasSuffix(f.Name, "/") {
+			continue
+		}
+
 		actualFiles = append(actualFiles, f.Name)
 	}
 
