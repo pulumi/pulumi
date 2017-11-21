@@ -110,6 +110,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/sabhiram/go-gitignore"
+  packages = ["."]
+  revision = "362f9845770f1606d61ba3ddf9cfb1f0780d2ffe"
+
+[[projects]]
+  branch = "master"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
   revision = "2fc9cd33b5f86077aa3e0f442fa0476a9fa9a1dc"
@@ -213,6 +219,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "86c24eff162018f59f600e5474683bbaca9e4267082184a9d8ee5f4ef45cbc89"
+  inputs-digest = "bec14dd18d0cbcf3d8bb88226e75fa1aa455e0e2a2175655722c120046949ced"
   solver-name = "gps-cdcl"
   solver-version = 1
