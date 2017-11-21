@@ -20,6 +20,7 @@ const WorkspaceDir = "workspaces"      // the name of the directory that holds w
 const RepoFile = "settings.json"       // the name of the file that holds information specific to the entire repository.
 const ConfigDir = "config"             // the name of the folder that holds local configuration information.
 const WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
+const IgnoreFile = ".pulumiignore"     // the name of the file that we use to control what information us uploaded to the service
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
 // Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
