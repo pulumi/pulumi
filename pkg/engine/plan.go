@@ -85,7 +85,7 @@ type planResult struct {
 // StepActions is used to process a plan's steps.
 type StepActions interface {
 	// Run is invoked to perform whatever action the implementer uses to process the step.
-	Run(step deploy.Step) (resource.Status, error)
+	Run(iter *deploy.PlanIterator, step deploy.Step) (resource.Status, error)
 }
 
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
@@ -110,7 +110,7 @@ func (res *planResult) Walk(actions StepActions) (deploy.PlanSummary, deploy.Ste
 
 	for step != nil {
 		// Perform any per-step actions.
-		rst, err := actions.Run(step)
+		rst, err := actions.Run(iter, step)
 
 		// If an error occurred, exit early.
 		if err != nil {
@@ -151,14 +151,14 @@ func newPreviewActions(opts deployOptions) *previewActions {
 	}
 }
 
-func (acts *previewActions) Run(step deploy.Step) (resource.Status, error) {
+func (acts *previewActions) Run(iter *deploy.PlanIterator, step deploy.Step) (resource.Status, error) {
 	// Print this step information (resource and all its properties).
 	if shouldShow(acts.Seen, step, acts.Opts) {
 		printStep(&acts.Summary, acts.Seen, acts.Shown, step, acts.Opts.Summary, acts.Opts.Detailed, true, "")
 	}
 
 	// Be sure to skip the step so that in-memory state updates are performed.
-	err := step.Skip()
+	_, err := iter.Apply(step, true)
 
 	// We let `printPlan` handle error reporting for now.
 	if err == nil {

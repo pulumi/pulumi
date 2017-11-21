@@ -13,8 +13,8 @@ import (
 )
 
 const ProjectFile = "Pulumi"           // the base name of a project file.
-const GitDir = ".git"                  // the name of the folder git uses to store information
-const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we store all state information here (like .git for git)
+const GitDir = ".git"                  // the name of the folder git uses to store information.
+const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we store state here (like .git for git).
 const StackDir = "stacks"              // the name of the directory that holds stack information for projects.
 const WorkspaceDir = "workspaces"      // the name of the directory that holds workspace information for projects.
 const RepoFile = "settings.json"       // the name of the file that holds information specific to the entire repository.
@@ -24,7 +24,9 @@ const WorkspaceFile = "workspace.json" // the name of the file that holds worksp
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
 // Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
 func DetectPackage(path string) (string, error) {
-	return fsutil.WalkUp(path, isProject, func(s string) bool { return !isRepositoryFolder(filepath.Join(s, BookkeepingDir)) })
+	return fsutil.WalkUp(path, isProject, func(s string) bool {
+		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
+	})
 }
 
 func isGitFolder(path string) bool {

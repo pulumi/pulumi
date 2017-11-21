@@ -337,8 +337,8 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
 func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
-	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed. Serialize the
-	// asset with only its hash (if present).
+	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
+	// Serialize the asset with only its hash (if present).
 	if opts.ElideAssetContents {
 		v = &resource.Asset{Hash: v.Hash}
 	} else {
@@ -358,8 +358,8 @@ func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, erro
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
 func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
-	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed. Serialize the
-	// asset with only its hash (if present).
+	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
+	// Serialize the asset with only its hash (if present).
 	if opts.ElideAssetContents {
 		v = &resource.Archive{Hash: v.Hash}
 	} else {

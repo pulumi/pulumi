@@ -24,6 +24,7 @@ import (
 // in the serialized object match the order they are defined in this struct.
 //
 // TODO[pulumi/pulumi#423]: use DOM based marshalling so we can roundtrip the seralized structure perfectly.
+// nolint: lll
 type Package struct {
 	Name    tokens.PackageName `json:"name" yaml:"name"`       // a required fully qualified name.
 	Runtime string             `json:"runtime" yaml:"runtime"` // a required runtime that executes code.

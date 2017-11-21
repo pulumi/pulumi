@@ -7,7 +7,10 @@ import { ComponentResource, Resource } from "../resource";
  * rootPulumiStack is a root stack that will be used automatically as resource parents.  This ensures that all
  * resources without explicit parents are parented to a common stack type.
  */
-export let rootPulumiStack: Resource | undefined;
+let rootPulumiStack: Resource | undefined;
+export function getRootPulumiStack(): Resource | undefined {
+    return rootPulumiStack;
+}
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -32,9 +35,9 @@ class Stack extends ComponentResource {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
         try {
-            rootPulumiStack = this;       // install ourselves as the current root.
-            const outputs = init();       // run the init code.
-            super.recordOutputs(outputs); // save the outputs for this component to whatever the init returned.
+            rootPulumiStack = this;      // install ourselves as the current root.
+            const outputs: any = init(); // run the init code.
+            super.complete(outputs);     // save the outputs for this component to whatever the init returned.
         }
         finally {
             rootPulumiStack = undefined;

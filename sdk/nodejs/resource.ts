@@ -37,7 +37,7 @@ export abstract class Resource {
 
         // If there wasn't an explicit parent, and a root stack exists, parent to that.
         if (!parent) {
-            parent = runtime.rootPulumiStack;
+            parent = runtime.getRootPulumiStack();
         }
 
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
@@ -74,6 +74,10 @@ export abstract class CustomResource extends Resource {
      */
     constructor(t: string, name: string, props?: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
         super(t, name, true, props, parent, dependsOn);
+
+        // Unlike components, a custom resource is done as soon as its registration has happened; automatically
+        // finish registering custom resource state so that subclasses don't need to do so.
+        runtime.completeResource(this);
     }
 }
 
@@ -98,16 +102,10 @@ export class ComponentResource extends Resource {
         super(t, name, false, props, parent, dependsOn);
     }
 
-    // recordOutput sets a property named key to the value val in this component's output properties.
-    protected recordOutput(key: string, val: any): void {
-        // TODO[pulumi/pulumi#340]: communicate outputs back to the engine via RPC so that it can record them
-        //     inside of the resulting checkpoint file.
-    }
-
-    // recordOutputs sets all object keys and values from obj as properties in this component's output properties.
-    protected recordOutputs(obj: any): void {
-        // TODO[pulumi/pulumi#340]: communicate outputs back to the engine via RPC so that it can record them
-        //     inside of the resulting checkpoint file.
+    // complete finishes the initialization of this resource, with an optional bag of extra output state.  All
+    // component subclasses *must* call this when done, otherwise they will not be present in the checkpoint file.
+    protected complete(extras?: ComputedValues): void {
+        runtime.completeResource(this, extras);
     }
 }
 

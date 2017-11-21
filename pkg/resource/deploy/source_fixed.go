@@ -6,15 +6,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// NewFixedSource returns a valid planning source that is comprised of a list of pre-computed resource objects.
-func NewFixedSource(ctx tokens.PackageName, resources []SourceGoal) Source {
-	return &fixedSource{ctx: ctx, resources: resources}
+// NewFixedSource returns a valid planning source that is comprised of a list of pre-computed steps.
+func NewFixedSource(ctx tokens.PackageName, steps []SourceIntent) Source {
+	return &fixedSource{ctx: ctx, steps: steps}
 }
 
 // A fixedSource just returns from a fixed set of resource states.
 type fixedSource struct {
-	ctx       tokens.PackageName
-	resources []SourceGoal
+	ctx   tokens.PackageName
+	steps []SourceIntent
 }
 
 func (src *fixedSource) Close() error {
@@ -46,10 +46,10 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Next() (SourceGoal, error) {
+func (iter *fixedSourceIterator) Next() (SourceIntent, error) {
 	iter.current++
-	if iter.current >= len(iter.src.resources) {
+	if iter.current >= len(iter.src.steps) {
 		return nil, nil
 	}
-	return iter.src.resources[iter.current], nil
+	return iter.src.steps[iter.current], nil
 }

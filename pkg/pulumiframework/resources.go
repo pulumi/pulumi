@@ -217,7 +217,8 @@ func (ops *componentOpsProvider) ListMetrics() []component.MetricName {
 	}
 }
 
-func (ops *componentOpsProvider) GetMetricStatistics(metric component.MetricRequest) ([]component.MetricDataPoint, error) {
+func (ops *componentOpsProvider) GetMetricStatistics(metric component.MetricRequest) (
+	[]component.MetricDataPoint, error) {
 
 	var dimensions []*cloudwatch.Dimension
 	var namespace string
@@ -316,7 +317,8 @@ func (ops *componentsOpsProvider) ListMetrics() []component.MetricName {
 	return []component.MetricName{}
 }
 
-func (ops *componentsOpsProvider) GetMetricStatistics(metric component.MetricRequest) ([]component.MetricDataPoint, error) {
+func (ops *componentsOpsProvider) GetMetricStatistics(metric component.MetricRequest) (
+	[]component.MetricDataPoint, error) {
 	return nil, fmt.Errorf("not yet implemented")
 }
 

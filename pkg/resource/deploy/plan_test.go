@@ -107,7 +107,7 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Next() (SourceGoal, error) {
+func (iter *errorSourceIterator) Next() (SourceIntent, error) {
 	return nil, iter.src.err
 }
 
@@ -196,24 +196,24 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"af1": resource.NewStringProperty("a-value"),
 		"af2": resource.NewNumberProperty(42),
 	}, "")
-	newStateA := &testSourceGoal{Goal: newResA}
+	newStateA := &testRegInt{goal: newResA}
 	//     - B is updated:
 	newResB := resource.NewGoal(typB, namB, true, resource.PropertyMap{
 		"bf1": resource.NewStringProperty("b-value"),
 		// delete the bf2 field, and add bf3.
 		"bf3": resource.NewBoolProperty(true),
 	}, "")
-	newStateB := &testSourceGoal{Goal: newResB}
+	newStateB := &testRegInt{goal: newResB}
 	//     - C has no changes:
 	newResC := resource.NewGoal(typC, namC, true, resource.PropertyMap{
 		"cf1": resource.NewStringProperty("c-value"),
 		"cf2": resource.NewNumberProperty(83),
 	}, "")
-	newStateC := &testSourceGoal{Goal: newResC}
+	newStateC := &testRegInt{goal: newResC}
 	//     - No D; it is deleted.
 
 	// Use a fixed source that just returns the above predefined objects during planning.
-	source := NewFixedSource(pkgname, []SourceGoal{newStateA, newStateB, newStateC})
+	source := NewFixedSource(pkgname, []SourceIntent{newStateA, newStateB, newStateC})
 
 	// Next up, create a plan from the new and old, and validate its shape.
 	plan := NewPlan(ctx, targ, oldsnap, source, nil)
@@ -234,7 +234,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 		var urn resource.URN
 		var realID bool
 		var expectOuts resource.PropertyMap
-		var state *testSourceGoal
 		switch s := step.(type) {
 		case *CreateStep: // A is created
 			old := s.Old()
@@ -244,7 +243,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnA, new.URN)
 			assert.Equal(t, newResA.Properties, new.Inputs)
 			assert.Equal(t, newResA.Properties, new.AllInputs())
-			state, urn, realID = newStateA, urnA, false
+			urn, realID = urnA, false
 		case *UpdateStep: // B is updated
 			old := s.Old()
 			assert.NotNil(t, old)
@@ -255,7 +254,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnB, new.URN)
 			assert.Equal(t, newResB.Properties, new.Inputs)
 			assert.Equal(t, newResB.Properties, new.AllInputs())
-			state, urn, realID = newStateB, urnB, true
+			urn, realID = urnB, true
 		case *SameStep: // C is the same
 			old := s.Old()
 			assert.NotNil(t, old)
@@ -266,7 +265,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnC, new.URN)
 			assert.Equal(t, newResC.Properties, new.Inputs)
 			assert.Equal(t, newResC.Properties, new.AllInputs())
-			state, urn, realID, expectOuts = newStateC, urnC, true, oldResC.Outputs
+			urn, realID, expectOuts = urnC, true, oldResC.Outputs
 		case *DeleteStep: // D is deleted
 			old := s.Old()
 			assert.NotNil(t, old)
@@ -278,20 +277,19 @@ func TestBasicCRUDPlan(t *testing.T) {
 			t.FailNow() // unexpected step kind.
 		}
 
-		if state != nil {
-			// Ensure the state is empty until until we step.
-			assert.Nil(t, state.State)
-		}
-
-		err = step.Skip()
+		var state *FinalState
+		_, state, err = step.Apply(true)
 		assert.Nil(t, err)
 
 		op := step.Op()
 		if state != nil {
-			// The state should be non-nil by now.
+			// The state should be non-nil by now and it should have a URN.
 			assert.NotNil(t, state.State)
 
-			// Ensure the ID, URN, and properties are populated correctly.
+			// Ensure the URN, ID, and properties are populated correctly.
+			assert.Equal(t, urn, state.State.URN,
+				"Expected op %v to populate a URN equal to %v", op, urn)
+
 			if realID {
 				assert.NotEqual(t, resource.ID(""), state.State.ID,
 					"Expected op %v to populate a real ID (%v)", op, urn)
@@ -299,8 +297,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 				assert.Equal(t, resource.ID(""), state.State.ID,
 					"Expected op %v to leave ID blank (%v); got %v", op, urn, state.State.ID)
 			}
-			assert.Equal(t, urn, state.State.URN,
-				"Expected op %v to populate a URN equal to %v", op, urn)
 
 			if expectOuts != nil {
 				props := state.State.All()
@@ -329,18 +325,22 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.True(t, iter.Deletes()[urnD])
 }
 
-type testSourceGoal struct {
-	Goal  *resource.Goal
-	State *resource.State
+type testRegInt struct {
+	goal *resource.Goal
+	urn  resource.URN
 }
 
-func (g *testSourceGoal) Resource() *resource.Goal {
-	return g.Goal
+var _ RegisterIntent = (*testRegInt)(nil)
+
+func (g *testRegInt) intent() {}
+
+func (g *testRegInt) Goal() *resource.Goal {
+	return g.goal
 }
 
-func (g *testSourceGoal) Done(state *resource.State, stable bool, stables []resource.PropertyKey) {
-	contract.Assertf(g.State == nil, "Attempt to invoke testSourceGoal.Done more than once")
-	g.State = state
+func (g *testRegInt) Done(urn resource.URN) {
+	contract.Assertf(g.urn == "", "Attempt to invoke testRegInt.Done more than once")
+	g.urn = urn
 }
 
 type testProviderHost struct {

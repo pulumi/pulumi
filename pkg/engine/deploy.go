@@ -153,7 +153,7 @@ func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine)
 	}
 }
 
-func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
+func (acts *deployActions) Run(iter *deploy.PlanIterator, step deploy.Step) (resource.Status, error) {
 	// Report the beginning of the step if appropriate.
 	if shouldShow(acts.Seen, step, acts.Opts) {
 		var b bytes.Buffer
@@ -167,8 +167,8 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		return resource.StatusOK, err
 	}
 
-	// Apply the step's changes.
-	status, err := step.Apply()
+	// Apply the step's changes and save its results in the iterator/checkpoint.
+	status, err := iter.Apply(step, false)
 
 	// Report the result of the step.
 	stepop := step.Op()
@@ -209,8 +209,8 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 	}
 
-	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a safe checkpoint.
-	// Note that any error that occurs when writing the checkpoint trumps the error reported above.
+	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
+	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
 	if mutation != nil {
 		if endErr := mutation.End(step.Iterator().Snap()); endErr != nil {
 			return status, endErr

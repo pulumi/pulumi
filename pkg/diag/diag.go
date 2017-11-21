@@ -19,7 +19,8 @@ func Message(msg string) *Diag {
 	return &Diag{Message: msg}
 }
 
-// RawMessage returns an anonymous diagnostic message without any source or ID information that will not be rendered with Sprintf.
+// RawMessage returns an anonymous diagnostic message without any source or ID information that will not be rendered
+// with Sprintf.
 func RawMessage(msg string) *Diag {
 	return &Diag{Message: msg, Raw: true}
 }

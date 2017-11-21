@@ -223,9 +223,9 @@ func (p *plugin) Close() error {
 
 	var result error
 
-	// On windows, plugins are not loaded directly, instead a cmd script launches each plugin as a child process, so instead
-	// we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting for the child
-	// processes to close.
+	// On windows, plugins are not loaded directly, instead a cmd script launches each plugin as a child process, so
+	// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
+	// for the child processes to close.
 	if runtime.GOOS == "windows" {
 		if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
 			result = multierror.Append(result, err)

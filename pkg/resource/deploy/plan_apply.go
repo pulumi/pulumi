@@ -3,6 +3,7 @@
 package deploy
 
 import (
+	"reflect"
 	"sort"
 	"time"
 
@@ -44,6 +45,7 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 		replaces: make(map[resource.URN]bool),
 		deletes:  make(map[resource.URN]bool),
 		sames:    make(map[resource.URN]bool),
+		regs:     make(map[resource.URN]*FinalState),
 		dones:    make(map[*resource.State]bool),
 	}, nil
 }
@@ -107,10 +109,11 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
-	stepqueue []Step                   // a queue of steps to drain.
-	delqueue  []*resource.State        // a queue of deletes left to perform.
-	resources []*resource.State        // the resulting ordered resource states.
-	dones     map[*resource.State]bool // true for each old state we're done with.
+	stepqueue []Step                       // a queue of steps to drain.
+	delqueue  []*resource.State            // a queue of deletes left to perform.
+	resources []*resource.State            // the resulting ordered resource states.
+	regs      map[resource.URN]*FinalState // a map of pending registrations not yet complete.
+	dones     map[*resource.State]bool     // true for each old state we're done with.
 
 	srcdone bool // true if the source interpreter has been run to completion.
 	done    bool // true if the planning and associated iteration has finished.
@@ -129,6 +132,26 @@ func (iter *PlanIterator) Resources() []*resource.State    { return iter.resourc
 func (iter *PlanIterator) Dones() map[*resource.State]bool { return iter.dones }
 func (iter *PlanIterator) Done() bool                      { return iter.done }
 
+// Apply performs a plan's step and records its result in the iterator's state.
+func (iter *PlanIterator) Apply(step Step, skip bool) (resource.Status, error) {
+	// Ensure we don't have a pending registration for this resource already.
+	urn := step.URN()
+	if _, has := iter.regs[urn]; has {
+	}
+
+	// Apply the step.
+	status, state, err := step.Apply(skip)
+	if err != nil {
+		return status, err
+	}
+
+	// Now stash away its resulting state for safe-keeping; we will spill it to the checkpoint later on.
+	if state != nil {
+		iter.regs[urn] = state
+	}
+	return resource.StatusOK, nil
+}
+
 // Close terminates the iteration of this plan.
 func (iter *PlanIterator) Close() error {
 	return iter.src.Close()
@@ -138,31 +161,46 @@ func (iter *PlanIterator) Close() error {
 // evaluation of the program as much as necessary to determine the next step.  If there is no further action to be
 // taken, Next will return a nil step pointer.
 func (iter *PlanIterator) Next() (Step, error) {
+outer:
 	for !iter.done {
 		if len(iter.stepqueue) > 0 {
 			step := iter.stepqueue[0]
 			iter.stepqueue = iter.stepqueue[1:]
 			return step, nil
 		} else if !iter.srcdone {
-			goal, err := iter.src.Next()
+			intent, err := iter.src.Next()
 			if err != nil {
 				return nil, err
-			} else if goal != nil {
-				steps, err := iter.nextResourceSteps(goal)
-				if err != nil {
-					return nil, err
+			} else if intent != nil {
+				// If we have an intent, drive the behavior based on which kind it is.
+				switch it := intent.(type) {
+				case RegisterIntent:
+					// If the intent is to register a resource, compute the plan steps necessary to do so.
+					steps, steperr := iter.computeResourceSteps(it)
+					if err != nil {
+						return nil, steperr
+					}
+					contract.Assert(len(steps) > 0)
+					if len(steps) > 1 {
+						iter.stepqueue = steps[1:]
+					}
+					return steps[0], nil
+				case CompleteIntent:
+					// If the intent is to complete a prior resource registration, do so.  We do this by just
+					// processing the request from the existing state, and do not expose our callers to it.
+					if err = iter.completeResource(it); err != nil {
+						return nil, err
+					}
+					continue outer
+				default:
+					contract.Failf("Unrecognized intent from source iterator: %v", reflect.TypeOf(intent))
 				}
-				contract.Assert(len(steps) > 0)
-				if len(steps) > 1 {
-					iter.stepqueue = steps[1:]
-				}
-				return steps[0], nil
 			}
 
 			// If all returns are nil, the source is done, note it, and don't go back for more.  Add any deletions to be
 			// performed, and then keep going 'round the next iteration of the loop so we can wrap up the planning.
 			iter.srcdone = true
-			iter.delqueue = iter.calculateDeletes()
+			iter.delqueue = iter.computeDeletes()
 		} else {
 			// The interpreter has finished, so we need to now drain any deletions that piled up.
 			if step := iter.nextDeleteStep(); step != nil {
@@ -177,14 +215,14 @@ func (iter *PlanIterator) Next() (Step, error) {
 	return nil, nil
 }
 
-// nextResourceSteps produces one or more steps required to achieve the desired resource goal state, or nil if there
+// computeResourceSteps produces one or more steps required to achieve the desired resource goal state, or nil if there
 // aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
 // possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
-func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
+func (iter *PlanIterator) computeResourceSteps(reg RegisterIntent) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	// Use the resource goal state name to produce a globally unique URN.
-	res := goal.Resource()
+	res := reg.Goal()
 	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Type, res.Name)
 	if iter.urns[urn] {
 		invalid = true
@@ -311,7 +349,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 				}
 
 				return []Step{
-					NewCreateReplacementStep(iter, goal, old, new, diff.ReplaceKeys),
+					NewCreateReplacementStep(iter, reg, old, new, diff.ReplaceKeys),
 					NewReplaceStep(iter, old, new, diff.ReplaceKeys),
 				}, nil
 			}
@@ -322,7 +360,7 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
 					urn, oldinputs, new.AllInputs())
 			}
-			return []Step{NewUpdateStep(iter, goal, old, new, diff.StableKeys)}, nil
+			return []Step{NewUpdateStep(iter, reg, old, new, diff.StableKeys)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -330,13 +368,13 @@ func (iter *PlanIterator) nextResourceSteps(goal SourceGoal) ([]Step, error) {
 		if glog.V(7) {
 			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.AllInputs())
 		}
-		return []Step{NewSameStep(iter, goal, old, new)}, nil
+		return []Step{NewSameStep(iter, reg, old, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.AllInputs())
-	return []Step{NewCreateStep(iter, goal, new)}, nil
+	return []Step{NewCreateStep(iter, reg, new)}, nil
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
@@ -357,26 +395,35 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	return true
 }
 
-// nextDeleteStep produces a new step that deletes a resource if necessary.
-func (iter *PlanIterator) nextDeleteStep() Step {
-	if len(iter.delqueue) > 0 {
-		del := iter.delqueue[0]
-		iter.delqueue = iter.delqueue[1:]
-		urn := del.URN
-		iter.deletes[urn] = true
-		if iter.replaces[urn] {
-			glog.V(7).Infof("Planner decided to delete '%v' due to replacement", urn)
-		} else {
-			glog.V(7).Infof("Planner decided to delete '%v'", urn)
-		}
-		return NewDeleteStep(iter, del, iter.replaces[urn])
+func (iter *PlanIterator) completeResource(c CompleteIntent) error {
+	// Look up the final state in the pending registration list.
+	urn := c.URN()
+	final, has := iter.regs[urn]
+	if !has {
+		return goerr.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
 	}
+	contract.Assertf(final != nil, "expected a non-nil final resource state ('%v')", urn)
+	delete(iter.regs, urn)
+
+	// Complete the step and get back our final state.
+
+	// If there are any extra properties to add to the outputs, do it now.
+	if extras := c.Extras(); extras != nil {
+		final.State.AddExtras(extras)
+	}
+
+	// Add the final state snapshot for this resource so that it gets serialized appropriately.
+	iter.CompleteStateSnapshot(urn, final.State)
+
+	// Now communicate the results back to the language provider, who is waiting on the intent.
+	c.Done(final)
+
 	return nil
 }
 
-// calculateDeletes creates a list of deletes to perform.  This will include any resources in the snapshot that were
+// computeDeletes creates a list of deletes to perform.  This will include any resources in the snapshot that were
 // not encountered in the input, along with any resources that were replaced.
-func (iter *PlanIterator) calculateDeletes() []*resource.State {
+func (iter *PlanIterator) computeDeletes() []*resource.State {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -394,11 +441,27 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 	return dels
 }
 
+// nextDeleteStep produces a new step that deletes a resource if necessary.
+func (iter *PlanIterator) nextDeleteStep() Step {
+	if len(iter.delqueue) > 0 {
+		del := iter.delqueue[0]
+		iter.delqueue = iter.delqueue[1:]
+		urn := del.URN
+		iter.deletes[urn] = true
+		if iter.replaces[urn] {
+			glog.V(7).Infof("Planner decided to delete '%v' due to replacement", urn)
+		} else {
+			glog.V(7).Infof("Planner decided to delete '%v'", urn)
+		}
+		return NewDeleteStep(iter, del, iter.replaces[urn])
+	}
+	return nil
+}
+
 // Snap returns a fresh snapshot that takes into account everything that has happened up till this point.  Namely, if a
 // failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
 // preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
 func (iter *PlanIterator) Snap() *Snapshot {
-
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -406,8 +469,8 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	// - Begin with an empty merged DAG.
 	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG.
 	// - For each resource r in the base DAG:
-	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the current
-	//       DAG, which accurately captures its current dependencies.
+	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the
+	//       current DAG, which accurately captures its current dependencies.
 	//     - If r is not in the merged DAG, insert it and its outgoing edges into the merged DAG.
 	//
 	// Physically, however, each DAG is represented as list of resources without explicit dependency edges. In place of
@@ -417,22 +480,23 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	// topological sort of the merged DAG:
 	//
 	// - Begin with an empty merged list.
-	// - For each resource r in the current list, append r to the merged list. r must be in a correct location in the merged
-	//   list, as its position relative to its assumed dependencies has not changed.
+	// - For each resource r in the current list, append r to the merged list. r must be in a correct location in the
+	//   merged list, as its position relative to its assumed dependencies has not changed.
 	// - For each resource r in the base list:
 	//     - If r is in the merged list, we are done by the logic given in the original algorithm.
-	//     - If r is not in the merged list, append r to the merged list. r must be in a correct location in the merged list:
+	//     - If r is not in the merged list, append r to the merged list. r must be in a correct location in the merged
+	//       list:
 	//         - If any of r's dependencies were in the current list, they must already be in the merged list and their
 	//           relative order w.r.t. r has not changed.
-	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as they
-	//           would have been appended to the list before r.
+	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
+	//           they would have been appended to the list before r.
 
 	// Start with a copy of the resources produced during the evaluation of the current plan.
 	resources := make([]*resource.State, len(iter.resources))
 	copy(resources, iter.resources)
 
-	// If the plan has not finished executing, append any resources from the base plan that were not produced by the current
-	// plan.
+	// If the plan has not finished executing, append any resources from the base plan that were not produced by the
+	// current plan.
 	if !iter.done {
 		if prev := iter.p.prev; prev != nil {
 			for _, res := range prev.Resources {
@@ -446,15 +510,16 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	return NewSnapshot(iter.p.Target().Name, time.Now(), resources)
 }
 
-// MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway
-// through the application of a deployment plan.  Any old state that has not yet been recovered needs to be kept.
-func (iter *PlanIterator) MarkStateSnapshot(state *resource.State) {
-	iter.dones[state] = true
-}
-
-// AppendStateSnapshot appends a resource's state to the current snapshot.
-func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
-	iter.resources = append(iter.resources, state)
+// CompleteStateSnapshot marks an old state snapshot as being processed, while adding a new version if relevant.  This
+// is done to recover from failures partway through the application of a deployment plan.  Any old state that has not
+// yet been recovered needs to be kept.
+func (iter *PlanIterator) CompleteStateSnapshot(urn resource.URN, new *resource.State) {
+	if old := iter.p.olds[urn]; old != nil {
+		iter.dones[old] = true
+	}
+	if new != nil {
+		iter.resources = append(iter.resources, new)
+	}
 }
 
 // Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
