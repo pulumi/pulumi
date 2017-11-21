@@ -74,6 +74,12 @@ func NewPulumiCmd(version string) *cobra.Command {
 	cmd.AddCommand(newLoginCmd())
 	cmd.AddCommand(newLogoutCmd())
 
+	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
+	// set to true.
+	if isTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
+		cmd.AddCommand(newArchiveCommand())
+	}
+
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
 	// which calls flag.Parse under the hood doesn't yell at you.
 	//
