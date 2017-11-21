@@ -40,9 +40,6 @@ const (
 )
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
-	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
-		contract.Failf("not yet implemented - StartTime, Endtime, Query")
-	}
 	switch ops.component.state.Type {
 	case cloudFunctionType:
 		// We get the aws:serverless:Function child and request it's logs, parsing out the user-visible content from

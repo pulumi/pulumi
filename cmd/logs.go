@@ -4,6 +4,8 @@ package cmd
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -15,6 +17,7 @@ import (
 func newLogsCmd() *cobra.Command {
 	var stack string
 	var follow bool
+	var since string
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
@@ -25,11 +28,15 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
+			startTime := parseRelativeDuration(since)
+
 			sinceTime := time.Unix(0, 0)
 			highestTimeSeen := time.Unix(0, 0)
 
 			for {
-				logs, err := backend.GetLogs(stackName, operations.LogQuery{})
+				logs, err := backend.GetLogs(stackName, operations.LogQuery{
+					StartTime: startTime,
+				})
 				if err != nil {
 					return err
 				}
@@ -60,6 +67,50 @@ func newLogsCmd() *cobra.Command {
 	logsCmd.PersistentFlags().BoolVarP(
 		&follow, "follow", "f", false,
 		"Follow the log stream in real time (like tail -f)")
+	logsCmd.PersistentFlags().StringVar(
+		&since, "since", "",
+		"Only return logs newer than a relative duration ('5s', '2m', '3h').  Defaults to returning all logs.")
 
 	return logsCmd
+}
+
+var durationRegexp = regexp.MustCompile(`(\d+)([y|w|d|h|m|s])`)
+
+// parseRelativeDuration extracts a time.Time previous to now by the a relative duration in the format '5s', '2m', '3h'.
+func parseRelativeDuration(duration string) *time.Time {
+	now := time.Now()
+	if duration == "" {
+		return nil
+	}
+	parts := durationRegexp.FindStringSubmatch(duration)
+	if parts == nil {
+		fmt.Printf("Err: %v\n", duration)
+		return nil
+	}
+	num, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		fmt.Printf("Err: %v\n", err)
+		return nil
+	}
+	d := time.Duration(-num)
+	switch parts[2] {
+	case "y":
+		d *= time.Hour * 24 * 365
+	case "w":
+		d *= time.Hour * 24 * 7
+	case "d":
+		d *= time.Hour * 24
+	case "h":
+		d *= time.Hour
+	case "m":
+		d *= time.Minute
+	case "s":
+		d *= time.Second
+	default:
+		return nil
+	}
+	// fmt.Printf("Duration: %v\n", d)
+	ret := now.Add(d)
+	fmt.Printf("Since: %v\n", ret.Format(time.RFC3339Nano))
+	return &ret
 }

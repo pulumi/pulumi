@@ -3,6 +3,7 @@ package operations
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -55,18 +56,28 @@ const (
 )
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
-	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
-		contract.Failf("not yet implemented - StartTime, Endtime, Query")
+	if query.Query != nil {
+		contract.Failf("not yet implemented - Query")
 	}
 	switch ops.component.state.Type {
 	case awsFunctionType:
 		functionName := ops.component.state.Outputs["name"].StringValue()
-		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{functionName}, []string{"/aws/lambda/" + functionName})
+		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+			[]string{functionName},
+			[]string{"/aws/lambda/" + functionName},
+			query.StartTime,
+			query.EndTime,
+		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return &logResult, nil
 	case awsLogGroupType:
 		name := ops.component.state.Outputs["name"].StringValue()
-		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently([]string{name}, []string{name})
+		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+			[]string{name},
+			[]string{name},
+			query.StartTime,
+			query.EndTime,
+		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return &logResult, nil
 	default:
@@ -110,16 +121,27 @@ func getAWSConnection(awsRegion string) (*awsConnection, error) {
 	return connection, nil
 }
 
-func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string) []LogEntry {
+func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string, startTime *time.Time, endTime *time.Time) []LogEntry {
 
 	// Create a channel for collecting log event outputs
 	ch := make(chan []*cloudwatchlogs.FilteredLogEvent)
+
+	var startMilli *int64
+	if startTime != nil {
+		startMilli = aws.Int64(aws.TimeUnixMilli(*startTime))
+	}
+	var endMilli *int64
+	if endTime != nil {
+		endMilli = aws.Int64(aws.TimeUnixMilli(*endTime))
+	}
 
 	// Run FilterLogEvents for each log group in parallel
 	for _, logGroup := range logGroups {
 		go func(logGroup string) {
 			resp, err := p.logSvc.FilterLogEvents(&cloudwatchlogs.FilterLogEventsInput{
 				LogGroupName: aws.String(logGroup),
+				StartTime:    startMilli,
+				EndTime:      endMilli,
 			})
 			if err != nil {
 				glog.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
