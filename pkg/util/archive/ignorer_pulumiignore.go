@@ -3,7 +3,6 @@
 package archive
 
 import (
-	"io/ioutil"
 	"path"
 	"strings"
 
@@ -13,24 +12,12 @@ import (
 // newPulumiIgnorerIgnorer creates an ignorer based on the contents of a .pulumiignore file, which
 // has the same semantics as a .gitignore file
 func newPulumiIgnorerIgnorer(pathToPulumiIgnore string) (ignorer, error) {
-	gitIgnorer, err := readIgnoreFile(pathToPulumiIgnore)
+	gitIgnorer, err := ignore.CompileIgnoreFile(pathToPulumiIgnore)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pulumiIgnoreIgnorer{root: path.Dir(pathToPulumiIgnore), ignorer: gitIgnorer}, nil
-}
-
-func readIgnoreFile(path string) (*ignore.GitIgnore, error) {
-	buf, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	patterns := []string{".git/"}
-	patterns = append(patterns, strings.Split(string(buf), "\n")...)
-
-	return ignore.CompileIgnoreLines(patterns...)
 }
 
 type pulumiIgnoreIgnorer struct {

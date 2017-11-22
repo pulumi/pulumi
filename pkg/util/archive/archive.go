@@ -20,7 +20,7 @@ import (
 )
 
 // Process returns an in-memory buffer with the archived contents of the provided file path.
-func Process(path string) (*bytes.Buffer, error) {
+func Process(path string, useDefaultExcludes bool) (*bytes.Buffer, error) {
 	buffer := &bytes.Buffer{}
 	writer := zip.NewWriter(buffer)
 
@@ -32,7 +32,7 @@ func Process(path string) (*bytes.Buffer, error) {
 		path = path + string(os.PathSeparator)
 	}
 
-	if err := addDirectoryToZip(writer, path, path, nil); err != nil {
+	if err := addDirectoryToZip(writer, path, path, useDefaultExcludes, nil); err != nil {
 		return nil, err
 	}
 	if err := writer.Close(); err != nil {
@@ -44,7 +44,7 @@ func Process(path string) (*bytes.Buffer, error) {
 	return buffer, nil
 }
 
-func addDirectoryToZip(writer *zip.Writer, root string, dir string, ignores *ignoreState) error {
+func addDirectoryToZip(writer *zip.Writer, root string, dir string, useDefaultIgnores bool, ignores *ignoreState) error {
 	ignoreFilePath := path.Join(dir, workspace.IgnoreFile)
 
 	// If there is an ignorefile, process it before looking at any child paths.
@@ -56,19 +56,27 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string, ignores *ign
 			return errors.Wrapf(err, "could not read ignore file in %v", dir)
 		}
 
-		ignores = ignores.Append(dir, ignore)
+		ignores = ignores.Append(ignore)
 	}
 
-	// If there is a package.json file here, let's build a node_modules ignorer from it and add that as well.
-	packageJSONFilePath := path.Join(dir, packageJSONFileName)
-	if stat, err := os.Stat(packageJSONFilePath); err == nil && !stat.IsDir() {
-		glog.V(9).Infof("building ignore filter from package.json in %v", dir)
-		ignore, err := newNodeModulesIgnorer(packageJSONFilePath)
-		if err != nil {
-			return errors.Wrapf(err, "could not read ignores from package.json file in %v", dir)
+	if useDefaultIgnores {
+		dotGitPath := path.Join(dir, ".git")
+		if stat, err := os.Stat(dotGitPath); err == nil {
+			ignores = ignores.Append(newPathIgnorer(dotGitPath, stat.IsDir()))
 		}
 
-		ignores = ignores.Append(dir, ignore)
+		// If there is a package.json file here, let's build a node_modules ignorer from it.
+		packageJSONFilePath := path.Join(dir, packageJSONFileName)
+		if stat, err := os.Stat(packageJSONFilePath); err == nil && !stat.IsDir() {
+			glog.V(9).Infof("building ignore filter from package.json in %v", dir)
+			ignore, err := newNodeModulesIgnorer(packageJSONFilePath)
+			if err != nil {
+				return errors.Wrapf(err, "could not read ignores from package.json file in %v", dir)
+			}
+
+			ignores = ignores.Append(ignore)
+		}
+
 	}
 
 	file, err := os.Open(dir)
@@ -117,7 +125,7 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string, ignores *ign
 				return err
 			}
 
-			err = addDirectoryToZip(writer, root, fullName, ignores)
+			err = addDirectoryToZip(writer, root, fullName, useDefaultIgnores, ignores)
 			if err != nil {
 				return err
 			}

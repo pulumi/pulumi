@@ -7,13 +7,12 @@ type ignorer interface {
 }
 
 type ignoreState struct {
-	path    string
 	ignorer ignorer
 	next    *ignoreState
 }
 
-func (s *ignoreState) Append(path string, ignorer ignorer) *ignoreState {
-	return &ignoreState{path: path, ignorer: ignorer, next: s}
+func (s *ignoreState) Append(ignorer ignorer) *ignoreState {
+	return &ignoreState{ignorer: ignorer, next: s}
 }
 
 func (s *ignoreState) IsIgnored(path string) bool {

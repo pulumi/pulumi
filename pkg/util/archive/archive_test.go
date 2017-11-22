@@ -79,7 +79,7 @@ func archiveContents(files ...fileContents) (*bytes.Buffer, error) {
 		}
 	}
 
-	return Process(dir)
+	return Process(dir, false)
 }
 
 func checkFiles(t *testing.T, expected []fileContents, actual []*zip.File) {
