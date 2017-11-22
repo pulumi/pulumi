@@ -78,15 +78,23 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// Extract out the encoded and batched logs
 		var logs []LogEntry
 		for _, rawLog := range *rawLogs {
-			var logMessage encodedLogMessage
 			extractedLog := extractLambdaLogMessage(rawLog.Message, name)
 			if extractedLog != nil {
+				// Decode the JSON blog of data from within the log entries, which will itself be a nested log entry.
+				var logMessage encodedLogMessage
 				err := json.Unmarshal([]byte(extractedLog.Message), &logMessage)
 				if err != nil {
 					return nil, err
 				}
+				// Reverse engineer the name of the function that was the source of this message from the LogGroup name.
+				logName := logMessage.LogGroup
+				match := functionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
+				if len(match) == 2 {
+					logName = match[1]
+				}
+				// Extract out each individual log event and add them to our array of logs.
 				for _, logEvent := range logMessage.LogEvents {
-					if extracted := extractLambdaLogMessage(logEvent.Message, name); extracted != nil {
+					if extracted := extractLambdaLogMessage(logEvent.Message, logName); extracted != nil {
 						logs = append(logs, *extracted)
 					}
 				}
@@ -132,7 +140,12 @@ type encodedLogMessage struct {
 	LogEvents           []encodedLogEvent `json:"logEvents"`
 }
 
-var logRegexp = regexp.MustCompile("(.*Z)\t[a-g0-9\\-]*\t(.*)")
+var (
+	// Extract function name from LogGroup name
+	functionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)\-[0-9A-Fa-f]+$`)
+	// Extract Lambda log parts from Lambda log format
+	logRegexp = regexp.MustCompile("(.*Z)\t[a-g0-9\\-]*\t(.*)")
+)
 
 // extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific metadata.
 // In particular, only the second line below is extracter, and it is extracted with the recorded timestamp.
