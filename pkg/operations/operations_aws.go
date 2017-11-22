@@ -121,7 +121,11 @@ func getAWSConnection(awsRegion string) (*awsConnection, error) {
 	return connection, nil
 }
 
-func (p *awsConnection) getLogsForLogGroupsConcurrently(names []string, logGroups []string, startTime *time.Time, endTime *time.Time) []LogEntry {
+func (p *awsConnection) getLogsForLogGroupsConcurrently(
+	names []string,
+	logGroups []string,
+	startTime *time.Time,
+	endTime *time.Time) []LogEntry {
 
 	// Create a channel for collecting log event outputs
 	ch := make(chan []*cloudwatchlogs.FilteredLogEvent)

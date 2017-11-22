@@ -103,7 +103,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		return &logs, nil
 	case cloudServiceType, cloudTaskType:
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only populated by user
-		// code withing containers, so we can safely project these logs back unmodified.
+		// code within containers, so we can safely project these logs back unmodified.
 		urn := ops.component.state.URN
 		logGroup := ops.component.GetChild(awsLogGroupTypeName, string(urn.Name()+"-task-logs"))
 		logs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
@@ -154,7 +154,7 @@ var (
 //  START RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723 Version: $LATEST
 //  2017-11-17T20:30:27.736Z	25e0d1e0-cbd6-11e7-9808-c7085dfe5723	GET /todo
 //  END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723
-//  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	Memory Size: 128 MB	Max Memory Used: 33 MB
+//  REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	<snip>
 // ```
 func extractLambdaLogMessage(message string, id string) *LogEntry {
 	innerMatches := logRegexp.FindAllStringSubmatch(message, -1)

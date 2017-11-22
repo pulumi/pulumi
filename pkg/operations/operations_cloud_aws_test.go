@@ -14,8 +14,6 @@ func Test_extractLambdaLogMessage(t *testing.T) {
 	assert.Equal(t, "GET /todo", res.Message)
 	res = extractLambdaLogMessage("END RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723", "foo")
 	assert.Nil(t, res)
-	res = extractLambdaLogMessage("REPORT RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723	Duration: 222.92 ms	Billed Duration: 300 ms 	Memory Size: 128 MB	Max Memory Used: 33 MB", "foo")
-	assert.Nil(t, res)
 }
 
 func Test_functionNameFromLogGroupNameRegExp(t *testing.T) {
