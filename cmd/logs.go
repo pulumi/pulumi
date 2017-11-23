@@ -30,8 +30,13 @@ func newLogsCmd() *cobra.Command {
 
 			startTime := parseRelativeDuration(since)
 
-			sinceTime := time.Unix(0, 0)
-			highestTimeSeen := time.Unix(0, 0)
+			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
+			// approach here to ensure we don't grow memory unboundedly while following logs.
+			//
+			// Note: Just tracking latest log date is not sufficient - as stale logs may show up which should have been
+			// displayed before previously rendered log entries, but weren't available at the time, so still need to be
+			// rendered now even though they are technically out of order.
+			shown := map[operations.LogEntry]bool{}
 
 			for {
 				logs, err := backend.GetLogs(stackName, operations.LogQuery{
@@ -42,12 +47,10 @@ func newLogsCmd() *cobra.Command {
 				}
 
 				for _, logEntry := range logs {
-					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-					if eventTime.After(sinceTime) {
+					if _, shownAlready := shown[logEntry]; !shownAlready {
+						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(time.RFC3339Nano), logEntry.ID, logEntry.Message)
-					}
-					if eventTime.After(highestTimeSeen) {
-						highestTimeSeen = eventTime
+						shown[logEntry] = true
 					}
 				}
 
@@ -55,7 +58,6 @@ func newLogsCmd() *cobra.Command {
 					return nil
 				}
 
-				sinceTime = highestTimeSeen
 				time.Sleep(time.Second)
 			}
 		}),
