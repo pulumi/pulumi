@@ -105,12 +105,22 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only populated by user
 		// code within containers, so we can safely project these logs back unmodified.
 		urn := ops.component.state.URN
-		logGroup := ops.component.GetChild(awsLogGroupTypeName, string(urn.Name()+"-task-logs"))
-		logs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
+		name := string(urn.Name())
+		logGroup := ops.component.GetChild(awsLogGroupTypeName, name+"-task-logs")
+		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
 		}
-		return logs, nil
+		contract.Assertf(rawLogs != nil, "expect aws:cloudwatch/logGroup:LogGroup to provide logs")
+		var logs []LogEntry
+		for _, rawLog := range *rawLogs {
+			logs = append(logs, LogEntry{
+				ID:        name,
+				Message:   rawLog.Message,
+				Timestamp: rawLog.Timestamp,
+			})
+		}
+		return &logs, nil
 	default:
 		// Else this resource kind does not produce any logs.
 		return nil, nil
