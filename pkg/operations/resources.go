@@ -87,29 +87,34 @@ var _ Provider = (*resourceOperations)(nil)
 
 // GetLogs gets logs for a Resource
 func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
-	opsProvider, err := ops.getOperationsProvider()
-	if err != nil {
-		return nil, err
-	}
-	if opsProvider != nil {
-		// If this resource has an operations provider - use it and don't recur into children.  It is the responsibility
-		// of it's GetLogs implementation to aggregate all logs from children, either by passing them through or by
-		// filtering specific content out.
-		logsResult, err := opsProvider.GetLogs(query)
+	// Only get logs for this resource if it matches the resource filter query
+	if ops.matchesResourceFilter(query.Resource) {
+		// Try to get an operations provider for this resource, it may be `nil`
+		opsProvider, err := ops.getOperationsProvider()
 		if err != nil {
-			return logsResult, err
+			return nil, err
 		}
-		if logsResult != nil {
-			return logsResult, nil
+		if opsProvider != nil {
+			// If this resource has an operations provider - use it and don't recur into children.  It is the
+			// responsibility of it's GetLogs implementation to aggregate all logs from children, either by passing them
+			// through or by filtering specific content out.
+			logsResult, err := opsProvider.GetLogs(query)
+			if err != nil {
+				return logsResult, err
+			}
+			if logsResult != nil {
+				return logsResult, nil
+			}
 		}
 	}
+	// If this resource did not choose to provide it's own logs, recur into children and collect + aggregate their logs.
 	var logs []LogEntry
 	for _, child := range ops.resource.children {
 		childOps := &resourceOperations{
 			resource: child,
 			config:   ops.config,
 		}
-		// TODO: Parallelize these calls to child GetLogs
+		// IDEA: Parallelize these calls to child GetLogs
 		childLogs, err := childOps.GetLogs(query)
 		if err != nil {
 			return &logs, err
@@ -144,6 +149,31 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		retLogs = append(retLogs, log)
 	}
 	return &retLogs, nil
+}
+
+// matchesResourceFilter determines whether this resource matches the provided resource filter.
+func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) bool {
+	if filter == nil {
+		// No filter, all resources match it.
+		return true
+	}
+	if ops.resource == nil || ops.resource.state == nil {
+		return false
+	}
+	urn := ops.resource.state.URN
+	if resource.URN(*filter) == urn {
+		// The filter matched the full URN
+		return true
+	}
+	if string(*filter) == string(urn.Type())+"::"+string(urn.Name()) {
+		// The filter matched the '<type>::<name>' part of the URN
+		return true
+	}
+	if tokens.QName(*filter) == urn.Name() {
+		// The filter matched the '<name>' part of the URN
+		return true
+	}
+	return false
 }
 
 // ListMetrics lists metrics for a Resource

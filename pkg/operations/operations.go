@@ -11,12 +11,31 @@ type LogEntry struct {
 	Message   string
 }
 
+// ResourceFilter specifies a specific resource or subset of resources.  It can be provided in three formats:
+// - Full URN: "<namespace>::<alloc>::<type>::<name>"
+// - Type + Name: "<type>::<name>"
+// - Name: "<name>"
+type ResourceFilter string
+
+// Query is a filter on logs, in the format '<name>=<val>,<name>=>val>' where <name> is one of the following:
+// - `URN`
+// - `QualifiedName`
+// - `Name`
+// - `Type`
+// - `Message`
+type Query string
+
 // LogQuery represents the parameters to a log query operation.
 // All fields are optional, leaving them off returns all logs.
 type LogQuery struct {
+	// StartTime is an optional time indiciating that only logs from after this time should be produced.
 	StartTime *time.Time
-	EndTime   *time.Time
-	Query     *string
+	// EndTime is an optional time indiciating that only logs from before this time should be produced.
+	EndTime *time.Time
+	// Query is a string indicating a filter to apply to the logs - query syntax TBD
+	Query *string
+	// Resource is a string indicating that logs should be limited toa resource of resoruces
+	Resource *ResourceFilter
 }
 
 // MetricName is a handle to a metric supported by a Pulumi Framework resources

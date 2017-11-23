@@ -18,6 +18,7 @@ func newLogsCmd() *cobra.Command {
 	var stack string
 	var follow bool
 	var since string
+	var resource string
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
@@ -29,6 +30,11 @@ func newLogsCmd() *cobra.Command {
 			}
 
 			startTime := parseRelativeDuration(since)
+			var resourceFilter *operations.ResourceFilter
+			if resource != "" {
+				var rf = operations.ResourceFilter(resource)
+				resourceFilter = &rf
+			}
 
 			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
 			// approach here to ensure we don't grow memory unboundedly while following logs.
@@ -41,6 +47,7 @@ func newLogsCmd() *cobra.Command {
 			for {
 				logs, err := backend.GetLogs(stackName, operations.LogQuery{
 					StartTime: startTime,
+					Resource:  resourceFilter,
 				})
 				if err != nil {
 					return err
@@ -72,6 +79,9 @@ func newLogsCmd() *cobra.Command {
 	logsCmd.PersistentFlags().StringVar(
 		&since, "since", "",
 		"Only return logs newer than a relative duration ('5s', '2m', '3h').  Defaults to returning all logs.")
+	logsCmd.PersistentFlags().StringVarP(
+		&resource, "resource", "r", "",
+		"Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.")
 
 	return logsCmd
 }
