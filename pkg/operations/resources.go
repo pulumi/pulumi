@@ -88,14 +88,14 @@ var _ Provider = (*resourceOperations)(nil)
 // GetLogs gets logs for a Resource
 func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Only get logs for this resource if it matches the resource filter query
-	if ops.matchesResourceFilter(query.Resource) {
-		// Set query to be a new query with `resource` nil so that we don't filter out logs from any children of this
-		// resource since this resource did match the resource filter.
+	if ops.matchesResourceFilter(query.ResourceFilter) {
+		// Set query to be a new query with `ResourceFilter` nil so that we don't filter out logs from any children of
+		// this resource since this resource did match the resource filter.
 		query = LogQuery{
-			StartTime: query.StartTime,
-			EndTime:   query.EndTime,
-			Query:     query.Query,
-			Resource:  nil,
+			StartTime:      query.StartTime,
+			EndTime:        query.EndTime,
+			Query:          query.Query,
+			ResourceFilter: nil,
 		}
 		// Try to get an operations provider for this resource, it may be `nil`
 		opsProvider, err := ops.getOperationsProvider()
@@ -117,13 +117,24 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	}
 	// If this resource did not choose to provide it's own logs, recur into children and collect + aggregate their logs.
 	var logs []LogEntry
+	// Kick off GetLogs on all children in parallel, writing results to shared channels
+	ch := make(chan *[]LogEntry)
+	errch := make(chan error)
 	for _, child := range ops.resource.children {
 		childOps := &resourceOperations{
 			resource: child,
 			config:   ops.config,
 		}
-		// IDEA: Parallelize these calls to child GetLogs
-		childLogs, err := childOps.GetLogs(query)
+		go func() {
+			childLogs, err := childOps.GetLogs(query)
+			ch <- childLogs
+			errch <- err
+		}()
+	}
+	// Handle results from GetLogs calls as they complete
+	for range ops.resource.children {
+		childLogs := <-ch
+		err := <-errch
 		if err != nil {
 			return &logs, err
 		}

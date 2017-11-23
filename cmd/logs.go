@@ -46,8 +46,8 @@ func newLogsCmd() *cobra.Command {
 
 			for {
 				logs, err := backend.GetLogs(stackName, operations.LogQuery{
-					StartTime: startTime,
-					Resource:  resourceFilter,
+					StartTime:      startTime,
+					ResourceFilter: resourceFilter,
 				})
 				if err != nil {
 					return err

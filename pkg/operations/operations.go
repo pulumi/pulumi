@@ -26,8 +26,8 @@ type LogQuery struct {
 	EndTime *time.Time
 	// Query is a string indicating a filter to apply to the logs - query syntax TBD
 	Query *string
-	// Resource is a string indicating that logs should be limited toa resource of resoruces
-	Resource *ResourceFilter
+	// ResourceFilter is a string indicating that logs should be limited to a resource or resources
+	ResourceFilter *ResourceFilter
 }
 
 // MetricName is a handle to a metric supported by a Pulumi Framework resources

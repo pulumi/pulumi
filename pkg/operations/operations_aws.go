@@ -3,6 +3,7 @@ package operations
 import (
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -101,9 +102,12 @@ type awsConnection struct {
 }
 
 var awsConnectionCache = map[string]*awsConnection{}
+var awsConnectionCacheMutex = sync.RWMutex{}
 
 func getAWSConnection(awsRegion string) (*awsConnection, error) {
+	awsConnectionCacheMutex.RLock()
 	connection, ok := awsConnectionCache[awsRegion]
+	awsConnectionCacheMutex.RUnlock()
 	if !ok {
 		awsConfig := aws.NewConfig()
 		awsConfig.Region = aws.String(awsRegion)
@@ -116,7 +120,9 @@ func getAWSConnection(awsRegion string) (*awsConnection, error) {
 			logSvc:    cloudwatchlogs.New(sess),
 			metricSvc: cloudwatch.New(sess),
 		}
+		awsConnectionCacheMutex.Lock()
 		awsConnectionCache[awsRegion] = connection
+		awsConnectionCacheMutex.Unlock()
 	}
 	return connection, nil
 }
