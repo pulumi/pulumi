@@ -89,6 +89,14 @@ var _ Provider = (*resourceOperations)(nil)
 func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Only get logs for this resource if it matches the resource filter query
 	if ops.matchesResourceFilter(query.Resource) {
+		// Set query to be a new query with `resource` nil so that we don't filter out logs from any children of this
+		// resource since this resource did match the resource filter.
+		query = LogQuery{
+			StartTime: query.StartTime,
+			EndTime:   query.EndTime,
+			Query:     query.Query,
+			Resource:  nil,
+		}
 		// Try to get an operations provider for this resource, it may be `nil`
 		opsProvider, err := ops.getOperationsProvider()
 		if err != nil {

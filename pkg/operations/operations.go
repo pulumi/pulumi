@@ -17,14 +17,6 @@ type LogEntry struct {
 // - Name: "<name>"
 type ResourceFilter string
 
-// Query is a filter on logs, in the format '<name>=<val>,<name>=>val>' where <name> is one of the following:
-// - `URN`
-// - `QualifiedName`
-// - `Name`
-// - `Type`
-// - `Message`
-type Query string
-
 // LogQuery represents the parameters to a log query operation.
 // All fields are optional, leaving them off returns all logs.
 type LogQuery struct {
