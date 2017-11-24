@@ -88,6 +88,9 @@ type ProgramTestOptions struct {
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
 
+	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi update`, and `pulumi destroy`.
+	DebugUpdates bool
+
 	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
@@ -216,18 +219,27 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		}
 	}
 
+	preview := []string{opts.Bin, "preview"}
+	update := []string{opts.Bin, "update"}
+	destroy := []string{opts.Bin, "destroy", "--yes"}
+	if opts.DebugUpdates {
+		preview = append(preview, "-d")
+		update = append(update, "-d")
+		destroy = append(destroy, "-d")
+	}
+
 	// Now preview and update the real changes.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
 	previewAndUpdate := func(d string, name string) error {
 		if !opts.Quick {
 			if preerr := RunCommand(t, "pulumi-preview-"+name,
-				[]string{opts.Bin, "preview"}, d, opts); preerr != nil {
+				preview, d, opts); preerr != nil {
 				return preerr
 			}
 		}
 		if upderr := RunCommand(t, "pulumi-update-"+name,
-			[]string{opts.Bin, "update"}, d, opts); upderr != nil {
+			update, d, opts); upderr != nil {
 			return upderr
 		}
 		return nil
@@ -242,7 +254,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		_, derr := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 		contract.IgnoreError(derr)
 		derr = RunCommand(t, "pulumi-destroy",
-			[]string{opts.Bin, "destroy", "--yes"}, dir, opts)
+			destroy, dir, opts)
 		contract.IgnoreError(derr)
 		derr = RunCommand(t, "pulumi-stack-rm",
 			[]string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
