@@ -199,6 +199,7 @@ func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
 	}
 	args = append(args, pluginArgs...)
 
+	// nolint: gas
 	cmd := exec.Command(bin, args...)
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()

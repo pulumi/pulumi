@@ -24,6 +24,7 @@ func (r *Repository) Save() error {
 		return err
 	}
 
+	// nolint: gas
 	err = os.MkdirAll(r.Root, 0755)
 	if err != nil {
 		return err

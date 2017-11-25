@@ -74,6 +74,7 @@ func runCommand(t *testing.T, expectSuccess bool, command, cwd string, args ...s
 	var outBuffer bytes.Buffer
 	var errBuffer bytes.Buffer
 
+	// nolint: gas
 	cmd := exec.Command(command, args...)
 	cmd.Dir = cwd
 	cmd.Stdout = &outBuffer
