@@ -45,7 +45,10 @@ class Stack extends ComponentResource {
             for (const key of Object.keys(outputs)) {
                 const value = outputs[key];
                 (async () => {
-                    log.info(`stack output: ${key}: ${await value}`);
+                    const v: any | undefined = await value;
+                    if (v !== undefined) {
+                        log.info(`stack output: ${key}: ${v}`);
+                    }
                 })();
             }
         }

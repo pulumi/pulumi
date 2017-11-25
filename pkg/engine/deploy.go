@@ -155,7 +155,8 @@ func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine)
 
 func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 	// Report the beginning of the step if appropriate.
-	if shouldShow(acts.Seen, step, acts.Opts) {
+	show := shouldShow(acts.Seen, step, acts.Opts)
+	if show {
 		var b bytes.Buffer
 		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
@@ -202,9 +203,9 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 
 		// Print out any output properties that got created as a result of this operation.
-		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+		if show && !acts.Opts.Summary {
 			var b bytes.Buffer
-			printResourceOutputProperties(&b, step, 0 /*indent*/)
+			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
 			acts.Opts.Events <- stdOutEventWithColor(&b)
 		}
 	}

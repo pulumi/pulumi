@@ -372,6 +372,7 @@ func getProvider(s Step) (plugin.Provider, error) {
 type StepOp string
 
 const (
+	OpNone              StepOp = "none"               // no semantically meaningful value.
 	OpSame              StepOp = "same"               // nothing to do.
 	OpCreate            StepOp = "create"             // creating a new resource.
 	OpUpdate            StepOp = "modify"             // modifying an existing resource.
@@ -383,6 +384,7 @@ const (
 
 // StepOps contains the full set of step operation types.
 var StepOps = []StepOp{
+	OpNone,
 	OpSame,
 	OpCreate,
 	OpUpdate,
@@ -395,6 +397,8 @@ var StepOps = []StepOp{
 // Color returns a suggested color for lines of this op type.
 func (op StepOp) Color() string {
 	switch op {
+	case OpNone:
+		return ""
 	case OpSame:
 		return colors.SpecUnimportant
 	case OpCreate:
@@ -417,21 +421,28 @@ func (op StepOp) Color() string {
 
 // Prefix returns a suggested prefix for lines of this op type.
 func (op StepOp) Prefix() string {
+	return op.Color() + op.RawPrefix()
+}
+
+// RawPrefix returns the uncolorized prefix text.
+func (op StepOp) RawPrefix() string {
 	switch op {
+	case OpNone:
+		return "  "
 	case OpSame:
-		return op.Color() + "* "
+		return "* "
 	case OpCreate:
-		return op.Color() + "+ "
+		return "+ "
 	case OpDelete:
-		return op.Color() + "- "
+		return "- "
 	case OpUpdate:
-		return op.Color() + "~ "
+		return "~ "
 	case OpReplace:
-		return op.Color() + "+-"
+		return "+-"
 	case OpCreateReplacement:
-		return op.Color() + "++"
+		return "++"
 	case OpDeleteReplaced:
-		return op.Color() + "--"
+		return "--"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
