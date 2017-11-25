@@ -413,7 +413,7 @@ func printResourceProperties(
 		children = old.Children
 	}
 	for _, child := range children {
-		writeWithIndent(b, indent, simplePropOp, "=> %s\n", indent, child)
+		writeWithIndent(b, indent, simplePropOp, "=> %s\n", child)
 	}
 
 	if !summary {
