@@ -3,16 +3,7 @@
 import * as log from "../log";
 import { getProject, getStack } from "../metadata";
 import { ComponentResource, ComputedValues, Resource } from "../resource";
-
-let rootPulumiStack: Resource | undefined;
-
-/**
- * getRootPulumiStack returns a root stack that will be used automatically as resource parents.  This ensures that all
- * resources without explicit parents are parented to a common stack type.
- */
-export function getRootPulumiStack(): Resource | undefined {
-    return rootPulumiStack;
-}
+import { getRootResource, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -33,11 +24,11 @@ class Stack extends ComponentResource {
     constructor(init: () => ComputedValues) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
 
-        if (rootPulumiStack) {
+        if (getRootResource()) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
         try {
-            rootPulumiStack = this;       // install ourselves as the current root.
+            setRootResource(this);        // install ourselves as the current root.
             const outputs = init();       // run the init code.
             super.recordOutputs(outputs); // save the outputs for this component to whatever the init returned.
 
@@ -53,7 +44,7 @@ class Stack extends ComponentResource {
             }
         }
         finally {
-            rootPulumiStack = undefined;
+            setRootResource(undefined);
         }
     }
 }

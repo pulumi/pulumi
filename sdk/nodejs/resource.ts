@@ -1,6 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as runtime from "./runtime";
+import { registerResource } from "./runtime/resource";
+import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -35,15 +36,15 @@ export abstract class Resource {
             throw new Error("Missing resource name argument (for URN creation)");
         }
 
-        // If there wasn't an explicit parent, and a root stack exists, parent to that.
+        // If there wasn't an explicit parent, and a root resource exists, parent to that.
         if (!parent) {
-            parent = runtime.getRootPulumiStack();
+            parent = getRootResource();
         }
 
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        runtime.registerResource(this, t, name, custom, props, parent, dependsOn);
+        registerResource(this, t, name, custom, props, parent, dependsOn);
     }
 }
 
