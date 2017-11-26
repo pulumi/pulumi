@@ -24,24 +24,26 @@ func NewResource(source []*resource.State) *Resource {
 	var ns tokens.QName
 	var alloc tokens.PackageName
 
-	// Walk the ordered resource list and build tree nodes based on child relationships
+	// First create a list of all nodes.
 	for _, state := range source {
 		ns = state.URN.Namespace()
 		alloc = state.URN.Alloc()
-		newTree := &Resource{
+		treeNodes[state.URN] = &Resource{
 			ns:       ns,
 			alloc:    alloc,
 			state:    state,
-			parent:   nil,
-			children: map[resource.URN]*Resource{},
+			children: make(map[resource.URN]*Resource),
 		}
-		for _, childURN := range state.Children {
-			childTree, ok := treeNodes[childURN]
-			contract.Assertf(ok, "Expected children to be before parents in resource checkpoint")
-			childTree.parent = newTree
-			newTree.children[childTree.state.URN] = childTree
+	}
+
+	// Next, create parent/child associations for easy lookups.
+	for _, childTree := range treeNodes {
+		if parurn := childTree.state.Parent; parurn != "" {
+			parent, ok := treeNodes[parurn]
+			contract.Assertf(ok, "Expected to find parent node '%v' in checkpoint tree nodes", parurn)
+			childTree.parent = parent
+			parent.children[childTree.state.URN] = childTree
 		}
-		treeNodes[state.URN] = newTree
 	}
 
 	// Create a single root node which is the parent of all unparented nodes
