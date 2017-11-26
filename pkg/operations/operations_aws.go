@@ -17,8 +17,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
+// `pulumi-aws` repo instead of statically linked into the engine.
+
 // AWSOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
-// underlying resources of the `@pulumi/cloud-aws` implementation.
+// underlying resources of the `@pulumi/aws` implementation.
 func AWSOperationsProvider(
 	config map[tokens.ModuleMember]string,
 	component *Resource) (Provider, error) {

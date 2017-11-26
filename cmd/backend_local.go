@@ -156,7 +156,6 @@ func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query operations.Lo
 	contract.Assert(snap != nil)
 	contract.Assert(target != nil)
 
-	// TODO[pulumi/pulumi#54]: replace this with a call into a generalized operations provider.
 	components := operations.NewResource(snap.Resources)
 	ops := components.OperationsProvider(target.Config)
 	logs, err := ops.GetLogs(query)
