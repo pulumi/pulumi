@@ -4,8 +4,8 @@ package cmd
 
 import (
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/component"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -31,5 +31,5 @@ type pulumiBackend interface {
 	Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error
 	Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error
 
-	GetLogs(stackName tokens.QName, query component.LogQuery) ([]component.LogEntry, error)
+	GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error)
 }
