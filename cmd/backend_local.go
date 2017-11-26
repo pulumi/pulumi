@@ -9,15 +9,13 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/component"
+
 	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/pulumiframework"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
-
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type localPulumiBackend struct {
@@ -139,7 +137,7 @@ func (b *localPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts en
 	return nil
 }
 
-func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query component.LogQuery) ([]component.LogEntry, error) {
+func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
 	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return nil, err
@@ -158,14 +156,13 @@ func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query component.Log
 	contract.Assert(snap != nil)
 	contract.Assert(target != nil)
 
-	// TODO[pulumi/pulumi#54]: replace this with a call into a generalized operations provider.
-	components := pulumiframework.GetComponents(snap.Resources)
-	ops, err := pulumiframework.OperationsProviderForComponents(target.Config, components)
-	if err != nil {
+	components := operations.NewResource(snap.Resources)
+	ops := components.OperationsProvider(target.Config)
+	logs, err := ops.GetLogs(query)
+	if logs == nil {
 		return nil, err
 	}
-
-	return ops.GetLogs(query)
+	return *logs, err
 }
 
 func (b *localPulumiBackend) getEngine(stackName tokens.QName) (engine.Engine, error) {

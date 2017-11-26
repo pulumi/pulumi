@@ -14,9 +14,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/component"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/archive"
@@ -225,10 +225,10 @@ func uploadProgram(uploadURL string, printSize bool) error {
 	return nil
 }
 
-func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query component.LogQuery) ([]component.LogEntry, error) {
+func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
 	// TODO[pulumi/pulumi-service#227]: Relax these conditions once the service can take these arguments.
 	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
-		return nil, errors.New("not implemented")
+		return nil, errors.New("cloud backend does not (yet) support filtering logs by start time, end time or message contents")
 	}
 
 	projID, err := getCloudProjectIdentifier()
@@ -242,9 +242,9 @@ func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query compone
 		return nil, err
 	}
 
-	logs := make([]component.LogEntry, 0, len(response.Logs))
+	logs := make([]operations.LogEntry, 0, len(response.Logs))
 	for _, entry := range response.Logs {
-		logs = append(logs, component.LogEntry(entry))
+		logs = append(logs, operations.LogEntry(entry))
 	}
 
 	return logs, nil
