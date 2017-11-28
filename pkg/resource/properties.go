@@ -470,7 +470,7 @@ func (v PropertyValue) Merge(other PropertyValue) PropertyValue {
 	case v.IsArray() && other.IsArray():
 		left, right, merged := v.ArrayValue(), other.ArrayValue(), []PropertyValue{}
 		for len(left) > 0 && len(right) > 0 {
-			merged = append(merged, left[0], right[0])
+			merged = append(merged, left[0].Merge(right[0]))
 			left, right = left[1:], right[1:]
 		}
 		switch {
