@@ -105,8 +105,8 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		}
 		return &logs, nil
 	case cloudServiceType, cloudTaskType:
-		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only populated by user
-		// code within containers, so we can safely project these logs back unmodified.
+		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only
+		// populated by user code within containers, so we can safely project these logs back unmodified.
 		urn := ops.component.state.URN
 		name := string(urn.Name())
 		logGroup := ops.component.GetChild(awsLogGroupTypeName, name+"-task-logs")
@@ -160,8 +160,8 @@ var (
 	logRegexp = regexp.MustCompile("(.*Z)\t[a-g0-9\\-]*\t(.*)")
 )
 
-// extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific metadata.
-// In particular, only the second line below is extracter, and it is extracted with the recorded timestamp.
+// extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
+// metadata.  In particular, only the second line below is extracter, and it is extracted with the recorded timestamp.
 //
 // ```
 //  START RequestId: 25e0d1e0-cbd6-11e7-9808-c7085dfe5723 Version: $LATEST

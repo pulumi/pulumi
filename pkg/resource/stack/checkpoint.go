@@ -17,6 +17,7 @@ import (
 )
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
+// nolint: lll
 type Checkpoint struct {
 	Target tokens.QName                         `json:"target" yaml:"target"`                     // the target stack name.
 	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.

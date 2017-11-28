@@ -27,24 +27,14 @@ class Stack extends ComponentResource {
         if (getRootResource()) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
+        let outputs: ComputedValues | undefined;
         try {
-            setRootResource(this);        // install ourselves as the current root.
-            const outputs = init();       // run the init code.
-            super.recordOutputs(outputs); // save the outputs for this component to whatever the init returned.
-
-            // TODO[pulumi/pulumi#340]: until output properties for components are working again, just print them out.
-            for (const key of Object.keys(outputs)) {
-                const value = outputs[key];
-                (async () => {
-                    const v: any | undefined = await value;
-                    if (v !== undefined) {
-                        log.info(`stack output: ${key}: ${v}`);
-                    }
-                })();
-            }
+            setRootResource(this);      // install ourselves as the current root.
+            outputs = init();           // run the init code.
         }
         finally {
-            setRootResource(undefined);
+            super.complete(outputs);    // save the outputs for this component to whatever the init returned.
+            setRootResource(undefined); // restore the original root resource.
         }
     }
 }

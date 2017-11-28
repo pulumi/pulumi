@@ -29,29 +29,26 @@ func newStackCmd() *cobra.Command {
 				return err
 			}
 
-			_, config, snapshot, err := getStack(stackName)
+			_, config, snapshot, stackFile, err := getStack(stackName)
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("Current stack is %v\n", stackName)
-			fmt.Printf("    (use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
-
-			if err != nil {
-				return err
-			}
 			if snapshot != nil {
-				fmt.Printf("Last update at %v\n", snapshot.Time)
+				fmt.Printf("\tLast updated at %v\n", snapshot.Time)
 			}
 			if len(config) > 0 {
-				fmt.Printf("%v configuration variables set (see `pulumi config` for details)\n", len(config))
+				fmt.Printf("\t%v configuration variables set (see `pulumi config` for details)\n", len(config))
 			}
+			fmt.Printf("\tCheckpoint file is %s\n", stackFile)
+			fmt.Printf("\t(Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
+
 			var stackResource *resource.State
 			if snapshot == nil || len(snapshot.Resources) == 0 {
 				fmt.Printf("No resources currently in this stack\n")
 			} else {
 				fmt.Printf("%v resources currently in this stack:\n", len(snapshot.Resources))
-				fmt.Printf("\n")
 				fmt.Printf("%-48s %s\n", "TYPE", "NAME")
 				for _, res := range snapshot.Resources {
 					if res.Type == stack.RootPulumiStackTypeName {

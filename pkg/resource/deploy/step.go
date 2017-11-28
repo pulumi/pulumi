@@ -12,8 +12,7 @@ import (
 
 // Step is a specification for a deployment operation.
 type Step interface {
-	Apply() (resource.Status, error) // applies the action that this step represents.
-	Skip() error                     // skips past this step (required when iterating a plan).
+	Apply(skip bool) (resource.Status, *FinalState, error) // applies or skips the action that this step represents.
 
 	Op() StepOp           // the operation performed by this step.
 	URN() resource.URN    // the resource URN (for before and after).
@@ -25,21 +24,19 @@ type Step interface {
 
 	Plan() *Plan             // the owning plan.
 	Iterator() *PlanIterator // the current plan iterator.
-
 }
 
 // SameStep is a mutating step that does nothing.
 type SameStep struct {
 	iter *PlanIterator   // the current plan iteration.
-	goal SourceGoal      // the goal state for the resource.
+	reg  RegisterIntent  // the registration intent to convey a URN back to.
 	old  *resource.State // the state of the resource before this step.
 	new  *resource.State // the state of the resource after this step.
 }
 
 var _ Step = (*SameStep)(nil)
 
-func NewSameStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new *resource.State) Step {
-	contract.Assert(goal != nil)
+func NewSameStep(iter *PlanIterator, reg RegisterIntent, old *resource.State, new *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -50,7 +47,7 @@ func NewSameStep(iter *PlanIterator, goal SourceGoal, old *resource.State, new *
 	contract.Assert(!new.Delete)
 	return &SameStep{
 		iter: iter,
-		goal: goal,
+		reg:  reg,
 		old:  old,
 		new:  new,
 	}
@@ -66,24 +63,15 @@ func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
-func (s *SameStep) Apply() (resource.Status, error) {
-	// Just propagate the ID and output state to the live object and append to the snapshot.
-	s.goal.Done(s.old, true, nil)
-	s.iter.MarkStateSnapshot(s.old)
-	s.iter.AppendStateSnapshot(s.old)
-	return resource.StatusOK, nil
-}
-
-func (s *SameStep) Skip() error {
-	// In the case of a same, both ID and outputs are identical.
-	s.goal.Done(s.old, true, nil)
-	return nil
+func (s *SameStep) Apply(skip bool) (resource.Status, *FinalState, error) {
+	s.reg.Done(s.URN())
+	return resource.StatusOK, &FinalState{State: s.old, Stable: true}, nil
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
 	iter      *PlanIterator          // the current plan iteration.
-	goal      SourceGoal             // the goal state for the resource.
+	reg       RegisterIntent         // the registration intent to convey a URN back to.
 	old       *resource.State        // the state of the existing resource (only for replacements).
 	new       *resource.State        // the state of the resource after this step.
 	keys      []resource.PropertyKey // the keys causing replacement (only for replacements).
@@ -92,22 +80,22 @@ type CreateStep struct {
 
 var _ Step = (*CreateStep)(nil)
 
-func NewCreateStep(iter *PlanIterator, goal SourceGoal, new *resource.State) Step {
-	contract.Assert(goal != nil)
+func NewCreateStep(iter *PlanIterator, reg RegisterIntent, new *resource.State) Step {
+	contract.Assert(reg != nil)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &CreateStep{
 		iter: iter,
-		goal: goal,
+		reg:  reg,
 		new:  new,
 	}
 }
 
-func NewCreateReplacementStep(iter *PlanIterator, goal SourceGoal,
+func NewCreateReplacementStep(iter *PlanIterator, reg RegisterIntent,
 	old *resource.State, new *resource.State, keys []resource.PropertyKey) Step {
-	contract.Assert(goal != nil)
+	contract.Assert(reg != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -119,7 +107,7 @@ func NewCreateReplacementStep(iter *PlanIterator, goal SourceGoal,
 	contract.Assert(old.Type == new.Type)
 	return &CreateStep{
 		iter:      iter,
-		goal:      goal,
+		reg:       reg,
 		old:       old,
 		new:       new,
 		keys:      keys,
@@ -143,16 +131,16 @@ func (s *CreateStep) Res() *resource.State         { return s.new }
 func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
-func (s *CreateStep) Apply() (resource.Status, error) {
-	if s.new.Custom {
+func (s *CreateStep) Apply(skip bool) (resource.Status, *FinalState, error) {
+	if !skip && s.new.Custom {
 		// Invoke the Create RPC function for this provider:
 		prov, err := getProvider(s)
 		if err != nil {
-			return resource.StatusOK, err
+			return resource.StatusOK, nil, err
 		}
 		id, outs, rst, err := prov.Create(s.URN(), s.new.AllInputs())
 		if err != nil {
-			return rst, err
+			return rst, nil, err
 		}
 		contract.Assert(id != "")
 
@@ -166,21 +154,8 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 		s.old.Delete = true
 	}
 
-	// And finish the overall operation.
-	s.goal.Done(s.new, false, nil)
-	s.iter.AppendStateSnapshot(s.new)
-	return resource.StatusOK, nil
-}
-
-func (s *CreateStep) Skip() error {
-	// Mark the old resource as pending deletion if necessary.
-	if s.replacing {
-		s.old.Delete = true
-	}
-
-	// In the case of a create, we don't know the ID or output properties.  But we do know the defaults and URN.
-	s.goal.Done(s.new, false, nil)
-	return nil
+	s.reg.Done(s.URN())
+	return resource.StatusOK, &FinalState{State: s.new}, nil
 }
 
 // DeleteStep is a mutating step that deletes an existing resource.
@@ -219,30 +194,24 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
-func (s *DeleteStep) Apply() (resource.Status, error) {
-	if s.old.Custom {
+func (s *DeleteStep) Apply(skip bool) (resource.Status, *FinalState, error) {
+	if !skip && s.old.Custom {
 		// Invoke the Delete RPC function for this provider:
 		prov, err := getProvider(s)
 		if err != nil {
-			return resource.StatusOK, err
+			return resource.StatusOK, nil, err
 		}
 		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
-			return rst, err
+			return rst, nil, err
 		}
 	}
-	s.iter.MarkStateSnapshot(s.old)
-	return resource.StatusOK, nil
-}
-
-func (s *DeleteStep) Skip() error {
-	// In the case of a deletion, there is no state to propagate: the new object doesn't even exist.
-	return nil
+	return resource.StatusOK, nil, nil
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
 	iter    *PlanIterator          // the current plan iteration.
-	goal    SourceGoal             // the goal state for the resource.
+	reg     RegisterIntent         // the registration intent to convey a URN back to.
 	old     *resource.State        // the state of the existing resource.
 	new     *resource.State        // the newly computed state of the resource after updating.
 	stables []resource.PropertyKey // an optional list of properties that won't change during this update.
@@ -250,7 +219,7 @@ type UpdateStep struct {
 
 var _ Step = (*UpdateStep)(nil)
 
-func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State,
+func NewUpdateStep(iter *PlanIterator, reg RegisterIntent, old *resource.State,
 	new *resource.State, stables []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -263,7 +232,7 @@ func NewUpdateStep(iter *PlanIterator, goal SourceGoal, old *resource.State,
 	contract.Assert(old.Type == new.Type)
 	return &UpdateStep{
 		iter:    iter,
-		goal:    goal,
+		reg:     reg,
 		old:     old,
 		new:     new,
 		stables: stables,
@@ -280,18 +249,21 @@ func (s *UpdateStep) New() *resource.State    { return s.new }
 func (s *UpdateStep) Res() *resource.State    { return s.new }
 func (s *UpdateStep) Logical() bool           { return true }
 
-func (s *UpdateStep) Apply() (resource.Status, error) {
-	if s.new.Custom {
+func (s *UpdateStep) Apply(skip bool) (resource.Status, *FinalState, error) {
+	if skip {
+		// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
+		s.new.ID = s.old.ID
+	} else if s.new.Custom {
 		// Invoke the Update RPC function for this provider:
 		prov, err := getProvider(s)
 		if err != nil {
-			return resource.StatusOK, err
+			return resource.StatusOK, nil, err
 		}
 		// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
 		news := s.old.All().Merge(s.new.Inputs)
 		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), news)
 		if upderr != nil {
-			return rst, upderr
+			return rst, nil, upderr
 		}
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
@@ -300,17 +272,8 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 	}
 
 	// Finally, mark this operation as complete.
-	s.goal.Done(s.new, false, s.stables)
-	s.iter.MarkStateSnapshot(s.old)
-	s.iter.AppendStateSnapshot(s.new)
-	return resource.StatusOK, nil
-}
-
-func (s *UpdateStep) Skip() error {
-	// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
-	s.new.ID = s.old.ID
-	s.goal.Done(s.new, false, s.stables)
-	return nil
+	s.reg.Done(s.URN())
+	return resource.StatusOK, &FinalState{State: s.new, Stables: s.stables}, nil
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -353,19 +316,14 @@ func (s *ReplaceStep) Res() *resource.State         { return s.new }
 func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *ReplaceStep) Logical() bool                { return true }
 
-func (s *ReplaceStep) Apply() (resource.Status, error) {
+func (s *ReplaceStep) Apply(skip bool) (resource.Status, *FinalState, error) {
 	// We should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assert(s.old.Delete)
-	return resource.StatusOK, nil
+	return resource.StatusOK, nil, nil
 }
 
-func (s *ReplaceStep) Skip() error {
-	return nil
-}
-
-// getProvider fetches the provider for the given step.
-func getProvider(s Step) (plugin.Provider, error) {
-	return s.Plan().Provider(s.Type().Package())
+func (s *ReplaceStep) Snap() (*FinalState, error) {
+	return nil, nil
 }
 
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
@@ -467,4 +425,9 @@ func (op StepOp) Suffix() string {
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""
+}
+
+// getProvider fetches the provider for the given step.
+func getProvider(s Step) (plugin.Provider, error) {
+	return s.Plan().Provider(s.Type().Package())
 }
