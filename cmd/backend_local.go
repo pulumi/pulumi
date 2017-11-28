@@ -156,7 +156,7 @@ func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query operations.Lo
 	contract.Assert(snap != nil)
 	contract.Assert(target != nil)
 
-	components := operations.NewResource(snap.Resources)
+	components := operations.NewResourceTree(snap.Resources)
 	ops := components.OperationsProvider(target.Config)
 	logs, err := ops.GetLogs(query)
 	if logs == nil {
