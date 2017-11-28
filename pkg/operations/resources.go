@@ -1,8 +1,11 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package operations
 
 import (
-	"fmt"
 	"sort"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -107,7 +110,6 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		query = LogQuery{
 			StartTime:      query.StartTime,
 			EndTime:        query.EndTime,
-			Query:          query.Query,
 			ResourceFilter: nil,
 		}
 		// Try to get an operations provider for this resource, it may be `nil`
@@ -145,15 +147,16 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		}()
 	}
 	// Handle results from GetLogs calls as they complete
+	var err error
 	for range ops.resource.Children {
 		childLogs := <-ch
-		err := <-errch
-		if err != nil {
-			return &logs, err
-		}
+		err = multierror.Append(err, <-errch)
 		if childLogs != nil {
 			logs = append(logs, *childLogs...)
 		}
+	}
+	if err != nil {
+		return &logs, err
 	}
 	// Sort
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
@@ -206,16 +209,6 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 		return true
 	}
 	return false
-}
-
-// ListMetrics lists metrics for a Resource
-func (ops *resourceOperations) ListMetrics() []MetricName {
-	return []MetricName{}
-}
-
-// GetMetricStatistics gets metric statistics for a Resource
-func (ops *resourceOperations) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
-	return nil, fmt.Errorf("not yet implemented")
 }
 
 func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
