@@ -43,11 +43,12 @@ const (
 )
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
-	switch ops.component.state.Type {
+	state := ops.component.State
+	switch state.Type {
 	case cloudFunctionType:
 		// We get the aws:serverless:Function child and request it's logs, parsing out the user-visible content from
 		// those logs to project into our own log output, but leaving out explicit Lambda metadata.
-		name := string(ops.component.state.URN.Name())
+		name := string(state.URN.Name())
 		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
@@ -71,7 +72,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// centrally archived into the log collector. As a result, we will combine reading these logs with reading the
 		// live Lambda logs from individual functions, de-duplicating the results, to piece together the full set of
 		// logs.
-		name := string(ops.component.state.URN.Name())
+		name := string(state.URN.Name())
 		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
@@ -107,7 +108,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	case cloudServiceType, cloudTaskType:
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only populated by user
 		// code within containers, so we can safely project these logs back unmodified.
-		urn := ops.component.state.URN
+		urn := state.URN
 		name := string(urn.Name())
 		logGroup := ops.component.GetChild(awsLogGroupTypeName, name+"-task-logs")
 		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)

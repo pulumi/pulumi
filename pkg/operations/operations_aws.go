@@ -63,9 +63,10 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	if query.Query != nil {
 		contract.Failf("not yet implemented - Query")
 	}
-	switch ops.component.state.Type {
+	state := ops.component.State
+	switch state.Type {
 	case awsFunctionType:
-		functionName := ops.component.state.Outputs["name"].StringValue()
+		functionName := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{functionName},
 			[]string{"/aws/lambda/" + functionName},
@@ -75,7 +76,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return &logResult, nil
 	case awsLogGroupType:
-		name := ops.component.state.Outputs["name"].StringValue()
+		name := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{name},
 			[]string{name},
