@@ -227,8 +227,8 @@ func uploadProgram(uploadURL string, printSize bool) error {
 
 func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
 	// TODO[pulumi/pulumi-service#227]: Relax these conditions once the service can take these arguments.
-	if query.StartTime != nil || query.EndTime != nil || query.Query != nil {
-		return nil, errors.New("cloud backend does not (yet) support filtering logs by start time, end time or message contents")
+	if query.StartTime != nil || query.EndTime != nil {
+		return nil, errors.New("cloud backend does not (yet) support filtering logs by start time or end time")
 	}
 
 	projID, err := getCloudProjectIdentifier()

@@ -1,8 +1,9 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package operations
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"time"
 
@@ -129,14 +130,6 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// Else this resource kind does not produce any logs.
 		return nil, nil
 	}
-}
-
-func (ops *cloudOpsProvider) ListMetrics() []MetricName {
-	return nil
-}
-
-func (ops *cloudOpsProvider) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
-	return nil, fmt.Errorf("Not yet implmeneted: GetMetricStatistics")
 }
 
 type encodedLogEvent struct {

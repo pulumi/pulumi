@@ -9,7 +9,7 @@
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
-  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/json/jsonutil","private/protocol/jsonrpc","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/cloudwatch","service/cloudwatchlogs","service/s3","service/sts"]
+  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/json/jsonutil","private/protocol/jsonrpc","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/cloudwatchlogs","service/s3","service/sts"]
   revision = "e6c5e190452424b404ecdb81d6e3991d46b18e9d"
   version = "v1.12.26"
 
@@ -83,6 +83,12 @@
   name = "github.com/mitchellh/go-ps"
   packages = ["."]
   revision = "4fdf99ab29366514c69ccccddab5dc58b8d84062"
+
+[[projects]]
+  name = "github.com/moby/moby"
+  packages = ["api/types/time"]
+  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
+  version = "v1.13.1"
 
 [[projects]]
   name = "github.com/opentracing/opentracing-go"
@@ -219,6 +225,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bec14dd18d0cbcf3d8bb88226e75fa1aa455e0e2a2175655722c120046949ced"
+  inputs-digest = "04c45169a0278ae684b44323bca83de42411a024d8d16cc87bde36af116d5d38"
   solver-name = "gps-cdcl"
   solver-version = 1
