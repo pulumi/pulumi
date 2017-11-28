@@ -142,7 +142,7 @@ func (m PropertyMap) Merge(other PropertyMap) PropertyMap {
 	for k, v := range other {
 		if !v.IsNull() {
 			if mv, ok := m[k]; ok {
-				v = mv.Merge(v)
+				v = mv.merge(v)
 			}
 			new[k] = v
 		}
@@ -457,20 +457,20 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 	return v.ObjectValue().MapRepl(replk, replv)
 }
 
-// Merge simply merges the value of other into v. Merging proceeds as follows:
+// merge simply merges the value of other into v. Merging proceeds as follows:
 // - If other is null, v is returned.
 // - If v and other are both arrays, the corresponding elements are recurively merged. Any unmerged elements in v or other are then
 //   appended to the result.
 // - If v and other are both maps, the corresponding key-value pairs are recursively merged.
 // - Otherwise, other is returned.
-func (v PropertyValue) Merge(other PropertyValue) PropertyValue {
+func (v PropertyValue) merge(other PropertyValue) PropertyValue {
 	switch {
 	case other.IsNull():
 		return v
 	case v.IsArray() && other.IsArray():
 		left, right, merged := v.ArrayValue(), other.ArrayValue(), []PropertyValue{}
 		for len(left) > 0 && len(right) > 0 {
-			merged = append(merged, left[0].Merge(right[0]))
+			merged = append(merged, left[0].merge(right[0]))
 			left, right = left[1:], right[1:]
 		}
 		switch {
