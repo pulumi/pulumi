@@ -16,6 +16,7 @@ func newStackLsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls",
 		Short: "List all known stacks",
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			currentStack, err := getCurrentStack()
 			if err != nil {

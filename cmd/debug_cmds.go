@@ -21,7 +21,7 @@ func newArchiveCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "archive <path-to-archive>",
 		Short: "create an archive suitable for deployment",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if forceDefaultIgnores && forceNoDefaultIgnores {
 				return errors.New("can't specify --no-default-ignores and --default-ignores at the same time")

@@ -4,7 +4,6 @@ package main
 
 import (
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -36,13 +35,8 @@ func NewIDLCCmd() *cobra.Command {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmdutil.InitLogging(logToStderr, verbose, true)
 		},
+		Args: cmdutil.ExactArgs(2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return cmd.Usage()
-			} else if len(args) == 1 {
-				return errors.New("missing required [idl-path] argument")
-			}
-
 			// Now pass the arguments and compile the package.
 			name := args[0] // the name of the Lumi package.
 			path := args[1] // the path to the IDL directory that is compiled recursively.

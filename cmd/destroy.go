@@ -28,6 +28,7 @@ func newDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: although old snapshots can be used to recreate an stack, this command\n" +
 			"is generally irreversable and should be used with great care.",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {

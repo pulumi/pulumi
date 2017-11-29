@@ -22,7 +22,7 @@ func newStackSelectCmd() *cobra.Command {
 			"stack name each and every time.\n" +
 			"\n" +
 			"If no <stack> argument is supplied, the current stack is printed.",
-		Args: cobra.MaximumNArgs(1),
+		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Display the name of the current stack if a new one isn't specified.
 			if len(args) == 0 {
