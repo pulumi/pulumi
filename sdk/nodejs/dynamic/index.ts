@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as resource from "./resource";
-import * as runtime from "./runtime";
+import * as resource from "../resource";
+import * as runtime from "../runtime";
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
@@ -187,11 +187,13 @@ export abstract class Resource extends resource.CustomResource {
      * @param name The name of the resource.
      * @param props The arguments to use to populate the new resource. Must not define the reserved
      *              property "__provider".
+     * @param parent An optional parent resource to which this resource belongs.
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
     public constructor(provider: ResourceProvider,
                        name: string,
                        props: resource.ComputedValues,
+                       parent?: resource.Resource,
                        dependsOn?: resource.Resource[]) {
         const providerKey: string = "__provider";
 
@@ -200,6 +202,6 @@ export abstract class Resource extends resource.CustomResource {
         }
         props[providerKey] = serializeProvider(provider);
 
-        super("pulumi-nodejs:dynamic:Resource", name, props, dependsOn);
+        super("pulumi-nodejs:dynamic:Resource", name, props, parent, dependsOn);
     }
 }

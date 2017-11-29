@@ -47,9 +47,7 @@ func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error)
 
 func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
-
-	_, _, snapshot, err := getStack(name)
-
+	_, _, snapshot, _, err := getStack(name)
 	return snapshot, err
 }
 
@@ -64,7 +62,7 @@ func (p localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMut
 func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
 	contract.Assert(m.name == snapshot.Namespace)
 
-	name, config, _, err := getStack(snapshot.Namespace)
+	name, config, _, _, err := getStack(snapshot.Namespace)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -72,10 +70,10 @@ func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
 	return saveStack(name, config, snapshot)
 }
 
-func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.Value, *deploy.Snapshot, error) {
+func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.Value, *deploy.Snapshot, string, error) {
 	workspace, err := newWorkspace()
 	if err != nil {
-		return "", nil, nil, err
+		return "", nil, nil, "", err
 	}
 
 	contract.Require(name != "", "name")
@@ -84,30 +82,30 @@ func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.V
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		return "", nil, nil, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
+		return "", nil, nil, file, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
 	}
 
 	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", nil, nil, err
+			return "", nil, nil, file, err
 		}
-		return "", nil, nil, err
+		return "", nil, nil, file, err
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint stack.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		return "", nil, nil, err
+		return "", nil, nil, file, err
 	}
 
 	_, config, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
 	if err != nil {
-		return "", nil, nil, err
+		return "", nil, nil, file, err
 	}
 
-	return name, config, snapshot, nil
+	return name, config, snapshot, file, nil
 }
 
 func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {

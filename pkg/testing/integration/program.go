@@ -88,7 +88,8 @@ type ProgramTestOptions struct {
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
 
-	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi update`, and `pulumi destroy`.
+	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi update`, and
+	// `pulumi destroy`.
 	DebugUpdates bool
 
 	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.

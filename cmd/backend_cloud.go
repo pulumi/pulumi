@@ -86,8 +86,8 @@ func (b *pulumiCloudPulumiBackend) RemoveStack(stackName tokens.QName, force boo
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s%s",
 		projID.Owner, projID.Repository, projID.Project, string(stackName), queryParam)
 
-	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has resources and `force`
-	// was not true", we should sniff for that message and return errHasResources
+	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
+	// resources and `force` was not true", we should sniff for that message and return errHasResources
 	return pulumiRESTCall("DELETE", path, nil, nil)
 }
 
@@ -223,7 +223,8 @@ func uploadProgram(uploadURL string, printSize bool) error {
 	return nil
 }
 
-func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
+func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
 	// TODO[pulumi/pulumi-service#227]: Relax these conditions once the service can take these arguments.
 	if query.StartTime != nil || query.EndTime != nil {
 		return nil, errors.New("cloud backend does not (yet) support filtering logs by start time or end time")
@@ -235,7 +236,8 @@ func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName, query operati
 	}
 
 	var response apitype.LogsResult
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/logs", projID.Owner, projID.Repository, projID.Project, string(stackName))
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/logs",
+		projID.Owner, projID.Repository, projID.Project, string(stackName))
 	if err = pulumiRESTCall("GET", path, nil, &response); err != nil {
 		return nil, err
 	}

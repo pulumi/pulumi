@@ -3,7 +3,7 @@
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
 import * as util from "util";
-import { getEngine, rpcKeepAlive } from "../runtime";
+import { getEngine, rpcKeepAlive } from "../runtime/settings";
 const engproto = require("../proto/engine_pb.js");
 
 let errcnt = 0;

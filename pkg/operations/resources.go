@@ -55,18 +55,12 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 
 	// Next, walk the list of resources, and wire up parents and children.  We do this in a second pass so
 	// that the creation of the tree isn't order dependent.
-	for _, state := range source {
-		parentTree, ok := resources[state.URN]
-		contract.Assertf(ok, "Expected parent resource %s to exist", state.URN)
-		for _, childURN := range state.Children {
-			childTree, ok := resources[childURN]
-			// BUGBUG[pulumi/pulumi#613]: we should be able to reenable this assert, once we are assured that there
-			//     are no dangling child pointers (a bug in the system at the moment).
-			// contract.Assertf(ok, "Unexpected missing child %s referred to by parent %s", childURN, state.URN)
-			if ok {
-				childTree.Parent = parentTree
-				parentTree.Children[childTree.State.URN] = childTree
-			}
+	for _, child := range resources {
+		if parurn := child.State.Parent; parurn != "" {
+			parent, ok := resources[parurn]
+			contract.Assertf(ok, "Expected to find parent node '%v' in checkpoint tree nodes", parurn)
+			child.Parent = parent
+			parent.Children[child.State.URN] = child
 		}
 	}
 

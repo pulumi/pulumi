@@ -66,7 +66,8 @@ func roundtripJSON(v Value) (Value, error) {
 	return roundtrip(v, json.Marshal, json.Unmarshal)
 }
 
-func roundtrip(v Value, marshal func(v interface{}) ([]byte, error), unmarshal func([]byte, interface{}) error) (Value, error) {
+func roundtrip(v Value, marshal func(v interface{}) ([]byte, error),
+	unmarshal func([]byte, interface{}) error) (Value, error) {
 	b, err := marshal(v)
 	if err != nil {
 		return Value{}, err

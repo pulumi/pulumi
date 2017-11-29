@@ -6,8 +6,8 @@ import * as path from "path";
 import * as runtime from "../runtime";
 
 const grpc = require("grpc");
-const langproto = require("../proto/languages_pb.js");
-const langrpc = require("../proto/languages_grpc_pb.js");
+const langproto = require("../proto/language_pb.js");
+const langrpc = require("../proto/language_grpc_pb.js");
 
 /**
  * monitorAddr is the current resource monitor address.

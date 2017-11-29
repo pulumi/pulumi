@@ -1,13 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { Resource } from "../resource";
 import { debuggablePromise } from "./debuggable";
-
-/**
- * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
- * resources allocated by a deployment.  This must be kept up to date with
- * `github.com/pulumi/pulumi/pkg/resource/stack.RootPulumiStackTypeName`.
- */
-export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
@@ -139,3 +133,22 @@ export function rpcKeepAlive(): () => void {
     return done!;
 }
 
+let rootResource: Resource | undefined;
+
+/**
+ * getRootResource returns a root resource that will automatically become the default parent of all resources.  This
+ * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
+ */
+export function getRootResource(): Resource | undefined {
+    return rootResource;
+}
+
+/**
+ * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
+ */
+export function setRootResource(res: Resource | undefined): void {
+    if (rootResource && res) {
+        throw new Error("Cannot set multiple root resources");
+    }
+    rootResource = res;
+}

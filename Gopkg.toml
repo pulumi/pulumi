@@ -56,4 +56,3 @@
 [[constraint]]
   branch = "master"
   name = "github.com/sabhiram/go-gitignore"
-

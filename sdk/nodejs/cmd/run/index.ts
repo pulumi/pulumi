@@ -11,8 +11,7 @@ import * as runtime from "../../runtime";
 
 const grpc = require("grpc");
 const engrpc = require("../../proto/engine_grpc_pb.js");
-const langproto = require("../../proto/languages_pb.js");
-const langrpc = require("../../proto/languages_grpc_pb.js");
+const resrpc = require("../../proto/resource_grpc_pb.js");
 
 function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
@@ -83,7 +82,7 @@ export function main(args: string[]): void {
     let monitor: Object | undefined;
     const monitorAddr: string | undefined = argv["monitor"];
     if (monitorAddr) {
-        monitor = new langrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
+        monitor = new resrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
     }
 
     // If there is an engine argument, connect to it too.
@@ -147,21 +146,16 @@ export function main(args: string[]): void {
     });
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    const stackResource = new pulumi.ComponentResource(
-        runtime.rootPulumiStackTypeName,
-        `${pulumi.getProject()}-${pulumi.getStack()}`,
-        [],
+    runtime.runInPulumiStack(() => {
         // We run the program inside this context so that it adopts all resources.
         //
         // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
         // problem with the current Component design though - not sure what else we could do here.
-        () => {
-            // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-            log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
-            const outputs = require(program);
-            return outputs;
-         },
-    );
+        //
+        // Now go ahead and execute the code. The process will remain alive until the message loop empties.
+        log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+        return require(program);
+    });
 }
 
 main(process.argv.slice(2));

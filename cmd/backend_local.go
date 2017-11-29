@@ -25,7 +25,7 @@ type localPulumiBackend struct {
 func (b *localPulumiBackend) CreateStack(stackName tokens.QName, opts StackCreationOptions) error {
 	contract.Requiref(opts.Cloud == "", "cloud", "local backend does not support clouds, cloud must be empty")
 
-	if _, _, _, err := getStack(stackName); err == nil {
+	if _, _, _, _, err := getStack(stackName); err == nil {
 		return errors.Errorf("stack '%v' already exists", stackName)
 	}
 
@@ -47,7 +47,7 @@ func (b *localPulumiBackend) GetStacks() ([]stackSummary, error) {
 		}
 
 		// Ignore errors, just leave display settings as "n/a".
-		_, _, snapshot, err := getStack(stack)
+		_, _, snapshot, _, err := getStack(stack)
 		if err == nil && snapshot != nil {
 			summary.LastDeploy = snapshot.Time.String()
 			summary.ResourceCount = strconv.Itoa(len(snapshot.Resources))
@@ -60,7 +60,7 @@ func (b *localPulumiBackend) GetStacks() ([]stackSummary, error) {
 }
 
 func (b *localPulumiBackend) RemoveStack(stackName tokens.QName, force bool) error {
-	name, _, snapshot, err := getStack(stackName)
+	name, _, snapshot, _, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, err := getStack(name)
+		_, _, _, _, err := getStack(name)
 		if err != nil {
 			continue // failure reading the stack information.
 		}

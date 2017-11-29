@@ -268,8 +268,8 @@ func listConfig(stackName tokens.QName, showSecrets bool) error {
 		fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
 		var keys []string
 		for key := range cfg {
-			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure that all the config
-			// values for the current program are displayed next to one another in the output.
+			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
+			// that all the config values for the current program are displayed next to one another in the output.
 			keys = append(keys, string(key))
 		}
 		sort.Strings(keys)

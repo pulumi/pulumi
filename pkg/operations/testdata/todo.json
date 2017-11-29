@@ -8,6 +8,7 @@
                 "custom": true,
                 "id": "todo-a1916a6b16ec016b",
                 "type": "aws:dynamodb/table:Table",
+                "parent": "urn:pulumi:foo::todo::cloud:table:Table::todo",
                 "inputs": {
                     "attribute": [
                         {
@@ -48,16 +49,14 @@
                 "inputs": {
                     "primaryKey": "id",
                     "primaryKeyType": "string"
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:dynamodb/table:Table::todo"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:s3/bucket:Bucket::todo",
                 "custom": true,
                 "id": "todo-8c10043f3d2b0e28",
                 "type": "aws:s3/bucket:Bucket",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "defaults": {
                     "acl": "private",
                     "bucket": "todo-8c10043f3d2b0e28",
@@ -90,6 +89,7 @@
                 "custom": true,
                 "id": "todo4c238266-c22303f113387c32",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
                 },
@@ -114,6 +114,7 @@
                 "custom": true,
                 "id": "todo4c238266-c22303f113387c32-20171108195750237000000001",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AmazonS3FullAccess",
                     "role": "todo4c238266-c22303f113387c32"
@@ -129,6 +130,7 @@
                 "custom": true,
                 "id": "todo4c238266/favicon.ico",
                 "type": "aws:s3/bucketObject:BucketObject",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "bucket": "todo-8c10043f3d2b0e28",
                     "contentType": "image/x-icon",
@@ -167,6 +169,7 @@
                 "custom": true,
                 "id": "todo4c238266/index.html",
                 "type": "aws:s3/bucketObject:BucketObject",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "bucket": "todo-8c10043f3d2b0e28",
                     "contentType": "text/html",
@@ -221,6 +224,7 @@
                 "custom": true,
                 "id": "todo035b5d8f-iamrole-4c6d0a50781a686f",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo035b5d8f",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -245,6 +249,7 @@
                 "custom": true,
                 "id": "todo035b5d8f-iamrole-4c6d0a50781a686f-20171108195757731500000002",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo035b5d8f",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "todo035b5d8f-iamrole-4c6d0a50781a686f"
@@ -260,6 +265,7 @@
                 "custom": true,
                 "id": "todo035b5d8f-iamrole-4c6d0a50781a686f-20171108195759109500000003",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo035b5d8f",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess",
                     "role": "todo035b5d8f-iamrole-4c6d0a50781a686f"
@@ -275,6 +281,7 @@
                 "custom": true,
                 "id": "todo035b5d8f-7748c68eadc313c0",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo035b5d8f",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -347,6 +354,7 @@
                 "urn": "urn:pulumi:foo::todo::aws:serverless:Function::todo035b5d8f",
                 "custom": false,
                 "type": "aws:serverless:Function",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo035b5d8f",
                 "inputs": {
                     "options": {
                         "deadLetterConfig": {
@@ -358,19 +366,14 @@
                             "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:iam/role:Role::todo035b5d8f-iamrole",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todo035b5d8f-iampolicy-0",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todo035b5d8f-iampolicy-1",
-                    "urn:pulumi:foo::todo::aws:lambda/function:Function::todo035b5d8f"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:cloudwatch/logGroup:LogGroup::todo035b5d8f-func-logs",
                 "custom": true,
                 "id": "/aws/lambda/todo035b5d8f-7748c68eadc313c0",
                 "type": "aws:cloudwatch/logGroup:LogGroup",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo035b5d8f",
                 "inputs": {
                     "name": "/aws/lambda/todo035b5d8f-7748c68eadc313c0",
                     "retentionInDays": 1
@@ -391,6 +394,7 @@
                 "custom": true,
                 "id": "pulumi-foo-log-collector-iamrole-2af8f6868f85d7d7",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::pulumi-foo-log-collector",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -415,6 +419,7 @@
                 "custom": true,
                 "id": "pulumi-foo-log-collector-iamrole-2af8f6868f85d7d7-20171108195812293000000004",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::pulumi-foo-log-collector",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "pulumi-foo-log-collector-iamrole-2af8f6868f85d7d7"
@@ -430,6 +435,7 @@
                 "custom": true,
                 "id": "pulumi-foo-log-collector-e9cd6ec58f2116ff",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::pulumi-foo-log-collector",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -498,18 +504,14 @@
                             "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:iam/role:Role::pulumi-foo-log-collector-iamrole",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::pulumi-foo-log-collector-iampolicy-0",
-                    "urn:pulumi:foo::todo::aws:lambda/function:Function::pulumi-foo-log-collector"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:lambda/permission:Permission::pulumi-foo-log-collector",
                 "custom": true,
                 "id": "pulumi-foo-log-collector-715ade4f6f854187",
                 "type": "aws:lambda/permission:Permission",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo035b5d8f",
                 "inputs": {
                     "action": "lambda:invokeFunction",
                     "function": "pulumi-foo-log-collector-e9cd6ec58f2116ff",
@@ -532,6 +534,7 @@
                 "custom": true,
                 "id": "cwlsf-2917862896",
                 "type": "aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo035b5d8f",
                 "inputs": {
                     "destinationArn": "arn:aws:lambda:us-east-2:153052954103:function:pulumi-foo-log-collector-e9cd6ec58f2116ff",
                     "filterPattern": "",
@@ -552,21 +555,17 @@
                 "urn": "urn:pulumi:foo::todo::cloud:function:Function::todo035b5d8f",
                 "custom": false,
                 "type": "cloud:function:Function",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "handler": {}
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:cloudwatch/logGroup:LogGroup::todo035b5d8f-func-logs",
-                    "urn:pulumi:foo::todo::aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter::todo035b5d8f",
-                    "urn:pulumi:foo::todo::aws:lambda/permission:Permission::pulumi-foo-log-collector",
-                    "urn:pulumi:foo::todo::aws:serverless:Function::todo035b5d8f"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:iam/role:Role::todo67876f56-iamrole",
                 "custom": true,
                 "id": "todo67876f56-iamrole-ce66deec75ae88fd",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo67876f56",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -591,6 +590,7 @@
                 "custom": true,
                 "id": "todo67876f56-iamrole-ce66deec75ae88fd-20171108195829869300000005",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo67876f56",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "todo67876f56-iamrole-ce66deec75ae88fd"
@@ -606,6 +606,7 @@
                 "custom": true,
                 "id": "todo67876f56-iamrole-ce66deec75ae88fd-20171108195831240000000006",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo67876f56",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess",
                     "role": "todo67876f56-iamrole-ce66deec75ae88fd"
@@ -621,6 +622,7 @@
                 "custom": true,
                 "id": "todo67876f56-7069ef1500d0e44e",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todo67876f56",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -693,6 +695,7 @@
                 "urn": "urn:pulumi:foo::todo::aws:serverless:Function::todo67876f56",
                 "custom": false,
                 "type": "aws:serverless:Function",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo67876f56",
                 "inputs": {
                     "options": {
                         "deadLetterConfig": {
@@ -704,19 +707,14 @@
                             "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:iam/role:Role::todo67876f56-iamrole",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todo67876f56-iampolicy-0",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todo67876f56-iampolicy-1",
-                    "urn:pulumi:foo::todo::aws:lambda/function:Function::todo67876f56"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:cloudwatch/logGroup:LogGroup::todo67876f56-func-logs",
                 "custom": true,
                 "id": "/aws/lambda/todo67876f56-7069ef1500d0e44e",
                 "type": "aws:cloudwatch/logGroup:LogGroup",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo67876f56",
                 "inputs": {
                     "name": "/aws/lambda/todo67876f56-7069ef1500d0e44e",
                     "retentionInDays": 1
@@ -737,6 +735,7 @@
                 "custom": true,
                 "id": "cwlsf-1714177476",
                 "type": "aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todo67876f56",
                 "inputs": {
                     "destinationArn": "arn:aws:lambda:us-east-2:153052954103:function:pulumi-foo-log-collector-e9cd6ec58f2116ff",
                     "filterPattern": "",
@@ -757,20 +756,17 @@
                 "urn": "urn:pulumi:foo::todo::cloud:function:Function::todo67876f56",
                 "custom": false,
                 "type": "cloud:function:Function",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "handler": {}
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:cloudwatch/logGroup:LogGroup::todo67876f56-func-logs",
-                    "urn:pulumi:foo::todo::aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter::todo67876f56",
-                    "urn:pulumi:foo::todo::aws:serverless:Function::todo67876f56"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:iam/role:Role::todoc57917fa-iamrole",
                 "custom": true,
                 "id": "todoc57917fa-iamrole-694bcb6442f1858b",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todoc57917fa",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -795,6 +791,7 @@
                 "custom": true,
                 "id": "todoc57917fa-iamrole-694bcb6442f1858b-20171108195845358400000007",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todoc57917fa",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "todoc57917fa-iamrole-694bcb6442f1858b"
@@ -810,6 +807,7 @@
                 "custom": true,
                 "id": "todoc57917fa-iamrole-694bcb6442f1858b-20171108195846675000000008",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todoc57917fa",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess",
                     "role": "todoc57917fa-iamrole-694bcb6442f1858b"
@@ -825,6 +823,7 @@
                 "custom": true,
                 "id": "todoc57917fa-2fb58339c66e2b46",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::todo::aws:serverless:Function::todoc57917fa",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -897,6 +896,7 @@
                 "urn": "urn:pulumi:foo::todo::aws:serverless:Function::todoc57917fa",
                 "custom": false,
                 "type": "aws:serverless:Function",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todoc57917fa",
                 "inputs": {
                     "options": {
                         "deadLetterConfig": {
@@ -908,19 +908,14 @@
                             "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:iam/role:Role::todoc57917fa-iamrole",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todoc57917fa-iampolicy-0",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todoc57917fa-iampolicy-1",
-                    "urn:pulumi:foo::todo::aws:lambda/function:Function::todoc57917fa"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:cloudwatch/logGroup:LogGroup::todoc57917fa-func-logs",
                 "custom": true,
                 "id": "/aws/lambda/todoc57917fa-2fb58339c66e2b46",
                 "type": "aws:cloudwatch/logGroup:LogGroup",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todoc57917fa",
                 "inputs": {
                     "name": "/aws/lambda/todoc57917fa-2fb58339c66e2b46",
                     "retentionInDays": 1
@@ -941,6 +936,7 @@
                 "custom": true,
                 "id": "cwlsf-166366141",
                 "type": "aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter",
+                "parent": "urn:pulumi:foo::todo::cloud:function:Function::todoc57917fa",
                 "inputs": {
                     "destinationArn": "arn:aws:lambda:us-east-2:153052954103:function:pulumi-foo-log-collector-e9cd6ec58f2116ff",
                     "filterPattern": "",
@@ -961,20 +957,17 @@
                 "urn": "urn:pulumi:foo::todo::cloud:function:Function::todoc57917fa",
                 "custom": false,
                 "type": "cloud:function:Function",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "handler": {}
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:cloudwatch/logGroup:LogGroup::todoc57917fa-func-logs",
-                    "urn:pulumi:foo::todo::aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter::todoc57917fa",
-                    "urn:pulumi:foo::todo::aws:serverless:Function::todoc57917fa"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::todo::aws:apigateway/restApi:RestApi::todo",
                 "custom": true,
                 "id": "eupwl7wu4i",
                 "type": "aws:apigateway/restApi:RestApi",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "body": "{\"swagger\":\"2.0\",\"info\":{\"title\":\"todo\",\"version\":\"1.0\"},\"paths\":{\"/\":{\"get\":{\"responses\":{\"200\":{\"description\":\"200 response\",\"schema\":{\"type\":\"object\"},\"headers\":{\"Content-Type\":{\"type\":\"string\"},\"content-type\":{\"type\":\"string\"}}},\"400\":{\"description\":\"400 response\"},\"500\":{\"description\":\"500 response\"}},\"x-amazon-apigateway-integration\":{\"passthroughBehavior\":\"when_no_match\",\"httpMethod\":\"GET\",\"type\":\"aws\",\"responses\":{\"4\\\\d{2}\":{\"statusCode\":\"400\"},\"default\":{\"statusCode\":\"200\",\"responseParameters\":{\"method.response.header.Content-Type\":\"integration.response.header.Content-Type\",\"method.response.header.content-type\":\"integration.response.header.content-type\"}},\"5\\\\d{2}\":{\"statusCode\":\"500\"}},\"uri\":\"arn:aws:apigateway:us-east-2:s3:path/todo-8c10043f3d2b0e28/todo4c238266/index.html\",\"credentials\":\"arn:aws:iam::153052954103:role/todo4c238266-c22303f113387c32\"}}},\"/{proxy+}\":{\"x-amazon-apigateway-any-method\":{\"parameters\":[{\"name\":\"proxy\",\"in\":\"path\",\"required\":true,\"type\":\"string\"}],\"responses\":{\"200\":{\"description\":\"200 response\",\"schema\":{\"type\":\"object\"},\"headers\":{\"Content-Type\":{\"type\":\"string\"},\"content-type\":{\"type\":\"string\"}}},\"400\":{\"description\":\"400 response\"},\"500\":{\"description\":\"500 response\"}},\"x-amazon-apigateway-integration\":{\"requestParameters\":{\"integration.request.path.proxy\":\"method.request.path.proxy\"},\"passthroughBehavior\":\"when_no_match\",\"httpMethod\":\"GET\",\"type\":\"aws\",\"responses\":{\"4\\\\d{2}\":{\"statusCode\":\"400\"},\"default\":{\"statusCode\":\"200\",\"responseParameters\":{\"method.response.header.Content-Type\":\"integration.response.header.Content-Type\",\"method.response.header.content-type\":\"integration.response.header.content-type\"}},\"5\\\\d{2}\":{\"statusCode\":\"500\"}},\"uri\":\"arn:aws:apigateway:us-east-2:s3:path/todo-8c10043f3d2b0e28/todo4c238266/{proxy}\",\"credentials\":\"arn:aws:iam::153052954103:role/todo4c238266-c22303f113387c32\"}}},\"/todo/{id}\":{\"get\":{\"x-amazon-apigateway-integration\":{\"passthroughBehavior\":\"when_no_match\",\"httpMethod\":\"POST\",\"type\":\"aws_proxy\",\"uri\":\"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:153052954103:function:todo035b5d8f-7748c68eadc313c0/invocations\"}},\"post\":{\"x-amazon-apigateway-integration\":{\"passthroughBehavior\":\"when_no_match\",\"httpMethod\":\"POST\",\"type\":\"aws_proxy\",\"uri\":\"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:153052954103:function:todo67876f56-7069ef1500d0e44e/invocations\"}}},\"/todo\":{\"get\":{\"x-amazon-apigateway-integration\":{\"passthroughBehavior\":\"when_no_match\",\"httpMethod\":\"POST\",\"type\":\"aws_proxy\",\"uri\":\"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-2:153052954103:function:todoc57917fa-2fb58339c66e2b46/invocations\"}}}},\"x-amazon-apigateway-binary-media-types\":[\"*/*\"]}"
                 },
@@ -995,6 +988,7 @@
                 "custom": true,
                 "id": "4ws2ht",
                 "type": "aws:apigateway/deployment:Deployment",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "description": "Deployment of version todo_f569e86a",
                     "restApi": "eupwl7wu4i",
@@ -1015,6 +1009,7 @@
                 "custom": true,
                 "id": "ags-eupwl7wu4i-stage",
                 "type": "aws:apigateway/stage:Stage",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "deployment": "4ws2ht",
                     "description": "The current deployment of the API.",
@@ -1039,6 +1034,7 @@
                 "custom": true,
                 "id": "todo_invoke_f0c1d77e-0225bcbbfa5e7941",
                 "type": "aws:lambda/permission:Permission",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "action": "lambda:invokeFunction",
                     "function": "todo035b5d8f-7748c68eadc313c0",
@@ -1063,6 +1059,7 @@
                 "custom": true,
                 "id": "todo_invoke_44308e8f-08a405381ef4ecdb",
                 "type": "aws:lambda/permission:Permission",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "action": "lambda:invokeFunction",
                     "function": "todo67876f56-7069ef1500d0e44e",
@@ -1087,6 +1084,7 @@
                 "custom": true,
                 "id": "todo_invoke_a55f2cbc-b70db0537c54d3d2",
                 "type": "aws:lambda/permission:Permission",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
                 "inputs": {
                     "action": "lambda:invokeFunction",
                     "function": "todoc57917fa-2fb58339c66e2b46",
@@ -1145,23 +1143,7 @@
                         }
                     ],
                     "url": "https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/"
-                },
-                "children": [
-                    "urn:pulumi:foo::todo::aws:apigateway/deployment:Deployment::todo_f569e86a",
-                    "urn:pulumi:foo::todo::aws:apigateway/restApi:RestApi::todo",
-                    "urn:pulumi:foo::todo::aws:apigateway/stage:Stage::todo",
-                    "urn:pulumi:foo::todo::aws:iam/role:Role::todo4c238266",
-                    "urn:pulumi:foo::todo::aws:iam/rolePolicyAttachment:RolePolicyAttachment::todo4c238266",
-                    "urn:pulumi:foo::todo::aws:lambda/permission:Permission::todo_invoke_44308e8f",
-                    "urn:pulumi:foo::todo::aws:lambda/permission:Permission::todo_invoke_a55f2cbc",
-                    "urn:pulumi:foo::todo::aws:lambda/permission:Permission::todo_invoke_f0c1d77e",
-                    "urn:pulumi:foo::todo::aws:s3/bucket:Bucket::todo",
-                    "urn:pulumi:foo::todo::aws:s3/bucketObject:BucketObject::todo4c238266/favicon.ico",
-                    "urn:pulumi:foo::todo::aws:s3/bucketObject:BucketObject::todo4c238266/index.html",
-                    "urn:pulumi:foo::todo::cloud:function:Function::todo035b5d8f",
-                    "urn:pulumi:foo::todo::cloud:function:Function::todo67876f56",
-                    "urn:pulumi:foo::todo::cloud:function:Function::todoc57917fa"
-                ]
+                }
             }
         ]
     }

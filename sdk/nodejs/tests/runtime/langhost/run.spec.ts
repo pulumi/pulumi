@@ -7,10 +7,13 @@ import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
 
+const gempty = require("google-protobuf/google/protobuf/empty_pb.js");
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const grpc = require("grpc");
-const langrpc = require("../../../proto/languages_grpc_pb.js");
-const langproto = require("../../../proto/languages_pb.js");
+const langrpc = require("../../../proto/language_grpc_pb.js");
+const langproto = require("../../../proto/language_pb.js");
+const resrpc = require("../../../proto/resource_grpc_pb.js");
+const resproto = require("../../../proto/resource_pb.js");
 
 interface RunCase {
     project?: string;
@@ -22,8 +25,14 @@ interface RunCase {
     expectError?: string;
     expectResourceCount?: number;
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
-    createResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-        id?: ID, urn?: URN, props?: any };
+    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+        urn: URN | undefined, id: ID | undefined, props: any | undefined };
+    registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
+                               t: string, name: string, res: any, outputs: any | undefined) => void;
+}
+
+function makeUrn(t: string, name: string): URN {
+    return `${t}::${name}`;
 }
 
 describe("rpc", () => {
@@ -50,17 +59,17 @@ describe("rpc", () => {
         "one_resource": {
             program: path.join(base, "001.one_resource"),
             expectResourceCount: 1,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
-                return { id: undefined, urn: undefined, props: undefined };
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         // A program that allocates ten simple resources.
         "ten_resources": {
             program: path.join(base, "002.ten_resources"),
             expectResourceCount: 10,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
@@ -76,14 +85,14 @@ describe("rpc", () => {
                 assert(!isNaN(seqnum),
                        `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
-                return { id: undefined, urn: undefined, props: undefined };
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         // A program that allocates a complex resource with lots of input and output properties.
         "one_complex_resource": {
             program: path.join(base, "003.one_complex_resource"),
             expectResourceCount: 1,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
                 assert.deepEqual(res, {
@@ -102,8 +111,8 @@ describe("rpc", () => {
                     },
                 });
                 return {
+                    urn: makeUrn(t, name),
                     id: name,
-                    urn: t + "::" + name,
                     props: {
                         outprop1: "output properties ftw",
                         outprop2: 998.6,
@@ -115,7 +124,7 @@ describe("rpc", () => {
         "ten_complex_resources": {
             program: path.join(base, "004.ten_complex_resources"),
             expectResourceCount: 10,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
@@ -148,8 +157,8 @@ describe("rpc", () => {
                     },
                 });
                 return {
+                    urn: makeUrn(t, name),
                     id: name,
-                    urn: t + "::" + name,
                     props: {
                         outseq: seqnum,
                         outprop1: "output properties ftw",
@@ -162,17 +171,18 @@ describe("rpc", () => {
         "resource_thens": {
             program: path.join(base, "005.resource_thens"),
             expectResourceCount: 2,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                let id: ID | undefined;
+                let props: any | undefined;
                 switch (t) {
                     case "test:index:ResourceA": {
                         assert.strictEqual(name, "resourceA");
                         assert.deepEqual(res, { inprop: 777 });
-                        const result: any = { urn: t + "::" + name };
                         if (!dryrun) {
-                            result.id = name;
-                            result.props = { outprop: "output yeah" };
+                            id = name;
+                            props = { outprop: "output yeah" };
                         }
-                        return result;
+                        break;
                     }
                     case "test:index:ResourceB": {
                         assert.strictEqual(name, "resourceB");
@@ -190,22 +200,26 @@ describe("rpc", () => {
                                 otherOut: "output yeah",
                             });
                         }
-                        const result: any = { urn: t + "::" + name };
                         if (!dryrun) {
-                            result.id = name;
+                            id = name;
                         }
-                        return result;
+                        break;
                     }
                     default:
                         assert.fail(`Unrecognized resource type ${t}`);
                         throw new Error();
                 }
+                return {
+                    urn: makeUrn(t, name),
+                    id: id,
+                    props: props,
+                };
             },
         },
         "input_output": {
             pwd: path.join(base, "006.asset"),
             expectResourceCount: 1,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:FileResource");
                 assert.strictEqual(name, "file1");
                 assert.deepEqual(res, {
@@ -214,26 +228,26 @@ describe("rpc", () => {
                         path: "./testdata.txt",
                     },
                 });
-                return { id: undefined, urn: undefined, props: undefined };
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         "promises_io": {
             pwd: path.join(base, "007.promises_io"),
             expectResourceCount: 1,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:FileResource");
                 assert.strictEqual(name, "file1");
                 assert.deepEqual(res, {
                     data: "The test worked!\n\nIf you can see some data!\n\n",
                 });
-                return { id: undefined, urn: undefined, props: undefined };
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         // A program that allocates ten simple resources that use dependsOn to depend on one another.
         "ten_depends_on_resources": {
             program: path.join(base, "008.ten_depends_on_resources"),
             expectResourceCount: 10,
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
@@ -249,7 +263,7 @@ describe("rpc", () => {
                 assert(!isNaN(seqnum),
                        `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
                 ctx.seen[name] = true;
-                return { id: undefined, urn: undefined, props: undefined };
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         // A simple test of the invocation RPC pathways.
@@ -265,10 +279,10 @@ describe("rpc", () => {
                 });
                 return { failures: undefined, ret: args };
             },
-            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
-                return { id: undefined, urn: undefined, props: undefined };
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
         // Simply test that certain runtime properties are available.
@@ -298,12 +312,13 @@ describe("rpc", () => {
                 console.log(dryrun ? "PREVIEW:" : "UPDATE:");
 
                 // First we need to mock the resource monitor.
-                const ctx = {};
-                let rescnt = 0;
+                const ctx: any = {};
+                const regs: any = {};
+                let regCnt = 0;
                 const monitor = createMockResourceMonitor(
                     // Invoke callback
                     (call: any, callback: any) => {
-                        const resp = new langproto.InvokeResponse();
+                        const resp = new resproto.InvokeResponse();
                         if (opts.invoke) {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();
@@ -314,23 +329,40 @@ describe("rpc", () => {
                         }
                         callback(undefined, resp);
                     },
-                    // NewResources callback
+                    // RegisterResource callback
                     (call: any, callback: any) => {
-                        const resp = new langproto.NewResourceResponse();
+                        const resp = new resproto.RegisterResourceResponse();
                         const req: any = call.request;
                         // Skip the automatically generated root component resource.
                         if (req.getType() !== runtime.rootPulumiStackTypeName) {
-                            if (opts.createResource) {
+                            if (opts.registerResource) {
+                                const t = req.getType();
+                                const name = req.getName();
                                 const res: any = req.getObject().toJavaScript();
-                                const { id, urn, props } =
-                                    opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
-                                resp.setId(id);
+                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res);
                                 resp.setUrn(urn);
+                                resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));
+                                if (urn) {
+                                    regs[urn] = { t: t, name: name, props: props };
+                                }
                             }
-                            rescnt++;
+                            regCnt++;
                         }
                         callback(undefined, resp);
+                    },
+                    // RegisterResourceOutputs callback
+                    (call: any, callback: any) => {
+                        const req: any = call.request;
+                        const urn = req.getUrn();
+                        const res = regs[urn];
+                        if (res) {
+                            if (opts.registerResourceOutputs) {
+                                const outs: any = req.getOutputs().toJavaScript();
+                                opts.registerResourceOutputs(ctx, dryrun, urn, res.t, res.name, res.props, outs);
+                            }
+                        }
+                        callback(undefined, new gempty.Empty());
                     },
                 );
 
@@ -358,8 +390,8 @@ describe("rpc", () => {
                 if (expectResourceCount === undefined) {
                     expectResourceCount = 0;
                 }
-                assert.strictEqual(rescnt, expectResourceCount,
-                                   `Expected exactly ${expectResourceCount} resources; got ${rescnt}`);
+                assert.strictEqual(regCnt, expectResourceCount,
+                                   `Expected exactly ${expectResourceCount} resource registrations; got ${regCnt}`);
 
                 // Finally, tear down everything so each test case starts anew.
                 await new Promise<void>((resolve, reject) => {
@@ -420,12 +452,14 @@ function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<s
 
 function createMockResourceMonitor(
         invokeCallback: (call: any, request: any) => any,
-        newResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {
+        registerResourceCallback: (call: any, request: any) => any,
+        registerResourceOutputsCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
-    server.addService(langrpc.ResourceMonitorService, {
+    server.addService(resrpc.ResourceMonitorService, {
         invoke: invokeCallback,
-        newResource: newResourceCallback,
+        registerResource: registerResourceCallback,
+        registerResourceOutputs: registerResourceOutputsCallback,
     });
     const port = server.bind("0.0.0.0:0", grpc.ServerCredentials.createInsecure());
     server.start();

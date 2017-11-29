@@ -8,6 +8,7 @@
                 "custom": true,
                 "id": "arn:aws:sns:us-east-2:153052954103:countDown-9d430501c4510322",
                 "type": "aws:sns/topic:Topic",
+                "parent": "urn:pulumi:foo::countdown::cloud:topic:Topic::countDown",
                 "defaults": {
                     "name": "countDown-9d430501c4510322"
                 },
@@ -22,10 +23,7 @@
             {
                 "urn": "urn:pulumi:foo::countdown::cloud:topic:Topic::countDown",
                 "custom": false,
-                "type": "cloud:topic:Topic",
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:sns/topic:Topic::countDown"
-                ]
+                "type": "cloud:topic:Topic"
             },
             {
                 "urn": "urn:pulumi:foo::countdown::aws:sns/topic:Topic::unhandled-error-topic",
@@ -48,6 +46,7 @@
                 "custom": true,
                 "id": "countDown_watcher-iamrole-bf695eb09a5c3e28",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::countDown_watcher",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -72,6 +71,7 @@
                 "custom": true,
                 "id": "countDown_watcher-iamrole-bf695eb09a5c3e28-20171108195133331200000001",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::countDown_watcher",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "countDown_watcher-iamrole-bf695eb09a5c3e28"
@@ -87,6 +87,7 @@
                 "custom": true,
                 "id": "countDown_watcher-iamrole-bf695eb09a5c3e28-20171108195134625700000002",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::countDown_watcher",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess",
                     "role": "countDown_watcher-iamrole-bf695eb09a5c3e28"
@@ -102,6 +103,7 @@
                 "custom": true,
                 "id": "countDown_watcher-560cf0c8d799e9cd",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::countDown_watcher",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -174,6 +176,7 @@
                 "urn": "urn:pulumi:foo::countdown::aws:serverless:Function::countDown_watcher",
                 "custom": false,
                 "type": "aws:serverless:Function",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::countDown_watcher",
                 "inputs": {
                     "options": {
                         "deadLetterConfig": {
@@ -185,19 +188,14 @@
                             "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:iam/role:Role::countDown_watcher-iamrole",
-                    "urn:pulumi:foo::countdown::aws:iam/rolePolicyAttachment:RolePolicyAttachment::countDown_watcher-iampolicy-0",
-                    "urn:pulumi:foo::countdown::aws:iam/rolePolicyAttachment:RolePolicyAttachment::countDown_watcher-iampolicy-1",
-                    "urn:pulumi:foo::countdown::aws:lambda/function:Function::countDown_watcher"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::countdown::aws:cloudwatch/logGroup:LogGroup::countDown_watcher-func-logs",
                 "custom": true,
                 "id": "/aws/lambda/countDown_watcher-560cf0c8d799e9cd",
                 "type": "aws:cloudwatch/logGroup:LogGroup",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::countDown_watcher",
                 "inputs": {
                     "name": "/aws/lambda/countDown_watcher-560cf0c8d799e9cd",
                     "retentionInDays": 1
@@ -218,6 +216,7 @@
                 "custom": true,
                 "id": "pulumi-foo-log-collector-iamrole-be795575fd1fcf07",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::pulumi-foo-log-collector",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -242,6 +241,7 @@
                 "custom": true,
                 "id": "pulumi-foo-log-collector-iamrole-be795575fd1fcf07-20171108195150465100000003",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::pulumi-foo-log-collector",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "pulumi-foo-log-collector-iamrole-be795575fd1fcf07"
@@ -257,6 +257,7 @@
                 "custom": true,
                 "id": "pulumi-foo-log-collector-2c23bf214eaacce8",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::pulumi-foo-log-collector",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -325,18 +326,14 @@
                             "arn:aws:iam::aws:policy/AWSLambdaFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:iam/role:Role::pulumi-foo-log-collector-iamrole",
-                    "urn:pulumi:foo::countdown::aws:iam/rolePolicyAttachment:RolePolicyAttachment::pulumi-foo-log-collector-iampolicy-0",
-                    "urn:pulumi:foo::countdown::aws:lambda/function:Function::pulumi-foo-log-collector"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::countdown::aws:lambda/permission:Permission::pulumi-foo-log-collector",
                 "custom": true,
                 "id": "pulumi-foo-log-collector-ba2b0a268e749fe6",
                 "type": "aws:lambda/permission:Permission",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::countDown_watcher",
                 "inputs": {
                     "action": "lambda:invokeFunction",
                     "function": "pulumi-foo-log-collector-2c23bf214eaacce8",
@@ -359,6 +356,7 @@
                 "custom": true,
                 "id": "cwlsf-2481582075",
                 "type": "aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::countDown_watcher",
                 "inputs": {
                     "destinationArn": "arn:aws:lambda:us-east-2:153052954103:function:pulumi-foo-log-collector-2c23bf214eaacce8",
                     "filterPattern": "",
@@ -381,13 +379,7 @@
                 "type": "cloud:function:Function",
                 "inputs": {
                     "handler": {}
-                },
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:cloudwatch/logGroup:LogGroup::countDown_watcher-func-logs",
-                    "urn:pulumi:foo::countdown::aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter::countDown_watcher",
-                    "urn:pulumi:foo::countdown::aws:lambda/permission:Permission::pulumi-foo-log-collector",
-                    "urn:pulumi:foo::countdown::aws:serverless:Function::countDown_watcher"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::countdown::aws:lambda/permission:Permission::countDown_watcher",
@@ -444,6 +436,7 @@
                 "custom": true,
                 "id": "heartbeat-iamrole-ea19407f5d1f9983",
                 "type": "aws:iam/role:Role",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::heartbeat",
                 "inputs": {
                     "assumeRolePolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Effect\":\"Allow\",\"Sid\":\"\"}]}"
                 },
@@ -468,6 +461,7 @@
                 "custom": true,
                 "id": "heartbeat-iamrole-ea19407f5d1f9983-20171108195207299700000004",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::heartbeat",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AWSLambdaFullAccess",
                     "role": "heartbeat-iamrole-ea19407f5d1f9983"
@@ -483,6 +477,7 @@
                 "custom": true,
                 "id": "heartbeat-iamrole-ea19407f5d1f9983-20171108195208724900000005",
                 "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::heartbeat",
                 "inputs": {
                     "policyArn": "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess",
                     "role": "heartbeat-iamrole-ea19407f5d1f9983"
@@ -498,6 +493,7 @@
                 "custom": true,
                 "id": "heartbeat-5614fce52cdefed1",
                 "type": "aws:lambda/function:Function",
+                "parent": "urn:pulumi:foo::countdown::aws:serverless:Function::heartbeat",
                 "inputs": {
                     "code": {
                         "4dabf18193072939515e22adb298388d": "0def7320c3a5731c473e5ecbe6d01bc7",
@@ -570,6 +566,7 @@
                 "urn": "urn:pulumi:foo::countdown::aws:serverless:Function::heartbeat",
                 "custom": false,
                 "type": "aws:serverless:Function",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::heartbeat",
                 "inputs": {
                     "options": {
                         "deadLetterConfig": {
@@ -581,19 +578,14 @@
                             "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess"
                         ]
                     }
-                },
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:iam/role:Role::heartbeat-iamrole",
-                    "urn:pulumi:foo::countdown::aws:iam/rolePolicyAttachment:RolePolicyAttachment::heartbeat-iampolicy-0",
-                    "urn:pulumi:foo::countdown::aws:iam/rolePolicyAttachment:RolePolicyAttachment::heartbeat-iampolicy-1",
-                    "urn:pulumi:foo::countdown::aws:lambda/function:Function::heartbeat"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::countdown::aws:cloudwatch/logGroup:LogGroup::heartbeat-func-logs",
                 "custom": true,
                 "id": "/aws/lambda/heartbeat-5614fce52cdefed1",
                 "type": "aws:cloudwatch/logGroup:LogGroup",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::heartbeat",
                 "inputs": {
                     "name": "/aws/lambda/heartbeat-5614fce52cdefed1",
                     "retentionInDays": 1
@@ -614,6 +606,7 @@
                 "custom": true,
                 "id": "cwlsf-2719389737",
                 "type": "aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter",
+                "parent": "urn:pulumi:foo::countdown::cloud:function:Function::heartbeat",
                 "inputs": {
                     "destinationArn": "arn:aws:lambda:us-east-2:153052954103:function:pulumi-foo-log-collector-2c23bf214eaacce8",
                     "filterPattern": "",
@@ -634,20 +627,17 @@
                 "urn": "urn:pulumi:foo::countdown::cloud:function:Function::heartbeat",
                 "custom": false,
                 "type": "cloud:function:Function",
+                "parent": "urn:pulumi:foo::countdown::cloud:timer:Timer::heartbeat",
                 "inputs": {
                     "handler": {}
-                },
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:cloudwatch/logGroup:LogGroup::heartbeat-func-logs",
-                    "urn:pulumi:foo::countdown::aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter::heartbeat",
-                    "urn:pulumi:foo::countdown::aws:serverless:Function::heartbeat"
-                ]
+                }
             },
             {
                 "urn": "urn:pulumi:foo::countdown::aws:cloudwatch/eventRule:EventRule::heartbeat",
                 "custom": true,
                 "id": "heartbeat-c7779a3d5f53ed1e",
                 "type": "aws:cloudwatch/eventRule:EventRule",
+                "parent": "urn:pulumi:foo::countdown::cloud:timer:Timer::heartbeat",
                 "inputs": {
                     "scheduleExpression": "rate(5 minutes)"
                 },
@@ -670,6 +660,7 @@
                 "custom": true,
                 "id": "heartbeat-c7779a3d5f53ed1e-heartbeat",
                 "type": "aws:cloudwatch/eventTarget:EventTarget",
+                "parent": "urn:pulumi:foo::countdown::cloud:timer:Timer::heartbeat",
                 "inputs": {
                     "arn": "arn:aws:lambda:us-east-2:153052954103:function:heartbeat-5614fce52cdefed1",
                     "rule": "heartbeat-c7779a3d5f53ed1e",
@@ -690,6 +681,7 @@
                 "custom": true,
                 "id": "heartbeat-15d43252e0160c80",
                 "type": "aws:lambda/permission:Permission",
+                "parent": "urn:pulumi:foo::countdown::cloud:timer:Timer::heartbeat",
                 "inputs": {
                     "action": "lambda:invokeFunction",
                     "function": "heartbeat-5614fce52cdefed1",
@@ -715,13 +707,7 @@
                 "type": "cloud:timer:Timer",
                 "inputs": {
                     "scheduleExpression": "rate(5 minutes)"
-                },
-                "children": [
-                    "urn:pulumi:foo::countdown::aws:cloudwatch/eventRule:EventRule::heartbeat",
-                    "urn:pulumi:foo::countdown::aws:cloudwatch/eventTarget:EventTarget::heartbeat",
-                    "urn:pulumi:foo::countdown::aws:lambda/permission:Permission::heartbeat",
-                    "urn:pulumi:foo::countdown::cloud:function:Function::heartbeat"
-                ]
+                }
             }
         ]
     }
