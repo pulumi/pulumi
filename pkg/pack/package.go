@@ -37,7 +37,8 @@ type Package struct {
 
 	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
 
-	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"` // base64 encoded encryption salt.
+	EncryptionSalt   string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`     // base64 encoded encryption salt.
+	NoDefaultIgnores *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
 
 	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
 
@@ -65,6 +66,14 @@ func (pkg *Package) Validate() error {
 		return errors.New("package is missing a 'runtime' attribute")
 	}
 	return nil
+}
+
+func (pkg *Package) UseDefaultIgnores() bool {
+	if pkg.NoDefaultIgnores == nil {
+		return true
+	}
+
+	return !(*pkg.NoDefaultIgnores)
 }
 
 // Analyzers is a list of analyzers to run on this project.
