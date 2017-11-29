@@ -41,6 +41,11 @@ func newStackRmCmd() *cobra.Command {
 					return err
 				}
 
+				err = setCurrentStack(tokens.QName(""))
+				if err != nil {
+					return err
+				}
+
 				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, stackName, colors.Reset)
 				fmt.Println(colors.ColorizeText(msg))
 			}
