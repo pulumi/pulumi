@@ -44,7 +44,8 @@ func Process(path string, useDefaultExcludes bool) (*bytes.Buffer, error) {
 	return buffer, nil
 }
 
-func addDirectoryToZip(writer *zip.Writer, root string, dir string, useDefaultIgnores bool, ignores *ignoreState) error {
+func addDirectoryToZip(writer *zip.Writer, root string, dir string,
+	useDefaultIgnores bool, ignores *ignoreState) error {
 	ignoreFilePath := path.Join(dir, workspace.IgnoreFile)
 
 	// If there is an ignorefile, process it before looking at any child paths.
