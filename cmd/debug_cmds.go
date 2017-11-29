@@ -4,46 +4,62 @@ package cmd
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/spf13/cobra"
 )
 
 // newArchiveCommand creates a command which just builds the archive we would ship to Pulumi.com to
 // do a deployment.
 func newArchiveCommand() *cobra.Command {
+	var forceNoDefaultIgnores bool
+	var forceDefaultIgnores bool
+
 	cmd := &cobra.Command{
 		Use:   "archive <path-to-archive>",
 		Short: "create an archive suitable for deployment",
 		Args:  cobra.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return errors.Wrap(err, "getting working directory")
+			if forceDefaultIgnores && forceNoDefaultIgnores {
+				return errors.New("can't specify --no-default-ignores and --default-ignores at the same time")
 			}
-			programPath, err := workspace.DetectPackage(cwd)
+
+			programPath, err := getPackageFilePath()
 			if err != nil {
-				return errors.Wrap(err, "looking for Pulumi package")
+				return err
 			}
-			if programPath == "" {
-				return errors.New("no Pulumi package found")
+			pkg, err := getPackage()
+			if err != nil {
+				return err
+			}
+
+			useDeafultIgnores := pkg.UseDefaultIgnores()
+
+			if forceDefaultIgnores {
+				useDeafultIgnores = true
+			} else if forceNoDefaultIgnores {
+				useDeafultIgnores = false
 			}
 
 			// programPath is the path to the Pulumi.yaml file. Need its parent folder.
 			programFolder := filepath.Dir(programPath)
-			archiveContents, err := archive.Process(programFolder)
+			archiveContents, err := archive.Process(programFolder, useDeafultIgnores)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "creating archive")
 			}
 
 			return ioutil.WriteFile(args[0], archiveContents.Bytes(), 0644)
 		}),
 	}
+	cmd.PersistentFlags().BoolVar(
+		&forceNoDefaultIgnores, "--no-default-ignores", false,
+		"Do not use default ignores, regardless of Pulumi.yaml")
+	cmd.PersistentFlags().BoolVar(
+		&forceDefaultIgnores, "--default-ignores", false,
+		"Use default ignores, regardless of Pulumi.yaml")
 
 	return cmd
 }

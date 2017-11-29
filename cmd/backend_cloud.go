@@ -182,20 +182,18 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
 func uploadProgram(uploadURL string, printSize bool) error {
-	cwd, err := os.Getwd()
+	programPath, err := getPackageFilePath()
 	if err != nil {
-		return errors.Wrap(err, "getting working directory")
+		return err
 	}
-	programPath, err := workspace.DetectPackage(cwd)
+	pkg, err := getPackage()
 	if err != nil {
-		return errors.Wrap(err, "looking for Pulumi package")
+		return err
 	}
-	if programPath == "" {
-		return errors.New("no Pulumi package found")
-	}
+
 	// programPath is the path to the Pulumi.yaml file. Need its parent folder.
 	programFolder := filepath.Dir(programPath)
-	archiveContents, err := archive.Process(programFolder)
+	archiveContents, err := archive.Process(programFolder, pkg.UseDefaultIgnores())
 	if err != nil {
 		return errors.Wrap(err, "creating archive")
 	}

@@ -9,7 +9,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -18,11 +17,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
-	"github.com/sabhiram/go-gitignore"
 )
 
 // Process returns an in-memory buffer with the archived contents of the provided file path.
-func Process(path string) (*bytes.Buffer, error) {
+func Process(path string, useDefaultExcludes bool) (*bytes.Buffer, error) {
 	buffer := &bytes.Buffer{}
 	writer := zip.NewWriter(buffer)
 
@@ -34,7 +32,7 @@ func Process(path string) (*bytes.Buffer, error) {
 		path = path + string(os.PathSeparator)
 	}
 
-	if err := addDirectoryToZip(writer, path, path, nil); err != nil {
+	if err := addDirectoryToZip(writer, path, path, useDefaultExcludes, nil); err != nil {
 		return nil, err
 	}
 	if err := writer.Close(); err != nil {
@@ -46,19 +44,39 @@ func Process(path string) (*bytes.Buffer, error) {
 	return buffer, nil
 }
 
-func addDirectoryToZip(writer *zip.Writer, root string, dir string, ignores *ignoreState) error {
+func addDirectoryToZip(writer *zip.Writer, root string, dir string, useDefaultIgnores bool, ignores *ignoreState) error {
 	ignoreFilePath := path.Join(dir, workspace.IgnoreFile)
 
 	// If there is an ignorefile, process it before looking at any child paths.
 	if stat, err := os.Stat(ignoreFilePath); err == nil && !stat.IsDir() {
 		glog.V(9).Infof("processing ignore file in %v", dir)
 
-		ignore, err := readIgnoreFile(ignoreFilePath)
+		ignore, err := newPulumiIgnorerIgnorer(ignoreFilePath)
 		if err != nil {
 			return errors.Wrapf(err, "could not read ignore file in %v", dir)
 		}
 
-		ignores = ignores.Append(dir, *ignore)
+		ignores = ignores.Append(ignore)
+	}
+
+	if useDefaultIgnores {
+		dotGitPath := path.Join(dir, ".git")
+		if stat, err := os.Stat(dotGitPath); err == nil {
+			ignores = ignores.Append(newPathIgnorer(dotGitPath, stat.IsDir()))
+		}
+
+		// If there is a package.json file here, let's build a node_modules ignorer from it.
+		packageJSONFilePath := path.Join(dir, packageJSONFileName)
+		if stat, err := os.Stat(packageJSONFilePath); err == nil && !stat.IsDir() {
+			glog.V(9).Infof("building ignore filter from package.json in %v", dir)
+			ignore, err := newNodeModulesIgnorer(packageJSONFilePath)
+			if err != nil {
+				return errors.Wrapf(err, "could not read ignores from package.json file in %v", dir)
+			}
+
+			ignores = ignores.Append(ignore)
+		}
+
 	}
 
 	file, err := os.Open(dir)
@@ -90,7 +108,24 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string, ignores *ign
 		}
 
 		if info.Mode().IsDir() {
-			err := addDirectoryToZip(writer, root, fullName, ignores)
+			// Work around an issue that will be addressed by pulumi/pulumi-ppc#95, by ensuring
+			// our zip files contain directory entries instead of just having files with paths.
+			// When the PPC fix is everywhere, we can delete this code in favor of just calling
+			// addDirectoryToZip recursively
+			zh, err := zip.FileInfoHeader(info)
+			if err != nil {
+				return err
+			}
+
+			// Add a trailing slash since this is a directory.
+			zh.Name = convertPathsForZip(strings.TrimPrefix(fullName, root)) + "/"
+
+			_, err = writer.CreateHeader(zh)
+			if err != nil {
+				return err
+			}
+
+			err = addDirectoryToZip(writer, root, fullName, useDefaultIgnores, ignores)
 			if err != nil {
 				return err
 			}
@@ -128,38 +163,4 @@ func convertPathsForZip(path string) string {
 	}
 
 	return path
-}
-
-func readIgnoreFile(path string) (*ignore.GitIgnore, error) {
-	buf, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	patterns := []string{".git/"}
-	patterns = append(patterns, strings.Split(string(buf), "\n")...)
-
-	return ignore.CompileIgnoreLines(patterns...)
-}
-
-type ignoreState struct {
-	path    string
-	ignorer ignore.GitIgnore
-	next    *ignoreState
-}
-
-func (s *ignoreState) Append(path string, ignorer ignore.GitIgnore) *ignoreState {
-	return &ignoreState{path: path, ignorer: ignorer, next: s}
-}
-
-func (s *ignoreState) IsIgnored(path string) bool {
-	if s == nil {
-		return false
-	}
-
-	if s.ignorer.MatchesPath(strings.TrimPrefix(path, s.path)) {
-		return true
-	}
-
-	return s.next.IsIgnored(path)
 }
