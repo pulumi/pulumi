@@ -97,7 +97,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 }
 
 func (acts *previewActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, state *resource.State, err error) error {
+	step deploy.Step, status resource.Status, err error) error {
 	// We let `printPlan` handle error reporting for now.
 	if err == nil {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -106,12 +106,12 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		_ = acts.OnResourceOutputs(step, state)
+		_ = acts.OnResourceOutputs(step)
 	}
 	return nil
 }
 
-func (acts *previewActions) OnResourceOutputs(step deploy.Step, state *resource.State) error {
+func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
 		printResourceOutputProperties(&acts.Summary, step, acts.Seen, acts.Shown, 0 /*indent*/)

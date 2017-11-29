@@ -168,7 +168,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 }
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, state *resource.State, err error) error {
+	step deploy.Step, status resource.Status, err error) error {
 	var b bytes.Buffer
 
 	// Report the result of the step.
@@ -211,7 +211,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
 }
 
-func (acts *deployActions) OnResourceOutputs(step deploy.Step, state *resource.State) error {
+func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
 		var b bytes.Buffer
@@ -219,16 +219,14 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step, state *resource.S
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
-	// If the state is non-nil, there's a chance there are new outputs that weren't written out last time.
+	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	if state != nil {
-		mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
-		if err != nil {
-			return err
-		}
-		if err = mutation.End(step.Iterator().Snap()); err != nil {
-			return err
-		}
+	mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	if err != nil {
+		return err
+	}
+	if err = mutation.End(step.Iterator().Snap()); err != nil {
+		return err
 	}
 
 	return nil

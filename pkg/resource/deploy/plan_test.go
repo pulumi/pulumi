@@ -231,6 +231,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			break
 		}
 
+		var state *resource.State
 		var urn resource.URN
 		var realID bool
 		var expectOuts resource.PropertyMap
@@ -243,6 +244,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnA, new.URN)
 			assert.Equal(t, newResA.Properties, new.Inputs)
 			assert.Equal(t, newResA.Properties, new.AllInputs())
+			state = new
 			urn, realID = urnA, false
 		case *UpdateStep: // B is updated
 			old := s.Old()
@@ -254,6 +256,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnB, new.URN)
 			assert.Equal(t, newResB.Properties, new.Inputs)
 			assert.Equal(t, newResB.Properties, new.AllInputs())
+			state = new
 			urn, realID = urnB, true
 		case *SameStep: // C is the same
 			old := s.Old()
@@ -265,6 +268,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnC, new.URN)
 			assert.Equal(t, newResC.Properties, new.Inputs)
 			assert.Equal(t, newResC.Properties, new.AllInputs())
+			state = new
 			urn, realID, expectOuts = urnC, true, oldResC.Outputs
 		case *DeleteStep: // D is deleted
 			old := s.Old()
@@ -277,15 +281,11 @@ func TestBasicCRUDPlan(t *testing.T) {
 			t.FailNow() // unexpected step kind.
 		}
 
-		var state *resource.State
-		_, state, err = step.Apply(true)
+		_, err = step.Apply(true)
 		assert.Nil(t, err)
 
 		op := step.Op()
 		if state != nil {
-			// The state should be non-nil by now and it should have a URN.
-			assert.NotNil(t, state)
-
 			// Ensure the URN, ID, and properties are populated correctly.
 			assert.Equal(t, urn, state.URN,
 				"Expected op %v to populate a URN equal to %v", op, urn)

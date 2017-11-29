@@ -26,8 +26,8 @@ type Options struct {
 // Events is an interface that can be used to hook interesting engine/planning events.
 type Events interface {
 	OnResourceStepPre(step Step) (interface{}, error)
-	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, state *resource.State, err error) error
-	OnResourceOutputs(step Step, state *resource.State) error
+	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
+	OnResourceOutputs(step Step) error
 }
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
@@ -54,7 +54,7 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 		replaces: make(map[resource.URN]bool),
 		deletes:  make(map[resource.URN]bool),
 		sames:    make(map[resource.URN]bool),
-		regs:     make(map[resource.URN]pendingReg),
+		regs:     make(map[resource.URN]Step),
 		dones:    make(map[*resource.State]bool),
 	}, nil
 }
@@ -119,20 +119,14 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
-	stepqueue []Step                      // a queue of steps to drain.
-	delqueue  []*resource.State           // a queue of deletes left to perform.
-	resources []*resource.State           // the resulting ordered resource states.
-	regs      map[resource.URN]pendingReg // a map of pending registrations not yet complete.
-	dones     map[*resource.State]bool    // true for each old state we're done with.
+	stepqueue []Step                   // a queue of steps to drain.
+	delqueue  []*resource.State        // a queue of deletes left to perform.
+	resources []*resource.State        // the resulting ordered resource states.
+	regs      map[resource.URN]Step    // a map of logical steps currently active.
+	dones     map[*resource.State]bool // true for each old state we're done with.
 
 	srcdone bool // true if the source interpreter has been run to completion.
 	done    bool // true if the planning and associated iteration has finished.
-}
-
-// pendingReg is a struct for remembering information about a pending resource registration.
-type pendingReg struct {
-	Step  Step            // the registration's step.
-	State *resource.State // the registration's state.
 }
 
 func (iter *PlanIterator) Plan() *Plan { return iter.p }
@@ -150,11 +144,7 @@ func (iter *PlanIterator) Done() bool                      { return iter.done }
 
 // Apply performs a plan's step and records its result in the iterator's state.
 func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error) {
-	// Ensure we don't have a pending registration for this resource already.
 	urn := step.URN()
-	if _, has := iter.regs[urn]; has {
-		return resource.StatusOK, goerr.Errorf("resource '%s' registered twice", urn)
-	}
 
 	// If there is a pre-event, raise it.
 	var eventctx interface{}
@@ -168,27 +158,23 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 
 	// Apply the step.
 	glog.V(9).Infof("Applying step %v on %v (preview %v)", step.Op(), urn, preview)
-	status, state, err := step.Apply(preview)
+	status, err := step.Apply(preview)
 
 	// If there is no error, proceed to save the state; otherwise, go straight to the exit codepath.
 	if err == nil {
 		// If we have a state object, remember it, as we may need to update it later.
-		if state != nil {
-			iter.regs[urn] = pendingReg{
-				Step:  step,
-				State: state,
+		if step.Logical() {
+			if _, has := iter.regs[urn]; has {
+				return resource.StatusOK, goerr.Errorf("resource '%s' registered twice", urn)
 			}
-		}
 
-		// And also mark the snapshot so we record the new state, but only if we actually applied the change.
-		if !preview {
-			iter.MarkStateSnapshot(urn, state)
+			iter.regs[urn] = step
 		}
 	}
 
 	// If there is a post-event, raise it, and in any case, return the results.
 	if e := iter.opts.Events; e != nil {
-		if eventerr := e.OnResourceStepPost(eventctx, step, status, state, err); eventerr != nil {
+		if eventerr := e.OnResourceStepPost(eventctx, step, status, err); eventerr != nil {
 			return status, goerr.Wrapf(eventerr, "post-step event returned an error")
 		}
 	}
@@ -444,17 +430,17 @@ func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent
 	urn := e.URN()
 	reg, has := iter.regs[urn]
 	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
-	contract.Assertf(reg.State != nil, "expected a non-nil final resource state ('%v')", urn)
+	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	delete(iter.regs, urn)
 
 	// If there are any extra properties to add to the outputs, append them now.
 	if outs := e.Outputs(); outs != nil {
-		reg.State.AddOutputs(outs)
+		reg.New().AddOutputs(outs)
 	}
 
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := iter.opts.Events; e != nil {
-		if eventerr := e.OnResourceOutputs(reg.Step, reg.State); eventerr != nil {
+		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
 			return goerr.Wrapf(eventerr, "resource complete event returned an error")
 		}
 	}
@@ -553,18 +539,19 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	return NewSnapshot(iter.p.Target().Name, time.Now(), resources)
 }
 
-// MarkStateSnapshot marks an old state snapshot as being processed, while adding a new version if relevant.  This
-// is done to recover from failures partway through the application of a deployment plan.  Any old state that has not
-// yet been recovered needs to be kept.  Note that the state object is mutable and can still change after this.
-func (iter *PlanIterator) MarkStateSnapshot(urn resource.URN, state *resource.State) {
-	if old := iter.p.olds[urn]; old != nil {
-		iter.dones[old] = true
-		glog.V(9).Infof("Marked old state snapshot as done: %v", urn)
-	}
-	if state != nil {
-		iter.resources = append(iter.resources, state)
-		glog.V(9).Infof("Appended new state snapshot to be written: %v", urn)
-	}
+// MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway
+// through the application of a deployment plan.  Any old state that has not yet been recovered needs to be kept.
+func (iter *PlanIterator) MarkStateSnapshot(state *resource.State) {
+	contract.Assert(state != nil)
+	iter.dones[state] = true
+	glog.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
+}
+
+// AppendStateSnapshot appends a resource's state to the current snapshot.
+func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
+	contract.Assert(state != nil)
+	iter.resources = append(iter.resources, state)
+	glog.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
