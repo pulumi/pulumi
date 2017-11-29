@@ -40,24 +40,30 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 	var ns tokens.QName
 	var alloc tokens.PackageName
 
-	// Walk the ordered resource list and build tree nodes based on child relationships
+	// First create a list of resource nodes, without parent/child relations hooked up.
 	for _, state := range source {
 		ns = state.URN.Namespace()
 		alloc = state.URN.Alloc()
-		newTree := &Resource{
+		contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
+		resources[state.URN] = &Resource{
 			NS:       ns,
 			Alloc:    alloc,
 			State:    state,
-			Parent:   nil,
-			Children: map[resource.URN]*Resource{},
+			Children: make(map[resource.URN]*Resource),
 		}
+	}
+
+	// Next, walk the list of resources, and wire up parents and children.  We do this in a second pass so
+	// that the creation of the tree isn't order dependent.
+	for _, state := range source {
 		for _, childURN := range state.Children {
+			parentTree, ok := resources[state.URN]
+			contract.Assertf(ok, "Expected parent resource %s to exist", state.URN)
 			childTree, ok := resources[childURN]
-			contract.Assertf(ok, "Expected children to be before parents in resource checkpoint")
-			childTree.Parent = newTree
-			newTree.Children[childTree.State.URN] = childTree
+			contract.Assertf(ok, "Unexpected missing child %s referred to by parent %s", state.URN, childURN)
+			childTree.Parent = parentTree
+			parentTree.Children[childTree.State.URN] = childTree
 		}
-		resources[state.URN] = newTree
 	}
 
 	// Create a single root node which is the parent of all unparented nodes
