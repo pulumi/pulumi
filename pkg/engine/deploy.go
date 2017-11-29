@@ -211,5 +211,18 @@ func (acts *deployActions) OnResourceComplete(step deploy.Step, state *deploy.Fi
 		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
+
+	// If the state is non-nil, there's a chance there are new outputs that weren't written out last time.
+	// We need to perform another snapshot write to ensure they get written out.
+	if state != nil {
+		mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+		if err != nil {
+			return err
+		}
+		if err = mutation.End(step.Iterator().Snap()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

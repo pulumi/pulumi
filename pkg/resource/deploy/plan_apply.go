@@ -167,25 +167,17 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 	}
 
 	// Apply the step.
+	glog.V(9).Infof("Applying step %v on %v (preview %v)", step.Op(), urn, preview)
 	status, state, err := step.Apply(preview)
 
-	// If there is a post-event, raise it.
-	if e := iter.opts.Events; e != nil {
-		if eventerr := e.OnResourceStepPost(eventctx, step, status, err); eventerr != nil {
-			return status, goerr.Wrapf(eventerr, "post-step event returned an error")
-		}
-	}
-
-	// If there's an error, we can quit now and propagate it.
-	if err != nil {
-		return status, err
-	}
-
-	if state != nil {
+	// If there is no error, proceed to save the state; otherwise, go straight to the exit codepath.
+	if err == nil {
 		// If we have a state object, remember it, as we may need to update it later.
-		iter.regs[urn] = pendingReg{
-			Step:  step,
-			Final: state,
+		if state != nil {
+			iter.regs[urn] = pendingReg{
+				Step:  step,
+				Final: state,
+			}
 		}
 
 		// And also mark the snapshot so we record the new state, but only if we actually applied the change.
@@ -194,7 +186,14 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 		}
 	}
 
-	return status, nil
+	// If there is a post-event, raise it, and in any case, return the results.
+	if e := iter.opts.Events; e != nil {
+		if eventerr := e.OnResourceStepPost(eventctx, step, status, err); eventerr != nil {
+			return status, goerr.Wrapf(eventerr, "post-step event returned an error")
+		}
+	}
+
+	return status, err
 }
 
 // Close terminates the iteration of this plan.
@@ -560,9 +559,11 @@ func (iter *PlanIterator) Snap() *Snapshot {
 func (iter *PlanIterator) MarkStateSnapshot(urn resource.URN, state *FinalState) {
 	if old := iter.p.olds[urn]; old != nil {
 		iter.dones[old] = true
+		glog.V(9).Infof("Marked old state snapshot as done: %v", urn)
 	}
 	if state != nil {
 		iter.resources = append(iter.resources, state.State)
+		glog.V(9).Infof("Appended new state snapshot to be written: %v", urn)
 	}
 }
 
