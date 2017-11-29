@@ -34,51 +34,58 @@ func newStackCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Current stack is %v\n", stackName)
+			// First print general info about the current stack.
+			fmt.Printf("Current stack is %v:\n", stackName)
 			if snapshot != nil {
-				fmt.Printf("\tLast updated at %v\n", snapshot.Time)
+				fmt.Printf("    Last updated at %v\n", snapshot.Time)
 			}
 			if len(config) > 0 {
-				fmt.Printf("\t%v configuration variables set (see `pulumi config` for details)\n", len(config))
+				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(config))
 			}
-			fmt.Printf("\tCheckpoint file is %s\n", stackFile)
-			fmt.Printf("\t(Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
+			fmt.Printf("    Checkpoint file is %s\n", stackFile)
+			fmt.Printf("    (Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
+			fmt.Printf("\n")
 
-			var stackResource *resource.State
-			if snapshot == nil || len(snapshot.Resources) == 0 {
-				fmt.Printf("No resources currently in this stack\n")
+			// Now show the resources.
+			var rescnt int
+			if snapshot != nil {
+				rescnt = len(snapshot.Resources)
+			}
+			fmt.Printf("Current stack resources (%d):\n", rescnt)
+			if rescnt == 0 {
+				fmt.Printf("    No resources currently in this stack\n")
 			} else {
-				fmt.Printf("%v resources currently in this stack:\n", len(snapshot.Resources))
-				fmt.Printf("%-48s %s\n", "TYPE", "NAME")
+				fmt.Printf("    %-48s %s\n", "TYPE", "NAME")
+				var stackResource *resource.State
 				for _, res := range snapshot.Resources {
 					if res.Type == stack.RootPulumiStackTypeName {
 						stackResource = res
-						continue
-					}
-					fmt.Printf("%-48s %s\n", res.Type, res.URN.Name())
+					} else {
+						fmt.Printf("    %-48s %s\n", res.Type, res.URN.Name())
 
-					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do this
-					// on a single line, but they can get quite lengthy and so this formatting makes more sense.
-					if showIDs {
-						fmt.Printf("\tID: %s\n", res.ID)
-					}
-					if showURNs {
-						fmt.Printf("\tURN: %s\n", res.URN)
+						// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
+						// this on a single line, but this can get quite lengthy and so this formatting is better.
+						if showURNs {
+							fmt.Printf("        URN: %s\n", res.URN)
+						}
+						if showIDs && res.ID != "" {
+							fmt.Printf("        ID: %s\n", res.ID)
+						}
 					}
 				}
+
+				// Print out the output properties for the stack, if present.
 				if stackResource != nil {
 					fmt.Printf("\n")
-					// Note: Currently, components place their output properties into the `Inputs` of the resource, so
-					// we need to extract the outputs from the `Inputs`.
-					outputs := stack.SerializeResource(stackResource).Inputs
+					outputs := stack.SerializeResource(stackResource).Outputs
+					fmt.Printf("Current stack outputs (%d):\n", len(outputs))
 					if len(outputs) == 0 {
-						fmt.Printf("No output values currently in this stack\n")
+						fmt.Printf("    No output values currently in this stack\n")
 					} else {
-						fmt.Printf("%v output values currently in this stack:\n", len(outputs))
-						fmt.Printf("\n")
-						fmt.Printf("%-48s %s\n", "OUTPUT", "VALUE")
+						fmt.Printf("    %v output values currently in this stack:\n", len(outputs))
+						fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
 						for key, val := range outputs {
-							fmt.Printf("%-48s %s\n", key, val)
+							fmt.Printf("   %-48s %s\n", key, val)
 						}
 					}
 				}

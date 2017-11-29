@@ -327,54 +327,48 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 		result += "    "
 	}
 
-	if result == "" || !prefix {
+	if result == "" {
+		contract.Assertf(!prefix, "Expected indention for a prefixed line")
 		return result
 	}
 
-	return indentStringWithPrefix(result, op.RawPrefix())
+	var rp string
+	if prefix {
+		rp = op.RawPrefix()
+	} else {
+		rp = "  "
+	}
+	contract.Assert(len(rp) == 2)
+	contract.Assert(len(result) >= 2)
+	return result[:len(result)-2] + rp
 }
 
-func writeWithSpecificIndentAndPrefix(
-	b *bytes.Buffer, indent int,
-	colorOp deploy.StepOp, prefixOp deploy.StepOp,
-	format string, a ...interface{}) {
-
+func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
 	b.WriteString(colors.Reset)
-	b.WriteString(colorOp.Color())
-	b.WriteString(getIndentationString(indent, prefixOp, true))
+	b.WriteString(op.Color())
+	b.WriteString(getIndentationString(indent, op, prefix))
 	b.WriteString(fmt.Sprintf(format, a...))
 	b.WriteString(colors.Reset)
 }
 
-func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
-	writeWithIndentPrefix(b, indent, op, true, format, a...)
+func writeWithIndentPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
+	writeWithIndent(b, indent, op, true, format, a...)
 }
 
 func writeWithIndentNoPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
-	writeWithIndentPrefix(b, indent, op, false, format, a...)
-}
-
-func writeWithIndentPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool,
-	format string, a ...interface{}) {
-	var pre deploy.StepOp
-	if prefix {
-		pre = op
-	} else {
-		pre = deploy.OpNone
-	}
-	writeWithSpecificIndentAndPrefix(b, indent, op, pre, format, a...)
+	writeWithIndent(b, indent, op, false, format, a...)
 }
 
 func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
-	writeWithIndent(b, 0, op, format, a...)
+	writeWithIndentNoPrefix(b, 0, op, format, a...)
 }
 
 func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
-	writeVerbatimWithIndent(b, 0, op, value)
+	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
 func writeVerbatimWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, value string) {
-	writeWithIndent(b, indent, op, "%s", value)
+	writeWithIndentPrefix(b, indent, op, "%s", value)
 }
 
 func printResourceProperties(
@@ -453,7 +447,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 	op = considerSameIfNotCreateOrDelete(op)
 
 	// Now compute the indentation level, in part based on the parents.
-	indent++
+	indent++ // indent for the resource.
 	indent = stepParentIndent(b, step, seen, shown, false, indent, false)
 
 	// First fetch all the relevant property maps that we may consult.
@@ -532,11 +526,7 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 }
 
 func printPropertyTitle(b *bytes.Buffer, name string, align int, indent int, op deploy.StepOp, prefix bool) {
-	if prefix {
-		writeWithIndent(b, indent, op, "%-"+strconv.Itoa(align)+"s: ", name)
-	} else {
-		writeWithIndentNoPrefix(b, indent, op, "%-"+strconv.Itoa(align)+"s: ", name)
-	}
+	writeWithIndent(b, indent, op, prefix, "%-"+strconv.Itoa(align)+"s: ", name)
 }
 
 func printPropertyValue(
@@ -558,10 +548,10 @@ func printPropertyValue(
 		} else {
 			writeVerbatim(b, op, "[\n")
 			for i, elem := range arr {
-				writeWithIndentPrefix(b, indent, op, prefix, "    [%d]: ", i)
+				writeWithIndent(b, indent, op, prefix, "    [%d]: ", i)
 				printPropertyValue(b, elem, planning, indent+1, op, prefix)
 			}
-			writeWithIndentPrefix(b, indent, op, prefix, "]")
+			writeWithIndent(b, indent, op, prefix, "]")
 		}
 	} else if v.IsAsset() {
 		a := v.AssetValue()
@@ -575,7 +565,7 @@ func printPropertyValue(
 			for _, line := range lines {
 				writeWithIndentNoPrefix(b, indent, op, "    %s\n", line)
 			}
-			writeWithIndentPrefix(b, indent, op, prefix, "}")
+			writeWithIndent(b, indent, op, prefix, "}")
 		} else if path, has := a.GetPath(); has {
 			write(b, op, "asset(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
@@ -594,7 +584,7 @@ func printPropertyValue(
 			for _, name := range names {
 				printAssetOrArchive(b, assets[name], name, planning, indent, op, prefix)
 			}
-			writeWithIndentPrefix(b, indent, op, prefix, "}")
+			writeWithIndent(b, indent, op, prefix, "}")
 		} else if path, has := a.GetPath(); has {
 			write(b, op, "archive(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
@@ -611,7 +601,7 @@ func printPropertyValue(
 		} else {
 			writeVerbatim(b, op, "{\n")
 			printObject(b, obj, planning, indent+1, op, prefix)
-			writeWithIndentPrefix(b, indent, op, prefix, "}")
+			writeWithIndent(b, indent, op, prefix, "}")
 		}
 	}
 	writeVerbatim(b, op, "\n")
@@ -620,7 +610,7 @@ func printPropertyValue(
 func printAssetOrArchive(
 	b *bytes.Buffer, v interface{}, name string, planning bool,
 	indent int, op deploy.StepOp, prefix bool) {
-	writeWithIndentPrefix(b, indent, op, prefix, "    \"%v\": ", name)
+	writeWithIndent(b, indent, op, prefix, "    \"%v\": ", name)
 	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+1, op, prefix)
 }
 
@@ -712,7 +702,7 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 		for i := 0; i < a.Len(); i++ {
 			newIndent := indent + 2
 			elemTitleFunc := func(eop deploy.StepOp, eprefix bool) {
-				writeWithIndentPrefix(b, indent+1, eop, eprefix, "[%d]: ", i)
+				writeWithIndent(b, indent+1, eop, eprefix, "[%d]: ", i)
 			}
 			if add, isadd := a.Adds[i]; isadd {
 				printAdd(b, add, elemTitleFunc, true, planning, newIndent)
@@ -725,12 +715,12 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 				printPropertyValue(b, a.Sames[i], planning, newIndent, deploy.OpSame, false)
 			}
 		}
-		writeWithIndent(b, indent, op, "]\n")
+		writeWithIndentPrefix(b, indent, op, "]\n")
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
 		printObjectDiff(b, *diff.Object, detailed, nil, causedReplace, planning, indent+1)
-		writeWithIndent(b, indent, op, "}\n")
+		writeWithIndentPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
 		shouldPrintNew := shouldPrintPropertyValue(diff.New, false)
@@ -803,7 +793,7 @@ func printArchiveDiff(
 			titleFunc(op, true)
 			write(b, op, "archive(assets:%s) {\n", hashChange)
 			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1)
-			writeWithIndent(b, indent, deploy.OpUpdate, "}\n")
+			writeWithIndentPrefix(b, indent, deploy.OpUpdate, "}\n")
 			return
 		}
 	}
@@ -967,7 +957,7 @@ func printAssetDiff(
 
 			b.WriteString(diffToPrettyString(diffs2, indent+1))
 
-			writeWithIndent(b, indent, op, "}\n")
+			writeWithIndentPrefix(b, indent, op, "}\n")
 			return
 		}
 	} else if oldPath, has := oldAsset.GetPath(); has {
@@ -1109,9 +1099,4 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 	}
 
 	return buff.String()
-}
-
-func indentStringWithPrefix(currentIndent string, prefix string) string {
-	contract.Assert(len(prefix) == 2)
-	return currentIndent[:len(currentIndent)-2] + prefix
 }

@@ -333,7 +333,7 @@ const (
 	OpNone              StepOp = "none"               // no semantically meaningful value.
 	OpSame              StepOp = "same"               // nothing to do.
 	OpCreate            StepOp = "create"             // creating a new resource.
-	OpUpdate            StepOp = "modify"             // modifying an existing resource.
+	OpUpdate            StepOp = "update"             // updating an existing resource.
 	OpDelete            StepOp = "delete"             // deleting an existing resource.
 	OpReplace           StepOp = "replace"            // replacing a resource with a new one.
 	OpCreateReplacement StepOp = "create-replacement" // creating a new resource for a replacement.
@@ -409,12 +409,10 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
-	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced:
+	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate:
 		return string(op) + "d"
-	case OpUpdate:
-		return "modified"
 	default:
-		contract.Failf("Unrecognized resource step op: %v", op)
+		contract.Failf("Unexpected resource step op: %v", op)
 		return ""
 	}
 }
