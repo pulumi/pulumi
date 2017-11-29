@@ -1,0 +1,4 @@
+name: recursive-merge
+description: A test for recursive merging of defaults.
+runtime: nodejs
+

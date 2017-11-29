@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package operations
 
 import (
@@ -8,13 +10,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -60,12 +60,10 @@ const (
 )
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
-	if query.Query != nil {
-		contract.Failf("not yet implemented - Query")
-	}
-	switch ops.component.state.Type {
+	state := ops.component.State
+	switch state.Type {
 	case awsFunctionType:
-		functionName := ops.component.state.Outputs["name"].StringValue()
+		functionName := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{functionName},
 			[]string{"/aws/lambda/" + functionName},
@@ -75,7 +73,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		return &logResult, nil
 	case awsLogGroupType:
-		name := ops.component.state.Outputs["name"].StringValue()
+		name := state.Outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{name},
 			[]string{name},
@@ -90,18 +88,9 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	}
 }
 
-func (ops *awsOpsProvider) ListMetrics() []MetricName {
-	return nil
-}
-
-func (ops *awsOpsProvider) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
-	return nil, fmt.Errorf("Not yet implmeneted: GetMetricStatistics")
-}
-
 type awsConnection struct {
-	sess      *session.Session
-	logSvc    *cloudwatchlogs.CloudWatchLogs
-	metricSvc *cloudwatch.CloudWatch
+	sess   *session.Session
+	logSvc *cloudwatchlogs.CloudWatchLogs
 }
 
 var awsConnectionCache = map[string]*awsConnection{}
@@ -119,9 +108,8 @@ func getAWSConnection(awsRegion string) (*awsConnection, error) {
 			return nil, errors.Wrap(err, "failed to create AWS session")
 		}
 		connection = &awsConnection{
-			sess:      sess,
-			logSvc:    cloudwatchlogs.New(sess),
-			metricSvc: cloudwatch.New(sess),
+			sess:   sess,
+			logSvc: cloudwatchlogs.New(sess),
 		}
 		awsConnectionCacheMutex.Lock()
 		awsConnectionCache[awsRegion] = connection
@@ -137,7 +125,7 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	endTime *time.Time) []LogEntry {
 
 	// Create a channel for collecting log event outputs
-	ch := make(chan []*cloudwatchlogs.FilteredLogEvent)
+	ch := make(chan []*cloudwatchlogs.FilteredLogEvent, len(logGroups))
 
 	var startMilli *int64
 	if startTime != nil {

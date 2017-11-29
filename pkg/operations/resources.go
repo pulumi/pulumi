@@ -1,8 +1,11 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package operations
 
 import (
-	"fmt"
 	"sort"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -11,64 +14,79 @@ import (
 
 // Resource is a tree representation of a resource/component hierarchy
 type Resource struct {
-	ns       tokens.QName
-	alloc    tokens.PackageName
-	state    *resource.State
-	parent   *Resource
-	children map[resource.URN]*Resource
+	NS       tokens.QName
+	Alloc    tokens.PackageName
+	State    *resource.State
+	Parent   *Resource
+	Children map[resource.URN]*Resource
 }
 
-// NewResource constructs a tree representation of a resource/component hierarchy
-func NewResource(source []*resource.State) *Resource {
-	treeNodes := map[resource.URN]*Resource{}
+// NewResourceMap constructs a map of resources with parent/child relations, indexed by URN.
+func NewResourceMap(source []*resource.State) map[resource.URN]*Resource {
+	_, resources := makeResourceTreeMap(source)
+	return resources
+}
+
+// NewResourceTree constructs a tree representation of a resource/component hierarchy
+func NewResourceTree(source []*resource.State) *Resource {
+	root, _ := makeResourceTreeMap(source)
+	return root
+}
+
+// makeResourceTreeMap is a helper used by the two above functions to construct a resource hierarchy.
+func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]*Resource) {
+	resources := make(map[resource.URN]*Resource)
+
 	var ns tokens.QName
 	var alloc tokens.PackageName
 
-	// First create a list of all nodes.
+	// First create a list of resource nodes, without parent/child relations hooked up.
 	for _, state := range source {
 		ns = state.URN.Namespace()
 		alloc = state.URN.Alloc()
-		treeNodes[state.URN] = &Resource{
-			ns:       ns,
-			alloc:    alloc,
-			state:    state,
-			children: make(map[resource.URN]*Resource),
+		contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
+		resources[state.URN] = &Resource{
+			NS:       ns,
+			Alloc:    alloc,
+			State:    state,
+			Children: make(map[resource.URN]*Resource),
 		}
 	}
 
-	// Next, create parent/child associations for easy lookups.
-	for _, childTree := range treeNodes {
-		if parurn := childTree.state.Parent; parurn != "" {
-			parent, ok := treeNodes[parurn]
+	// Next, walk the list of resources, and wire up parents and children.  We do this in a second pass so
+	// that the creation of the tree isn't order dependent.
+	for _, child := range resources {
+		if parurn := child.State.Parent; parurn != "" {
+			parent, ok := resources[parurn]
 			contract.Assertf(ok, "Expected to find parent node '%v' in checkpoint tree nodes", parurn)
-			childTree.parent = parent
-			parent.children[childTree.state.URN] = childTree
+			child.Parent = parent
+			parent.Children[child.State.URN] = child
 		}
 	}
 
 	// Create a single root node which is the parent of all unparented nodes
 	root := &Resource{
-		ns:       ns,
-		alloc:    alloc,
-		state:    nil,
-		parent:   nil,
-		children: map[resource.URN]*Resource{},
+		NS:       ns,
+		Alloc:    alloc,
+		State:    nil,
+		Parent:   nil,
+		Children: make(map[resource.URN]*Resource),
 	}
-	for _, node := range treeNodes {
-		if node.parent == nil {
-			root.children[node.state.URN] = node
-			node.parent = root
+	for _, node := range resources {
+		if node.Parent == nil {
+			root.Children[node.State.URN] = node
+			node.Parent = root
 		}
 	}
 
-	// Return the root node
-	return root
+	// Return the root node and map of children.
+	return root, resources
 }
 
 // GetChild find a child with the given type and name or returns `nil`.
 func (r *Resource) GetChild(typ string, name string) *Resource {
-	childURN := resource.NewURN(r.ns, r.alloc, tokens.Type(typ), tokens.QName(name))
-	return r.children[childURN]
+	childURN := resource.NewURN(r.NS, r.Alloc, tokens.Type(typ), tokens.QName(name))
+	return r.Children[childURN]
 }
 
 // OperationsProvider gets an OperationsProvider for this resource.
@@ -96,7 +114,6 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		query = LogQuery{
 			StartTime:      query.StartTime,
 			EndTime:        query.EndTime,
-			Query:          query.Query,
 			ResourceFilter: nil,
 		}
 		// Try to get an operations provider for this resource, it may be `nil`
@@ -122,7 +139,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Kick off GetLogs on all children in parallel, writing results to shared channels
 	ch := make(chan *[]LogEntry)
 	errch := make(chan error)
-	for _, child := range ops.resource.children {
+	for _, child := range ops.resource.Children {
 		childOps := &resourceOperations{
 			resource: child,
 			config:   ops.config,
@@ -134,15 +151,16 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		}()
 	}
 	// Handle results from GetLogs calls as they complete
-	for range ops.resource.children {
+	var err error
+	for range ops.resource.Children {
 		childLogs := <-ch
-		err := <-errch
-		if err != nil {
-			return &logs, err
-		}
+		err = multierror.Append(err, <-errch)
 		if childLogs != nil {
 			logs = append(logs, *childLogs...)
 		}
+	}
+	if err != nil {
+		return &logs, err
 	}
 	// Sort
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
@@ -178,10 +196,10 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 		// No filter, all resources match it.
 		return true
 	}
-	if ops.resource == nil || ops.resource.state == nil {
+	if ops.resource == nil || ops.resource.State == nil {
 		return false
 	}
-	urn := ops.resource.state.URN
+	urn := ops.resource.State.URN
 	if resource.URN(*filter) == urn {
 		// The filter matched the full URN
 		return true
@@ -197,21 +215,11 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 	return false
 }
 
-// ListMetrics lists metrics for a Resource
-func (ops *resourceOperations) ListMetrics() []MetricName {
-	return []MetricName{}
-}
-
-// GetMetricStatistics gets metric statistics for a Resource
-func (ops *resourceOperations) GetMetricStatistics(metric MetricRequest) ([]MetricDataPoint, error) {
-	return nil, fmt.Errorf("not yet implemented")
-}
-
 func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
-	if ops.resource == nil || ops.resource.state == nil {
+	if ops.resource == nil || ops.resource.State == nil {
 		return nil, nil
 	}
-	switch ops.resource.state.Type.Package() {
+	switch ops.resource.State.Type.Package() {
 	case "cloud":
 		return CloudOperationsProvider(ops.config, ops.resource)
 	case "aws":
