@@ -32,6 +32,8 @@ import (
 type Asset struct {
 	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
 	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the asset contents.
+	IsArchive bool `json:"isArchive", yaml:"isArchive"`                                           // true if this asset is an archive
+	Children map[string]*Asset `json:"chilren,omitempty" yaml:"children,omitempty"`               // a collection of child assets (valid iff IsArchive is true)
 	Text string `json:"text,omitempty" yaml:"text,omitempty"`                                     // a textual asset.
 	Path string `json:"path,omitempty" yaml:"path,omitempty"`                                     // a file on the current filesystem.
 	URI  string `json:"uri,omitempty" yaml:"uri,omitempty"`                                       // a URI (file://, http://, https://, or custom).
@@ -40,6 +42,8 @@ type Asset struct {
 const (
 	AssetSig          = "c44067f5952c0a294b673a41bacd8c17" // a randomly assigned type hash for assets.
 	AssetHashProperty = "hash"                             // the dynamic property for an asset's hash.
+	AssetIsArchiveProperty = "isArchive"                   // the dynamic property that indicates whether an asset is an archive.
+	AssetChildrenProperty = "children"                     // the dynamic property for an archive asset's child assets.
 	AssetTextProperty = "text"                             // the dynamic property for an asset's text.
 	AssetPathProperty = "path"                             // the dynamic property for an asset's path.
 	AssetURIProperty  = "uri"                              // the dynamic property for an asset's URI.
@@ -66,9 +70,40 @@ func NewURIAsset(uri string) (*Asset, error) {
 	return a, err
 }
 
+func NewAssetArchive(children map[string]*Asset) (*Asset, error) {
+	// Ensure all elements are either assets or archives.
+	a := &Asset{Sig: AssetSig, IsArchive: true, Children: children}
+	err := a.EnsureHash()
+	return a, err
+}
+
+func NewPathArchive(path string) (*Asset, error) {
+	a := &Asset{Sig: AssetSig, IsArchive: true, Path: path}
+	err := a.EnsureHash()
+	return a, err
+}
+
+func NewURIArchive(uri string) (*Asset, error) {
+	a := &Asset{Sig: AssetSig, IsArchive: true, URI: uri}
+	err := a.EnsureHash()
+	return a, err
+}
+
+
+func (a *Asset) IsArchive() bool { return a.IsArchive }
+
 func (a *Asset) IsText() bool { return a.Text != "" }
 func (a *Asset) IsPath() bool { return a.Path != "" }
 func (a *Asset) IsURI() bool  { return a.URI != "" }
+
+func (a *Asset) HasChildren() bool { return a.IsArchive && a.Children != nil }
+
+func (a *Asset) GetChildren() (map[string]interface{}, bool) {
+	if a.HasChildren {
+		return a.Children, true
+	}
+	return nil, false
+}
 
 func (a *Asset) GetText() (string, bool) {
 	if a.IsText() {
@@ -128,9 +163,17 @@ func (a *Asset) Equals(other *Asset) bool {
 func (a *Asset) Serialize() map[string]interface{} {
 	result := map[string]interface{}{
 		string(SigKey): AssetSig,
+		AssetIsArchiveProperty: a.IsArchive
 	}
 	if a.Hash != "" {
 		result[AssetHashProperty] = a.Hash
+	}
+	if a.Children != nil {
+		children := make(map[string]interface{})
+		for k, v := range a.Children {
+			children[k] = v.Serialize()
+		}
+		result[AssetChildrenProperty] = children
 	}
 	if a.Text != "" {
 		result[AssetTextProperty] = a.Text
@@ -156,6 +199,34 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	if v, has := obj[AssetHashProperty]; has {
 		hash = v.(string)
 	}
+	var isArchive bool
+	if v, has := obj[AssetIsArchiveProperty]; has {
+		isArchive = v.(bool)
+	}
+	var children map[string]*Asset
+	if v, has := obj[AssetChildrenProperty]; has {
+		children = make(map[string]*Asset)
+		if v != nil {
+			for k, elem := range v.(map[string]interface{}) {
+				switch elem := elem.(type) {
+				case *Asset:
+					children[k] = elem
+				case map[string]interface{}:
+					a, isa, err := DeserializeAsset(t)
+					switch {
+					case err != nil:
+						return &Asset{}, false, err
+					case !isa:
+						return &Asset{}, false, errors.Errorf("archive member '%v' is not an asset", k)
+					default:
+						children[k] = a
+					}
+				default:
+					return &Archive{}, false, nil
+				}
+			}
+		}
+	}
 	var text string
 	if v, has := obj[AssetTextProperty]; has {
 		text = v.(string)
@@ -169,12 +240,12 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 		uri = v.(string)
 	}
 
-	return &Asset{Hash: hash, Text: text, Path: path, URI: uri}, true, nil
+	return &Asset{Hash: hash, IsArchive: isArchive, Children: children, Text: text, Path: path, URI: uri}, true, nil
 }
 
 // HasContents indicates whether or not an asset's contents can be read.
 func (a *Asset) HasContents() bool {
-	return a.IsText() || a.IsPath() || a.IsURI()
+	return a.HasChildren() || a.IsText() || a.IsPath() || a.IsURI()
 }
 
 // Bytes returns the contents of the asset as a byte slice.
@@ -350,7 +421,7 @@ const (
 	ArchiveURIProperty    = "uri"                              // the dynamic property for an archive's URI.
 )
 
-func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
+func NewAssetArchive(assets map[string]interface{}) (*Asset, error) {
 	// Ensure all elements are either assets or archives.
 	for _, asset := range assets {
 		switch t := asset.(type) {

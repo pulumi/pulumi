@@ -55,7 +55,7 @@ func NewPulumiCmd(version string) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
-	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
+	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", true, "Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	cmd.PersistentFlags().IntVarP(
