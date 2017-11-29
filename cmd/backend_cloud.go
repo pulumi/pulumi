@@ -343,9 +343,11 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, err
 	}
-	description := ""
-	if pkg.Description != nil {
-		description = *pkg.Description
+	valueOrEmpty := func(s *string) string {
+		if s != nil {
+			return *s
+		}
+		return ""
 	}
 
 	// Gather up configuration.
@@ -358,7 +360,8 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 	return apitype.UpdateProgramRequest{
 		Name:        pkg.Name,
 		Runtime:     pkg.Runtime,
-		Description: description,
+		Main:        pkg.Main,
+		Description: valueOrEmpty(pkg.Description),
 		Config:      textConfig,
 	}, nil
 }
