@@ -367,10 +367,6 @@ func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
-func writeVerbatimWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, value string) {
-	writeWithIndentPrefix(b, indent, op, "%s", value)
-}
-
 func printResourceProperties(
 	b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.State,
 	replaces []resource.PropertyKey, summary bool, detailed bool, planning bool, indent int, op deploy.StepOp) {
@@ -700,27 +696,26 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
-			newIndent := indent + 2
 			elemTitleFunc := func(eop deploy.StepOp, eprefix bool) {
 				writeWithIndent(b, indent+1, eop, eprefix, "[%d]: ", i)
 			}
 			if add, isadd := a.Adds[i]; isadd {
-				printAdd(b, add, elemTitleFunc, true, planning, newIndent)
+				printAdd(b, add, elemTitleFunc, true, planning, indent+2)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				printDelete(b, delete, elemTitleFunc, true, planning, newIndent)
+				printDelete(b, delete, elemTitleFunc, true, planning, indent+2)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(b, elemTitleFunc, update, detailed, causedReplace, planning, indent)
+				printPropertyValueDiff(b, elemTitleFunc, update, detailed, causedReplace, planning, indent+2)
 			} else {
 				elemTitleFunc(deploy.OpSame, false)
-				printPropertyValue(b, a.Sames[i], planning, newIndent, deploy.OpSame, false)
+				printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false)
 			}
 		}
-		writeWithIndentPrefix(b, indent, op, "]\n")
+		writeWithIndentNoPrefix(b, indent, op, "]\n")
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
 		printObjectDiff(b, *diff.Object, detailed, nil, causedReplace, planning, indent+1)
-		writeWithIndentPrefix(b, indent, op, "}\n")
+		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
 		shouldPrintNew := shouldPrintPropertyValue(diff.New, false)

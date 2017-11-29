@@ -6,51 +6,19 @@
 'use strict';
 var grpc = require('grpc');
 var resource_pb = require('./resource_pb.js');
+var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 var provider_pb = require('./provider_pb.js');
 
-function serialize_pulumirpc_BeginRegisterResourceRequest(arg) {
-  if (!(arg instanceof resource_pb.BeginRegisterResourceRequest)) {
-    throw new Error('Expected argument of type pulumirpc.BeginRegisterResourceRequest');
+function serialize_google_protobuf_Empty(arg) {
+  if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
+    throw new Error('Expected argument of type google.protobuf.Empty');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_BeginRegisterResourceRequest(buffer_arg) {
-  return resource_pb.BeginRegisterResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_BeginRegisterResourceResponse(arg) {
-  if (!(arg instanceof resource_pb.BeginRegisterResourceResponse)) {
-    throw new Error('Expected argument of type pulumirpc.BeginRegisterResourceResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_BeginRegisterResourceResponse(buffer_arg) {
-  return resource_pb.BeginRegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_EndRegisterResourceRequest(arg) {
-  if (!(arg instanceof resource_pb.EndRegisterResourceRequest)) {
-    throw new Error('Expected argument of type pulumirpc.EndRegisterResourceRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_EndRegisterResourceRequest(buffer_arg) {
-  return resource_pb.EndRegisterResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_EndRegisterResourceResponse(arg) {
-  if (!(arg instanceof resource_pb.EndRegisterResourceResponse)) {
-    throw new Error('Expected argument of type pulumirpc.EndRegisterResourceResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_EndRegisterResourceResponse(buffer_arg) {
-  return resource_pb.EndRegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_google_protobuf_Empty(buffer_arg) {
+  return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_InvokeRequest(arg) {
@@ -75,6 +43,39 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
+  if (!(arg instanceof resource_pb.RegisterResourceOutputsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceOutputsRequest(buffer_arg) {
+  return resource_pb.RegisterResourceOutputsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterResourceRequest(arg) {
+  if (!(arg instanceof resource_pb.RegisterResourceRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceRequest(buffer_arg) {
+  return resource_pb.RegisterResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterResourceResponse(arg) {
+  if (!(arg instanceof resource_pb.RegisterResourceResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceResponse(buffer_arg) {
+  return resource_pb.RegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 var ResourceMonitorService = exports.ResourceMonitorService = {
@@ -89,27 +90,27 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
-  beginRegisterResource: {
-    path: '/pulumirpc.ResourceMonitor/BeginRegisterResource',
+  registerResource: {
+    path: '/pulumirpc.ResourceMonitor/RegisterResource',
     requestStream: false,
     responseStream: false,
-    requestType: resource_pb.BeginRegisterResourceRequest,
-    responseType: resource_pb.BeginRegisterResourceResponse,
-    requestSerialize: serialize_pulumirpc_BeginRegisterResourceRequest,
-    requestDeserialize: deserialize_pulumirpc_BeginRegisterResourceRequest,
-    responseSerialize: serialize_pulumirpc_BeginRegisterResourceResponse,
-    responseDeserialize: deserialize_pulumirpc_BeginRegisterResourceResponse,
+    requestType: resource_pb.RegisterResourceRequest,
+    responseType: resource_pb.RegisterResourceResponse,
+    requestSerialize: serialize_pulumirpc_RegisterResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterResourceRequest,
+    responseSerialize: serialize_pulumirpc_RegisterResourceResponse,
+    responseDeserialize: deserialize_pulumirpc_RegisterResourceResponse,
   },
-  endRegisterResource: {
-    path: '/pulumirpc.ResourceMonitor/EndRegisterResource',
+  registerResourceOutputs: {
+    path: '/pulumirpc.ResourceMonitor/RegisterResourceOutputs',
     requestStream: false,
     responseStream: false,
-    requestType: resource_pb.EndRegisterResourceRequest,
-    responseType: resource_pb.EndRegisterResourceResponse,
-    requestSerialize: serialize_pulumirpc_EndRegisterResourceRequest,
-    requestDeserialize: deserialize_pulumirpc_EndRegisterResourceRequest,
-    responseSerialize: serialize_pulumirpc_EndRegisterResourceResponse,
-    responseDeserialize: deserialize_pulumirpc_EndRegisterResourceResponse,
+    requestType: resource_pb.RegisterResourceOutputsRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterResourceOutputsRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterResourceOutputsRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 

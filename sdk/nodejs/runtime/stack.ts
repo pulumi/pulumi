@@ -33,8 +33,8 @@ class Stack extends ComponentResource {
             outputs = init();           // run the init code.
         }
         finally {
-            super.done(outputs);        // save the outputs for this component to whatever the init returned.
-            setRootResource(undefined); // restore the original root resource.
+            super.registerOutputs(outputs); // save the outputs for this component to whatever the init returned.
+            setRootResource(undefined);     // restore the original root resource.
         }
     }
 }

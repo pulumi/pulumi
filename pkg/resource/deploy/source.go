@@ -33,29 +33,29 @@ type SourceEvent interface {
 	event()
 }
 
-// BeginRegisterResourceEvent is a step that asks the engine to provision a resource.
-type BeginRegisterResourceEvent interface {
+// RegisterResourceEvent is a step that asks the engine to provision a resource.
+type RegisterResourceEvent interface {
 	SourceEvent
 	// Goal returns the goal state for the resource object that was allocated by the program.
 	Goal() *resource.Goal
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
-	Done(urn resource.URN)
+	Done(result *RegisterResult)
 }
 
-// EndRegisterResourceEvent is an event that asks the engine to complete the provisioning of a resource.
-type EndRegisterResourceEvent interface {
-	SourceEvent
-	// URN is the resource URN that this completion applies to.
-	URN() resource.URN
-	// Extras returns an optional "extra" property map of output properties to add to a resource before completing.
-	Extras() resource.PropertyMap
-	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
-	Done(res *FinalState)
-}
-
-// FinalState is the final source completion information.
-type FinalState struct {
+// RegisterResult is the state of the resource after it has been registered.
+type RegisterResult struct {
 	State   *resource.State        // the resource state.
 	Stable  bool                   // if true, the resource state is stable and may be trusted.
 	Stables []resource.PropertyKey // an optional list of specific resource properties that are stable.
+}
+
+// RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
+type RegisterResourceOutputsEvent interface {
+	SourceEvent
+	// URN is the resource URN that this completion applies to.
+	URN() resource.URN
+	// Outputs returns a property map of output properties to add to a resource before completing.
+	Outputs() resource.PropertyMap
+	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
+	Done()
 }

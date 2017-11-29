@@ -12,7 +12,7 @@ import (
 
 // Step is a specification for a deployment operation.
 type Step interface {
-	Apply(preview bool) (resource.Status, *FinalState, error) // applies or previews this step.
+	Apply(preview bool) (resource.Status, *resource.State, error) // applies or previews this step.
 
 	Op() StepOp           // the operation performed by this step.
 	URN() resource.URN    // the resource URN (for before and after).
@@ -28,15 +28,15 @@ type Step interface {
 
 // SameStep is a mutating step that does nothing.
 type SameStep struct {
-	iter *PlanIterator              // the current plan iteration.
-	reg  BeginRegisterResourceEvent // the registration intent to convey a URN back to.
-	old  *resource.State            // the state of the resource before this step.
-	new  *resource.State            // the state of the resource after this step.
+	iter *PlanIterator         // the current plan iteration.
+	reg  RegisterResourceEvent // the registration intent to convey a URN back to.
+	old  *resource.State       // the state of the resource before this step.
+	new  *resource.State       // the state of the resource after this step.
 }
 
 var _ Step = (*SameStep)(nil)
 
-func NewSameStep(iter *PlanIterator, reg BeginRegisterResourceEvent, old *resource.State, new *resource.State) Step {
+func NewSameStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.State, new *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -63,24 +63,25 @@ func (s *SameStep) New() *resource.State    { return s.new }
 func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
-func (s *SameStep) Apply(preview bool) (resource.Status, *FinalState, error) {
-	s.reg.Done(s.URN())
-	return resource.StatusOK, &FinalState{State: s.old, Stable: true}, nil
+func (s *SameStep) Apply(preview bool) (resource.Status, *resource.State, error) {
+	result := &RegisterResult{State: s.old, Stable: true}
+	s.reg.Done(result)
+	return resource.StatusOK, result.State, nil
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	iter      *PlanIterator              // the current plan iteration.
-	reg       BeginRegisterResourceEvent // the registration intent to convey a URN back to.
-	old       *resource.State            // the state of the existing resource (only for replacements).
-	new       *resource.State            // the state of the resource after this step.
-	keys      []resource.PropertyKey     // the keys causing replacement (only for replacements).
-	replacing bool                       // true if this is a create due to a replacement.
+	iter      *PlanIterator          // the current plan iteration.
+	reg       RegisterResourceEvent  // the registration intent to convey a URN back to.
+	old       *resource.State        // the state of the existing resource (only for replacements).
+	new       *resource.State        // the state of the resource after this step.
+	keys      []resource.PropertyKey // the keys causing replacement (only for replacements).
+	replacing bool                   // true if this is a create due to a replacement.
 }
 
 var _ Step = (*CreateStep)(nil)
 
-func NewCreateStep(iter *PlanIterator, reg BeginRegisterResourceEvent, new *resource.State) Step {
+func NewCreateStep(iter *PlanIterator, reg RegisterResourceEvent, new *resource.State) Step {
 	contract.Assert(reg != nil)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
@@ -93,7 +94,7 @@ func NewCreateStep(iter *PlanIterator, reg BeginRegisterResourceEvent, new *reso
 	}
 }
 
-func NewCreateReplacementStep(iter *PlanIterator, reg BeginRegisterResourceEvent,
+func NewCreateReplacementStep(iter *PlanIterator, reg RegisterResourceEvent,
 	old *resource.State, new *resource.State, keys []resource.PropertyKey) Step {
 	contract.Assert(reg != nil)
 	contract.Assert(old != nil)
@@ -131,7 +132,7 @@ func (s *CreateStep) Res() *resource.State         { return s.new }
 func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
-func (s *CreateStep) Apply(preview bool) (resource.Status, *FinalState, error) {
+func (s *CreateStep) Apply(preview bool) (resource.Status, *resource.State, error) {
 	if !preview && s.new.Custom {
 		// Invoke the Create RPC function for this provider:
 		prov, err := getProvider(s)
@@ -154,8 +155,9 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, *FinalState, error) {
 		s.old.Delete = true
 	}
 
-	s.reg.Done(s.URN())
-	return resource.StatusOK, &FinalState{State: s.new}, nil
+	result := &RegisterResult{State: s.new}
+	s.reg.Done(result)
+	return resource.StatusOK, result.State, nil
 }
 
 // DeleteStep is a mutating step that deletes an existing resource.
@@ -194,7 +196,7 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
-func (s *DeleteStep) Apply(preview bool) (resource.Status, *FinalState, error) {
+func (s *DeleteStep) Apply(preview bool) (resource.Status, *resource.State, error) {
 	if !preview && s.old.Custom {
 		// Invoke the Delete RPC function for this provider:
 		prov, err := getProvider(s)
@@ -210,16 +212,16 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, *FinalState, error) {
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	iter    *PlanIterator              // the current plan iteration.
-	reg     BeginRegisterResourceEvent // the registration intent to convey a URN back to.
-	old     *resource.State            // the state of the existing resource.
-	new     *resource.State            // the newly computed state of the resource after updating.
-	stables []resource.PropertyKey     // an optional list of properties that won't change during this update.
+	iter    *PlanIterator          // the current plan iteration.
+	reg     RegisterResourceEvent  // the registration intent to convey a URN back to.
+	old     *resource.State        // the state of the existing resource.
+	new     *resource.State        // the newly computed state of the resource after updating.
+	stables []resource.PropertyKey // an optional list of properties that won't change during this update.
 }
 
 var _ Step = (*UpdateStep)(nil)
 
-func NewUpdateStep(iter *PlanIterator, reg BeginRegisterResourceEvent, old *resource.State,
+func NewUpdateStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.State,
 	new *resource.State, stables []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -249,7 +251,7 @@ func (s *UpdateStep) New() *resource.State    { return s.new }
 func (s *UpdateStep) Res() *resource.State    { return s.new }
 func (s *UpdateStep) Logical() bool           { return true }
 
-func (s *UpdateStep) Apply(preview bool) (resource.Status, *FinalState, error) {
+func (s *UpdateStep) Apply(preview bool) (resource.Status, *resource.State, error) {
 	if preview {
 		// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
 		s.new.ID = s.old.ID
@@ -272,8 +274,9 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, *FinalState, error) {
 	}
 
 	// Finally, mark this operation as complete.
-	s.reg.Done(s.URN())
-	return resource.StatusOK, &FinalState{State: s.new, Stables: s.stables}, nil
+	result := &RegisterResult{State: s.new, Stables: s.stables}
+	s.reg.Done(result)
+	return resource.StatusOK, result.State, nil
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -316,14 +319,10 @@ func (s *ReplaceStep) Res() *resource.State         { return s.new }
 func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *ReplaceStep) Logical() bool                { return true }
 
-func (s *ReplaceStep) Apply(preview bool) (resource.Status, *FinalState, error) {
+func (s *ReplaceStep) Apply(preview bool) (resource.Status, *resource.State, error) {
 	// We should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assert(s.old.Delete)
 	return resource.StatusOK, nil, nil
-}
-
-func (s *ReplaceStep) Snap() (*FinalState, error) {
-	return nil, nil
 }
 
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.

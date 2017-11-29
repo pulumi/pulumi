@@ -26,8 +26,8 @@ type Options struct {
 // Events is an interface that can be used to hook interesting engine/planning events.
 type Events interface {
 	OnResourceStepPre(step Step) (interface{}, error)
-	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
-	OnResourceComplete(step Step, state *FinalState) error
+	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, state *resource.State, err error) error
+	OnResourceOutputs(step Step, state *resource.State) error
 }
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
@@ -131,8 +131,8 @@ type PlanIterator struct {
 
 // pendingReg is a struct for remembering information about a pending resource registration.
 type pendingReg struct {
-	Step  Step        // the registration's step.
-	Final *FinalState // the registration's state.
+	Step  Step            // the registration's step.
+	State *resource.State // the registration's state.
 }
 
 func (iter *PlanIterator) Plan() *Plan { return iter.p }
@@ -176,7 +176,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 		if state != nil {
 			iter.regs[urn] = pendingReg{
 				Step:  step,
-				Final: state,
+				State: state,
 			}
 		}
 
@@ -188,7 +188,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 
 	// If there is a post-event, raise it, and in any case, return the results.
 	if e := iter.opts.Events; e != nil {
-		if eventerr := e.OnResourceStepPost(eventctx, step, status, err); eventerr != nil {
+		if eventerr := e.OnResourceStepPost(eventctx, step, status, state, err); eventerr != nil {
 			return status, goerr.Wrapf(eventerr, "post-step event returned an error")
 		}
 	}
@@ -218,9 +218,9 @@ outer:
 			} else if event != nil {
 				// If we have an event, drive the behavior based on which kind it is.
 				switch e := event.(type) {
-				case BeginRegisterResourceEvent:
+				case RegisterResourceEvent:
 					// If the intent is to register a resource, compute the plan steps necessary to do so.
-					steps, steperr := iter.beginRegisterResouce(e)
+					steps, steperr := iter.makeRegisterResouceSteps(e)
 					if err != nil {
 						return nil, steperr
 					}
@@ -229,10 +229,10 @@ outer:
 						iter.stepqueue = steps[1:]
 					}
 					return steps[0], nil
-				case EndRegisterResourceEvent:
+				case RegisterResourceOutputsEvent:
 					// If the intent is to complete a prior resource registration, do so.  We do this by just
 					// processing the request from the existing state, and do not expose our callers to it.
-					if err := iter.endRegisterResource(e); err != nil {
+					if err := iter.registerResourceOutputs(e); err != nil {
 						return nil, err
 					}
 					continue outer
@@ -259,10 +259,10 @@ outer:
 	return nil, nil
 }
 
-// beginRegisterResouce produces one or more steps required to achieve the desired resource goal state, or nil if
+// makeRegisterResouceSteps produces one or more steps required to achieve the desired resource goal state, or nil if
 // there aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
 // possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
-func (iter *PlanIterator) beginRegisterResouce(e BeginRegisterResourceEvent) ([]Step, error) {
+func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	// Use the resource goal state name to produce a globally unique URN.
@@ -439,28 +439,28 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	return true
 }
 
-func (iter *PlanIterator) endRegisterResource(e EndRegisterResourceEvent) error {
+func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent) error {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	reg, has := iter.regs[urn]
 	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
-	contract.Assertf(reg.Final != nil, "expected a non-nil final resource state ('%v')", urn)
+	contract.Assertf(reg.State != nil, "expected a non-nil final resource state ('%v')", urn)
 	delete(iter.regs, urn)
 
 	// If there are any extra properties to add to the outputs, append them now.
-	if extras := e.Extras(); extras != nil {
-		reg.Final.State.AddExtras(extras)
+	if outs := e.Outputs(); outs != nil {
+		reg.State.AddOutputs(outs)
 	}
 
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := iter.opts.Events; e != nil {
-		if eventerr := e.OnResourceComplete(reg.Step, reg.Final); eventerr != nil {
+		if eventerr := e.OnResourceOutputs(reg.Step, reg.State); eventerr != nil {
 			return goerr.Wrapf(eventerr, "resource complete event returned an error")
 		}
 	}
 
-	// Finally, communicate the results back to the language provider, who is waiting on the results.
-	e.Done(reg.Final)
+	// Finally, let the language provider know that we're done processing the event.
+	e.Done()
 	return nil
 }
 
@@ -556,13 +556,13 @@ func (iter *PlanIterator) Snap() *Snapshot {
 // MarkStateSnapshot marks an old state snapshot as being processed, while adding a new version if relevant.  This
 // is done to recover from failures partway through the application of a deployment plan.  Any old state that has not
 // yet been recovered needs to be kept.  Note that the state object is mutable and can still change after this.
-func (iter *PlanIterator) MarkStateSnapshot(urn resource.URN, state *FinalState) {
+func (iter *PlanIterator) MarkStateSnapshot(urn resource.URN, state *resource.State) {
 	if old := iter.p.olds[urn]; old != nil {
 		iter.dones[old] = true
 		glog.V(9).Infof("Marked old state snapshot as done: %v", urn)
 	}
 	if state != nil {
-		iter.resources = append(iter.resources, state.State)
+		iter.resources = append(iter.resources, state)
 		glog.V(9).Infof("Appended new state snapshot to be written: %v", urn)
 	}
 }

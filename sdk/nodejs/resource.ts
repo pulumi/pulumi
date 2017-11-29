@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { beginRegisterResource, endRegisterResource } from "./runtime/resource";
+import { registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
@@ -44,7 +44,7 @@ export abstract class Resource {
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        beginRegisterResource(this, t, name, custom, props, parent, dependsOn);
+        registerResource(this, t, name, custom, props, parent, dependsOn);
     }
 }
 
@@ -75,10 +75,6 @@ export abstract class CustomResource extends Resource {
      */
     constructor(t: string, name: string, props?: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
         super(t, name, true, props, parent, dependsOn);
-
-        // Unlike components, a custom resource is done as soon as its registration has happened; automatically
-        // finish registering custom resource state so that subclasses don't need to do so.
-        endRegisterResource(this);
     }
 }
 
@@ -103,10 +99,12 @@ export class ComponentResource extends Resource {
         super(t, name, false, props, parent, dependsOn);
     }
 
-    // done finishes the initialization of this resource, with an optional bag of extra output state.  All
-    // component subclasses *must* call this when done, otherwise they will not be present in the checkpoint file.
-    protected done(extraOutputs?: ComputedValues): void {
-        endRegisterResource(this, extraOutputs);
+    // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating
+    // other child sub-resources and propagating their resulting property values.
+    protected registerOutputs(outputs: ComputedValues | undefined): void {
+        if (outputs) {
+            registerResourceOutputs(this, outputs);
+        }
     }
 }
 

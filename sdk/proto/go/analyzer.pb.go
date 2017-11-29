@@ -32,10 +32,9 @@ It has these top-level messages:
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest
-	BeginRegisterResourceRequest
-	BeginRegisterResourceResponse
-	EndRegisterResourceRequest
-	EndRegisterResourceResponse
+	RegisterResourceRequest
+	RegisterResourceResponse
+	RegisterResourceOutputsRequest
 */
 package pulumirpc
 

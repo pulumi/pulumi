@@ -168,7 +168,9 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 }
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, err error) error {
+	step deploy.Step, status resource.Status, state *resource.State, err error) error {
+	var b bytes.Buffer
+
 	// Report the result of the step.
 	stepop := step.Op()
 	if err != nil {
@@ -176,7 +178,6 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		acts.Opts.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
-		var b bytes.Buffer
 		stepnum := acts.Steps + 1
 		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, stepop))
 		switch status {
@@ -192,19 +193,25 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	} else if step.Logical() {
-		// Increment the counters.
-		acts.Steps++
-		acts.Ops[stepop]++
+	} else {
+		if step.Logical() {
+			// Increment the counters.
+			acts.Steps++
+			acts.Ops[stepop]++
+		}
+
+		// Also show outputs here, since there might be some from the initial registration.
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
 	}
+
+	acts.Opts.Events <- stdOutEventWithColor(&b)
 
 	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
 	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
 }
 
-func (acts *deployActions) OnResourceComplete(step deploy.Step, state *deploy.FinalState) error {
+func (acts *deployActions) OnResourceOutputs(step deploy.Step, state *resource.State) error {
 	// Print this step's output properties.
 	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
 		var b bytes.Buffer

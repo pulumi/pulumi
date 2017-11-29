@@ -82,10 +82,9 @@ func newStackCmd() *cobra.Command {
 					if len(outputs) == 0 {
 						fmt.Printf("    No output values currently in this stack\n")
 					} else {
-						fmt.Printf("    %v output values currently in this stack:\n", len(outputs))
 						fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
 						for key, val := range outputs {
-							fmt.Printf("   %-48s %s\n", key, val)
+							fmt.Printf("    %-48s %s\n", key, val)
 						}
 					}
 				}

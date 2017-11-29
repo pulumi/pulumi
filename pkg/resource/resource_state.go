@@ -52,9 +52,9 @@ func (s *State) AllInputs() PropertyMap {
 	return s.Defaults.Merge(s.Inputs)
 }
 
-// AddExtras adds an optional set of extra output properties to the current map.
-func (s *State) AddExtras(extras PropertyMap) {
-	s.Outputs = s.Outputs.Merge(extras)
+// AddOutputs adds an optional set of extra output properties to the current map.
+func (s *State) AddOutputs(outs PropertyMap) {
+	s.Outputs = s.Outputs.Merge(outs)
 }
 
 // Synthesized returns all of the resource's "synthesized" state; this includes all properties that appeared in the
