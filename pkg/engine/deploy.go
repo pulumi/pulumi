@@ -95,7 +95,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newDeployActions(opts, result.Info.Target, eng)
-			summary, _, _, err := result.Walk(actions)
+			summary, _, _, err := result.Walk(actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return err
@@ -104,6 +104,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 
 			// Print a summary.
 			var footer bytes.Buffer
+
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			if c := printChangeSummary(&footer, actions.Ops, false); c != 0 {
 				footer.WriteString(fmt.Sprintf("%vUpdate duration: %v%v\n",
@@ -153,7 +154,7 @@ func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine)
 	}
 }
 
-func (acts *deployActions) Run(iter *deploy.PlanIterator, step deploy.Step) (resource.Status, error) {
+func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Report the beginning of the step if appropriate.
 	show := shouldShow(acts.Seen, step, acts.Opts)
 	if show {
@@ -163,14 +164,11 @@ func (acts *deployActions) Run(iter *deploy.PlanIterator, step deploy.Step) (res
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
-	if err != nil {
-		return resource.StatusOK, err
-	}
+	return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+}
 
-	// Apply the step's changes and save its results in the iterator/checkpoint.
-	status, err := iter.Apply(step, false)
-
+func (acts *deployActions) OnResourceStepPost(ctx interface{},
+	step deploy.Step, status resource.Status, err error) error {
 	// Report the result of the step.
 	stepop := step.Op()
 	if err != nil {
@@ -195,28 +193,23 @@ func (acts *deployActions) Run(iter *deploy.PlanIterator, step deploy.Step) (res
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
 		acts.Opts.Events <- stdOutEventWithColor(&b)
-	} else {
+	} else if step.Logical() {
 		// Increment the counters.
-		if step.Logical() {
-			acts.Steps++
-			acts.Ops[stepop]++
-		}
-
-		// Print out any output properties that got created as a result of this operation.
-		if show && !acts.Opts.Summary {
-			var b bytes.Buffer
-			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
-			acts.Opts.Events <- stdOutEventWithColor(&b)
-		}
+		acts.Steps++
+		acts.Ops[stepop]++
 	}
 
 	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	if mutation != nil {
-		if endErr := mutation.End(step.Iterator().Snap()); endErr != nil {
-			return status, endErr
-		}
-	}
+	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+}
 
-	return status, err
+func (acts *deployActions) OnResourceComplete(step deploy.Step, state *deploy.FinalState) error {
+	// Print this step's output properties.
+	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+		var b bytes.Buffer
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
+	}
+	return nil
 }

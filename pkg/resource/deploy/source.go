@@ -23,28 +23,28 @@ type Source interface {
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
 	io.Closer
-	// Next returns the next intent from the source.
-	Next() (SourceIntent, error)
+	// Next returns the next event from the source.
+	Next() (SourceEvent, error)
 }
 
-// SourceIntent is an intent associated with the enumeration of a plan.  It is an intent expressed by the source
+// SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source
 // program, and it is the responsibility of the engine to make it so.
-type SourceIntent interface {
-	intent()
+type SourceEvent interface {
+	event()
 }
 
-// RegisterIntent is a step that asks the engine to provision a resource.
-type RegisterIntent interface {
-	SourceIntent
+// BeginRegisterResourceEvent is a step that asks the engine to provision a resource.
+type BeginRegisterResourceEvent interface {
+	SourceEvent
 	// Goal returns the goal state for the resource object that was allocated by the program.
 	Goal() *resource.Goal
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done(urn resource.URN)
 }
 
-// CompleteIntent is an intent that asks the engine to complete the provisioning of a resource.
-type CompleteIntent interface {
-	SourceIntent
+// EndRegisterResourceEvent is an event that asks the engine to complete the provisioning of a resource.
+type EndRegisterResourceEvent interface {
+	SourceEvent
 	// URN is the resource URN that this completion applies to.
 	URN() resource.URN
 	// Extras returns an optional "extra" property map of output properties to add to a resource before completing.

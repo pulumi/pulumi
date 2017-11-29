@@ -8,15 +8,6 @@ import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } fr
 
 const resproto = require("../proto/resource_pb.js");
 
-/**
- * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
- * entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
- * causes problems with some resource providers, so for now we will serialize all of them.  The issue
- * pulumi/pulumi#335 tracks coming up with a long-term solution here.
- */
-let resourceChain: Promise<void> = Promise.resolve();
-let resourceChainLabel: string | undefined = undefined;
-
 const registrations = new Set<Resource>();
 const pendingRegistrations = new Map<Resource, PendingRegistration>();
 
@@ -29,13 +20,13 @@ interface PendingRegistration {
 }
 
 /**
- * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
- * and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
+ * beginRegisterResource registers a new resource object with a given type t and name.  It returns the auto-generated
+ * URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: ComputedValues | undefined, parent: Resource | undefined,
-                                 dependsOn: Resource[] | undefined): void {
+export function beginRegisterResource(res: Resource, t: string, name: string, custom: boolean,
+                                      props: ComputedValues | undefined, parent: Resource | undefined,
+                                      dependsOn: Resource[] | undefined): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
@@ -78,13 +69,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         resolveProps: transfer,
     });
 
-    // Serialize the invocation if necessary.
-    const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
-        if (serialize()) {
-            resourceChainLabel = `${name} [${t}]`;
-            log.debug(`RegisterResource serialization requested: ${resourceChainLabel} is current`);
-        }
-
+    // Now run the operation, serializing the invocation if necessary.
+    const opLabel = `monitor.beginRegisterResource(${label})`;
+    runAsyncResourceOp(opLabel, createError, async () => {
         // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
         // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
         // time, we want to give the illusion of non-blocking code, so we return immediately.
@@ -92,7 +79,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const result: PropertyTransfer = await transfer;
         try {
             const obj: any = result.obj;
-            log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
+            log.debug(`BeginRegisterResource RPC prepared: t=${t}, name=${name}` +
                 (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
             // Fetch the monitor and make an RPC request.
@@ -103,7 +90,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     parentURN = await parent.urn;
                 }
 
-                const req = new resproto.RegisterResourceRequest();
+                const req = new resproto.BeginRegisterResourceRequest();
                 req.setType(t);
                 req.setName(name);
                 req.setParent(parentURN);
@@ -111,8 +98,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 req.setObject(obj);
 
                 const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
-                    monitor.registerResource(req, (err: Error, innerResponse: any) => {
-                        log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
+                    monitor.beginRegisterResource(req, (err: Error, innerResponse: any) => {
+                        log.debug(`BeginRegisterResource RPC finished: t=${t}, name=${name}; ` +
                             `err: ${err}, resp: ${innerResponse}`);
                         if (err) {
                             log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
@@ -122,7 +109,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                             resolve(innerResponse);
                         }
                     });
-                }), `monitor.registerResource(${label})`);
+                }), opLabel);
 
                 urn = resp.getUrn();
             }
@@ -135,31 +122,13 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             // Always make sure to resolve the URN property, even if it is undefined due to a missing monitor.
             resolveURN!(urn);
         }
-    }));
-
-    // If any errors make it this far, ensure we log them.
-    const finalOp: Promise<void> = debuggablePromise(resourceOp.catch((err: Error) => {
-        // At this point, we've gone fully asynchronous, and the stack is missing.  To make it easier
-        // to debug which resource this came from, we will emit the original stack trace too.
-        log.error(errorString(createError));
-        log.error(`Failed to create resource '${name}' [${t}]: ${errorString(err)}`);
-    }));
-
-    // Ensure the process won't exit until this registerResource call finishes and resolve it when appropriate.
-    const done: () => void = rpcKeepAlive();
-    finalOp.then(() => { done(); }, () => { done(); });
-
-    // If serialization is requested, wait for the prior resource operation to finish before we proceed, serializing
-    // them, and make this the current resource operation so that everybody piles up on it.
-    if (serialize()) {
-        resourceChain = finalOp;
-        if (resourceChainLabel) {
-            log.debug(`Resource serialization requested: ${name} [${t}] is behind ${resourceChainLabel}`);
-        }
-    }
+    });
 }
 
-export function completeResource(res: Resource, extras?: ComputedValues) {
+/**
+ * endRegisterResource completes the resource registration, attaching an optional set of computed outputs.
+ */
+export function endRegisterResource(res: Resource, extraOutputs?: ComputedValues) {
     const pending: PendingRegistration | undefined = pendingRegistrations.get(res);
     if (!pending) {
         throw new Error("Resource is not in the process of being registered");
@@ -176,17 +145,18 @@ export function completeResource(res: Resource, extras?: ComputedValues) {
     const props: ComputedValues | undefined = pending.props;
     const label = `resource:${name}[${t}]`;
     log.debug(`Completing resource: t=${t}, name=${name}` +
-        (excessiveDebugOutput ? `, extras=${JSON.stringify(extras)}` : ``));
+        (excessiveDebugOutput ? `, extras=${JSON.stringify(extraOutputs)}` : ``));
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     const completeError: Error = new Error(`Resource '${name}' [${t}] could not be completed`);
 
     // Produce the "extra" values, if any, that we'll use in the RPC call.
     const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(undefined, `completeResource`, extras, undefined));
+        transferProperties(undefined, `completeResource`, extraOutputs, undefined));
 
-    // Serialize the invocation if necessary.
-    const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
+    // Now run the operation, serializing the invocation if necessary.
+    const opLabel = `monitor.endRegisterResource(${label})`;
+    runAsyncResourceOp(opLabel, completeError, async () => {
         // Make sure to propagate these no matter what.
         let id: ID | undefined = undefined;
         let propsStruct: any | undefined = undefined;
@@ -199,29 +169,29 @@ export function completeResource(res: Resource, extras?: ComputedValues) {
         const resolveProps: PropertyTransfer = await pending!.resolveProps;
         try {
             const extrasObj: any = extrasResult.obj;
-            log.debug(`CompleteResource RPC prepared: urn=${urn}` +
+            log.debug(`EndRegisterResource RPC prepared: urn=${urn}` +
                 (excessiveDebugOutput ? `, extras=${JSON.stringify(extrasObj)}` : ``));
 
             // Fetch the monitor and make an RPC request.
             const monitor: any = getMonitor();
             if (monitor) {
-                const req = new resproto.CompleteResourceRequest();
+                const req = new resproto.EndRegisterResourceRequest();
                 req.setUrn(urn);
                 req.setExtras(extrasObj);
 
                 const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
-                    monitor.completeResource(req, (err: Error, innerResponse: any) => {
-                        log.debug(`CompleteResource RPC finished: t=${t}, name=${name}; `+
+                    monitor.endRegisterResource(req, (err: Error, innerResponse: any) => {
+                        log.debug(`EndRegisterResource RPC finished: t=${t}, name=${name}; `+
                             `err: ${err}, resp: ${innerResponse}`);
                         if (err) {
-                            log.error(`Failed to complete new resource '${name}' [${t}]: ${err.stack}`);
+                            log.error(`Failed to end new resource registration '${name}' [${t}]: ${err.stack}`);
                             reject(err);
                         }
                         else {
                             resolve(innerResponse);
                         }
                     });
-                }), `monitor.completeResource(${label})`);
+                }), opLabel);
 
                 id = resp.getId();
                 propsStruct = resp.getObject();
@@ -251,26 +221,48 @@ export function completeResource(res: Resource, extras?: ComputedValues) {
             // Propagate any other properties that were given to us as outputs.
             resolveProperties(res, resolveProps, t, name, props, propsStruct, stable, stables);
         }
+    });
+}
+
+/**
+ * resourceChain is used to serialize all resource requests.  If we don't do this, all resource operations will be
+ * entirely asynchronous, meaning the dataflow graph that results will determine ordering of operations.  This
+ * causes problems with some resource providers, so for now we will serialize all of them.  The issue
+ * pulumi/pulumi#335 tracks coming up with a long-term solution here.
+ */
+let resourceChain: Promise<void> = Promise.resolve();
+let resourceChainLabel: string | undefined = undefined;
+
+// runAsyncResourceOp runs an asynchronous resource operation, possibly serializing it as necessary.
+function runAsyncResourceOp(label: string, rootError: Error, callback: () => Promise<void>): void {
+    // Serialize the invocation if necessary.
+    const serial: boolean = serialize();
+    const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
+        if (serial) {
+            resourceChainLabel = label;
+            log.debug(`Resource RPC serialization requested: ${label} is current`);
+        }
+        return callback();
     }));
 
     // If any errors make it this far, ensure we log them.
     const finalOp: Promise<void> = debuggablePromise(resourceOp.catch((err: Error) => {
         // At this point, we've gone fully asynchronous, and the stack is missing.  To make it easier
         // to debug which resource this came from, we will emit the original stack trace too.
-        log.error(errorString(completeError));
-        log.error(`Failed to complete resource '${name}' [${t}]: ${errorString(err)}`);
+        log.error(errorString(err));
+        log.error(`Resource RPC for '${label}' failed: ${errorString(rootError)}`);
     }));
 
-    // Ensure the process won't exit until this registerResource call finishes and resolve it when appropriate.
+    // Ensure the process won't exit until this beginRegisterResource call finishes and resolve it when appropriate.
     const done: () => void = rpcKeepAlive();
     finalOp.then(() => { done(); }, () => { done(); });
 
     // If serialization is requested, wait for the prior resource operation to finish before we proceed, serializing
     // them, and make this the current resource operation so that everybody piles up on it.
-    if (serialize()) {
+    if (serial) {
         resourceChain = finalOp;
         if (resourceChainLabel) {
-            log.debug(`Resource serialization requested: ${name} [${t}] is behind ${resourceChainLabel}`);
+            log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
 }

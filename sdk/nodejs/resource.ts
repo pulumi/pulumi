@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { completeResource, registerResource } from "./runtime/resource";
+import { beginRegisterResource, endRegisterResource } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
@@ -44,7 +44,7 @@ export abstract class Resource {
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        registerResource(this, t, name, custom, props, parent, dependsOn);
+        beginRegisterResource(this, t, name, custom, props, parent, dependsOn);
     }
 }
 
@@ -78,7 +78,7 @@ export abstract class CustomResource extends Resource {
 
         // Unlike components, a custom resource is done as soon as its registration has happened; automatically
         // finish registering custom resource state so that subclasses don't need to do so.
-        completeResource(this);
+        endRegisterResource(this);
     }
 }
 
@@ -103,10 +103,10 @@ export class ComponentResource extends Resource {
         super(t, name, false, props, parent, dependsOn);
     }
 
-    // complete finishes the initialization of this resource, with an optional bag of extra output state.  All
+    // done finishes the initialization of this resource, with an optional bag of extra output state.  All
     // component subclasses *must* call this when done, otherwise they will not be present in the checkpoint file.
-    protected complete(extras?: ComputedValues): void {
-        completeResource(this, extras);
+    protected done(extraOutputs?: ComputedValues): void {
+        endRegisterResource(this, extraOutputs);
     }
 }
 

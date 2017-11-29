@@ -65,8 +65,8 @@ func (src *evalSource) Info() interface{} {
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
 	// First, fire up a resource monitor that will watch for and record resource creation.
-	regChan := make(chan *evalRegStep)
-	compChan := make(chan *evalCompStep)
+	regChan := make(chan *evalBeginReg)
+	compChan := make(chan *evalEndReg)
 	mon, err := newResourceMonitor(src, regChan, compChan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
@@ -92,8 +92,8 @@ func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
 type evalSourceIterator struct {
 	mon      *resmon            // the resource monitor, per iterator.
 	src      *evalSource        // the owning eval source object.
-	regChan  chan *evalRegStep  // the channel that contains resource registrations.
-	compChan chan *evalCompStep // the channel that contains resource completions.
+	regChan  chan *evalBeginReg // the channel that contains resource registrations.
+	compChan chan *evalEndReg   // the channel that contains resource completions.
 	finChan  chan error         // the channel that communicates completion.
 	done     bool               // set to true when the evaluation is done.
 }
@@ -103,7 +103,7 @@ func (iter *evalSourceIterator) Close() error {
 	return iter.mon.Cancel()
 }
 
-func (iter *evalSourceIterator) Next() (SourceIntent, error) {
+func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	// If we are done, quit.
 	if iter.done {
 		return nil, nil
@@ -187,15 +187,15 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
 	src      *evalSource        // the evaluation source.
-	resChan  chan *evalRegStep  // the channel to send resource registrations to.
-	compChan chan *evalCompStep // the channel to send resource completions to.
+	resChan  chan *evalBeginReg // the channel to send resource registrations to.
+	compChan chan *evalEndReg   // the channel to send resource completions to.
 	addr     string             // the address the host is listening on.
 	cancel   chan bool          // a channel that can cancel the server.
 	done     chan error         // a channel that resolves when the server completes.
 }
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor(src *evalSource, resChan chan *evalRegStep, compChan chan *evalCompStep) (*resmon, error) {
+func newResourceMonitor(src *evalSource, resChan chan *evalBeginReg, compChan chan *evalEndReg) (*resmon, error) {
 	// New up an engine RPC server.
 	resmon := &resmon{
 		src:      src,
@@ -270,9 +270,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	return &lumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
-// RegisterResource is invoked by a language process when a new resource has been allocated.
-func (rm *resmon) RegisterResource(ctx context.Context,
-	req *lumirpc.RegisterResourceRequest) (*lumirpc.RegisterResourceResponse, error) {
+// BeginRegisterResource is invoked by a language process when a new resource has been allocated.
+func (rm *resmon) BeginRegisterResource(ctx context.Context,
+	req *lumirpc.BeginRegisterResourceRequest) (*lumirpc.BeginRegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	props, err := plugin.UnmarshalProperties(
@@ -285,11 +285,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	name := tokens.QName(req.GetName())
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
-	glog.V(5).Infof("ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v",
+	glog.V(5).Infof("ResourceMonitor.BeginRegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v",
 		t, name, custom, len(props), parent)
 
 	// Send the goal state to the engine.
-	step := &evalRegStep{
+	step := &evalBeginReg{
 		goal: resource.NewGoal(t, name, custom, props, parent),
 		done: make(chan resource.URN),
 	}
@@ -299,14 +299,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// IDEA: we probably need some way to cancel this in case of catastrophe.
 	urn := string(<-step.done)
 	glog.V(5).Infof(
-		"ResourceMonitor.RegisterResource operation finished: t=%v, name=%v, urn=%v", t, name, urn)
-	return &lumirpc.RegisterResourceResponse{Urn: urn}, nil
+		"ResourceMonitor.BeginRegisterResource operation finished: t=%v, name=%v, urn=%v", t, name, urn)
+	return &lumirpc.BeginRegisterResourceResponse{Urn: urn}, nil
 }
 
-// CompleteResource records some new output properties for a resource that have arrived after its initial
+// EndRegisterResource records some new output properties for a resource that have arrived after its initial
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
-func (rm *resmon) CompleteResource(ctx context.Context,
-	req *lumirpc.CompleteResourceRequest) (*lumirpc.CompleteResourceResponse, error) {
+func (rm *resmon) EndRegisterResource(ctx context.Context,
+	req *lumirpc.EndRegisterResourceRequest) (*lumirpc.EndRegisterResourceResponse, error) {
 
 	// Obtain and validate the message's inputs (a URN plus the output property map).
 	urn := resource.URN(req.GetUrn())
@@ -318,10 +318,10 @@ func (rm *resmon) CompleteResource(ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
 	}
-	glog.V(5).Infof("ResourceMonitor.CompleteResource received: urn=%v, #extras=%v", urn, len(extras))
+	glog.V(5).Infof("ResourceMonitor.EndRegisterResource received: urn=%v, #extras=%v", urn, len(extras))
 
 	// Now send the step over to the engine to perform.
-	step := &evalCompStep{
+	step := &evalEndReg{
 		urn:    urn,
 		extras: extras,
 		done:   make(chan *FinalState),
@@ -339,7 +339,7 @@ func (rm *resmon) CompleteResource(ctx context.Context,
 		stables = append(stables, string(sta))
 	}
 	glog.V(5).Infof(
-		"ResourceMonitor.CompleteResource operation finished: t=%v, urn=%v, name=%v, stable=%v, #stables=%v #outs=%v",
+		"ResourceMonitor.EndRegisterResource operation finished: t=%v, urn=%v, name=%v, stable=%v, #stables=%v #outs=%v",
 		state.Type, state.URN, stable, len(stables), len(outprops))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
@@ -348,7 +348,7 @@ func (rm *resmon) CompleteResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	return &lumirpc.CompleteResourceResponse{
+	return &lumirpc.EndRegisterResourceResponse{
 		Id:      string(state.ID),
 		Object:  outs,
 		Stable:  stable,
@@ -356,43 +356,43 @@ func (rm *resmon) CompleteResource(ctx context.Context,
 	}, nil
 }
 
-type evalRegStep struct {
+type evalBeginReg struct {
 	goal *resource.Goal    // the resource goal state produced by the iterator.
 	done chan resource.URN // the channel to communicate with after the resource state is available.
 }
 
-var _ RegisterIntent = (*evalRegStep)(nil)
+var _ BeginRegisterResourceEvent = (*evalBeginReg)(nil)
 
-func (g *evalRegStep) intent() {}
+func (g *evalBeginReg) event() {}
 
-func (g *evalRegStep) Goal() *resource.Goal {
+func (g *evalBeginReg) Goal() *resource.Goal {
 	return g.goal
 }
 
-func (g *evalRegStep) Done(urn resource.URN) {
+func (g *evalBeginReg) Done(urn resource.URN) {
 	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
 	g.done <- urn
 }
 
-type evalCompStep struct {
+type evalEndReg struct {
 	urn    resource.URN         // the URN to which this completion applies.
 	extras resource.PropertyMap // an optional property bag for "extra" output properties.
 	done   chan *FinalState     // the channel to communicate with after the resource state is available.
 }
 
-var _ CompleteIntent = (*evalCompStep)(nil)
+var _ EndRegisterResourceEvent = (*evalEndReg)(nil)
 
-func (g *evalCompStep) intent() {}
+func (g *evalEndReg) event() {}
 
-func (g *evalCompStep) URN() resource.URN {
+func (g *evalEndReg) URN() resource.URN {
 	return g.urn
 }
 
-func (g *evalCompStep) Extras() resource.PropertyMap {
+func (g *evalEndReg) Extras() resource.PropertyMap {
 	return g.extras
 }
 
-func (g *evalCompStep) Done(res *FinalState) {
+func (g *evalEndReg) Done(res *FinalState) {
 	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
 	g.done <- res
 }

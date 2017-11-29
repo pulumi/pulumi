@@ -3,8 +3,12 @@
 package engine
 
 import (
+	"bytes"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -64,5 +68,50 @@ func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
 		return errors.New("One or more errors occurred during the creation of this preview")
 	}
 	return nil
+}
 
+type previewActions struct {
+	Summary bytes.Buffer
+	Ops     map[deploy.StepOp]int
+	Opts    deployOptions
+	Seen    map[resource.URN]deploy.Step
+	Shown   map[resource.URN]bool
+}
+
+func newPreviewActions(opts deployOptions) *previewActions {
+	return &previewActions{
+		Ops:   make(map[deploy.StepOp]int),
+		Opts:  opts,
+		Seen:  make(map[resource.URN]deploy.Step),
+		Shown: make(map[resource.URN]bool),
+	}
+}
+
+func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+	// Print this step information (resource and all its properties).
+	if shouldShow(acts.Seen, step, acts.Opts) {
+		printStep(&acts.Summary, step,
+			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/)
+	}
+	return nil, nil
+}
+
+func (acts *previewActions) OnResourceStepPost(ctx interface{},
+	step deploy.Step, status resource.Status, err error) error {
+	// We let `printPlan` handle error reporting for now.
+	if err == nil {
+		// Track the operation if shown and/or if it is a logically meaningful operation.
+		if step.Logical() {
+			acts.Ops[step.Op()]++
+		}
+	}
+	return nil
+}
+
+func (acts *previewActions) OnResourceComplete(step deploy.Step, state *deploy.FinalState) error {
+	// Print this step's output properties.
+	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+		printResourceOutputProperties(&acts.Summary, step, acts.Seen, acts.Shown, 0 /*indent*/)
+	}
+	return nil
 }

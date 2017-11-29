@@ -19,7 +19,15 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Parallel int // the degree of parallelism for resource operations (<=1 for serial).
+	Events   Events // an optional events callback interface.
+	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
+}
+
+// Events is an interface that can be used to hook interesting engine/planning events.
+type Events interface {
+	OnResourceStepPre(step Step) (interface{}, error)
+	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
+	OnResourceComplete(step Step, state *FinalState) error
 }
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
@@ -38,6 +46,7 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 	// Create an iterator that can be used to perform the planning process.
 	return &PlanIterator{
 		p:        p,
+		opts:     opts,
 		src:      src,
 		urns:     make(map[resource.URN]bool),
 		creates:  make(map[resource.URN]bool),
@@ -45,7 +54,7 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 		replaces: make(map[resource.URN]bool),
 		deletes:  make(map[resource.URN]bool),
 		sames:    make(map[resource.URN]bool),
-		regs:     make(map[resource.URN]*FinalState),
+		regs:     make(map[resource.URN]pendingReg),
 		dones:    make(map[*resource.State]bool),
 	}, nil
 }
@@ -99,8 +108,9 @@ type PlanSummary interface {
 
 // PlanIterator can be used to step through and/or execute a plan's proposed actions.
 type PlanIterator struct {
-	p   *Plan          // the plan to which this iterator belongs.
-	src SourceIterator // the iterator that fetches source resources.
+	p    *Plan          // the plan to which this iterator belongs.
+	opts Options        // the options this iterator was created with.
+	src  SourceIterator // the iterator that fetches source resources.
 
 	urns     map[resource.URN]bool // URNs discovered.
 	creates  map[resource.URN]bool // URNs discovered to be created.
@@ -109,14 +119,20 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
-	stepqueue []Step                       // a queue of steps to drain.
-	delqueue  []*resource.State            // a queue of deletes left to perform.
-	resources []*resource.State            // the resulting ordered resource states.
-	regs      map[resource.URN]*FinalState // a map of pending registrations not yet complete.
-	dones     map[*resource.State]bool     // true for each old state we're done with.
+	stepqueue []Step                      // a queue of steps to drain.
+	delqueue  []*resource.State           // a queue of deletes left to perform.
+	resources []*resource.State           // the resulting ordered resource states.
+	regs      map[resource.URN]pendingReg // a map of pending registrations not yet complete.
+	dones     map[*resource.State]bool    // true for each old state we're done with.
 
 	srcdone bool // true if the source interpreter has been run to completion.
 	done    bool // true if the planning and associated iteration has finished.
+}
+
+// pendingReg is a struct for remembering information about a pending resource registration.
+type pendingReg struct {
+	Step  Step        // the registration's step.
+	Final *FinalState // the registration's state.
 }
 
 func (iter *PlanIterator) Plan() *Plan { return iter.p }
@@ -133,24 +149,52 @@ func (iter *PlanIterator) Dones() map[*resource.State]bool { return iter.dones }
 func (iter *PlanIterator) Done() bool                      { return iter.done }
 
 // Apply performs a plan's step and records its result in the iterator's state.
-func (iter *PlanIterator) Apply(step Step, skip bool) (resource.Status, error) {
+func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error) {
 	// Ensure we don't have a pending registration for this resource already.
 	urn := step.URN()
 	if _, has := iter.regs[urn]; has {
 		return resource.StatusOK, goerr.Errorf("resource '%s' registered twice", urn)
 	}
 
+	// If there is a pre-event, raise it.
+	var eventctx interface{}
+	if e := iter.opts.Events; e != nil {
+		var eventerr error
+		eventctx, eventerr = e.OnResourceStepPre(step)
+		if eventerr != nil {
+			return resource.StatusOK, goerr.Wrapf(eventerr, "pre-step event returned an error")
+		}
+	}
+
 	// Apply the step.
-	status, state, err := step.Apply(skip)
+	status, state, err := step.Apply(preview)
+
+	// If there is a post-event, raise it.
+	if e := iter.opts.Events; e != nil {
+		if eventerr := e.OnResourceStepPost(eventctx, step, status, err); eventerr != nil {
+			return status, goerr.Wrapf(eventerr, "post-step event returned an error")
+		}
+	}
+
+	// If there's an error, we can quit now and propagate it.
 	if err != nil {
 		return status, err
 	}
 
-	// Now stash away its resulting state for safe-keeping; we will spill it to the checkpoint later on.
 	if state != nil {
-		iter.regs[urn] = state
+		// If we have a state object, remember it, as we may need to update it later.
+		iter.regs[urn] = pendingReg{
+			Step:  step,
+			Final: state,
+		}
+
+		// And also mark the snapshot so we record the new state, but only if we actually applied the change.
+		if !preview {
+			iter.MarkStateSnapshot(urn, state)
+		}
 	}
-	return resource.StatusOK, nil
+
+	return status, nil
 }
 
 // Close terminates the iteration of this plan.
@@ -169,15 +213,15 @@ outer:
 			iter.stepqueue = iter.stepqueue[1:]
 			return step, nil
 		} else if !iter.srcdone {
-			intent, err := iter.src.Next()
+			event, err := iter.src.Next()
 			if err != nil {
 				return nil, err
-			} else if intent != nil {
-				// If we have an intent, drive the behavior based on which kind it is.
-				switch it := intent.(type) {
-				case RegisterIntent:
+			} else if event != nil {
+				// If we have an event, drive the behavior based on which kind it is.
+				switch e := event.(type) {
+				case BeginRegisterResourceEvent:
 					// If the intent is to register a resource, compute the plan steps necessary to do so.
-					steps, steperr := iter.computeResourceSteps(it)
+					steps, steperr := iter.beginRegisterResouce(e)
 					if err != nil {
 						return nil, steperr
 					}
@@ -186,15 +230,15 @@ outer:
 						iter.stepqueue = steps[1:]
 					}
 					return steps[0], nil
-				case CompleteIntent:
+				case EndRegisterResourceEvent:
 					// If the intent is to complete a prior resource registration, do so.  We do this by just
 					// processing the request from the existing state, and do not expose our callers to it.
-					if err = iter.completeResource(it); err != nil {
+					if err := iter.endRegisterResource(e); err != nil {
 						return nil, err
 					}
 					continue outer
 				default:
-					contract.Failf("Unrecognized intent from source iterator: %v", reflect.TypeOf(intent))
+					contract.Failf("Unrecognized intent from source iterator: %v", reflect.TypeOf(event))
 				}
 			}
 
@@ -216,14 +260,14 @@ outer:
 	return nil, nil
 }
 
-// computeResourceSteps produces one or more steps required to achieve the desired resource goal state, or nil if there
-// aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
+// beginRegisterResouce produces one or more steps required to achieve the desired resource goal state, or nil if
+// there aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
 // possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
-func (iter *PlanIterator) computeResourceSteps(reg RegisterIntent) ([]Step, error) {
+func (iter *PlanIterator) beginRegisterResouce(e BeginRegisterResourceEvent) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	// Use the resource goal state name to produce a globally unique URN.
-	res := reg.Goal()
+	res := e.Goal()
 	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Type, res.Name)
 	if iter.urns[urn] {
 		invalid = true
@@ -350,7 +394,7 @@ func (iter *PlanIterator) computeResourceSteps(reg RegisterIntent) ([]Step, erro
 				}
 
 				return []Step{
-					NewCreateReplacementStep(iter, reg, old, new, diff.ReplaceKeys),
+					NewCreateReplacementStep(iter, e, old, new, diff.ReplaceKeys),
 					NewReplaceStep(iter, old, new, diff.ReplaceKeys),
 				}, nil
 			}
@@ -361,7 +405,7 @@ func (iter *PlanIterator) computeResourceSteps(reg RegisterIntent) ([]Step, erro
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
 					urn, oldinputs, new.AllInputs())
 			}
-			return []Step{NewUpdateStep(iter, reg, old, new, diff.StableKeys)}, nil
+			return []Step{NewUpdateStep(iter, e, old, new, diff.StableKeys)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -369,13 +413,13 @@ func (iter *PlanIterator) computeResourceSteps(reg RegisterIntent) ([]Step, erro
 		if glog.V(7) {
 			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.AllInputs())
 		}
-		return []Step{NewSameStep(iter, reg, old, new)}, nil
+		return []Step{NewSameStep(iter, e, old, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.AllInputs())
-	return []Step{NewCreateStep(iter, reg, new)}, nil
+	return []Step{NewCreateStep(iter, e, new)}, nil
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
@@ -396,29 +440,28 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	return true
 }
 
-func (iter *PlanIterator) completeResource(c CompleteIntent) error {
+func (iter *PlanIterator) endRegisterResource(e EndRegisterResourceEvent) error {
 	// Look up the final state in the pending registration list.
-	urn := c.URN()
-	final, has := iter.regs[urn]
-	if !has {
-		return goerr.Errorf("cannot complete a resource '%v' whose registration isn't pending", urn)
-	}
-	contract.Assertf(final != nil, "expected a non-nil final resource state ('%v')", urn)
+	urn := e.URN()
+	reg, has := iter.regs[urn]
+	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
+	contract.Assertf(reg.Final != nil, "expected a non-nil final resource state ('%v')", urn)
 	delete(iter.regs, urn)
 
-	// Complete the step and get back our final state.
-
-	// If there are any extra properties to add to the outputs, do it now.
-	if extras := c.Extras(); extras != nil {
-		final.State.AddExtras(extras)
+	// If there are any extra properties to add to the outputs, append them now.
+	if extras := e.Extras(); extras != nil {
+		reg.Final.State.AddExtras(extras)
 	}
 
-	// Add the final state snapshot for this resource so that it gets serialized appropriately.
-	iter.CompleteStateSnapshot(urn, final.State)
+	// If there is an event subscription for finishing the resource, execute them.
+	if e := iter.opts.Events; e != nil {
+		if eventerr := e.OnResourceComplete(reg.Step, reg.Final); eventerr != nil {
+			return goerr.Wrapf(eventerr, "resource complete event returned an error")
+		}
+	}
 
-	// Now communicate the results back to the language provider, who is waiting on the intent.
-	c.Done(final)
-
+	// Finally, communicate the results back to the language provider, who is waiting on the results.
+	e.Done(reg.Final)
 	return nil
 }
 
@@ -511,15 +554,15 @@ func (iter *PlanIterator) Snap() *Snapshot {
 	return NewSnapshot(iter.p.Target().Name, time.Now(), resources)
 }
 
-// CompleteStateSnapshot marks an old state snapshot as being processed, while adding a new version if relevant.  This
+// MarkStateSnapshot marks an old state snapshot as being processed, while adding a new version if relevant.  This
 // is done to recover from failures partway through the application of a deployment plan.  Any old state that has not
-// yet been recovered needs to be kept.
-func (iter *PlanIterator) CompleteStateSnapshot(urn resource.URN, new *resource.State) {
+// yet been recovered needs to be kept.  Note that the state object is mutable and can still change after this.
+func (iter *PlanIterator) MarkStateSnapshot(urn resource.URN, state *FinalState) {
 	if old := iter.p.olds[urn]; old != nil {
 		iter.dones[old] = true
 	}
-	if new != nil {
-		iter.resources = append(iter.resources, new)
+	if state != nil {
+		iter.resources = append(iter.resources, state.State)
 	}
 }
 

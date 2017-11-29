@@ -84,17 +84,13 @@ type planResult struct {
 	Options deployOptions   // the deployment options.
 }
 
-// StepActions is used to process a plan's steps.
-type StepActions interface {
-	// Run is invoked to perform whatever action the implementer uses to process the step.
-	Run(iter *deploy.PlanIterator, step deploy.Step) (resource.Status, error)
-}
-
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(actions StepActions) (deploy.PlanSummary, deploy.Step, resource.Status, error) {
+func (res *planResult) Walk(events deploy.Events, preview bool) (deploy.PlanSummary,
+	deploy.Step, resource.Status, error) {
 	opts := deploy.Options{
+		Events:   events,
 		Parallel: res.Options.Parallel,
 	}
 
@@ -106,24 +102,27 @@ func (res *planResult) Walk(actions StepActions) (deploy.PlanSummary, deploy.Ste
 
 	step, err := iter.Next()
 	if err != nil {
-		_ = iter.Close() // ignore close errors; the Next error trumps
+		closeerr := iter.Close() // ignore close errors; the Next error trumps
+		contract.IgnoreError(closeerr)
 		return nil, nil, resource.StatusOK, err
 	}
 
 	for step != nil {
 		// Perform any per-step actions.
-		rst, err := actions.Run(iter, step)
+		rst, err := iter.Apply(step, preview)
 
 		// If an error occurred, exit early.
 		if err != nil {
-			_ = iter.Close() // ignore close errors; the action error trumps
+			closeerr := iter.Close() // ignore close errors; the action error trumps
+			contract.IgnoreError(closeerr)
 			return iter, step, rst, err
 		}
 		contract.Assert(rst == resource.StatusOK)
 
 		step, err = iter.Next()
 		if err != nil {
-			_ = iter.Close() // ignore close errors; the action error trumps
+			closeerr := iter.Close() // ignore close errors; the action error trumps
+			contract.IgnoreError(closeerr)
 			return iter, step, resource.StatusOK, err
 		}
 	}
@@ -136,44 +135,6 @@ func (res *planResult) Close() error {
 	return res.Ctx.Close()
 }
 
-type previewActions struct {
-	Summary bytes.Buffer
-	Ops     map[deploy.StepOp]int
-	Opts    deployOptions
-	Seen    map[resource.URN]deploy.Step
-	Shown   map[resource.URN]bool
-}
-
-func newPreviewActions(opts deployOptions) *previewActions {
-	return &previewActions{
-		Ops:   make(map[deploy.StepOp]int),
-		Opts:  opts,
-		Seen:  make(map[resource.URN]deploy.Step),
-		Shown: make(map[resource.URN]bool),
-	}
-}
-
-func (acts *previewActions) Run(iter *deploy.PlanIterator, step deploy.Step) (resource.Status, error) {
-	// Print this step information (resource and all its properties).
-	if shouldShow(acts.Seen, step, acts.Opts) {
-		printStep(&acts.Summary, step,
-			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/)
-	}
-
-	// Be sure to skip the step so that in-memory state updates are performed.
-	_, err := iter.Apply(step, true)
-
-	// We let `printPlan` handle error reporting for now.
-	if err == nil {
-		// Track the operation if shown and/or if it is a logically meaningful operation.
-		if step.Logical() {
-			acts.Ops[step.Op()]++
-		}
-	}
-
-	return resource.StatusOK, err
-}
-
 func (eng *Engine) printPlan(result *planResult) error {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
@@ -184,7 +145,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 	result.Options.Events <- stdOutEventWithColor(&prelude)
 
 	actions := newPreviewActions(result.Options)
-	_, _, _, err := result.Walk(actions)
+	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
 		return errors.Errorf("An error occurred while advancing the preview: %v", err)
 	}

@@ -107,7 +107,7 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Next() (SourceIntent, error) {
+func (iter *errorSourceIterator) Next() (SourceEvent, error) {
 	return nil, iter.src.err
 }
 
@@ -196,24 +196,24 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"af1": resource.NewStringProperty("a-value"),
 		"af2": resource.NewNumberProperty(42),
 	}, "")
-	newStateA := &testRegInt{goal: newResA}
+	newStateA := &testBeginReg{goal: newResA}
 	//     - B is updated:
 	newResB := resource.NewGoal(typB, namB, true, resource.PropertyMap{
 		"bf1": resource.NewStringProperty("b-value"),
 		// delete the bf2 field, and add bf3.
 		"bf3": resource.NewBoolProperty(true),
 	}, "")
-	newStateB := &testRegInt{goal: newResB}
+	newStateB := &testBeginReg{goal: newResB}
 	//     - C has no changes:
 	newResC := resource.NewGoal(typC, namC, true, resource.PropertyMap{
 		"cf1": resource.NewStringProperty("c-value"),
 		"cf2": resource.NewNumberProperty(83),
 	}, "")
-	newStateC := &testRegInt{goal: newResC}
+	newStateC := &testBeginReg{goal: newResC}
 	//     - No D; it is deleted.
 
 	// Use a fixed source that just returns the above predefined objects during planning.
-	source := NewFixedSource(pkgname, []SourceIntent{newStateA, newStateB, newStateC})
+	source := NewFixedSource(pkgname, []SourceEvent{newStateA, newStateB, newStateC})
 
 	// Next up, create a plan from the new and old, and validate its shape.
 	plan := NewPlan(ctx, targ, oldsnap, source, nil)
@@ -325,21 +325,21 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.True(t, iter.Deletes()[urnD])
 }
 
-type testRegInt struct {
+type testBeginReg struct {
 	goal *resource.Goal
 	urn  resource.URN
 }
 
-var _ RegisterIntent = (*testRegInt)(nil)
+var _ BeginRegisterResourceEvent = (*testBeginReg)(nil)
 
-func (g *testRegInt) intent() {}
+func (g *testBeginReg) event() {}
 
-func (g *testRegInt) Goal() *resource.Goal {
+func (g *testBeginReg) Goal() *resource.Goal {
 	return g.goal
 }
 
-func (g *testRegInt) Done(urn resource.URN) {
-	contract.Assertf(g.urn == "", "Attempt to invoke testRegInt.Done more than once")
+func (g *testBeginReg) Done(urn resource.URN) {
+	contract.Assertf(g.urn == "", "Attempt to invoke testBeginReg.Done more than once")
 	g.urn = urn
 }
 

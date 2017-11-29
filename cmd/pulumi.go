@@ -16,8 +16,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-// pulumiBackend is the "backend" that we talk to. When the application launches, if the environment variable PULUMI_API is set, we
-// use a backend that targets the pulumi.com API, otherwise we use the local backend (i.e. "fire and forget" mode)
+// pulumiBackend is the "backend" that we talk to. When the application launches, if the environment variable
+// PULUMI_API is set, we use a backend that targets the pulumi.com API, otherwise we use the local backend (i.e.
+// "fire and forget" mode).
 var backend pulumiBackend
 
 func init() {

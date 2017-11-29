@@ -10,12 +10,12 @@ package pulumirpc;
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
-    rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
-    rpc CompleteResource(CompleteResourceRequest) returns (CompleteResourceResponse) {}
+    rpc BeginRegisterResource(BeginRegisterResourceRequest) returns (BeginRegisterResourceResponse) {}
+    rpc EndRegisterResource(EndRegisterResourceRequest) returns (EndRegisterResourceResponse) {}
 }
 
-// RegisterResourceRequest contains information about a resource object that was newly allocated.
-message RegisterResourceRequest {
+// BeginRegisterResourceRequest contains information about a resource object that was newly allocated.
+message BeginRegisterResourceRequest {
     string type = 1;                   // the type of the object allocated.
     string name = 2;                   // the name, for URN purposes, of the object.
     string parent = 3;                 // an optional parent URN that this child resource belongs to.
@@ -23,21 +23,21 @@ message RegisterResourceRequest {
     google.protobuf.Struct object = 5; // an object produced by the interpreter/source.
 }
 
-// RegisterResourceResponse reflects back the properties initialized during creation, if applicable.
-message RegisterResourceResponse {
+// BeginRegisterResourceResponse reflects back the properties initialized during creation, if applicable.
+message BeginRegisterResourceResponse {
     string urn = 1;                    // the URN assigned by the fabric.
 }
 
-// CompleteResourceRequest completes the registration of a resource, and optionally adds extra derived output
+// EndRegisterResourceRequest completes the registration of a resource, and optionally adds extra derived output
 // properties to an existing resource that is in flight.  It must be called once per registration.
-message CompleteResourceRequest {
+message EndRegisterResourceRequest {
     string urn = 1;                    // the URN for the resource to attach output properties to.
     google.protobuf.Struct extras = 2; // optional additional output properties to add to the existing resource.
 }
 
-// CompleteResourceResponse is returned by the engine after a resource is completed.  It includes any state
+// EndRegisterResourceResponse is returned by the engine after a resource is completed.  It includes any state
 // that was populated by the resource provider so that the language engine can blit it into the resource objects.
-message CompleteResourceResponse {
+message EndRegisterResourceResponse {
     string id = 1;                     // the unique ID assigned by the provider.
     google.protobuf.Struct object = 2; // the resulting object properties, including provider defaults.
     bool stable = 3;                   // if true, the object's state is stable and may be trusted not to change.

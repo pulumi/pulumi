@@ -19,8 +19,8 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-// RegisterResourceRequest contains information about a resource object that was newly allocated.
-type RegisterResourceRequest struct {
+// BeginRegisterResourceRequest contains information about a resource object that was newly allocated.
+type BeginRegisterResourceRequest struct {
 	Type   string                  `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
 	Name   string                  `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
 	Parent string                  `protobuf:"bytes,3,opt,name=parent" json:"parent,omitempty"`
@@ -28,125 +28,125 @@ type RegisterResourceRequest struct {
 	Object *google_protobuf.Struct `protobuf:"bytes,5,opt,name=object" json:"object,omitempty"`
 }
 
-func (m *RegisterResourceRequest) Reset()                    { *m = RegisterResourceRequest{} }
-func (m *RegisterResourceRequest) String() string            { return proto.CompactTextString(m) }
-func (*RegisterResourceRequest) ProtoMessage()               {}
-func (*RegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+func (m *BeginRegisterResourceRequest) Reset()                    { *m = BeginRegisterResourceRequest{} }
+func (m *BeginRegisterResourceRequest) String() string            { return proto.CompactTextString(m) }
+func (*BeginRegisterResourceRequest) ProtoMessage()               {}
+func (*BeginRegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
-func (m *RegisterResourceRequest) GetType() string {
+func (m *BeginRegisterResourceRequest) GetType() string {
 	if m != nil {
 		return m.Type
 	}
 	return ""
 }
 
-func (m *RegisterResourceRequest) GetName() string {
+func (m *BeginRegisterResourceRequest) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *RegisterResourceRequest) GetParent() string {
+func (m *BeginRegisterResourceRequest) GetParent() string {
 	if m != nil {
 		return m.Parent
 	}
 	return ""
 }
 
-func (m *RegisterResourceRequest) GetCustom() bool {
+func (m *BeginRegisterResourceRequest) GetCustom() bool {
 	if m != nil {
 		return m.Custom
 	}
 	return false
 }
 
-func (m *RegisterResourceRequest) GetObject() *google_protobuf.Struct {
+func (m *BeginRegisterResourceRequest) GetObject() *google_protobuf.Struct {
 	if m != nil {
 		return m.Object
 	}
 	return nil
 }
 
-// RegisterResourceResponse reflects back the properties initialized during creation, if applicable.
-type RegisterResourceResponse struct {
+// BeginRegisterResourceResponse reflects back the properties initialized during creation, if applicable.
+type BeginRegisterResourceResponse struct {
 	Urn string `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
 }
 
-func (m *RegisterResourceResponse) Reset()                    { *m = RegisterResourceResponse{} }
-func (m *RegisterResourceResponse) String() string            { return proto.CompactTextString(m) }
-func (*RegisterResourceResponse) ProtoMessage()               {}
-func (*RegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
+func (m *BeginRegisterResourceResponse) Reset()                    { *m = BeginRegisterResourceResponse{} }
+func (m *BeginRegisterResourceResponse) String() string            { return proto.CompactTextString(m) }
+func (*BeginRegisterResourceResponse) ProtoMessage()               {}
+func (*BeginRegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
-func (m *RegisterResourceResponse) GetUrn() string {
+func (m *BeginRegisterResourceResponse) GetUrn() string {
 	if m != nil {
 		return m.Urn
 	}
 	return ""
 }
 
-// CompleteResourceRequest completes the registration of a resource, and optionally adds extra derived output
+// EndRegisterResourceRequest completes the registration of a resource, and optionally adds extra derived output
 // properties to an existing resource that is in flight.  It must be called once per registration.
-type CompleteResourceRequest struct {
+type EndRegisterResourceRequest struct {
 	Urn    string                  `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
 	Extras *google_protobuf.Struct `protobuf:"bytes,2,opt,name=extras" json:"extras,omitempty"`
 }
 
-func (m *CompleteResourceRequest) Reset()                    { *m = CompleteResourceRequest{} }
-func (m *CompleteResourceRequest) String() string            { return proto.CompactTextString(m) }
-func (*CompleteResourceRequest) ProtoMessage()               {}
-func (*CompleteResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
+func (m *EndRegisterResourceRequest) Reset()                    { *m = EndRegisterResourceRequest{} }
+func (m *EndRegisterResourceRequest) String() string            { return proto.CompactTextString(m) }
+func (*EndRegisterResourceRequest) ProtoMessage()               {}
+func (*EndRegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
-func (m *CompleteResourceRequest) GetUrn() string {
+func (m *EndRegisterResourceRequest) GetUrn() string {
 	if m != nil {
 		return m.Urn
 	}
 	return ""
 }
 
-func (m *CompleteResourceRequest) GetExtras() *google_protobuf.Struct {
+func (m *EndRegisterResourceRequest) GetExtras() *google_protobuf.Struct {
 	if m != nil {
 		return m.Extras
 	}
 	return nil
 }
 
-// CompleteResourceResponse is returned by the engine after a resource is completed.  It includes any state
+// EndRegisterResourceResponse is returned by the engine after a resource is completed.  It includes any state
 // that was populated by the resource provider so that the language engine can blit it into the resource objects.
-type CompleteResourceResponse struct {
+type EndRegisterResourceResponse struct {
 	Id      string                  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Object  *google_protobuf.Struct `protobuf:"bytes,2,opt,name=object" json:"object,omitempty"`
 	Stable  bool                    `protobuf:"varint,3,opt,name=stable" json:"stable,omitempty"`
 	Stables []string                `protobuf:"bytes,4,rep,name=stables" json:"stables,omitempty"`
 }
 
-func (m *CompleteResourceResponse) Reset()                    { *m = CompleteResourceResponse{} }
-func (m *CompleteResourceResponse) String() string            { return proto.CompactTextString(m) }
-func (*CompleteResourceResponse) ProtoMessage()               {}
-func (*CompleteResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
+func (m *EndRegisterResourceResponse) Reset()                    { *m = EndRegisterResourceResponse{} }
+func (m *EndRegisterResourceResponse) String() string            { return proto.CompactTextString(m) }
+func (*EndRegisterResourceResponse) ProtoMessage()               {}
+func (*EndRegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
 
-func (m *CompleteResourceResponse) GetId() string {
+func (m *EndRegisterResourceResponse) GetId() string {
 	if m != nil {
 		return m.Id
 	}
 	return ""
 }
 
-func (m *CompleteResourceResponse) GetObject() *google_protobuf.Struct {
+func (m *EndRegisterResourceResponse) GetObject() *google_protobuf.Struct {
 	if m != nil {
 		return m.Object
 	}
 	return nil
 }
 
-func (m *CompleteResourceResponse) GetStable() bool {
+func (m *EndRegisterResourceResponse) GetStable() bool {
 	if m != nil {
 		return m.Stable
 	}
 	return false
 }
 
-func (m *CompleteResourceResponse) GetStables() []string {
+func (m *EndRegisterResourceResponse) GetStables() []string {
 	if m != nil {
 		return m.Stables
 	}
@@ -154,10 +154,10 @@ func (m *CompleteResourceResponse) GetStables() []string {
 }
 
 func init() {
-	proto.RegisterType((*RegisterResourceRequest)(nil), "pulumirpc.RegisterResourceRequest")
-	proto.RegisterType((*RegisterResourceResponse)(nil), "pulumirpc.RegisterResourceResponse")
-	proto.RegisterType((*CompleteResourceRequest)(nil), "pulumirpc.CompleteResourceRequest")
-	proto.RegisterType((*CompleteResourceResponse)(nil), "pulumirpc.CompleteResourceResponse")
+	proto.RegisterType((*BeginRegisterResourceRequest)(nil), "pulumirpc.BeginRegisterResourceRequest")
+	proto.RegisterType((*BeginRegisterResourceResponse)(nil), "pulumirpc.BeginRegisterResourceResponse")
+	proto.RegisterType((*EndRegisterResourceRequest)(nil), "pulumirpc.EndRegisterResourceRequest")
+	proto.RegisterType((*EndRegisterResourceResponse)(nil), "pulumirpc.EndRegisterResourceResponse")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -172,8 +172,8 @@ const _ = grpc.SupportPackageIsVersion4
 
 type ResourceMonitorClient interface {
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
-	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
-	CompleteResource(ctx context.Context, in *CompleteResourceRequest, opts ...grpc.CallOption) (*CompleteResourceResponse, error)
+	BeginRegisterResource(ctx context.Context, in *BeginRegisterResourceRequest, opts ...grpc.CallOption) (*BeginRegisterResourceResponse, error)
+	EndRegisterResource(ctx context.Context, in *EndRegisterResourceRequest, opts ...grpc.CallOption) (*EndRegisterResourceResponse, error)
 }
 
 type resourceMonitorClient struct {
@@ -193,18 +193,18 @@ func (c *resourceMonitorClient) Invoke(ctx context.Context, in *InvokeRequest, o
 	return out, nil
 }
 
-func (c *resourceMonitorClient) RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error) {
-	out := new(RegisterResourceResponse)
-	err := grpc.Invoke(ctx, "/pulumirpc.ResourceMonitor/RegisterResource", in, out, c.cc, opts...)
+func (c *resourceMonitorClient) BeginRegisterResource(ctx context.Context, in *BeginRegisterResourceRequest, opts ...grpc.CallOption) (*BeginRegisterResourceResponse, error) {
+	out := new(BeginRegisterResourceResponse)
+	err := grpc.Invoke(ctx, "/pulumirpc.ResourceMonitor/BeginRegisterResource", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *resourceMonitorClient) CompleteResource(ctx context.Context, in *CompleteResourceRequest, opts ...grpc.CallOption) (*CompleteResourceResponse, error) {
-	out := new(CompleteResourceResponse)
-	err := grpc.Invoke(ctx, "/pulumirpc.ResourceMonitor/CompleteResource", in, out, c.cc, opts...)
+func (c *resourceMonitorClient) EndRegisterResource(ctx context.Context, in *EndRegisterResourceRequest, opts ...grpc.CallOption) (*EndRegisterResourceResponse, error) {
+	out := new(EndRegisterResourceResponse)
+	err := grpc.Invoke(ctx, "/pulumirpc.ResourceMonitor/EndRegisterResource", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,8 +215,8 @@ func (c *resourceMonitorClient) CompleteResource(ctx context.Context, in *Comple
 
 type ResourceMonitorServer interface {
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
-	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
-	CompleteResource(context.Context, *CompleteResourceRequest) (*CompleteResourceResponse, error)
+	BeginRegisterResource(context.Context, *BeginRegisterResourceRequest) (*BeginRegisterResourceResponse, error)
+	EndRegisterResource(context.Context, *EndRegisterResourceRequest) (*EndRegisterResourceResponse, error)
 }
 
 func RegisterResourceMonitorServer(s *grpc.Server, srv ResourceMonitorServer) {
@@ -241,38 +241,38 @@ func _ResourceMonitor_Invoke_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceMonitor_RegisterResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterResourceRequest)
+func _ResourceMonitor_BeginRegisterResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BeginRegisterResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceMonitorServer).RegisterResource(ctx, in)
+		return srv.(ResourceMonitorServer).BeginRegisterResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pulumirpc.ResourceMonitor/RegisterResource",
+		FullMethod: "/pulumirpc.ResourceMonitor/BeginRegisterResource",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceMonitorServer).RegisterResource(ctx, req.(*RegisterResourceRequest))
+		return srv.(ResourceMonitorServer).BeginRegisterResource(ctx, req.(*BeginRegisterResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ResourceMonitor_CompleteResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CompleteResourceRequest)
+func _ResourceMonitor_EndRegisterResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EndRegisterResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ResourceMonitorServer).CompleteResource(ctx, in)
+		return srv.(ResourceMonitorServer).EndRegisterResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pulumirpc.ResourceMonitor/CompleteResource",
+		FullMethod: "/pulumirpc.ResourceMonitor/EndRegisterResource",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceMonitorServer).CompleteResource(ctx, req.(*CompleteResourceRequest))
+		return srv.(ResourceMonitorServer).EndRegisterResource(ctx, req.(*EndRegisterResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -286,12 +286,12 @@ var _ResourceMonitor_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceMonitor_Invoke_Handler,
 		},
 		{
-			MethodName: "RegisterResource",
-			Handler:    _ResourceMonitor_RegisterResource_Handler,
+			MethodName: "BeginRegisterResource",
+			Handler:    _ResourceMonitor_BeginRegisterResource_Handler,
 		},
 		{
-			MethodName: "CompleteResource",
-			Handler:    _ResourceMonitor_CompleteResource_Handler,
+			MethodName: "EndRegisterResource",
+			Handler:    _ResourceMonitor_EndRegisterResource_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -301,28 +301,29 @@ var _ResourceMonitor_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("resource.proto", fileDescriptor4) }
 
 var fileDescriptor4 = []byte{
-	// 368 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x52, 0xcb, 0x4e, 0xeb, 0x30,
-	0x14, 0x6c, 0xd2, 0xde, 0xdc, 0xf6, 0x5c, 0xa9, 0xb7, 0xf2, 0x82, 0x9a, 0x88, 0x45, 0x14, 0x36,
-	0x59, 0xa0, 0x54, 0x2a, 0x1f, 0xc0, 0x82, 0x15, 0x0b, 0x36, 0x66, 0x0b, 0x8b, 0x24, 0x3d, 0x54,
-	0x81, 0x24, 0x36, 0x7e, 0x54, 0xf0, 0x11, 0x48, 0x7c, 0x03, 0x5f, 0x8a, 0x12, 0xbb, 0xa8, 0x0f,
-	0x5a, 0xb1, 0x3b, 0x67, 0x3c, 0x1e, 0xcd, 0x8c, 0x0d, 0x63, 0x89, 0x8a, 0x1b, 0x59, 0x60, 0x2a,
-	0x24, 0xd7, 0x9c, 0x8c, 0x84, 0xa9, 0x4c, 0x5d, 0x4a, 0x51, 0x84, 0x67, 0x4b, 0xce, 0x97, 0x15,
-	0xce, 0xba, 0x83, 0xdc, 0x3c, 0xce, 0x94, 0x96, 0xa6, 0xd0, 0x96, 0x18, 0x8e, 0x85, 0xe4, 0xab,
-	0x72, 0x81, 0xd2, 0xee, 0xf1, 0xa7, 0x07, 0x53, 0x86, 0xcb, 0x52, 0x69, 0x94, 0xcc, 0x69, 0x32,
-	0x7c, 0x31, 0xa8, 0x34, 0x21, 0x30, 0xd0, 0x6f, 0x02, 0xa9, 0x17, 0x79, 0xc9, 0x88, 0x75, 0x73,
-	0x8b, 0x35, 0x59, 0x8d, 0xd4, 0xb7, 0x58, 0x3b, 0x93, 0x13, 0x08, 0x44, 0x26, 0xb1, 0xd1, 0xb4,
-	0xdf, 0xa1, 0x6e, 0x6b, 0xf1, 0xc2, 0x28, 0xcd, 0x6b, 0x3a, 0x88, 0xbc, 0x64, 0xc8, 0xdc, 0x46,
-	0x66, 0x10, 0xf0, 0xfc, 0x09, 0x0b, 0x4d, 0xff, 0x44, 0x5e, 0xf2, 0x6f, 0x3e, 0x4d, 0xad, 0xe5,
-	0x74, 0x6d, 0x39, 0xbd, 0xeb, 0x2c, 0x33, 0x47, 0x8b, 0x2f, 0x80, 0xee, 0x7b, 0x54, 0x82, 0x37,
-	0x0a, 0xc9, 0x04, 0xfa, 0x46, 0x36, 0xce, 0x63, 0x3b, 0xc6, 0xf7, 0x30, 0xbd, 0xe6, 0xb5, 0xa8,
-	0x50, 0xe3, 0x6e, 0xa2, 0x3d, 0x72, 0xeb, 0x05, 0x5f, 0xb5, 0xcc, 0x54, 0x97, 0xe8, 0x98, 0x17,
-	0x4b, 0x8b, 0xdf, 0x3d, 0xa0, 0xfb, 0xf2, 0xce, 0xcc, 0x18, 0xfc, 0x72, 0xe1, 0xe4, 0xfd, 0x72,
-	0xb1, 0x91, 0xd4, 0xff, 0x55, 0xd2, 0xb6, 0x32, 0xa5, 0xb3, 0xbc, 0xc2, 0xae, 0xca, 0x21, 0x73,
-	0x1b, 0xa1, 0xf0, 0xd7, 0x4e, 0x8a, 0x0e, 0xa2, 0x7e, 0x32, 0x62, 0xeb, 0x75, 0xfe, 0xe1, 0xc3,
-	0xff, 0xb5, 0x8f, 0x5b, 0xde, 0x94, 0x9a, 0x4b, 0x72, 0x05, 0xc1, 0x4d, 0xb3, 0xe2, 0xcf, 0x48,
-	0x68, 0xfa, 0xfd, 0x31, 0x52, 0x0b, 0xb9, 0x2a, 0xc2, 0xd3, 0x1f, 0x4e, 0x6c, 0x8a, 0xb8, 0x47,
-	0x1e, 0x60, 0xb2, 0x5b, 0x38, 0x89, 0x37, 0x2e, 0x1c, 0xf8, 0x31, 0xe1, 0xf9, 0x51, 0xce, 0xa6,
-	0xfc, 0x6e, 0x85, 0x5b, 0xf2, 0x07, 0x9e, 0x6f, 0x4b, 0xfe, 0xd0, 0x1b, 0xc4, 0xbd, 0x3c, 0xe8,
-	0xda, 0xbd, 0xfc, 0x0a, 0x00, 0x00, 0xff, 0xff, 0x8d, 0xb6, 0x99, 0xaa, 0x25, 0x03, 0x00, 0x00,
+	// 375 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x52, 0x5d, 0x4e, 0xe3, 0x30,
+	0x18, 0xdc, 0xa4, 0xdd, 0x6c, 0xeb, 0x95, 0xba, 0x2b, 0xaf, 0x16, 0x4c, 0x28, 0x52, 0x14, 0x09,
+	0xc8, 0x53, 0x2a, 0xca, 0x01, 0x90, 0x90, 0x78, 0xe0, 0x81, 0x17, 0x73, 0x00, 0x94, 0x9f, 0xaf,
+	0x51, 0x20, 0xb5, 0x83, 0x7f, 0x2a, 0xb8, 0x05, 0xb7, 0x80, 0x63, 0xa2, 0xc4, 0x4e, 0x55, 0x89,
+	0xb4, 0xe5, 0xed, 0x9b, 0xf1, 0xc4, 0xdf, 0xcc, 0xc4, 0x68, 0x22, 0x40, 0x72, 0x2d, 0x32, 0x88,
+	0x6b, 0xc1, 0x15, 0xc7, 0xe3, 0x5a, 0x57, 0x7a, 0x59, 0x8a, 0x3a, 0xf3, 0xa7, 0x05, 0xe7, 0x45,
+	0x05, 0xb3, 0xf6, 0x20, 0xd5, 0x8b, 0x99, 0x54, 0x42, 0x67, 0xca, 0x08, 0xfd, 0x49, 0x2d, 0xf8,
+	0xaa, 0xcc, 0x41, 0x18, 0x1c, 0xbe, 0x3b, 0x68, 0x7a, 0x0d, 0x45, 0xc9, 0x28, 0x14, 0xa5, 0x54,
+	0x20, 0xa8, 0xbd, 0x98, 0xc2, 0xb3, 0x06, 0xa9, 0x30, 0x46, 0x43, 0xf5, 0x5a, 0x03, 0x71, 0x02,
+	0x27, 0x1a, 0xd3, 0x76, 0x6e, 0x38, 0x96, 0x2c, 0x81, 0xb8, 0x86, 0x6b, 0x66, 0x7c, 0x80, 0xbc,
+	0x3a, 0x11, 0xc0, 0x14, 0x19, 0xb4, 0xac, 0x45, 0x0d, 0x9f, 0x69, 0xa9, 0xf8, 0x92, 0x0c, 0x03,
+	0x27, 0x1a, 0x51, 0x8b, 0xf0, 0x0c, 0x79, 0x3c, 0x7d, 0x84, 0x4c, 0x91, 0x9f, 0x81, 0x13, 0xfd,
+	0x9e, 0x1f, 0xc6, 0xc6, 0x77, 0xdc, 0xf9, 0x8e, 0xef, 0x5b, 0xdf, 0xd4, 0xca, 0xc2, 0x0b, 0x74,
+	0xb2, 0xc5, 0xa8, 0xac, 0x39, 0x93, 0x80, 0xff, 0xa2, 0x81, 0x16, 0xcc, 0x1a, 0x6d, 0xc6, 0xf0,
+	0x01, 0xf9, 0x37, 0x2c, 0xdf, 0x96, 0xec, 0x8b, 0xbe, 0xf1, 0x04, 0x2f, 0x4a, 0x24, 0xb2, 0x4d,
+	0xb6, 0xcb, 0x93, 0x91, 0x85, 0x6f, 0x0e, 0x3a, 0xee, 0xdd, 0x60, 0x2d, 0x4d, 0x90, 0x5b, 0xe6,
+	0x76, 0x83, 0x5b, 0xe6, 0x1b, 0xa1, 0xdd, 0x6f, 0x85, 0x6e, 0xda, 0x93, 0x2a, 0x49, 0x2b, 0x68,
+	0x5b, 0x1d, 0x51, 0x8b, 0x30, 0x41, 0xbf, 0xcc, 0x24, 0xc9, 0x30, 0x18, 0x44, 0x63, 0xda, 0xc1,
+	0xf9, 0x87, 0x8b, 0xfe, 0x74, 0x3e, 0xee, 0x38, 0x2b, 0x15, 0x17, 0xf8, 0x0a, 0x79, 0xb7, 0x6c,
+	0xc5, 0x9f, 0x00, 0x93, 0x78, 0xfd, 0x50, 0x62, 0x43, 0xd9, 0x36, 0xfc, 0xa3, 0x9e, 0x13, 0x93,
+	0x22, 0xfc, 0x81, 0x2b, 0xf4, 0xbf, 0xb7, 0x7b, 0x7c, 0xbe, 0xf1, 0xd5, 0xae, 0x67, 0xe4, 0x47,
+	0xfb, 0x85, 0xeb, 0x6d, 0x0b, 0xf4, 0xaf, 0xa7, 0x54, 0x7c, 0xba, 0x71, 0xc5, 0xf6, 0xdf, 0xea,
+	0x9f, 0xed, 0x93, 0x75, 0x7b, 0x52, 0xaf, 0x6d, 0xfd, 0xf2, 0x33, 0x00, 0x00, 0xff, 0xff, 0xc0,
+	0x5a, 0xe0, 0xa0, 0x4d, 0x03, 0x00, 0x00,
 }

@@ -7,14 +7,14 @@ import (
 )
 
 // NewFixedSource returns a valid planning source that is comprised of a list of pre-computed steps.
-func NewFixedSource(ctx tokens.PackageName, steps []SourceIntent) Source {
+func NewFixedSource(ctx tokens.PackageName, steps []SourceEvent) Source {
 	return &fixedSource{ctx: ctx, steps: steps}
 }
 
 // A fixedSource just returns from a fixed set of resource states.
 type fixedSource struct {
 	ctx   tokens.PackageName
-	steps []SourceIntent
+	steps []SourceEvent
 }
 
 func (src *fixedSource) Close() error {
@@ -46,7 +46,7 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Next() (SourceIntent, error) {
+func (iter *fixedSourceIterator) Next() (SourceEvent, error) {
 	iter.current++
 	if iter.current >= len(iter.src.steps) {
 		return nil, nil
