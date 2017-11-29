@@ -23,6 +23,7 @@ func newLogsCmd() *cobra.Command {
 	logsCmd := &cobra.Command{
 		Use:   "logs",
 		Short: "Show aggregated logs for a project",
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
