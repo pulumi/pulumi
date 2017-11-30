@@ -34,6 +34,7 @@ func newPreviewCmd() *cobra.Command {
 			"\n" +
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {

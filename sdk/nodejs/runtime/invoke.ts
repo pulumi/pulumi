@@ -6,7 +6,7 @@ import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, PropertyTransfer, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
-const langproto = require("../proto/languages_pb.js");
+const resproto = require("../proto/resource_pb.js");
 
 /**
  * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs can be a bag of
@@ -34,7 +34,7 @@ export function invoke(tok: string, props: ComputedValues | undefined): Promise<
             // Fetch the monitor and make an RPC request.
             const monitor: any = getMonitor();
             if (monitor) {
-                const req = new langproto.InvokeRequest();
+                const req = new resproto.InvokeRequest();
                 req.setTok(tok);
                 req.setArgs(obj);
                 const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {

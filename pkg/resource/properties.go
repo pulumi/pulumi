@@ -459,8 +459,8 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 
 // merge simply merges the value of other into v. Merging proceeds as follows:
 // - If other is null, v is returned.
-// - If v and other are both arrays, the corresponding elements are recurively merged. Any unmerged elements in v or other are then
-//   appended to the result.
+// - If v and other are both arrays, the corresponding elements are recurively merged. Any unmerged elements in v or
+//   other are then appended to the result.
 // - If v and other are both maps, the corresponding key-value pairs are recursively merged.
 // - Otherwise, other is returned.
 func (v PropertyValue) merge(other PropertyValue) PropertyValue {

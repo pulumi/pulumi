@@ -23,6 +23,7 @@ func newLogsCmd() *cobra.Command {
 	logsCmd := &cobra.Command{
 		Use:   "logs",
 		Short: "Show aggregated logs for a project",
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
@@ -81,7 +82,8 @@ func newLogsCmd() *cobra.Command {
 		"Follow the log stream in real time (like tail -f)")
 	logsCmd.PersistentFlags().StringVar(
 		&since, "since", "",
-		"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp.  Defaults to returning all logs.")
+		"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp.  "+
+			"Defaults to returning all logs.")
 	logsCmd.PersistentFlags().StringVarP(
 		&resource, "resource", "r", "",
 		"Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.")

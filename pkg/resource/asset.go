@@ -28,7 +28,7 @@ import (
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
-//nolint: lll
+// nolint: lll
 type Asset struct {
 	Sig  string `json:"4dabf18193072939515e22adb298388d" yaml:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
 	Hash string `json:"hash,omitempty" yaml:"hash,omitempty"`                                     // the SHA256 hash of the asset contents.
@@ -104,9 +104,10 @@ func (a *Asset) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
-// Equals returns true if a is value-equal to other. In this case, value equality is determined only by the hash: even if the contents of
-// two assets come from different sources, they are treated as equal if their hashes match. Similarly, if the contents of two assets
-// come from the same source but the assets have different hashes, the assets are not equal.
+// Equals returns true if a is value-equal to other. In this case, value equality is determined only by the hash: even
+// if the contents of two assets come from different sources, they are treated as equal if their hashes match.
+// Similarly, if the contents of two assets come from the same source but the assets have different hashes, the assets
+// are not equal.
 func (a *Asset) Equals(other *Asset) bool {
 	if a == nil {
 		return other == nil
@@ -415,9 +416,10 @@ func (a *Archive) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
-// Equals returns true if a is value-equal to other. In this case, value equality is determined only by the hash: even if the contents of
-// two archives come from different sources, they are treated as equal if their hashes match. Similarly, if the contents of two archives
-// come from the same source but the archives have different hashes, the archives are not equal.
+// Equals returns true if a is value-equal to other. In this case, value equality is determined only by the hash: even
+// if the contents of two archives come from different sources, they are treated as equal if their hashes match.
+// Similarly, if the contents of two archives come from the same source but the archives have different hashes, the
+// archives are not equal.
 func (a *Archive) Equals(other *Archive) bool {
 	if a == nil {
 		return other == nil
@@ -528,8 +530,9 @@ func (a *Archive) HasContents() bool {
 
 // ArchiveReader presents the contents of an archive as a stream of named blobs.
 type ArchiveReader interface {
-	// Next returns the name and contents of the next member of the archive. If there are no more members in the archive, this function
-	// returns ("", nil, io.EOF). The blob returned by a call to Next() must be read in full before the next call to Next().
+	// Next returns the name and contents of the next member of the archive. If there are no more members in the
+	// archive, this function returns ("", nil, io.EOF). The blob returned by a call to Next() must be read in full
+	// before the next call to Next().
 	Next() (string, *Blob, error)
 
 	// Close terminates the stream.
@@ -558,7 +561,8 @@ type assetsArchiveReader struct {
 
 func (r *assetsArchiveReader) Next() (string, *Blob, error) {
 	for {
-		// If we're currently flattening out a subarchive, first check to see if it has any more members. If it does, return the next member.
+		// If we're currently flattening out a subarchive, first check to see if it has any more members. If it does,
+		// return the next member.
 		if r.archive != nil {
 			name, blob, err := r.archive.Next()
 			switch {
@@ -800,7 +804,8 @@ func (a *Archive) Archive(format ArchiveFormat, w io.Writer) error {
 	}
 }
 
-// addNextFileToTar adds the next file in the given archive to the given tar file. Returns io.EOF if the archive contains no more files.
+// addNextFileToTar adds the next file in the given archive to the given tar file. Returns io.EOF if the archive
+// contains no more files.
 func addNextFileToTar(r ArchiveReader, tw *tar.Writer) error {
 	file, data, err := r.Next()
 	if err != nil {
@@ -848,7 +853,8 @@ func (a *Archive) archiveTarGZIP(w io.Writer) error {
 	return a.archiveTar(z)
 }
 
-// addNextFileToZIP adds the next file in the given archive to the given ZIP file. Returns io.EOF if the archive contains no more files.
+// addNextFileToZIP adds the next file in the given archive to the given ZIP file. Returns io.EOF if the archive
+// contains no more files.
 func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
 	file, data, err := r.Next()
 	if err != nil {

@@ -67,6 +67,7 @@ type deployOptions struct {
 	ShowReplacementSteps bool         // true to show the replacement steps in the plan.
 	ShowSames            bool         // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool         // true if we should only summarize resources and operations.
+	Detailed             bool         // true to show very detailed output, like properties that haven't changed.
 	DOT                  bool         // true if we should print the DOT file for this plan.
 	Events               chan<- Event // the channel to write events from the engine to.
 	Diag                 diag.Sink    // the sink to use for diag'ing.
@@ -93,13 +94,8 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := &deployActions{
-				Ops:    make(map[deploy.StepOp]int),
-				Opts:   opts,
-				Target: result.Info.Target,
-				Engine: eng,
-			}
-			summary, _, _, err := result.Walk(actions)
+			actions := newDeployActions(opts, result.Info.Target, eng)
+			summary, _, _, err := result.Walk(actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return err
@@ -108,6 +104,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 
 			// Print a summary.
 			var footer bytes.Buffer
+
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			if c := printChangeSummary(&footer, actions.Ops, false); c != 0 {
 				footer.WriteString(fmt.Sprintf("%vUpdate duration: %v%v\n",
@@ -138,32 +135,41 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 type deployActions struct {
 	Steps        int
 	Ops          map[deploy.StepOp]int
+	Seen         map[resource.URN]deploy.Step
+	Shown        map[resource.URN]bool
 	MaybeCorrupt bool
 	Opts         deployOptions
 	Target       *deploy.Target
 	Engine       *Engine
 }
 
-func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
+func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine) *deployActions {
+	return &deployActions{
+		Ops:    make(map[deploy.StepOp]int),
+		Seen:   make(map[resource.URN]deploy.Step),
+		Shown:  make(map[resource.URN]bool),
+		Opts:   opts,
+		Target: target,
+		Engine: engine,
+	}
+}
+
+func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Report the beginning of the step if appropriate.
-	if shouldShow(step, acts.Opts) {
+	show := shouldShow(acts.Seen, step, acts.Opts)
+	if show {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Opts.Summary, false, 0 /*indent*/)
+		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	var mutation SnapshotMutation
-	if _, ismut := step.(deploy.MutatingStep); ismut {
-		m, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
-		if err != nil {
-			return resource.StatusOK, err
-		}
-		mutation = m
-	}
+	return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+}
 
-	// Apply the step's changes.
-	status, err := step.Apply()
+func (acts *deployActions) OnResourceStepPost(ctx interface{},
+	step deploy.Step, status resource.Status, err error) error {
+	var b bytes.Buffer
 
 	// Report the result of the step.
 	stepop := step.Op()
@@ -172,7 +178,6 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		acts.Opts.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
-		var b bytes.Buffer
 		stepnum := acts.Steps + 1
 		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, stepop))
 		switch status {
@@ -188,29 +193,41 @@ func (acts *deployActions) Run(step deploy.Step) (resource.Status, error) {
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		acts.Opts.Events <- stdOutEventWithColor(&b)
 	} else {
-		// Increment the counters.
 		if step.Logical() {
+			// Increment the counters.
 			acts.Steps++
 			acts.Ops[stepop]++
 		}
 
-		// Print out any output properties that got created as a result of this operation.
-		if shouldShow(step, acts.Opts) && !acts.Opts.Summary {
-			var b bytes.Buffer
-			printResourceOutputProperties(&b, step, 0 /*indent*/)
-			acts.Opts.Events <- stdOutEventWithColor(&b)
-		}
+		// Also show outputs here, since there might be some from the initial registration.
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
 	}
 
-	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a safe checkpoint.
-	// Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	if mutation != nil {
-		if endErr := mutation.End(step.Iterator().Snap()); endErr != nil {
-			return status, endErr
-		}
+	acts.Opts.Events <- stdOutEventWithColor(&b)
+
+	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
+	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
+	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+}
+
+func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
+	// Print this step's output properties.
+	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+		var b bytes.Buffer
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
-	return status, err
+	// There's a chance there are new outputs that weren't written out last time.
+	// We need to perform another snapshot write to ensure they get written out.
+	mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	if err != nil {
+		return err
+	}
+	if err = mutation.End(step.Iterator().Snap()); err != nil {
+		return err
+	}
+
+	return nil
 }

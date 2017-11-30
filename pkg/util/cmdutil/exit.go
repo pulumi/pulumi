@@ -45,7 +45,7 @@ func DetailedError(err error) string {
 	return msg
 }
 
-// RunFunc wraps an error-returning run func with standard Pulumi error handling.  All Lumi commands should wrap
+// RunFunc wraps an error-returning run func with standard Pulumi error handling.  All Pulumi commands should wrap
 // themselves in this to ensure consistent and appropriate error behavior.  In particular, we want to avoid any calls to
 // os.Exit in the middle of a callstack which might prohibit reaping of child processes, resources, etc.  And we wish to
 // avoid the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly prints usage.

@@ -20,6 +20,7 @@ func newLoginCmd() *cobra.Command {
 		Use:   "login",
 		Short: "Log into the Pulumi Cloud Console",
 		Long:  "Log into the Pulumi Cloud Console. You can script by using PULUMI_ACCESS_TOKEN environment variable.",
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return loginCmd()
 		}),
@@ -31,6 +32,7 @@ func newLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Log out of the Pulumi CLI",
 		Long:  "Log out of the Pulumi CLI. Deletes stored credentials on the local machine.",
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			return deleteStoredCredentials()
 		}),

@@ -19,12 +19,12 @@ type State struct {
 	Inputs   PropertyMap // the resource's input properties (as specified by the program).
 	Defaults PropertyMap // the resource's default property values (if any, given by the provider).
 	Outputs  PropertyMap // the resource's complete output state (as returned by the resource provider).
-	Children []URN       // an optional list of children belonging to this parent resource.
+	Parent   URN         // an optional parent URN that this resource belongs to.
 }
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, defaults PropertyMap, outputs PropertyMap, children []URN) *State {
+	inputs PropertyMap, defaults PropertyMap, outputs PropertyMap, parent URN) *State {
 	contract.Assert(t != "")
 	contract.Assert(custom || id == "")
 	contract.Assert(inputs != nil)
@@ -37,7 +37,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Inputs:   inputs,
 		Defaults: defaults,
 		Outputs:  outputs,
-		Children: children,
+		Parent:   parent,
 	}
 }
 
@@ -50,6 +50,11 @@ func (s *State) All() PropertyMap {
 // when diffing resource states that are entirely under the control of the developer, instead of a cloud provider.
 func (s *State) AllInputs() PropertyMap {
 	return s.Defaults.Merge(s.Inputs)
+}
+
+// AddOutputs adds an optional set of extra output properties to the current map.
+func (s *State) AddOutputs(outs PropertyMap) {
+	s.Outputs = s.Outputs.Merge(outs)
 }
 
 // Synthesized returns all of the resource's "synthesized" state; this includes all properties that appeared in the

@@ -29,6 +29,7 @@ func newConfigCmd() *cobra.Command {
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
 			"'pulumi config set', to remove and existing value run 'pulumi config rm'. To get the value of\n" +
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
@@ -57,7 +58,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a single configuration value",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName, err := explicitOrCurrent(*stack, backend)
 			if err != nil {
@@ -82,7 +83,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.ExactArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if all && *stack != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
@@ -127,7 +128,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
 		Short: "Set configuration value",
-		Args:  cobra.RangeArgs(1, 2),
+		Args:  cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if all && *stack != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
@@ -268,8 +269,8 @@ func listConfig(stackName tokens.QName, showSecrets bool) error {
 		fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
 		var keys []string
 		for key := range cfg {
-			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure that all the config
-			// values for the current program are displayed next to one another in the output.
+			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
+			// that all the config values for the current program are displayed next to one another in the output.
 			keys = append(keys, string(key))
 		}
 		sort.Strings(keys)

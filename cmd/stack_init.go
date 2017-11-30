@@ -15,7 +15,7 @@ func newStackInitCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "init <stack>",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.ExactArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +

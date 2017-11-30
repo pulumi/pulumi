@@ -18,7 +18,7 @@ func newStackRmCmd() *cobra.Command {
 	var force bool
 	var cmd = &cobra.Command{
 		Use:   "rm <stack>",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.ExactArgs(1),
 		Short: "Remove an stack and its configuration",
 		Long: "Remove an stack and its configuration\n" +
 			"\n" +
@@ -38,6 +38,11 @@ func newStackRmCmd() *cobra.Command {
 					return errors.Errorf(
 						"'%v' still has resources; removal rejected; pass --force to override", stackName)
 				} else if err != nil {
+					return err
+				}
+
+				err = setCurrentStack(tokens.QName(""))
+				if err != nil {
 					return err
 				}
 
