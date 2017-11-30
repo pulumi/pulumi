@@ -207,7 +207,7 @@ outer:
 				case RegisterResourceEvent:
 					// If the intent is to register a resource, compute the plan steps necessary to do so.
 					steps, steperr := iter.makeRegisterResouceSteps(e)
-					if err != nil {
+					if steperr != nil {
 						return nil, steperr
 					}
 					contract.Assert(len(steps) > 0)
