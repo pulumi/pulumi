@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -480,17 +481,17 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 		excl[wdir] = true
 		excl[proj] = true
 	}
-	if copyerr := copyFile(dir, src, excl); copyerr != nil {
+	if copyerr := fsutil.CopyFile(dir, src, excl); copyerr != nil {
 		return "", copyerr
 	}
 
 	// Now, copy back the original project's .pulumi/ and Pulumi.yaml atop the target.
 	projfile := filepath.Join(dir, proj)
 	if origin != "" {
-		if copyerr := copyFile(projfile, filepath.Join(origin, proj), nil); copyerr != nil {
+		if copyerr := fsutil.CopyFile(projfile, filepath.Join(origin, proj), nil); copyerr != nil {
 			return "", copyerr
 		}
-		if copyerr := copyFile(filepath.Join(dir, wdir), filepath.Join(origin, wdir), nil); copyerr != nil {
+		if copyerr := fsutil.CopyFile(filepath.Join(dir, wdir), filepath.Join(origin, wdir), nil); copyerr != nil {
 			return "", copyerr
 		}
 	}
@@ -549,48 +550,6 @@ func withOptionalYarnFlags(args []string) []string {
 	}
 
 	return args
-}
-
-// copyFile is a braindead simple function that copies a src file to a dst file.  Note that it is not general purpose:
-// it doesn't handle symbolic links, it doesn't try to be efficient, it doesn't handle copies where src and dst overlap,
-// and it makes no attempt to preserve file permissions.  It is what we need for this test package, no more, no less.
-func copyFile(dst string, src string, excl map[string]bool) error {
-	info, err := os.Lstat(src)
-	if os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	} else if excl[info.Name()] {
-		return nil
-	}
-	if info.IsDir() {
-		// Recursively copy all files in a directory.
-		files, err := ioutil.ReadDir(src)
-		if err != nil {
-			return err
-		}
-		for _, file := range files {
-			name := file.Name()
-			copyerr := copyFile(filepath.Join(dst, name), filepath.Join(src, name), excl)
-			if copyerr != nil {
-				return copyerr
-			}
-		}
-	} else if info.Mode().IsRegular() {
-		// Copy files by reading and rewriting their contents.  Skip symlinks and other special files.
-		data, err := ioutil.ReadFile(src)
-		if err != nil {
-			return err
-		}
-		dstdir := filepath.Dir(dst)
-		if err = os.MkdirAll(dstdir, 0700); err != nil {
-			return err
-		}
-		if err = ioutil.WriteFile(dst, data, info.Mode()); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type prefixer struct {

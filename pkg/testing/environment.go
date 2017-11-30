@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,6 +37,14 @@ func NewEnvironment(t *testing.T) *Environment {
 		T:        t,
 		RootPath: root,
 		CWD:      root,
+	}
+}
+
+// ImportDirectory copies a folder into the test environment.
+func (e *Environment) ImportDirectory(path string) {
+	err := fsutil.CopyFile(e.RootPath, path, nil)
+	if err != nil {
+		e.T.Fatalf("error importing directory: %v", err)
 	}
 }
 
