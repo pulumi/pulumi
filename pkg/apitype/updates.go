@@ -4,9 +4,10 @@ import "github.com/pulumi/pulumi/pkg/tokens"
 
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
-	// Properties from the Project file.
+	// Properties from the Project file. Subset of pack.Package.
 	Name        tokens.PackageName `json:"name"`
 	Runtime     string             `json:"runtime"`
+	Main        string             `json:"main"`
 	Description string             `json:"description"`
 
 	// Configuration values.

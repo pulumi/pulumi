@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
@@ -23,6 +24,40 @@ func TestProjectMain(t *testing.T) {
 		},
 	}
 	integration.ProgramTest(t, test)
+
+	t.Run("Error_AbsolutePath", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+		e.RunCommand("pulumi", "init")
+
+		e.ImportDirectory("project_main_abs")
+		e.RunCommand("pulumi", "stack", "init", "main-abs")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr, "project 'main' must be a relative path")
+	})
+
+	t.Run("Error_ParentFolder", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+		e.RunCommand("pulumi", "init")
+
+		e.ImportDirectory("project_main_parent")
+		e.RunCommand("pulumi", "stack", "init", "main-parent")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr, "project 'main' must be a subfolder")
+	})
 }
 
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
