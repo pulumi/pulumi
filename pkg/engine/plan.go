@@ -1035,18 +1035,22 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 	var buff bytes.Buffer
 
 	writeDiff := func(op deploy.StepOp, text string) {
-		writeWithIndentNoPrefix(&buff, indent, op, "%s", text)
+		var prefix bool
+		if op == deploy.OpCreate || op == deploy.OpDelete {
+			prefix = true
+		}
+		writeWithIndent(&buff, indent, op, prefix, "%s", text)
 	}
 
 	for index, diff := range diffs {
 		text := diff.Text
-
 		lines := strings.Split(text, "\n")
-
 		printLines := func(op deploy.StepOp, startInclusive int, endExclusive int) {
 			for i := startInclusive; i < endExclusive; i++ {
-				writeDiff(op, lines[i])
-				buff.WriteString("\n")
+				if strings.TrimSpace(lines[i]) != "" {
+					writeDiff(op, lines[i])
+					buff.WriteString("\n")
+				}
 			}
 		}
 
@@ -1062,11 +1066,9 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 					trimmedLines = append(trimmedLines, line)
 				}
 			}
-
 			lines = trimmedLines
 
 			// Show the unchanged text in white.
-
 			if index == 0 {
 				// First chunk of the file.
 				if len(lines) > 4 {
