@@ -5,7 +5,9 @@ package engine
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -24,9 +26,16 @@ func (pkginfo *Pkginfo) GetPwdMain() (string, string, error) {
 	pwd := pkginfo.Root
 	main := pkginfo.Pkg.Main
 	if main != "" {
-		// The path might be relative from the package root; if so, make it absolute.
-		if !filepath.IsAbs(main) {
-			main = filepath.Join(pwd, main)
+		// The path must be relative from the package root.
+		if filepath.IsAbs(main) {
+			return "", "", errors.New("project 'main' must be a relative path")
+		}
+
+		// Check that main is a *subdirectory* from the root.
+		cleanPwd := filepath.Clean(pwd)
+		main := filepath.Clean(path.Join(cleanPwd, main))
+		if !strings.HasPrefix(main, cleanPwd) {
+			return "", "", errors.New("project 'main' must be a subfolder")
 		}
 
 		// So that any relative paths inside of the program are correct, we still need to pass the pwd
