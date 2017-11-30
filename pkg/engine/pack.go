@@ -31,9 +31,9 @@ func (pkginfo *Pkginfo) GetPwdMain() (string, string, error) {
 			return "", "", errors.New("project 'main' must be a relative path")
 		}
 
-		// Check that main is a *subdirectory* from the root.
+		// Check that main is a subdirectory.
 		cleanPwd := filepath.Clean(pwd)
-		main := filepath.Clean(path.Join(cleanPwd, main))
+		main = filepath.Clean(path.Join(cleanPwd, main))
 		if !strings.HasPrefix(main, cleanPwd) {
 			return "", "", errors.New("project 'main' must be a subfolder")
 		}
