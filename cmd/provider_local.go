@@ -70,7 +70,8 @@ func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
 	return saveStack(name, config, snapshot)
 }
 
-func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.Value, *deploy.Snapshot, string, error) {
+func getStack(name tokens.QName) (tokens.QName,
+	map[tokens.ModuleMember]config.Value, *deploy.Snapshot, string, error) {
 	workspace, err := newWorkspace()
 	if err != nil {
 		return "", nil, nil, "", err
@@ -105,15 +106,21 @@ func getStack(name tokens.QName) (tokens.QName, map[tokens.ModuleMember]config.V
 		return "", nil, nil, file, err
 	}
 
+	// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
+		return "", nil, nil, file,
+			errors.Wrapf(verifyerr, "snapshot integrity failure; refusing to use it")
+	}
+
 	return name, config, snapshot, file, nil
 }
 
-func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
+func saveStack(name tokens.QName,
+	config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
 	workspace, err := newWorkspace()
 	if err != nil {
 		return err
 	}
-
 	file := workspace.StackPath(name)
 
 	// Make a serializable stack and then use the encoder to encode it.
@@ -131,7 +138,7 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 	}
 
 	// Back up the existing file if it already exists.
-	backupTarget(file)
+	bck := backupTarget(file)
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
@@ -148,6 +155,15 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), b, 0600); err != nil {
 			return errors.Wrap(err, "An IO error occurred during the current operation")
 		}
+	}
+
+	// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
+	// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
+	// file is already written and might be bad.
+	if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
+		return errors.Wrapf(verifyerr,
+			"snapshot integrity failure; it was already written to %s, but is invalid (a backup is available at %s)",
+			file, bck)
 	}
 
 	return nil
@@ -173,9 +189,11 @@ func removeStack(name tokens.QName) error {
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupTarget(file string) {
+func backupTarget(file string) string {
 	contract.Require(file != "", "file")
-	err := os.Rename(file, file+".bak")
+	bck := file + ".bak"
+	err := os.Rename(file, bck)
 	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
+	return bck
 }
