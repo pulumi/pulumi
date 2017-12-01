@@ -6,6 +6,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -47,18 +48,19 @@ func MaybeID(s *string) *ID {
 }
 
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given
-// optional prefix and the total length is capped to the maxlen.
-//
-// Notes:
-//  1. capping to maxlen necessarily increases the risk of collisions.
-//  2. If there isn't enough room for the prefix, it will be dropped to ensure an reasonably unique
-//     hex.
-//  3. When there isn't enough room for the prefix and the amount of randomness asked for,
-//     an attempt will be kept to preserve the prefix.  However, if the randomness drops too
-//     low, then the prefix will be dropped to ensure uniqueness.
-func NewUniqueHex(prefix string, maxlen, randlen int) string {
+// optional prefix and the total length is capped to the maxlen. If there isn't enough room for the
+// prefix and hte amount of randomness asked for, an error will be returned.
+func NewUniqueHex(prefix string, maxlen, randlen int) (string, error) {
 	if randlen == -1 {
 		randlen = sha1.Size // default to SHA1 size.
+	}
+
+	if maxlen != -1 {
+		// Each byte of randomness will create two hex chars.
+		randChars := randlen * 2
+		if len(prefix)+randChars > maxlen {
+			return "", fmt.Errorf("Name '%s' is longer than maximum length %v", prefix, maxlen-randChars)
+		}
 	}
 
 	bs := make([]byte, randlen)
@@ -67,29 +69,17 @@ func NewUniqueHex(prefix string, maxlen, randlen int) string {
 	contract.Assert(n == len(bs))
 
 	str := prefix + hex.EncodeToString(bs)
-	strLen := len(str)
-
-	if maxlen != -1 && strLen > maxlen {
-		// Our string is longer than the length requested.  We can't just truncate from the left, as
-		// there may not be enough randomness in the string (due to the fixed prefix).  If we can
-		// get at least 8 characters of randomness, then attempt to keep the prefix in.  Otherwise,
-		// we just take from the right side of the string to keep as much randomness as possible.
-		if maxlen-len(prefix) >= 8 {
-			return str[:maxlen]
-		}
-
-		// The string we've generated is larger than the requested string.  Ensure the least change
-		// of collisions by extracting from the right side of the string (the part with the most
-		// randomness).
-		return str[strLen-maxlen:]
-	}
-
-	return str
+	return str, nil
 }
 
 // NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given
 // optional prefix and the total length is capped to the maxlen.  Note that capping to maxlen
 // necessarily increases the risk of collisions.
-func NewUniqueHexID(prefix string, maxlen, randlen int) ID {
-	return ID(NewUniqueHex(prefix, maxlen, randlen))
+func NewUniqueHexID(prefix string, maxlen, randlen int) (ID, error) {
+	u, err := NewUniqueHex(prefix, maxlen, randlen)
+	if err != nil {
+		return "", err
+	}
+
+	return ID(u), nil
 }
