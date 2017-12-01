@@ -14,4 +14,3 @@ import * as dynamic from "./dynamic";
 import * as log from "./log";
 import * as runtime from "./runtime";
 export { asset, dynamic, log, runtime };
-

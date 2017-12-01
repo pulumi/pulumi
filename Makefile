@@ -4,7 +4,7 @@ include build/common.mk
 
 PROJECT      := github.com/pulumi/pulumi
 PROJECT_PKGS := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-VERSION      := $(shell git describe --tags 2>/dev/null)
+VERSION      := $(shell git describe --tags --dirty 2>/dev/null)
 
 GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=Gometalinter.json
@@ -12,11 +12,11 @@ GOMETALINTER    := ${GOMETALINTERBIN} --config=Gometalinter.json
 TESTPARALLELISM := 10
 
 build::
-	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}
-	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}/cmd/lumidl
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}/cmd/lumidl
 
 install::
-	GOBIN=$(PULUMI_BIN)	go install -ldflags "-X main.version=${VERSION}" ${PROJECT}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
 LINT_SUPPRESS="or be unexported"
 lint::
@@ -46,4 +46,3 @@ travis_cron: all coverage
 travis_push: all publish
 travis_pull_request: all
 travis_api: all
-

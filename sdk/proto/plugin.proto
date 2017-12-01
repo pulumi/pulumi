@@ -1,0 +1,10 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
+syntax = "proto3";
+
+package pulumirpc;
+
+// PluginInfo is meta-information about a plugin that is used by the system.
+message PluginInfo {
+    string version = 1; // the semver for this plugin.
+}

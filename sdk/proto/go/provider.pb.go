@@ -7,8 +7,8 @@ package pulumirpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
-import google_protobuf "github.com/golang/protobuf/ptypes/struct"
+import google_protobuf "github.com/golang/protobuf/ptypes/empty"
+import google_protobuf1 "github.com/golang/protobuf/ptypes/struct"
 
 import (
 	context "golang.org/x/net/context"
@@ -27,7 +27,7 @@ type ConfigureRequest struct {
 func (m *ConfigureRequest) Reset()                    { *m = ConfigureRequest{} }
 func (m *ConfigureRequest) String() string            { return proto.CompactTextString(m) }
 func (*ConfigureRequest) ProtoMessage()               {}
-func (*ConfigureRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (*ConfigureRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 func (m *ConfigureRequest) GetVariables() map[string]string {
 	if m != nil {
@@ -37,14 +37,14 @@ func (m *ConfigureRequest) GetVariables() map[string]string {
 }
 
 type InvokeRequest struct {
-	Tok  string                  `protobuf:"bytes,1,opt,name=tok" json:"tok,omitempty"`
-	Args *google_protobuf.Struct `protobuf:"bytes,2,opt,name=args" json:"args,omitempty"`
+	Tok  string                   `protobuf:"bytes,1,opt,name=tok" json:"tok,omitempty"`
+	Args *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=args" json:"args,omitempty"`
 }
 
 func (m *InvokeRequest) Reset()                    { *m = InvokeRequest{} }
 func (m *InvokeRequest) String() string            { return proto.CompactTextString(m) }
 func (*InvokeRequest) ProtoMessage()               {}
-func (*InvokeRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (*InvokeRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
 func (m *InvokeRequest) GetTok() string {
 	if m != nil {
@@ -53,7 +53,7 @@ func (m *InvokeRequest) GetTok() string {
 	return ""
 }
 
-func (m *InvokeRequest) GetArgs() *google_protobuf.Struct {
+func (m *InvokeRequest) GetArgs() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Args
 	}
@@ -61,16 +61,16 @@ func (m *InvokeRequest) GetArgs() *google_protobuf.Struct {
 }
 
 type InvokeResponse struct {
-	Return   *google_protobuf.Struct `protobuf:"bytes,1,opt,name=return" json:"return,omitempty"`
-	Failures []*CheckFailure         `protobuf:"bytes,2,rep,name=failures" json:"failures,omitempty"`
+	Return   *google_protobuf1.Struct `protobuf:"bytes,1,opt,name=return" json:"return,omitempty"`
+	Failures []*CheckFailure          `protobuf:"bytes,2,rep,name=failures" json:"failures,omitempty"`
 }
 
 func (m *InvokeResponse) Reset()                    { *m = InvokeResponse{} }
 func (m *InvokeResponse) String() string            { return proto.CompactTextString(m) }
 func (*InvokeResponse) ProtoMessage()               {}
-func (*InvokeResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (*InvokeResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
-func (m *InvokeResponse) GetReturn() *google_protobuf.Struct {
+func (m *InvokeResponse) GetReturn() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Return
 	}
@@ -85,14 +85,14 @@ func (m *InvokeResponse) GetFailures() []*CheckFailure {
 }
 
 type CheckRequest struct {
-	Urn        string                  `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
-	Properties *google_protobuf.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Urn        string                   `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
+	Properties *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *CheckRequest) Reset()                    { *m = CheckRequest{} }
 func (m *CheckRequest) String() string            { return proto.CompactTextString(m) }
 func (*CheckRequest) ProtoMessage()               {}
-func (*CheckRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
+func (*CheckRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
 
 func (m *CheckRequest) GetUrn() string {
 	if m != nil {
@@ -101,7 +101,7 @@ func (m *CheckRequest) GetUrn() string {
 	return ""
 }
 
-func (m *CheckRequest) GetProperties() *google_protobuf.Struct {
+func (m *CheckRequest) GetProperties() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -109,16 +109,16 @@ func (m *CheckRequest) GetProperties() *google_protobuf.Struct {
 }
 
 type CheckResponse struct {
-	Defaults *google_protobuf.Struct `protobuf:"bytes,1,opt,name=defaults" json:"defaults,omitempty"`
-	Failures []*CheckFailure         `protobuf:"bytes,2,rep,name=failures" json:"failures,omitempty"`
+	Defaults *google_protobuf1.Struct `protobuf:"bytes,1,opt,name=defaults" json:"defaults,omitempty"`
+	Failures []*CheckFailure          `protobuf:"bytes,2,rep,name=failures" json:"failures,omitempty"`
 }
 
 func (m *CheckResponse) Reset()                    { *m = CheckResponse{} }
 func (m *CheckResponse) String() string            { return proto.CompactTextString(m) }
 func (*CheckResponse) ProtoMessage()               {}
-func (*CheckResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{4} }
+func (*CheckResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{4} }
 
-func (m *CheckResponse) GetDefaults() *google_protobuf.Struct {
+func (m *CheckResponse) GetDefaults() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Defaults
 	}
@@ -140,7 +140,7 @@ type CheckFailure struct {
 func (m *CheckFailure) Reset()                    { *m = CheckFailure{} }
 func (m *CheckFailure) String() string            { return proto.CompactTextString(m) }
 func (*CheckFailure) ProtoMessage()               {}
-func (*CheckFailure) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{5} }
+func (*CheckFailure) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{5} }
 
 func (m *CheckFailure) GetProperty() string {
 	if m != nil {
@@ -157,16 +157,16 @@ func (m *CheckFailure) GetReason() string {
 }
 
 type DiffRequest struct {
-	Id   string                  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Urn  string                  `protobuf:"bytes,2,opt,name=urn" json:"urn,omitempty"`
-	Olds *google_protobuf.Struct `protobuf:"bytes,3,opt,name=olds" json:"olds,omitempty"`
-	News *google_protobuf.Struct `protobuf:"bytes,4,opt,name=news" json:"news,omitempty"`
+	Id   string                   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Urn  string                   `protobuf:"bytes,2,opt,name=urn" json:"urn,omitempty"`
+	Olds *google_protobuf1.Struct `protobuf:"bytes,3,opt,name=olds" json:"olds,omitempty"`
+	News *google_protobuf1.Struct `protobuf:"bytes,4,opt,name=news" json:"news,omitempty"`
 }
 
 func (m *DiffRequest) Reset()                    { *m = DiffRequest{} }
 func (m *DiffRequest) String() string            { return proto.CompactTextString(m) }
 func (*DiffRequest) ProtoMessage()               {}
-func (*DiffRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{6} }
+func (*DiffRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{6} }
 
 func (m *DiffRequest) GetId() string {
 	if m != nil {
@@ -182,14 +182,14 @@ func (m *DiffRequest) GetUrn() string {
 	return ""
 }
 
-func (m *DiffRequest) GetOlds() *google_protobuf.Struct {
+func (m *DiffRequest) GetOlds() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Olds
 	}
 	return nil
 }
 
-func (m *DiffRequest) GetNews() *google_protobuf.Struct {
+func (m *DiffRequest) GetNews() *google_protobuf1.Struct {
 	if m != nil {
 		return m.News
 	}
@@ -204,7 +204,7 @@ type DiffResponse struct {
 func (m *DiffResponse) Reset()                    { *m = DiffResponse{} }
 func (m *DiffResponse) String() string            { return proto.CompactTextString(m) }
 func (*DiffResponse) ProtoMessage()               {}
-func (*DiffResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{7} }
+func (*DiffResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{7} }
 
 func (m *DiffResponse) GetReplaces() []string {
 	if m != nil {
@@ -221,14 +221,14 @@ func (m *DiffResponse) GetStables() []string {
 }
 
 type CreateRequest struct {
-	Urn        string                  `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
-	Properties *google_protobuf.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Urn        string                   `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
+	Properties *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *CreateRequest) Reset()                    { *m = CreateRequest{} }
 func (m *CreateRequest) String() string            { return proto.CompactTextString(m) }
 func (*CreateRequest) ProtoMessage()               {}
-func (*CreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{8} }
+func (*CreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{8} }
 
 func (m *CreateRequest) GetUrn() string {
 	if m != nil {
@@ -237,7 +237,7 @@ func (m *CreateRequest) GetUrn() string {
 	return ""
 }
 
-func (m *CreateRequest) GetProperties() *google_protobuf.Struct {
+func (m *CreateRequest) GetProperties() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -245,14 +245,14 @@ func (m *CreateRequest) GetProperties() *google_protobuf.Struct {
 }
 
 type CreateResponse struct {
-	Id         string                  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Properties *google_protobuf.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Id         string                   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Properties *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *CreateResponse) Reset()                    { *m = CreateResponse{} }
 func (m *CreateResponse) String() string            { return proto.CompactTextString(m) }
 func (*CreateResponse) ProtoMessage()               {}
-func (*CreateResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{9} }
+func (*CreateResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{9} }
 
 func (m *CreateResponse) GetId() string {
 	if m != nil {
@@ -261,7 +261,7 @@ func (m *CreateResponse) GetId() string {
 	return ""
 }
 
-func (m *CreateResponse) GetProperties() *google_protobuf.Struct {
+func (m *CreateResponse) GetProperties() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -269,16 +269,16 @@ func (m *CreateResponse) GetProperties() *google_protobuf.Struct {
 }
 
 type UpdateRequest struct {
-	Id   string                  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Urn  string                  `protobuf:"bytes,2,opt,name=urn" json:"urn,omitempty"`
-	Olds *google_protobuf.Struct `protobuf:"bytes,3,opt,name=olds" json:"olds,omitempty"`
-	News *google_protobuf.Struct `protobuf:"bytes,4,opt,name=news" json:"news,omitempty"`
+	Id   string                   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Urn  string                   `protobuf:"bytes,2,opt,name=urn" json:"urn,omitempty"`
+	Olds *google_protobuf1.Struct `protobuf:"bytes,3,opt,name=olds" json:"olds,omitempty"`
+	News *google_protobuf1.Struct `protobuf:"bytes,4,opt,name=news" json:"news,omitempty"`
 }
 
 func (m *UpdateRequest) Reset()                    { *m = UpdateRequest{} }
 func (m *UpdateRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateRequest) ProtoMessage()               {}
-func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{10} }
+func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{10} }
 
 func (m *UpdateRequest) GetId() string {
 	if m != nil {
@@ -294,14 +294,14 @@ func (m *UpdateRequest) GetUrn() string {
 	return ""
 }
 
-func (m *UpdateRequest) GetOlds() *google_protobuf.Struct {
+func (m *UpdateRequest) GetOlds() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Olds
 	}
 	return nil
 }
 
-func (m *UpdateRequest) GetNews() *google_protobuf.Struct {
+func (m *UpdateRequest) GetNews() *google_protobuf1.Struct {
 	if m != nil {
 		return m.News
 	}
@@ -309,15 +309,15 @@ func (m *UpdateRequest) GetNews() *google_protobuf.Struct {
 }
 
 type UpdateResponse struct {
-	Properties *google_protobuf.Struct `protobuf:"bytes,1,opt,name=properties" json:"properties,omitempty"`
+	Properties *google_protobuf1.Struct `protobuf:"bytes,1,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *UpdateResponse) Reset()                    { *m = UpdateResponse{} }
 func (m *UpdateResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateResponse) ProtoMessage()               {}
-func (*UpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{11} }
+func (*UpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{11} }
 
-func (m *UpdateResponse) GetProperties() *google_protobuf.Struct {
+func (m *UpdateResponse) GetProperties() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -325,15 +325,15 @@ func (m *UpdateResponse) GetProperties() *google_protobuf.Struct {
 }
 
 type DeleteRequest struct {
-	Id         string                  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Urn        string                  `protobuf:"bytes,2,opt,name=urn" json:"urn,omitempty"`
-	Properties *google_protobuf.Struct `protobuf:"bytes,3,opt,name=properties" json:"properties,omitempty"`
+	Id         string                   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Urn        string                   `protobuf:"bytes,2,opt,name=urn" json:"urn,omitempty"`
+	Properties *google_protobuf1.Struct `protobuf:"bytes,3,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *DeleteRequest) Reset()                    { *m = DeleteRequest{} }
 func (m *DeleteRequest) String() string            { return proto.CompactTextString(m) }
 func (*DeleteRequest) ProtoMessage()               {}
-func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{12} }
+func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{12} }
 
 func (m *DeleteRequest) GetId() string {
 	if m != nil {
@@ -349,7 +349,7 @@ func (m *DeleteRequest) GetUrn() string {
 	return ""
 }
 
-func (m *DeleteRequest) GetProperties() *google_protobuf.Struct {
+func (m *DeleteRequest) GetProperties() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -384,7 +384,7 @@ const _ = grpc.SupportPackageIsVersion4
 
 type ResourceProviderClient interface {
 	// Configure configures the resource provider with "globals" that control its behavior.
-	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
+	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	// Check validates that the given property bag is valid for a resource of the given type.
@@ -397,7 +397,9 @@ type ResourceProviderClient interface {
 	// Update updates an existing resource with new values.
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	// GetPluginInfo returns generic information about this plugin, like its version.
+	GetPluginInfo(ctx context.Context, in *google_protobuf.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 }
 
 type resourceProviderClient struct {
@@ -408,8 +410,8 @@ func NewResourceProviderClient(cc *grpc.ClientConn) ResourceProviderClient {
 	return &resourceProviderClient{cc}
 }
 
-func (c *resourceProviderClient) Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
-	out := new(google_protobuf1.Empty)
+func (c *resourceProviderClient) Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
+	out := new(google_protobuf.Empty)
 	err := grpc.Invoke(ctx, "/pulumirpc.ResourceProvider/Configure", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -462,9 +464,18 @@ func (c *resourceProviderClient) Update(ctx context.Context, in *UpdateRequest, 
 	return out, nil
 }
 
-func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
-	out := new(google_protobuf1.Empty)
+func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
+	out := new(google_protobuf.Empty)
 	err := grpc.Invoke(ctx, "/pulumirpc.ResourceProvider/Delete", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resourceProviderClient) GetPluginInfo(ctx context.Context, in *google_protobuf.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
+	out := new(PluginInfo)
+	err := grpc.Invoke(ctx, "/pulumirpc.ResourceProvider/GetPluginInfo", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +486,7 @@ func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, 
 
 type ResourceProviderServer interface {
 	// Configure configures the resource provider with "globals" that control its behavior.
-	Configure(context.Context, *ConfigureRequest) (*google_protobuf1.Empty, error)
+	Configure(context.Context, *ConfigureRequest) (*google_protobuf.Empty, error)
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
 	// Check validates that the given property bag is valid for a resource of the given type.
@@ -488,7 +499,9 @@ type ResourceProviderServer interface {
 	// Update updates an existing resource with new values.
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-	Delete(context.Context, *DeleteRequest) (*google_protobuf1.Empty, error)
+	Delete(context.Context, *DeleteRequest) (*google_protobuf.Empty, error)
+	// GetPluginInfo returns generic information about this plugin, like its version.
+	GetPluginInfo(context.Context, *google_protobuf.Empty) (*PluginInfo, error)
 }
 
 func RegisterResourceProviderServer(s *grpc.Server, srv ResourceProviderServer) {
@@ -621,6 +634,24 @@ func _ResourceProvider_Delete_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(google_protobuf.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).GetPluginInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/GetPluginInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).GetPluginInfo(ctx, req.(*google_protobuf.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.ResourceProvider",
 	HandlerType: (*ResourceProviderServer)(nil),
@@ -653,53 +684,58 @@ var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 			MethodName: "Delete",
 			Handler:    _ResourceProvider_Delete_Handler,
 		},
+		{
+			MethodName: "GetPluginInfo",
+			Handler:    _ResourceProvider_GetPluginInfo_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "provider.proto",
 }
 
-func init() { proto.RegisterFile("provider.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("provider.proto", fileDescriptor4) }
 
-var fileDescriptor3 = []byte{
-	// 625 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x54, 0xdb, 0x6a, 0xdb, 0x4c,
-	0x10, 0x8e, 0x2c, 0xc7, 0xbf, 0x3d, 0x89, 0x8d, 0x59, 0x7e, 0x12, 0x55, 0xe9, 0x45, 0xd0, 0x55,
-	0x68, 0x40, 0x81, 0xe4, 0xa2, 0x07, 0x02, 0x81, 0x1c, 0x4a, 0x73, 0x53, 0x8a, 0x4a, 0x0b, 0xe9,
-	0x9d, 0x62, 0x8f, 0x5c, 0xd5, 0x8a, 0x56, 0xdd, 0x5d, 0xb9, 0xf8, 0x11, 0x4a, 0xdf, 0xa0, 0x4f,
-	0xd5, 0x47, 0x2a, 0xda, 0x83, 0xa2, 0xb5, 0xdb, 0x38, 0x0d, 0x94, 0xde, 0x69, 0x35, 0xdf, 0x7c,
-	0x33, 0xdf, 0x9c, 0x60, 0x50, 0x30, 0x3a, 0x4b, 0xc7, 0xc8, 0xc2, 0x82, 0x51, 0x41, 0x49, 0xaf,
-	0x28, 0xb3, 0xf2, 0x26, 0x65, 0xc5, 0xc8, 0xdf, 0x99, 0x50, 0x3a, 0xc9, 0xf0, 0x40, 0x1a, 0xae,
-	0xcb, 0xe4, 0x00, 0x6f, 0x0a, 0x31, 0x57, 0x38, 0xff, 0xf1, 0xa2, 0x91, 0x0b, 0x56, 0x8e, 0x84,
-	0xb2, 0x06, 0xdf, 0x1d, 0x18, 0x9e, 0xd1, 0x3c, 0x49, 0x27, 0x25, 0xc3, 0x08, 0x3f, 0x97, 0xc8,
-	0x05, 0x79, 0x05, 0xbd, 0x59, 0xcc, 0xd2, 0xf8, 0x3a, 0x43, 0xee, 0x39, 0xbb, 0xee, 0xde, 0xc6,
-	0xe1, 0x93, 0xb0, 0x0e, 0x17, 0x2e, 0xe2, 0xc3, 0xf7, 0x06, 0x7c, 0x91, 0x0b, 0x36, 0x8f, 0x6e,
-	0x9d, 0xfd, 0x63, 0x18, 0xd8, 0x46, 0x32, 0x04, 0x77, 0x8a, 0x73, 0xcf, 0xd9, 0x75, 0xf6, 0x7a,
-	0x51, 0xf5, 0x49, 0xfe, 0x87, 0xf5, 0x59, 0x9c, 0x95, 0xe8, 0xb5, 0xe4, 0x3f, 0xf5, 0x78, 0xd1,
-	0x7a, 0xe6, 0x04, 0xaf, 0xa1, 0x7f, 0x99, 0xcf, 0xe8, 0xb4, 0x4e, 0x6c, 0x08, 0xae, 0xa0, 0x53,
-	0xe3, 0x2c, 0xe8, 0x94, 0xec, 0x43, 0x3b, 0x66, 0x13, 0x2e, 0x7d, 0x37, 0x0e, 0xb7, 0x43, 0x25,
-	0x36, 0x34, 0x62, 0xc3, 0xb7, 0x52, 0x6c, 0x24, 0x41, 0xc1, 0x0c, 0x06, 0x86, 0x8f, 0x17, 0x34,
-	0xe7, 0x48, 0x0e, 0xa0, 0xc3, 0x50, 0x94, 0x2c, 0x97, 0x9c, 0x77, 0x10, 0x68, 0x18, 0x39, 0x82,
-	0x6e, 0x12, 0xa7, 0x59, 0xc9, 0xb0, 0x8a, 0xe9, 0x4a, 0x97, 0x46, 0x65, 0x3e, 0xe2, 0x68, 0xfa,
-	0x52, 0xd9, 0xa3, 0x1a, 0x18, 0x5c, 0xc1, 0xa6, 0xb4, 0x34, 0x64, 0x98, 0x90, 0xbd, 0xa8, 0xfa,
-	0x24, 0x4f, 0x01, 0x0a, 0x46, 0x0b, 0x64, 0x22, 0xc5, 0x95, 0x62, 0x1a, 0xd0, 0x60, 0x0e, 0x7d,
-	0x4d, 0xad, 0x15, 0x1d, 0x41, 0x77, 0x8c, 0x49, 0x5c, 0x66, 0x82, 0xaf, 0xd2, 0x54, 0x03, 0x1f,
-	0xa6, 0xea, 0x54, 0xab, 0xd2, 0x16, 0xe2, 0x43, 0x57, 0x27, 0x66, 0xda, 0x5b, 0xbf, 0xc9, 0x56,
-	0x55, 0xe7, 0x98, 0xd3, 0x5c, 0x37, 0x59, 0xbf, 0x82, 0xaf, 0x0e, 0x6c, 0x9c, 0xa7, 0x49, 0x62,
-	0x2a, 0x33, 0x80, 0x56, 0x3a, 0xd6, 0xde, 0xad, 0x74, 0x6c, 0x2a, 0xd5, 0xba, 0xad, 0xd4, 0x3e,
-	0xb4, 0x69, 0x36, 0xe6, 0x9e, 0xbb, 0xa2, 0xe1, 0x15, 0xa8, 0x02, 0xe7, 0xf8, 0x85, 0x7b, 0xed,
-	0x15, 0xe0, 0x0a, 0x14, 0x9c, 0xc3, 0xa6, 0x4a, 0x45, 0x57, 0xd2, 0x87, 0x2e, 0xc3, 0x22, 0x8b,
-	0x47, 0x7a, 0x09, 0x7a, 0x51, 0xfd, 0x26, 0x1e, 0xfc, 0xc7, 0x85, 0xda, 0x8f, 0x96, 0x34, 0x99,
-	0x67, 0xf0, 0x01, 0xfa, 0x67, 0x0c, 0x63, 0x81, 0x7f, 0xa1, 0xd9, 0x57, 0x30, 0x30, 0xdc, 0x3a,
-	0xc7, 0xc5, 0x7a, 0x3d, 0x98, 0xfa, 0x9b, 0x03, 0xfd, 0x77, 0xc5, 0xb8, 0x91, 0xf7, 0xbf, 0x6c,
-	0xc5, 0x25, 0x0c, 0x4c, 0x32, 0x5a, 0xa8, 0x2d, 0xcc, 0xb9, 0xbf, 0xb0, 0x4f, 0xd0, 0x3f, 0xc7,
-	0x0c, 0xff, 0x44, 0x97, 0x1d, 0xcb, 0xbd, 0x77, 0xac, 0xc3, 0x1f, 0x2e, 0x0c, 0x23, 0xe4, 0xb4,
-	0x64, 0x23, 0x7c, 0xa3, 0xaf, 0x35, 0x39, 0x85, 0x5e, 0x7d, 0x30, 0xc9, 0xce, 0x1d, 0x67, 0xd4,
-	0xdf, 0x5a, 0x8a, 0x71, 0x51, 0xdd, 0xf1, 0x60, 0x8d, 0x9c, 0x40, 0x47, 0x1d, 0x2e, 0xe2, 0x35,
-	0x08, 0xac, 0xdb, 0xe8, 0x3f, 0xfa, 0x85, 0x45, 0x15, 0x2f, 0x58, 0x23, 0xc7, 0xb0, 0x2e, 0x77,
-	0x95, 0x2c, 0xed, 0xb5, 0x71, 0xf7, 0x96, 0x0d, 0xb5, 0xf7, 0x73, 0x68, 0x57, 0x9b, 0x41, 0xb6,
-	0x1a, 0x98, 0xc6, 0xd6, 0xfa, 0xdb, 0x4b, 0xff, 0x6b, 0xd7, 0x13, 0xe8, 0xa8, 0x91, 0xb5, 0x32,
-	0xb7, 0x36, 0xc4, 0xca, 0xdc, 0x9e, 0x6f, 0x45, 0xa0, 0x46, 0xc1, 0x22, 0xb0, 0x46, 0xd5, 0x22,
-	0xb0, 0xe7, 0x46, 0x4a, 0xef, 0xa8, 0x01, 0xb0, 0x08, 0xac, 0x99, 0xf8, 0x7d, 0xe5, 0xaf, 0x3b,
-	0xf2, 0xcf, 0xd1, 0xcf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf8, 0x50, 0xfd, 0xf8, 0x7e, 0x07, 0x00,
-	0x00,
+var fileDescriptor4 = []byte{
+	// 654 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x55, 0x4d, 0x6f, 0xd3, 0x4c,
+	0x10, 0xae, 0x93, 0x34, 0x6f, 0x32, 0x6d, 0xa2, 0x68, 0xf5, 0xd2, 0x1a, 0x97, 0x43, 0xe5, 0x53,
+	0x45, 0x25, 0x57, 0x6a, 0x0f, 0x7c, 0xa8, 0x52, 0x51, 0x3f, 0x80, 0x5e, 0x50, 0x65, 0x04, 0x52,
+	0xb9, 0xb9, 0xc9, 0x38, 0x98, 0xb8, 0x5e, 0xb3, 0xde, 0x0d, 0xca, 0x4f, 0x40, 0xdc, 0x38, 0xf2,
+	0x6b, 0x91, 0xf7, 0xc3, 0xf5, 0x36, 0x90, 0x94, 0x4a, 0x88, 0x5b, 0xc6, 0xf3, 0xcc, 0x33, 0xf3,
+	0xcc, 0xce, 0x4c, 0xa0, 0x9f, 0x33, 0x3a, 0x4d, 0x46, 0xc8, 0x82, 0x9c, 0x51, 0x4e, 0x49, 0x37,
+	0x17, 0xa9, 0xb8, 0x4e, 0x58, 0x3e, 0xf4, 0xd6, 0xf3, 0x54, 0x8c, 0x93, 0x4c, 0x39, 0xbc, 0xad,
+	0x31, 0xa5, 0xe3, 0x14, 0xf7, 0xa4, 0x75, 0x25, 0xe2, 0x3d, 0xbc, 0xce, 0xf9, 0x4c, 0x3b, 0x1f,
+	0xdd, 0x76, 0x16, 0x9c, 0x89, 0x21, 0x57, 0x5e, 0xff, 0x87, 0x03, 0x83, 0x13, 0x9a, 0xc5, 0xc9,
+	0x58, 0x30, 0x0c, 0xf1, 0xb3, 0xc0, 0x82, 0x93, 0xd7, 0xd0, 0x9d, 0x46, 0x2c, 0x89, 0xae, 0x52,
+	0x2c, 0x5c, 0x67, 0xbb, 0xb9, 0xb3, 0xb6, 0xff, 0x38, 0xa8, 0x92, 0x07, 0xb7, 0xf1, 0xc1, 0x7b,
+	0x03, 0x3e, 0xcb, 0x38, 0x9b, 0x85, 0x37, 0xc1, 0xde, 0x21, 0xf4, 0x6d, 0x27, 0x19, 0x40, 0x73,
+	0x82, 0x33, 0xd7, 0xd9, 0x76, 0x76, 0xba, 0x61, 0xf9, 0x93, 0xfc, 0x0f, 0xab, 0xd3, 0x28, 0x15,
+	0xe8, 0x36, 0xe4, 0x37, 0x65, 0x3c, 0x6f, 0x3c, 0x75, 0xfc, 0x37, 0xd0, 0x3b, 0xcf, 0xa6, 0x74,
+	0x52, 0x15, 0x36, 0x80, 0x26, 0xa7, 0x13, 0x13, 0xcc, 0xe9, 0x84, 0xec, 0x42, 0x2b, 0x62, 0xe3,
+	0x42, 0xc6, 0xae, 0xed, 0x6f, 0x06, 0x4a, 0x6c, 0x60, 0xc4, 0x06, 0x6f, 0xa5, 0xd8, 0x50, 0x82,
+	0xfc, 0x29, 0xf4, 0x0d, 0x5f, 0x91, 0xd3, 0xac, 0x40, 0xb2, 0x07, 0x6d, 0x86, 0x5c, 0xb0, 0x4c,
+	0x72, 0x2e, 0x20, 0xd0, 0x30, 0x72, 0x00, 0x9d, 0x38, 0x4a, 0x52, 0xc1, 0xb0, 0xcc, 0xd9, 0x94,
+	0x21, 0xb5, 0xce, 0x7c, 0xc4, 0xe1, 0xe4, 0xa5, 0xf2, 0x87, 0x15, 0xd0, 0xbf, 0x84, 0x75, 0xe9,
+	0xa9, 0xc9, 0x30, 0x29, 0xbb, 0x61, 0xf9, 0x93, 0x3c, 0x01, 0xc8, 0x19, 0xcd, 0x91, 0xf1, 0x04,
+	0x97, 0x8a, 0xa9, 0x41, 0xfd, 0x19, 0xf4, 0x34, 0xb5, 0x56, 0x74, 0x00, 0x9d, 0x11, 0xc6, 0x91,
+	0x48, 0x79, 0xb1, 0x4c, 0x53, 0x05, 0xbc, 0x9f, 0xaa, 0x63, 0xad, 0x4a, 0x7b, 0x88, 0x07, 0x1d,
+	0x5d, 0x98, 0x79, 0xde, 0xca, 0x26, 0x1b, 0x65, 0x9f, 0xa3, 0x82, 0x66, 0xfa, 0x91, 0xb5, 0xe5,
+	0x7f, 0x75, 0x60, 0xed, 0x34, 0x89, 0x63, 0xd3, 0x99, 0x3e, 0x34, 0x92, 0x91, 0x8e, 0x6e, 0x24,
+	0x23, 0xd3, 0xa9, 0xc6, 0x4d, 0xa7, 0x76, 0xa1, 0x45, 0xd3, 0x51, 0xe1, 0x36, 0x97, 0x3c, 0x78,
+	0x09, 0x2a, 0xc1, 0x19, 0x7e, 0x29, 0xdc, 0xd6, 0x12, 0x70, 0x09, 0xf2, 0x4f, 0x61, 0x5d, 0x95,
+	0xa2, 0x3b, 0xe9, 0x41, 0x87, 0x61, 0x9e, 0x46, 0x43, 0xbd, 0x04, 0xdd, 0xb0, 0xb2, 0x89, 0x0b,
+	0xff, 0x15, 0x5c, 0xed, 0x47, 0x43, 0xba, 0x8c, 0xe9, 0x7f, 0x80, 0xde, 0x09, 0xc3, 0x88, 0xe3,
+	0x5f, 0x78, 0xec, 0x4b, 0xe8, 0x1b, 0x6e, 0x5d, 0xe3, 0xed, 0x7e, 0xdd, 0x9b, 0xfa, 0x9b, 0x03,
+	0xbd, 0x77, 0xf9, 0xa8, 0x56, 0xf7, 0xbf, 0x7c, 0x8a, 0x73, 0xe8, 0x9b, 0x62, 0xb4, 0x50, 0x5b,
+	0x98, 0x73, 0x77, 0x61, 0x9f, 0xa0, 0x77, 0x8a, 0x29, 0xfe, 0x89, 0x2e, 0x3b, 0x57, 0xf3, 0xce,
+	0xb9, 0xf6, 0xbf, 0xb7, 0x60, 0x10, 0x62, 0x41, 0x05, 0x1b, 0xe2, 0x85, 0xbe, 0xdd, 0xe4, 0x18,
+	0xba, 0xd5, 0xc1, 0x24, 0x5b, 0x0b, 0xce, 0xa8, 0xb7, 0x31, 0x97, 0xe3, 0xac, 0xbc, 0xe3, 0xfe,
+	0x0a, 0x39, 0x82, 0xb6, 0x3a, 0x5c, 0xc4, 0xad, 0x11, 0x58, 0xb7, 0xd1, 0x7b, 0xf8, 0x0b, 0x8f,
+	0x6a, 0x9e, 0xbf, 0x42, 0x0e, 0x61, 0x55, 0xee, 0x2a, 0x99, 0xdb, 0x6b, 0x13, 0xee, 0xce, 0x3b,
+	0xaa, 0xe8, 0x67, 0xd0, 0x2a, 0x37, 0x83, 0x6c, 0xd4, 0x30, 0xb5, 0xad, 0xf5, 0x36, 0xe7, 0xbe,
+	0x57, 0xa1, 0x47, 0xd0, 0x56, 0x23, 0x6b, 0x55, 0x6e, 0x6d, 0x88, 0x55, 0xb9, 0x3d, 0xdf, 0x8a,
+	0x40, 0x8d, 0x82, 0x45, 0x60, 0x8d, 0xaa, 0x45, 0x60, 0xcf, 0x8d, 0x94, 0xde, 0x56, 0x03, 0x60,
+	0x11, 0x58, 0x33, 0xb1, 0xa0, 0xf3, 0x2f, 0xa0, 0xf7, 0x0a, 0xf9, 0x85, 0xfc, 0xb7, 0x3d, 0xcf,
+	0x62, 0x4a, 0x7e, 0x03, 0xf5, 0x1e, 0xd4, 0xc8, 0x6f, 0xe0, 0xfe, 0xca, 0x55, 0x5b, 0x02, 0x0f,
+	0x7e, 0x06, 0x00, 0x00, 0xff, 0xff, 0xfd, 0x57, 0xdb, 0x15, 0xce, 0x07, 0x00, 0x00,
 }

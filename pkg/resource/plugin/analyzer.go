@@ -19,6 +19,8 @@ type Analyzer interface {
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error)
+	// GetPluginInfo returns this plugin's information.
+	GetPluginInfo() (Info, error)
 }
 
 // AnalyzeFailure indicates that resource analysis failed; it contains the property and reason for the failure.

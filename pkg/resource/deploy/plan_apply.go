@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/version"
 )
 
 // Options controls the planning and deployment process.
@@ -536,7 +537,23 @@ func (iter *PlanIterator) Snap() *Snapshot {
 		}
 	}
 
-	return NewSnapshot(iter.p.Target().Name, time.Now(), resources)
+	// Now produce a manifest and snapshot.
+	v, plugs := iter.SnapVersions()
+	manifest := Manifest{
+		Time:    time.Now(),
+		Version: v,
+		Plugins: plugs,
+	}
+	manifest.Magic = manifest.NewMagic()
+	return NewSnapshot(iter.p.Target().Name, manifest, resources)
+}
+
+// SnapVersions returns all versions used in the generation of this snapshot.  Note that no attempt is made to
+// "merge" with old version information.  So, if a checkpoint doesn't end up loading all of the possible plugins
+// it could ever load -- e.g., due to a failure -- there will be some resources in the checkpoint snapshot that
+// were loaded by plugins that never got loaded this time around.  In other words, this list is not stable.
+func (iter *PlanIterator) SnapVersions() (string, []plugin.Info) {
+	return version.Version, iter.p.ctx.Host.ListPlugins()
 }
 
 // MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway

@@ -4,7 +4,6 @@ package deploy
 
 import (
 	"testing"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +23,7 @@ func TestNullPlan(t *testing.T) {
 	ctx, err := plugin.NewContext(cmdutil.Diag(), nil, nil)
 	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
-	prev := NewSnapshot(targ.Name, time.Now(), nil)
+	prev := NewSnapshot(targ.Name, Manifest{}, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
 	iter, err := plan.Start(Options{})
 	assert.Nil(t, err)
@@ -45,7 +44,7 @@ func TestErrorPlan(t *testing.T) {
 		ctx, err := plugin.NewContext(cmdutil.Diag(), nil, nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
-		prev := NewSnapshot(targ.Name, time.Now(), nil)
+		prev := NewSnapshot(targ.Name, Manifest{}, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, iter)
@@ -60,7 +59,7 @@ func TestErrorPlan(t *testing.T) {
 		ctx, err := plugin.NewContext(cmdutil.Diag(), nil, nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
-		prev := NewSnapshot(targ.Name, time.Now(), nil)
+		prev := NewSnapshot(targ.Name, Manifest{}, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, err)
@@ -188,7 +187,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		"",
 	)
-	oldsnap := NewSnapshot(ns, time.Now(), []*resource.State{oldResB, oldResC, oldResD})
+	oldsnap := NewSnapshot(ns, Manifest{}, []*resource.State{oldResB, oldResC, oldResD})
 
 	// Create the new resource objects a priori.
 	//     - A is created:
@@ -374,6 +373,9 @@ func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, err
 func (host *testProviderHost) LanguageRuntime(runtime string, monitorAddr string) (plugin.LanguageRuntime, error) {
 	return host.langhost(runtime, monitorAddr)
 }
+func (host *testProviderHost) ListPlugins() []plugin.Info {
+	return nil
+}
 
 type testProvider struct {
 	pkg    tokens.Package
@@ -419,4 +421,9 @@ func (prov *testProvider) Delete(urn resource.URN,
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.invoke(tok, args)
+}
+func (prov *testProvider) GetPluginInfo() (plugin.Info, error) {
+	return plugin.Info{
+		Name: "testProvider",
+	}, nil
 }

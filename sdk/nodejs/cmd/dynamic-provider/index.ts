@@ -5,6 +5,7 @@ import * as path from "path";
 
 import * as dynamic from "../../dynamic";
 import * as resource from "../../resource";
+import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
 const grpc = require("grpc");
@@ -12,6 +13,7 @@ const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const provproto = require("../../proto/provider_pb.js");
 const provrpc = require("../../proto/provider_grpc_pb.js");
+const plugproto = require("../../proto/plugin_pb.js");
 
 const providerKey: string = "__provider";
 
@@ -158,6 +160,12 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
     }
 }
 
+async function getPluginInfoRPC(call: any, callback: any): Promise<void> {
+    const resp: any = new plugproto.PluginInfo();
+    resp.setVersion(version);
+    callback(undefined, resp);
+}
+
 export function main(args: string[]): void {
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
@@ -178,6 +186,7 @@ export function main(args: string[]): void {
         create: createRPC,
         update: updateRPC,
         delete: deleteRPC,
+        getPluginInfo: getPluginInfoRPC,
     });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 

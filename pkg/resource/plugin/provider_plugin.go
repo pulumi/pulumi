@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 const ProviderPluginPrefix = "pulumi-provider-"
@@ -22,7 +23,7 @@ type provider struct {
 	ctx    *Context
 	pkg    tokens.Package
 	plug   *plugin
-	client lumirpc.ResourceProviderClient
+	client pulumirpc.ResourceProviderClient
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -41,7 +42,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) 
 		ctx:    ctx,
 		pkg:    pkg,
 		plug:   plug,
-		client: lumirpc.NewResourceProviderClient(plug.Conn),
+		client: pulumirpc.NewResourceProviderClient(plug.Conn),
 	}, nil
 }
 
@@ -54,7 +55,7 @@ func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
 	for k, v := range vars {
 		config[string(k)] = v
 	}
-	_, err := p.client.Configure(p.ctx.Request(), &lumirpc.ConfigureRequest{Variables: config})
+	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Configure(#vars=%v,...) failed: err=%v", p.pkg, len(vars), err)
 		return err
@@ -70,7 +71,7 @@ func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource
 		return nil, nil, err
 	}
 
-	resp, err := p.client.Check(p.ctx.Request(), &lumirpc.CheckRequest{
+	resp, err := p.client.Check(p.ctx.Request(), &pulumirpc.CheckRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
@@ -118,7 +119,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	resp, err := p.client.Diff(p.ctx.Request(), &lumirpc.DiffRequest{
+	resp, err := p.client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
 		Id:   string(id),
 		Urn:  string(urn),
 		Olds: molds,
@@ -157,7 +158,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusOK, err
 	}
 
-	resp, err := p.client.Create(p.ctx.Request(), &lumirpc.CreateRequest{
+	resp, err := p.client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
@@ -200,7 +201,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
-	req := &lumirpc.UpdateRequest{
+	req := &pulumirpc.UpdateRequest{
 		Id:   string(id),
 		Urn:  string(urn),
 		Olds: molds,
@@ -233,7 +234,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	}
 
 	glog.V(7).Infof("resource[%v].Delete(id=%v,urn=%v) executing", p.pkg, id, urn)
-	req := &lumirpc.DeleteRequest{
+	req := &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mprops,
@@ -259,7 +260,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v) executing", tok, len(args))
-	resp, err := p.client.Invoke(p.ctx.Request(), &lumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	resp, err := p.client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v) failed: %v", p.pkg, tok, len(args), err)
 		return nil, nil, err
@@ -280,6 +281,21 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v,#ret=%v,#failures=%v) success",
 		p.pkg, tok, len(args), len(ret), len(failures))
 	return ret, failures, nil
+}
+
+// GetPluginInfo returns this plugin's information.
+func (p *provider) GetPluginInfo() (Info, error) {
+	glog.V(7).Infof("resource[%v].GetPluginInfo() executing", p.pkg)
+	resp, err := p.client.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		glog.V(7).Infof("resource[%v].GetPluginInfo() failed: err=%v", p.pkg, err)
+		return Info{}, err
+	}
+	return Info{
+		Name:    p.plug.Bin,
+		Type:    ResourceType,
+		Version: resp.Version,
+	}, nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.

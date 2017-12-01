@@ -38,13 +38,28 @@ func newStackCmd() *cobra.Command {
 			// First print general info about the current stack.
 			fmt.Printf("Current stack is %v:\n", stackName)
 			if snapshot != nil {
-				fmt.Printf("    Last updated at %v\n", snapshot.Time)
+				fmt.Printf("    Last updated at %v\n", snapshot.Manifest.Time)
+				var cliver string
+				if snapshot.Manifest.Version == "" {
+					cliver = "?"
+				} else {
+					cliver = snapshot.Manifest.Version
+				}
+				fmt.Printf("    Pulumi version %s\n", cliver)
+				for _, plugin := range snapshot.Manifest.Plugins {
+					var plugver string
+					if plugin.Version == "" {
+						plugver = "?"
+					} else {
+						plugver = plugin.Version
+					}
+					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Type, plugver)
+				}
 			}
 			if len(config) > 0 {
 				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(config))
 			}
 			fmt.Printf("    Checkpoint file is %s\n", stackFile)
-			fmt.Printf("    (Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones)\n")
 			fmt.Printf("\n")
 
 			// Now show the resources.
@@ -90,6 +105,10 @@ func newStackCmd() *cobra.Command {
 					}
 				}
 			}
+			fmt.Printf("\n")
+
+			fmt.Printf("Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones\n")
+
 			return nil
 		}),
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -16,8 +17,23 @@ import (
 // to the actual Snapshot structure, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deploys themselves.
 type Deployment struct {
-	Time      time.Time  `json:"time" yaml:"time"`                               // the time of the deploy.
+	Manifest  Manifest   `json:"manifest" yaml:"manifest"`                       // the deployment's manifest.
 	Resources []Resource `json:"resources,omitempty" yaml:"resources,omitempty"` // an array of resources.
+}
+
+// Manifest captures meta-information about this checkpoint file, such as versions of binaries, etc.
+type Manifest struct {
+	Time    time.Time    `json:"time" yaml:"time"`                           // the time of the deploy.
+	Magic   string       `json:"magic" yaml:"magic"`                         // a magic cookie.
+	Version string       `json:"version" yaml:"version"`                     // the version of the Pulumi CLI.
+	Plugins []PluginInfo `json:"plugins,omitempty" yaml:"plugins,omitempty"` // the plugin binary versions.
+}
+
+// PluginInfo captures the version and information about a plugin.
+type PluginInfo struct {
+	Name    string      `json:"name" yaml:"name"`
+	Type    plugin.Type `json:"type" yaml:"type"`
+	Version string      `json:"version" yaml:"version"`
 }
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
@@ -39,6 +55,20 @@ const RootPulumiStackTypeName tokens.Type = "pulumi:pulumi:Stack"
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
+	// Capture the version information into a manifest.
+	manifest := Manifest{
+		Time:    snap.Manifest.Time,
+		Magic:   snap.Manifest.Magic,
+		Version: snap.Manifest.Version,
+	}
+	for _, plug := range snap.Manifest.Plugins {
+		manifest.Plugins = append(manifest.Plugins, PluginInfo{
+			Name:    plug.Name,
+			Type:    plug.Type,
+			Version: plug.Version,
+		})
+	}
+
 	// Serialize all vertices and only include a vertex section if non-empty.
 	var resources []Resource
 	for _, res := range snap.Resources {
@@ -46,7 +76,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	}
 
 	return &Deployment{
-		Time:      snap.Time,
+		Manifest:  manifest,
 		Resources: resources,
 	}
 }

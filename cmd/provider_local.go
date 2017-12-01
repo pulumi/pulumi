@@ -65,9 +65,9 @@ func (p localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMut
 }
 
 func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
-	contract.Assert(m.name == snapshot.Namespace)
+	contract.Assert(m.name == snapshot.Stack)
 
-	name, config, _, _, err := getStack(snapshot.Namespace)
+	name, config, _, _, err := getStack(snapshot.Stack)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}

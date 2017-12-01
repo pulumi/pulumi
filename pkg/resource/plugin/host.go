@@ -28,9 +28,28 @@ type Host interface {
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(runtime string, monitorAddr string) (LanguageRuntime, error)
 
+	// ListPlugins lists all plugins that got loaded, with version information.
+	ListPlugins() []Info
+
 	// Close reclaims any resources associated with the host.
 	Close() error
 }
+
+// Info contains information about a plugin that was loaded by the host.
+type Info struct {
+	Name    string
+	Type    Type
+	Version string
+}
+
+// Type is the kind of plugin.
+type Type string
+
+const (
+	AnalyzerType = "analyzer"
+	ResourceType = "resource"
+	LanguageType = "language"
+)
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context) (Host, error) {
@@ -55,6 +74,7 @@ type defaultHost struct {
 	ctx       *Context                    // the shared context for this host.
 	analyzers map[tokens.QName]Analyzer   // a cache of analyzer plugins and their processes.
 	providers map[tokens.Package]Provider // a cache of provider plugins and their processes.
+	plugins   []Info                      // a list of plugins allocated by this host.
 	server    *hostServer                 // the server's RPC machinery.
 }
 
@@ -76,8 +96,15 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 	// If not, try to load and bind to a plugin.
 	plug, err := NewAnalyzer(host, host.ctx, name)
 	if err == nil && plug != nil {
+		pi, plerr := plug.GetPluginInfo()
+		if plerr != nil {
+			return nil, plerr
+		}
+		host.plugins = append(host.plugins, pi)
+
 		host.analyzers[name] = plug // memoize the result.
 	}
+
 	return plug, err
 }
 
@@ -91,14 +118,36 @@ func (host *defaultHost) Provider(pkg tokens.Package) (Provider, error) {
 	// If not, try to load and bind to a plugin.
 	plug, err := NewProvider(host, host.ctx, pkg)
 	if err == nil && plug != nil {
+		pi, plerr := plug.GetPluginInfo()
+		if plerr != nil {
+			return nil, plerr
+		}
+		host.plugins = append(host.plugins, pi)
+
 		host.providers[pkg] = plug // memoize the result.
 	}
+
 	return plug, err
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string, monitorAddr string) (LanguageRuntime, error) {
 	// Always load a fresh language runtime, since each has a unique resource monitor session.
-	return NewLanguageRuntime(host, host.ctx, runtime, monitorAddr)
+	plug, err := NewLanguageRuntime(host, host.ctx, runtime, monitorAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	pi, err := plug.GetPluginInfo()
+	if err != nil {
+		return nil, err
+	}
+	host.plugins = append(host.plugins, pi)
+
+	return plug, nil
+}
+
+func (host *defaultHost) ListPlugins() []Info {
+	return host.plugins
 }
 
 func (host *defaultHost) Close() error {

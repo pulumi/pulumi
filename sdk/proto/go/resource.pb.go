@@ -7,8 +7,8 @@ package pulumirpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
-import google_protobuf "github.com/golang/protobuf/ptypes/struct"
+import google_protobuf "github.com/golang/protobuf/ptypes/empty"
+import google_protobuf1 "github.com/golang/protobuf/ptypes/struct"
 
 import (
 	context "golang.org/x/net/context"
@@ -22,17 +22,17 @@ var _ = math.Inf
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
 type RegisterResourceRequest struct {
-	Type   string                  `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Name   string                  `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
-	Parent string                  `protobuf:"bytes,3,opt,name=parent" json:"parent,omitempty"`
-	Custom bool                    `protobuf:"varint,4,opt,name=custom" json:"custom,omitempty"`
-	Object *google_protobuf.Struct `protobuf:"bytes,5,opt,name=object" json:"object,omitempty"`
+	Type   string                   `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
+	Name   string                   `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Parent string                   `protobuf:"bytes,3,opt,name=parent" json:"parent,omitempty"`
+	Custom bool                     `protobuf:"varint,4,opt,name=custom" json:"custom,omitempty"`
+	Object *google_protobuf1.Struct `protobuf:"bytes,5,opt,name=object" json:"object,omitempty"`
 }
 
 func (m *RegisterResourceRequest) Reset()                    { *m = RegisterResourceRequest{} }
 func (m *RegisterResourceRequest) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResourceRequest) ProtoMessage()               {}
-func (*RegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+func (*RegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
 
 func (m *RegisterResourceRequest) GetType() string {
 	if m != nil {
@@ -62,7 +62,7 @@ func (m *RegisterResourceRequest) GetCustom() bool {
 	return false
 }
 
-func (m *RegisterResourceRequest) GetObject() *google_protobuf.Struct {
+func (m *RegisterResourceRequest) GetObject() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Object
 	}
@@ -72,17 +72,17 @@ func (m *RegisterResourceRequest) GetObject() *google_protobuf.Struct {
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
 // auto-assigned URN, the provider-assigned ID, and any other properties initialized by the engine.
 type RegisterResourceResponse struct {
-	Urn     string                  `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
-	Id      string                  `protobuf:"bytes,2,opt,name=id" json:"id,omitempty"`
-	Object  *google_protobuf.Struct `protobuf:"bytes,3,opt,name=object" json:"object,omitempty"`
-	Stable  bool                    `protobuf:"varint,4,opt,name=stable" json:"stable,omitempty"`
-	Stables []string                `protobuf:"bytes,5,rep,name=stables" json:"stables,omitempty"`
+	Urn     string                   `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
+	Id      string                   `protobuf:"bytes,2,opt,name=id" json:"id,omitempty"`
+	Object  *google_protobuf1.Struct `protobuf:"bytes,3,opt,name=object" json:"object,omitempty"`
+	Stable  bool                     `protobuf:"varint,4,opt,name=stable" json:"stable,omitempty"`
+	Stables []string                 `protobuf:"bytes,5,rep,name=stables" json:"stables,omitempty"`
 }
 
 func (m *RegisterResourceResponse) Reset()                    { *m = RegisterResourceResponse{} }
 func (m *RegisterResourceResponse) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResourceResponse) ProtoMessage()               {}
-func (*RegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
+func (*RegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
 
 func (m *RegisterResourceResponse) GetUrn() string {
 	if m != nil {
@@ -98,7 +98,7 @@ func (m *RegisterResourceResponse) GetId() string {
 	return ""
 }
 
-func (m *RegisterResourceResponse) GetObject() *google_protobuf.Struct {
+func (m *RegisterResourceResponse) GetObject() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Object
 	}
@@ -121,14 +121,14 @@ func (m *RegisterResourceResponse) GetStables() []string {
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.
 type RegisterResourceOutputsRequest struct {
-	Urn     string                  `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
-	Outputs *google_protobuf.Struct `protobuf:"bytes,2,opt,name=outputs" json:"outputs,omitempty"`
+	Urn     string                   `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
+	Outputs *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=outputs" json:"outputs,omitempty"`
 }
 
 func (m *RegisterResourceOutputsRequest) Reset()                    { *m = RegisterResourceOutputsRequest{} }
 func (m *RegisterResourceOutputsRequest) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResourceOutputsRequest) ProtoMessage()               {}
-func (*RegisterResourceOutputsRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
+func (*RegisterResourceOutputsRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
 
 func (m *RegisterResourceOutputsRequest) GetUrn() string {
 	if m != nil {
@@ -137,7 +137,7 @@ func (m *RegisterResourceOutputsRequest) GetUrn() string {
 	return ""
 }
 
-func (m *RegisterResourceOutputsRequest) GetOutputs() *google_protobuf.Struct {
+func (m *RegisterResourceOutputsRequest) GetOutputs() *google_protobuf1.Struct {
 	if m != nil {
 		return m.Outputs
 	}
@@ -163,7 +163,7 @@ const _ = grpc.SupportPackageIsVersion4
 type ResourceMonitorClient interface {
 	Invoke(ctx context.Context, in *InvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
-	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
+	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
 }
 
 type resourceMonitorClient struct {
@@ -192,8 +192,8 @@ func (c *resourceMonitorClient) RegisterResource(ctx context.Context, in *Regist
 	return out, nil
 }
 
-func (c *resourceMonitorClient) RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
-	out := new(google_protobuf1.Empty)
+func (c *resourceMonitorClient) RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
+	out := new(google_protobuf.Empty)
 	err := grpc.Invoke(ctx, "/pulumirpc.ResourceMonitor/RegisterResourceOutputs", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (c *resourceMonitorClient) RegisterResourceOutputs(ctx context.Context, in 
 type ResourceMonitorServer interface {
 	Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
-	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*google_protobuf1.Empty, error)
+	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*google_protobuf.Empty, error)
 }
 
 func RegisterResourceMonitorServer(s *grpc.Server, srv ResourceMonitorServer) {
@@ -288,9 +288,9 @@ var _ResourceMonitor_serviceDesc = grpc.ServiceDesc{
 	Metadata: "resource.proto",
 }
 
-func init() { proto.RegisterFile("resource.proto", fileDescriptor4) }
+func init() { proto.RegisterFile("resource.proto", fileDescriptor5) }
 
-var fileDescriptor4 = []byte{
+var fileDescriptor5 = []byte{
 	// 374 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x92, 0xcf, 0x4a, 0xf3, 0x40,
 	0x14, 0xc5, 0x9b, 0xa4, 0x4d, 0xbf, 0xce, 0x07, 0xb5, 0xcc, 0xa2, 0x1d, 0xa3, 0x48, 0x88, 0x9b,

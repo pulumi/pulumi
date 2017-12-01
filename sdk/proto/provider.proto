@@ -2,6 +2,7 @@
 
 syntax = "proto3";
 
+import "plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
@@ -25,6 +26,8 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+    // GetPluginInfo returns generic information about this plugin, like its version.
+    rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
 
 message ConfigureRequest {
@@ -94,4 +97,3 @@ message DeleteRequest {
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
 }
-
