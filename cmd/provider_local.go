@@ -20,6 +20,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// disableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
+// recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
+// be used as a last resort when a command absolutely must be run.
+var disableIntegrityChecking bool
+
 type localStackProvider struct {
 	decrypter config.ValueDecrypter
 }
@@ -106,10 +111,12 @@ func getStack(name tokens.QName) (tokens.QName,
 		return "", nil, nil, file, err
 	}
 
-	// Ensure the snapshot passes verification before returning it, to catch bugs early.
-	if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
-		return "", nil, nil, file,
-			errors.Wrapf(verifyerr, "snapshot integrity failure; refusing to use it")
+	if !disableIntegrityChecking {
+		// Ensure the snapshot passes verification before returning it, to catch bugs early.
+		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
+			return "", nil, nil, file,
+				errors.Wrapf(verifyerr, "%s: snapshot integrity failure; refusing to use it", file)
+		}
 	}
 
 	return name, config, snapshot, file, nil
@@ -157,13 +164,15 @@ func saveStack(name tokens.QName,
 		}
 	}
 
-	// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
-	// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
-	// file is already written and might be bad.
-	if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
-		return errors.Wrapf(verifyerr,
-			"snapshot integrity failure; it was already written to %s, but is invalid (a backup is available at %s)",
-			file, bck)
+	if !disableIntegrityChecking {
+		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
+		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
+		// file is already written and might be bad.
+		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
+			return errors.Wrapf(verifyerr,
+				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s)",
+				file, bck)
+		}
 	}
 
 	return nil
