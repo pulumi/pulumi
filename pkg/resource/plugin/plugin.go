@@ -30,6 +30,8 @@ type plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
+	Bin    string
+	Args   []string
 	Conn   *grpc.ClientConn
 	Proc   *os.Process
 	Stdin  io.WriteCloser
@@ -209,6 +211,8 @@ func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
 	}
 
 	return &plugin{
+		Bin:    bin,
+		Args:   args,
 		Proc:   cmd.Process,
 		Stdin:  in,
 		Stdout: out,

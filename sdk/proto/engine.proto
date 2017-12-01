@@ -24,5 +24,3 @@ message LogRequest {
     LogSeverity severity = 1; // the logging level of this message.
     string message = 2;       // the contents of the logged message.
 }
-
-

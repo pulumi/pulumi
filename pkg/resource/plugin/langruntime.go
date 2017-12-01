@@ -17,6 +17,8 @@ type LanguageRuntime interface {
 	// the code must not assume that side-effects or final values resulting from resource deployments are actually
 	// available.  If it is false, on the other hand, a real deployment is occurring and it may safely depend on these.
 	Run(info RunInfo) (string, error)
+	// GetPluginInfo returns this plugin's information.
+	GetPluginInfo() (Info, error)
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.

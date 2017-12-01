@@ -6,6 +6,7 @@
 'use strict';
 var grpc = require('grpc');
 var provider_pb = require('./provider_pb.js');
+var plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
@@ -130,6 +131,17 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_PluginInfo(arg) {
+  if (!(arg instanceof plugin_pb.PluginInfo)) {
+    throw new Error('Expected argument of type pulumirpc.PluginInfo');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PluginInfo(buffer_arg) {
+  return plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type pulumirpc.UpdateRequest');
@@ -240,6 +252,18 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // GetPluginInfo returns generic information about this plugin, like its version.
+  getPluginInfo: {
+    path: '/pulumirpc.ResourceProvider/GetPluginInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: plugin_pb.PluginInfo,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_PluginInfo,
+    responseDeserialize: deserialize_pulumirpc_PluginInfo,
   },
 };
 

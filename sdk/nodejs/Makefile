@@ -1,5 +1,7 @@
-PROJECT_NAME := Pulumi Node.JS SDK
+PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := pulumi
+VERSION          := $(shell git describe --tags --dirty 2>/dev/null)
+
 include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
@@ -15,6 +17,10 @@ build::
 	cp -R ../proto/nodejs/. proto/
 	cd runtime/native/ && node-gyp build
 	tsc
+	cp package.json bin/
+	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" bin/version.js bin/package.json && \
+		rm bin/version.js.bak && \
+		rm bin/package.json.bak
 	cp -R proto/. bin/proto/
 	mkdir -p bin/runtime/native/
 	cp -R runtime/native/build/. bin/runtime/native/build/

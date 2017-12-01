@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -89,14 +90,43 @@ type ProgramTestOptions struct {
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
 
+	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`.  This is
+	// equivalent to `--logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
+	// the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
+	DebugLogLevel int
 	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi update`, and
-	// `pulumi destroy`.
+	// `pulumi destroy`.  This may also be enabled by setting the environment variable PULUMI_TEST_DEBUG_UPDATES.
 	DebugUpdates bool
 
 	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+}
+
+func (opts ProgramTestOptions) PulumiCmd(args []string) []string {
+	cmd := []string{opts.Bin}
+	if du := opts.GetDebugLogLevel(); du > 0 {
+		cmd = append(cmd, "--logtostderr")
+		cmd = append(cmd, "-v="+strconv.Itoa(du))
+	}
+	return append(cmd, args...)
+}
+
+func (opts ProgramTestOptions) GetDebugLogLevel() int {
+	if opts.DebugLogLevel > 0 {
+		return opts.DebugLogLevel
+	}
+	if du := os.Getenv("PULUMI_TEST_DEBUG_LOG_LEVEL"); du != "" {
+		if n, _ := strconv.Atoi(du); n > 0 { // nolint: gas
+			return n
+		}
+	}
+	return 0
+}
+
+func (opts ProgramTestOptions) GetDebugUpdates() bool {
+	return opts.DebugUpdates || os.Getenv("PULUMI_TEST_DEBUG_UPDATES") != ""
 }
 
 // StackName returns a stack name to use for this test.
@@ -200,31 +230,31 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	contract.IgnoreError(err)
 	if err = RunCommand(t, "pulumi-init",
-		[]string{opts.Bin, "init"}, dir, opts); err != nil {
+		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
 		return
 	}
 	if err = RunCommand(t, "pulumi-stack-init",
-		[]string{opts.Bin, "stack", "init", string(stackName)}, dir, opts); err != nil {
+		opts.PulumiCmd([]string{"stack", "init", string(stackName)}), dir, opts); err != nil {
 		return
 	}
 	for key, value := range opts.Config {
 		if err = RunCommand(t, "pulumi-config",
-			[]string{opts.Bin, "config", "set", key, value}, dir, opts); err != nil {
+			opts.PulumiCmd([]string{"config", "set", key, value}), dir, opts); err != nil {
 			return
 		}
 	}
 
 	for key, value := range opts.Secrets {
 		if err = RunCommand(t, "pulumi-config",
-			[]string{opts.Bin, "config", "set", "--secret", key, value}, dir, opts); err != nil {
+			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir, opts); err != nil {
 			return
 		}
 	}
 
-	preview := []string{opts.Bin, "preview"}
-	update := []string{opts.Bin, "update"}
-	destroy := []string{opts.Bin, "destroy", "--yes"}
-	if opts.DebugUpdates {
+	preview := opts.PulumiCmd([]string{"preview"})
+	update := opts.PulumiCmd([]string{"update"})
+	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
+	if opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
 		destroy = append(destroy, "-d")
@@ -259,7 +289,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 			destroy, dir, opts)
 		contract.IgnoreError(derr)
 		derr = RunCommand(t, "pulumi-stack-rm",
-			[]string{opts.Bin, "stack", "rm", "--yes", string(stackName)}, dir, opts)
+			opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
 		contract.IgnoreError(derr)
 	}()
 

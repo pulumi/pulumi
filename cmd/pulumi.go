@@ -30,7 +30,7 @@ func init() {
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd(version string) *cobra.Command {
+func NewPulumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var tracing string
@@ -56,6 +56,8 @@ func NewPulumiCmd(version string) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
+	cmd.PersistentFlags().BoolVar(&disableIntegrityChecking, "disable-integrity-checking", false,
+		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
@@ -67,7 +69,7 @@ func NewPulumiCmd(version string) *cobra.Command {
 	cmd.AddCommand(newStackCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newUpdateCmd())
-	cmd.AddCommand(newVersionCmd(version))
+	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newLogsCmd())
 

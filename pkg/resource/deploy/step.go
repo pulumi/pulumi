@@ -268,22 +268,24 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 		// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
 		s.new.URN = s.old.URN
 		s.new.ID = s.old.ID
-	} else if s.new.Custom {
-		// Invoke the Update RPC function for this provider:
-		prov, err := getProvider(s)
-		if err != nil {
-			return resource.StatusOK, err
-		}
-		// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
-		news := s.old.All().Merge(s.new.Inputs)
-		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), news)
-		if upderr != nil {
-			return rst, upderr
-		}
+	} else {
+		if s.new.Custom {
+			// Invoke the Update RPC function for this provider:
+			prov, err := getProvider(s)
+			if err != nil {
+				return resource.StatusOK, err
+			}
+			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
+			news := s.old.All().Merge(s.new.Inputs)
+			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), news)
+			if upderr != nil {
+				return rst, upderr
+			}
 
-		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.ID = s.old.ID
-		s.new.Outputs = outs
+			// Now copy any output state back in case the update triggered cascading updates to other properties.
+			s.new.ID = s.old.ID
+			s.new.Outputs = outs
+		}
 
 		// Mark the old state as having been processed, and add the new state.
 		s.iter.MarkStateSnapshot(s.old)

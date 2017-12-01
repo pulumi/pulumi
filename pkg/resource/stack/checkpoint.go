@@ -11,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -62,6 +63,20 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (tokens.QName,
 	var snap *deploy.Snapshot
 	name := chkpoint.Target
 	if latest := chkpoint.Latest; latest != nil {
+		// Unpack the versions.
+		manifest := deploy.Manifest{
+			Time:    latest.Manifest.Time,
+			Magic:   latest.Manifest.Magic,
+			Version: latest.Manifest.Version,
+		}
+		for _, plug := range latest.Manifest.Plugins {
+			manifest.Plugins = append(manifest.Plugins, plugin.Info{
+				Name:    plug.Name,
+				Type:    plug.Type,
+				Version: plug.Version,
+			})
+		}
+
 		// For every serialized resource vertex, create a ResourceDeployment out of it.
 		var resources []*resource.State
 		for _, res := range latest.Resources {
@@ -72,7 +87,7 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (tokens.QName,
 			resources = append(resources, desres)
 		}
 
-		snap = deploy.NewSnapshot(name, chkpoint.Latest.Time, resources)
+		snap = deploy.NewSnapshot(name, manifest, resources)
 	}
 
 	return name, chkpoint.Config, snap, nil

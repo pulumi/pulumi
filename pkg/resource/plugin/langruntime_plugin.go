@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 const LanguagePluginPrefix = "pulumi-langhost-"
@@ -18,7 +19,7 @@ type langhost struct {
 	ctx     *Context
 	runtime string
 	plug    *plugin
-	client  lumirpc.LanguageRuntimeClient
+	client  pulumirpc.LanguageRuntimeClient
 }
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
@@ -26,7 +27,7 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
 	// Go ahead and attempt to load the plugin from the PATH.
 	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, "nodejs", []string{monitorAddr, host.ServerAddr()})
+	plug, err := newPlugin(ctx, srvexe, runtime, []string{monitorAddr, host.ServerAddr()})
 	if err != nil {
 		return nil, err
 	} else if plug == nil {
@@ -37,7 +38,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr str
 		ctx:     ctx,
 		runtime: runtime,
 		plug:    plug,
-		client:  lumirpc.NewLanguageRuntimeClient(plug.Conn),
+		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
 	}, nil
 }
 
@@ -53,7 +54,7 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 	for k, v := range info.Config {
 		config[string(k)] = v
 	}
-	resp, err := h.client.Run(h.ctx.Request(), &lumirpc.RunRequest{
+	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
 		Pwd:      info.Pwd,
 		Program:  info.Program,
 		Args:     info.Args,
@@ -73,6 +74,21 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 	glog.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
 		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
 	return progerr, nil
+}
+
+// GetPluginInfo returns this plugin's information.
+func (h *langhost) GetPluginInfo() (Info, error) {
+	glog.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
+	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		glog.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, err)
+		return Info{}, err
+	}
+	return Info{
+		Name:    h.plug.Bin,
+		Type:    LanguageType,
+		Version: resp.Version,
+	}, nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.

@@ -49,7 +49,7 @@ func (b *localPulumiBackend) GetStacks() ([]stackSummary, error) {
 		// Ignore errors, just leave display settings as "n/a".
 		_, _, snapshot, _, err := getStack(stack)
 		if err == nil && snapshot != nil {
-			summary.LastDeploy = snapshot.Time.String()
+			summary.LastDeploy = snapshot.Manifest.Time.String()
 			summary.ResourceCount = strconv.Itoa(len(snapshot.Resources))
 		}
 
