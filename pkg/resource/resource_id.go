@@ -4,7 +4,6 @@ package resource
 
 import (
 	cryptorand "crypto/rand"
-	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 
@@ -47,23 +46,20 @@ func MaybeID(s *string) *ID {
 	return ret
 }
 
-// NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given
-// optional prefix and the total length is capped to the maxlen. If there isn't enough room for the
-// prefix and hte amount of randomness asked for, an error will be returned.
-func NewUniqueHex(prefix string, maxlen, randlen int) (string, error) {
-	if randlen == -1 {
-		randlen = sha1.Size // default to SHA1 size.
-	}
+// NewUniqueHex generates a new "random" hex string for use by resource providers. It will take
+// the prefix and add 8 random chars to it.  If this is greater in length than maxlen an error
+// will be returned.
+func NewUniqueHex(prefix string, maxlen int) (string, error) {
+	const randChars = 8
 
 	if maxlen != -1 {
 		// Each byte of randomness will create two hex chars.
-		randChars := randlen * 2
 		if len(prefix)+randChars > maxlen {
 			return "", fmt.Errorf("Name '%s' is longer than maximum length %v", prefix, maxlen-randChars)
 		}
 	}
 
-	bs := make([]byte, randlen)
+	bs := make([]byte, randChars/2)
 	n, err := cryptorand.Read(bs)
 	contract.Assert(err == nil)
 	contract.Assert(n == len(bs))
@@ -75,8 +71,8 @@ func NewUniqueHex(prefix string, maxlen, randlen int) (string, error) {
 // NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given
 // optional prefix and the total length is capped to the maxlen.  Note that capping to maxlen
 // necessarily increases the risk of collisions.
-func NewUniqueHexID(prefix string, maxlen, randlen int) (ID, error) {
-	u, err := NewUniqueHex(prefix, maxlen, randlen)
+func NewUniqueHexID(prefix string, maxlen int) (ID, error) {
+	u, err := NewUniqueHex(prefix, maxlen)
 	if err != nil {
 		return "", err
 	}
