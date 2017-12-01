@@ -11,6 +11,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
+var plugin_pb = require('./plugin_pb.js');
+var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.exportSymbol('proto.pulumirpc.RunRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RunResponse', null, global);
 

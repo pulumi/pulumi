@@ -2,6 +2,8 @@
 
 syntax = "proto3";
 
+import "plugin.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
 package pulumirpc;
@@ -11,6 +13,8 @@ package pulumirpc;
 service Analyzer {
     // Analyze analyzes a single resource object, and returns any errors that it finds.
     rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
+    // GetPluginInfo returns generic information about this plugin, like its version.
+    rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
 
 message AnalyzeRequest {
@@ -26,4 +30,3 @@ message AnalyzeFailure {
     string property = 1; // the property that the analyzer rejected (or "" if general).
     string reason = 2;   // the reason that the analyzer rejected the request.
 }
-

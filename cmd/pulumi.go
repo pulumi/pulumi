@@ -30,7 +30,7 @@ func init() {
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd(version string) *cobra.Command {
+func NewPulumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var tracing string
@@ -69,7 +69,7 @@ func NewPulumiCmd(version string) *cobra.Command {
 	cmd.AddCommand(newStackCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newUpdateCmd())
-	cmd.AddCommand(newVersionCmd(version))
+	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newLogsCmd())
 

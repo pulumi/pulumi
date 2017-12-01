@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 const AnalyzerPluginPrefix = "pulumi-analyzer-"
@@ -20,7 +21,7 @@ type analyzer struct {
 	ctx    *Context
 	name   tokens.QName
 	plug   *plugin
-	client lumirpc.AnalyzerClient
+	client pulumirpc.AnalyzerClient
 }
 
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
@@ -39,7 +40,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 		ctx:    ctx,
 		name:   name,
 		plug:   plug,
-		client: lumirpc.NewAnalyzerClient(plug.Conn),
+		client: pulumirpc.NewAnalyzerClient(plug.Conn),
 	}, nil
 }
 
@@ -53,7 +54,7 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 		return nil, err
 	}
 
-	resp, err := a.client.Analyze(a.ctx.Request(), &lumirpc.AnalyzeRequest{
+	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Type:       string(t),
 		Properties: mprops,
 	})
@@ -71,6 +72,21 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 	}
 	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,...) success: failures=#%v", a.name, t, len(failures))
 	return failures, nil
+}
+
+// GetPluginInfo returns this plugin's information.
+func (a *analyzer) GetPluginInfo() (Info, error) {
+	glog.V(7).Infof("analyzer[%v].GetPluginInfo() executing", a.name)
+	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		glog.V(7).Infof("analyzer[%v].GetPluginInfo() failed: err=%v", a.name, err)
+		return Info{}, err
+	}
+	return Info{
+		Name:    a.plug.Bin,
+		Type:    AnalyzerType,
+		Version: resp.Version,
+	}, nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.

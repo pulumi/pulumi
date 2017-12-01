@@ -1,6 +1,6 @@
 {
     "name": "pulumi",
-    "version": "0.6.1",
+    "version": "${VERSION}",
     "description": "Pulumi's Node.js SDK",
     "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
     "devDependencies": {

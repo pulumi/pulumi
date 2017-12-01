@@ -4,10 +4,12 @@ import * as childprocess from "child_process";
 import * as os from "os";
 import * as path from "path";
 import * as runtime from "../runtime";
+import { version } from "../version";
 
 const grpc = require("grpc");
 const langproto = require("../proto/language_pb.js");
 const langrpc = require("../proto/language_grpc_pb.js");
+const plugproto = require("../proto/plugin_pb.js");
 
 /**
  * monitorAddr is the current resource monitor address.
@@ -39,7 +41,10 @@ export function serveLanguageHost(monitor: string, engine?: string, tracing?: st
 
     // Now fire up the gRPC server and begin serving!
     const server = new grpc.Server();
-    server.addService(langrpc.LanguageRuntimeService, { run: runRPC });
+    server.addService(langrpc.LanguageRuntimeService, {
+        run: runRPC,
+        getPluginInfo: getPluginInfoRPC,
+    });
     const port: number = server.bind(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure());
 
     // Now we're done: the server is started, and gRPC keeps the even loop alive.
@@ -193,4 +198,13 @@ function stripEOL(data: string | Buffer): string {
         dataString = dataString.substring(0, eolIndex);
     }
     return dataString;
+}
+
+/**
+ * getPluginInfoRPC implements the RPC interface for plugin introspection.
+ */
+function getPluginInfoRPC(call: any, callback: any): void {
+    const resp = new plugproto.PluginInfo();
+    resp.setVersion(version);
+    callback(undefined, resp);
 }

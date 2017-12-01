@@ -7,7 +7,7 @@ package pulumirpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
+import google_protobuf "github.com/golang/protobuf/ptypes/empty"
 
 import (
 	context "golang.org/x/net/context"
@@ -88,7 +88,7 @@ const _ = grpc.SupportPackageIsVersion4
 
 type EngineClient interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
+	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
 }
 
 type engineClient struct {
@@ -99,8 +99,8 @@ func NewEngineClient(cc *grpc.ClientConn) EngineClient {
 	return &engineClient{cc}
 }
 
-func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
-	out := new(google_protobuf1.Empty)
+func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
+	out := new(google_protobuf.Empty)
 	err := grpc.Invoke(ctx, "/pulumirpc.Engine/Log", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.Cal
 
 type EngineServer interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(context.Context, *LogRequest) (*google_protobuf1.Empty, error)
+	Log(context.Context, *LogRequest) (*google_protobuf.Empty, error)
 }
 
 func RegisterEngineServer(s *grpc.Server, srv EngineServer) {
