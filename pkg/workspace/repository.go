@@ -24,6 +24,7 @@ func (r *Repository) Save() error {
 		return err
 	}
 
+	// nolint: gas
 	err = os.MkdirAll(r.Root, 0755)
 	if err != nil {
 		return err
@@ -36,7 +37,7 @@ func NewRepository(root string) *Repository {
 	return &Repository{Root: getDotPulumiDirectoryPath(root)}
 }
 
-var ErrNoRepository = errors.New("no repository")
+var ErrNoRepository = errors.New("no repository detected; did you forget to run 'pulumi init'?")
 
 func GetRepository(root string) (*Repository, error) {
 	dotPulumiPath := getDotPulumiDirectoryPath(root)

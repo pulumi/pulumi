@@ -38,8 +38,8 @@ func (p panicCrypter) DecryptValue(ciphertext string) (string, error) {
 	panic("attempt to decrypt value")
 }
 
-// symmetricCrypter encrypts and decrypts values using AES-256-GCM. The nonce is stored with the value itself as a pair of base64 values
-// separated by a colon and a version tag `v1` is prepended.
+// symmetricCrypter encrypts and decrypts values using AES-256-GCM. The nonce is stored with the value itself as a pair
+// of base64 values separated by a colon and a version tag `v1` is prepended.
 type symmetricCrypter struct {
 	key []byte
 }
@@ -47,7 +47,8 @@ type symmetricCrypter struct {
 func (s symmetricCrypter) EncryptValue(value string) (string, error) {
 	secret, nonce := encryptAES256GCGM(value, s.key)
 
-	return fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(nonce), base64.StdEncoding.EncodeToString(secret)), nil
+	return fmt.Sprintf("v1:%s:%s",
+		base64.StdEncoding.EncodeToString(nonce), base64.StdEncoding.EncodeToString(secret)), nil
 }
 
 func (s symmetricCrypter) DecryptValue(value string) (string, error) {
@@ -93,12 +94,10 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Val
 		return nil, err
 	}
 
-	key := keyFromPassPhrase(phrase, salt, aes256GCMKeyBytes)
-
+	key := keyFromPassphrase(phrase, salt, aes256GCMKeyBytes)
 	decrypter := symmetricCrypter{key: key}
 
 	decrypted, err := decrypter.DecryptValue(state[indexN(state, ":", 2)+1:])
-
 	if err != nil || decrypted != "pulumi" {
 		return nil, errors.New("incorrect passphrase")
 	}

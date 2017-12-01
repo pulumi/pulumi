@@ -24,6 +24,7 @@ func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts Destroy
 	if err != nil {
 		return err
 	}
+	defer info.Close()
 
 	return eng.deployLatest(info, deployOptions{
 		Destroy:  true,

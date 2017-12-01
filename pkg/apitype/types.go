@@ -1,14 +1,12 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
+// Package apitype contains the type definitions for JSON objects returned from the Pulumi Cloud
+// Console's REST API. Thes
 package apitype
 
 import (
 	"fmt"
-
-	"github.com/pulumi/pulumi/pkg/tokens"
 )
-
-/**
- * Go type declarations for REST objects returned from the Pulumi Console API.
- */
 
 // User represents a Pulumi user.
 type User struct {
@@ -31,32 +29,6 @@ func (err ErrorResponse) Error() string {
 	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
 }
 
-// CreateStackRequest defines the request body for creating a new Stack
-type CreateStackRequest struct {
-	CloudName string `json:"cloudName"`
-	StackName string `json:"stackName"`
-}
-
-// CreateStackResponse is the response from a create Stack request.
-type CreateStackResponse struct {
-	// The name of the cloud used if the default was sent.
-	CloudName string `json:"cloudName"`
-}
-
-// UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
-type UpdateProgramRequest struct {
-	// Base-64 encoded Zip archive of the program's root directory.
-	ProgramArchive string `json:"programArchive"`
-
-	// Configuration values.
-	Config map[tokens.ModuleMember]string `json:"config"`
-}
-
-// UpdateProgramResponse is the response type when updating a Pulumi program.
-type UpdateProgramResponse struct {
-	Version int `json:"version"`
-}
-
 // UpdateEventKind is an enum for the type of update events.
 type UpdateEventKind string
 
@@ -69,7 +41,7 @@ const (
 
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
 type UpdateEvent struct {
-	Index  int                    `json:"index"`
+	Index  string                 `json:"index"`
 	Kind   string                 `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`
 }
@@ -95,4 +67,16 @@ const (
 type UpdateResults struct {
 	Status string        `json:"status"`
 	Events []UpdateEvent `json:"events"`
+}
+
+// LogsResult is the JSON shape of responses to a Logs operation.
+type LogsResult struct {
+	Logs []LogEntry `json:"logs"`
+}
+
+// LogEntry is the individual entries in a JSON response to a Logs operation.
+type LogEntry struct {
+	ID        string `json:"id"`
+	Timestamp int64  `json:"timestamp"`
+	Message   string `json:"message"`
 }

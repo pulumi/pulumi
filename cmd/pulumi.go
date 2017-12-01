@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
@@ -15,10 +16,24 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
+// pulumiBackend is the "backend" that we talk to. When the application launches, if the environment variable
+// PULUMI_API is set, we use a backend that targets the pulumi.com API, otherwise we use the local backend (i.e.
+// "fire and forget" mode).
+var backend pulumiBackend
+
+func init() {
+	if usePulumiCloudCommands() {
+		backend = &pulumiCloudPulumiBackend{}
+	} else {
+		backend = &localPulumiBackend{}
+	}
+}
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd(version string) *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
+	var tracing string
 	var verbose int
 	var cwd string
 	cmd := &cobra.Command{
@@ -32,15 +47,18 @@ func NewPulumiCmd(version string) *cobra.Command {
 			}
 
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
+			cmdutil.InitTracing("pulumi-cli", tracing)
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()
+			cmdutil.CloseTracing()
 		},
 	}
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
+	cmd.PersistentFlags().StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
@@ -51,10 +69,17 @@ func NewPulumiCmd(version string) *cobra.Command {
 	cmd.AddCommand(newUpdateCmd())
 	cmd.AddCommand(newVersionCmd(version))
 	cmd.AddCommand(newInitCmd())
+	cmd.AddCommand(newLogsCmd())
 
 	// Commands specific to the Pulumi Cloud Management Console.
 	cmd.AddCommand(newLoginCmd())
 	cmd.AddCommand(newLogoutCmd())
+
+	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
+	// set to true.
+	if isTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
+		cmd.AddCommand(newArchiveCommand())
+	}
 
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
 	// which calls flag.Parse under the hood doesn't yell at you.
@@ -71,7 +96,7 @@ func confirmPrompt(msg string, name string) bool {
 		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
 	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
 	reader := bufio.NewReader(os.Stdin)
-	if line, _ := reader.ReadString('\n'); line != name+"\n" {
+	if line, _ := reader.ReadString('\n'); strings.TrimSpace(line) != name {
 		fmt.Fprintf(os.Stderr, "Confirmation declined -- exiting without doing anything\n")
 		return false
 	}

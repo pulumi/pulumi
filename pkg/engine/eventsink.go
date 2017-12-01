@@ -167,7 +167,11 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 		buffer.WriteString(colors.SpecNote)
 	}
 
-	buffer.WriteString(fmt.Sprintf(d.Message, args...))
+	if d.Raw {
+		buffer.WriteString(d.Message)
+	} else {
+		buffer.WriteString(fmt.Sprintf(d.Message, args...))
+	}
 
 	if s.useColor(sev) {
 		buffer.WriteString(colors.Reset)

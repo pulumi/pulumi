@@ -8,8 +8,9 @@ Package pulumirpc is a generated protocol buffer package.
 It is generated from these files:
 	analyzer.proto
 	engine.proto
-	languages.proto
+	language.proto
 	provider.proto
+	resource.proto
 
 It has these top-level messages:
 	AnalyzeRequest
@@ -18,8 +19,6 @@ It has these top-level messages:
 	LogRequest
 	RunRequest
 	RunResponse
-	NewResourceRequest
-	NewResourceResponse
 	ConfigureRequest
 	InvokeRequest
 	InvokeResponse
@@ -33,6 +32,9 @@ It has these top-level messages:
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest
+	RegisterResourceRequest
+	RegisterResourceResponse
+	RegisterResourceOutputsRequest
 */
 package pulumirpc
 

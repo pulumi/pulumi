@@ -9,6 +9,11 @@ language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
+    - export PULUMI_ROOT=/opt/pulumi
+    # on OSX, /opt/ is not writeable by normal users, so we create /opt/pulumi as root and take ownership of it
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then sudo mkdir /opt/pulumi && sudo chown $USER /opt/pulumi; fi
+    # Travis only fetches 50 commits by default, and we want them all so we can do git describe --tags
+    - git fetch --unshallow
     # Dep for Go dependency management.
     - go get -v github.com/golang/dep/cmd/dep
     # Gometalinter for good Go linting/hygiene.
@@ -21,20 +26,19 @@ before_install:
     # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
     - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.2.1
     - export PATH=$HOME/.yarn/bin:$PATH
+    - export PIP=pip
+    # On OSX, the place pip installs user commands to is not on the $PATH and also pip is called pip2.7
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; export PIP=pip2.7; fi
     # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
-    - pip install --upgrade --user awscli
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; fi
+    - $PIP install --upgrade --user awscli
 cache:
     yarn: true
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
-    - dep ensure -v
-before_script:
-    - export PATH=$TRAVIS_BUILD_DIR/sdk/nodejs/bin:$PATH
+    - make ensure
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
 notifications:
-  slack:
-    secure: tPhYdqclnOhFTiKhLn0EqY4/UhJ30c3SFRKHTMPYFfYflCQOyrIARYrzlm+oEOBISw/oNP0wR1LxawhLC2KfDb0ST9Zph8wKyQ8dujk9jXGACuuRic1n/IU9yiu2grZQqcwlieLN6IvGvK+736D2ZxhcjUF5ZwORkpe9jl+nr65NzWH5H+pr4jVWXvYddB2gJ/49i+COydfbaRJ+6O3JORqmSP2VA4CtrArl0L/uDT0osvBwJkeoTSzKjkPWZUwI3ZlGOCSGe+6i5hto6WOzUnU74UgNVZ6dCUOKJrmu146DDzTYB7g4xTkiBi8W5jEo7E6PRqAA6/zGGzUp0J8AMmKcrYnmBf3ALaAIzwiQAFwn9m4V3cKEnnfwzN+SrrmrA3KpwWuj2PNS0UEaxFr35Lb7NNORibmBJi5gj9q138C+b9uD5MQ3poq0PpXG+ZPYTQU1QZODsxcHpR3OyyI89OXBugrP9CTcYpknUgPmiAJgOQn+7H+Xcmme3CB9G5292hC5McZZtyxUAoNwAtg316bXSWWH9MkFRmjTWt7lRGZZ99T1TO/iG0DntyCWxy8lHIbYvCdbY5oTN3WMN93NFrmFMiZJcmmV79meMe/6LNLWVIWVaTXZSpS8IflRmVFp1twveSh4i1+mogh8CsMs2Lqp2Ca7HdakLtRBxHzcH/4=
+    webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
 

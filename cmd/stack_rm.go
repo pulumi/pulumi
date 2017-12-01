@@ -18,37 +18,30 @@ func newStackRmCmd() *cobra.Command {
 	var force bool
 	var cmd = &cobra.Command{
 		Use:   "rm <stack>",
+		Args:  cmdutil.ExactArgs(1),
 		Short: "Remove an stack and its configuration",
 		Long: "Remove an stack and its configuration\n" +
 			"\n" +
 			"This command removes an stack and its configuration state.  Please refer to the\n" +
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
-			"After this command completes, the stack will no longer be available for deployments.",
+			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-
-			if len(args) == 0 || args[0] == "" {
-				return errors.Errorf("missing required stack name")
-			}
-
 			stackName := tokens.QName(args[0])
 
 			// Ensure the user really wants to do this.
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' stack!", stackName.String()) {
 
-				name, _, snapshot, err := getStack(stackName)
-				if err != nil {
+				err := backend.RemoveStack(stackName, force)
+				if err == errHasResources {
+					return errors.Errorf(
+						"'%v' still has resources; removal rejected; pass --force to override", stackName)
+				} else if err != nil {
 					return err
 				}
 
-				// Don't remove stacks that still have resources.
-				if !force && snapshot != nil && len(snapshot.Resources) > 0 {
-					return errors.Errorf(
-						"'%v' still has resources; removal rejected; pass --force to override", stackName)
-				}
-
-				err = removeStack(name)
+				err = setCurrentStack(tokens.QName(""))
 				if err != nil {
 					return err
 				}

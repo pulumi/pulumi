@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -21,7 +20,8 @@ func newPreviewCmd() *cobra.Command {
 	var summary bool
 	var cmd = &cobra.Command{
 		Use:        "preview",
-		SuggestFor: []string{"plan"},
+		Aliases:    []string{"pre"},
+		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to an stack's resources",
 		Long: "Show a preview of updates an stack's resources\n" +
 			"\n" +
@@ -34,49 +34,21 @@ func newPreviewCmd() *cobra.Command {
 			"\n" +
 			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
 			"use a different directory.",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack)
+			stackName, err := explicitOrCurrent(stack, backend)
 			if err != nil {
 				return err
 			}
 
-			cfg, err := getConfiguration(stackName)
-			if err != nil {
-				return err
-			}
-
-			var decrypter config.ValueDecrypter = panicCrypter{}
-
-			if hasSecureValue(cfg) {
-				decrypter, err = getSymmetricCrypter()
-				if err != nil {
-					return err
-				}
-			}
-
-			localProvider := localStackProvider{decrypter: decrypter}
-			pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
-
-			events := make(chan engine.Event)
-			done := make(chan bool)
-
-			go displayEvents(events, done, debug)
-
-			if err = pulumiEngine.Preview(stackName, events, engine.PreviewOptions{
+			return backend.Preview(stackName, debug, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-			}); err != nil {
-				return err
-			}
-
-			<-done
-			close(events)
-			close(done)
-			return nil
+			})
 		}),
 	}
 

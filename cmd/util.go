@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bufio"
 	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -43,13 +44,31 @@ func newWorkspace() (workspace.W, error) {
 
 // explicitOrCurrent returns an stack name after ensuring the stack exists. When a empty
 // stack name is passed, the "current" ambient stack is returned
-func explicitOrCurrent(name string) (tokens.QName, error) {
-	if name == "" {
-		return getCurrentStack()
+func explicitOrCurrent(name string, backend pulumiBackend) (tokens.QName, error) {
+	stackName := tokens.QName(name)
+
+	if stackName == "" {
+		curStack, err := getCurrentStack()
+		if err != nil {
+			return "", err
+		}
+
+		stackName = curStack
 	}
 
-	_, _, _, err := getStack(tokens.QName(name))
-	return tokens.QName(name), err
+	// validate it's a stack the backend knows about
+	stacks, err := backend.GetStacks()
+	if err != nil {
+		return "", err
+	}
+
+	for _, stack := range stacks {
+		if stack.Name == stackName {
+			return stackName, nil
+		}
+	}
+
+	return "", errors.Errorf("no stack named '%v' found", stackName)
 }
 
 // getCurrentStack reads the current stack.
@@ -66,14 +85,8 @@ func getCurrentStack() (tokens.QName, error) {
 	return stack, nil
 }
 
-// setCurrentStack changes the current stack to the given stack name, issuing an error if it doesn't exist.
-func setCurrentStack(name tokens.QName, verify bool) error {
-	if verify {
-		if _, _, _, err := getStack(name); err != nil {
-			return err
-		}
-	}
-
+// setCurrentStack changes the current stack to the given stack name.
+func setCurrentStack(name tokens.QName) error {
 	// Switch the current workspace to that stack.
 	w, err := newWorkspace()
 	if err != nil {
@@ -114,7 +127,7 @@ Outer:
 			if payload.UseColor {
 				msg = colors.ColorizeText(msg)
 			}
-			fmt.Fprintf(out, msg)
+			fmt.Fprint(out, msg)
 		default:
 			contract.Failf("unknown event type '%s'", event.Type)
 		}
@@ -167,11 +180,24 @@ func readConsoleNoEchoWithPrompt(prompt string) (string, error) {
 	return readConsoleNoEcho()
 }
 
-func readPassPhrase(prompt string) (string, error) {
-	if phrase, has := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); has {
-		return phrase, nil
+func readConsole(prompt string) (string, error) {
+	if prompt != "" {
+		fmt.Printf("%s: ", prompt)
 	}
 
+	reader := bufio.NewReader(os.Stdin)
+	raw, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(raw), nil
+}
+
+func readPassphrase(prompt string) (string, error) {
+	if phrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE"); phrase != "" {
+		return phrase, nil
+	}
 	return readConsoleNoEchoWithPrompt(prompt)
 }
 
@@ -182,7 +208,8 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	}
 
 	if pkg.EncryptionSalt != "" {
-		phrase, phraseErr := readPassPhrase("passphrase")
+		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
 		if phraseErr != nil {
 			return nil, phraseErr
 		}
@@ -190,13 +217,12 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 		return symmetricCrypterFromPhraseAndState(phrase, pkg.EncryptionSalt)
 	}
 
-	phrase, err := readPassPhrase("passphrase")
+	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets")
 	if err != nil {
 		return nil, err
-
 	}
 
-	confirm, err := readPassPhrase("passphrase (confirm)")
+	confirm, err := readPassphrase("Re-enter your passphrase to confirm")
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +236,7 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	_, err = cryptorand.Read(salt)
 	contract.Assertf(err == nil, "could not read from system random")
 
-	c := symmetricCrypter{key: keyFromPassPhrase(phrase, salt, aes256GCMKeyBytes)}
+	c := symmetricCrypter{key: keyFromPassphrase(phrase, salt, aes256GCMKeyBytes)}
 
 	// Encrypt a message and store it with the salt so we can test if the password is correct later
 	msg, err := c.EncryptValue("pulumi")
@@ -226,7 +252,7 @@ func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	return c, nil
 }
 
-func keyFromPassPhrase(phrase string, salt []byte, keyLength int) []byte {
+func keyFromPassphrase(phrase string, salt []byte, keyLength int) []byte {
 	// 1,000,000 iterations was chosen because it took a little over a second on an i7-7700HQ Quad Core procesor
 	return pbkdf2.Key([]byte(phrase), salt, 1000000, keyLength, sha256.New)
 }

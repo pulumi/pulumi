@@ -6,8 +6,8 @@ import * as path from "path";
 import * as runtime from "../runtime";
 
 const grpc = require("grpc");
-const langproto = require("../proto/languages_pb.js");
-const langrpc = require("../proto/languages_grpc_pb.js");
+const langproto = require("../proto/language_pb.js");
+const langrpc = require("../proto/language_grpc_pb.js");
 
 /**
  * monitorAddr is the current resource monitor address.
@@ -17,16 +17,25 @@ let monitorAddr: string | undefined;
  * engineAddr is the current resource engine address, if any.
  */
 let engineAddr: string | undefined;
+/**
+ * tracingUrl is the current resource engine address, if any.
+ */
+let tracingUrl: string | undefined;
 
 /**
  * serveLanguageHost spawns a language host that connects to the resource monitor and listens on port.
  */
-export function serveLanguageHost(monitor: string, engine: string | undefined): { server: any, port: number } {
+export function serveLanguageHost(monitor: string, engine?: string, tracing?: string): { server: any, port: number } {
     if (monitorAddr) {
         throw new Error("Already connected to a resource monitor; cannot serve two hosts in one process");
     }
     monitorAddr = monitor;
     engineAddr = engine;
+    tracingUrl = tracing;
+
+    // TODO[pulumi/pulumi#545]: Wire up to OpenTracing. Automatic tracing of gRPC calls themselves is pending
+    // https://github.com/grpc-ecosystem/grpc-opentracing/issues/11 which is pending
+    // https://github.com/grpc/grpc-node/pull/59.
 
     // Now fire up the gRPC server and begin serving!
     const server = new grpc.Server();
@@ -108,6 +117,12 @@ function runRPC(call: any, callback: any): void {
         if (engineAddr) {
             args.push("--engine");
             args.push(engineAddr);
+        }
+
+        // Push the tracing url, if there is one.
+        if (tracingUrl) {
+            args.push("--tracing");
+            args.push(tracingUrl);
         }
 
         // Now get a path to the program.

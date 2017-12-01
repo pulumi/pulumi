@@ -12,16 +12,16 @@ type Goal struct {
 	Name       tokens.QName // the name for the resource's URN.
 	Custom     bool         // true if this resource is custom, managed by a plugin.
 	Properties PropertyMap  // the resource's property state.
-	Children   []URN        // an optional list of child resource URNs.
+	Parent     URN          // an optional parent URN for this resource.
 }
 
 // NewGoal allocates a new resource goal state.
-func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap, children []URN) *Goal {
+func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap, parent URN) *Goal {
 	return &Goal{
 		Type:       t,
 		Name:       name,
 		Custom:     custom,
 		Properties: props,
-		Children:   children,
+		Parent:     parent,
 	}
 }

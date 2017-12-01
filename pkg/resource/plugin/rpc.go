@@ -17,7 +17,8 @@ import (
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
 	SkipNulls          bool // true to skip nulls altogether in the resulting map.
-	AllowUnknowns      bool // true if we are allowing unknown values (otherwise an error results).
+	KeepUnknowns       bool // true if we are keeping unknown values (otherwise we skip them).
+	ElideAssetContents bool // true if we are eliding the contents of assets.
 	ComputeAssetHashes bool // true if we are computing missing asset hashes on the fly.
 }
 
@@ -59,8 +60,9 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 			m, err := MarshalPropertyValue(v, opts)
 			if err != nil {
 				return nil, err
+			} else if m != nil {
+				fields[string(key)] = m
 			}
-			fields[string(key)] = m
 		}
 	}
 	return &structpb.Struct{
@@ -111,19 +113,17 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		}
 		return MarshalStruct(obj, opts), nil
 	} else if v.IsComputed() {
-		elem := v.ComputedValue().Element
-		if opts.AllowUnknowns {
-			return marshalUnknownProperty(elem, opts), nil
+		if opts.KeepUnknowns {
+			return marshalUnknownProperty(v.ComputedValue().Element, opts), nil
 		}
-		return nil, errors.Errorf("unpexected computed property during marshaling: %v", elem)
+		return nil, nil // return nil and the caller will ignore it.
 	} else if v.IsOutput() {
 		// Note that at the moment we don't differentiate between computed and output properties on the wire.  As
 		// a result, they will show up as computed on the other end.  This distinction isn't currently interesting.
-		elem := v.ComputedValue().Element
-		if opts.AllowUnknowns {
+		if opts.KeepUnknowns {
 			return marshalUnknownProperty(v.OutputValue().Element, opts), nil
 		}
-		return nil, errors.Errorf("unexpected output property during marshaling: %v", elem)
+		return nil, nil // return nil and the caller will ignore it.
 	}
 
 	contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
@@ -184,12 +184,13 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 		v, err := UnmarshalPropertyValue(props.Fields[key], opts)
 		if err != nil {
 			return nil, err
-		}
-		glog.V(9).Infof("Unmarshaling property for RPC: %v=%v", key, v)
-		if opts.SkipNulls && v.IsNull() {
-			glog.V(9).Infof("Skipping unmarshaling of %v (it is null)", key)
-		} else {
-			result[pk] = v
+		} else if v != nil {
+			glog.V(9).Infof("Unmarshaling property for RPC: %v=%v", key, v)
+			if opts.SkipNulls && v.IsNull() {
+				glog.V(9).Infof("Skipping unmarshaling of %v (it is null)", key)
+			} else {
+				result[pk] = *v
+			}
 		}
 	}
 
@@ -197,79 +198,87 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 }
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.
-func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (resource.PropertyValue, error) {
+func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.PropertyValue, error) {
 	contract.Assert(v != nil)
 
 	switch v.Kind.(type) {
 	case *structpb.Value_NullValue:
-		return resource.NewNullProperty(), nil
+		m := resource.NewNullProperty()
+		return &m, nil
 	case *structpb.Value_BoolValue:
-		return resource.NewBoolProperty(v.GetBoolValue()), nil
+		m := resource.NewBoolProperty(v.GetBoolValue())
+		return &m, nil
 	case *structpb.Value_NumberValue:
-		return resource.NewNumberProperty(v.GetNumberValue()), nil
+		m := resource.NewNumberProperty(v.GetNumberValue())
+		return &m, nil
 	case *structpb.Value_StringValue:
 		// If it's a string, it could be an unknown property, or just a regular string.
 		s := v.GetStringValue()
 		if unk, isunk := unmarshalUnknownPropertyValue(s, opts); isunk {
-			if opts.AllowUnknowns {
-				return unk, nil
+			if opts.KeepUnknowns {
+				return &unk, nil
 			}
-			return resource.PropertyValue{},
-				errors.Errorf("unexpected unknown property during unmarshaling: %v", unk)
+			return nil, nil
 		}
-		return resource.NewStringProperty(s), nil
+		m := resource.NewStringProperty(s)
+		return &m, nil
 	case *structpb.Value_ListValue:
 		// If there's already an array, prefer to swap elements within it.
 		var elems []resource.PropertyValue
 		lst := v.GetListValue()
 		for i, elem := range lst.GetValues() {
-			if i == len(elems) {
-				elems = append(elems, resource.PropertyValue{})
-			}
-			contract.Assert(len(elems) > i)
 			e, err := UnmarshalPropertyValue(elem, opts)
 			if err != nil {
-				return resource.PropertyValue{}, err
+				return nil, err
+			} else if e != nil {
+				if i == len(elems) {
+					elems = append(elems, *e)
+				} else {
+					elems[i] = *e
+				}
 			}
-			elems[i] = e
 		}
-		return resource.NewArrayProperty(elems), nil
+		m := resource.NewArrayProperty(elems)
+		return &m, nil
 	case *structpb.Value_StructValue:
 		// Start by unmarshaling.
 		obj, err := UnmarshalProperties(v.GetStructValue(), opts)
 		if err != nil {
-			return resource.PropertyValue{}, err
+			return nil, err
 		}
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
 		objmap := obj.Mappable()
 		asset, isasset, err := resource.DeserializeAsset(objmap)
 		if err != nil {
-			return resource.PropertyValue{}, err
+			return nil, err
 		} else if isasset {
 			if opts.ComputeAssetHashes {
 				if err = asset.EnsureHash(); err != nil {
-					return resource.PropertyValue{}, errors.Wrapf(err, "failed to compute asset hash")
+					return nil, errors.Wrapf(err, "failed to compute asset hash")
 				}
 			}
-			return resource.NewAssetProperty(asset), nil
+			m := resource.NewAssetProperty(asset)
+			return &m, nil
 		}
 		archive, isarchive, err := resource.DeserializeArchive(objmap)
 		if err != nil {
-			return resource.PropertyValue{}, err
+			return nil, err
 		} else if isarchive {
 			if opts.ComputeAssetHashes {
 				if err = archive.EnsureHash(); err != nil {
-					return resource.PropertyValue{}, errors.Wrapf(err, "failed to compute archive hash")
+					return nil, errors.Wrapf(err, "failed to compute archive hash")
 				}
 			}
-			return resource.NewArchiveProperty(archive), nil
+			m := resource.NewArchiveProperty(archive)
+			return &m, nil
 		}
-		return resource.NewObjectProperty(obj), nil
+		m := resource.NewObjectProperty(obj)
+		return &m, nil
 
 	default:
 		contract.Failf("Unrecognized structpb value kind: %v", reflect.TypeOf(v.Kind))
-		return resource.PropertyValue{}, nil
+		return nil, nil
 	}
 }
 
@@ -328,10 +337,16 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
 func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
-	// Ensure a hash is present if needed.
-	if v.Hash == "" && opts.ComputeAssetHashes {
-		if err := v.EnsureHash(); err != nil {
-			return nil, errors.Wrapf(err, "failed to compute asset hash")
+	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
+	// Serialize the asset with only its hash (if present).
+	if opts.ElideAssetContents {
+		v = &resource.Asset{Hash: v.Hash}
+	} else {
+		// Ensure a hash is present if needed.
+		if v.Hash == "" && opts.ComputeAssetHashes {
+			if err := v.EnsureHash(); err != nil {
+				return nil, errors.Wrapf(err, "failed to compute asset hash")
+			}
 		}
 	}
 
@@ -343,10 +358,16 @@ func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, erro
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
 func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
-	// Ensure a hash is present if needed.
-	if v.Hash == "" && opts.ComputeAssetHashes {
-		if err := v.EnsureHash(); err != nil {
-			return nil, errors.Wrapf(err, "failed to compute archive hash")
+	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
+	// Serialize the asset with only its hash (if present).
+	if opts.ElideAssetContents {
+		v = &resource.Archive{Hash: v.Hash}
+	} else {
+		// Ensure a hash is present if needed.
+		if v.Hash == "" && opts.ComputeAssetHashes {
+			if err := v.EnsureHash(); err != nil {
+				return nil, errors.Wrapf(err, "failed to compute archive hash")
+			}
 		}
 	}
 

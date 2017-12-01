@@ -182,36 +182,45 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
-        resolve({ json: obj });
+        return resolve({ json: obj });
     }
-    else if (moduleName) {
+
+    if (moduleName) {
         // Serialize any value which was found as a requirable module name as a reference to the module
-        resolve({module: moduleName});
+        return resolve({module: moduleName});
     }
-    else if (obj instanceof Array) {
+
+    // tslint:disable-next-line:max-line-length
+    // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
+    if (obj instanceof Array ||
+        Object.prototype.toString.call(obj) === "[object Arguments]") {
+
         // Recursively serialize elements of an array.
         const arr: Promise<AsyncEnvironmentEntry>[] = [];
         for (const elem of obj) {
             arr.push(serializeCapturedObject(elem));
         }
-        resolve({ arr: arr });
+
+        return resolve({ arr: arr });
     }
-    else if (obj instanceof Function) {
+
+    if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
-        resolve({ closure: serializeClosureAsync(obj) });
+        return resolve({ closure: serializeClosureAsync(obj) });
     }
-    else if (obj instanceof Promise) {
+
+    if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
         obj.then((v) => serializeCapturedObjectAsync(v, resolve));
+        return;
     }
-    else {
-        // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
-        const env: AsyncEnvironment = {};
-        for (const key of Object.keys(obj)) {
-            env[key] = serializeCapturedObject(obj[key]);
-        }
-        resolve({ obj: env });
+
+    // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
+    const env: AsyncEnvironment = {};
+    for (const key of Object.keys(obj)) {
+        env[key] = serializeCapturedObject(obj[key]);
     }
+    resolve({ obj: env });
 }
 
 // These modules are built-in to Node.js, and are available via `require(...)`
@@ -245,7 +254,7 @@ function findRequirableModuleName(obj: any): string | undefined  {
         if (require.cache[path].exports === obj) {
             // Rewrite the path to be a local module reference relative to the
             // current working directory
-            const modPath = pathRelative(process.cwd(), path);
+            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
             return "./" + modPath;
         }
     }
@@ -426,10 +435,11 @@ class FreeVariableComputer {
             this.frees[v] = false;
         }
 
-        // If the function is not an arrow, then its `this` is also a
-        // function-scoped variable and should be removed.
+        // If the function is not an arrow function, then its `this` and `arguments` are also
+        // function-scoped variables and should be removed.
         if (!ts.isArrowFunction(node)) {
             this.frees["this"] = false;
+            this.frees["arguments"] = false;
         }
 
         // Restore the prior context and merge our free list with the previous one.
@@ -619,14 +629,20 @@ export function serializeJavaScriptText(c: Closure): string {
     const funcs = funcsForClosure.funcs;
     let text = "exports.handler = " + funcsForClosure.root + ";\n\n";
     for (const name of Object.keys(funcs)) {
+        const environment = funcs[name].env;
+        const thisCapture = environment.this;
+        const argumentsCapture = environment.arguments;
+
+        delete environment.this;
+        delete environment.arguments;
+
         text +=
             "function " + name + "() {\n" +
-            "  var _this;\n" +
-            "  with(" + envObjToString(funcs[name].env) + ") {\n" +
-            "    return (function() {\n\n" +
+            "  return (function() {\n" +
+            "    with(" + envObjToString(environment) + ") {\n\n" +
             "return " + funcs[name].code + "\n\n" +
-            "    }).apply(_this).apply(this, arguments);\n" +
-            "  }\n" +
+            "    }\n" +
+            "  }).apply(" + thisCapture + ", " + argumentsCapture + ").apply(this, arguments);\n" +
             "}\n" +
             "\n";
     }
@@ -810,13 +826,8 @@ class FuncsForClosure {
 function envObjToString(envObj: { [key: string]: string; }): string {
     let result = "";
     let first = true;
-    for (let key of Object.keys(envObj)) {
+    for (const key of Object.keys(envObj)) {
         const val = envObj[key];
-
-        // Rewrite references to `this` to the special name `_this`.  This will get rewritten to use `.apply` later.
-        if (key === "this") {
-            key = "_this";
-        }
 
         if (!first) {
             result += ", ";

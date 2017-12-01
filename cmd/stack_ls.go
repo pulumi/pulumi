@@ -4,13 +4,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strconv"
-
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/encoding"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 
@@ -23,6 +16,7 @@ func newStackLsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ls",
 		Short: "List all known stacks",
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			currentStack, err := getCurrentStack()
 			if err != nil {
@@ -31,75 +25,19 @@ func newStackLsCmd() *cobra.Command {
 				currentStack = tokens.QName("")
 			}
 
-			stacks, err := getStacks()
+			summaries, err := backend.GetStacks()
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT")
-			for _, stack := range stacks {
-				_, _, snapshot, err := getStack(stack)
-				if err != nil {
-					continue
+			for _, stack := range summaries {
+				if stack.Name == currentStack {
+					stack.Name += "*"
 				}
-
-				// Now print out the name, last deployment time (if any), and resources (if any).
-				lastDeploy := "n/a"
-				resourceCount := "n/a"
-				if snapshot != nil {
-					lastDeploy = snapshot.Time.String()
-					resourceCount = strconv.Itoa(len(snapshot.Resources))
-				}
-				display := stack.String()
-				if stack == currentStack {
-					display += "*" // fancify the current stack.
-				}
-				fmt.Printf("%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
+				fmt.Printf("%-20s %-48s %-12s\n", stack.Name, stack.LastDeploy, stack.ResourceCount)
 			}
-
 			return nil
 		}),
 	}
-}
-
-func getStacks() ([]tokens.QName, error) {
-	var stacks []tokens.QName
-
-	w, err := newWorkspace()
-	if err != nil {
-		return nil, err
-	}
-
-	// Read the stack directory.
-	path := w.StackPath("")
-
-	files, err := ioutil.ReadDir(path)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Errorf("could not read stacks: %v", err)
-	}
-
-	for _, file := range files {
-		// Ignore directories.
-		if file.IsDir() {
-			continue
-		}
-
-		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := file.Name()
-		ext := filepath.Ext(stackfn)
-		if _, has := encoding.Marshalers[ext]; !has {
-			continue
-		}
-
-		// Read in this stack's information.
-		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, err := getStack(name)
-		if err != nil {
-			continue // failure reading the stack information.
-		}
-
-		stacks = append(stacks, name)
-	}
-
-	return stacks, nil
 }

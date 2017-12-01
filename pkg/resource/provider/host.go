@@ -8,6 +8,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
@@ -19,7 +20,9 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+		rpcutil.OpenTracingClientInterceptor(),
+	))
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +38,7 @@ func (host *HostClient) Close() error {
 }
 
 // Log logs a global message, including errors and warnings.
-func (host *HostClient) Log(sev diag.Severity, msg string) error {
+func (host *HostClient) Log(context context.Context, sev diag.Severity, msg string) error {
 	var rpcsev lumirpc.LogSeverity
 	switch sev {
 	case diag.Debug:
@@ -49,7 +52,7 @@ func (host *HostClient) Log(sev diag.Severity, msg string) error {
 	default:
 		contract.Failf("Unrecognized log severity type: %v", sev)
 	}
-	_, err := host.client.Log(context.TODO(), &lumirpc.LogRequest{
+	_, err := host.client.Log(context, &lumirpc.LogRequest{
 		Severity: rpcsev,
 		Message:  msg,
 	})

@@ -18,7 +18,6 @@
     "files": [
         "index.ts",
         "config.ts",
-        "dynamic.ts",
         "errors.ts",
         "metadata.ts",
         "resource.ts",
@@ -26,6 +25,8 @@
         "asset/index.ts",
         "asset/asset.ts",
         "asset/archive.ts",
+
+        "dynamic/index.ts",
 
         "log/index.ts",
 
@@ -38,6 +39,7 @@
         "runtime/resource.ts",
         "runtime/rpc.ts",
         "runtime/settings.ts",
+        "runtime/stack.ts",
 
         "cmd/dynamic-provider/index.ts",
         "cmd/langhost/index.ts",

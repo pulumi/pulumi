@@ -20,22 +20,42 @@ type Source interface {
 	Iterate(opts Options) (SourceIterator, error)
 }
 
-// A SourceIterator enumerates the list of resources that a source has to offer.
+// A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
 	io.Closer
-	// Next returns the next resource from the source.  This object contains information produced by the iterator
-	// about a resource's state; it may be used to communicate the result of the ensuing planning or deployment
-	// operation.  Indeed, its Done function *must* be callled when done.  If it is nil, then the iterator has
-	// completed its job and no subsequent calls to Next should be made.
-	Next() (SourceGoal, error)
+	// Next returns the next event from the source.
+	Next() (SourceEvent, error)
 }
 
-// SourceGoal is an item returned from a source iterator which can be used to inspect input state, and
-// communicate back the final results after a plan or deployment operation has been performed.
-type SourceGoal interface {
-	// Resource reflects the goal state for the resource object that was allocated by the program.
-	Resource() *resource.Goal
-	// Done indicates that we are done with this resource, and provides the full state (ID, URN, and output properties)
-	// that resulted from the operation.  This *must* be called when the resource element is done with.
-	Done(state *resource.State, stable bool, stables []resource.PropertyKey)
+// SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source
+// program, and it is the responsibility of the engine to make it so.
+type SourceEvent interface {
+	event()
+}
+
+// RegisterResourceEvent is a step that asks the engine to provision a resource.
+type RegisterResourceEvent interface {
+	SourceEvent
+	// Goal returns the goal state for the resource object that was allocated by the program.
+	Goal() *resource.Goal
+	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
+	Done(result *RegisterResult)
+}
+
+// RegisterResult is the state of the resource after it has been registered.
+type RegisterResult struct {
+	State   *resource.State        // the resource state.
+	Stable  bool                   // if true, the resource state is stable and may be trusted.
+	Stables []resource.PropertyKey // an optional list of specific resource properties that are stable.
+}
+
+// RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
+type RegisterResourceOutputsEvent interface {
+	SourceEvent
+	// URN is the resource URN that this completion applies to.
+	URN() resource.URN
+	// Outputs returns a property map of output properties to add to a resource before completing.
+	Outputs() resource.PropertyMap
+	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
+	Done()
 }

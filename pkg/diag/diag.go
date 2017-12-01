@@ -9,6 +9,7 @@ type ID int
 type Diag struct {
 	ID      ID        // a unique identifier for this diagnostic.
 	Message string    // a human-friendly message for this diagnostic.
+	Raw     bool      // true if this diagnostic should not be formatted when displayed.
 	Doc     *Document // the document in which this diagnostic occurred.
 	Loc     *Location // the document location at which this diagnostic occurred.
 }
@@ -16,6 +17,12 @@ type Diag struct {
 // Message returns an anonymous diagnostic message without any source or ID information.
 func Message(msg string) *Diag {
 	return &Diag{Message: msg}
+}
+
+// RawMessage returns an anonymous diagnostic message without any source or ID information that will not be rendered
+// with Sprintf.
+func RawMessage(msg string) *Diag {
+	return &Diag{Message: msg, Raw: true}
 }
 
 // Diagable can be used to determine a diagnostic's position.

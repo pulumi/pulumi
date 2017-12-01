@@ -3,8 +3,10 @@
 package examples
 
 import (
+	"bytes"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,21 +20,27 @@ func TestExamples(t *testing.T) {
 	if !assert.NoError(t, err, "expected a valid working directory: %v", err) {
 		return
 	}
-	examples := []integration.ProgramTestOptions{
-		{
-			Dir:          path.Join(cwd, "minimal"),
-			Dependencies: []string{"pulumi"},
-			Config: map[string]string{
-				"name": "Pulumi",
-			},
-			Secrets: map[string]string{
-				"secret": "this is my secret message",
-			},
-			ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
-				// Simple runtime validation that just ensures the checkpoint was written and read.
-				assert.Equal(t, integration.TestStackName, checkpoint.Target)
-			},
+
+	var minimal integration.ProgramTestOptions
+	minimal = integration.ProgramTestOptions{
+		Dir:          path.Join(cwd, "minimal"),
+		Dependencies: []string{"pulumi"},
+		Config: map[string]string{
+			"name": "Pulumi",
 		},
+		Secrets: map[string]string{
+			"secret": "this is my secret message",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+			// Simple runtime validation that just ensures the checkpoint was written and read.
+			assert.Equal(t, minimal.StackName(), checkpoint.Target)
+		},
+		ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
+	}
+
+	var formattableStdout, formattableStderr bytes.Buffer
+	examples := []integration.ProgramTestOptions{
+		minimal,
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/simple"),
 			Dependencies: []string{"pulumi"},
@@ -46,7 +54,19 @@ func TestExamples(t *testing.T) {
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
 			Dependencies: []string{"pulumi"},
 		},
+		{
+			Dir:          path.Join(cwd, "formattable"),
+			Dependencies: []string{"pulumi"},
+			ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
+				stdout := formattableStdout.String()
+				assert.False(t, strings.Contains(stdout, "MISSING"))
+			},
+			Stdout: &formattableStdout,
+			Stderr: &formattableStderr,
+		},
 	}
+
 	for _, ex := range examples {
 		example := ex
 		t.Run(example.Dir, func(t *testing.T) {

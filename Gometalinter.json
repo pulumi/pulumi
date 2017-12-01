@@ -20,6 +20,5 @@
         "vet",
         "vetshadow"
     ],
-    "LineLength": 140
+    "LineLength": 120
 }
-

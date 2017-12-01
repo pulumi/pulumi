@@ -13,17 +13,21 @@ import (
 )
 
 const ProjectFile = "Pulumi"           // the base name of a project file.
-const GitDir = ".git"                  // the name of the folder git uses to store information
-const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we store all state information here (like .git for git)
+const GitDir = ".git"                  // the name of the folder git uses to store information.
+const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we store state here (like .git for git).
 const StackDir = "stacks"              // the name of the directory that holds stack information for projects.
 const WorkspaceDir = "workspaces"      // the name of the directory that holds workspace information for projects.
 const RepoFile = "settings.json"       // the name of the file that holds information specific to the entire repository.
+const ConfigDir = "config"             // the name of the folder that holds local configuration information.
 const WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
+const IgnoreFile = ".pulumiignore"     // the name of the file that we use to control what to upload to the service.
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
 // Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
 func DetectPackage(path string) (string, error) {
-	return fsutil.WalkUp(path, isProject, func(s string) bool { return !isRepositoryFolder(filepath.Join(s, BookkeepingDir)) })
+	return fsutil.WalkUp(path, isProject, func(s string) bool {
+		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
+	})
 }
 
 func isGitFolder(path string) bool {
@@ -33,7 +37,13 @@ func isGitFolder(path string) bool {
 
 func isRepositoryFolder(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && info.IsDir() && info.Name() == BookkeepingDir
+	if err == nil && info.IsDir() && info.Name() == BookkeepingDir {
+		// make sure it has a settings.json file in it
+		info, err := os.Stat(filepath.Join(path, RepoFile))
+		return err == nil && !info.IsDir()
+	}
+
+	return false
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like

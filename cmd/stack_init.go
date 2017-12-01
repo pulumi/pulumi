@@ -3,28 +3,19 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/tokens"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func newStackInitCmd() *cobra.Command {
-	if usePulumiCloudCommands() {
-		return newCloudStackInitCmd()
-	}
-	return newFAFStackInitCmd()
-}
+	var cloud string
 
-func newFAFStackInitCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "init <stack>",
-		Args:  cobra.ExactArgs(1),
+		Args:  cmdutil.ExactArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
@@ -33,74 +24,20 @@ func newFAFStackInitCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName := tokens.QName(args[0])
 
-			if _, _, _, err := getStack(stackName); err == nil {
-				return fmt.Errorf("stack '%v' already exists", stackName)
-
-			}
-
-			err := saveStack(stackName, nil, nil)
-			if err != nil {
+			if err := backend.CreateStack(stackName, StackCreationOptions{Cloud: cloud}); err != nil {
 				return err
 			}
 
-			return setCurrentStack(stackName, false)
-		}),
-	}
-}
-
-func newCloudStackInitCmd() *cobra.Command {
-	var org string
-	var cloud string
-	var repo string
-	var project string
-
-	cmd := &cobra.Command{
-		Use:   "init <stack>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Create an empty stack with the given name, ready for updates",
-		Long: "Create an empty stack with the given name, ready for updates\n" +
-			"\n" +
-			"This command creates an empty stack with the given name.  It has no resources,\n" +
-			"but afterwards it can become the target of a deployment using the `update` command.",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := args[0]
-			createStackReq := apitype.CreateStackRequest{
-				CloudName: cloud,
-				StackName: stackName,
-			}
-
-			var createStackResp apitype.CreateStackResponse
-			path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", org, repo, project)
-			if err := pulumiRESTCall("POST", path, &createStackReq, &createStackResp); err != nil {
-				return err
-			}
-			fmt.Printf("Created Stack '%s' hosted in Cloud '%s'\n", stackName, createStackResp.CloudName)
-
-			stackQName := tokens.QName(stackName)
-			return setCurrentStack(stackQName, false)
+			return setCurrentStack(stackName)
 		}),
 	}
 
-	// "cloud" is not a persistent flag. If not set will use the "default" cloud for the organization.
-	cmd.PersistentFlags().StringVarP(
-		&cloud, "cloud", "c", "",
-		"Target cloud")
-
-	cmd.PersistentFlags().StringVarP(
-		&org, "organization", "o", "",
-		"Target organization")
-	cmd.PersistentFlags().StringVarP(
-		&repo, "repo", "r", "",
-		"Target Pulumi repo")
-	cmd.PersistentFlags().StringVarP(
-		&project, "project", "p", "",
-		"Target Pulumi project")
-
-	// We need all of these flags to be set. In the future we'll get some of these from the .pulumi folder, and have
-	// a meaningful default for others. So in practice users won't need to specify all of these. (Ideally none.)
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("organization"))
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("repo"))
-	contract.AssertNoError(cmd.MarkPersistentFlagRequired("project"))
+	// only support --cloud when the backend is Pulumi.com
+	if _, ok := backend.(*pulumiCloudPulumiBackend); ok {
+		cmd.PersistentFlags().StringVarP(
+			&cloud, "cloud", "c", "",
+			"Target cloud")
+	}
 
 	return cmd
 }

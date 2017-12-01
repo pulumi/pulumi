@@ -5,15 +5,14 @@
 import * as runtime from "./runtime";
 
 /**
- * getStack returns the current project name, or the empty string if there is none.
+ * getProject returns the current project name, or the empty string if there is none.
  */
 export function getProject(): string {
-    return runtime.options.project || "";
+    return runtime.options.project || "project";
 }
 /**
  * getStack returns the current stack name, or the empty string if there is none.
  */
 export function getStack(): string {
-    return runtime.options.stack || "";
+    return runtime.options.stack || "stack";
 }
-

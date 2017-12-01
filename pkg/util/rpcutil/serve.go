@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -33,7 +32,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (in
 	}
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(grpc.UnaryInterceptor(OpenTracingServerInterceptor()))
 	for _, register := range registers {
 		if err := register(srv); err != nil {
 			return port, nil, errors.Errorf("failed to register RPC handler: %v", err)

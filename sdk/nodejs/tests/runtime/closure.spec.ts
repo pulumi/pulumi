@@ -170,14 +170,62 @@ describe("closure", () => {
         expectText: `exports.handler = __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6;
 
 function __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6() {
-  var _this;
-  with({  }) {
-    return (function() {
+  return (function() {
+    with({  }) {
 
 return (function () { })
 
-    }).apply(_this).apply(this, arguments);
-  }
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+    });
+    cases.push({
+        title: "Function closure with this capture",
+        // tslint:disable-next-line
+        func: function () { console.log(this); },
+        expect: {
+            code: "(function () { console.log(this); })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e",
+        expectText: `exports.handler = __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e;
+
+function __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e() {
+  return (function() {
+    with({  }) {
+
+return (function () { console.log(this); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+    });
+
+    cases.push({
+        title: "Function closure with this and arguments capture",
+        // tslint:disable-next-line
+        func: function () { console.log(this + arguments); },
+        expect: {
+            code: "(function () { console.log(this + arguments); })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__05437ec790248221e1167f1da8e9a9ffbfe11ebf",
+        expectText: `exports.handler = __05437ec790248221e1167f1da8e9a9ffbfe11ebf;
+
+function __05437ec790248221e1167f1da8e9a9ffbfe11ebf() {
+  return (function() {
+    with({  }) {
+
+return (function () { console.log(this + arguments); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
 }
 
 `,
@@ -192,6 +240,118 @@ return (function () { })
             runtime: "nodejs",
         },
         closureHash: "__b135b11756da3f7aecaaa23a36898c0d6d2845ab",
+        expectText: `exports.handler = __b135b11756da3f7aecaaa23a36898c0d6d2845ab;
+
+function __b135b11756da3f7aecaaa23a36898c0d6d2845ab() {
+  return (function() {
+    with({  }) {
+
+return (() => { })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+    });
+    cases.push({
+        title: "Arrow closure with this capture",
+        // tslint:disable-next-line
+        func: () => { console.log(this); },
+        expect: {
+            code: "(() => { console.log(this); })",
+            environment: { "this": { "module": "./bin/tests/runtime/closure.spec.js" } },
+            runtime: "nodejs",
+        },
+        closureHash: "__7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8",
+        expectText: `exports.handler = __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8;
+
+function __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8() {
+  return (function() {
+    with({  }) {
+
+return (() => { console.log(this); })
+
+    }
+  }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
+}
+
+`,
+    });
+    cases.push({
+        title: "Arrow closure with this and arguments capture",
+        // tslint:disable-next-line
+        func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
+        expect: {
+            code: "(() => { console.log(this + arguments); })",
+            environment: {
+                this: { module: "./bin/tests/runtime/closure.spec.js" },
+                arguments: { arr: [{ json: 0 }, { json: 1 }] },
+            },
+            runtime: "nodejs",
+        },
+        closureHash: "__20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a",
+        expectText: `exports.handler = __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a;
+
+function __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a() {
+  return (function() {
+    with({  }) {
+
+return (() => { console.log(this + arguments); })
+
+    }
+  }).apply(require("./bin/tests/runtime/closure.spec.js"), [ 0, 1 ]).apply(this, arguments);
+}
+
+`,
+    });
+    cases.push({
+        title: "Arrow closure with this capture inside function closure",
+        // tslint:disable-next-line
+        func: function () { () => { console.log(this); } },
+        expect: {
+            code: "(function () { () => { console.log(this); }; })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__6668edd6db8c98baacaf1a227150aa18ce2ae872",
+        expectText: `exports.handler = __6668edd6db8c98baacaf1a227150aa18ce2ae872;
+
+function __6668edd6db8c98baacaf1a227150aa18ce2ae872() {
+  return (function() {
+    with({  }) {
+
+return (function () { () => { console.log(this); }; })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+    });
+    cases.push({
+        title: "Arrow closure with this and arguments capture inside function closure",
+        // tslint:disable-next-line
+        func: function () { () => { console.log(this + arguments); } },
+        expect: {
+            code: "(function () { () => { console.log(this + arguments); }; })",
+            environment: {},
+            runtime: "nodejs",
+        },
+        closureHash: "__de8ce937834140441c7413a7e97b67bda12d7205",
+        expectText: `exports.handler = __de8ce937834140441c7413a7e97b67bda12d7205;
+
+function __de8ce937834140441c7413a7e97b67bda12d7205() {
+  return (function() {
+    with({  }) {
+
+return (function () { () => { console.log(this + arguments); }; })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
     });
     cases.push({
         title: "Empty function closure w/ args",
@@ -342,24 +502,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let [nocap1 = cap1] = [];
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #1",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let [nocap1 = cap1] = [];
+                console.log(nocap1);
+            },
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let [nocap1 = cap1] = [];
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__cc9f19c19acef64729b266d4ca0b5ca8ba22b9a6",
+            closureHash: "__ef48a2e2962bd53acef1b2cda244ae8c72972c05",
         });
     }
     {
@@ -368,24 +533,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let {nocap1 = cap1} = {};
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #2",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    // tslint:disable-next-line
+    let {nocap1 = cap1} = {};
+    console.log(nocap1);
+},
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let { nocap1 = cap1 } = {};
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__c7fe4fd94a2ad6184ed066f022c481c32317e10a",
+            closureHash: "__b409f3bd837d513df07525bef43e57597154625e",
         });
     }
     {
@@ -394,24 +564,29 @@ return (function () { })
         // tslint:disable-next-line
         let cap1 = 100;
 
-        const functext = `(() => {
-    // cap1 is captured here.
-    // nocap1 introduces a new variable that shadows the outer one.
-    let {x: nocap1 = cap1} = {};
-    console.log(nocap1);
-})`;
         cases.push({
             title: "Complex capturing cases #3",
-            // tslint:disable-next-line
-            func: eval(functext),
+            func: () => {
+    // cap1 is captured here.
+    // nocap1 introduces a new variable that shadows the outer one.
+    // tslint:disable-next-line
+    let {x: nocap1 = cap1} = {};
+    console.log(nocap1);
+},
             expect: {
-                code: functext,
+                code: `(() => {
+                // cap1 is captured here.
+                // nocap1 introduces a new variable that shadows the outer one.
+                // tslint:disable-next-line
+                let { x: nocap1 = cap1 } = {};
+                console.log(nocap1);
+            })`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__3f863abc6928cccb4bdfe8c7ec4fdc6d7995121c",
+            closureHash: "__5fa215795194604118a7543ce20b8e273837ae79",
         });
     }
     cases.push({
@@ -462,13 +637,17 @@ return (function () { })
     cases.push({
         title: "Don't capture catch variables",
         // tslint:disable-next-line
-        func: eval(`() => { try { } catch (err) { console.log(err); } }`),
+        func: () => { try { } catch (err) { console.log(err); } },
         expect: {
-            code: `(() => { try { } catch (err) { console.log(err); } })`,
+            code:
+`(() => { try { }
+        catch (err) {
+            console.log(err);
+        } })`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__6b8e43947115e731ff7808be1ff6bf9b18aaa67d",
+        closureHash: "__040426f0dc90fa8f115c1a7ed52793515564fa98",
     });
 
     // Recursive function serialization.
@@ -482,17 +661,21 @@ return (function () { })
                 a: [ (a1: any, a2: any) => { console.log(a1 + a2); } ],
             },
         };
-        const functext = `(() => {
+        const func = () => {
     xcap.fff();
     xcap.ggg();
     xcap.zzz.a[0]("x", "y");
-})`;
+};
         cases.push({
             title: "Serializes recursive function captures",
             // tslint:disable-next-line
-            func: eval(functext),
+            func: func,
             expect: {
-                code: functext,
+                code: `(() => {
+            xcap.fff();
+            xcap.ggg();
+            xcap.zzz.a[0]("x", "y");
+        })`,
                 environment: {
                     xcap: {
                         obj: {
@@ -530,7 +713,7 @@ return (function () { })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__53324dfdeb155ad763635ace1384fa8e1d397e72",
+            closureHash: "__1b6ae6abb4d8b2676bccb50507a0276f5be90371",
         });
     }
 

@@ -4,13 +4,14 @@ set -o nounset -o errexit -o pipefail
 
 ROOT=$(dirname $0)/..
 PUBDIR=$(mktemp -du)
-GITVER=$(git rev-parse HEAD)
-PUBFILE=$(dirname ${PUBDIR})/${GITVER}.tgz
+GITHASH=$(git rev-parse HEAD)
+PUBFILE=$(dirname ${PUBDIR})/${GITHASH}.tgz
+VERSION=$(git describe --tags 2>/dev/null)
 
 # Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
 # Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
 BRANCH=${TRAVIS_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
-declare -a PUBTARGETS=(${GITVER} $(git describe --tags 2>/dev/null) ${BRANCH})
+declare -a PUBTARGETS=(${GITHASH} ${VERSION} ${BRANCH})
 
 # usage: run_go_build <path-to-package-to-build>
 function run_go_build() {
@@ -21,17 +22,21 @@ function run_go_build() {
     fi
 
     mkdir -p "${PUBDIR}/bin"
-    go build -o "${PUBDIR}/bin/${output_name}${bin_suffix}" "$1"
+    go build -ldflags "-X main.version=${VERSION}" -o "${PUBDIR}/bin/${output_name}${bin_suffix}" "$1"
 }
 
 # usage: copy_package <path-to-module> <module-name>
 copy_package() {
-    local MODULE_ROOT=${PUBDIR}/node_modules/${2}
+    local module_root=${PUBDIR}/node_modules/$2
 
-    mkdir -p "${MODULE_ROOT}"   
-    cp -R "${1}" "${MODULE_ROOT}/"
-    if [ -e "${MODULE_ROOT}/node_modules" ]; then
-        rm -rf "${MODULE_ROOT}/node_modules"
+    mkdir -p "${module_root}"
+    cp -R "$1" "${module_root}/"
+    cp "$1/../package.json" "${module_root}"
+    if [ -e "${module_root}/node_modules" ]; then
+        rm -rf "${module_root}/node_modules"
+    fi
+    if [ -e "${module_root}/tests" ]; then
+        rm -rf "${module_root}/tests"
     fi
 }
 
@@ -39,12 +44,9 @@ copy_package() {
 # Build binaries
 run_go_build "${ROOT}"
 
-# Copy over the langhost
-if [ "$(go env GOOS)" != "windows" ]; then
-    cp ${ROOT}/dist/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
-else
-    cp ${ROOT}/dist/sdk/nodejs/pulumi-langhost-nodejs.cmd ${PUBDIR}/bin/
-fi
+# Copy over the langhost and dynamic provider
+cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
+cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
 
 # Copy packages
 copy_package "${ROOT}/sdk/nodejs/bin/." "pulumi"

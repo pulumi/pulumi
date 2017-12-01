@@ -4,3 +4,5 @@
 coverage.cov
 *.coverprofile
 
+# Too much awesome to store in Git.
+.pulumi

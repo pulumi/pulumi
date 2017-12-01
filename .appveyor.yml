@@ -1,5 +1,5 @@
 version: 1.0.{build}
-image: Visual Studio 2015
+image: Visual Studio 2017
 configuration: Release
 platform: x64
 clone_folder: '%USERPROFILE%\go\src\github.com\pulumi\pulumi'

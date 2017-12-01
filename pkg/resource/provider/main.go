@@ -14,14 +14,21 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Tracing is the optional command line flag passed to this provider for configuring a  Zipkin-compatible tracing
+// endpoint
+var tracing string
+
 // Main is the typical entrypoint for a resource provider plugin.  Using it isn't required but can cut down
 // significantly on the amount of boilerplate necessary to fire up a new resource provider.
-func Main(provMaker func(*HostClient) (lumirpc.ResourceProviderServer, error)) error {
+func Main(name string, provMaker func(*HostClient) (lumirpc.ResourceProviderServer, error)) error {
+	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
+	flag.Parse()
+
 	// Initialize loggers before going any further.
 	cmdutil.InitLogging(false, 0, false)
+	cmdutil.InitTracing(name, tracing)
 
 	// Read the non-flags args and connect to the engine.
-	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
 		return errors.New("fatal: could not connect to host RPC; missing argument")

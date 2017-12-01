@@ -8,6 +8,7 @@
     <NodeVersion>6.10.2</NodeVersion>
     <NodeArch>x64</NodeArch>
     <TestParallelism>10</TestParallelism>
+    <MSVSVersion>2017</MSVSVersion>
   </PropertyGroup>
  
   <Target Name="EnsureGoDependencies">
@@ -40,7 +41,7 @@
           DependsOnTargets="EnsureNodeDependencies">
     <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
           WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version 2015 --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
           WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
     <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node.lib"
           DestinationFiles="$(NativeRuntimeModuleDirectory)\node_dev\$(NodeVersion)\$(NodeArch)\node.lib" />
@@ -48,7 +49,7 @@
 
   <Target Name="BuildNativeRuntimeModule"
           DependsOnTargets="ConfigureNativeRuntimeModule">
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version 2015 --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
           WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
   </Target>
 
@@ -124,7 +125,7 @@
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>
 
-    <Error Message="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
+    <Error Text="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
            Condition="$(WhereLangHostExitCode) != 0"/>
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
@@ -138,9 +139,11 @@
     <!-- Work around pulumi/pulumi#371 by killing all lingering node.exe processes. Yes, in the limit
          this may kill too much, but we assume for now folks hacking on pulumi on windows are not running
          additional node.exe processes -->
-    <Exec Command="taskkill /f /im node.exe" />
+    <Exec Command="taskkill /f /im node.exe"
+          IgnoreStandardErrorWarningFormat="true"
+          IgnoreExitCode="true" />
 
-    <Error Message="go test failed, exit code: $(GoTestExitCode)"
+    <Error Text="go test failed, exit code: $(GoTestExitCode)"
            Condition="'$(GoTestExitCode)' != '0'"/>
   </Target>
 

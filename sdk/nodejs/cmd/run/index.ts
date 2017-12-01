@@ -4,14 +4,14 @@
 
 import * as minimist from "minimist";
 import * as path from "path";
+import * as pulumi from "../../";
 import { RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
 const grpc = require("grpc");
 const engrpc = require("../../proto/engine_grpc_pb.js");
-const langproto = require("../../proto/languages_pb.js");
-const langrpc = require("../../proto/languages_grpc_pb.js");
+const resrpc = require("../../proto/resource_grpc_pb.js");
 
 function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
@@ -25,6 +25,7 @@ function usage(): void {
     console.error(`        --pwd=pwd           change the working directory before running the program`);
     console.error(`        --monitor=addr      the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
+    console.error(`        --tracing=url       a Zipkin-compatible endpoint to send tracing data to`);
     console.error(``);
     console.error(`    and [program] is a JavaScript program to run in Node.js, and [arg]... optional args to it.`);
 }
@@ -34,7 +35,7 @@ export function main(args: string[]): void {
     const config: {[key: string]: string} = {};
     const argv: minimist.ParsedArgs = minimist(args, {
         boolean: [ "dry-run" ],
-        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine" ],
+        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             if (arg.indexOf("-") === 0) {
                 console.error(`fatal: Unrecognized flag ${arg}`);
@@ -81,7 +82,7 @@ export function main(args: string[]): void {
     let monitor: Object | undefined;
     const monitorAddr: string | undefined = argv["monitor"];
     if (monitorAddr) {
-        monitor = new langrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
+        monitor = new resrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
     }
 
     // If there is an engine argument, connect to it too.
@@ -108,16 +109,9 @@ export function main(args: string[]): void {
         process.exit(-1);
     }
     let program: string = argv._[0];
-    if (program.indexOf(".") === 0) {
-        // If there was a pwd change, make this relative to it.
-        if (pwd) {
-            program = path.join(pwd, program);
-        }
-    } else if (program.indexOf("/") !== 0) {
-        // Neither absolute nor relative module, we refuse to execute it.
-        console.error(`fatal: Program path '${program}' must be an absolute or relative path to the program`);
-        usage();
-        process.exit(-1);
+    if (program.indexOf("/") !== 0) {
+        // If this isn't an absolute path, make it relative to the working directory.
+        program = path.join(process.cwd(), program);
     }
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
@@ -125,6 +119,7 @@ export function main(args: string[]): void {
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
     // Set up the process unhandled exception handler and the program exit handler.
+    let uncaught: Error | undefined;
     process.on("uncaughtException", (err: Error) => {
         // First, log the error.
         if (err instanceof RunError) {
@@ -133,19 +128,34 @@ export function main(args: string[]): void {
             log.error(err.message);
         }
         else {
-            console.log(`Running program '${program}' failed with an unhandled exception:`);
-            console.log(err);
+            log.error(`Running program '${program}' failed with an unhandled exception:`);
+            log.error(err);
         }
-        // And next, exit with a non-zero exit code.
-        process.exit(1);
+
+        // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
+        uncaught = err;
     });
 
-    process.on("exit", () => { runtime.disconnectSync(); });
+    process.on("exit", (code: number) => {
+        runtime.disconnectSync();
 
-    // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-    log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
-    require(program);
+        // If we don't already have an exit code, and we had an unhandled error, exit with a non-success.
+        if (code === 0 && uncaught) {
+            process.exit(1);
+        }
+    });
+
+    // Construct a `Stack` resource to represent the outputs of the program.
+    runtime.runInPulumiStack(() => {
+        // We run the program inside this context so that it adopts all resources.
+        //
+        // IDEA: This will miss any resources created on other turns of the event loop.  I think that's a fundamental
+        // problem with the current Component design though - not sure what else we could do here.
+        //
+        // Now go ahead and execute the code. The process will remain alive until the message loop empties.
+        log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+        return require(program);
+    });
 }
 
 main(process.argv.slice(2));
-

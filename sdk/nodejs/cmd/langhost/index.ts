@@ -7,7 +7,15 @@
 import * as minimist from "minimist";
 import * as runtime from "../../runtime";
 
-export function main(args: string[]): void {
+export function main(rawArgs: string[]): void {
+    // Parse command line flags
+    const argv: minimist.ParsedArgs = minimist(rawArgs, {
+        string: [ "tracing" ],
+    });
+
+    // Extract the real arguments containing the monitor and optional server addresses
+    const args = argv._.slice(2);
+
     // The program requires a single argument: the address of the RPC endpoint for the resource monitor.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
     if (args.length === 0) {
@@ -22,11 +30,11 @@ export function main(args: string[]): void {
     }
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
-    const { server, port } = runtime.serveLanguageHost(monitorAddr, serverAddr);
+    const { server, port } = runtime.serveLanguageHost(monitorAddr, serverAddr, argv["logging"]);
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
     console.log(port);
 }
 
-main(process.argv.slice(2));
+main(process.argv);
 

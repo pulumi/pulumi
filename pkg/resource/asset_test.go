@@ -113,7 +113,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "23f6c195eb154be262216cd97209f2dcc8a40038ac8ec18ca6218d3e3dfacd4e", archDes.Hash)
 	}
 	{
-		file, err := tempArchive("test")
+		file, err := tempArchive("test", false)
 		assert.Nil(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		arch, err := NewPathArchive(file)
@@ -128,7 +128,7 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", archDes.Hash)
 	}
 	{
-		file, err := tempArchive("test")
+		file, err := tempArchive("test", false)
 		assert.Nil(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		url := "file:///" + file
@@ -143,18 +143,68 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, url, archDes.URI)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", archDes.Hash)
 	}
+	{
+		file1, err := tempArchive("test", false)
+		assert.Nil(t, err)
+		defer func() { contract.IgnoreError(os.Remove(file1)) }()
+		file2, err := tempArchive("test2", false)
+		assert.Nil(t, err)
+		defer func() { contract.IgnoreError(os.Remove(file2)) }()
+		arch1, err := NewPathArchive(file1)
+		assert.Nil(t, err)
+		arch2, err := NewPathArchive(file2)
+		assert.Nil(t, err)
+		assert.True(t, arch1.Equals(arch2))
+		url := "file:///" + file1
+		arch3, err := NewURIArchive(url)
+		assert.Nil(t, err)
+		assert.True(t, arch1.Equals(arch3))
+	}
+	{
+		file, err := tempArchive("test", true)
+		assert.Nil(t, err)
+		arch1, err := NewPathArchive(file)
+		assert.Nil(t, err)
+		assert.Nil(t, arch1.EnsureHash())
+		url := "file:///" + file
+		arch2, err := NewURIArchive(url)
+		assert.Nil(t, err)
+		assert.Nil(t, arch2.EnsureHash())
+
+		assert.Nil(t, os.Truncate(file, 0))
+		arch3, err := NewPathArchive(file)
+		assert.Nil(t, err)
+		assert.Nil(t, arch3.EnsureHash())
+		assert.False(t, arch1.Equals(arch3))
+		arch4, err := NewURIArchive(url)
+		assert.Nil(t, err)
+		assert.Nil(t, arch4.EnsureHash())
+		assert.False(t, arch2.Equals(arch4))
+	}
 }
 
-func tempArchive(prefix string) (string, error) {
+func tempArchive(prefix string, fill bool) (string, error) {
 	for {
 		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32()))
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-		if !os.IsExist(err) {
-			if err != nil {
-				defer contract.IgnoreClose(f)
-				// write out an empty tar file.
+		switch {
+		case os.IsExist(err):
+			continue
+		case err != nil:
+			return "", err
+		default:
+			defer contract.IgnoreClose(f)
+
+			// write out a tar file. if `fill` is true, add a single empty file.
+			if fill {
 				w := tar.NewWriter(f)
-				contract.IgnoreClose(w)
+				defer contract.IgnoreClose(w)
+
+				err = w.WriteHeader(&tar.Header{
+					Name: "file",
+					Mode: 0600,
+					Size: 0,
+				})
 			}
 			return path, err
 		}
@@ -210,14 +260,40 @@ func TestArchiveZip(t *testing.T) {
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive) {
-	subs, err := arch.Read()
+	r, err := arch.Open()
 	assert.Nil(t, err)
+	defer func() {
+		assert.Nil(t, r.Close())
+	}()
+
+	subs := make(map[string]string)
+	for {
+		name, blob, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		assert.NotNil(t, blob)
+
+		// Check for duplicates
+		_, ok := subs[name]
+		assert.False(t, ok)
+
+		// Read the blob
+		var text bytes.Buffer
+		_, err = io.Copy(&text, blob)
+		assert.Nil(t, err)
+		err = blob.Close()
+		assert.Nil(t, err)
+
+		// Store its contents in subs
+		subs[name] = text.String()
+	}
 
 	assert.Equal(t, 3, len(subs))
 
 	lorem := subs["Lorem_ipsum.txt"]
-	assert.NotNil(t, lorem)
-	assertAssetBlobEquals(t, lorem,
+	assert.Equal(t, lorem,
 		`Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
 aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis
 aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
@@ -226,8 +302,7 @@ occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim 
 `)
 
 	butimust := subs["sub_dir/But_I_must"]
-	assert.NotNil(t, butimust)
-	assertAssetBlobEquals(t, butimust,
+	assert.Equal(t, butimust,
 		`Sed ut perspiciatis, unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem
 aperiam eaque ipsa, quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt, explicabo. Nemo enim
 ipsam voluptatem, quia voluptas sit, aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos, qui ratione
@@ -240,8 +315,7 @@ vel illum, qui dolorem eum fugiat, quo voluptas nulla pariatur?
 `)
 
 	ontheother := subs["sub_dir/On_the_other_hand.md"]
-	assert.NotNil(t, ontheother)
-	assertAssetBlobEquals(t, ontheother,
+	assert.Equal(t, ontheother,
 		`At vero eos et accusamus et iusto odio dignissimos ducimus, qui blanditiis praesentium voluptatum deleniti atque
 corrupti, quos dolores et quas molestias excepturi sint, obcaecati cupiditate non provident, similique sunt in culpa,
 qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita
