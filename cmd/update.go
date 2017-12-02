@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -37,12 +38,12 @@ func newUpdateCmd() *cobra.Command {
 			"use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack, backend)
+			s, err := requireStack(tokens.QName(stack))
 			if err != nil {
 				return err
 			}
 
-			return backend.Update(stackName, debug, engine.DeployOptions{
+			return s.Update(debug, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,

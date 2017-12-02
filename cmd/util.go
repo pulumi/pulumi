@@ -3,268 +3,63 @@
 package cmd
 
 import (
-	"bufio"
-	cryptorand "crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
-
-	"github.com/pulumi/pulumi/pkg/pack"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"golang.org/x/crypto/pbkdf2"
-
 	"github.com/pkg/errors"
+	git "gopkg.in/src-d/go-git.v4"
 
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
-
-	git "gopkg.in/src-d/go-git.v4"
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
-// newWorkspace creates a new workspace using the current working directory.
-func newWorkspace() (workspace.W, error) {
-	cwd, err := os.Getwd()
+// allBackends returns all known backends.  The boolean is true if any are cloud backends.
+func allBackends() ([]backend.Backend, bool) {
+	// Add all the known backends to the list and query them all.  We always use the local backend,
+	// in addition to all of those cloud backends we are currently logged into.
+	backends := []backend.Backend{local.New()}
+	cloudBackends, err := cloud.CurrentBackends()
+	if err != nil {
+		// Print the error, but keep going so that the local operations still occur.
+		_, fmterr := fmt.Fprintf(os.Stderr, "error: could not obtain current cloud backends: %v", err)
+		contract.IgnoreError(fmterr)
+	} else {
+		backends = append(backends, cloudBackends...)
+	}
+	return backends, len(cloudBackends) > 0
+}
+
+func requireStack(stackName tokens.QName) (*backend.Stack, error) {
+	if stackName == "" {
+		return requireCurrentStack()
+	}
+	bes, _ := allBackends()
+	stack, err := state.Stack(stackName, bes)
 	if err != nil {
 		return nil, err
-	}
-	return workspace.NewProjectWorkspace(cwd)
-}
-
-// explicitOrCurrent returns an stack name after ensuring the stack exists. When a empty
-// stack name is passed, the "current" ambient stack is returned
-func explicitOrCurrent(name string, backend pulumiBackend) (tokens.QName, error) {
-	stackName := tokens.QName(name)
-
-	if stackName == "" {
-		curStack, err := getCurrentStack()
-		if err != nil {
-			return "", err
-		}
-
-		stackName = curStack
-	}
-
-	// validate it's a stack the backend knows about
-	stacks, err := backend.GetStacks()
-	if err != nil {
-		return "", err
-	}
-
-	for _, stack := range stacks {
-		if stack.Name == stackName {
-			return stackName, nil
-		}
-	}
-
-	return "", errors.Errorf("no stack named '%v' found", stackName)
-}
-
-// getCurrentStack reads the current stack.
-func getCurrentStack() (tokens.QName, error) {
-	w, err := newWorkspace()
-	if err != nil {
-		return "", err
-	}
-
-	stack := w.Settings().Stack
-	if stack == "" {
-		return "", errors.New("no current stack detected; please use `pulumi stack init` to create one")
+	} else if stack == nil {
+		return nil, errors.Errorf("no stack named '%s' found; double check that you're logged in", stackName)
 	}
 	return stack, nil
 }
 
-// setCurrentStack changes the current stack to the given stack name.
-func setCurrentStack(name tokens.QName) error {
-	// Switch the current workspace to that stack.
-	w, err := newWorkspace()
-	if err != nil {
-		return err
-	}
-
-	w.Settings().Stack = name
-	return w.Save()
-}
-
-// displayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
-// Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
-// await all the events being written.
-func displayEvents(events <-chan engine.Event, done chan bool, debug bool) {
-	defer func() {
-		done <- true
-	}()
-
-Outer:
-	for event := range events {
-		switch event.Type {
-		case engine.CancelEvent:
-			break Outer
-		case engine.StdoutColorEvent:
-			fmt.Print(colors.ColorizeText(event.Payload.(string)))
-		case engine.DiagEvent:
-			payload := event.Payload.(engine.DiagEventPayload)
-			var out io.Writer
-			out = os.Stdout
-
-			if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-				out = os.Stderr
-			}
-			if payload.Severity == diag.Debug && !debug {
-				out = ioutil.Discard
-			}
-			msg := payload.Message
-			if payload.UseColor {
-				msg = colors.ColorizeText(msg)
-			}
-			fmt.Fprint(out, msg)
-		default:
-			contract.Failf("unknown event type '%s'", event.Type)
-		}
-	}
-}
-
-func getPackage() (*pack.Package, error) {
-	pkgPath, err := getPackageFilePath()
+func requireCurrentStack() (*backend.Stack, error) {
+	bes, _ := allBackends()
+	stack, err := state.CurrentStack(bes)
 	if err != nil {
 		return nil, err
+	} else if stack == nil {
+		return nil, errors.New("no current stack detected; please use `pulumi stack` to `init` or `select` one")
 	}
-
-	pkg, err := pack.Load(pkgPath)
-
-	return pkg, err
-}
-
-func savePackage(pkg *pack.Package) error {
-	pkgPath, err := getPackageFilePath()
-	if err != nil {
-		return err
-	}
-
-	return pack.Save(pkgPath, pkg)
-}
-
-func getPackageFilePath() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	pkgPath, err := workspace.DetectPackage(dir)
-	if err != nil {
-		return "", err
-	}
-
-	if pkgPath == "" {
-		return "", errors.Errorf("could not find Pulumi.yaml (searching upwards from %s)", dir)
-	}
-
-	return pkgPath, nil
-}
-
-func readConsoleNoEchoWithPrompt(prompt string) (string, error) {
-	if prompt != "" {
-		fmt.Printf("%s: ", prompt)
-	}
-
-	return readConsoleNoEcho()
-}
-
-func readConsole(prompt string) (string, error) {
-	if prompt != "" {
-		fmt.Printf("%s: ", prompt)
-	}
-
-	reader := bufio.NewReader(os.Stdin)
-	raw, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(raw), nil
-}
-
-func readPassphrase(prompt string) (string, error) {
-	if phrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE"); phrase != "" {
-		return phrase, nil
-	}
-	return readConsoleNoEchoWithPrompt(prompt)
-}
-
-func getSymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
-	pkg, err := getPackage()
-	if err != nil {
-		return nil, err
-	}
-
-	if pkg.EncryptionSalt != "" {
-		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
-			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
-		if phraseErr != nil {
-			return nil, phraseErr
-		}
-
-		return symmetricCrypterFromPhraseAndState(phrase, pkg.EncryptionSalt)
-	}
-
-	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets")
-	if err != nil {
-		return nil, err
-	}
-
-	confirm, err := readPassphrase("Re-enter your passphrase to confirm")
-	if err != nil {
-		return nil, err
-	}
-
-	if phrase != confirm {
-		return nil, errors.New("passphrases do not match")
-	}
-
-	salt := make([]byte, 8)
-
-	_, err = cryptorand.Read(salt)
-	contract.Assertf(err == nil, "could not read from system random")
-
-	c := symmetricCrypter{key: keyFromPassphrase(phrase, salt, aes256GCMKeyBytes)}
-
-	// Encrypt a message and store it with the salt so we can test if the password is correct later
-	msg, err := c.EncryptValue("pulumi")
-	contract.Assert(err == nil)
-
-	pkg.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
-
-	err = savePackage(pkg)
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
-}
-
-func keyFromPassphrase(phrase string, salt []byte, keyLength int) []byte {
-	// 1,000,000 iterations was chosen because it took a little over a second on an i7-7700HQ Quad Core procesor
-	return pbkdf2.Key([]byte(phrase), salt, 1000000, keyLength, sha256.New)
-}
-
-func hasSecureValue(config map[tokens.ModuleMember]config.Value) bool {
-	for _, v := range config {
-		if v.Secure() {
-			return true
-		}
-	}
-
-	return false
+	return stack, nil
 }
 
 func detectOwnerAndName(dir string) (string, string, error) {
@@ -282,7 +77,6 @@ func detectOwnerAndName(dir string) (string, string, error) {
 }
 
 func getGitHubProjectForOrigin(dir string) (string, string, error) {
-
 	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
 	if err != nil {
 		return "", "", errors.Wrap(err, "could not detect git repository")

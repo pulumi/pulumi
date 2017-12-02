@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/golang/glog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -15,7 +16,7 @@ import (
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
 func DetailedError(err error) string {
-	msg := err.Error()
+	msg := errorMessage(err)
 	hasstack := false
 	for {
 		if stackerr, ok := err.(interface {
@@ -57,12 +58,17 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 			if LogToStderr {
 				msg = DetailedError(err)
 			} else {
-				msg = err.Error()
+				msg = errorMessage(err)
 				glog.V(3).Infof(DetailedError(err))
 			}
 			ExitError(msg)
 		}
 	}
+}
+
+// Exit exits with a given error.
+func Exit(err error) {
+	ExitError(errorMessage(err))
 }
 
 // ExitError issues an error and exits with a standard error exit code.
@@ -74,4 +80,22 @@ func ExitError(msg string, args ...interface{}) {
 func ExitErrorCode(code int, msg string, args ...interface{}) {
 	Diag().Errorf(diag.Message(msg), args...)
 	os.Exit(code)
+}
+
+// errorMessage returns a message, possibly cleaning up the text if appropriate.
+func errorMessage(err error) string {
+	if multi, ok := err.(*multierror.Error); ok {
+		wr := multi.WrappedErrors()
+		if len(wr) == 1 {
+			return errorMessage(wr[0])
+		}
+		msg := fmt.Sprintf("%d errors occurred:", len(wr))
+		for i, werr := range wr {
+			if i != len(wr)-1 {
+				msg += "\n"
+			}
+			msg += fmt.Sprintf("\t- %s", errorMessage(werr))
+		}
+	}
+	return err.Error()
 }

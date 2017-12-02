@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -25,7 +26,7 @@ func newLogsCmd() *cobra.Command {
 		Short: "Show aggregated logs for a project",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack, backend)
+			s, err := requireStack(tokens.QName(stack))
 			if err != nil {
 				return err
 			}
@@ -47,9 +48,8 @@ func newLogsCmd() *cobra.Command {
 			// displayed before previously rendered log entries, but weren't available at the time, so still need to be
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
-
 			for {
-				logs, err := backend.GetLogs(stackName, operations.LogQuery{
+				logs, err := s.GetLogs(operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})

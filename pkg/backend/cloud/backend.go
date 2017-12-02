@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package cmd
+package cloud
 
 import (
 	"fmt"
@@ -9,74 +9,100 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
+	"sort"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/apitype"
+
+	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
+	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/pack"
-	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/archive"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
-
-	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-type pulumiCloudPulumiBackend struct{}
+type cloudBackend struct {
+	cloudURL string
+}
 
-func (b *pulumiCloudPulumiBackend) CreateStack(stackName tokens.QName, opts StackCreationOptions) error {
+// New creates a new Pulumi backend for the given cloud API URL.
+func New(cloudURL string) backend.Backend {
+	return &cloudBackend{cloudURL: cloudURL}
+}
+
+func (b *cloudBackend) Name() string {
+	return b.cloudURL
+}
+
+func (b *cloudBackend) IsCloud() bool {
+	return true
+}
+
+func (b *cloudBackend) GetStack(stackName tokens.QName) (*backend.Stack, error) {
+	// IDEA: query the stack directly instead of listing them.
+	stacks, err := b.ListStacks()
+	if err != nil {
+		return nil, err
+	}
+	for _, stack := range stacks {
+		if stack.Name == stackName {
+			return stack, nil
+		}
+	}
+	return nil, nil
+}
+
+func (b *cloudBackend) CreateStack(stackName tokens.QName, opts backend.StackCreateOptions) error {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return err
 	}
 
 	createStackReq := apitype.CreateStackRequest{
-		CloudName: opts.Cloud,
+		CloudName: opts.CloudName,
 		StackName: stackName.String(),
 	}
 
 	var createStackResp apitype.CreateStackResponse
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
-	if err := pulumiRESTCall("POST", path, &createStackReq, &createStackResp); err != nil {
+	if err := pulumiRESTCall(b.cloudURL, "POST", path, &createStackReq, &createStackResp); err != nil {
 		return err
 	}
-	fmt.Printf("Created Stack '%s' hosted in Cloud '%s'\n", stackName, createStackResp.CloudName)
+	fmt.Printf("Created stack '%s' hosted in Pulumi Cloud PPC %s\n",
+		stackName, createStackResp.CloudName)
 
 	return nil
 }
 
-func (b *pulumiCloudPulumiBackend) GetStacks() ([]stackSummary, error) {
-	stacks, err := getCloudStacks()
+func (b *cloudBackend) ListStacks() ([]*backend.Stack, error) {
+	stacks, err := b.listCloudStacks()
 	if err != nil {
 		return nil, err
 	}
 
 	// Map to a summary slice.
-	var summaries []stackSummary
+	var results []*backend.Stack
 	for _, stack := range stacks {
-		summary := stackSummary{
-			Name:          stack.StackName,
-			LastDeploy:    "n/a", // TODO(pulumi-service/issues#249): Make this info available.
-			ResourceCount: strconv.Itoa(len(stack.Resources)),
-		}
-		// If the stack hasn't been pushed to, it's resource count doesn't matter.
-		if stack.ActiveUpdate == "" {
-			summary.ResourceCount = "n/a"
-		}
-		summaries = append(summaries, summary)
+		results = append(results, b.makeStackStruct(stack))
 	}
 
-	return summaries, nil
+	return results, nil
 }
 
-func (b *pulumiCloudPulumiBackend) RemoveStack(stackName tokens.QName, force bool) error {
+func (b *cloudBackend) RemoveStack(stackName tokens.QName, force bool) (bool, error) {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	queryParam := ""
@@ -87,33 +113,39 @@ func (b *pulumiCloudPulumiBackend) RemoveStack(stackName tokens.QName, force boo
 		projID.Owner, projID.Repository, projID.Project, string(stackName), queryParam)
 
 	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
-	// resources and `force` was not true", we should sniff for that message and return errHasResources
-	return pulumiRESTCall("DELETE", path, nil, nil)
+	//     resources and `force` was not true", we should sniff for that message and return a true for the boolean.
+	return false, pulumiRESTCall(b.cloudURL, "DELETE", path, nil, nil)
 }
 
 // updateKind is an enum for describing the kinds of updates we support.
-type updateKind = int
+type updateKind string
 
 const (
-	update updateKind = iota
-	preview
-	destroy
+	update  updateKind = "update"
+	preview updateKind = "preview"
+	destroy updateKind = "destroy"
 )
 
-func (b *pulumiCloudPulumiBackend) Preview(stackName tokens.QName, debug bool, _ engine.PreviewOptions) error {
-	return updateStack(preview, stackName, debug)
+func (b *cloudBackend) Preview(stackName tokens.QName, debug bool, _ engine.PreviewOptions) error {
+	return b.updateStack(preview, stackName, debug)
 }
 
-func (b *pulumiCloudPulumiBackend) Update(stackName tokens.QName, debug bool, _ engine.DeployOptions) error {
-	return updateStack(update, stackName, debug)
+func (b *cloudBackend) Update(stackName tokens.QName, debug bool, _ engine.DeployOptions) error {
+	return b.updateStack(update, stackName, debug)
 }
 
-func (b *pulumiCloudPulumiBackend) Destroy(stackName tokens.QName, debug bool, _ engine.DestroyOptions) error {
-	return updateStack(destroy, stackName, debug)
+func (b *cloudBackend) Destroy(stackName tokens.QName, debug bool, _ engine.DestroyOptions) error {
+	return b.updateStack(destroy, stackName, debug)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
-func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
+func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, debug bool) error {
+	// Print a banner so it's clear this is going to the cloud.
+	fmt.Printf(
+		colors.ColorizeText(
+			colors.BrightMagenta+"Updating stack '%s' in the Pulumi Cloud"+colors.Reset+" ☁️\n"),
+		stackName)
+
 	// First create the update object.
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
@@ -125,16 +157,11 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 	}
 
 	// Generate the URL we'll use for all the REST calls.
-	var action string
-	switch kind {
-	case update:
-		action = "update"
-	case preview:
-		action = "preview"
-	case destroy:
-		action = "destroy"
+	switch action {
+	case update, preview, destroy:
+		// ok
 	default:
-		contract.Failf("unsupported update kind: %v", kind)
+		contract.Failf("unsupported update kind: %v", action)
 	}
 	restURLRoot := fmt.Sprintf(
 		"/orgs/%s/programs/%s/%s/stacks/%s/%s",
@@ -142,13 +169,13 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 
 	// Create the initial update object.
 	var updateResponse apitype.UpdateProgramResponse
-	if err = pulumiRESTCall("POST", restURLRoot, &updateRequest, &updateResponse); err != nil {
+	if err = pulumiRESTCall(b.cloudURL, "POST", restURLRoot, &updateRequest, &updateResponse); err != nil {
 		return err
 	}
 
 	// Upload the program's contents to the signed URL if appropriate.
-	if kind != destroy {
-		err = uploadProgram(updateResponse.UploadURL, debug /* print upload size to STDOUT */)
+	if action != destroy {
+		err = uploadProgram(updateResponse.UploadURL, true /* print upload size to STDOUT */)
 		if err != nil {
 			return err
 		}
@@ -157,24 +184,21 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 	// Start the update.
 	restURLWithUpdateID := fmt.Sprintf("%s/%s", restURLRoot, updateResponse.UpdateID)
 	var startUpdateResponse apitype.StartUpdateResponse
-	if err = pulumiRESTCall("POST", restURLWithUpdateID, nil /* no req body */, &startUpdateResponse); err != nil {
+	if err = pulumiRESTCall(b.cloudURL, "POST", restURLWithUpdateID,
+		nil /* no req body */, &startUpdateResponse); err != nil {
 		return err
 	}
-	if kind == update {
-		fmt.Printf("Updating Stack '%s' to version %d...\n", string(stackName), startUpdateResponse.Version)
+	if action == update {
+		glog.V(7).Infof("Stack %s being updated to version %d", stackName, startUpdateResponse.Version)
 	}
 
 	// Wait for the update to complete, which also polls and renders event output to STDOUT.
-	status, err := waitForUpdate(restURLWithUpdateID)
-	fmt.Println() // The PPC's final message we print to STDOUT doesn't include a newline.
-
+	status, err := b.waitForUpdate(restURLWithUpdateID)
 	if err != nil {
 		return errors.Wrapf(err, "waiting for %s", action)
-	}
-	if status != apitype.StatusSucceeded {
+	} else if status != apitype.StatusSucceeded {
 		return errors.Errorf("%s unsuccessful: status %v", action, status)
 	}
-	fmt.Printf("%s completed successfully.\n", action)
 	return nil
 }
 
@@ -182,11 +206,11 @@ func updateStack(kind updateKind, stackName tokens.QName, debug bool) error {
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
 func uploadProgram(uploadURL string, printSize bool) error {
-	programPath, err := getPackageFilePath()
+	programPath, err := workspace.DetectPackage()
 	if err != nil {
 		return err
 	}
-	pkg, err := getPackage()
+	pkg, err := workspace.GetPackage()
 	if err != nil {
 		return err
 	}
@@ -198,9 +222,12 @@ func uploadProgram(uploadURL string, printSize bool) error {
 		return errors.Wrap(err, "creating archive")
 	}
 
+	// IDEA: add an ASCII-art progress indicator here.
 	if printSize {
 		mb := float32(archiveContents.Len()) / (1024.0 * 1024.0)
-		fmt.Printf("Uploading %.2fMiB\n", mb)
+		fmt.Printf(
+			colors.ColorizeText(
+				colors.SpecUnimportant+"Uploading program (%.2fMiB)...\n"+colors.Reset), mb)
 	}
 
 	parsedURL, err := url.Parse(uploadURL)
@@ -223,7 +250,7 @@ func uploadProgram(uploadURL string, printSize bool) error {
 	return nil
 }
 
-func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName,
+func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 	// TODO[pulumi/pulumi-service#227]: Relax these conditions once the service can take these arguments.
 	if query.StartTime != nil || query.EndTime != nil {
@@ -238,7 +265,7 @@ func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName,
 	var response apitype.LogsResult
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/logs",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall("GET", path, nil, &response); err != nil {
+	if err = pulumiRESTCall(b.cloudURL, "GET", path, nil, &response); err != nil {
 		return nil, err
 	}
 
@@ -250,8 +277,8 @@ func (b *pulumiCloudPulumiBackend) GetLogs(stackName tokens.QName,
 	return logs, nil
 }
 
-// getCloudStacks returns all stacks for the current repository x workspace on the Pulumi Cloud.
-func getCloudStacks() ([]apitype.Stack, error) {
+// listCloudStacks returns all stacks for the current repository x workspace on the Pulumi Cloud.
+func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return nil, err
@@ -260,25 +287,55 @@ func getCloudStacks() ([]apitype.Stack, error) {
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
-	if err := pulumiRESTCall("GET", path, nil, &stacks); err != nil {
+	if err := pulumiRESTCall(b.cloudURL, "GET", path, nil, &stacks); err != nil {
 		return nil, err
 	}
 	return stacks, nil
 }
 
+// makeStackStruct transforms an API stack into a regular Pulumi stack structure.
+func (b *cloudBackend) makeStackStruct(apistack apitype.Stack) *backend.Stack {
+	// Create a fake snapshot out of this stack.
+	// TODO[pulumi/pulumi-service#249]: add time, version, etc. info to the manifest.
+	stackName := apistack.StackName
+	var resources []*resource.State
+	for _, res := range apistack.Resources {
+		resources = append(resources, resource.NewState(
+			tokens.Type(res.Type),
+			resource.URN(res.URN),
+			res.Custom,
+			false,
+			resource.ID(res.ID),
+			resource.NewPropertyMapFromMap(res.Inputs),
+			resource.NewPropertyMapFromMap(res.Defaults),
+			resource.NewPropertyMapFromMap(res.Outputs),
+			resource.URN(res.Parent),
+		))
+	}
+	snapshot := deploy.NewSnapshot(stackName, deploy.Manifest{}, resources)
+
+	// Now assemble all the pieces into a stack structure.
+	return &backend.Stack{
+		Name:      stackName,
+		Config:    nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
+		Snapshot:  snapshot,
+		CloudURL:  b.cloudURL,
+		OrgName:   apistack.OrgName,
+		CloudName: apistack.CloudName,
+		Backend:   b,
+	}
+}
+
 // getDecryptedConfig returns the stack's configuration with any secrets in plain-text.
 func getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	cfg, err := getConfiguration(stackName)
+	cfg, err := state.Configuration(stackName)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting configuration")
 	}
 
-	var decrypter config.ValueDecrypter = panicCrypter{}
-	if hasSecureValue(cfg) {
-		decrypter, err = getSymmetricCrypter()
-		if err != nil {
-			return nil, errors.Wrap(err, "getting symmetric crypter")
-		}
+	decrypter, err := state.DefaultCrypter(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting a default encrypter")
 	}
 
 	textConfig := make(map[tokens.ModuleMember]string)
@@ -292,20 +349,15 @@ func getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string,
 	return textConfig, nil
 }
 
-// getCloudProjectIdentifier returns information about the current repository and project, based on the current working
-// directory.
+// getCloudProjectIdentifier returns information about the current repository and project, based on the current
+// working directory.
 func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
-	w, err := newWorkspace()
+	w, err := workspace.New()
 	if err != nil {
 		return nil, err
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	path, err := workspace.DetectPackage(cwd)
+	path, err := workspace.DetectPackage()
 	if err != nil {
 		return nil, err
 	}
@@ -326,11 +378,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
 func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequest, error) {
 	// Zip up the Pulumi program's directory, which may be a parent of CWD.
-	cwd, err := os.Getwd()
-	if err != nil {
-		return apitype.UpdateProgramRequest{}, errors.Errorf("getting working directory: %v", err)
-	}
-	programPath, err := workspace.DetectPackage(cwd)
+	programPath, err := workspace.DetectPackage()
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, errors.Errorf("looking for Pulumi package: %v", err)
 	}
@@ -368,7 +416,7 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
-func waitForUpdate(path string) (apitype.UpdateStatus, error) {
+func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) {
 	time.Sleep(5 * time.Second)
 
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
@@ -378,7 +426,7 @@ func waitForUpdate(path string) (apitype.UpdateStatus, error) {
 
 		var updateResults apitype.UpdateResults
 		pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
-		if err := pulumiRESTCall("GET", pathWithIndex, nil, &updateResults); err != nil {
+		if err := pulumiRESTCall(b.cloudURL, "GET", pathWithIndex, nil, &updateResults); err != nil {
 			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it
 			// and keep continuing.
 			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
@@ -415,4 +463,80 @@ func printEvent(event apitype.UpdateEvent) {
 		text = colors.ColorizeText(text)
 	}
 	fmt.Fprint(stream, text)
+}
+
+// Login logs into the target cloud URL.
+func Login(cloudURL string) error {
+	cloud, err := getCloudAPI(cloudURL)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Logging into Pulumi Cloud: %s\n", cloudURL)
+
+	// We intentionally don't accept command-line args for the user's access token. Having it in
+	// .bash_history is not great, and specifying it via flag isn't of much use.
+	accessToken := os.Getenv(AccessTokenEnvVar)
+	if accessToken != "" {
+		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
+	} else {
+		token, readerr := cmdutil.ReadConsole("Enter Pulumi access token")
+		if readerr != nil {
+			return readerr
+		}
+		accessToken = token
+	}
+
+	// Try and use the credentials to see if they are valid.
+	valid, err := isValidAccessToken(cloud, accessToken)
+	if err != nil {
+		return err
+	} else if !valid {
+		return fmt.Errorf("invalid access token")
+	}
+
+	// Save them.
+	return workspace.StoreAccessToken(cloudURL, accessToken)
+}
+
+// isValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
+// or not. Returns error on any unexpected error.
+func isValidAccessToken(cloud, accessToken string) (bool, error) {
+	// Make a request to get the authenticated user. If it returns a successful result, the token
+	// checks out.
+	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, accessToken); err != nil {
+		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+			return false, nil
+		}
+		return false, fmt.Errorf("testing access token: %v", err)
+	}
+	return true, nil
+}
+
+// Logout logs out of the target cloud URL.
+func Logout(cloudURL string) error {
+	return workspace.DeleteAccessToken(cloudURL)
+}
+
+// CurrentBackends returns a list of the cloud backends the user is currently logged into.
+func CurrentBackends() ([]backend.Backend, error) {
+	creds, err := workspace.GetStoredCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	var backends []backend.Backend
+	if creds.AccessTokens != nil {
+		// Sort the URLs so that we return them in a deterministic order.
+		var cloudURLs []string
+		for url := range creds.AccessTokens {
+			cloudURLs = append(cloudURLs, url)
+		}
+		sort.Strings(cloudURLs)
+
+		for _, url := range cloudURLs {
+			backends = append(backends, New(url))
+		}
+	}
+
+	return backends, nil
 }

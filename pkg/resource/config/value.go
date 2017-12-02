@@ -6,9 +6,25 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// Map is a bag of config stored in the settings file.
+type Map map[tokens.ModuleMember]Value
+
+// HasSecureValue returns true if the config map contains a secure (encrypted) value.
+func (m Map) HasSecureValue() bool {
+	for _, v := range m {
+		if v.Secure() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Value is a single config value.
 type Value struct {
 	value  string
 	secure bool
@@ -99,17 +115,4 @@ func NewSecureValue(v string) Value {
 
 func NewValue(v string) Value {
 	return Value{value: v, secure: false}
-}
-
-type ValueDecrypter interface {
-	DecryptValue(cypertext string) (string, error)
-}
-
-type ValueEncrypter interface {
-	EncryptValue(plaintext string) (string, error)
-}
-
-type ValueEncrypterDecrypter interface {
-	ValueEncrypter
-	ValueDecrypter
 }

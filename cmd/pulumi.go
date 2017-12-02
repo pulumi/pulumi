@@ -12,22 +12,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
-
-// pulumiBackend is the "backend" that we talk to. When the application launches, if the environment variable
-// PULUMI_API is set, we use a backend that targets the pulumi.com API, otherwise we use the local backend (i.e.
-// "fire and forget" mode).
-var backend pulumiBackend
-
-func init() {
-	if usePulumiCloudCommands() {
-		backend = &pulumiCloudPulumiBackend{}
-	} else {
-		backend = &localPulumiBackend{}
-	}
-}
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
@@ -55,8 +45,24 @@ func NewPulumiCmd() *cobra.Command {
 		},
 	}
 
+	// Add additional help that includes which clouds we are logged into.
+	defaultHelp := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		defaultHelp(cmd, args)
+
+		loggedInto, logErr := cloud.CurrentBackends()
+		contract.IgnoreError(logErr) // we want to make progress anyway.
+		if len(loggedInto) > 0 {
+			fmt.Printf("\n")
+			fmt.Printf("Currently logged into the Pulumi Cloud ☁️\n")
+			for _, be := range loggedInto {
+				fmt.Printf("    %s\n", be.Name())
+			}
+		}
+	})
+
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
-	cmd.PersistentFlags().BoolVar(&disableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&local.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
@@ -79,7 +85,7 @@ func NewPulumiCmd() *cobra.Command {
 
 	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
-	if isTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
 		cmd.AddCommand(newArchiveCommand())
 	}
 

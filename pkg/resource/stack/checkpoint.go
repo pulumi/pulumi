@@ -20,9 +20,9 @@ import (
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 // nolint: lll
 type Checkpoint struct {
-	Target tokens.QName                         `json:"target" yaml:"target"`                     // the target stack name.
-	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.
-	Latest *Deployment                          `json:"latest,omitempty" yaml:"latest,omitempty"` // the latest/current deployment information.
+	Stack  tokens.QName `json:"stack" yaml:"stack"`                       // the target stack name.
+	Config config.Map   `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.
+	Latest *Deployment  `json:"latest,omitempty" yaml:"latest,omitempty"` // the latest/current deployment information.
 }
 
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
@@ -40,8 +40,7 @@ func GetCheckpoint(w workspace.W, stack tokens.QName) (*Checkpoint, error) {
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(target tokens.QName,
-	config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) *Checkpoint {
+func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *Checkpoint {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *Deployment
 	if snap != nil {
@@ -49,19 +48,18 @@ func SerializeCheckpoint(target tokens.QName,
 	}
 
 	return &Checkpoint{
-		Target: target,
+		Stack:  stack,
 		Config: config,
 		Latest: latest,
 	}
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *Checkpoint) (tokens.QName,
-	map[tokens.ModuleMember]config.Value, *deploy.Snapshot, error) {
+func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 
 	var snap *deploy.Snapshot
-	name := chkpoint.Target
+	stack := chkpoint.Stack
 	if latest := chkpoint.Latest; latest != nil {
 		// Unpack the versions.
 		manifest := deploy.Manifest{
@@ -82,13 +80,13 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (tokens.QName,
 		for _, res := range latest.Resources {
 			desres, err := DeserializeResource(res)
 			if err != nil {
-				return "", nil, nil, err
+				return nil, err
 			}
 			resources = append(resources, desres)
 		}
 
-		snap = deploy.NewSnapshot(name, manifest, resources)
+		snap = deploy.NewSnapshot(stack, manifest, resources)
 	}
 
-	return name, chkpoint.Config, snap, nil
+	return snap, nil
 }

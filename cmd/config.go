@@ -7,16 +7,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
-
-	"github.com/pulumi/pulumi/pkg/pack"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newConfigCmd() *cobra.Command {
@@ -31,12 +31,12 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack, backend)
+			stack, err := requireStack(tokens.QName(stack))
 			if err != nil {
 				return err
 			}
 
-			return listConfig(stackName, showSecrets)
+			return listConfig(stack, showSecrets)
 		}),
 	}
 
@@ -58,9 +58,9 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a single configuration value",
-		Args:  cmdutil.ExactArgs(1),
+		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(*stack, backend)
+			s, err := requireStack(tokens.QName(*stack))
 			if err != nil {
 				return err
 			}
@@ -69,7 +69,8 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return errors.Wrap(err, "invalid configuration key")
 			}
-			return getConfig(stackName, key)
+
+			return getConfig(s, key)
 		}),
 	}
 
@@ -83,18 +84,17 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
-		Args:  cmdutil.ExactArgs(1),
+		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if all && *stack != "" {
+			stackName := tokens.QName(*stack)
+			if all && stackName != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
 			}
 
-			var stackName tokens.QName
-			if !all {
-				var err error
-				if stackName, err = explicitOrCurrent(*stack, backend); err != nil {
-					return err
-				}
+			// Ensure the stack exists.
+			_, err := requireStack(stackName)
+			if err != nil {
+				return err
 			}
 
 			key, err := parseConfigKey(args[0])
@@ -130,16 +130,15 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 		Short: "Set configuration value",
 		Args:  cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if all && *stack != "" {
+			stackName := tokens.QName(*stack)
+			if all && stackName != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
 			}
 
-			var stackName tokens.QName
-			if !all {
-				var err error
-				if stackName, err = explicitOrCurrent(*stack, backend); err != nil {
-					return err
-				}
+			// Ensure the stack exists.
+			_, err := requireStack(stackName)
+			if err != nil {
+				return err
 			}
 
 			key, err := parseConfigKey(args[0])
@@ -147,49 +146,50 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			var c config.ValueEncrypter
-			if secret {
-				c, err = getSymmetricCrypter()
-				if err != nil {
-					return err
-				}
-			}
-
+			// Read the value from an arg or the console, disabling echoing if a secret.
 			var value string
 			if len(args) == 2 {
 				value = args[1]
-			} else if !secret {
-				value, err = readConsole("value")
+			} else if secret {
+				value, err = cmdutil.ReadConsoleNoEcho("value")
 				if err != nil {
 					return err
 				}
 			} else {
-				value, err = readConsoleNoEchoWithPrompt("value")
+				value, err = cmdutil.ReadConsole("value")
 				if err != nil {
 					return err
 				}
 			}
 
-			if !secret {
-				err = setConfiguration(stackName, key, config.NewValue(value), save)
-				if err != nil {
-					return err
+			// Encrypt the config value if needed.
+			var v config.Value
+			if secret {
+				c, cerr := state.SymmetricCrypter()
+				if cerr != nil {
+					return cerr
 				}
-				fmt.Printf("Set key '%s' with value '%s' as plaintext\n", args[0], value)
-				return nil
+				enc, eerr := c.EncryptValue(value)
+				if eerr != nil {
+					return eerr
+				}
+				v = config.NewSecureValue(enc)
+			} else {
+				v = config.NewValue(value)
 			}
 
-			enc, err := c.EncryptValue(value)
+			// And now save it.
+			err = setConfiguration(stackName, key, v, save)
 			if err != nil {
 				return err
 			}
 
-			err = setConfiguration(stackName, key, config.NewSecureValue(enc), save)
-			if err != nil {
-				return err
+			if secret {
+				fmt.Printf("Set key '%s' with encrypted value\n", key)
+			} else {
+				fmt.Printf("Set key '%s' with value '%s' as plaintext\n", key, value)
 			}
 
-			fmt.Printf("Set key '%s' with with encrypted value\n", args[0])
 			return nil
 		}),
 	}
@@ -211,7 +211,7 @@ func parseConfigKey(key string) (tokens.ModuleMember, error) {
 	// As a convience, we'll treat any key with no delimiter as if:
 	// <program-name>:config:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		pkg, err := getPackage()
+		pkg, err := workspace.GetPackage()
 		if err != nil {
 			return "", err
 		}
@@ -223,7 +223,7 @@ func parseConfigKey(key string) (tokens.ModuleMember, error) {
 }
 
 func prettyKey(key string) string {
-	pkg, err := getPackage()
+	pkg, err := workspace.GetPackage()
 	if err != nil {
 		return key
 	}
@@ -250,19 +250,21 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value con
 	return setWorkspaceConfiguration(stackName, key, value)
 }
 
-func listConfig(stackName tokens.QName, showSecrets bool) error {
-	cfg, err := getConfiguration(stackName)
+func listConfig(stack *backend.Stack, showSecrets bool) error {
+	cfg, err := state.Configuration(stack.Name)
 	if err != nil {
 		return err
 	}
 
-	var decrypter config.ValueDecrypter = blindingDecrypter{}
-
-	if hasSecureValue(cfg) && showSecrets {
-		decrypter, err = getSymmetricCrypter()
+	// By default, we will use a blinding decrypter to show '******'.  If requested, display secrets in plaintext.
+	var decrypter config.ValueDecrypter
+	if cfg.HasSecureValue() && showSecrets {
+		decrypter, err = state.SymmetricCrypter()
 		if err != nil {
 			return err
 		}
+	} else {
+		decrypter = config.NewBlindingDecrypter()
 	}
 
 	if cfg != nil {
@@ -287,70 +289,38 @@ func listConfig(stackName tokens.QName, showSecrets bool) error {
 	return nil
 }
 
-func getConfig(stackName tokens.QName, key tokens.ModuleMember) error {
-	cfg, err := getConfiguration(stackName)
+func getConfig(stack *backend.Stack, key tokens.ModuleMember) error {
+	cfg, err := state.Configuration(stack.Name)
 	if err != nil {
 		return err
 	}
 
 	if cfg != nil {
 		if v, ok := cfg[key]; ok {
-			var decrypter config.ValueDecrypter = panicCrypter{}
-
 			if v.Secure() {
-				decrypter, err = getSymmetricCrypter()
+				decrypter, err := state.SymmetricCrypter()
 				if err != nil {
-					return err
+					return errors.Wrap(err, "could not create a decrypter")
 				}
+				decrypted, err := v.Value(decrypter)
+				if err != nil {
+					return errors.Wrap(err, "could not decrypt configuation value")
+				}
+				fmt.Printf("%v\n", decrypted)
+			} else {
+				fmt.Printf("%v\n", v)
 			}
-
-			decrypted, err := v.Value(decrypter)
-			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuation value")
-			}
-
-			fmt.Printf("%v\n", decrypted)
 
 			return nil
 		}
 	}
 
-	return errors.Errorf("configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stackName)
-}
-
-func getConfiguration(stackName tokens.QName) (map[tokens.ModuleMember]config.Value, error) {
-	contract.Require(stackName != "", "stackName")
-
-	workspace, err := newWorkspace()
-	if err != nil {
-		return nil, err
-	}
-
-	pkg, err := getPackage()
-	if err != nil {
-		return nil, err
-	}
-
-	configs := make([]map[tokens.ModuleMember]config.Value, 4)
-	configs = append(configs, pkg.Config)
-
-	if stackInfo, has := pkg.Stacks[stackName]; has {
-		configs = append(configs, stackInfo.Config)
-	}
-
-	if localAllStackConfig, has := workspace.Settings().Config[""]; has {
-		configs = append(configs, localAllStackConfig)
-	}
-
-	if localStackConfig, has := workspace.Settings().Config[stackName]; has {
-		configs = append(configs, localStackConfig)
-	}
-
-	return mergeConfigs(configs...), nil
+	return errors.Errorf(
+		"configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stack.Name)
 }
 
 func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
-	pkg, err := getPackage()
+	pkg, err := workspace.GetPackage()
 	if err != nil {
 		return err
 	}
@@ -365,24 +335,24 @@ func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember)
 		}
 	}
 
-	return savePackage(pkg)
+	return workspace.SavePackage(pkg)
 }
 
 func deleteWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
-	workspace, err := newWorkspace()
+	w, err := workspace.New()
 	if err != nil {
 		return err
 	}
 
-	if config, has := workspace.Settings().Config[stackName]; has {
+	if config, has := w.Settings().Config[stackName]; has {
 		delete(config, key)
 	}
 
-	return workspace.Save()
+	return w.Save()
 }
 
 func setProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
-	pkg, err := getPackage()
+	pkg, err := workspace.GetPackage()
 	if err != nil {
 		return err
 	}
@@ -407,32 +377,20 @@ func setProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember, va
 		pkg.Stacks[stackName].Config[key] = value
 	}
 
-	return savePackage(pkg)
+	return workspace.SavePackage(pkg)
 }
 
 func setWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
-	workspace, err := newWorkspace()
+	w, err := workspace.New()
 	if err != nil {
 		return err
 	}
 
-	if _, has := workspace.Settings().Config[stackName]; !has {
-		workspace.Settings().Config[stackName] = make(map[tokens.ModuleMember]config.Value)
+	if _, has := w.Settings().Config[stackName]; !has {
+		w.Settings().Config[stackName] = make(map[tokens.ModuleMember]config.Value)
 	}
 
-	workspace.Settings().Config[stackName][key] = value
+	w.Settings().Config[stackName][key] = value
 
-	return workspace.Save()
-}
-
-func mergeConfigs(configs ...map[tokens.ModuleMember]config.Value) map[tokens.ModuleMember]config.Value {
-	merged := make(map[tokens.ModuleMember]config.Value)
-
-	for _, config := range configs {
-		for key, value := range config {
-			merged[key] = value
-		}
-	}
-
-	return merged
+	return w.Save()
 }

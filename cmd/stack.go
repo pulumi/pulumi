@@ -25,28 +25,33 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := getCurrentStack()
-			if err != nil {
-				return err
-			}
-
-			_, config, snapshot, stackFile, err := getStack(stackName)
+			s, err := requireCurrentStack()
 			if err != nil {
 				return err
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %v:\n", stackName)
-			if snapshot != nil {
-				fmt.Printf("    Last updated at %v\n", snapshot.Manifest.Time)
+			fmt.Printf("Current stack is %v:\n", s.Name)
+			fmt.Printf("    Managed by %s", s.Backend.Name())
+			if s.Backend.IsCloud() {
+				fmt.Printf(" ☁️")
+			}
+			fmt.Printf("\n")
+
+			if s.Snapshot != nil {
+				if t := s.Snapshot.Manifest.Time; t.IsZero() {
+					fmt.Printf("    Last update time unknown\n")
+				} else {
+					fmt.Printf("    Last updated at %v\n", s.Snapshot.Manifest.Time)
+				}
 				var cliver string
-				if snapshot.Manifest.Version == "" {
+				if s.Snapshot.Manifest.Version == "" {
 					cliver = "?"
 				} else {
-					cliver = snapshot.Manifest.Version
+					cliver = s.Snapshot.Manifest.Version
 				}
 				fmt.Printf("    Pulumi version %s\n", cliver)
-				for _, plugin := range snapshot.Manifest.Plugins {
+				for _, plugin := range s.Snapshot.Manifest.Plugins {
 					var plugver string
 					if plugin.Version == "" {
 						plugver = "?"
@@ -55,17 +60,19 @@ func newStackCmd() *cobra.Command {
 					}
 					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Type, plugver)
 				}
+			} else {
+				fmt.Printf("    No updates yet; run 'pulumi update'\n")
 			}
-			if len(config) > 0 {
-				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(config))
+
+			if len(s.Config) > 0 {
+				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(s.Config))
 			}
-			fmt.Printf("    Checkpoint file is %s\n", stackFile)
 			fmt.Printf("\n")
 
 			// Now show the resources.
 			var rescnt int
-			if snapshot != nil {
-				rescnt = len(snapshot.Resources)
+			if s.Snapshot != nil {
+				rescnt = len(s.Snapshot.Resources)
 			}
 			fmt.Printf("Current stack resources (%d):\n", rescnt)
 			if rescnt == 0 {
@@ -73,7 +80,7 @@ func newStackCmd() *cobra.Command {
 			} else {
 				fmt.Printf("    %-48s %s\n", "TYPE", "NAME")
 				var stackResource *resource.State
-				for _, res := range snapshot.Resources {
+				for _, res := range s.Snapshot.Resources {
 					if res.Type == stack.RootPulumiStackTypeName {
 						stackResource = res
 					} else {

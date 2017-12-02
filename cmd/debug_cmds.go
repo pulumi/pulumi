@@ -6,10 +6,12 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/spf13/cobra"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // newArchiveCommand creates a command which just builds the archive we would ship to Pulumi.com to
@@ -21,17 +23,13 @@ func newArchiveCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "archive <path-to-archive>",
 		Short: "create an archive suitable for deployment",
-		Args:  cmdutil.ExactArgs(1),
+		Args:  cmdutil.SpecificArgs([]string{"path-to-archive"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if forceDefaultIgnores && forceNoDefaultIgnores {
 				return errors.New("can't specify --no-default-ignores and --default-ignores at the same time")
 			}
 
-			programPath, err := getPackageFilePath()
-			if err != nil {
-				return err
-			}
-			pkg, err := getPackage()
+			pkg, programPath, err := workspace.GetPackagePath()
 			if err != nil {
 				return err
 			}

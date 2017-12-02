@@ -337,7 +337,7 @@ func performExtraRuntimeValidation(
 	t *testing.T, extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
 	dir string, stackName tokens.QName) error {
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
-	ws, err := workspace.NewProjectWorkspace(dir)
+	ws, err := workspace.NewFrom(dir)
 	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
 		return err
 	}
