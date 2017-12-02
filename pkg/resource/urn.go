@@ -92,7 +92,7 @@ func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType toke
 // URNName returns the URN name part of a URN (i.e., strips off the prefix).
 func (urn URN) URNName() string {
 	s := string(urn)
-	contract.Assert(strings.HasPrefix(s, URNPrefix))
+	contract.Assertf(strings.HasPrefix(s, URNPrefix), "Urn is: '%s'", string(urn))
 	return s[len(URNPrefix):]
 }
 

@@ -254,7 +254,12 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 
 	// Use the resource goal state name to produce a globally unique URN.
 	res := e.Goal()
-	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), res.Parent.QualifiedType(), res.Type, res.Name)
+	parentType := tokens.Type("")
+	if string(res.Parent) != "" {
+		parentType = res.Parent.QualifiedType()
+	}
+
+	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), parentType, res.Type, res.Name)
 	if iter.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
