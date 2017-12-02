@@ -141,20 +141,21 @@ func TestBasicCRUDPlan(t *testing.T) {
 	ns := targ.Name
 	mod := tokens.Module(pkg + ":index")
 	pkgname := pkg.Name()
+	parentType := tokens.Type("")
 
 	// Some shared tokens and names.
 	typA := tokens.Type(mod + ":A")
 	namA := tokens.QName("res-a")
-	urnA := resource.NewURN(ns, pkgname, typA, namA)
+	urnA := resource.NewURN(ns, pkgname, parentType, typA, namA)
 	typB := tokens.Type(mod + ":B")
 	namB := tokens.QName("res-b")
-	urnB := resource.NewURN(ns, pkgname, typB, namB)
+	urnB := resource.NewURN(ns, pkgname, parentType, typB, namB)
 	typC := tokens.Type(mod + ":C")
 	namC := tokens.QName("res-c")
-	urnC := resource.NewURN(ns, pkgname, typC, namC)
+	urnC := resource.NewURN(ns, pkgname, parentType, typC, namC)
 	typD := tokens.Type(mod + ":D")
 	namD := tokens.QName("res-d")
-	urnD := resource.NewURN(ns, pkgname, typD, namD)
+	urnD := resource.NewURN(ns, pkgname, parentType, typD, namD)
 
 	// Create the old resources snapshot.
 	oldResB := resource.NewState(typB, urnB, true, false, resource.ID("b-b-b"),

@@ -85,8 +85,16 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 
 // GetChild find a child with the given type and name or returns `nil`.
 func (r *Resource) GetChild(typ string, name string) *Resource {
-	childURN := resource.NewURN(r.NS, r.Alloc, tokens.Type(typ), tokens.QName(name))
-	return r.Children[childURN]
+	for childURN, childResource := range r.Children {
+		if childURN.Namespace() == r.NS &&
+			childURN.Alloc() == r.Alloc &&
+			childURN.Type() == tokens.Type(typ) &&
+			childURN.Name() == tokens.QName(name) {
+			return childResource
+		}
+	}
+
+	return nil
 }
 
 // OperationsProvider gets an OperationsProvider for this resource.

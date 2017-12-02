@@ -18,6 +18,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		resource.NewURN(
 			tokens.QName("test"),
 			tokens.PackageName("resource/test"),
+			tokens.Type(""),
 			tokens.Type("Test"),
 			tokens.QName("resource-x"),
 		),
