@@ -40,6 +40,9 @@ const (
 	URNTypeDelimiter = "!!"                          // the delimiter between URN type elements
 )
 
+// massage ensures that the individual components of the URN do not contains sequences of characters
+// that will interfere with later parsing of that URN.  For example, a component should not contain
+// :: as that is the delimited we use for separating out all components.
 func massage(v string) string {
 	delimeters := []string{URNNameDelimiter, URNTypeDelimiter}
 	replacements := []string{":_:", "!_!"}
