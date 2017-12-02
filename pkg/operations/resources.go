@@ -154,7 +154,10 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	var err error
 	for range ops.resource.Children {
 		childLogs := <-ch
-		err = multierror.Append(err, <-errch)
+		childErr := <-errch
+		if childErr != nil {
+			err = multierror.Append(err, childErr)
+		}
 		if childLogs != nil {
 			logs = append(logs, *childLogs...)
 		}
