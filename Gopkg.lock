@@ -20,6 +20,12 @@
   version = "v0.1.0"
 
 [[projects]]
+  name = "github.com/cheggaaa/pb"
+  packages = ["."]
+  revision = "657164d0228d6bebe316fdf725c69f131a50fb10"
+  version = "v1.0.18"
+
+[[projects]]
   branch = "master"
   name = "github.com/codahale/hdrhistogram"
   packages = ["."]
@@ -77,6 +83,12 @@
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   revision = "0b12d6b5"
+
+[[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -225,6 +237,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "04c45169a0278ae684b44323bca83de42411a024d8d16cc87bde36af116d5d38"
+  inputs-digest = "85002865fa582b833a9d3cb35a8941a1c99212b5c4ebe2053ab66de3ee4b5ad1"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -4,6 +4,7 @@ package cloud
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/cheggaaa/pb"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
@@ -205,7 +207,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, de
 // uploadProgram archives the current Pulumi program and uploads it to a signed URL. "current"
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
-func uploadProgram(uploadURL string, printSize bool) error {
+func uploadProgram(uploadURL string, progress bool) error {
 	programPath, err := workspace.DetectPackage()
 	if err != nil {
 		return err
@@ -215,31 +217,38 @@ func uploadProgram(uploadURL string, printSize bool) error {
 		return err
 	}
 
+	parsedURL, err := url.Parse(uploadURL)
+	if err != nil {
+		return errors.Wrap(err, "parsing URL")
+	}
+
 	// programPath is the path to the Pulumi.yaml file. Need its parent folder.
 	programFolder := filepath.Dir(programPath)
 	archiveContents, err := archive.Process(programFolder, pkg.UseDefaultIgnores())
 	if err != nil {
 		return errors.Wrap(err, "creating archive")
 	}
+	var archiveReader io.Reader = archiveContents
 
-	// IDEA: add an ASCII-art progress indicator here.
-	if printSize {
-		mb := float32(archiveContents.Len()) / (1024.0 * 1024.0)
-		fmt.Printf(
-			colors.ColorizeText(
-				colors.SpecUnimportant+"Uploading program (%.2fMiB)...\n"+colors.Reset), mb)
-	}
-
-	parsedURL, err := url.Parse(uploadURL)
-	if err != nil {
-		return errors.Wrap(err, "parsing URL")
+	// If progress is requested, show a little animated ASCII progress bar.
+	if progress {
+		bar := pb.New(archiveContents.Len())
+		archiveReader = bar.NewProxyReader(archiveReader)
+		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Uploading program: "))
+		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.SetMaxWidth(80)
+		bar.SetUnits(pb.U_BYTES)
+		bar.Start()
+		defer func() {
+			bar.Finish()
+		}()
 	}
 
 	resp, err := http.DefaultClient.Do(&http.Request{
 		Method:        "PUT",
 		URL:           parsedURL,
 		ContentLength: int64(archiveContents.Len()),
-		Body:          ioutil.NopCloser(archiveContents),
+		Body:          ioutil.NopCloser(archiveReader),
 	})
 	if err != nil {
 		return err
@@ -417,21 +426,16 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
 func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) {
-	time.Sleep(5 * time.Second)
-
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
 	eventIndex := "0"
 	for {
-		time.Sleep(2 * time.Second)
-
 		var updateResults apitype.UpdateResults
 		pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
 		if err := pulumiRESTCall(b.cloudURL, "GET", pathWithIndex, nil, &updateResults); err != nil {
-			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it
-			// and keep continuing.
+			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep continuing.
 			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
 			if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 504 {
-				time.Sleep(5 * time.Second)
+				time.Sleep(1 * time.Second)
 				continue
 			}
 		}
@@ -479,7 +483,7 @@ func Login(cloudURL string) error {
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
-		token, readerr := cmdutil.ReadConsole("Enter Pulumi access token")
+		token, readerr := cmdutil.ReadConsole("Enter your access token")
 		if readerr != nil {
 			return readerr
 		}
