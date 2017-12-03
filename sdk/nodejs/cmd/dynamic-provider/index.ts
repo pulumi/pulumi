@@ -49,13 +49,15 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp = new provproto.CheckResponse();
 
-        const props = req.getProperties().toJavaScript();
-        const provider = getProvider(props);
+        const olds = req.getOlds().toJavaScript();
+        const news = req.getNews().toJavaScript();
+        const provider = getProvider(news);
 
-        const result = await provider.check(props);
-        if (result.defaults) {
-            resp.setDefaults(structproto.Struct.fromJavaScript(result.defaults));
-        }
+        const result = await provider.check(olds, news);
+        const inputs = result.inputs || {};
+        inputs[providerKey] = news[providerKey];
+        resp.setInputs(structproto.Struct.fromJavaScript(inputs));
+
         if (result.failures.length !== 0) {
             const failures = [];
             for (const f of result.failures) {

@@ -8,9 +8,9 @@ import * as runtime from "../runtime";
  */
 export class CheckResult {
     /**
-     * The defaults to use, if any.
+     * The inputs to use, if any.
      */
-    public readonly defaults: any | undefined;
+    public readonly inputs: any | undefined;
 
     /**
      * Any validation failures that occurred.
@@ -20,11 +20,11 @@ export class CheckResult {
     /**
      * Constructs a new check result.
      *
-     * @param defaults The defaults to use, if any.
+     * @param inputs The inputs to use, if any.
      * @param failures Any validation failures that occurred.
      */
-    constructor(defaults: any | undefined, failures: CheckFailure[]) {
-        this.defaults = defaults;
+    constructor(inputs: any | undefined, failures: CheckFailure[]) {
+        this.inputs = inputs;
         this.failures = failures;
     }
 }
@@ -133,9 +133,10 @@ export interface ResourceProvider {
     /**
      * Check validates that the given property bag is valid for a resource of the given type.
      *
-     * @param inputs The full properties to use for validation.
+     * @param olds The old input properties to use for validation.
+     * @param news The new input properties to use for validation.
      */
-    check: (inputs: any) => Promise<CheckResult>;
+    check: (olds: any, news: any) => Promise<CheckResult>;
 
     /**
      * Diff checks what impacts a hypothetical update will have on the resource's properties.

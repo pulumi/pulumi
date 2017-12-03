@@ -301,7 +301,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// IDEA: we probably need some way to cancel this in case of catastrophe.
 	result := <-step.done
 	state := result.State
-	outprops := state.Synthesized()
+	props = state.All()
 	stable := result.Stable
 	var stables []string
 	for _, sta := range result.Stables {
@@ -309,11 +309,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	glog.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, name=%v, stable=%v, #stables=%v #outs=%v",
-		state.Type, state.URN, stable, len(stables), len(outprops))
+		state.Type, state.URN, stable, len(stables), len(props))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(outprops, plugin.MarshalOptions{KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(props, plugin.MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}

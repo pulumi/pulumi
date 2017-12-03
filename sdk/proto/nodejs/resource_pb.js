@@ -205,7 +205,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getType = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setType = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -220,7 +220,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getName = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setName = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -235,7 +235,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getParent = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setParent = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -252,7 +252,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getCustom = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setCustom = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -481,7 +481,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -496,7 +496,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getId = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setId = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -543,7 +543,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getStable = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setStable = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -728,7 +728,7 @@ proto.pulumirpc.RegisterResourceOutputsRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceOutputsRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

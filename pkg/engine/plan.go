@@ -392,11 +392,11 @@ func printResourceProperties(
 	// If not summarizing, print all of the properties associated with this resource.
 	if !summary {
 		if old == nil && new != nil {
-			printObject(b, new.AllInputs(), planning, indent, op, false)
+			printObject(b, new.Inputs, planning, indent, op, false)
 		} else if new == nil && old != nil {
-			printObject(b, old.AllInputs(), planning, indent, op, false)
+			printObject(b, old.Inputs, planning, indent, op, false)
 		} else {
-			printOldNewDiffs(b, old.AllInputs(), new.AllInputs(), replaces, detailed, planning, indent, op)
+			printOldNewDiffs(b, old.Inputs, new.Inputs, replaces, detailed, planning, indent, op)
 		}
 	}
 }

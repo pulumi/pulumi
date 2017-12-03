@@ -7,7 +7,7 @@ const sleep = require("sleep-promise");
 const assert = require("assert");
 
 class NullProvider implements dynamic.ResourceProvider {
-    check = (inputs: any) => Promise.resolve(new dynamic.CheckResult(undefined, []));
+    check = (olds: any, news: any) => Promise.resolve(new dynamic.CheckResult(news, []));
     diff = (id: pulumi.ID, olds: any, news: any) => Promise.resolve(new dynamic.DiffResult([], []));
     create = (inputs: any) => Promise.resolve(new dynamic.CreateResult("0", {}));
     update = (id: string, olds: any, news: any) => Promise.resolve(new dynamic.UpdateResult({}));

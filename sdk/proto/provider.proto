@@ -15,7 +15,8 @@ service ResourceProvider {
     rpc Configure(ConfigureRequest) returns (google.protobuf.Empty){}
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
-    // Check validates that the given property bag is valid for a resource of the given type.
+    // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+    // that should be passed to successive calls to Diff, Create, or Update for this resource.
     rpc Check(CheckRequest) returns (CheckResponse) {}
     // Diff checks what impacts a hypothetical update will have on the resource's properties.
     rpc Diff(DiffRequest) returns (DiffResponse) {}
@@ -45,13 +46,14 @@ message InvokeResponse {
 }
 
 message CheckRequest {
-    string urn = 1;                        // the Pulumi URN for this resource.
-    google.protobuf.Struct properties = 2; // the full properties to use for validation.
+    string urn = 1;                  // the Pulumi URN for this resource.
+    google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
+    google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
 }
 
 message CheckResponse {
-    google.protobuf.Struct defaults = 1; // defaults to use, if any.
-    repeated CheckFailure failures = 2;  // any validation failures that occurred.
+    google.protobuf.Struct inputs = 1;  // the provider inputs for this resource.
+    repeated CheckFailure failures = 2; // any validation failures that occurred.
 }
 
 message CheckFailure {
@@ -62,8 +64,8 @@ message CheckFailure {
 message DiffRequest {
     string id = 1;                   // the ID of the resource to diff.
     string urn = 2;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3; // the old values of properties to diff.
-    google.protobuf.Struct news = 4; // the new values of properties to diff.
+    google.protobuf.Struct olds = 3; // the old values of provider inputs to diff.
+    google.protobuf.Struct news = 4; // the new values of provider inputs to diff.
 }
 
 message DiffResponse {
@@ -73,7 +75,7 @@ message DiffResponse {
 
 message CreateRequest {
     string urn = 1;                        // the Pulumi URN for this resource.
-    google.protobuf.Struct properties = 2; // the properties to set during creation.
+    google.protobuf.Struct properties = 2; // the provider inputs to set during creation.
 }
 
 message CreateResponse {
@@ -84,8 +86,8 @@ message CreateResponse {
 message UpdateRequest {
     string id = 1;                   // the ID of the resource to update.
     string urn = 2;                  // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3; // the old values of properties to update.
-    google.protobuf.Struct news = 4; // the new values of properties to update.
+    google.protobuf.Struct olds = 3; // the old values of provider inputs for the resource to update.
+    google.protobuf.Struct news = 4; // the new values of provider inputs for the resource to update.
 }
 
 message UpdateResponse {

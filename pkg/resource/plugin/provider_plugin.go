@@ -64,26 +64,34 @@ func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
-	glog.V(7).Infof("resource[%v].Check(urn=%v,#props=%v) executing", p.pkg, urn, len(props))
-	mprops, err := MarshalProperties(props, MarshalOptions{KeepUnknowns: true})
+func (p *provider) Check(urn resource.URN,
+	olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+
+	glog.V(7).Infof("resource[%v].Check(urn=%v,#olds=%v,#news=%v) executing", p.pkg, urn, len(olds), len(news))
+
+	molds, err := MarshalProperties(olds, MarshalOptions{KeepUnknowns: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	mnews, err := MarshalProperties(news, MarshalOptions{KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	resp, err := p.client.Check(p.ctx.Request(), &pulumirpc.CheckRequest{
-		Urn:        string(urn),
-		Properties: mprops,
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
 	})
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Check(urn=%v,...) failed: err=%v", p.pkg, urn, err)
 		return nil, nil, err
 	}
 
-	// Unmarshal any defaults.
-	var defaults resource.PropertyMap
-	if defs := resp.GetDefaults(); defs != nil {
-		defaults, err = UnmarshalProperties(defs, MarshalOptions{KeepUnknowns: true})
+	// Unmarshal the provider inputs.
+	var inputs resource.PropertyMap
+	if ins := resp.GetInputs(); ins != nil {
+		inputs, err = UnmarshalProperties(ins, MarshalOptions{KeepUnknowns: true})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -95,9 +103,9 @@ func (p *provider) Check(urn resource.URN, props resource.PropertyMap) (resource
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	glog.V(7).Infof("resource[%v].Check(urn=%v,...) success: defs=#%v failures=#%v",
-		p.pkg, urn, len(defaults), len(failures))
-	return defaults, failures, nil
+	glog.V(7).Infof("resource[%v].Check(urn=%v,...) success: inputs=#%v failures=#%v",
+		p.pkg, urn, len(inputs), len(failures))
+	return inputs, failures, nil
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.

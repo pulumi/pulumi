@@ -45,7 +45,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			false,
 			resource.ID(res.ID),
 			resource.NewPropertyMapFromMap(res.Inputs),
-			resource.NewPropertyMapFromMap(res.Defaults),
 			resource.NewPropertyMapFromMap(res.Outputs),
 			resource.URN(res.Parent),
 		))
