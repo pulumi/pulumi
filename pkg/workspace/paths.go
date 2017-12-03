@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -34,10 +32,6 @@ func DetectPackage() (string, error) {
 	pkgPath, err := DetectPackageFrom(dir)
 	if err != nil {
 		return "", err
-	}
-
-	if pkgPath == "" {
-		return "", errors.Errorf("could not find Pulumi.yaml (searching upwards from %s)", dir)
 	}
 
 	return pkgPath, nil

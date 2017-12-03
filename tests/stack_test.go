@@ -37,7 +37,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "stack", "init", "foo")
+		e.RunCommand("pulumi", "stack", "init", "--local", "foo")
 
 		stacks, current := integration.GetStacks(e)
 		assert.Equal(t, 1, len(stacks))
@@ -65,9 +65,9 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "stack", "init", "blighttown")
-		e.RunCommand("pulumi", "stack", "init", "majula")
-		e.RunCommand("pulumi", "stack", "init", "lothric")
+		e.RunCommand("pulumi", "stack", "init", "--local", "blighttown")
+		e.RunCommand("pulumi", "stack", "init", "--local", "majula")
+		e.RunCommand("pulumi", "stack", "init", "--local", "lothric")
 
 		// Last one created is always selected.
 		stacks, current := integration.GetStacks(e)
@@ -102,9 +102,9 @@ func TestStackCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "stack", "init", "blighttown")
-		e.RunCommand("pulumi", "stack", "init", "majula")
-		e.RunCommand("pulumi", "stack", "init", "lothric")
+		e.RunCommand("pulumi", "stack", "init", "--local", "blighttown")
+		e.RunCommand("pulumi", "stack", "init", "--local", "majula")
+		e.RunCommand("pulumi", "stack", "init", "--local", "lothric")
 		stacks, _ := integration.GetStacks(e)
 		assert.Equal(t, 3, len(stacks))
 

@@ -50,8 +50,7 @@ func NewFrom(dir string) (W, error) {
 	project, err := DetectPackageFrom(dir)
 	if err != nil {
 		return nil, err
-	}
-	if project == "" {
+	} else if project == "" {
 		return nil, errors.New("no Pulumi project file found, are you missing a Pulumi.yaml file?")
 	}
 

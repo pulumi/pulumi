@@ -77,7 +77,7 @@ func ReadPackageFromArg(arg string) (*Pkginfo, error) {
 		if err != nil {
 			return nil, errors.Errorf("could not locate a package to load: %v", err)
 		} else if pkgpath == "" {
-			return nil, errors.Errorf("no package found by searching upwards from '%v'", path)
+			return nil, errors.Errorf("could not find Pulumi.yaml (searching upwards from %s)", path)
 		}
 		path = pkgpath
 	} else {

@@ -25,7 +25,7 @@ func readPassphrase(prompt string) (string, error) {
 }
 
 // DefaultCrypter gets the right value encrypter/decrypter given the project configuration.
-func DefaultCrypter(cfg config.Map) (config.ValueEncrypterDecrypter, error) {
+func DefaultCrypter(cfg config.Map) (config.Crypter, error) {
 	// If there is no config, we can use a standard panic crypter.
 	if !cfg.HasSecureValue() {
 		return config.NewPanicCrypter(), nil
@@ -36,7 +36,7 @@ func DefaultCrypter(cfg config.Map) (config.ValueEncrypterDecrypter, error) {
 }
 
 // SymmetricCrypter gets the right value encrypter/decrypter for this project.
-func SymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
+func SymmetricCrypter() (config.Crypter, error) {
 	// First, read the package to see if we've got a key.
 	pkg, err := workspace.GetPackage()
 	if err != nil {
@@ -86,11 +86,11 @@ func SymmetricCrypter() (config.ValueEncrypterDecrypter, error) {
 	return crypter, nil
 }
 
-// given a passphrase and an encryption state, construct a ValueEncrypterDecrypter from it. Our encryption
+// given a passphrase and an encryption state, construct a Crypter from it. Our encryption
 // state value is a version tag followed by version specific state information. Presently, we only have one version
 // we support (`v1`) which is AES-256-GCM using a key derived from a passphrase using 1,000,000 iterations of PDKDF2
 // using SHA256.
-func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.ValueEncrypterDecrypter, error) {
+func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Crypter, error) {
 	splits := strings.SplitN(state, ":", 3)
 	if len(splits) != 3 {
 		return nil, errors.New("malformed state value")

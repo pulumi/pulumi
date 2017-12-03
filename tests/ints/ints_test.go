@@ -36,7 +36,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("project_main_abs")
-		e.RunCommand("pulumi", "stack", "init", "main-abs")
+		e.RunCommand("pulumi", "stack", "init", "--local", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
@@ -53,7 +53,7 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("project_main_parent")
-		e.RunCommand("pulumi", "stack", "init", "main-parent")
+		e.RunCommand("pulumi", "stack", "init", "--local", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")

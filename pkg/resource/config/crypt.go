@@ -16,26 +16,26 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// ValueEncrypter encrypts plaintext into its encrypted ciphertext.
-type ValueEncrypter interface {
+// Encrypter encrypts plaintext into its encrypted ciphertext.
+type Encrypter interface {
 	EncryptValue(plaintext string) (string, error)
 }
 
-// ValueDecrypter decrypts encrypted cyphertext to its plaintext representation.
-type ValueDecrypter interface {
+// Decrypter decrypts encrypted cyphertext to its plaintext representation.
+type Decrypter interface {
 	DecryptValue(cypertext string) (string, error)
 }
 
-// ValueEncrypterDecrypter can both encrypt and decrypt values.
-type ValueEncrypterDecrypter interface {
-	ValueEncrypter
-	ValueDecrypter
+// Crypter can both encrypt and decrypt values.
+type Crypter interface {
+	Encrypter
+	Decrypter
 }
 
-// NewBlindingDecrypter returns a ValueDecrypter that instead of decrypting data, just returns "********", it can
+// NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "********", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted.
-func NewBlindingDecrypter() ValueDecrypter {
+func NewBlindingDecrypter() Decrypter {
 	return &blindingDecrypter{}
 }
 
@@ -46,7 +46,7 @@ func (b blindingDecrypter) DecryptValue(ciphertext string) (string, error) {
 }
 
 // NewPanicCrypter returns a new config crypter that will panic if used.
-func NewPanicCrypter() ValueEncrypterDecrypter {
+func NewPanicCrypter() Crypter {
 	return &panicCrypter{}
 }
 
@@ -62,13 +62,13 @@ func (p panicCrypter) DecryptValue(ciphertext string) (string, error) {
 
 // NewSymmetricCrypter creates a crypter that encrypts and decrypts values using AES-256-GCM.  The nonce is stored with
 // the value itself as a pair of base64 values separated by a colon and a version tag `v1` is prepended.
-func NewSymmetricCrypter(key []byte) ValueEncrypterDecrypter {
+func NewSymmetricCrypter(key []byte) Crypter {
 	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
 	return &symmetricCrypter{key}
 }
 
 // NewSymmetricCrypterFromPassphrase uses a passphrase and salt to generate a key, and then returns a crypter using it.
-func NewSymmetricCrypterFromPassphrase(phrase string, salt []byte) ValueEncrypterDecrypter {
+func NewSymmetricCrypterFromPassphrase(phrase string, salt []byte) Crypter {
 	// Generate a key using PBKDF2 to slow down attempts to crack it.  1,000,000 iterations was chosen because it
 	// took a little over a second on an i7-7700HQ Quad Core procesor
 	key := pbkdf2.Key([]byte(phrase), salt, 1000000, SymmetricCrypterKeyBytes, sha256.New)

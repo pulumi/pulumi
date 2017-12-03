@@ -61,28 +61,28 @@ func GetRepository(e *testing.Environment) workspace.Repository {
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.
 // Assumes .pulumi is in the current working directory. Fails the test on IO errors.
 func GetStacks(e *testing.Environment) ([]string, *string) {
-	out, err := e.RunCommand("pulumi", "stack", "ls")
-	assert.Equal(e, "", err, "expected nothing written to stderr")
+	out, _ := e.RunCommand("pulumi", "stack", "ls")
 
 	outLines := strings.Split(out, "\n")
-
-	var stackNames []string
-	var currentStack *string
 	if len(outLines) == 0 {
 		e.Fatalf("command didn't output as expected")
 	}
+
 	// Confirm header row matches.
 	// TODO(pulumi/pulumi/issues/496): Provide structured output for pulumi commands. e.g., so we can avoid this
 	// err-prone scraping with just deserializings a JSON object.
-	assert.Equal(e, outLines[0], "NAME                 LAST UPDATE                                      RESOURCE COUNT")
+	assert.True(e, strings.HasPrefix(outLines[0], "NAME"))
 
-	if len(outLines) >= 2 {
-		stackSummaries := outLines[1:]
-		for _, summary := range stackSummaries {
-			if summary == "" {
-				continue // Last line of stdout is "".
-			}
-			stackName := strings.TrimSpace(summary[:20])
+	var stackNames []string
+	var currentStack *string
+	stackSummaries := outLines[1:]
+	for _, summary := range stackSummaries {
+		if summary == "" {
+			break
+		}
+		firstSpace := strings.Index(summary, " ")
+		if firstSpace != -1 {
+			stackName := strings.TrimSpace(summary[:firstSpace])
 			if strings.HasSuffix(stackName, "*") {
 				currentStack = &stackName
 				stackName = strings.TrimSuffix(stackName, "*")

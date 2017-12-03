@@ -28,7 +28,7 @@ import (
 var DisableIntegrityChecking bool
 
 type localStackProvider struct {
-	decrypter config.ValueDecrypter
+	decrypter config.Decrypter
 }
 
 func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {

@@ -234,7 +234,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		return
 	}
 	if err = RunCommand(t, "pulumi-stack-init",
-		opts.PulumiCmd([]string{"stack", "init", string(stackName)}), dir, opts); err != nil {
+		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir, opts); err != nil {
 		return
 	}
 	for key, value := range opts.Config {
@@ -430,17 +430,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts Progra
 		}
 	}()
 
-	env := make([]string, 0, len(os.Environ())+2)
-
-	for _, envEntry := range os.Environ() {
-		// TODO(pulumi/pulumi#471) Force local execution now, but we'll have to do something better later
-		if strings.HasPrefix(envEntry, "PULUMI_API=") {
-			continue
-		}
-
-		env = append(env, envEntry)
-	}
-
+	var env []string
+	env = append(env, os.Environ()...)
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 

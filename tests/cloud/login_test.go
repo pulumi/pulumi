@@ -30,7 +30,7 @@ func TestRequireLogin(t *testing.T) {
 		// logout and confirm auth error.
 		e.RunCommand("pulumi", "logout")
 
-		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "foo")
+		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "--local", "foo")
 		assert.Empty(t, out, "expected no stdout")
 		assert.Contains(t, err, "error: getting stored credentials: credentials file not found")
 
@@ -38,7 +38,7 @@ func TestRequireLogin(t *testing.T) {
 		os.Setenv(cmd.PulumiAccessTokenEnvVar, integration.TestAccountAccessToken)
 		e.RunCommand("pulumi", "login")
 
-		e.RunCommand("pulumi", "stack", "init", "foo")
+		e.RunCommand("pulumi", "stack", "init", "--local", "foo")
 		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
 	})
 }

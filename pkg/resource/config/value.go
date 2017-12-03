@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Map is a bag of config stored in the settings file.
@@ -30,11 +29,14 @@ type Value struct {
 	secure bool
 }
 
-func (c Value) Value(decrypter ValueDecrypter) (string, error) {
-	contract.Require(decrypter != nil, "decrypter")
-
+// Value fetches the value of this configuration entry, using decrypter to decrypt if necessary.  If the value
+// is a secret and decrypter is nil, or if decryption fails for any reason, a non-nil error is returned.
+func (c Value) Value(decrypter Decrypter) (string, error) {
 	if !c.secure {
 		return c.value, nil
+	}
+	if decrypter == nil {
+		return "", errors.New("non-nil decrypter required for secret")
 	}
 
 	return decrypter.DecryptValue(c.value)

@@ -257,7 +257,7 @@ func listConfig(stack *backend.Stack, showSecrets bool) error {
 	}
 
 	// By default, we will use a blinding decrypter to show '******'.  If requested, display secrets in plaintext.
-	var decrypter config.ValueDecrypter
+	var decrypter config.Decrypter
 	if cfg.HasSecureValue() && showSecrets {
 		decrypter, err = state.SymmetricCrypter()
 		if err != nil {
@@ -297,20 +297,20 @@ func getConfig(stack *backend.Stack, key tokens.ModuleMember) error {
 
 	if cfg != nil {
 		if v, ok := cfg[key]; ok {
+			var d config.Decrypter
 			if v.Secure() {
-				decrypter, err := state.SymmetricCrypter()
-				if err != nil {
+				var err error
+				if d, err = state.DefaultCrypter(cfg); err != nil {
 					return errors.Wrap(err, "could not create a decrypter")
 				}
-				decrypted, err := v.Value(decrypter)
-				if err != nil {
-					return errors.Wrap(err, "could not decrypt configuation value")
-				}
-				fmt.Printf("%v\n", decrypted)
 			} else {
-				fmt.Printf("%v\n", v)
+				d = config.NewPanicCrypter()
 			}
-
+			raw, err := v.Value(d)
+			if err != nil {
+				return errors.Wrap(err, "could not decrypt configuation value")
+			}
+			fmt.Printf("%v\n", raw)
 			return nil
 		}
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackLsCmd() *cobra.Command {
@@ -24,6 +25,14 @@ func newStackLsCmd() *cobra.Command {
 		Short: "List all known stacks",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// Ensure we are in a project; if not, we will fail.
+			proj, err := workspace.DetectPackage()
+			if err != nil {
+				return errors.Wrapf(err, "could not detect current project")
+			} else if proj == "" {
+				return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+			}
+
 			// Get a list of all known backends, as we will query them all.
 			bes, hasClouds := allBackends()
 
