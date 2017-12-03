@@ -28,6 +28,7 @@ func newStackInitCmd() *cobra.Command {
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			var b backend.Backend
+			var opts interface{}
 			if localBackend {
 				if ppc != "" {
 					return errors.New("cannot pass both --local and --ppc; PPCs only available in cloud mode")
@@ -39,10 +40,11 @@ func newStackInitCmd() *cobra.Command {
 					cloudURL = cloud.DefaultURL()
 				}
 				b = cloud.New(cloudURL)
+				opts = cloud.CreateStackOptions{CloudName: ppc}
 			}
 
 			stackName := tokens.QName(args[0])
-			err := b.CreateStack(stackName, backend.StackCreateOptions{CloudName: ppc})
+			err := b.CreateStack(stackName, opts)
 			if err != nil {
 				return errors.Wrapf(err, "could not create stack")
 			}

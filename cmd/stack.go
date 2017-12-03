@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -31,27 +32,35 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %v:\n", s.Name)
-			fmt.Printf("    Managed by %s", s.Backend.Name())
-			if s.Backend.IsCloud() {
-				fmt.Printf(" ☁️")
-			}
-			fmt.Printf("\n")
+			fmt.Printf("Current stack is %v:\n", s.Name())
 
-			if s.Snapshot != nil {
-				if t := s.Snapshot.Manifest.Time; t.IsZero() {
+			be := s.Backend()
+			fmt.Printf("    Managed by %s", be.Name())
+			if _, isCloud := be.(cloud.Backend); isCloud {
+				fmt.Printf(" ☁️\n")
+				if cs, ok := s.(cloud.Stack); ok {
+					fmt.Printf("    Organization %s\n", cs.OrgName())
+					fmt.Printf("    PPC %s\n", cs.CloudName())
+				}
+			} else {
+				fmt.Printf("\n")
+			}
+
+			snap := s.Snapshot()
+			if snap != nil {
+				if t := snap.Manifest.Time; t.IsZero() {
 					fmt.Printf("    Last update time unknown\n")
 				} else {
-					fmt.Printf("    Last updated at %v\n", s.Snapshot.Manifest.Time)
+					fmt.Printf("    Last updated at %v\n", snap.Manifest.Time)
 				}
 				var cliver string
-				if s.Snapshot.Manifest.Version == "" {
+				if snap.Manifest.Version == "" {
 					cliver = "?"
 				} else {
-					cliver = s.Snapshot.Manifest.Version
+					cliver = snap.Manifest.Version
 				}
 				fmt.Printf("    Pulumi version %s\n", cliver)
-				for _, plugin := range s.Snapshot.Manifest.Plugins {
+				for _, plugin := range snap.Manifest.Plugins {
 					var plugver string
 					if plugin.Version == "" {
 						plugver = "?"
@@ -64,15 +73,16 @@ func newStackCmd() *cobra.Command {
 				fmt.Printf("    No updates yet; run 'pulumi update'\n")
 			}
 
-			if len(s.Config) > 0 {
-				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(s.Config))
+			cfg := s.Config()
+			if cfg != nil && len(cfg) > 0 {
+				fmt.Printf("    %v configuration variables set (see `pulumi config` for details)\n", len(cfg))
 			}
 			fmt.Printf("\n")
 
 			// Now show the resources.
 			var rescnt int
-			if s.Snapshot != nil {
-				rescnt = len(s.Snapshot.Resources)
+			if snap != nil {
+				rescnt = len(snap.Resources)
 			}
 			fmt.Printf("Current stack resources (%d):\n", rescnt)
 			if rescnt == 0 {
@@ -80,7 +90,7 @@ func newStackCmd() *cobra.Command {
 			} else {
 				fmt.Printf("    %-48s %s\n", "TYPE", "NAME")
 				var stackResource *resource.State
-				for _, res := range s.Snapshot.Resources {
+				for _, res := range snap.Resources {
 					if res.Type == stack.RootPulumiStackTypeName {
 						stackResource = res
 					} else {

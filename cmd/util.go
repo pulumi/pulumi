@@ -37,7 +37,7 @@ func allBackends() ([]backend.Backend, bool) {
 	return backends, len(cloudBackends) > 0
 }
 
-func requireStack(stackName tokens.QName) (*backend.Stack, error) {
+func requireStack(stackName tokens.QName) (backend.Stack, error) {
 	if stackName == "" {
 		return requireCurrentStack()
 	}
@@ -51,7 +51,7 @@ func requireStack(stackName tokens.QName) (*backend.Stack, error) {
 	return stack, nil
 }
 
-func requireCurrentStack() (*backend.Stack, error) {
+func requireCurrentStack() (backend.Stack, error) {
 	bes, _ := allBackends()
 	stack, err := state.CurrentStack(bes)
 	if err != nil {

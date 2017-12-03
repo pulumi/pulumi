@@ -250,8 +250,8 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value con
 	return setWorkspaceConfiguration(stackName, key, value)
 }
 
-func listConfig(stack *backend.Stack, showSecrets bool) error {
-	cfg, err := state.Configuration(stack.Name)
+func listConfig(stack backend.Stack, showSecrets bool) error {
+	cfg, err := state.Configuration(stack.Name())
 	if err != nil {
 		return err
 	}
@@ -289,8 +289,8 @@ func listConfig(stack *backend.Stack, showSecrets bool) error {
 	return nil
 }
 
-func getConfig(stack *backend.Stack, key tokens.ModuleMember) error {
-	cfg, err := state.Configuration(stack.Name)
+func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
+	cfg, err := state.Configuration(stack.Name())
 	if err != nil {
 		return err
 	}
@@ -316,7 +316,7 @@ func getConfig(stack *backend.Stack, key tokens.ModuleMember) error {
 	}
 
 	return errors.Errorf(
-		"configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stack.Name)
+		"configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stack.Name())
 }
 
 func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {

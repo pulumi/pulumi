@@ -14,19 +14,17 @@ import (
 type Backend interface {
 	// Name returns a friendly name for this backend.
 	Name() string
-	// IsCloud returns true if this backend is a Pulumi Cloud backend.
-	IsCloud() bool
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
-	GetStack(name tokens.QName) (*Stack, error)
+	GetStack(name tokens.QName) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(name tokens.QName, opts StackCreateOptions) error
+	CreateStack(name tokens.QName, opts interface{}) error
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
 	RemoveStack(name tokens.QName, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks() ([]*Stack, error)
+	ListStacks() ([]Stack, error)
 
 	// Preview initiates a preview of the current workspace's contents.
 	Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error
@@ -37,9 +35,4 @@ type Backend interface {
 
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error)
-}
-
-// StackCreateOptions are a set of options that may be passed when creating a stack.
-type StackCreateOptions struct {
-	CloudName string // an optional cloud name in the target backend.
 }

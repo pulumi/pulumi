@@ -19,11 +19,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// Backend extends the base backend interface with specific information about local backends.
+type Backend interface {
+	backend.Backend
+	local() // at the moment, no local specific info, so just use a marker function.
+}
+
 type localBackend struct {
 	engineCache map[tokens.QName]engine.Engine
 }
 
-func New() backend.Backend {
+func New() Backend {
 	return &localBackend{engineCache: make(map[tokens.QName]engine.Engine)}
 }
 
@@ -36,12 +42,10 @@ func (b *localBackend) Name() string {
 	return name
 }
 
-func (b *localBackend) IsCloud() bool {
-	return false
-}
+func (b *localBackend) local() {}
 
-func (b *localBackend) CreateStack(stackName tokens.QName, opts backend.StackCreateOptions) error {
-	contract.Requiref(opts.CloudName == "", "cloud", "local backend does not support clouds, cloud must be empty")
+func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
+	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
 	if _, _, _, err := getStack(stackName); err == nil {
 		return errors.Errorf("stack '%v' already exists", stackName)
@@ -50,26 +54,21 @@ func (b *localBackend) CreateStack(stackName tokens.QName, opts backend.StackCre
 	return saveStack(stackName, nil, nil)
 }
 
-func (b *localBackend) GetStack(stackName tokens.QName) (*backend.Stack, error) {
-	config, snapshot, _, err := getStack(stackName)
+func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
+	config, snapshot, path, err := getStack(stackName)
 	if err != nil {
 		return nil, nil
 	}
-	return &backend.Stack{
-		Name:     stackName,
-		Config:   config,
-		Snapshot: snapshot,
-		Backend:  b,
-	}, nil
+	return newStack(stackName, path, config, snapshot, b), nil
 }
 
-func (b *localBackend) ListStacks() ([]*backend.Stack, error) {
+func (b *localBackend) ListStacks() ([]backend.Stack, error) {
 	stacks, err := getLocalStacks()
 	if err != nil {
 		return nil, err
 	}
 
-	var results []*backend.Stack
+	var results []backend.Stack
 	for _, stackName := range stacks {
 		stack, err := b.GetStack(stackName)
 		if err != nil {

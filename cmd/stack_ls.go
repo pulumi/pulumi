@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -40,14 +41,14 @@ func newStackLsCmd() *cobra.Command {
 			var current tokens.QName
 			if s, _ := state.CurrentStack(bes); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Name
+				current = s.Name()
 			}
 
 			// Now produce a list of summaries, and enumerate them sorted by name.
 			var result error
 			var stackNames []string
 			var success bool
-			stacks := make(map[string]*backend.Stack)
+			stacks := make(map[string]backend.Stack)
 			for _, b := range bes {
 				bs, err := b.ListStacks()
 				if err != nil {
@@ -58,7 +59,7 @@ func newStackLsCmd() *cobra.Command {
 					continue
 				}
 				for _, stack := range bs {
-					name := string(stack.Name)
+					name := string(stack.Name())
 					stacks[name] = stack
 					stackNames = append(stackNames, name)
 				}
@@ -68,7 +69,7 @@ func newStackLsCmd() *cobra.Command {
 
 			// Finally, print them all.
 			if success {
-				fmt.Printf("%-20s %-48s %-18s %-25s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD URL")
+				fmt.Printf("%-20s %-48s %-18s %-25s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
 				for _, name := range stackNames {
 					// Mark the name as current '*' if we've selected it.
 					stack := stacks[name]
@@ -80,20 +81,22 @@ func newStackLsCmd() *cobra.Command {
 					none := "n/a"
 					lastUpdate := none
 					resourceCount := none
-					if stack.Snapshot != nil {
-						if t := stack.Snapshot.Manifest.Time; !t.IsZero() {
+					if snap := stack.Snapshot(); snap != nil {
+						if t := snap.Manifest.Time; !t.IsZero() {
 							lastUpdate = t.String()
 						}
-						resourceCount = strconv.Itoa(len(stack.Snapshot.Resources))
+						resourceCount = strconv.Itoa(len(snap.Resources))
 					}
 
 					// Print out the cloud URL.
-					cloudURL := stack.CloudURL
-					if cloudURL == "" {
-						cloudURL = none
+					var cloudInfo string
+					if cs, ok := stack.(cloud.Stack); ok {
+						cloudInfo = fmt.Sprintf("%s:%s/%s", cs.CloudURL(), cs.OrgName(), cs.CloudName())
+					} else {
+						cloudInfo = none
 					}
 
-					fmt.Printf("%-20s %-48s %-18s %-25s\n", name, lastUpdate, resourceCount, cloudURL)
+					fmt.Printf("%-20s %-48s %-18s %-25s\n", name, lastUpdate, resourceCount, cloudInfo)
 				}
 
 				// If we aren't logged into any clouds, print a warning, since it could be a mistake.

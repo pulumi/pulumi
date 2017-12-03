@@ -24,8 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/pack"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -33,46 +31,62 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// Backend extends the base backend interface with specific information about cloud backends.
+type Backend interface {
+	backend.Backend
+	CloudURL() string
+}
+
 type cloudBackend struct {
 	cloudURL string
 }
 
 // New creates a new Pulumi backend for the given cloud API URL.
-func New(cloudURL string) backend.Backend {
+func New(cloudURL string) Backend {
 	return &cloudBackend{cloudURL: cloudURL}
 }
 
-func (b *cloudBackend) Name() string {
-	return b.cloudURL
-}
+func (b *cloudBackend) Name() string     { return b.cloudURL }
+func (b *cloudBackend) CloudURL() string { return b.cloudURL }
 
-func (b *cloudBackend) IsCloud() bool {
-	return true
-}
-
-func (b *cloudBackend) GetStack(stackName tokens.QName) (*backend.Stack, error) {
+func (b *cloudBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
 	// IDEA: query the stack directly instead of listing them.
 	stacks, err := b.ListStacks()
 	if err != nil {
 		return nil, err
 	}
 	for _, stack := range stacks {
-		if stack.Name == stackName {
+		if stack.Name() == stackName {
 			return stack, nil
 		}
 	}
 	return nil, nil
 }
 
-func (b *cloudBackend) CreateStack(stackName tokens.QName, opts backend.StackCreateOptions) error {
+// CreateStackOptions is an optional bag of options specific to creating cloud stacks.
+type CreateStackOptions struct {
+	// CloudName is the optional PPC name to create the stack in.  If omitted, the organization's default PPC is used.
+	CloudName string
+}
+
+func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return err
 	}
 
+	var cloudName string
+	if opts != nil {
+		if cloudOpts, ok := opts.(CreateStackOptions); ok {
+			cloudName = cloudOpts.CloudName
+		} else {
+			return errors.New("expected a CloudStackOptions value for opts parameter")
+		}
+	}
+
 	createStackReq := apitype.CreateStackRequest{
-		CloudName: opts.CloudName,
-		StackName: stackName.String(),
+		CloudName: cloudName,
+		StackName: string(stackName),
 	}
 
 	var createStackResp apitype.CreateStackResponse
@@ -86,16 +100,16 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts backend.StackCre
 	return nil
 }
 
-func (b *cloudBackend) ListStacks() ([]*backend.Stack, error) {
+func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
 	stacks, err := b.listCloudStacks()
 	if err != nil {
 		return nil, err
 	}
 
 	// Map to a summary slice.
-	var results []*backend.Stack
+	var results []backend.Stack
 	for _, stack := range stacks {
-		results = append(results, b.makeStackStruct(stack))
+		results = append(results, newStack(stack, b))
 	}
 
 	return results, nil
@@ -143,10 +157,21 @@ func (b *cloudBackend) Destroy(stackName tokens.QName, debug bool, _ engine.Dest
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, debug bool) error {
 	// Print a banner so it's clear this is going to the cloud.
+	var actionLabel string
+	switch action {
+	case update:
+		actionLabel = "Updating"
+	case preview:
+		actionLabel = "Previewing"
+	case destroy:
+		actionLabel = "Destroying"
+	default:
+		contract.Failf("unsupported update kind: %v", action)
+	}
 	fmt.Printf(
 		colors.ColorizeText(
-			colors.BrightMagenta+"Updating stack '%s' in the Pulumi Cloud"+colors.Reset+" ☁️\n"),
-		stackName)
+			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+" ☁️\n"),
+		actionLabel, stackName)
 
 	// First create the update object.
 	projID, err := getCloudProjectIdentifier()
@@ -159,12 +184,6 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, de
 	}
 
 	// Generate the URL we'll use for all the REST calls.
-	switch action {
-	case update, preview, destroy:
-		// ok
-	default:
-		contract.Failf("unsupported update kind: %v", action)
-	}
 	restURLRoot := fmt.Sprintf(
 		"/orgs/%s/programs/%s/%s/stacks/%s/%s",
 		projID.Owner, projID.Repository, projID.Project, string(stackName), action)
@@ -300,39 +319,6 @@ func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
 		return nil, err
 	}
 	return stacks, nil
-}
-
-// makeStackStruct transforms an API stack into a regular Pulumi stack structure.
-func (b *cloudBackend) makeStackStruct(apistack apitype.Stack) *backend.Stack {
-	// Create a fake snapshot out of this stack.
-	// TODO[pulumi/pulumi-service#249]: add time, version, etc. info to the manifest.
-	stackName := apistack.StackName
-	var resources []*resource.State
-	for _, res := range apistack.Resources {
-		resources = append(resources, resource.NewState(
-			tokens.Type(res.Type),
-			resource.URN(res.URN),
-			res.Custom,
-			false,
-			resource.ID(res.ID),
-			resource.NewPropertyMapFromMap(res.Inputs),
-			resource.NewPropertyMapFromMap(res.Defaults),
-			resource.NewPropertyMapFromMap(res.Outputs),
-			resource.URN(res.Parent),
-		))
-	}
-	snapshot := deploy.NewSnapshot(stackName, deploy.Manifest{}, resources)
-
-	// Now assemble all the pieces into a stack structure.
-	return &backend.Stack{
-		Name:      stackName,
-		Config:    nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
-		Snapshot:  snapshot,
-		CloudURL:  b.cloudURL,
-		OrgName:   apistack.OrgName,
-		CloudName: apistack.CloudName,
-		Backend:   b,
-	}
 }
 
 // getDecryptedConfig returns the stack's configuration with any secrets in plain-text.
@@ -483,7 +469,7 @@ func Login(cloudURL string) error {
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
-		token, readerr := cmdutil.ReadConsole("Enter your access token")
+		token, readerr := cmdutil.ReadConsole("Enter your Pulumi access token")
 		if readerr != nil {
 			return readerr
 		}
