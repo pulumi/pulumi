@@ -30,19 +30,27 @@ type projectWorkspace struct {
 	repo     *Repository        // the repo this workspace is associated with.
 }
 
-// NewProjectWorkspace creates a new Pulumi workspace in the given directory. Requires a
-// Pulumi.yaml file be present in the folder hierarchy between dir and the .pulumi folder.
-func NewProjectWorkspace(dir string) (W, error) {
+// New creates a new workspace using the current working directory.
+func New() (W, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return NewFrom(cwd)
+}
+
+// NewFrom creates a new Pulumi workspace in the given directory. Requires a Pulumi.yaml file be present in the
+// folder hierarchy between dir and the .pulumi folder.
+func NewFrom(dir string) (W, error) {
 	repo, err := GetRepository(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	project, err := DetectPackage(dir)
+	project, err := DetectPackageFrom(dir)
 	if err != nil {
 		return nil, err
-	}
-	if project == "" {
+	} else if project == "" {
 		return nil, errors.New("no Pulumi project file found, are you missing a Pulumi.yaml file?")
 	}
 
@@ -62,7 +70,7 @@ func NewProjectWorkspace(dir string) (W, error) {
 	}
 
 	if w.settings.Config == nil {
-		w.settings.Config = make(map[tokens.QName]map[tokens.ModuleMember]config.Value)
+		w.settings.Config = make(map[tokens.QName]config.Map)
 	}
 
 	return &w, nil

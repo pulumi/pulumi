@@ -3,6 +3,8 @@
 package cmdutil
 
 import (
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -11,7 +13,7 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := argsValidator(cmd, args)
 		if err != nil {
-			ExitError(err.Error())
+			Exit(err)
 		}
 
 		return nil
@@ -32,6 +34,23 @@ func MaximumNArgs(n int) cobra.PositionalArgs {
 // Pulumi error handling.
 func ExactArgs(n int) cobra.PositionalArgs {
 	return ArgsFunc(cobra.ExactArgs(n))
+}
+
+// SpecificArgs requires a set of specific arguments.  We use the names to improve diagnostics.
+func SpecificArgs(argNames []string) cobra.PositionalArgs {
+	return ArgsFunc(func(cmd *cobra.Command, args []string) error {
+		if len(args) > len(argNames) {
+			return errors.Errorf("too many arguments: got %d, expected %d", len(args), len(argNames))
+		} else if len(args) < len(argNames) {
+			var result error
+			for i := len(args); i < len(argNames); i++ {
+				result = multierror.Append(result, errors.Errorf("missing required argument: %s", argNames[i]))
+			}
+			return result
+		} else {
+			return nil
+		}
+	})
 }
 
 // RangeArgs is the same as cobra.RangeArgs, except it is wrapped with ArgsFunc to provide standard

@@ -6,19 +6,37 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
+// Map is a bag of config stored in the settings file.
+type Map map[tokens.ModuleMember]Value
+
+// HasSecureValue returns true if the config map contains a secure (encrypted) value.
+func (m Map) HasSecureValue() bool {
+	for _, v := range m {
+		if v.Secure() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Value is a single config value.
 type Value struct {
 	value  string
 	secure bool
 }
 
-func (c Value) Value(decrypter ValueDecrypter) (string, error) {
-	contract.Require(decrypter != nil, "decrypter")
-
+// Value fetches the value of this configuration entry, using decrypter to decrypt if necessary.  If the value
+// is a secret and decrypter is nil, or if decryption fails for any reason, a non-nil error is returned.
+func (c Value) Value(decrypter Decrypter) (string, error) {
 	if !c.secure {
 		return c.value, nil
+	}
+	if decrypter == nil {
+		return "", errors.New("non-nil decrypter required for secret")
 	}
 
 	return decrypter.DecryptValue(c.value)
@@ -99,17 +117,4 @@ func NewSecureValue(v string) Value {
 
 func NewValue(v string) Value {
 	return Value{value: v, secure: false}
-}
-
-type ValueDecrypter interface {
-	DecryptValue(cypertext string) (string, error)
-}
-
-type ValueEncrypter interface {
-	EncryptValue(plaintext string) (string, error)
-}
-
-type ValueEncrypterDecrypter interface {
-	ValueEncrypter
-	ValueDecrypter
 }

@@ -1,38 +1,40 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package cmd
+package local
 
 import (
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// disableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
+// DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
 // recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
 // be used as a last resort when a command absolutely must be run.
-var disableIntegrityChecking bool
+var DisableIntegrityChecking bool
 
 type localStackProvider struct {
-	decrypter config.ValueDecrypter
+	decrypter config.Decrypter
 }
 
 func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
 	contract.Require(name != "", "name")
 
-	config, err := getConfiguration(name)
+	config, err := state.Configuration(name)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,7 @@ func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error)
 
 func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
-	_, _, snapshot, _, err := getStack(name)
+	_, snapshot, _, err := getStack(name)
 	return snapshot, err
 }
 
@@ -65,72 +67,71 @@ func (p localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMut
 }
 
 func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
-	contract.Assert(m.name == snapshot.Stack)
+	stack := snapshot.Stack
+	contract.Assert(m.name == stack)
 
-	name, config, _, _, err := getStack(snapshot.Stack)
+	config, _, _, err := getStack(stack)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	return saveStack(name, config, snapshot)
+	return saveStack(stack, config, snapshot)
 }
 
-func getStack(name tokens.QName) (tokens.QName,
-	map[tokens.ModuleMember]config.Value, *deploy.Snapshot, string, error) {
-	workspace, err := newWorkspace()
+func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
+	// Find a path to the stack file.
+	w, err := workspace.New()
 	if err != nil {
-		return "", nil, nil, "", err
+		return nil, nil, "", err
 	}
 
 	contract.Require(name != "", "name")
-	file := workspace.StackPath(name)
+	file := w.StackPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		return "", nil, nil, file, errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
+		return nil, nil, file,
+			errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
 	}
 
 	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil, nil, file, err
-		}
-		return "", nil, nil, file, err
+		return nil, nil, file, err
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
-	var checkpoint stack.Checkpoint
-	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		return "", nil, nil, file, err
+	var chk stack.Checkpoint
+	if err = m.Unmarshal(b, &chk); err != nil {
+		return nil, nil, file, err
 	}
 
-	_, config, snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
+	// Materialize an actual snapshot object.
+	snapshot, err := stack.DeserializeCheckpoint(&chk)
 	if err != nil {
-		return "", nil, nil, file, err
+		return nil, nil, "", err
 	}
 
-	if !disableIntegrityChecking {
-		// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	// Ensure the snapshot passes verification before returning it, to catch bugs early.
+	if !DisableIntegrityChecking {
 		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
-			return "", nil, nil, file,
+			return nil, nil, file,
 				errors.Wrapf(verifyerr, "%s: snapshot integrity failure; refusing to use it", file)
 		}
 	}
 
-	return name, config, snapshot, file, nil
+	return chk.Config, snapshot, file, nil
 }
 
-func saveStack(name tokens.QName,
-	config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
-	workspace, err := newWorkspace()
+func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
+	w, err := workspace.New()
 	if err != nil {
 		return err
 	}
-	file := workspace.StackPath(name)
 
 	// Make a serializable stack and then use the encoder to encode it.
+	file := w.StackPath(name)
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		return errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
@@ -138,8 +139,8 @@ func saveStack(name tokens.QName,
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	dep := stack.SerializeCheckpoint(name, config, snap)
-	b, err := m.Marshal(dep)
+	chk := stack.SerializeCheckpoint(name, config, snap)
+	b, err := m.Marshal(chk)
 	if err != nil {
 		return errors.Wrap(err, "An IO error occurred during the current operation")
 	}
@@ -158,13 +159,13 @@ func saveStack(name tokens.QName,
 	}
 
 	// And if we are retaining historical checkpoint information, write it out again
-	if isTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), b, 0600); err != nil {
 			return errors.Wrap(err, "An IO error occurred during the current operation")
 		}
 	}
 
-	if !disableIntegrityChecking {
+	if !DisableIntegrityChecking {
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
@@ -178,20 +179,17 @@ func saveStack(name tokens.QName,
 	return nil
 }
 
-func isTruthy(s string) bool {
-	return s == "1" || strings.EqualFold(s, "true")
-}
-
+// removeStack removes information about a stack from the current workspace.
 func removeStack(name tokens.QName) error {
 	contract.Require(name != "", "name")
 
-	workspace, err := newWorkspace()
+	w, err := workspace.New()
 	if err != nil {
 		return err
 	}
 
 	// Just make a backup of the file and don't write out anything new.
-	file := workspace.StackPath(name)
+	file := w.StackPath(name)
 	backupTarget(file)
 	return nil
 }

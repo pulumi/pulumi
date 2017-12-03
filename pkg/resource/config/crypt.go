@@ -1,33 +1,55 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package cmd
+package config
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"golang.org/x/crypto/pbkdf2"
 )
 
-const aes256GCMKeyBytes = 32
+// Encrypter encrypts plaintext into its encrypted ciphertext.
+type Encrypter interface {
+	EncryptValue(plaintext string) (string, error)
+}
 
-// blindingDecrypter is a config.ValueDecrypter that instead of decrypting data, just returns "********", it can
+// Decrypter decrypts encrypted cyphertext to its plaintext representation.
+type Decrypter interface {
+	DecryptValue(cypertext string) (string, error)
+}
+
+// Crypter can both encrypt and decrypt values.
+type Crypter interface {
+	Encrypter
+	Decrypter
+}
+
+// NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "********", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted.
+func NewBlindingDecrypter() Decrypter {
+	return &blindingDecrypter{}
+}
+
 type blindingDecrypter struct{}
 
 func (b blindingDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return "********", nil
 }
 
-// This implements to config.EncrypterDecrypter interface but panics if any methods are called.
+// NewPanicCrypter returns a new config crypter that will panic if used.
+func NewPanicCrypter() Crypter {
+	return &panicCrypter{}
+}
+
 type panicCrypter struct{}
 
 func (p panicCrypter) EncryptValue(plaintext string) (string, error) {
@@ -38,15 +60,30 @@ func (p panicCrypter) DecryptValue(ciphertext string) (string, error) {
 	panic("attempt to decrypt value")
 }
 
-// symmetricCrypter encrypts and decrypts values using AES-256-GCM. The nonce is stored with the value itself as a pair
-// of base64 values separated by a colon and a version tag `v1` is prepended.
+// NewSymmetricCrypter creates a crypter that encrypts and decrypts values using AES-256-GCM.  The nonce is stored with
+// the value itself as a pair of base64 values separated by a colon and a version tag `v1` is prepended.
+func NewSymmetricCrypter(key []byte) Crypter {
+	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
+	return &symmetricCrypter{key}
+}
+
+// NewSymmetricCrypterFromPassphrase uses a passphrase and salt to generate a key, and then returns a crypter using it.
+func NewSymmetricCrypterFromPassphrase(phrase string, salt []byte) Crypter {
+	// Generate a key using PBKDF2 to slow down attempts to crack it.  1,000,000 iterations was chosen because it
+	// took a little over a second on an i7-7700HQ Quad Core procesor
+	key := pbkdf2.Key([]byte(phrase), salt, 1000000, SymmetricCrypterKeyBytes, sha256.New)
+	return NewSymmetricCrypter(key)
+}
+
+// SymmetricCrypterKeyBytes is the required key size in bytes.
+const SymmetricCrypterKeyBytes = 32
+
 type symmetricCrypter struct {
 	key []byte
 }
 
 func (s symmetricCrypter) EncryptValue(value string) (string, error) {
 	secret, nonce := encryptAES256GCGM(value, s.key)
-
 	return fmt.Sprintf("v1:%s:%s",
 		base64.StdEncoding.EncodeToString(nonce), base64.StdEncoding.EncodeToString(secret)), nil
 }
@@ -75,55 +112,9 @@ func (s symmetricCrypter) DecryptValue(value string) (string, error) {
 	return decryptAES256GCM(enc, s.key, nonce)
 }
 
-// given a passphrase and an encryption state, construct a config.ValueEncrypterDecrypter from it. Our encryption
-// state value is a version tag followed by version specific state information. Presently, we only have one version
-// we support (`v1`) which is AES-256-GCM using a key derived from a passphrase using 1,000,000 iterations of PDKDF2
-// using SHA256.
-func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.ValueEncrypterDecrypter, error) {
-	splits := strings.SplitN(state, ":", 3)
-	if len(splits) != 3 {
-		return nil, errors.New("malformed state value")
-	}
-
-	if splits[0] != "v1" {
-		return nil, errors.New("unknown state version")
-	}
-
-	salt, err := base64.StdEncoding.DecodeString(splits[1])
-	if err != nil {
-		return nil, err
-	}
-
-	key := keyFromPassphrase(phrase, salt, aes256GCMKeyBytes)
-	decrypter := symmetricCrypter{key: key}
-
-	decrypted, err := decrypter.DecryptValue(state[indexN(state, ":", 2)+1:])
-	if err != nil || decrypted != "pulumi" {
-		return nil, errors.New("incorrect passphrase")
-	}
-
-	return symmetricCrypter{key: key}, nil
-}
-
-func indexN(s string, substr string, n int) int {
-	contract.Require(n > 0, "n")
-	scratch := s
-
-	for i := n; i > 0; i-- {
-		idx := strings.Index(scratch, substr)
-		if i == -1 {
-			return -1
-		}
-
-		scratch = scratch[idx+1:]
-	}
-
-	return len(s) - (len(scratch) + len(substr))
-}
-
 // encryptAES256GCGM returns the ciphertext and the generated nonce
 func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
-	contract.Requiref(len(key) == aes256GCMKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
+	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
 
 	nonce := make([]byte, 12)
 
@@ -142,7 +133,7 @@ func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
 }
 
 func decryptAES256GCM(ciphertext []byte, key []byte, nonce []byte) (string, error) {
-	contract.Requiref(len(key) == aes256GCMKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
+	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
 
 	block, err := aes.NewCipher(key)
 	contract.Assert(err == nil)

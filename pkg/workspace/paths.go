@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
-
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
 const ProjectFile = "Pulumi"           // the base name of a project file.
@@ -22,12 +22,63 @@ const ConfigDir = "config"             // the name of the folder that holds loca
 const WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
 const IgnoreFile = ".pulumiignore"     // the name of the file that we use to control what to upload to the service.
 
-// DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
-// Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
-func DetectPackage(path string) (string, error) {
+// DetectPackage locates the closest package from the current working directory, or an error if not found.
+func DetectPackage() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	pkgPath, err := DetectPackageFrom(dir)
+	if err != nil {
+		return "", err
+	}
+
+	return pkgPath, nil
+}
+
+// DetectPackageFrom locates the closest package from the given path, searching "upwards" in the directory hierarchy.
+// If no Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
+func DetectPackageFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool {
 		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
 	})
+}
+
+// GetPackage loads the closest package from the current working directory, or an error if not found.
+func GetPackage() (*pack.Package, error) {
+	pkgPath, err := DetectPackage()
+	if err != nil {
+		return nil, err
+	}
+
+	return pack.Load(pkgPath)
+}
+
+// GetPackagePath loads the closest package from the current working directory, or an error if not found.  It
+// also returns the path where the package was found.
+func GetPackagePath() (*pack.Package, string, error) {
+	pkgPath, err := DetectPackage()
+	if err != nil {
+		return nil, "", err
+	}
+
+	pkg, err := pack.Load(pkgPath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return pkg, pkgPath, err
+}
+
+// SavePackage saves the package file on top of the existing one.
+func SavePackage(pkg *pack.Package) error {
+	pkgPath, err := DetectPackage()
+	if err != nil {
+		return err
+	}
+
+	return pack.Save(pkgPath, pkg)
 }
 
 func isGitFolder(path string) bool {

@@ -3,9 +3,10 @@
 package cmd
 
 import (
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -30,15 +31,15 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversable and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack, backend)
+			s, err := requireStack(tokens.QName(stack))
 			if err != nil {
 				return err
 			}
 
 			if preview || yes ||
-				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", stackName.String()) {
+				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
 
-				return backend.Destroy(stackName, debug, engine.DestroyOptions{
+				return s.Destroy(debug, engine.DestroyOptions{
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,

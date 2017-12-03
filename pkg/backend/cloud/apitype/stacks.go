@@ -13,7 +13,7 @@ type Resource struct {
 	Inputs   map[string]interface{} `json:"inputs"`
 	Defaults map[string]interface{} `json:"defaults"`
 	Outputs  map[string]interface{} `json:"outputs"`
-	Children []string               `json:"children"`
+	Parent   string                 `json:"parent"`
 }
 
 // Stack describes a Stack running on a Pulumi Cloud.

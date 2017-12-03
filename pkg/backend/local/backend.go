@@ -1,79 +1,100 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package cmd
+package local
 
 import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-type localPulumiBackend struct {
+// Backend extends the base backend interface with specific information about local backends.
+type Backend interface {
+	backend.Backend
+	local() // at the moment, no local specific info, so just use a marker function.
+}
+
+type localBackend struct {
 	engineCache map[tokens.QName]engine.Engine
 }
 
-func (b *localPulumiBackend) CreateStack(stackName tokens.QName, opts StackCreationOptions) error {
-	contract.Requiref(opts.Cloud == "", "cloud", "local backend does not support clouds, cloud must be empty")
+func New() Backend {
+	return &localBackend{engineCache: make(map[tokens.QName]engine.Engine)}
+}
 
-	if _, _, _, _, err := getStack(stackName); err == nil {
+func (b *localBackend) Name() string {
+	// nolint: gas
+	name, _ := os.Hostname()
+	if name == "" {
+		name = "local"
+	}
+	return name
+}
+
+func (b *localBackend) local() {}
+
+func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
+	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
+
+	if _, _, _, err := getStack(stackName); err == nil {
 		return errors.Errorf("stack '%v' already exists", stackName)
 	}
 
 	return saveStack(stackName, nil, nil)
 }
 
-func (b *localPulumiBackend) GetStacks() ([]stackSummary, error) {
+func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
+	config, snapshot, path, err := getStack(stackName)
+	if err != nil {
+		return nil, nil
+	}
+	return newStack(stackName, path, config, snapshot, b), nil
+}
+
+func (b *localBackend) ListStacks() ([]backend.Stack, error) {
 	stacks, err := getLocalStacks()
 	if err != nil {
 		return nil, err
 	}
 
-	var summaries []stackSummary
-	for _, stack := range stacks {
-		summary := stackSummary{
-			Name:          stack,
-			LastDeploy:    "n/a",
-			ResourceCount: "n/a",
+	var results []backend.Stack
+	for _, stackName := range stacks {
+		stack, err := b.GetStack(stackName)
+		if err != nil {
+			return nil, err
 		}
-
-		// Ignore errors, just leave display settings as "n/a".
-		_, _, snapshot, _, err := getStack(stack)
-		if err == nil && snapshot != nil {
-			summary.LastDeploy = snapshot.Manifest.Time.String()
-			summary.ResourceCount = strconv.Itoa(len(snapshot.Resources))
-		}
-
-		summaries = append(summaries, summary)
+		results = append(results, stack)
 	}
 
-	return summaries, nil
+	return results, nil
 }
 
-func (b *localPulumiBackend) RemoveStack(stackName tokens.QName, force bool) error {
-	name, _, snapshot, _, err := getStack(stackName)
+func (b *localBackend) RemoveStack(stackName tokens.QName, force bool) (bool, error) {
+	_, snapshot, _, err := getStack(stackName)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Don't remove stacks that still have resources.
 	if !force && snapshot != nil && len(snapshot.Resources) > 0 {
-		return errHasResources
+		return true, errors.New("refusing to remove stack because it still contains resources")
 	}
 
-	return removeStack(name)
+	return false, removeStack(stackName)
 }
 
-func (b *localPulumiBackend) Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error {
+func (b *localBackend) Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error {
 	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return err
@@ -94,7 +115,7 @@ func (b *localPulumiBackend) Preview(stackName tokens.QName, debug bool, opts en
 	return nil
 }
 
-func (b *localPulumiBackend) Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error {
+func (b *localBackend) Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error {
 	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return err
@@ -115,7 +136,7 @@ func (b *localPulumiBackend) Update(stackName tokens.QName, debug bool, opts eng
 	return nil
 }
 
-func (b *localPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error {
+func (b *localBackend) Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error {
 	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return err
@@ -137,7 +158,7 @@ func (b *localPulumiBackend) Destroy(stackName tokens.QName, debug bool, opts en
 	return nil
 }
 
-func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
+func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
 	pulumiEngine, err := b.getEngine(stackName)
 	if err != nil {
 		return nil, err
@@ -165,7 +186,7 @@ func (b *localPulumiBackend) GetLogs(stackName tokens.QName, query operations.Lo
 	return *logs, err
 }
 
-func (b *localPulumiBackend) getEngine(stackName tokens.QName) (engine.Engine, error) {
+func (b *localBackend) getEngine(stackName tokens.QName) (engine.Engine, error) {
 	if b.engineCache == nil {
 		b.engineCache = make(map[tokens.QName]engine.Engine)
 	}
@@ -174,18 +195,14 @@ func (b *localPulumiBackend) getEngine(stackName tokens.QName) (engine.Engine, e
 		return engine, nil
 	}
 
-	cfg, err := getConfiguration(stackName)
+	cfg, err := state.Configuration(stackName)
 	if err != nil {
 		return engine.Engine{}, err
 	}
 
-	var decrypter config.ValueDecrypter = panicCrypter{}
-
-	if hasSecureValue(cfg) {
-		decrypter, err = getSymmetricCrypter()
-		if err != nil {
-			return engine.Engine{}, err
-		}
+	decrypter, err := state.DefaultCrypter(cfg)
+	if err != nil {
+		return engine.Engine{}, err
 	}
 
 	localProvider := localStackProvider{decrypter: decrypter}
@@ -197,7 +214,7 @@ func (b *localPulumiBackend) getEngine(stackName tokens.QName) (engine.Engine, e
 func getLocalStacks() ([]tokens.QName, error) {
 	var stacks []tokens.QName
 
-	w, err := newWorkspace()
+	w, err := workspace.New()
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +242,7 @@ func getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, _, err := getStack(name)
+		_, _, _, err := getStack(name)
 		if err != nil {
 			continue // failure reading the stack information.
 		}

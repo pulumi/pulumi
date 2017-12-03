@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -36,12 +37,12 @@ func newPreviewCmd() *cobra.Command {
 			"use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName, err := explicitOrCurrent(stack, backend)
+			s, err := requireStack(tokens.QName(stack))
 			if err != nil {
 				return err
 			}
 
-			return backend.Preview(stackName, debug, engine.PreviewOptions{
+			return s.Preview(debug, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
