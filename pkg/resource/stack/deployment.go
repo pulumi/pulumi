@@ -44,8 +44,8 @@ type Resource struct {
 	Delete   bool                   `json:"delete,omitempty" yaml:"delete,omitempty"`     // if this should be deleted during the next update.
 	ID       resource.ID            `json:"id,omitempty" yaml:"id,omitempty"`             // the provider ID for this resource, if any.
 	Type     tokens.Type            `json:"type" yaml:"type"`                             // this resource's full type token.
-	Inputs   map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the program.
-	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider.
+	Inputs   map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the provider (or the program for ressources with defaults).
+	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider (DEPRECATED, see #637).
 	Outputs  map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
 	Parent   resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
 }
@@ -91,25 +91,20 @@ func SerializeResource(res *resource.State) Resource {
 	if inp := res.Inputs; inp != nil {
 		inputs = SerializeProperties(inp)
 	}
-	var defaults map[string]interface{}
-	if defp := res.Defaults; defp != nil {
-		defaults = SerializeProperties(defp)
-	}
 	var outputs map[string]interface{}
 	if outp := res.Outputs; outp != nil {
 		outputs = SerializeProperties(outp)
 	}
 
 	return Resource{
-		URN:      res.URN,
-		Custom:   res.Custom,
-		Delete:   res.Delete,
-		ID:       res.ID,
-		Type:     res.Type,
-		Parent:   res.Parent,
-		Inputs:   inputs,
-		Defaults: defaults,
-		Outputs:  outputs,
+		URN:     res.URN,
+		Custom:  res.Custom,
+		Delete:  res.Delete,
+		ID:      res.ID,
+		Type:    res.Type,
+		Parent:  res.Parent,
+		Inputs:  inputs,
+		Outputs: outputs,
 	}
 }
 
@@ -174,8 +169,15 @@ func DeserializeResource(res Resource) (*resource.State, error) {
 		return nil, err
 	}
 
+	// If this is an old checkpoint that still had defaults, merge the inputs into the defaults.
+	//
+	// NOTE: we will remove support for defaults entirely in the future. See #637.
+	if inputs != nil && defaults != nil {
+		inputs = defaults.Merge(inputs)
+	}
+
 	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, defaults, outputs, res.Parent), nil
+		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs, res.Parent), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

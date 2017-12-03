@@ -264,17 +264,13 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil, nil, res.Parent)
+	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil, res.Parent)
 
-	// If there is an old resource, apply its default properties before going any further.
+	// Check for an old resource before going any further.
 	old, hasold := iter.p.Olds()[urn]
+	var olds resource.PropertyMap
 	if hasold {
-		new.Defaults = new.Defaults.Merge(old.Defaults)
-		if glog.V(9) {
-			for k, v := range old.Defaults {
-				glog.V(9).Infof("Applying old default %v=%v", k, v)
-			}
-		}
+		olds = old.Inputs
 	}
 
 	// Fetch the provider for this resource type, assuming it isn't just a logical one.
@@ -286,24 +282,17 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		}
 	}
 
-	inputs := new.AllInputs()
-
-	// Ensure the provider is okay with this resource and see if it has any new defaults to contribute.
-	var defaults resource.PropertyMap
+	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
+	news, inputs := new.Inputs, new.Inputs
 	if prov != nil {
 		var failures []plugin.CheckFailure
-		defaults, failures, err = prov.Check(urn, inputs)
+		inputs, failures, err = prov.Check(urn, olds, news)
 		if err != nil {
 			return nil, err
 		} else if iter.issueCheckErrors(new, urn, failures) {
 			invalid = true
 		}
-	}
-
-	// If there are any new defaults, apply them, and use the combined view for various operations below.
-	if defaults != nil {
-		new.Defaults = new.Defaults.Merge(defaults)
-		inputs = new.AllInputs() // refresh our snapshot.
+		new.Inputs = inputs
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
@@ -347,12 +336,11 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		// and new properties don't match exactly.  It is also possible we'll need to replace the resource if the
 		// update impact assessment says so.  In this case, the resource's ID will change, which might have a
 		// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-		oldinputs := old.AllInputs()
-		if !oldinputs.DeepEquals(inputs) {
+		if !olds.DeepEquals(inputs) {
 			// The properties changed; we need to figure out whether to do an update or replacement.
 			var diff plugin.DiffResult
 			if prov != nil {
-				if diff, err = prov.Diff(urn, old.ID, oldinputs, inputs); err != nil {
+				if diff, err = prov.Diff(urn, old.ID, olds, inputs); err != nil {
 					return nil, err
 				}
 			}
@@ -365,18 +353,18 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 				// had assumed that we were going to carry them over from the old resource, which is no longer true.
 				if prov != nil {
 					var failures []plugin.CheckFailure
-					defaults, failures, err = prov.Check(urn, new.Inputs)
+					inputs, failures, err = prov.Check(urn, nil, news)
 					if err != nil {
 						return nil, err
 					} else if iter.issueCheckErrors(new, urn, failures) {
 						return nil, goerr.New("One or more resource validation errors occurred; refusing to proceed")
 					}
+					new.Inputs = inputs
 				}
 
-				new.Defaults = defaults
 				if glog.V(7) {
 					glog.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
-						urn, oldinputs, new.AllInputs())
+						urn, olds, new.Inputs)
 				}
 
 				return []Step{
@@ -388,8 +376,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 			// If we fell through, it's an update.
 			iter.updates[urn] = true
 			if glog.V(7) {
-				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
-					urn, oldinputs, new.AllInputs())
+				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, olds, new.Inputs)
 			}
 			return []Step{NewUpdateStep(iter, e, old, new, diff.StableKeys)}, nil
 		}
@@ -397,14 +384,14 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		// No need to update anything, the properties didn't change.
 		iter.sames[urn] = true
 		if glog.V(7) {
-			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.AllInputs())
+			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
 		}
 		return []Step{NewSameStep(iter, e, old, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
-	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.AllInputs())
+	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(iter, e, new)}, nil
 }
 
@@ -414,7 +401,7 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	if len(failures) == 0 {
 		return false
 	}
-	inputs := new.AllInputs()
+	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
 			iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue,

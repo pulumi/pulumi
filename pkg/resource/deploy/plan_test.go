@@ -123,8 +123,8 @@ func TestBasicCRUDPlan(t *testing.T) {
 			}
 			return &testProvider{
 				check: func(urn resource.URN,
-					props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					return nil, nil, nil // accept all changes.
+					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return news, nil, nil // accept all changes.
 				},
 				diff: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
 					news resource.PropertyMap) (plugin.DiffResult, error) {
@@ -162,7 +162,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			"bf1": resource.NewStringProperty("b-value"),
 			"bf2": resource.NewNumberProperty(42),
 		},
-		make(resource.PropertyMap),
 		nil,
 		"",
 	)
@@ -171,7 +170,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			"cf1": resource.NewStringProperty("c-value"),
 			"cf2": resource.NewNumberProperty(83),
 		},
-		make(resource.PropertyMap),
 		resource.PropertyMap{
 			"outta1":   resource.NewStringProperty("populated during skip/step"),
 			"outta234": resource.NewNumberProperty(99881122),
@@ -183,7 +181,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			"df1": resource.NewStringProperty("d-value"),
 			"df2": resource.NewNumberProperty(167),
 		},
-		make(resource.PropertyMap),
 		nil,
 		"",
 	)
@@ -242,7 +239,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.NotNil(t, new)
 			assert.Equal(t, urnA, new.URN)
 			assert.Equal(t, newResA.Properties, new.Inputs)
-			assert.Equal(t, newResA.Properties, new.AllInputs())
 			state = new
 			urn, realID = urnA, false
 		case *UpdateStep: // B is updated
@@ -254,7 +250,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.NotNil(t, new)
 			assert.Equal(t, urnB, new.URN)
 			assert.Equal(t, newResB.Properties, new.Inputs)
-			assert.Equal(t, newResB.Properties, new.AllInputs())
 			state = new
 			urn, realID = urnB, true
 		case *SameStep: // C is the same
@@ -266,7 +261,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.NotNil(t, s.New())
 			assert.Equal(t, urnC, new.URN)
 			assert.Equal(t, newResC.Properties, new.Inputs)
-			assert.Equal(t, newResC.Properties, new.AllInputs())
 			state = new
 			urn, realID, expectOuts = urnC, true, oldResC.Outputs
 		case *DeleteStep: // D is deleted
@@ -380,7 +374,8 @@ func (host *testProviderHost) ListPlugins() []plugin.Info {
 type testProvider struct {
 	pkg    tokens.Package
 	config func(map[tokens.ModuleMember]string) error
-	check  func(resource.URN, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	check  func(resource.URN,
+		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	create func(resource.URN, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	diff   func(resource.URN, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
 	update func(resource.URN, resource.ID,
@@ -399,8 +394,8 @@ func (prov *testProvider) Configure(vars map[tokens.ModuleMember]string) error {
 	return prov.config(vars)
 }
 func (prov *testProvider) Check(urn resource.URN,
-	props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return prov.check(urn, props)
+	olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	return prov.check(urn, olds, news)
 }
 func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {

@@ -150,7 +150,7 @@ proto.pulumirpc.PluginInfo.prototype.getVersion = function() {
 
 /** @param {string} value */
 proto.pulumirpc.PluginInfo.prototype.setVersion = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

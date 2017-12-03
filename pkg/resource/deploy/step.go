@@ -144,7 +144,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 			if err != nil {
 				return resource.StatusOK, err
 			}
-			id, outs, rst, err := prov.Create(s.URN(), s.new.AllInputs())
+			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs)
 			if err != nil {
 				return rst, err
 			}

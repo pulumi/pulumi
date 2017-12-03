@@ -10,7 +10,7 @@ class OperatorProvider implements dynamic.ResourceProvider {
         this.op = op;
     }
 
-    check = (inputs: any) => Promise.resolve(new dynamic.CheckResult(undefined, []));
+    check = (olds: any, news: any) => Promise.resolve(new dynamic.CheckResult(news, []));
     diff = (id: pulumi.ID, olds: any, news: any) => Promise.resolve(new dynamic.DiffResult([], []));
     delete = (id: pulumi.ID, props: any) => Promise.resolve();
 
@@ -24,7 +24,7 @@ class DivProvider extends OperatorProvider {
         super((left: number, right: number) => <any>{ quotient: Math.floor(left / right), remainder: left % right });
     }
 
-    check = (ins: any) => Promise.resolve(new dynamic.CheckResult(undefined, ins.right == 0 ? [ new dynamic.CheckFailure("right", "divisor must be non-zero") ] : []));
+    check = (olds: any, news: any) => Promise.resolve(new dynamic.CheckResult(news, news.right == 0 ? [ new dynamic.CheckFailure("right", "divisor must be non-zero") ] : []));
 }
 
 class Add extends dynamic.Resource {
