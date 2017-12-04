@@ -111,7 +111,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// populated by user code within containers, so we can safely project these logs back unmodified.
 		urn := state.URN
 		name := string(urn.Name())
-		logGroup := ops.component.GetChild(awsLogGroupTypeName, name+"-task-logs")
+		logGroup := ops.component.GetChild(awsLogGroupTypeName, name)
 		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err

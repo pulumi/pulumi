@@ -3,7 +3,6 @@
 package resource
 
 import (
-	"crypto/sha1"
 	"strings"
 	"testing"
 
@@ -12,50 +11,60 @@ import (
 
 func TestNewUniqueHex(t *testing.T) {
 	prefix := "prefix"
-	randlen := 20
 	maxlen := 100
-	id := NewUniqueHex(prefix, maxlen, randlen)
-	assert.Equal(t, len(prefix)+randlen*2, len(id))
+	id, err := NewUniqueHex(prefix, maxlen)
+	assert.Nil(t, err)
+	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
 
-func TestNewUniqueHexMaxLen(t *testing.T) {
+func TestNewUniqueHexMaxLen2(t *testing.T) {
 	prefix := "prefix"
-	randlen := 20
-	maxlen := 20
-	id := NewUniqueHex(prefix, maxlen, randlen)
+	maxlen := 13
+	_, err := NewUniqueHex(prefix, maxlen)
+	assert.NotNil(t, err)
+}
+
+func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
+	prefix := "prefix"
+	// Just enough space to have 8 chars of randomenss
+	maxlen := 14
+	id, err := NewUniqueHex(prefix, maxlen)
+	assert.Nil(t, err)
 	assert.Equal(t, maxlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
 
 func TestNewUniqueDefaults(t *testing.T) {
 	prefix := "prefix"
-	id := NewUniqueHex(prefix, -1, -1)
-	assert.Equal(t, len(prefix)+(sha1.Size*2), len(id))
+	id, err := NewUniqueHex(prefix, -1)
+	assert.Nil(t, err)
+	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
 
 func TestNewUniqueHexID(t *testing.T) {
 	prefix := "prefix"
-	randlen := 20
 	maxlen := 100
-	id := NewUniqueHexID(prefix, maxlen, randlen)
-	assert.Equal(t, len(prefix)+randlen*2, len(id))
+	id, err := NewUniqueHexID(prefix, maxlen)
+	assert.Nil(t, err)
+	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
 
 func TestNewUniqueHexMaxLenID(t *testing.T) {
 	prefix := "prefix"
-	randlen := 20
 	maxlen := 20
-	id := NewUniqueHexID(prefix, maxlen, randlen)
-	assert.Equal(t, maxlen, len(id))
+	id, err := NewUniqueHexID(prefix, maxlen)
+	assert.Nil(t, err)
+	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
 
 func TestNewUniqueDefaultsID(t *testing.T) {
 	prefix := "prefix"
-	id := NewUniqueHexID(prefix, -1, -1)
-	assert.Equal(t, len(prefix)+(sha1.Size*2), len(id))
+	id, err := NewUniqueHexID(prefix, -1)
+	assert.Nil(t, err)
+	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }

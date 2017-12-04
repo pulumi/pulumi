@@ -48,7 +48,7 @@ func (r *S3Reporter) ReportCommand(stats TestCommandStats) {
 		fmt.Printf("Failed to serialize report for upload to S3: %v: %v\n", stats, err)
 		return
 	}
-	name := resource.NewUniqueHex(fmt.Sprintf("%v-", time.Now().UnixNano()), -1, 10)
+	name, _ := resource.NewUniqueHex(fmt.Sprintf("%v-", time.Now().UnixNano()), -1)
 	_, err = r.s3svc.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String(r.bucket),
 		Key:    aws.String(path.Join(r.keyPrefix, name)),
