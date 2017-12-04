@@ -20,13 +20,13 @@ import (
 //
 // Each resource URN is of the form:
 //
-//     urn:lumi:<Namespace>::<PkgToken>::<Qualified!!Type!!Name>::<Name>
+//     urn:lumi:<Namespace>::<PkgToken>::<Qualified$Type$Name>::<Name>
 //
 // wherein each element is the following:
 //
 //     <Namespace>             The namespace being deployed into
 //     <AllocPkg>              The package in which the object was allocated
-//     <Qualified!!Type!!Name> The object type's qualified type token (including the parent type)
+//     <Qualified$Type$Name>   The object type's qualified type token (including the parent type)
 //     <Name>                  The human-friendly name identifier assigned by the developer or provider
 //
 // In the future, we may add elements to the URN; it is more important that it is unique than it is
@@ -37,48 +37,12 @@ const (
 	URNPrefix        = "urn:" + URNNamespaceID + ":" // the standard URN prefix
 	URNNamespaceID   = "pulumi"                      // the URN namespace
 	URNNameDelimiter = "::"                          // the delimiter between URN name elements
-	URNTypeDelimiter = "!!"                          // the delimiter between URN type elements
+	URNTypeDelimiter = "$"                           // the delimiter between URN type elements
 )
-
-// massage ensures that the individual components of the URN do not contains sequences of characters
-// that will interfere with later parsing of that URN.  For example, a component should not contain
-// :: as that is the delimited we use for separating out all components.
-func massage(v string) string {
-	delimeters := []string{URNNameDelimiter, URNTypeDelimiter}
-	replacements := []string{":_:", "!_!"}
-
-	// First, ensure no name contains our special delimeters.
-	for {
-		v1 := v
-		for i, delim := range delimeters {
-			v1 = strings.Replace(v1, delim, replacements[i], -1)
-		}
-		if v1 == v {
-			break
-		}
-
-		v = v1
-	}
-
-	// Names should not start or end with something that could look like a delimiter either.
-	if len(v) > 0 {
-		for _, delim := range delimeters {
-			if v[0] == delim[0] {
-				v = "_" + v
-			}
-
-			if v[len(v)-1] == delim[0] {
-				v = v + "_"
-			}
-		}
-	}
-
-	return v
-}
 
 // NewURN creates a unique resource URN for the given resource object.
 func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
-	typ := massage(string(baseType))
+	typ := string(baseType)
 	if parentType != "" {
 		// note: we do not need to massage parentType.  It will already have been massaged for us.
 		typ = string(parentType) + URNTypeDelimiter + typ
@@ -86,11 +50,11 @@ func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType toke
 
 	return URN(
 		URNPrefix +
-			massage(string(ns)) +
-			URNNameDelimiter + massage(string(alloc)) +
+			string(ns) +
+			URNNameDelimiter + string(alloc) +
 			URNNameDelimiter +
 			typ +
-			URNNameDelimiter + massage(string(name)),
+			URNNameDelimiter + string(name),
 	)
 }
 
