@@ -152,7 +152,7 @@
   </Target>
 
   <Target Name="AppVeyorPush"
-          DependsOnTargets="Build;IntegrationTest;Publish" />
+          DependsOnTargets="Build;Publish;IntegrationTest" />
 
   <Target Name="AppVeyorPullRequest"
           DependsOnTargets="Build;IntegrationTest" />
