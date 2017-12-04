@@ -44,7 +44,6 @@ const (
 func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
 	typ := string(baseType)
 	if parentType != "" {
-		// note: we do not need to massage parentType.  It will already have been massaged for us.
 		typ = string(parentType) + URNTypeDelimiter + typ
 	}
 
@@ -52,8 +51,7 @@ func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType toke
 		URNPrefix +
 			string(ns) +
 			URNNameDelimiter + string(alloc) +
-			URNNameDelimiter +
-			typ +
+			URNNameDelimiter + typ +
 			URNNameDelimiter + string(name),
 	)
 }

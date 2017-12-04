@@ -52,11 +52,10 @@ func MaybeID(s *string) *ID {
 func NewUniqueHex(prefix string, maxlen int) (string, error) {
 	const randChars = 8
 
-	if maxlen != -1 {
-		// Each byte of randomness will create two hex chars.
-		if len(prefix)+randChars > maxlen {
-			return "", fmt.Errorf("Name '%s' is longer than maximum length %v", prefix, maxlen-randChars)
-		}
+	if maxlen != -1 &&
+		len(prefix)+randChars > maxlen {
+
+		return "", fmt.Errorf("Name '%s' is longer than maximum length %v", prefix, maxlen-randChars)
 	}
 
 	bs := make([]byte, randChars/2)
