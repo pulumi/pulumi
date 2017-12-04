@@ -78,13 +78,18 @@ func massage(v string) string {
 
 // NewURN creates a unique resource URN for the given resource object.
 func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
-	// note: we do not need to massage parentType.  It will already have been massaged for us.
+	typ := massage(string(baseType))
+	if parentType != "" {
+		// note: we do not need to massage parentType.  It will already have been massaged for us.
+		typ = string(parentType) + URNTypeDelimiter + typ
+	}
+
 	return URN(
 		URNPrefix +
 			massage(string(ns)) +
 			URNNameDelimiter + massage(string(alloc)) +
 			URNNameDelimiter +
-			(string(parentType) + URNTypeDelimiter + massage(string(baseType))) +
+			typ +
 			URNNameDelimiter + massage(string(name)),
 	)
 }

@@ -19,7 +19,7 @@ func TestURNRoundTripping(t *testing.T) {
 	urn := NewURN(ns, alloc, parentType, typ, name)
 	assert.Equal(t, ns, urn.Namespace())
 	assert.Equal(t, alloc, urn.Alloc())
-	assert.Equal(t, tokens.Type("!!bang:boom/fizzle:MajorResource"), urn.QualifiedType())
+	assert.Equal(t, typ, urn.QualifiedType())
 	assert.Equal(t, typ, urn.Type())
 	assert.Equal(t, name, urn.Name())
 }
