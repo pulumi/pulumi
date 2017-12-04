@@ -12,13 +12,13 @@
 #           go code, this usually means running go install (which
 #           would place them in `GOBIN`, but not `PULUMI_ROOT`
 #
-#  - lint: runs relevent linters for the project
-#
 #  - install: copies the bits we plan to ship into a layout in
 #             `PULUMI_ROOT` that looks like what a customer would get
 #             when they download and install Pulumi. For JavaScript
 #             projects, installing also runs yarn link to register
 #             this package, so that other projects can depend on it.
+#
+#  - lint: runs relevent linters for the project
 #
 #  - test_fast: runs the fast tests for a project. These are often
 #               go unit tests or javascript unit tests, they should
@@ -33,6 +33,11 @@
 #
 # In addition, we have a few higher level targets that just depend on
 # these targets:
+#
+#  - only_build: this target runs build and install targets
+#
+#  - only_test: this target runs the list and test_all targets
+#               (test_all itself runs test_fast)
 #
 #  - default: this is the target that is run by default when no
 #             arguments are passed to make, it runs the build, lint,
@@ -99,11 +104,13 @@ endif
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 
-.PHONY: default all ensure build lint install test_fast test_all core
+.PHONY: default all ensure only_build only_test build lint install test_fast test_all core
 
 # If there are sub projects, our default, all, and ensure targets will
 # recurse into them.
 ifneq ($(SUB_PROJECTS),)
+only_build:: $(SUB_PROJECTS:%=%_only_build)
+only_test:: $(SUB_PROJECTS:%=%_only_test)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
@@ -125,8 +132,8 @@ all::
 	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
 endif
 
-default:: build lint install test_fast
-all:: build lint install test_all
+default:: build install lint test_fast
+all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
@@ -164,6 +171,9 @@ install::
 	yarn link
 endif
 
+only_build:: build install
+only_test:: lint test_all
+
 # Generate targets for each sub project. This project's default and
 # all targets will depend on the sub project's targets, and the
 # individual targets for sub projects are added as a convience when
@@ -183,8 +193,10 @@ $(SUB_PROJECTS:%=%_test_fast):
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
 $(SUB_PROJECTS:%=%_install):
 	@$(MAKE) -C ./$(@:%_install=%) install
-$(SUB_PROJECTS:%=%_test_all):
-	@$(MAKE) -C ./$(@:%_test_all=%) test_all
+$(SUB_PROJECTS:%=%_only_build):
+	@$(MAKE) -C ./$(@:%_only_build=%) only_build
+$(SUB_PROJECTS:%=%_only_test):
+	@$(MAKE) -C ./$(@:%_only_test=%) only_test
 endif
 
 # As a convinece, we provide a format target that folks can build to
