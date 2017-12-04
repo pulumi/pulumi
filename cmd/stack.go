@@ -93,17 +93,17 @@ func newStackCmd() *cobra.Command {
 				for _, res := range snap.Resources {
 					if res.Type == stack.RootPulumiStackTypeName {
 						stackResource = res
-					} else {
-						fmt.Printf("    %-48s %s\n", res.Type, res.URN.Name())
+					}
 
-						// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
-						// this on a single line, but this can get quite lengthy and so this formatting is better.
-						if showURNs {
-							fmt.Printf("        URN: %s\n", res.URN)
-						}
-						if showIDs && res.ID != "" {
-							fmt.Printf("        ID: %s\n", res.ID)
-						}
+					fmt.Printf("    %-48s %s\n", res.Type, res.URN.Name())
+
+					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
+					// this on a single line, but this can get quite lengthy and so this formatting is better.
+					if showURNs {
+						fmt.Printf("        URN: %s\n", res.URN)
+					}
+					if showIDs && res.ID != "" {
+						fmt.Printf("        ID: %s\n", res.ID)
 					}
 				}
 
