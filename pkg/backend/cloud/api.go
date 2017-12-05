@@ -34,17 +34,9 @@ const (
 func DefaultURL() string {
 	cloudURL := os.Getenv(defaultURLEnvVar)
 	if cloudURL == "" {
-		cloudURL = canonicalizeURL(defaultURL)
+		cloudURL = defaultURL
 	}
 	return cloudURL
-}
-
-// canonicalizeURL unifies cosmetic differences in a URL endpoint. We don't intend this to be 100% correct
-// for arbitrary URLS. (e.g. handling "/a/b/../../c") Instead this is to safeguard against common mistakes
-// in user configuration.
-func canonicalizeURL(url string) string {
-	url = strings.TrimSuffix(url, "/")
-	return url
 }
 
 // cloudProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the

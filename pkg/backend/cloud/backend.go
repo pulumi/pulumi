@@ -455,9 +455,8 @@ func printEvent(event apitype.UpdateEvent) {
 	fmt.Fprint(stream, text)
 }
 
-// Login logs into the target cloud URL. If "" is used,
+// Login logs into the target cloud URL.
 func Login(cloudURL string) error {
-	cloudURL = canonicalizeURL(cloudURL)
 	fmt.Printf("Logging into Pulumi Cloud: %s\n", cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
