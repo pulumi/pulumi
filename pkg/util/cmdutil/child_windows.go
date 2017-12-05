@@ -24,7 +24,14 @@ func KillChildren(pid int) error {
 		if proc.PPid() == pid {
 			toKill, err := os.FindProcess(proc.Pid())
 			if err != nil {
-				result = multierror.Append(result, err)
+				// It's possible that the process has already exited, let's see if it still exists. Either way, we won't
+				// try to kill it but we will add the original error from os.FindProcess() if we can't prove it doesn't
+				// exits.
+				exists, existsErr := processExistsWithParent(proc.Pid(), proc.PPid())
+				if existsErr != nil || exists {
+					result = multierror.Append(result, err)
+				}
+				continue
 			}
 
 			err = toKill.Kill()
@@ -35,4 +42,19 @@ func KillChildren(pid int) error {
 	}
 
 	return result
+}
+
+func processExistsWithParent(pid int, ppid int) (bool, error) {
+	procs, err := ps.Processes()
+	if err != nil {
+		return false, err
+	}
+
+	for _, proc := range procs {
+		if proc.Pid() == pid {
+			return proc.PPid() == ppid, nil
+		}
+	}
+
+	return false, nil
 }
