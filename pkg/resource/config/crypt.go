@@ -36,7 +36,7 @@ type Crypter interface {
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted.
 func NewBlindingDecrypter() Decrypter {
-	return &blindingDecrypter{}
+	return blindingDecrypter{}
 }
 
 type blindingDecrypter struct{}

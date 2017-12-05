@@ -150,15 +150,23 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 		go func() {
 			// Next, launch the language plugin.
 			// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
-			rt := iter.src.runinfo.Pkg.Runtime
-			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, iter.mon.Address())
-			if err != nil {
-				err = errors.Wrapf(err, "failed to launch language host for '%v'", rt)
-			} else if langhost == nil {
-				err = errors.Errorf("could not load language plugin for '%v' from $PATH", rt)
-			} else {
+			run := func() error {
+				rt := iter.src.runinfo.Pkg.Runtime
+				langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, iter.mon.Address())
+				if err != nil {
+					return errors.Wrapf(err, "failed to launch language host for '%v'", rt)
+				} else if langhost == nil {
+					return errors.Errorf("could not load language plugin for '%v' from $PATH", rt)
+				}
+
 				// Make sure to clean up before exiting.
 				defer contract.IgnoreClose(langhost)
+
+				// Decrypt the configuration.
+				config, err := iter.src.runinfo.Target.Config.Decrypt(iter.src.runinfo.Target.Decrypter)
+				if err != nil {
+					return err
+				}
 
 				// Now run the actual program.
 				var progerr string
@@ -168,7 +176,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 					Pwd:      iter.src.runinfo.Pwd,
 					Program:  iter.src.runinfo.Program,
 					Args:     iter.src.runinfo.Args,
-					Config:   iter.src.runinfo.Target.Config,
+					Config:   config,
 					DryRun:   iter.src.dryRun,
 					Parallel: opts.Parallel,
 				})
@@ -176,10 +184,11 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 					// If the program had an unhandled error; propagate it to the caller.
 					err = errors.Errorf("an unhandled error occurred: %v", progerr)
 				}
+				return err
 			}
 
 			// Communicate the error, if it exists, or nil if the program exited cleanly.
-			iter.finChan <- err
+			iter.finChan <- run()
 		}()
 	}
 }

@@ -12,6 +12,19 @@ import (
 // Map is a bag of config stored in the settings file.
 type Map map[tokens.ModuleMember]Value
 
+// Decrypt returns the configuration as a map from module member to decrypted value.
+func (m Map) Decrypt(decrypter Decrypter) (map[tokens.ModuleMember]string, error) {
+	r := map[tokens.ModuleMember]string{}
+	for k, c := range m {
+		v, err := c.Value(decrypter)
+		if err != nil {
+			return nil, err
+		}
+		r[k] = v
+	}
+	return r, nil
+}
+
 // HasSecureValue returns true if the config map contains a secure (encrypted) value.
 func (m Map) HasSecureValue() bool {
 	for _, v := range m {
