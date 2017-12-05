@@ -430,10 +430,11 @@ func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	delete(iter.regs, urn)
 
-	// If there are any extra properties to add to the outputs, append them now.
-	if outs := e.Outputs(); outs != nil {
-		reg.New().AddOutputs(outs)
-	}
+	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
+	// might already be there, since otherwise "deleting" outputs would have no affect.
+	outs := e.Outputs()
+	glog.V(7).Infof("Registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
+	reg.New().Outputs = e.Outputs()
 
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := iter.opts.Events; e != nil {

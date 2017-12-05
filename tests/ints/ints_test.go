@@ -20,7 +20,7 @@ func TestProjectMain(t *testing.T) {
 		Dependencies: []string{"pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, test.StackName(), checkpoint.Target)
+			assert.Equal(t, test.StackName(), checkpoint.Stack)
 		},
 	}
 	integration.ProgramTest(t, test)
@@ -62,11 +62,31 @@ func TestProjectMain(t *testing.T) {
 
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
 func TestStackProjectName(t *testing.T) {
-	var test integration.ProgramTestOptions
-	test = integration.ProgramTestOptions{
+	integration.ProgramTest(t, integration.ProgramTestOptions{
 		Dir:          "stack_project_name",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
-	}
-	integration.ProgramTest(t, test)
+	})
+}
+
+// TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
+func TestStackOutputs(t *testing.T) {
+	integration.ProgramTest(t, integration.ProgramTestOptions{
+		Dir:          "stack_outputs",
+		Dependencies: []string{"pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			assert.NotNil(t, checkpoint.Latest)
+			if assert.Equal(t, 1, len(checkpoint.Latest.Resources)) {
+				stackRes := checkpoint.Latest.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, stack.RootPulumiStackTypeName, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
+				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
+			}
+		},
+	})
 }

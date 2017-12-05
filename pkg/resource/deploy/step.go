@@ -60,16 +60,16 @@ func (s *SameStep) Type() tokens.Type       { return s.old.Type }
 func (s *SameStep) URN() resource.URN       { return s.old.URN }
 func (s *SameStep) Old() *resource.State    { return s.old }
 func (s *SameStep) New() *resource.State    { return s.new }
-func (s *SameStep) Res() *resource.State    { return s.old }
+func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, error) {
 	*s.new = *s.old
 	if !preview {
 		s.iter.MarkStateSnapshot(s.old)
-		s.iter.AppendStateSnapshot(s.old)
+		s.iter.AppendStateSnapshot(s.new)
 	}
-	s.reg.Done(&RegisterResult{State: s.old, Stable: true})
+	s.reg.Done(&RegisterResult{State: s.new, Stable: true})
 	return resource.StatusOK, nil
 }
 

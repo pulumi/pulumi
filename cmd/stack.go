@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -115,9 +116,14 @@ func newStackCmd() *cobra.Command {
 					if len(outputs) == 0 {
 						fmt.Printf("    No output values currently in this stack\n")
 					} else {
+						var outkeys []string
+						for outkey := range outputs {
+							outkeys = append(outkeys, outkey)
+						}
+						sort.Strings(outkeys)
 						fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
-						for key, val := range outputs {
-							fmt.Printf("    %-48s %s\n", key, val)
+						for _, key := range outkeys {
+							fmt.Printf("    %-48s %v\n", key, outputs[key])
 						}
 					}
 				}
