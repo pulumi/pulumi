@@ -2,9 +2,10 @@ PROJECT_NAME := Pulumi Fabric
 SUB_PROJECTS := sdk/nodejs
 include build/common.mk
 
-PROJECT      := github.com/pulumi/pulumi
-PROJECT_PKGS := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-VERSION      := $(shell git describe --tags --dirty 2>/dev/null)
+PROJECT         := github.com/pulumi/pulumi
+PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
+EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v /vendor/)
+VERSION         := $(shell git describe --tags --dirty 2>/dev/null)
 
 GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=Gometalinter.json
@@ -28,7 +29,7 @@ test_fast::
 	go test -timeout 2m -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ./examples ./tests
+	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
 
 .PHONY: publish
 publish:
