@@ -259,7 +259,8 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	// Use the resource goal state name to produce a globally unique URN.
 	res := e.Goal()
 	parentType := tokens.Type("")
-	if res.Parent != "" {
+	if res.Parent != "" && res.Parent.Type() != resource.RootStackType {
+		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
 		parentType = res.Parent.QualifiedType()
 	}
 
