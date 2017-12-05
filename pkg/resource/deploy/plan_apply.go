@@ -63,13 +63,17 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 func (p *Plan) configure() error {
 	var pkgs []string
 	pkgconfigs := make(map[tokens.Package]map[tokens.ModuleMember]string)
-	for k, v := range p.target.Config {
+	for k, c := range p.target.Config {
 		pkg := k.Package()
 		pkgs = append(pkgs, string(pkg))
 		pkgconfig, has := pkgconfigs[pkg]
 		if !has {
 			pkgconfig = make(map[tokens.ModuleMember]string)
 			pkgconfigs[pkg] = pkgconfig
+		}
+		v, err := c.Value(p.target.Decrypter)
+		if err != nil {
+			return err
 		}
 		pkgconfig[k] = v
 	}

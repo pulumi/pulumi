@@ -39,17 +39,7 @@ func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error)
 		return nil, err
 	}
 
-	decryptedConfig := make(map[tokens.ModuleMember]string)
-
-	for k, v := range config {
-		decrypted, err := v.Value(p.decrypter)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not decrypt configuration value")
-		}
-		decryptedConfig[k] = decrypted
-	}
-
-	return &deploy.Target{Name: name, Config: decryptedConfig}, nil
+	return &deploy.Target{Name: name, Config: config, Decrypter: p.decrypter}, nil
 }
 
 func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {

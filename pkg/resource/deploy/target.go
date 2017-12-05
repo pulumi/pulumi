@@ -3,11 +3,13 @@
 package deploy
 
 import (
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name   tokens.QName                   // the target stack name.
-	Config map[tokens.ModuleMember]string // optional configuration key/values.
+	Name      tokens.QName     // the target stack name.
+	Config    config.Map       // optional configuration key/value pairs.
+	Decrypter config.Decrypter // decrypter for secret configuration values.
 }

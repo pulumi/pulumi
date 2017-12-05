@@ -177,8 +177,13 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 	contract.Assert(snap != nil)
 	contract.Assert(target != nil)
 
+	config, err := target.Config.Decrypt(target.Decrypter)
+	if err != nil {
+		return nil, err
+	}
+
 	components := operations.NewResourceTree(snap.Resources)
-	ops := components.OperationsProvider(target.Config)
+	ops := components.OperationsProvider(config)
 	logs, err := ops.GetLogs(query)
 	if logs == nil {
 		return nil, err

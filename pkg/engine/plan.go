@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -185,16 +186,18 @@ func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
 	}
 }
 
-func printConfig(b *bytes.Buffer, config map[tokens.ModuleMember]string) {
+func printConfig(b *bytes.Buffer, cfg config.Map) {
 	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
-	if config != nil {
+	if cfg != nil {
 		var keys []string
-		for key := range config {
+		for key := range cfg {
 			keys = append(keys, string(key))
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			b.WriteString(fmt.Sprintf("    %v: %v\n", key, config[tokens.ModuleMember(key)]))
+			v, err := cfg[tokens.ModuleMember(key)].Value(config.NewBlindingDecrypter())
+			contract.Assert(err == nil)
+			b.WriteString(fmt.Sprintf("    %v: %v\n", key, v))
 		}
 	}
 }
