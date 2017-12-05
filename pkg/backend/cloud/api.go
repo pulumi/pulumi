@@ -129,8 +129,8 @@ func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
 	// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
 	// type, and if not just return the raw response text.
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
-		if resp.StatusCode == 401 {
-			// Special case "unauthorized", and direct the developer to login.
+		// Provide a better error if using an authenticated call without having logged in first.
+		if resp.StatusCode == 401 && token == "" {
 			return errors.New("this command requires logging in; try running 'pulumi login' first")
 		}
 
