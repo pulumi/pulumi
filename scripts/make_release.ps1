@@ -19,8 +19,11 @@ function RunGoBuild($goPackage) {
 function CopyPackage($pathToModule, $moduleName) {
     $moduleRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\node_modules\$moduleName"
     Copy-Item -Recurse $pathToModule\* $moduleRoot
-    if (Test-Path (Join-Path $moduleRoot "node_modules")) { 
+    if (Test-Path "$moduleRoot\node_modules") {
         Remove-Item -Recurse -Force "$moduleRoot\node_modules"
+    }
+    if (Test-Path "$moduleRoot\tests") {
+        Remove-Item -Recurse -Force "$moduleRoot\tests"
     }
 }
 
