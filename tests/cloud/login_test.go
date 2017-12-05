@@ -6,9 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,8 +18,8 @@ func TestRequireLogin(t *testing.T) {
 		t.Skip("PULUMI_API environment variable not set. This means the Cloud-variant Pulumi commands won't run.")
 	}
 	// Use the alt path for credentials as to not impact the local deverloper's machine.
-	if err := os.Setenv(cmd.UseAltCredentialsLocationEnvVar, "1"); err != nil {
-		t.Fatalf("error setting env var '%s': %v", cmd.UseAltCredentialsLocationEnvVar, err)
+	if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
+		t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
 	}
 
 	t.Run("SanityTest", func(t *testing.T) {
@@ -35,7 +36,7 @@ func TestRequireLogin(t *testing.T) {
 		assert.Contains(t, err, "error: getting stored credentials: credentials file not found")
 
 		// login and confirm things work.
-		os.Setenv(cmd.PulumiAccessTokenEnvVar, integration.TestAccountAccessToken)
+		os.Setenv(cloud.AccessTokenEnvVar, integration.TestAccountAccessToken)
 		e.RunCommand("pulumi", "login")
 
 		e.RunCommand("pulumi", "stack", "init", "--local", "foo")
