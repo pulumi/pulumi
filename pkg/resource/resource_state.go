@@ -43,8 +43,3 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 func (s *State) All() PropertyMap {
 	return s.Inputs.Merge(s.Outputs)
 }
-
-// AddOutputs adds an optional set of extra output properties to the current map.
-func (s *State) AddOutputs(outs PropertyMap) {
-	s.Outputs = s.Outputs.Merge(outs)
-}
