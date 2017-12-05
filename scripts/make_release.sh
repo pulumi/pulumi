@@ -31,7 +31,6 @@ copy_package() {
 
     mkdir -p "${module_root}"
     cp -R "$1" "${module_root}/"
-    cp "$1/../package.json" "${module_root}"
     if [ -e "${module_root}/node_modules" ]; then
         rm -rf "${module_root}/node_modules"
     fi
