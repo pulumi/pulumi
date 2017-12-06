@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -47,12 +49,8 @@ func DetectPackageFrom(path string) (string, error) {
 
 // GetPackage loads the closest package from the current working directory, or an error if not found.
 func GetPackage() (*pack.Package, error) {
-	pkgPath, err := DetectPackage()
-	if err != nil {
-		return nil, err
-	}
-
-	return pack.Load(pkgPath)
+	pkg, _, err := GetPackagePath()
+	return pkg, err
 }
 
 // GetPackagePath loads the closest package from the current working directory, or an error if not found.  It
@@ -61,13 +59,11 @@ func GetPackagePath() (*pack.Package, string, error) {
 	pkgPath, err := DetectPackage()
 	if err != nil {
 		return nil, "", err
+	} else if pkgPath == "" {
+		return nil, "", errors.Errorf("no Pulumi project found in the current working directory")
 	}
 
 	pkg, err := pack.Load(pkgPath)
-	if err != nil {
-		return nil, "", err
-	}
-
 	return pkg, pkgPath, err
 }
 
