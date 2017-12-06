@@ -53,21 +53,30 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         const news = req.getNews().toJavaScript();
         const provider = getProvider(news);
 
-        const result = await provider.check(olds, news);
-        const inputs = result.inputs || {};
+        let inputs: any = {};
+        let failures: any[] = [];
+        if (provider.check) {
+            const result = await provider.check(olds, news);
+            if (result.inputs) {
+                inputs = result.inputs;
+            }
+            if (result.failures) {
+                failures = result.failures;
+            }
+        }
+
         inputs[providerKey] = news[providerKey];
         resp.setInputs(structproto.Struct.fromJavaScript(inputs));
 
-        if (result.failures.length !== 0) {
-            const failures = [];
-            for (const f of result.failures) {
+        if (failures.length !== 0) {
+            const failureList = [];
+            for (const f of failures) {
                 const failure = new provproto.CheckFailure();
                 failure.setProperty(f.property);
                 failure.setReason(f.reason);
-
-                failures.push(failure);
+                failureList.push(failure);
             }
-            resp.setFailuresList(failures);
+            resp.setFailuresList(failureList);
         }
 
         callback(undefined, resp);
@@ -91,10 +100,11 @@ async function diffRPC(call: any, callback: any): Promise<void> {
             resp.setReplacesList([ providerKey ]);
         } else {
             const provider = getProvider(olds);
-
-            const result: any = await provider.diff(req.getId(), olds, news);
-            if (result.replaces.length !== 0) {
-                resp.setReplacesList(result.replaces);
+            if (provider.diff) {
+                const result: any = await provider.diff(req.getId(), olds, news);
+                if (result.replaces && result.replaces.length !== 0) {
+                    resp.setReplacesList(result.replaces);
+                }
             }
         }
 
@@ -136,11 +146,13 @@ async function updateRPC(call: any, callback: any): Promise<void> {
         if (olds[providerKey] !== news[providerKey]) {
             throw new Error("changes to provider should require replacement");
         }
-        const provider = getProvider(olds);
 
-        const result: any = await provider.update(req.getId(), olds, news);
-        if (result.outs) {
-            resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+        const provider = getProvider(olds);
+        if (provider.update) {
+            const result: any = await provider.update(req.getId(), olds, news);
+            if (result.outs) {
+                resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+            }
         }
 
         callback(undefined, resp);
@@ -154,7 +166,10 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
     try {
         const req: any = call.request;
         const props: any = req.getProperties().toJavaScript();
-        await getProvider(props).delete(req.getId(), props);
+        const provider: any = await getProvider(props);
+        if (provider.delete) {
+            provider.delete(req.getId(), props);
+        }
         callback(undefined, new emptyproto.Empty());
     } catch (e) {
         console.error(`${e}: ${e.stack}`);

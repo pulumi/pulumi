@@ -90,3 +90,60 @@ func TestStackOutputs(t *testing.T) {
 		},
 	})
 }
+
+// TestStackParenting tests out that stacks and components are parented correctly.
+func TestStackParenting(t *testing.T) {
+	integration.ProgramTest(t, integration.ProgramTestOptions{
+		Dir:          "stack_parenting",
+		Dependencies: []string{"pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+			// Ensure the checkpoint contains resources parented correctly.  This should look like this:
+			//
+			//     A      F
+			//    / \      \
+			//   B   C      G
+			//      / \
+			//     D   E
+			//
+			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
+
+			assert.NotNil(t, checkpoint.Latest)
+			if assert.Equal(t, 8, len(checkpoint.Latest.Resources)) {
+				stackRes := checkpoint.Latest.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, stack.RootPulumiStackTypeName, stackRes.Type)
+				assert.Equal(t, "", string(stackRes.Parent))
+				a := checkpoint.Latest.Resources[1]
+				assert.NotNil(t, a)
+				assert.Equal(t, "a", string(a.URN.Name()))
+				assert.NotEqual(t, "", a.Parent)
+				assert.Equal(t, stackRes.URN, a.Parent)
+				b := checkpoint.Latest.Resources[2]
+				assert.NotNil(t, b)
+				assert.Equal(t, "b", string(b.URN.Name()))
+				assert.Equal(t, a.URN, b.Parent)
+				c := checkpoint.Latest.Resources[3]
+				assert.NotNil(t, c)
+				assert.Equal(t, "c", string(c.URN.Name()))
+				assert.Equal(t, a.URN, c.Parent)
+				d := checkpoint.Latest.Resources[4]
+				assert.NotNil(t, d)
+				assert.Equal(t, "d", string(d.URN.Name()))
+				assert.Equal(t, c.URN, d.Parent)
+				e := checkpoint.Latest.Resources[5]
+				assert.NotNil(t, e)
+				assert.Equal(t, "e", string(e.URN.Name()))
+				assert.Equal(t, c.URN, e.Parent)
+				f := checkpoint.Latest.Resources[6]
+				assert.NotNil(t, f)
+				assert.Equal(t, "f", string(f.URN.Name()))
+				assert.Equal(t, stackRes.URN, f.Parent)
+				g := checkpoint.Latest.Resources[7]
+				assert.NotNil(t, g)
+				assert.Equal(t, "g", string(g.URN.Name()))
+				assert.Equal(t, f.URN, g.Parent)
+			}
+		},
+	})
+}

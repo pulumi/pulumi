@@ -6,124 +6,71 @@ import * as runtime from "../runtime";
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
  */
-export class CheckResult {
+export interface CheckResult {
     /**
      * The inputs to use, if any.
      */
-    public readonly inputs: any | undefined;
+    readonly inputs?: any;
 
     /**
      * Any validation failures that occurred.
      */
-    public readonly failures: CheckFailure[];
-
-    /**
-     * Constructs a new check result.
-     *
-     * @param inputs The inputs to use, if any.
-     * @param failures Any validation failures that occurred.
-     */
-    constructor(inputs: any | undefined, failures: CheckFailure[]) {
-        this.inputs = inputs;
-        this.failures = failures;
-    }
+    readonly failures?: CheckFailure[];
 }
 
 /**
  * CheckFailure represents a single failure in the results of a call to `ResourceProvider.check`
  */
-export class CheckFailure {
+export interface CheckFailure {
     /**
      * The property that failed validation.
      */
-    public readonly property: string;
+    readonly property: string;
 
     /**
      * The reason that the property failed validation.
      */
-    public readonly reason: string;
-
-    /**
-     * Constructs a new check failure.
-     *
-     * @param property The property that failed validation.
-     * @param reason The reason that the property failed validation.
-     */
-    constructor(property: string, reason: string) {
-        this.property = property;
-        this.reason = reason;
-    }
+    readonly reason: string;
 }
 
 /**
  * DiffResult represents the results of a call to `ResourceProvider.diff`.
  */
-export class DiffResult {
+export interface DiffResult {
     /**
      * If this update requires a replacement, the set of properties triggering it.
      */
-    public readonly replaces: string[];
+    readonly replaces?: string[];
 
     /**
      * An optional list of properties that will not ever change.
      */
-    public readonly stables: string[];
-
-    /**
-     * Constructs a new diff result.
-     *
-     * @param replaces If this update requires a replacement, the set of properties triggering it.
-     * @param stables An optional list of properties that will not ever change.
-     */
-    constructor(replaces: string[], stables: string[]) {
-        this.replaces = replaces;
-        this.stables = stables;
-    }
+    readonly stables?: string[];
 }
 
 /**
  * CreateResult represents the results of a call to `ResourceProvider.create`.
  */
-export class CreateResult {
+export interface CreateResult {
     /**
      * The ID of the created resource.
      */
-    public readonly id: resource.ID;
+    readonly id: resource.ID;
 
     /**
      * Any properties that were computed during creation.
      */
-    public readonly outs: any | undefined;
-
-    /**
-     * Constructs a new create result.
-     *
-     * @param id The ID of the created resource.
-     * @param outs Any properties that were computed during creation.
-     */
-    constructor(id: resource.ID, outs: any | undefined) {
-        this.id = id;
-        this.outs = outs;
-    }
+    readonly outs?: any;
 }
 
 /**
  * UpdateResult represents the results of a call to `ResourceProvider.update`.
  */
-export class UpdateResult {
+export interface UpdateResult {
     /**
      * Any properties that were computed during updating.
      */
-    public readonly outs: any | undefined;
-
-    /**
-     * Constructs a new update result.
-     *
-     * @param outs Any properties that were computed during updating.
-     */
-    constructor(outs: any | undefined) {
-        this.outs = outs;
-    }
+    readonly outs?: any;
 }
 
 /**
@@ -136,7 +83,7 @@ export interface ResourceProvider {
      * @param olds The old input properties to use for validation.
      * @param news The new input properties to use for validation.
      */
-    check: (olds: any, news: any) => Promise<CheckResult>;
+    check?: (olds: any, news: any) => Promise<CheckResult>;
 
     /**
      * Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -145,7 +92,7 @@ export interface ResourceProvider {
      * @param olds The old values of properties to diff.
      * @param news The new values of properties to diff.
      */
-    diff: (id: resource.ID, olds: any, news: any) => Promise<DiffResult>;
+    diff?: (id: resource.ID, olds: any, news: any) => Promise<DiffResult>;
 
     /**
      * Create allocates a new instance of the provided resource and returns its unique ID afterwards.
@@ -162,7 +109,7 @@ export interface ResourceProvider {
      * @param olds The old values of properties to update.
      * @param news The new values of properties to update.
      */
-    update: (id: resource.ID, olds: any, news: any) => Promise<UpdateResult>;
+    update?: (id: resource.ID, olds: any, news: any) => Promise<UpdateResult>;
 
     /**
      * Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -170,7 +117,7 @@ export interface ResourceProvider {
      * @param id The ID of the resource to delete.
      * @param props The current properties on the resource.
      */
-    delete: (id: resource.ID, props: any) => Promise<void>;
+    delete?: (id: resource.ID, props: any) => Promise<void>;
 }
 
 async function serializeProvider(provider: ResourceProvider): Promise<string> {
