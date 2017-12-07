@@ -326,11 +326,21 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts ProgramTestOptions, dir str
 		}
 	}
 
+	if err := TestEdits(t, opts, dir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
+	stackName := opts.StackName()
+
 	// If there are any edits, apply them and run a preview and update for each one.
 	for i, edit := range opts.EditDirs {
 		_, err := fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
-		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
+		dir, err := prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return err
 		}
