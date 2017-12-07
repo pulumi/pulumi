@@ -14,7 +14,7 @@ import (
 
 // TestSteps tests many combinations of creates, updates, deletes, replacements, and so on.
 func TestSteps(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
+	integration.TestLifeCycle(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,

@@ -62,7 +62,7 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
-// ProgramTestOptions provides options for ProgramTest
+// ProgramTestOptions provides options for TestLifeCycle
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
