@@ -20,6 +20,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 	} else if excl[info.Name()] {
 		return nil
 	}
+
 	if info.IsDir() {
 		// Recursively copy all files in a directory.
 		files, err := ioutil.ReadDir(src)
@@ -47,5 +48,6 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 			return err
 		}
 	}
+
 	return nil
 }

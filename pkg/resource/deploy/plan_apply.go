@@ -167,10 +167,11 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 
 	// If there is no error, proceed to save the state; otherwise, go straight to the exit codepath.
 	if err == nil {
-		// If we have a state object, remember it, as we may need to update it later.
-		if step.Logical() {
-			if _, has := iter.regs[urn]; has {
-				return resource.StatusOK, goerr.Errorf("resource '%s' registered twice", urn)
+		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
+		if step.Logical() && step.New() != nil {
+			if prior, has := iter.regs[urn]; has {
+				return resource.StatusOK,
+					goerr.Errorf("resource '%s' registered twice (%s and %s)", urn, prior.Op(), step.Op())
 			}
 
 			iter.regs[urn] = step
