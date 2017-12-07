@@ -235,10 +235,26 @@ func ProgramTestInitAndDestroy(
 
 	t.Parallel()
 
+	dir, err := TestInitialize(t, opts)
+	if err != nil {
+		return
+	}
+
+	// Ensure that before we exit, we attempt to destroy and remove the stack.
+	defer TestDestroy(t, opts, dir)
+
+	if err = testBetween(t, opts, dir); err != nil {
+		return
+	}
+}
+
+func TestInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
+	t.Parallel()
+
 	stackName := opts.StackName()
 	dir, err := CopyTestToTemporaryDirectory(t, opts)
 	if !assert.NoError(t, err) {
-		return
+		return "", err
 	}
 
 	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
@@ -250,46 +266,43 @@ func ProgramTestInitAndDestroy(
 	fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
 	if err = RunCommand(t, opts, "pulumi-init", opts.PulumiCmd([]string{"init"}), dir); err != nil {
-		return
+		return "", err
 	}
 	if err = RunCommand(t, opts, "pulumi-stack-init",
 		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir); err != nil {
-		return
+		return "", err
 	}
 	for key, value := range opts.Config {
 		if err = RunCommand(t, opts, "pulumi-config",
 			opts.PulumiCmd([]string{"config", "set", key, value}), dir); err != nil {
-			return
+			return "", err
 		}
 	}
 
 	for key, value := range opts.Secrets {
 		if err = RunCommand(t, opts, "pulumi-config",
 			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir); err != nil {
-			return
+			return "", err
 		}
 	}
+
+	return dir, nil
+}
+
+func TestDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
+	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
+	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
 	if opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
 	}
 
-	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer func() {
-		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
-		fmt.Fprintf(opts.Stdout, "Destroying stack\n")
-
-		derr := RunCommand(t, opts, "pulumi-destroy", destroy, dir)
-		contract.IgnoreError(derr)
-		derr = RunCommand(t, opts, "pulumi-stack-rm",
-			opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir)
-		contract.IgnoreError(derr)
-	}()
-
-	if err = testBetween(t, opts, dir); err != nil {
-		return
-	}
+	err := RunCommand(t, opts, "pulumi-destroy", destroy, dir)
+	contract.IgnoreError(err)
+	err = RunCommand(t, opts, "pulumi-stack-rm",
+		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(opts.StackName())}), dir)
+	contract.IgnoreError(err)
 }
 
 func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
