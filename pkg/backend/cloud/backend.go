@@ -457,10 +457,6 @@ func printEvent(event apitype.UpdateEvent) {
 
 // Login logs into the target cloud URL.
 func Login(cloudURL string) error {
-	cloud, err := getCloudAPI(cloudURL)
-	if err != nil {
-		return err
-	}
 	fmt.Printf("Logging into Pulumi Cloud: %s\n", cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
@@ -477,7 +473,7 @@ func Login(cloudURL string) error {
 	}
 
 	// Try and use the credentials to see if they are valid.
-	valid, err := isValidAccessToken(cloud, accessToken)
+	valid, err := isValidAccessToken(cloudURL, accessToken)
 	if err != nil {
 		return err
 	} else if !valid {

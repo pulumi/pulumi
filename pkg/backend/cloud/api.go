@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
@@ -22,10 +21,8 @@ import (
 )
 
 const (
-	// apiPrefix is the API URL prefix for any cloud endpoint.
-	apiPrefix = "api"
-	// defaultURL is used if no environment or explicit cloud is chosen.
-	defaultURL = "https://pulumi.com/"
+	// defaultURL is the Cloud URL used if no environment or explicit cloud is chosen.
+	defaultURL = "https://api.pulumi.com"
 	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
 	defaultURLEnvVar = "PULUMI_API"
 	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
@@ -42,29 +39,6 @@ func DefaultURL() string {
 	return cloudURL
 }
 
-// getCloudAPI returns the API endpoint to use for the Pulumi Cloud at the given base URL.
-func getCloudAPI(cloudURL string) (string, error) {
-	if cloudURL == "" {
-		return "", errors.New("missing cloud URL")
-	}
-
-	// Ensure this parses as a valid URL; and ensure it doesn't have any illegal elements.
-	url, err := url.Parse(cloudURL)
-	if err != nil {
-		return "", errors.Wrapf(err, "malformed cloud URL")
-	} else if url.RawQuery != "" || url.Fragment != "" {
-		return "", errors.Errorf("cloud URL may not contain querystring or fragment: %s", cloudURL)
-	}
-
-	// If this isn't already an API-style URL, turn it into one.
-	if !strings.HasPrefix(url.Host, apiPrefix+".") {
-		url.Host = apiPrefix + "." + url.Host
-	}
-
-	// But return it as a string, since we will be dynamically creating URLs later on.
-	return strings.TrimSuffix(url.String(), "/"), err
-}
-
 // cloudProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
 // logical "home" of a stack on the Pulumi Cloud.
 type cloudProjectIdentifier struct {
@@ -74,12 +48,7 @@ type cloudProjectIdentifier struct {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(cloudAPI, method, path string, body []byte, accessToken string) (string, *http.Response, error) {
-	apiEndpoint, err := getCloudAPI(cloudAPI)
-	if err != nil {
-		return "", nil, fmt.Errorf("getting Pulumi API endpoint: %v", err)
-	}
-
+func pulumiAPICall(apiEndpoint, method, path string, body []byte, accessToken string) (string, *http.Response, error) {
 	// Normalize URL components
 	apiEndpoint = strings.TrimSuffix(apiEndpoint, "/")
 	path = strings.TrimPrefix(path, "/")
@@ -152,8 +121,8 @@ func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
 	// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
 	// type, and if not just return the raw response text.
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
-		if resp.StatusCode == 401 {
-			// Special case "unauthorized", and direct the developer to login.
+		// Provide a better error if using an authenticated call without having logged in first.
+		if resp.StatusCode == 401 && token == "" {
 			return errors.New("this command requires logging in; try running 'pulumi login' first")
 		}
 
