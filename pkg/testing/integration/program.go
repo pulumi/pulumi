@@ -357,7 +357,9 @@ func TestEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
 func TestPreviewAndUpdate(t *testing.T, opts ProgramTestOptions, dir string, name string) error {
 
 	if !opts.Quick {
-		TestPreview(t, opts, dir, name)
+		if err := TestPreview(t, opts, dir, name); err != nil {
+			return err
+		}
 	}
 
 	return TestUpdate(t, opts, dir, name)
