@@ -195,60 +195,60 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	return opts
 }
 
-// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the
+// TestLifeCycle runs a lifecycle of Pulumi commands in a program working directory, using the
 // `pulumi` binaries available on PATH.  It essentially executes the following workflow:
 //
-//   ProgramTestInitAndDestroy-Initialize
+//   TestLifecycleInitialize()
 //       pulumi preview
 //       pulumi update
 //       pulumi preview (expected to be empty)
 //       pulumi update (expected to be empty)
-//   ProgramTestInitAndDestroy-Destroy
+//   TestLifeCycleDestroy()
 //
 // All commands must return success return codes for the test to succeed.
-func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	ProgramTestInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
+func TestLifeCycle(t *testing.T, opts *ProgramTestOptions) {
+	TestLifeCycleInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
 }
 
-// ProgramTestInitAndDestroy runs a mini lifecycle of Pulumi commands in a program working directory, using the
-// `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following workflow:
+// TestLifeCycleInitAndDestroy runs a mini lifecycle of Pulumi commands in a program working
+// directory, It essentially executes the following workflow:
 //
-//   Initialize:
-//       yarn install
-//       yarn link <each opts.Depencies>
-//       yarn run build
-//       pulumi init
-//       pulumi stack init integrationtesting
-//       pulumi config set <each opts.Config>
-//       pulumi config set --secret <each opts.Secrets>
-//
-//   ... testBetween code ...
-//
-//   Destroy:
-//       pulumi destroy --yes
-//       pulumi stack rm --yes integrationtesting
+//   TestLifeCycleInitialize()
+//   testBetween()
+//   TestLifeCycleDestroy()
 //
 // All commands must return success return codes for the test to succeed.
-func ProgramTestInitAndDestroy(
+func TestLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
 	testBetween func(*testing.T, *ProgramTestOptions, string) error) {
 
 	t.Parallel()
 
-	dir, err := TestInitialize(t, opts)
+	dir, err := TestLifeCycleInitialize(t, opts)
 	if err != nil {
 		return
 	}
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer TestDestroy(t, opts, dir)
+	defer TestLifeCycleDestroy(t, opts, dir)
 
 	if err = testBetween(t, opts, dir); err != nil {
 		return
 	}
 }
 
-func TestInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
+// TestLifeCycleInitialize intiialized up a pulumi environment in a program working directory, using
+// the `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following
+// workflow:
+//
+// yarn install
+// yarn link <each opts.Depencies>
+// yarn run build
+// pulumi init
+// pulumi stack init integrationtesting
+// pulumi config set <each opts.Config>
+// pulumi config set --secret <each opts.Secrets>
+func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	t.Parallel()
 
 	stackName := opts.StackName()
@@ -289,7 +289,12 @@ func TestInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	return dir, nil
 }
 
-func TestDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
+// TestLifeCycleDestroy tears down pulumi environment in a program working directory, using the
+// `pulumi` binaries available on PATH.  It essentially executes the following workflow:
+//
+// pulumi destroy --yes
+// pulumi stack rm --yes integrationtesting
+func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
 	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 
