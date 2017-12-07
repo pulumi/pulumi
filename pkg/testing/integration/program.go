@@ -196,21 +196,14 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 }
 
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the
-// `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following workflow:
+// `pulumi` binaries available on PATH.  It essentially executes the following workflow:
 //
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   yarn run build
-//   pulumi init
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//   pulumi preview
-//   pulumi update
-//   pulumi preview (expected to be empty)
-//   pulumi update (expected to be empty)
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
+//   ProgramTestInitAndDestroy-Initialize
+//       pulumi preview
+//       pulumi update
+//       pulumi preview (expected to be empty)
+//       pulumi update (expected to be empty)
+//   ProgramTestInitAndDestroy-Destroy
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -220,16 +213,20 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 // ProgramTestInitAndDestroy runs a mini lifecycle of Pulumi commands in a program working directory, using the
 // `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following workflow:
 //
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   yarn run build
-//   pulumi init
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//      ... testBetweenCode ...
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
+//   Initialize:
+//       yarn install
+//       yarn link <each opts.Depencies>
+//       yarn run build
+//       pulumi init
+//       pulumi stack init integrationtesting
+//       pulumi config set <each opts.Config>
+//       pulumi config set --secret <each opts.Secrets>
+//
+//   ... testBetween code ...
+//
+//   Destroy:
+//       pulumi destroy --yes
+//       pulumi stack rm --yes integrationtesting
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTestInitAndDestroy(
@@ -349,7 +346,6 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 
 // TestPreviewAndUpdate does a single preview (if not doing a quick test) followed by an update.
 func TestPreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
-
 	if !opts.Quick {
 		if err := TestPreview(t, opts, dir, name); err != nil {
 			return err
@@ -533,9 +529,7 @@ func RunCommand(t *testing.T, opts *ProgramTestOptions, name string, args []stri
 
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, opts *ProgramTestOptions,
-	src, origin string, additive bool) (string, error) {
-
+func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
 	stackName := opts.StackName()
 	var dir string
 
