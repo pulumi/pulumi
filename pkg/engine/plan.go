@@ -179,6 +179,11 @@ func shouldShow(seen map[resource.URN]deploy.Step, step deploy.Step, opts deploy
 	return true
 }
 
+// isRootStack returns true if the step pertains to the rootmost stack component.
+func isRootStack(step deploy.Step) bool {
+	return step.URN().Type() == resource.RootStackType
+}
+
 func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
 	// If there are configuration variables, show them.
 	if result.Options.ShowConfig {
@@ -436,48 +441,33 @@ func printObject(
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, indent int) {
 	// Only certain kinds of steps have output properties associated with them.
-	op := step.Op()
-	if op != deploy.OpCreate &&
-		op != deploy.OpCreateReplacement &&
-		op != deploy.OpUpdate {
+	new := step.New()
+	if new == nil || new.Outputs == nil {
 		return
 	}
-	op = considerSameIfNotCreateOrDelete(op)
+	op := considerSameIfNotCreateOrDelete(step.Op())
 
 	// Now compute the indentation level, in part based on the parents.
 	indent++ // indent for the resource.
 	indent = stepParentIndent(b, step, seen, shown, false, indent, false)
 
 	// First fetch all the relevant property maps that we may consult.
-	newins := step.New().Inputs
-	newouts := step.New().Outputs
-	var oldouts resource.PropertyMap
-	if old := step.Old(); old != nil {
-		oldouts = old.Outputs
-	}
+	ins := new.Inputs
+	outs := new.Outputs
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	firstout := true
-	keys := newouts.StableKeys()
+	keys := outs.StableKeys()
 	maxkey := maxKey(keys)
 	for _, k := range keys {
-		newout := newouts[k]
-		// Print this property if it is printable, and one of these cases
-		//     1) new ins has it and it's different;
-		//     2) new ins doesn't have it, but old outs does, and it's different;
-		//     3) neither old outs nor new ins contain it;
-		if shouldPrintPropertyValue(newout, true) {
+		out := outs[k]
+		// Print this property if it is printable and either ins doesn't have it or it's different.
+		if shouldPrintPropertyValue(out, true) {
 			var print bool
-			if newin, has := newins[k]; has {
-				print = (newout.Diff(newin) != nil) // case 1
-			} else if oldouts != nil {
-				if oldout, has := oldouts[k]; has {
-					print = (newout.Diff(oldout) != nil) // case 2
-				} else {
-					print = true // case 3
-				}
+			if in, has := ins[k]; has {
+				print = (out.Diff(in) != nil)
 			} else {
-				print = true // also case 3
+				print = true
 			}
 
 			if print {
@@ -486,7 +476,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 					firstout = false
 				}
 				printPropertyTitle(b, string(k), maxkey, indent, op, false)
-				printPropertyValue(b, newout, false, indent, op, false)
+				printPropertyValue(b, out, false, indent, op, false)
 			}
 		}
 	}
