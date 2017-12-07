@@ -5,11 +5,13 @@ import { runtime } from "../../index";
 import { assertAsyncThrows, asyncTest } from "../util";
 
 interface ClosureCase {
+    pre?: () => void;         // an optional function to run before this case.
     title: string;            // a title banner for the test case.
     func: Function;           // the function whose body and closure to serialize.
     expect?: runtime.Closure; // if undefined, error expected; otherwise, the serialized shape.
     expectText?: string;      // optionally also validate the serialization to JavaScript text.
-    closureHash?: string;      // hash of the closure.
+    closureHash?: string;     // hash of the closure.
+    afters?: ClosureCase[];   // an optional list of test cases to run afterwards.
 }
 
 // This group of tests ensure that we serialize closures properly.
@@ -763,10 +765,55 @@ return (function () { () => { console.log(this + arguments); }; })
         },
         closureHash: "__05dabc231611ca558334d59d661ebfb242b31b5d",
     });
+    const mutable: any = {};
+    cases.push({
+        title: "Serialize mutable objects by value at the time of capture (pre-mutation)",
+        func: function() { return mutable; },
+        expect: {
+            code: `(function () { return mutable; })`,
+            environment: {
+                "mutable": {
+                    obj: {},
+                },
+            },
+            runtime: "nodejs",
+        },
+        closureHash: "__e4a4f2f9ad40ef73c250aa10f0277247adfae473",
+        afters: [{
+            pre: () => { mutable.timesTheyAreAChangin = true; },
+            title: "Serialize mutable objects by value at the time of capture (post-mutation)",
+            func: function() { return mutable; },
+            expect: {
+                code: `(function () { return mutable; })`,
+                environment: {
+                    "mutable": {
+                        obj: {
+                            "timesTheyAreAChangin": {
+                                json: true,
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__18d08ca03253fe3dda134c1e5e5889f514cb3841",
+        }],
+    });
 
-    // Now go ahead and run the test cases, each as its own case.
-    for (const test of cases) {
+    // Make a callback to keep running tests.
+    let remaining = cases;
+    while (true) {
+        const test = remaining.shift();
+        if (!test) {
+            return;
+        }
         it(test.title, asyncTest(async () => {
+            // Run pre-actions.
+            if (test.pre) {
+                test.pre();
+            }
+
+            // Invoke the test case.
             if (test.expect) {
                 const closure: runtime.Closure = await runtime.serializeClosure(test.func);
                 assert.deepEqual(closure, test.expect);
@@ -783,6 +830,10 @@ return (function () { () => { console.log(this + arguments); }; })
                 });
             }
         }));
+
+        // Schedule any additional tests.
+        if (test.afters) {
+            remaining = test.afters.concat(remaining);
+        }
     }
 });
-
