@@ -213,7 +213,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi stack rm --yes integrationtesting
 //
 // All commands must return success return codes for the test to succeed.
-func ProgramTest(t *testing.T, opts ProgramTestOptions) {
+func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	ProgramTestInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
 }
 
@@ -233,13 +233,13 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTestInitAndDestroy(
-	t *testing.T, opts ProgramTestOptions,
-	testBetween func(*testing.T, ProgramTestOptions, string) error) {
+	t *testing.T, opts *ProgramTestOptions,
+	testBetween func(*testing.T, *ProgramTestOptions, string) error) {
 
 	t.Parallel()
 
 	stackName := opts.StackName()
-	dir, err := CopyTestToTemporaryDirectory(t, &opts, stackName)
+	dir, err := CopyTestToTemporaryDirectory(t, opts)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -252,24 +252,23 @@ func ProgramTestInitAndDestroy(
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
-	if err = RunCommand(t, "pulumi-init",
-		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
+	if err = RunCommand(t, opts, "pulumi-init", opts.PulumiCmd([]string{"init"}), dir); err != nil {
 		return
 	}
-	if err = RunCommand(t, "pulumi-stack-init",
-		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir, opts); err != nil {
+	if err = RunCommand(t, opts, "pulumi-stack-init",
+		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir); err != nil {
 		return
 	}
 	for key, value := range opts.Config {
-		if err = RunCommand(t, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", key, value}), dir, opts); err != nil {
+		if err = RunCommand(t, opts, "pulumi-config",
+			opts.PulumiCmd([]string{"config", "set", key, value}), dir); err != nil {
 			return
 		}
 	}
 
 	for key, value := range opts.Secrets {
-		if err = RunCommand(t, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir, opts); err != nil {
+		if err = RunCommand(t, opts, "pulumi-config",
+			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir); err != nil {
 			return
 		}
 	}
@@ -284,11 +283,10 @@ func ProgramTestInitAndDestroy(
 		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
 		fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 
-		derr := RunCommand(t, "pulumi-destroy",
-			destroy, dir, opts)
+		derr := RunCommand(t, opts, "pulumi-destroy", destroy, dir)
 		contract.IgnoreError(derr)
-		derr = RunCommand(t, "pulumi-stack-rm",
-			opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
+		derr = RunCommand(t, opts, "pulumi-stack-rm",
+			opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir)
 		contract.IgnoreError(derr)
 	}()
 
@@ -297,9 +295,7 @@ func ProgramTestInitAndDestroy(
 	}
 }
 
-func testPreviewAndUpdateAndEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
-	stackName := opts.StackName()
-
+func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 
@@ -318,7 +314,7 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts ProgramTestOptions, dir str
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err := PerformExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir, stackName); err != nil {
+	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
 		return err
 	}
 
@@ -329,14 +325,12 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts ProgramTestOptions, dir str
 	return nil
 }
 
-func TestEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
-	stackName := opts.StackName()
-
+func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	// If there are any edits, apply them and run a preview and update for each one.
 	for i, edit := range opts.EditDirs {
 		fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 
-		edir, err := prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
+		edir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, edir, err) {
 			return err
 		}
@@ -345,7 +339,7 @@ func TestEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
 			return err
 		}
 
-		if err = PerformExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, edir, stackName); err != nil {
+		if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, edir); err != nil {
 			return err
 		}
 	}
@@ -354,7 +348,7 @@ func TestEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
 }
 
 // TestPreviewAndUpdate does a single preview (if not doing a quick test) followed by an update.
-func TestPreviewAndUpdate(t *testing.T, opts ProgramTestOptions, dir string, name string) error {
+func TestPreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 
 	if !opts.Quick {
 		if err := TestPreview(t, opts, dir, name); err != nil {
@@ -365,33 +359,35 @@ func TestPreviewAndUpdate(t *testing.T, opts ProgramTestOptions, dir string, nam
 	return TestUpdate(t, opts, dir, name)
 }
 
-func TestPreview(t *testing.T, opts ProgramTestOptions, dir string, name string) error {
+func TestPreview(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	preview := opts.PulumiCmd([]string{"preview"})
 
 	if opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 	}
 
-	return RunCommand(t, "pulumi-preview-"+name, preview, dir, opts)
+	return RunCommand(t, opts, "pulumi-preview-"+name, preview, dir)
 }
 
-func TestUpdate(t *testing.T, opts ProgramTestOptions, dir string, name string) error {
+func TestUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	update := opts.PulumiCmd([]string{"update"})
 
 	if opts.GetDebugUpdates() {
 		update = append(update, "-d")
 	}
 
-	return RunCommand(t, "pulumi-update-"+name, update, dir, opts)
+	return RunCommand(t, opts, "pulumi-update-"+name, update, dir)
 }
 
 func PerformExtraRuntimeValidation(
-	t *testing.T, extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
-	dir string, stackName tokens.QName) error {
+	t *testing.T, opts *ProgramTestOptions,
+	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
 
 	if extraRuntimeValidation == nil {
 		return nil
 	}
+
+	stackName := opts.StackName()
 
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
@@ -409,8 +405,7 @@ func PerformExtraRuntimeValidation(
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
-	stackName tokens.QName) (dir string, err error) {
+func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir string, err error) {
 	// Ensure the required programs are present.
 	if opts.Bin == "" {
 		var pulumi string
@@ -454,7 +449,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, stackName, dir, "", *opts, false)
+	dir, err = prepareProject(t, opts, dir, "", false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -465,7 +460,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, name string, args []string, wd string, opts ProgramTestOptions) error {
+func RunCommand(t *testing.T, opts *ProgramTestOptions, name string, args []string, wd string) error {
 	path := args[0]
 	command := strings.Join(args, " ")
 
@@ -538,9 +533,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts Progra
 
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, stackName tokens.QName,
-	src string, origin string, opts ProgramTestOptions, additive bool) (string, error) {
+func prepareProject(t *testing.T, opts *ProgramTestOptions,
+	src, origin string, additive bool) (string, error) {
 
+	stackName := opts.StackName()
 	var dir string
 
 	// If additive, keep the existing directory.  Otherwise, create a new one.
@@ -603,23 +599,20 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 	}
 
 	// Now ensure dependencies are present.
-	if insterr := RunCommand(t,
-		"yarn-install",
-		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), cwd, opts); insterr != nil {
+	if insterr := RunCommand(t, opts, "yarn-install",
+		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), cwd); insterr != nil {
 		return "", insterr
 	}
 	for _, dependency := range opts.Dependencies {
-		if linkerr := RunCommand(t,
-			"yarn-link",
-			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), cwd, opts); linkerr != nil {
+		if linkerr := RunCommand(t, opts, "yarn-link",
+			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), cwd); linkerr != nil {
 			return "", linkerr
 		}
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	if builderr := RunCommand(t,
-		"yarn-build",
-		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd, opts); builderr != nil {
+	if builderr := RunCommand(t, opts, "yarn-build",
+		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd); builderr != nil {
 		return "", builderr
 	}
 
