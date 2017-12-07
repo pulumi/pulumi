@@ -32,6 +32,7 @@ import (
 type EditDir struct {
 	Dir                    string
 	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+	Additive               bool // set to true to keep the prior test dir, applying this edit atop.
 }
 
 // TestCommandStats is a collection of data related to running a single command during a test.
@@ -318,7 +319,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	for i, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
-		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts)
+		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
@@ -400,7 +401,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, stackName, dir, "", *opts)
+	dir, err = prepareProject(t, stackName, dir, "", *opts, false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -488,11 +489,20 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts Progra
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
 func prepareProject(t *testing.T, stackName tokens.QName,
-	src string, origin string, opts ProgramTestOptions) (string, error) {
-	// Create a new temp directory.
-	dir, err := ioutil.TempDir("", string(stackName)+"-")
-	if err != nil {
-		return "", err
+	src string, origin string, opts ProgramTestOptions, additive bool) (string, error) {
+
+	var dir string
+
+	// If additive, keep the existing directory.  Otherwise, create a new one.
+	if additive {
+		dir = origin
+	} else {
+		// Create a new temp directory.
+		var err error
+		dir, err = ioutil.TempDir("", string(stackName)+"-")
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// Now copy the source into it, ignoring .pulumi/ and Pulumi.yaml if there's an origin.
@@ -507,14 +517,16 @@ func prepareProject(t *testing.T, stackName tokens.QName,
 		return "", copyerr
 	}
 
-	// Now, copy back the original project's .pulumi/ and Pulumi.yaml atop the target.
 	projfile := filepath.Join(dir, proj)
-	if origin != "" {
-		if copyerr := fsutil.CopyFile(projfile, filepath.Join(origin, proj), nil); copyerr != nil {
-			return "", copyerr
-		}
-		if copyerr := fsutil.CopyFile(filepath.Join(dir, wdir), filepath.Join(origin, wdir), nil); copyerr != nil {
-			return "", copyerr
+	if !additive {
+		// Now, copy back the original project's .pulumi/ and Pulumi.yaml atop the target.
+		if origin != "" {
+			if copyerr := fsutil.CopyFile(projfile, filepath.Join(origin, proj), nil); copyerr != nil {
+				return "", copyerr
+			}
+			if copyerr := fsutil.CopyFile(filepath.Join(dir, wdir), filepath.Join(origin, wdir), nil); copyerr != nil {
+				return "", copyerr
+			}
 		}
 	}
 
