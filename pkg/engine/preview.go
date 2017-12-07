@@ -89,7 +89,7 @@ func newPreviewActions(opts deployOptions) *previewActions {
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Print this step information (resource and all its properties).
-	if shouldShow(acts.Seen, step, acts.Opts) {
+	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		printStep(&acts.Summary, step,
 			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/)
 	}
@@ -106,14 +106,16 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		_ = acts.OnResourceOutputs(step)
+		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+			_ = acts.OnResourceOutputs(step)
+		}
 	}
 	return nil
 }
 
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
-	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		printResourceOutputProperties(&acts.Summary, step, acts.Seen, acts.Shown, 0 /*indent*/)
 	}
 	return nil
