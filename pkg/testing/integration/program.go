@@ -195,8 +195,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	return opts
 }
 
-// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
-// binaries available on PATH.  It essentially executes the following workflow:
+// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the
+// `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following workflow:
 //
 //   yarn install
 //   yarn link <each opts.Depencies>
@@ -214,6 +214,28 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTest(t *testing.T, opts ProgramTestOptions) {
+	ProgramTestInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
+}
+
+// ProgramTest runs a mini lifecycle of Pulumi commands in a program working directory, using the
+// `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following workflow:
+//
+//   yarn install
+//   yarn link <each opts.Depencies>
+//   yarn run build
+//   pulumi init
+//   pulumi stack init integrationtesting
+//   pulumi config set <each opts.Config>
+//   pulumi config set --secret <each opts.Secrets>
+//      ... testBetweenCode ...
+//   pulumi destroy --yes
+//   pulumi stack rm --yes integrationtesting
+//
+// All commands must return success return codes for the test to succeed.
+func ProgramTestInitAndDestroy(
+	t *testing.T, opts ProgramTestOptions,
+	testBetween func(*testing.T, ProgramTestOptions, string) error) {
+
 	t.Parallel()
 
 	stackName := opts.StackName()
@@ -252,34 +274,10 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		}
 	}
 
-	preview := opts.PulumiCmd([]string{"preview"})
-	update := opts.PulumiCmd([]string{"update"})
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
 	if opts.GetDebugUpdates() {
-		preview = append(preview, "-d")
-		update = append(update, "-d")
 		destroy = append(destroy, "-d")
 	}
-
-	// Now preview and update the real changes.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-	contract.IgnoreError(err)
-	previewAndUpdate := func(d string, name string) error {
-		if !opts.Quick {
-			if preerr := RunCommand(t, "pulumi-preview-"+name,
-				preview, d, opts); preerr != nil {
-				return preerr
-			}
-		}
-		if upderr := RunCommand(t, "pulumi-update-"+name,
-			update, d, opts); upderr != nil {
-			return upderr
-		}
-		return nil
-	}
-
-	// Perform the initial stack creation.
-	initErr := previewAndUpdate(dir, "initial")
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
@@ -294,9 +292,46 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		contract.IgnoreError(derr)
 	}()
 
+	if err = testBetween(t, opts, dir); err != nil {
+		return
+	}
+}
+
+func testPreviewAndUpdateAndEdits(t *testing.T, opts ProgramTestOptions, dir string) error {
+	stackName := opts.StackName()
+
+	preview := opts.PulumiCmd([]string{"preview"})
+	update := opts.PulumiCmd([]string{"update"})
+
+	if opts.GetDebugUpdates() {
+		preview = append(preview, "-d")
+		update = append(update, "-d")
+	}
+
+	// Now preview and update the real changes.
+	_, err := fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
+	contract.IgnoreError(err)
+	previewAndUpdate := func(d string, name string) error {
+		if !opts.Quick {
+			if preerr := RunCommand(t, "pulumi-preview-"+name,
+				preview, d, opts); preerr != nil {
+				return preerr
+			}
+		}
+		if upderr := RunCommand(t, "pulumi-update-"+name,
+			update, d, opts); upderr != nil {
+			return upderr
+		}
+
+		return nil
+	}
+
+	// Perform the initial stack creation.
+	initErr := previewAndUpdate(dir, "initial")
+
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
-		return
+		return initErr
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
@@ -304,14 +339,14 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 		contract.IgnoreError(err)
 		if err = previewAndUpdate(dir, "empty"); err != nil {
-			return
+			return err
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if opts.ExtraRuntimeValidation != nil {
 		if err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir, stackName); err != nil {
-			return
+			return err
 		}
 	}
 
@@ -321,17 +356,19 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 		contract.IgnoreError(err)
 		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-			return
+			return err
 		}
 		if err = previewAndUpdate(dir, fmt.Sprintf("edit%d", i)); err != nil {
-			return
+			return err
 		}
 		if edit.ExtraRuntimeValidation != nil {
 			if err = performExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, dir, stackName); err != nil {
-				return
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
 func performExtraRuntimeValidation(
