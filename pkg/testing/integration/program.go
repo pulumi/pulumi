@@ -217,7 +217,7 @@ func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	ProgramTestInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
 }
 
-// ProgramTest runs a mini lifecycle of Pulumi commands in a program working directory, using the
+// ProgramTestInitAndDestroy runs a mini lifecycle of Pulumi commands in a program working directory, using the
 // `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following workflow:
 //
 //   yarn install
