@@ -156,15 +156,17 @@ func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine)
 
 func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Report the beginning of the step if appropriate.
-	show := shouldShow(acts.Seen, step, acts.Opts)
-	if show {
+	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
 		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	if step.Op() != deploy.OpSame {
+		return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	}
+	return nil, nil
 }
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
@@ -201,19 +203,24 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		}
 	}
 
 	acts.Opts.Events <- stdOutEventWithColor(&b)
 
 	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+	if ctx != nil {
+		return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+	}
+	return nil
 }
 
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
-	if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
+	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
 		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
