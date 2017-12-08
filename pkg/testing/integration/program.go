@@ -207,6 +207,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed.
 func TestLifeCycle(t *testing.T, opts *ProgramTestOptions) {
+	t.Parallel()
+
 	TestLifeCycleInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
 }
 
@@ -221,8 +223,6 @@ func TestLifeCycle(t *testing.T, opts *ProgramTestOptions) {
 func TestLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
 	testBetween func(*testing.T, *ProgramTestOptions, string) error) {
-
-	t.Parallel()
 
 	dir, err := TestLifeCycleInitialize(t, opts)
 	if err != nil {
@@ -249,8 +249,6 @@ func TestLifeCycleInitAndDestroy(
 // pulumi config set <each opts.Config>
 // pulumi config set --secret <each opts.Secrets>
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
-	t.Parallel()
-
 	stackName := opts.StackName()
 	dir, err := CopyTestToTemporaryDirectory(t, opts)
 	if !assert.NoError(t, err) {
