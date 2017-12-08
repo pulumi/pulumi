@@ -222,19 +222,19 @@ func TestLifeCycle(t *testing.T, opts *ProgramTestOptions) {
 // All commands must return success return codes for the test to succeed.
 func TestLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
-	testBetween func(*testing.T, *ProgramTestOptions, string) error) {
+	testBetween func(*testing.T, *ProgramTestOptions, string) (string, error)) {
 
 	dir, err := TestLifeCycleInitialize(t, opts)
 	if err != nil {
 		return
 	}
 
-	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer TestLifeCycleDestroy(t, opts, dir)
+	defer func() {
+		TestLifeCycleDestroy(t, opts, dir)
+	}()
 
-	if err = testBetween(t, opts, dir); err != nil {
-		return
-	}
+	dir, err = testBetween(t, opts, dir)
+	assert.NoError(t, err)
 }
 
 // TestLifeCycleInitialize intiialized up a pulumi environment in a program working directory, using
@@ -308,13 +308,13 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	contract.IgnoreError(err)
 }
 
-func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
+func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, error) {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 
 	// Perform the initial stack creation.
 	if err := TestPreviewAndUpdate(t, opts, dir, "initial"); err != nil {
-		return err
+		return dir, err
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
@@ -322,43 +322,41 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir st
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 
 		if err := TestPreviewAndUpdate(t, opts, dir, "empty"); err != nil {
-			return err
+			return dir, err
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return err
+		return dir, err
 	}
 
-	if err := TestEdits(t, opts, dir); err != nil {
-		return err
-	}
-
-	return nil
+	return TestEdits(t, opts, dir)
 }
 
-func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
+func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, error) {
 	// If there are any edits, apply them and run a preview and update for each one.
 	for i, edit := range opts.EditDirs {
-		fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
+		fmt.Fprintf(opts.Stdout, "Applying edit '%v' into '%s' and validating\n", edit, dir)
 
-		var err error
-		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+		newDir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+		fmt.Fprintf(opts.Stdout, "Edited '%s' to get '%s'\n", dir, newDir)
+
+		dir = newDir
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-			return err
+			return dir, err
 		}
 
 		if err = TestPreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit%d", i)); err != nil {
-			return err
+			return dir, err
 		}
 
 		if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
-			return err
+			return dir, err
 		}
 	}
 
-	return nil
+	return dir, nil
 }
 
 // TestPreviewAndUpdate does a single preview (if not doing a quick test) followed by an update.
