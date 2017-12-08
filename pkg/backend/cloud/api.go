@@ -33,6 +33,11 @@ const (
 // variable.  If no override is found, the default is the pulumi.com cloud.
 func DefaultURL() string {
 	cloudURL := os.Getenv(defaultURLEnvVar)
+	return ValueOrDefaultURL(cloudURL)
+}
+
+// ValueOrDefaultURL returns the value if specified, or the default cloud URL otherwise.
+func ValueOrDefaultURL(cloudURL string) string {
 	if cloudURL == "" {
 		cloudURL = defaultURL
 	}
