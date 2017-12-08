@@ -302,6 +302,14 @@ describe("rpc", () => {
             expectResourceCount: 0,
             expectError: "Program exited with non-zero exit code: 1",
         },
+        // A program that creates one resource that contains an assets archive.
+        "assets_archive": {
+            program: path.join(base, "012.assets_archive"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: res };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
