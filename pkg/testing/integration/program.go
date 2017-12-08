@@ -219,6 +219,9 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	stackName := opts.StackName()
 
 	dir, err := TestLifeCycleInitialize(t, opts)
+	if err != nil {
+		return
+	}
 
 	preview := opts.PulumiCmd([]string{"preview"})
 	update := opts.PulumiCmd([]string{"update"})
