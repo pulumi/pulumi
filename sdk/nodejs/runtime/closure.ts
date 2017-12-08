@@ -486,18 +486,6 @@ class FreeVariableComputer {
     }
 
     private visitCallExpression(node: ts.CallExpression, walk: walkCallback): void {
-        walk(node.expression);
-
-        const isAwaiterCall = ts.isIdentifier(node.expression) && node.expression.text === "__awaiter";
-        if (!isAwaiterCall) {
-            // For normal calls, just walk all arguments normally.
-            for (const arg of node.arguments) {
-                walk(arg);
-            }
-
-            return;
-        }
-
         // Most call expressions are normal.  But we must special case one kind of function:
         // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0, function* (){})`,
 
@@ -512,10 +500,23 @@ class FreeVariableComputer {
         // doing this, if 'this' is used inside the function* we'll act as if it's a real lexical
         // capture so that we pass 'this' along.
 
-        if (node.arguments.length === 4 && ts.isFunctionLike(node.arguments[3])) {
-            this.visitBaseFunctionWorker(
+        const isAwaiterCall =
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === "__awaiter" &&
+            node.arguments.length === 4 &&
+            node.arguments[0].kind === ts.SyntaxKind.ThisKeyword &&
+            ts.isFunctionLike(node.arguments[3]);
+
+        if (isAwaiterCall) {
+            return this.visitBaseFunctionWorker(
                 <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
                 walk, /*isArrowFunction*/ true);
+        }
+
+        // For normal calls, just walk all arguments normally.
+        walk(node.expression);
+        for (const arg of node.arguments) {
+            walk(arg);
         }
     }
 
