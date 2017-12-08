@@ -217,7 +217,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	t.Parallel()
 
 	stackName := opts.StackName()
-	dir, err := CopyTestToTemporaryDirectory(t, opts, stackName)
+	dir, err := CopyTestToTemporaryDirectory(t, opts)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -310,7 +310,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if opts.ExtraRuntimeValidation != nil {
-		if err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir, stackName); err != nil {
+		if err = performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
 			return
 		}
 	}
@@ -319,7 +319,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	for i, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 		contract.IgnoreError(err)
-		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
+		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return
 		}
@@ -327,7 +327,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 			return
 		}
 		if edit.ExtraRuntimeValidation != nil {
-			if err = performExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, dir, stackName); err != nil {
+			if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
 				return
 			}
 		}
@@ -335,8 +335,11 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 }
 
 func performExtraRuntimeValidation(
-	t *testing.T, extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
-	dir string, stackName tokens.QName) error {
+	t *testing.T, opts *ProgramTestOptions,
+	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
+
+	stackName := opts.StackName()
+
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
 	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
@@ -353,8 +356,7 @@ func performExtraRuntimeValidation(
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
-	stackName tokens.QName) (dir string, err error) {
+func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir string, err error) {
 	// Ensure the required programs are present.
 	if opts.Bin == "" {
 		var pulumi string
@@ -401,7 +403,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, stackName, dir, "", opts, false)
+	dir, err = prepareProject(t, opts, dir, "", false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -488,8 +490,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, stackName tokens.QName,
-	src string, origin string, opts *ProgramTestOptions, additive bool) (string, error) {
+func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
+	stackName := opts.StackName()
 
 	var dir string
 
