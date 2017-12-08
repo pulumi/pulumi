@@ -111,7 +111,7 @@ Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
 
 // SerializeFunction serializes a JavaScript function expression and its associated closure environment.
 Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
-        Local<Function> freeVarsFunc, Local<Function> envEntryFunc) {
+        Local<Function> freeVarsFunc, Local<Function> envEntryFunc, Local<Object> envEntryCache) {
     // Get at the innards of the function.  Unfortunately, we need to use internal V8 APIs to do this,
     // as the closest public function, CreationContext, intentionally returns the non-closure Context for
     // Function objects (it returns the constructor context, which is not what we want).
@@ -159,8 +159,8 @@ Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
             // Only empty if an error was thrown; bail eagerly to propagate it.
             return Local<Value>();
         }
-        const unsigned envEntryArgc = 1;
-        Local<Value> envEntryArgv[envEntryArgc] = { v };
+        const unsigned envEntryArgc = 2;
+        Local<Value> envEntryArgv[envEntryArgc] = { v, envEntryCache };
         Local<Value> envEntry = envEntryFunc->Call(Null(isolate), envEntryArgc, envEntryArgv);
         if (envEntry.IsEmpty()) {
             return Local<Value>();
@@ -214,8 +214,16 @@ void SerializeClosure(const FunctionCallbackInfo<Value>& args) {
     }
     Local<Function> envEntryFunc = Local<Function>::Cast(args[2]);
 
+    // And that the fourth is an entry cache used to backstop mutually recursive captures.
+    if (args.Length() < 4 || args[3]->IsUndefined()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "Missing required env-entry cache")));
+        return;
+    }
+    Local<Object> envEntryCache = Local<Object>::Cast(args[3]);
+
     // Now go ahead and serialize it, and return the result.
-    Local<Value> closure = SerializeFunction(isolate, func, freeVarsFunc, envEntryFunc);
+    Local<Value> closure = SerializeFunction(isolate, func, freeVarsFunc, envEntryFunc, envEntryCache);
     if (!closure.IsEmpty()) {
         args.GetReturnValue().Set(closure);
     }

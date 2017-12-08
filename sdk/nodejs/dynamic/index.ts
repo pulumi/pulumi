@@ -138,13 +138,9 @@ export abstract class Resource extends resource.CustomResource {
      * @param parent An optional parent resource to which this resource belongs.
      * @param dependsOn Optional additional explicit dependencies on other resources.
      */
-    public constructor(provider: ResourceProvider,
-                       name: string,
-                       props: resource.ComputedValues,
-                       parent?: resource.Resource,
-                       dependsOn?: resource.Resource[]) {
+    public constructor(provider: ResourceProvider, name: string, props: resource.ComputedValues,
+                       parent?: resource.Resource, dependsOn?: resource.Resource[]) {
         const providerKey: string = "__provider";
-
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");
         }

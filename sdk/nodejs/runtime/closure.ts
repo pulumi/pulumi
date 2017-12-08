@@ -39,10 +39,13 @@ export interface EnvironmentEntry {
  * Unlike toString, it actually includes information about the captured environment.
  */
 export function serializeClosure(func: Function): Promise<Closure> {
+    // entryCache stores a map of entry to promise, to support mutually recursive captures.
+    const entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
+
     // First get the async version.  We will then await it to turn it into a flattened, async-free computed closure.
     // This must be done "at the top" because we must not block the creation of the dataflow graph of closure
     // elements, since there may be cycles that can only resolve by creating the entire graph first.
-    const closure: AsyncClosure = serializeClosureAsync(func);
+    const closure: AsyncClosure = serializeClosureAsync(func, entryCache);
 
     // Now turn the AsyncClosure into a normal closure, and return it.
     const flatCache = new Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>();
@@ -136,14 +139,10 @@ export interface AsyncEnvironmentEntry {
 }
 
 /**
- * entryCache stores a map of entry to promise, to support mutually recursive captures.
- */
-const entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
-
-/**
  * serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
  */
-function serializeClosureAsync(func: Function): AsyncClosure {
+function serializeClosureAsync(
+        func: Function, entryCache: Map<Object, Promise<AsyncEnvironmentEntry>>): AsyncClosure {
     // Invoke the native runtime.  Note that we pass a callback to our function below to compute
     // free variables. This must be a callback and not the result of this function alone, since we
     // may recursively compute them.
@@ -153,13 +152,15 @@ function serializeClosureAsync(func: Function): AsyncClosure {
     // parser isn't designed to be stable for 3rd party consumtpion. Hence it would be brittle and a
     // maintenance challenge. This approach also avoids needing to write a big hunk of complex code
     // in C++, which is nice.
-    return <AsyncClosure>nativeruntime.serializeClosure(func, computeFreeVariables, serializeCapturedObject);
+    return <AsyncClosure>nativeruntime.serializeClosure(
+        func, computeFreeVariables, serializeCapturedObject, entryCache);
 }
 
 /**
  * serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
  */
-function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
+function serializeCapturedObject(
+        obj: any, entryCache: Map<Object, Promise<AsyncEnvironmentEntry>>): Promise<AsyncEnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
     let result: Promise<AsyncEnvironmentEntry> | undefined = entryCache.get(obj);
     if (result) {
@@ -170,14 +171,16 @@ function serializeCapturedObject(obj: any): Promise<AsyncEnvironmentEntry> {
     let resultResolve: ((v: AsyncEnvironmentEntry) => void) | undefined = undefined;
     result = debuggablePromise(new Promise<AsyncEnvironmentEntry>((resolve) => { resultResolve = resolve; }));
     entryCache.set(obj, result);
-    serializeCapturedObjectAsync(obj, resultResolve!);
+    serializeCapturedObjectAsync(obj, resultResolve!, entryCache);
     return result;
 }
 
 /**
  * serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
  */
-function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEntry) => void): void {
+function serializeCapturedObjectAsync(
+        obj: any, resolve: (v: AsyncEnvironmentEntry) => void,
+        entryCache: Map<Object, Promise<AsyncEnvironmentEntry>>): void {
     const moduleName = findRequirableModuleName(obj);
     if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
@@ -198,7 +201,7 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
         // Recursively serialize elements of an array.
         const arr: Promise<AsyncEnvironmentEntry>[] = [];
         for (const elem of obj) {
-            arr.push(serializeCapturedObject(elem));
+            arr.push(serializeCapturedObject(elem, entryCache));
         }
 
         return resolve({ arr: arr });
@@ -206,19 +209,19 @@ function serializeCapturedObjectAsync(obj: any, resolve: (v: AsyncEnvironmentEnt
 
     if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
-        return resolve({ closure: serializeClosureAsync(obj) });
+        return resolve({ closure: serializeClosureAsync(obj, entryCache) });
     }
 
     if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
-        obj.then((v) => serializeCapturedObjectAsync(v, resolve));
+        obj.then((v) => serializeCapturedObjectAsync(v, resolve, entryCache));
         return;
     }
 
     // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
     const env: AsyncEnvironment = {};
     for (const key of Object.keys(obj)) {
-        env[key] = serializeCapturedObject(obj[key]);
+        env[key] = serializeCapturedObject(obj[key], entryCache);
     }
     resolve({ obj: env });
 }
@@ -269,6 +272,7 @@ function findRequirableModuleName(obj: any): string | undefined  {
  */
 function computeFreeVariables(funcstr: string): string[] {
     log.debug(`Computing free variables for function: ${funcstr}`);
+
     if (funcstr.indexOf("[native code]") !== -1) {
         throw new Error(`Cannot serialize native code function: "${funcstr}"`);
     }
@@ -336,8 +340,6 @@ class FreeVariableComputer {
                     return this.visitBlockStatement(<ts.Block>node, walk);
                 case ts.SyntaxKind.CatchClause:
                     return this.visitCatchClause(<ts.CatchClause>node, walk);
-                case ts.SyntaxKind.CallExpression:
-                    return this.visitCallExpression(<ts.CallExpression>node, walk);
                 case ts.SyntaxKind.MethodDeclaration:
                     return this.visitMethodDeclaration(<ts.MethodDeclaration>node, walk);
                 case ts.SyntaxKind.PropertyAssignment:
@@ -474,22 +476,6 @@ class FreeVariableComputer {
         this.scope.pop();
     }
 
-    private visitCallExpression(node: ts.CallExpression, walk: walkCallback): void {
-        // Most call expressions are normal.  But we must special case one kind of function:
-        // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0, function* (){})`,
-        // which will cause us to attempt to capture and serialize the entire surrounding function in
-        // which any lambda is created (thanks to `this`).  That spirals into craziness, and bottoms out on native
-        // functions which we cannot serialize.  We only want to capture `this` if the user code mentioned it.
-        walk(node.expression);
-
-        const isAwaiterCall = ts.isIdentifier(node.expression) && node.expression.text === "__awaiter";
-        for (let i = 0; i < node.arguments.length; i++) {
-            if (i > 0 || !isAwaiterCall) {
-                walk(node.arguments[i]);
-            }
-        }
-    }
-
     private visitMethodDeclaration(node: ts.MethodDeclaration, walk: walkCallback): void {
         if (ts.isComputedPropertyName(node.name)) {
             // Don't walk down the 'name' part of the property assignment if it is an identifier. It
@@ -613,9 +599,9 @@ class FreeVariableComputer {
 }
 
 /**
- * serializeJavaScript Text converts a Closure object into a string
- * representation of a Node.js module body which exposes a single function
- * `exports.handler` representing the serialized function.
+ * serializeJavaScriptText converts a Closure object into a string representation of a Node.js module body which
+ * exposes a single function `exports.handler` representing the serialized function.
+ *
  * @param c The Closure to be serialized into a module string.
  */
 export function serializeJavaScriptText(c: Closure): string {
@@ -690,8 +676,6 @@ class FuncsForClosure {
     }
 
     private createFunctionHash(closure: Closure): string {
-        const shasum = crypto.createHash("sha1");
-
         // We want to produce a deterministic hash from all the relevant data in this closure. To do
         // so we 'normalize' the object to remove any meaningless differences, and also to ensure
         // the closure can be appropriately serialized to a JSON string, which can then be sha1
@@ -714,9 +698,9 @@ class FuncsForClosure {
         const seenClosures: Closure[] = [];
         const normalizedClosure = this.convertClosureToNormalizedObject(seenClosures, closure);
 
+        const shasum = crypto.createHash("sha1");
         shasum.update(JSON.stringify(normalizedClosure));
-        const hash: string = "__" + shasum.digest("hex");
-        return hash;
+        return "__" + shasum.digest("hex");
     }
 
     private convertClosureToNormalizedObject(seenClosures: Closure[], closure: Closure | undefined) {
