@@ -312,7 +312,7 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir st
 
 	// Perform the initial stack creation.
 	if err := TestPreviewAndUpdate(t, opts, dir, "initial"); err != nil {
-		return "", err
+		return dir, err
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
@@ -320,13 +320,13 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir st
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 
 		if err := TestPreviewAndUpdate(t, opts, dir, "empty"); err != nil {
-			return "", err
+			return dir, err
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return "", err
+		return dir, err
 	}
 
 	return TestEdits(t, opts, dir)
@@ -342,15 +342,15 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, erro
 
 		dir = newDir
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-			return "", err
+			return dir, err
 		}
 
 		if err = TestPreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit%d", i)); err != nil {
-			return "", err
+			return dir, err
 		}
 
 		if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
-			return "", err
+			return dir, err
 		}
 	}
 
