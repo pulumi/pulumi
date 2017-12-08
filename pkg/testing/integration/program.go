@@ -343,8 +343,10 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	for i, edit := range opts.EditDirs {
 		fmt.Fprintf(opts.Stdout, "Applying edit '%v' into '%s' and validating\n", edit, dir)
 
-		var err error
-		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+		newDir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+		fmt.Fprintf(opts.Stdout, "Edited '%s' to get '%s'\n", dir, newDir)
+
+		dir = newDir
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return err
 		}
