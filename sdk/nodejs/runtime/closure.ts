@@ -499,6 +499,7 @@ class FreeVariableComputer {
         // actually a lambda and not a JS function (with the standard js 'this' semantics).  By
         // doing this, if 'this' is used inside the function* we'll act as if it's a real lexical
         // capture so that we pass 'this' along.
+        walk(node.expression);
 
         const isAwaiterCall =
             ts.isIdentifier(node.expression) &&
@@ -508,14 +509,12 @@ class FreeVariableComputer {
             ts.isFunctionLike(node.arguments[3]);
 
         if (isAwaiterCall) {
-            walk(node.expression);
             return this.visitBaseFunctionWorker(
                 <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
                 walk, /*isArrowFunction*/ true);
         }
 
         // For normal calls, just walk all arguments normally.
-        walk(node.expression);
         for (const arg of node.arguments) {
             walk(arg);
         }
