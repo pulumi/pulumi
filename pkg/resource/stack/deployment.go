@@ -50,9 +50,6 @@ type Resource struct {
 	Parent   resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
 }
 
-// RootPulumiStackTypeName is the type name that will be used for the root component in the Pulumi resource tree.
-const RootPulumiStackTypeName tokens.Type = "pulumi:pulumi:Stack"
-
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	// Capture the version information into a manifest.
