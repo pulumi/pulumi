@@ -217,40 +217,8 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	t.Parallel()
 
 	stackName := opts.StackName()
-	dir, err := CopyTestToTemporaryDirectory(t, opts)
-	if !assert.NoError(t, err) {
-		return
-	}
 
-	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
-	if opts.RelativeWorkDir != "" {
-		dir = path.Join(dir, opts.RelativeWorkDir)
-	}
-
-	// Ensure all links are present, the stack is created, and all configs are applied.
-	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
-	contract.IgnoreError(err)
-	if err = RunCommand(t, "pulumi-init",
-		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
-		return
-	}
-	if err = RunCommand(t, "pulumi-stack-init",
-		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir, opts); err != nil {
-		return
-	}
-	for key, value := range opts.Config {
-		if err = RunCommand(t, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", key, value}), dir, opts); err != nil {
-			return
-		}
-	}
-
-	for key, value := range opts.Secrets {
-		if err = RunCommand(t, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir, opts); err != nil {
-			return
-		}
-	}
+	dir, err := TestLifeCycleInitialize(t, opts)
 
 	preview := opts.PulumiCmd([]string{"preview"})
 	update := opts.PulumiCmd([]string{"update"})
@@ -332,6 +300,49 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 			}
 		}
 	}
+}
+
+func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
+	stackName := opts.StackName()
+
+	dir, err := CopyTestToTemporaryDirectory(t, opts)
+	if !assert.NoError(t, err) {
+		return "", err
+	}
+
+	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
+	if opts.RelativeWorkDir != "" {
+		dir = path.Join(dir, opts.RelativeWorkDir)
+	}
+
+	// Ensure all links are present, the stack is created, and all configs are applied.
+	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	contract.IgnoreError(err)
+	if err = RunCommand(t, "pulumi-init",
+		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
+		return "", err
+	}
+
+	if err = RunCommand(t, "pulumi-stack-init",
+		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir, opts); err != nil {
+		return "", err
+	}
+
+	for key, value := range opts.Config {
+		if err = RunCommand(t, "pulumi-config",
+			opts.PulumiCmd([]string{"config", "set", key, value}), dir, opts); err != nil {
+			return "", err
+		}
+	}
+
+	for key, value := range opts.Secrets {
+		if err = RunCommand(t, "pulumi-config",
+			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir, opts); err != nil {
+			return "", err
+		}
+	}
+
+	return dir, nil
 }
 
 func performExtraRuntimeValidation(
