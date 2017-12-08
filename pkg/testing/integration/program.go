@@ -343,17 +343,16 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	for i, edit := range opts.EditDirs {
 		fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 
-		var err error
-		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
-		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
+		edir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, edir, err) {
 			return err
 		}
 
-		if err = TestPreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit%d", i)); err != nil {
+		if err = TestPreviewAndUpdate(t, opts, edir, fmt.Sprintf("edit%d", i)); err != nil {
 			return err
 		}
 
-		if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
+		if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, edir); err != nil {
 			return err
 		}
 	}
