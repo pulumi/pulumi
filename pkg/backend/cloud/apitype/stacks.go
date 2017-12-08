@@ -8,7 +8,7 @@ import "github.com/pulumi/pulumi/pkg/tokens"
 type Resource struct {
 	Type     string                 `json:"type"`
 	URN      string                 `json:"urn"`
-	Custom   bool                   `json:"bool"`
+	Custom   bool                   `json:"custom"`
 	ID       string                 `json:"id"`
 	Inputs   map[string]interface{} `json:"inputs"`
 	Defaults map[string]interface{} `json:"defaults"`

@@ -445,7 +445,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 func printEvent(event apitype.UpdateEvent) {
 	stream := os.Stdout // Ignoring event.Kind which could be StderrEvent.
 	rawEntry, ok := event.Fields["text"]
-	if !ok {
+	if !ok || rawEntry == nil {
 		return
 	}
 	text := rawEntry.(string)
