@@ -340,12 +340,12 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, erro
 		fmt.Fprintf(opts.Stdout, "Applying edit '%v' into '%s' and validating\n", edit, dir)
 
 		newDir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
-		fmt.Fprintf(opts.Stdout, "Edited '%s' to get '%s'\n", dir, newDir)
-
-		dir = newDir
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return dir, err
 		}
+
+		dir = newDir
+		fmt.Fprintf(opts.Stdout, "Edited '%s' to get '%s'\n", dir, newDir)
 
 		if err = TestPreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit%d", i)); err != nil {
 			return dir, err
