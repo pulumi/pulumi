@@ -338,6 +338,8 @@ class FreeVariableComputer {
                     return this.visitThisExpression(<ts.PrimaryExpression>node);
                 case ts.SyntaxKind.Block:
                     return this.visitBlockStatement(<ts.Block>node, walk);
+                case ts.SyntaxKind.CallExpression:
+                    return this.visitCallExpression(<ts.CallExpression>node, walk);
                 case ts.SyntaxKind.CatchClause:
                     return this.visitCatchClause(<ts.CatchClause>node, walk);
                 case ts.SyntaxKind.MethodDeclaration:
@@ -410,6 +412,13 @@ class FreeVariableComputer {
     }
 
     private visitBaseFunction(node: ts.FunctionLikeDeclarationBase, walk: walkCallback): void {
+        this.visitBaseFunctionWorker(node, walk, ts.isArrowFunction(node));
+    }
+
+    private visitBaseFunctionWorker(
+            node: ts.FunctionLikeDeclarationBase,
+            walk: walkCallback,
+            isArrowFunction: boolean): void {
         // First, push new free vars list, scope, and function vars
         const oldFrees: {[key: string]: boolean} = this.frees;
         const oldFunctionVars: string[] = this.functionVars;
@@ -439,7 +448,7 @@ class FreeVariableComputer {
 
         // If the function is not an arrow function, then its `this` and `arguments` are also
         // function-scoped variables and should be removed.
-        if (!ts.isArrowFunction(node)) {
+        if (!isArrowFunction) {
             this.frees["this"] = false;
             this.frees["arguments"] = false;
         }
@@ -474,6 +483,41 @@ class FreeVariableComputer {
 
         // Relinquish the scope so the error patterns aren't available beyond the catch.
         this.scope.pop();
+    }
+
+    private visitCallExpression(node: ts.CallExpression, walk: walkCallback): void {
+        // Most call expressions are normal.  But we must special case one kind of function:
+        // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0, function* (){})`,
+
+        // The first 'this' argument is passed along in case the expression awaited uses 'this'.
+        // However, doing that can be very bad for us as in many cases the 'this' just refers to the
+        // surrounding module, and the awaited expression won't be using that 'this' at all.
+        //
+        // However, there are cases where 'this' may be legitimately lexically used in the awaited
+        // expression and should be captured properly.  We'll figure this out by actually descending
+        // explicitly into the "function*(){}" argument, asking it to be treated as if it was
+        // actually a lambda and not a JS function (with the standard js 'this' semantics).  By
+        // doing this, if 'this' is used inside the function* we'll act as if it's a real lexical
+        // capture so that we pass 'this' along.
+        walk(node.expression);
+
+        const isAwaiterCall =
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === "__awaiter" &&
+            node.arguments.length === 4 &&
+            node.arguments[0].kind === ts.SyntaxKind.ThisKeyword &&
+            ts.isFunctionLike(node.arguments[3]);
+
+        if (isAwaiterCall) {
+            return this.visitBaseFunctionWorker(
+                <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
+                walk, /*isArrowFunction*/ true);
+        }
+
+        // For normal calls, just walk all arguments normally.
+        for (const arg of node.arguments) {
+            walk(arg);
+        }
     }
 
     private visitMethodDeclaration(node: ts.MethodDeclaration, walk: walkCallback): void {

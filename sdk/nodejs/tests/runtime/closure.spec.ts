@@ -1,5 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+// tslint:disable:max-line-length
+
 import * as assert from "assert";
 import { runtime } from "../../index";
 import { assertAsyncThrows, asyncTest } from "../util";
@@ -280,6 +282,142 @@ return (() => { console.log(this); })
 
 `,
     });
+
+    const awaiterClosure = {
+        closure: {
+            code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
+            environment: {},
+            runtime: "nodejs",
+        },
+    };
+
+    const awaiterCode =
+`
+function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
+  return (function() {
+    with({  }) {
+
+return (function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+})
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`;
+
+    cases.push({
+        title: "Async lambda that does not capture this",
+        // tslint:disable-next-line
+        func: async () => { },
+        expect: {
+            code: "(() => __awaiter(this, void 0, void 0, function* () { }))",
+            environment: { "__awaiter": awaiterClosure },
+            runtime: "nodejs",
+        },
+        closureHash: "__2a83dcc4e3c79da00ade608e1401449fd97f37fe",
+        expectText: `exports.handler = __2a83dcc4e3c79da00ade608e1401449fd97f37fe;
+
+function __2a83dcc4e3c79da00ade608e1401449fd97f37fe() {
+  return (function() {
+    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+
+return (() => __awaiter(this, void 0, void 0, function* () { }))
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+${awaiterCode}
+`,
+    });
+
+    cases.push({
+        title: "Async lambda that does capture this",
+        // tslint:disable-next-line
+        func: async () => { console.log(this); },
+        expect: {
+            code: "(() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))",
+            environment: {
+                "__awaiter": awaiterClosure,
+                "this": { "module": "./bin/tests/runtime/closure.spec.js" },
+            },
+            runtime: "nodejs",
+        },
+        closureHash: "__f7cb93fabbd2f283f184e4cbfd6166ee13ff4969",
+        expectText: `exports.handler = __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969;
+
+function __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969() {
+  return (function() {
+    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+
+return (() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))
+
+    }
+  }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
+}
+${awaiterCode}
+`,
+    });
+
+    cases.push({
+        title: "Async function that does not capture this",
+        // tslint:disable-next-line
+        func: async function() { },
+        expect: {
+            code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { });\n        })",
+            environment: { "__awaiter": awaiterClosure },
+            runtime: "nodejs",
+        },
+        closureHash: "__777fc5424c69bbec55be2ab6c25c4f5aac7b80e6",
+        expectText: `exports.handler = __777fc5424c69bbec55be2ab6c25c4f5aac7b80e6;
+
+function __777fc5424c69bbec55be2ab6c25c4f5aac7b80e6() {
+  return (function() {
+    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+
+return (function () {
+            return __awaiter(this, void 0, void 0, function* () { });
+        })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+${awaiterCode}
+`,
+    });
+
+    cases.push({
+        title: "Async function that does capture this",
+        // tslint:disable-next-line
+        func: async function () { console.log(this); },
+        expect: {
+            code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { console.log(this); });\n        })",
+            environment: { "__awaiter": awaiterClosure },
+            runtime: "nodejs",
+        },
+        closureHash: "__7bddcde28730579e85ca0d9e450a65cad476232c",
+        expectText: `exports.handler = __7bddcde28730579e85ca0d9e450a65cad476232c;
+
+function __7bddcde28730579e85ca0d9e450a65cad476232c() {
+  return (function() {
+    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+
+return (function () {
+            return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+        })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+${awaiterCode}
+`,
+    });
+
     cases.push({
         title: "Arrow closure with this and arguments capture",
         // tslint:disable-next-line
@@ -307,6 +445,7 @@ return (() => { console.log(this + arguments); })
 
 `,
     });
+
     cases.push({
         title: "Arrow closure with this capture inside function closure",
         // tslint:disable-next-line
