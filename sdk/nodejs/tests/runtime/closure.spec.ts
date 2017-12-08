@@ -283,21 +283,39 @@ return (() => { console.log(this); })
 `,
     });
 
+    const awaiterClosure = {
+        closure: {
+            code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
+            environment: {},
+            runtime: "nodejs",
+        },
+    };
+
+    const awaiterCode =
+`function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
+  return (function() {
+    with({  }) {
+
+return (function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+})
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}`;
+
     cases.push({
         title: "Async lambda that does not capture this",
         // tslint:disable-next-line
         func: async () => { },
         expect: {
             code: "(() => __awaiter(this, void 0, void 0, function* () { }))",
-            environment: {
-                "__awaiter": {
-                    closure: {
-                        code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
-                        environment: {},
-                        runtime: "nodejs",
-                    },
-                },
-            },
+            environment: { "__awaiter": awaiterClosure },
             runtime: "nodejs",
         },
         closureHash: "__2a83dcc4e3c79da00ade608e1401449fd97f37fe",
@@ -313,22 +331,7 @@ return (() => __awaiter(this, void 0, void 0, function* () { }))
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
-  return (function() {
-    with({  }) {
-
-return (function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-})
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
+${awaiterCode}
 
 `,
     });
@@ -340,13 +343,7 @@ return (function (thisArg, _arguments, P, generator) {
         expect: {
             code: "(() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))",
             environment: {
-                "__awaiter": {
-                    closure: {
-                        code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
-                        environment: {},
-                        runtime: "nodejs",
-                    },
-                },
+                "__awaiter": awaiterClosure,
                 "this": { "module": "./bin/tests/runtime/closure.spec.js" },
             },
             runtime: "nodejs",
@@ -364,22 +361,7 @@ return (() => __awaiter(this, void 0, void 0, function* () { console.log(this); 
   }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
 }
 
-function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
-  return (function() {
-    with({  }) {
-
-return (function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-})
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
+${awaiterCode}
 
 `,
     });
@@ -390,15 +372,7 @@ return (function (thisArg, _arguments, P, generator) {
         func: async function() { },
         expect: {
             code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { });\n        })",
-            environment: {
-                "__awaiter": {
-                    closure: {
-                        code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
-                        environment: {},
-                        runtime: "nodejs",
-                    },
-                },
-            },
+            environment: { "__awaiter": awaiterClosure },
             runtime: "nodejs",
         },
         closureHash: "__777fc5424c69bbec55be2ab6c25c4f5aac7b80e6",
@@ -416,22 +390,7 @@ return (function () {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
-  return (function() {
-    with({  }) {
-
-return (function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-})
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
+${awaiterCode}
 
 `,
     });
@@ -442,15 +401,7 @@ return (function (thisArg, _arguments, P, generator) {
         func: async function () { console.log(this); },
         expect: {
             code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { console.log(this); });\n        })",
-            environment: {
-                "__awaiter": {
-                    closure: {
-                        code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
-                        environment: {},
-                        runtime: "nodejs",
-                    },
-                },
-            },
+            environment: { "__awaiter": awaiterClosure },
             runtime: "nodejs",
         },
         closureHash: "__7bddcde28730579e85ca0d9e450a65cad476232c",
@@ -468,22 +419,7 @@ return (function () {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
-  return (function() {
-    with({  }) {
-
-return (function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-})
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
+${awaiterCode}
 
 `,
     });
