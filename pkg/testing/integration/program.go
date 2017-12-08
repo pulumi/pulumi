@@ -229,10 +229,9 @@ func TestLifeCycleInitAndDestroy(
 		return
 	}
 
-	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer TestLifeCycleDestroy(t, opts, &dir)
-
 	dir, _ = testBetween(t, opts, dir)
+
+	TestLifeCycleDestroy(t, opts, dir)
 }
 
 // TestLifeCycleInitialize intiialized up a pulumi environment in a program working directory, using
@@ -290,7 +289,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 //
 // pulumi destroy --yes
 // pulumi stack rm --yes integrationtesting
-func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir *string) {
+func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
 	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
 
@@ -299,10 +298,10 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir *string) {
 		destroy = append(destroy, "-d")
 	}
 
-	err := RunCommand(t, opts, "pulumi-destroy", destroy, *dir)
+	err := RunCommand(t, opts, "pulumi-destroy", destroy, dir)
 	contract.IgnoreError(err)
 	err = RunCommand(t, opts, "pulumi-stack-rm",
-		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(opts.StackName())}), *dir)
+		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(opts.StackName())}), dir)
 	contract.IgnoreError(err)
 }
 
