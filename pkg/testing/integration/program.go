@@ -341,7 +341,7 @@ func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir st
 func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	// If there are any edits, apply them and run a preview and update for each one.
 	for i, edit := range opts.EditDirs {
-		fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
+		fmt.Fprintf(opts.Stdout, "Applying edit '%v' into '%s' and validating\n", edit, dir)
 
 		var err error
 		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
