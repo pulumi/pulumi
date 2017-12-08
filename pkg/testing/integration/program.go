@@ -229,9 +229,12 @@ func TestLifeCycleInitAndDestroy(
 		return
 	}
 
-	dir, _ = testBetween(t, opts, dir)
+	defer func() {
+		TestLifeCycleDestroy(t, opts, dir)
+	}()
 
-	TestLifeCycleDestroy(t, opts, dir)
+	dir, err = testBetween(t, opts, dir)
+	assert.NoError(t, err)
 }
 
 // TestLifeCycleInitialize intiialized up a pulumi environment in a program working directory, using
