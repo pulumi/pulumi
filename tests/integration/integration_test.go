@@ -24,7 +24,7 @@ func TestProjectMain(t *testing.T) {
 			assert.Equal(t, test.StackName(), checkpoint.Stack)
 		},
 	}
-	integration.ProgramTest(t, test)
+	integration.ProgramTest(t, &test)
 
 	t.Run("Error_AbsolutePath", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
@@ -63,7 +63,7 @@ func TestProjectMain(t *testing.T) {
 
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
 func TestStackProjectName(t *testing.T) {
-	integration.ProgramTest(t, integration.ProgramTestOptions{
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_project_name",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
@@ -72,7 +72,7 @@ func TestStackProjectName(t *testing.T) {
 
 // TestStackOutputs ensures we can export variables from a stack and have them get recorded as outputs.
 func TestStackOutputs(t *testing.T) {
-	integration.ProgramTest(t, integration.ProgramTestOptions{
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_outputs",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
@@ -94,7 +94,7 @@ func TestStackOutputs(t *testing.T) {
 
 // TestStackParenting tests out that stacks and components are parented correctly.
 func TestStackParenting(t *testing.T) {
-	integration.ProgramTest(t, integration.ProgramTestOptions{
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_parenting",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
