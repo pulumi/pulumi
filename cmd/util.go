@@ -32,7 +32,9 @@ func allBackends() ([]backend.Backend, bool) {
 		_, fmterr := fmt.Fprintf(os.Stderr, "error: could not obtain current cloud backends: %v", err)
 		contract.IgnoreError(fmterr)
 	} else {
-		backends = append(backends, cloudBackends...)
+		for _, be := range cloudBackends {
+			backends = append(backends, be)
+		}
 	}
 	return backends, len(cloudBackends) > 0
 }
