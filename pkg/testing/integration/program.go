@@ -62,7 +62,7 @@ type TestStatsReporter interface {
 	ReportCommand(stats TestCommandStats)
 }
 
-// ProgramTestOptions provides options for TestLifeCycle
+// ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
@@ -195,64 +195,31 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	return opts
 }
 
-// TestLifeCycle runs a lifecycle of Pulumi commands in a program working directory, using the
-// `pulumi` binaries available on PATH.  It essentially executes the following workflow:
+// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
+// binaries available on PATH.  It essentially executes the following workflow:
 //
-//   TestLifecycleInitialize()
-//       pulumi preview
-//       pulumi update
-//       pulumi preview (expected to be empty)
-//       pulumi update (expected to be empty)
-//   TestLifeCycleDestroy()
+//   yarn install
+//   yarn link <each opts.Depencies>
+//   yarn run build
+//   pulumi init
+//   pulumi stack init integrationtesting
+//   pulumi config set <each opts.Config>
+//   pulumi config set --secret <each opts.Secrets>
+//   pulumi preview
+//   pulumi update
+//   pulumi preview (expected to be empty)
+//   pulumi update (expected to be empty)
+//   pulumi destroy --yes
+//   pulumi stack rm --yes integrationtesting
 //
 // All commands must return success return codes for the test to succeed.
-func TestLifeCycle(t *testing.T, opts *ProgramTestOptions) {
+func ProgramTest(t *testing.T, opts ProgramTestOptions) {
 	t.Parallel()
 
-	TestLifeCycleInitAndDestroy(t, opts, testPreviewAndUpdateAndEdits)
-}
-
-// TestLifeCycleInitAndDestroy runs a mini lifecycle of Pulumi commands in a program working
-// directory, It essentially executes the following workflow:
-//
-//   TestLifeCycleInitialize()
-//   testBetween()
-//   TestLifeCycleDestroy()
-//
-// All commands must return success return codes for the test to succeed.
-func TestLifeCycleInitAndDestroy(
-	t *testing.T, opts *ProgramTestOptions,
-	testBetween func(*testing.T, *ProgramTestOptions, string) error) {
-
-	dir, err := TestLifeCycleInitialize(t, opts)
-	if err != nil {
-		return
-	}
-
-	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer TestLifeCycleDestroy(t, opts, dir)
-
-	if err = testBetween(t, opts, dir); err != nil {
-		return
-	}
-}
-
-// TestLifeCycleInitialize intiialized up a pulumi environment in a program working directory, using
-// the `pulumi` and `yarn` binaries available on PATH.  It essentially executes the following
-// workflow:
-//
-// yarn install
-// yarn link <each opts.Depencies>
-// yarn run build
-// pulumi init
-// pulumi stack init integrationtesting
-// pulumi config set <each opts.Config>
-// pulumi config set --secret <each opts.Secrets>
-func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	stackName := opts.StackName()
-	dir, err := CopyTestToTemporaryDirectory(t, opts)
+	dir, err := CopyTestToTemporaryDirectory(t, &opts, stackName)
 	if !assert.NoError(t, err) {
-		return "", err
+		return
 	}
 
 	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
@@ -261,146 +228,115 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
-
-	if err = RunCommand(t, opts, "pulumi-init", opts.PulumiCmd([]string{"init"}), dir); err != nil {
-		return "", err
+	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	contract.IgnoreError(err)
+	if err = RunCommand(t, "pulumi-init",
+		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
+		return
 	}
-	if err = RunCommand(t, opts, "pulumi-stack-init",
-		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir); err != nil {
-		return "", err
+	if err = RunCommand(t, "pulumi-stack-init",
+		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir, opts); err != nil {
+		return
 	}
 	for key, value := range opts.Config {
-		if err = RunCommand(t, opts, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", key, value}), dir); err != nil {
-			return "", err
+		if err = RunCommand(t, "pulumi-config",
+			opts.PulumiCmd([]string{"config", "set", key, value}), dir, opts); err != nil {
+			return
 		}
 	}
 
 	for key, value := range opts.Secrets {
-		if err = RunCommand(t, opts, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir); err != nil {
-			return "", err
+		if err = RunCommand(t, "pulumi-config",
+			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir, opts); err != nil {
+			return
 		}
 	}
 
-	return dir, nil
-}
-
-// TestLifeCycleDestroy tears down pulumi environment in a program working directory, using the
-// `pulumi` binaries available on PATH.  It essentially executes the following workflow:
-//
-// pulumi destroy --yes
-// pulumi stack rm --yes integrationtesting
-func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
-	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
-	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
-
+	preview := opts.PulumiCmd([]string{"preview"})
+	update := opts.PulumiCmd([]string{"update"})
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
 	if opts.GetDebugUpdates() {
+		preview = append(preview, "-d")
+		update = append(update, "-d")
 		destroy = append(destroy, "-d")
 	}
 
-	err := RunCommand(t, opts, "pulumi-destroy", destroy, dir)
-	contract.IgnoreError(err)
-	err = RunCommand(t, opts, "pulumi-stack-rm",
-		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(opts.StackName())}), dir)
-	contract.IgnoreError(err)
-}
-
-func testPreviewAndUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	// Now preview and update the real changes.
-	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
+	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
+	contract.IgnoreError(err)
+	previewAndUpdate := func(d string, name string) error {
+		if !opts.Quick {
+			if preerr := RunCommand(t, "pulumi-preview-"+name,
+				preview, d, opts); preerr != nil {
+				return preerr
+			}
+		}
+		if upderr := RunCommand(t, "pulumi-update-"+name,
+			update, d, opts); upderr != nil {
+			return upderr
+		}
+		return nil
+	}
 
 	// Perform the initial stack creation.
-	if err := TestPreviewAndUpdate(t, opts, dir, "initial"); err != nil {
-		return err
+	initErr := previewAndUpdate(dir, "initial")
+
+	// Ensure that before we exit, we attempt to destroy and remove the stack.
+	defer func() {
+		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
+		_, derr := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
+		contract.IgnoreError(derr)
+		derr = RunCommand(t, "pulumi-destroy",
+			destroy, dir, opts)
+		contract.IgnoreError(derr)
+		derr = RunCommand(t, "pulumi-stack-rm",
+			opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
+		contract.IgnoreError(derr)
+	}()
+
+	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
+	if initErr != nil {
+		return
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
-		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-
-		if err := TestPreviewAndUpdate(t, opts, dir, "empty"); err != nil {
-			return err
+		_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		contract.IgnoreError(err)
+		if err = previewAndUpdate(dir, "empty"); err != nil {
+			return
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return err
+	if opts.ExtraRuntimeValidation != nil {
+		if err = performExtraRuntimeValidation(t, opts.ExtraRuntimeValidation, dir, stackName); err != nil {
+			return
+		}
 	}
 
-	if err := TestEdits(t, opts, dir); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	// If there are any edits, apply them and run a preview and update for each one.
 	for i, edit := range opts.EditDirs {
-		fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
-
-		edir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
-		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, edir, err) {
-			return err
+		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
+		contract.IgnoreError(err)
+		dir, err = prepareProject(t, stackName, edit.Dir, dir, opts, edit.Additive)
+		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
+			return
 		}
-
-		if err = TestPreviewAndUpdate(t, opts, edir, fmt.Sprintf("edit%d", i)); err != nil {
-			return err
+		if err = previewAndUpdate(dir, fmt.Sprintf("edit%d", i)); err != nil {
+			return
 		}
-
-		if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, edir); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// TestPreviewAndUpdate does a single preview (if not doing a quick test) followed by an update.
-func TestPreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
-	if !opts.Quick {
-		if err := TestPreview(t, opts, dir, name); err != nil {
-			return err
+		if edit.ExtraRuntimeValidation != nil {
+			if err = performExtraRuntimeValidation(t, edit.ExtraRuntimeValidation, dir, stackName); err != nil {
+				return
+			}
 		}
 	}
-
-	return TestUpdate(t, opts, dir, name)
 }
 
-func TestPreview(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
-	preview := opts.PulumiCmd([]string{"preview"})
-
-	if opts.GetDebugUpdates() {
-		preview = append(preview, "-d")
-	}
-
-	return RunCommand(t, opts, "pulumi-preview-"+name, preview, dir)
-}
-
-func TestUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
-	update := opts.PulumiCmd([]string{"update"})
-
-	if opts.GetDebugUpdates() {
-		update = append(update, "-d")
-	}
-
-	return RunCommand(t, opts, "pulumi-update-"+name, update, dir)
-}
-
-func PerformExtraRuntimeValidation(
-	t *testing.T, opts *ProgramTestOptions,
-	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
-
-	if extraRuntimeValidation == nil {
-		return nil
-	}
-
-	stackName := opts.StackName()
-
+func performExtraRuntimeValidation(
+	t *testing.T, extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint),
+	dir string, stackName tokens.QName) error {
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
 	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
@@ -417,7 +353,8 @@ func PerformExtraRuntimeValidation(
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir string, err error) {
+func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
+	stackName tokens.QName) (dir string, err error) {
 	// Ensure the required programs are present.
 	if opts.Bin == "" {
 		var pulumi string
@@ -456,27 +393,31 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 		opts.Stderr = stderr
 	}
 
-	fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
-	fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
-	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
+	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
+	contract.IgnoreError(err)
+	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
+	contract.IgnoreError(err)
+	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
+	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, opts, dir, "", false)
+	dir, err = prepareProject(t, stackName, dir, "", *opts, false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
-
-	fmt.Fprintf(stdout, "projdir: %v\n", dir)
+	_, err = fmt.Fprintf(stdout, "projdir: %v\n", dir)
+	contract.IgnoreError(err)
 	return dir, err
 }
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, opts *ProgramTestOptions, name string, args []string, wd string) error {
+func RunCommand(t *testing.T, name string, args []string, wd string, opts ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
 
-	fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
+	_, err := fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
+	contract.IgnoreError(err)
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
@@ -484,7 +425,8 @@ func RunCommand(t *testing.T, opts *ProgramTestOptions, name string, args []stri
 		for !finished {
 			time.Sleep(30 * time.Second)
 			if !finished {
-				fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
+				_, stillerr := fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
+				contract.IgnoreError(stillerr)
 			}
 		}
 	}()
@@ -533,10 +475,11 @@ func RunCommand(t *testing.T, opts *ProgramTestOptions, name string, args []stri
 
 	finished = true
 	if runerr != nil {
-		fmt.Fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
-
+		_, err = fmt.Fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+		contract.IgnoreError(err)
 		if !opts.Verbose {
-			fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
+			_, err = fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
+			contract.IgnoreError(err)
 		}
 	}
 	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
@@ -545,8 +488,9 @@ func RunCommand(t *testing.T, opts *ProgramTestOptions, name string, args []stri
 
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
-	stackName := opts.StackName()
+func prepareProject(t *testing.T, stackName tokens.QName,
+	src string, origin string, opts ProgramTestOptions, additive bool) (string, error) {
+
 	var dir string
 
 	// If additive, keep the existing directory.  Otherwise, create a new one.
@@ -609,20 +553,23 @@ func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, 
 	}
 
 	// Now ensure dependencies are present.
-	if insterr := RunCommand(t, opts, "yarn-install",
-		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), cwd); insterr != nil {
+	if insterr := RunCommand(t,
+		"yarn-install",
+		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), cwd, opts); insterr != nil {
 		return "", insterr
 	}
 	for _, dependency := range opts.Dependencies {
-		if linkerr := RunCommand(t, opts, "yarn-link",
-			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), cwd); linkerr != nil {
+		if linkerr := RunCommand(t,
+			"yarn-link",
+			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), cwd, opts); linkerr != nil {
 			return "", linkerr
 		}
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	if builderr := RunCommand(t, opts, "yarn-build",
-		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd); builderr != nil {
+	if builderr := RunCommand(t,
+		"yarn-build",
+		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd, opts); builderr != nil {
 		return "", builderr
 	}
 
