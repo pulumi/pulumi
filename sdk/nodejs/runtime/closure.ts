@@ -508,6 +508,7 @@ class FreeVariableComputer {
             ts.isFunctionLike(node.arguments[3]);
 
         if (isAwaiterCall) {
+            walk(node.expression);
             return this.visitBaseFunctionWorker(
                 <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
                 walk, /*isArrowFunction*/ true);

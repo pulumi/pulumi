@@ -292,7 +292,8 @@ return (() => { console.log(this); })
     };
 
     const awaiterCode =
-`function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
+`
+function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
   return (function() {
     with({  }) {
 
@@ -307,7 +308,8 @@ return (function (thisArg, _arguments, P, generator) {
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
-}`;
+}
+`;
 
     cases.push({
         title: "Async lambda that does not capture this",
@@ -330,9 +332,7 @@ return (() => __awaiter(this, void 0, void 0, function* () { }))
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 ${awaiterCode}
-
 `,
     });
 
@@ -360,9 +360,7 @@ return (() => __awaiter(this, void 0, void 0, function* () { console.log(this); 
     }
   }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
 }
-
 ${awaiterCode}
-
 `,
     });
 
@@ -389,9 +387,7 @@ return (function () {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 ${awaiterCode}
-
 `,
     });
 
@@ -418,9 +414,7 @@ return (function () {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 ${awaiterCode}
-
 `,
     });
 
