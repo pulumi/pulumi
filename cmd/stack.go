@@ -10,6 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -90,12 +91,7 @@ func newStackCmd() *cobra.Command {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
 				fmt.Printf("    %-48s %s\n", "TYPE", "NAME")
-				var stackResource *resource.State
 				for _, res := range snap.Resources {
-					if res.Type == stack.RootPulumiStackTypeName {
-						stackResource = res
-					}
-
 					fmt.Printf("    %-48s %s\n", res.Type, res.URN.Name())
 
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do
@@ -109,23 +105,9 @@ func newStackCmd() *cobra.Command {
 				}
 
 				// Print out the output properties for the stack, if present.
-				if stackResource != nil {
+				if res, outputs := getRootStackResource(snap); res != nil {
 					fmt.Printf("\n")
-					outputs := stack.SerializeResource(stackResource).Outputs
-					fmt.Printf("Current stack outputs (%d):\n", len(outputs))
-					if len(outputs) == 0 {
-						fmt.Printf("    No output values currently in this stack\n")
-					} else {
-						var outkeys []string
-						for outkey := range outputs {
-							outkeys = append(outkeys, outkey)
-						}
-						sort.Strings(outkeys)
-						fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
-						for _, key := range outkeys {
-							fmt.Printf("    %-48s %v\n", key, outputs[key])
-						}
-					}
+					printStackOutputs(outputs)
 				}
 			}
 			fmt.Printf("\n")
@@ -143,8 +125,40 @@ func newStackCmd() *cobra.Command {
 
 	cmd.AddCommand(newStackInitCmd())
 	cmd.AddCommand(newStackLsCmd())
+	cmd.AddCommand(newStackOutputCmd())
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
 
 	return cmd
+}
+
+// getStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack exists,
+// its output properties, if any, are also returned in the resulting map.
+func getRootStackResource(snap *deploy.Snapshot) (*resource.State, map[string]interface{}) {
+	if snap != nil {
+		for _, res := range snap.Resources {
+			if res.Type == resource.RootStackType {
+				return res, stack.SerializeResource(res).Outputs
+			}
+		}
+	}
+	return nil, nil
+
+}
+
+func printStackOutputs(outputs map[string]interface{}) {
+	fmt.Printf("Current stack outputs (%d):\n", len(outputs))
+	if len(outputs) == 0 {
+		fmt.Printf("    No output values currently in this stack\n")
+	} else {
+		var outkeys []string
+		for outkey := range outputs {
+			outkeys = append(outkeys, outkey)
+		}
+		sort.Strings(outkeys)
+		fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
+		for _, key := range outkeys {
+			fmt.Printf("    %-48s %v\n", key, outputs[key])
+		}
+	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
@@ -81,7 +82,7 @@ func TestStackOutputs(t *testing.T) {
 			if assert.Equal(t, 1, len(checkpoint.Latest.Resources)) {
 				stackRes := checkpoint.Latest.Resources[0]
 				assert.NotNil(t, stackRes)
-				assert.Equal(t, stack.RootPulumiStackTypeName, stackRes.URN.Type())
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Equal(t, 0, len(stackRes.Inputs))
 				assert.Equal(t, 2, len(stackRes.Outputs))
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
@@ -112,7 +113,7 @@ func TestStackParenting(t *testing.T) {
 			if assert.Equal(t, 8, len(checkpoint.Latest.Resources)) {
 				stackRes := checkpoint.Latest.Resources[0]
 				assert.NotNil(t, stackRes)
-				assert.Equal(t, stack.RootPulumiStackTypeName, stackRes.Type)
+				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 				a := checkpoint.Latest.Resources[1]
 				assert.NotNil(t, a)
