@@ -289,8 +289,9 @@ function deserializeProperty(prop: any): any {
                         const assets: {[name: string]: asset.Asset} = {};
                         for (const name of Object.keys(prop["assets"])) {
                             const a = deserializeProperty(prop["assets"][name]);
-                            if (!(a instanceof asset.Asset)) {
-                                throw new Error("Expected an AssetArchive's assets to be unmarshaled Asset objects");
+                            if (!(a instanceof asset.Asset) && !(a instanceof asset.Archive)) {
+                                throw new Error(
+                                    "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects");
                             }
                             assets[name] = a;
                         }
