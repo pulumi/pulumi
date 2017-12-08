@@ -105,7 +105,7 @@ type ProgramTestOptions struct {
 	YarnBin string
 }
 
-func (opts ProgramTestOptions) PulumiCmd(args []string) []string {
+func (opts *ProgramTestOptions) PulumiCmd(args []string) []string {
 	cmd := []string{opts.Bin}
 	if du := opts.GetDebugLogLevel(); du > 0 {
 		cmd = append(cmd, "--logtostderr")
@@ -114,7 +114,7 @@ func (opts ProgramTestOptions) PulumiCmd(args []string) []string {
 	return append(cmd, args...)
 }
 
-func (opts ProgramTestOptions) GetDebugLogLevel() int {
+func (opts *ProgramTestOptions) GetDebugLogLevel() int {
 	if opts.DebugLogLevel > 0 {
 		return opts.DebugLogLevel
 	}
@@ -126,12 +126,12 @@ func (opts ProgramTestOptions) GetDebugLogLevel() int {
 	return 0
 }
 
-func (opts ProgramTestOptions) GetDebugUpdates() bool {
+func (opts *ProgramTestOptions) GetDebugUpdates() bool {
 	return opts.DebugUpdates || os.Getenv("PULUMI_TEST_DEBUG_UPDATES") != ""
 }
 
 // StackName returns a stack name to use for this test.
-func (opts ProgramTestOptions) StackName() tokens.QName {
+func (opts *ProgramTestOptions) StackName() tokens.QName {
 	// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
 	hostname, err := os.Hostname()
 	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
@@ -213,11 +213,11 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi stack rm --yes integrationtesting
 //
 // All commands must return success return codes for the test to succeed.
-func ProgramTest(t *testing.T, opts ProgramTestOptions) {
+func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	t.Parallel()
 
 	stackName := opts.StackName()
-	dir, err := CopyTestToTemporaryDirectory(t, &opts, stackName)
+	dir, err := CopyTestToTemporaryDirectory(t, opts, stackName)
 	if !assert.NoError(t, err) {
 		return
 	}
@@ -401,7 +401,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 	contract.IgnoreError(err)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, stackName, dir, "", *opts, false)
+	dir, err = prepareProject(t, stackName, dir, "", opts, false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -412,7 +412,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions,
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, name string, args []string, wd string, opts ProgramTestOptions) error {
+func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
 
@@ -489,7 +489,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts Progra
 // prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
 func prepareProject(t *testing.T, stackName tokens.QName,
-	src string, origin string, opts ProgramTestOptions, additive bool) (string, error) {
+	src string, origin string, opts *ProgramTestOptions, additive bool) (string, error) {
 
 	var dir string
 
