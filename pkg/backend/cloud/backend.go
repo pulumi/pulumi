@@ -504,13 +504,13 @@ func Logout(cloudURL string) error {
 }
 
 // CurrentBackends returns a list of the cloud backends the user is currently logged into.
-func CurrentBackends() ([]backend.Backend, error) {
+func CurrentBackends() ([]Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
 		return nil, err
 	}
 
-	var backends []backend.Backend
+	var backends []Backend
 	if creds.AccessTokens != nil {
 		// Sort the URLs so that we return them in a deterministic order.
 		var cloudURLs []string
