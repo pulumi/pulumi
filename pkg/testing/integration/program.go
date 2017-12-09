@@ -214,6 +214,13 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	TestLifeCycleInitAndDestroy(t, opts, TestPreviewUpdateAndEdits)
+}
+
+func TestLifeCycleInitAndDestroy(
+	t *testing.T, opts *ProgramTestOptions,
+	between func(*testing.T, *ProgramTestOptions, string) string) {
+
 	t.Parallel()
 
 	dir, err := TestLifeCycleInitialize(t, opts)
@@ -230,7 +237,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		TestLifeCycleDestroy(t, opts, dir)
 	}()
 
-	dir = TestPreviewUpdateAndEdits(t, opts, dir)
+	dir = between(t, opts, dir)
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
