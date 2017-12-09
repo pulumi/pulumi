@@ -221,32 +221,12 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		return
 	}
 
-	preview := opts.PulumiCmd([]string{"preview"})
-	update := opts.PulumiCmd([]string{"update"})
-	if opts.GetDebugUpdates() {
-		preview = append(preview, "-d")
-		update = append(update, "-d")
-	}
-
 	// Now preview and update the real changes.
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
-	previewAndUpdate := func(d string, name string) error {
-		if !opts.Quick {
-			if preerr := RunCommand(t, "pulumi-preview-"+name,
-				preview, d, opts); preerr != nil {
-				return preerr
-			}
-		}
-		if upderr := RunCommand(t, "pulumi-update-"+name,
-			update, d, opts); upderr != nil {
-			return upderr
-		}
-		return nil
-	}
 
 	// Perform the initial stack creation.
-	initErr := previewAndUpdate(dir, "initial")
+	initErr := previewAndUpdate(t, opts, dir, "initial")
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
@@ -262,7 +242,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	if !opts.Quick {
 		_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 		contract.IgnoreError(err)
-		if err = previewAndUpdate(dir, "empty"); err != nil {
+		if err = previewAndUpdate(t, opts, dir, "empty"); err != nil {
 			return
 		}
 	}
@@ -275,22 +255,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
-	for i, edit := range opts.EditDirs {
-		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
-		contract.IgnoreError(err)
-		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
-		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-			return
-		}
-		if err = previewAndUpdate(dir, fmt.Sprintf("edit%d", i)); err != nil {
-			return
-		}
-		if edit.ExtraRuntimeValidation != nil {
-			if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
-				return
-			}
-		}
-	}
+	dir = TestEdits(t, opts, dir)
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
@@ -351,6 +316,48 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	contract.IgnoreError(err)
 	err = RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
 	contract.IgnoreError(err)
+}
+
+func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
+	preview := opts.PulumiCmd([]string{"preview"})
+	update := opts.PulumiCmd([]string{"update"})
+	if opts.GetDebugUpdates() {
+		preview = append(preview, "-d")
+		update = append(update, "-d")
+	}
+
+	if !opts.Quick {
+		if err := RunCommand(t, "pulumi-preview-"+name, preview, dir, opts); err != nil {
+			return err
+		}
+	}
+
+	if err := RunCommand(t, "pulumi-update-"+name, update, dir, opts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+	for i, edit := range opts.EditDirs {
+		_, err := fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
+		contract.IgnoreError(err)
+		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
+			return dir
+		}
+		if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit%d", i)); err != nil {
+			return dir
+		}
+		if edit.ExtraRuntimeValidation != nil {
+			if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
+				return dir
+			}
+		}
+	}
+
+	return dir
 }
 
 func performExtraRuntimeValidation(
