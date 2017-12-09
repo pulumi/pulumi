@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -45,6 +47,7 @@ const (
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
+	glog.V(6).Infof("GetLogs[%v]", state.URN)
 	switch state.Type {
 	case cloudFunctionType:
 		// We get the aws:serverless:Function child and request it's logs, parsing out the user-visible content from
@@ -63,6 +66,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				logs = append(logs, *extractedLog)
 			}
 		}
+		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
 		return &logs, nil
 	case cloudLogCollectorType:
 		// A LogCollector has an aws:serverless:Function which is wired up to receive logs from all other compute in the
@@ -94,9 +98,12 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				// Reverse engineer the name of the function that was the source of this message from the LogGroup name.
 				logName := logMessage.LogGroup
 				match := functionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
-				if len(match) == 2 {
-					logName = match[1]
+				if len(match) != 2 {
+					glog.V(5).Infof("Skipping invalid log name found in log collector %s. " +
+						"Possibly mismatched versions of pulumi and pulumi-cloud.")
+					continue
 				}
+				logName = match[1]
 				// Extract out each individual log event and add them to our array of logs.
 				for _, logEvent := range logMessage.LogEvents {
 					if extracted := extractLambdaLogMessage(logEvent.Message, logName); extracted != nil {
@@ -105,6 +112,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				}
 			}
 		}
+		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
 		return &logs, nil
 	case cloudServiceType, cloudTaskType:
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only
@@ -125,9 +133,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				Timestamp: rawLog.Timestamp,
 			})
 		}
+		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
 		return &logs, nil
 	default:
 		// Else this resource kind does not produce any logs.
+		glog.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
 		return nil, nil
 	}
 }
@@ -149,9 +159,9 @@ type encodedLogMessage struct {
 
 var (
 	// Extract function name from LogGroup name
-	functionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)\-[0-9A-Fa-f]+$`)
+	functionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
 	// Extract Lambda log parts from Lambda log format
-	logRegexp = regexp.MustCompile("(.*Z)\t[a-g0-9\\-]*\t(.*)")
+	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t(.*)")
 )
 
 // extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
@@ -168,6 +178,7 @@ func extractLambdaLogMessage(message string, id string) *LogEntry {
 	if len(innerMatches) > 0 {
 		contract.Assertf(len(innerMatches[0]) >= 3, "expected log regexp to always produce at least two capture groups")
 		timestamp, err := time.Parse(time.RFC3339Nano, innerMatches[0][1])
+		glog.V(9).Infof("Matched Lambda log message as [%v]:'%s' from: %s", timestamp, innerMatches[0][2], message)
 		contract.Assertf(err == nil, "expected to be able to parse timestamp")
 		return &LogEntry{
 			ID:        id,
@@ -175,5 +186,6 @@ func extractLambdaLogMessage(message string, id string) *LogEntry {
 			Timestamp: timestamp.UnixNano() / 1000000, // milliseconds
 		}
 	}
+	glog.V(9).Infof("Could not match Lambda log message: %s", message)
 	return nil
 }
