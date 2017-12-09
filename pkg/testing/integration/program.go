@@ -225,13 +225,13 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	contract.IgnoreError(err)
 
-	// Perform the initial stack creation.
-	initErr := previewAndUpdate(t, opts, dir, "initial")
-
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		TestLifeCycleDestroy(t, opts, dir)
 	}()
+
+	// Perform the initial stack creation.
+	initErr := previewAndUpdate(t, opts, dir, "initial")
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
