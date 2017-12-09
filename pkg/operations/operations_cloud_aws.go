@@ -96,14 +96,13 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 					return nil, err
 				}
 				// Reverse engineer the name of the function that was the source of this message from the LogGroup name.
-				logName := logMessage.LogGroup
 				match := functionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
 				if len(match) != 2 {
 					glog.V(5).Infof("Skipping invalid log name found in log collector %s. " +
 						"Possibly mismatched versions of pulumi and pulumi-cloud.")
 					continue
 				}
-				logName = match[1]
+				logName := match[1]
 				// Extract out each individual log event and add them to our array of logs.
 				for _, logEvent := range logMessage.LogEvents {
 					if extracted := extractLambdaLogMessage(logEvent.Message, logName); extracted != nil {
