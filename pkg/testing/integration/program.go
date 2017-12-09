@@ -230,30 +230,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		TestLifeCycleDestroy(t, opts, dir)
 	}()
 
-	// Perform the initial stack creation.
-	initErr := previewAndUpdate(t, opts, dir, "initial")
-
-	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
-	if initErr != nil {
-		return
-	}
-
-	// Perform an empty preview and update; nothing is expected to happen here.
-	if !opts.Quick {
-		_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		contract.IgnoreError(err)
-		if err = previewAndUpdate(t, opts, dir, "empty"); err != nil {
-			return
-		}
-	}
-
-	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err = performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return
-	}
-
-	// If there are any edits, apply them and run a preview and update for each one.
-	dir = TestEdits(t, opts, dir)
+	dir = TestPreviewUpdateAndEdits(t, opts, dir)
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
@@ -314,6 +291,33 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	contract.IgnoreError(err)
 	err = RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
 	contract.IgnoreError(err)
+}
+
+func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+	// Perform the initial stack creation.
+	initErr := previewAndUpdate(t, opts, dir, "initial")
+
+	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
+	if initErr != nil {
+		return dir
+	}
+
+	// Perform an empty preview and update; nothing is expected to happen here.
+	if !opts.Quick {
+		_, err := fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		contract.IgnoreError(err)
+		if err = previewAndUpdate(t, opts, dir, "empty"); err != nil {
+			return dir
+		}
+	}
+
+	// Run additional validation provided by the test options, passing in the checkpoint info.
+	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
+		return dir
+	}
+
+	// If there are any edits, apply them and run a preview and update for each one.
+	return TestEdits(t, opts, dir)
 }
 
 func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
