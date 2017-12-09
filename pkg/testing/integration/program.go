@@ -216,8 +216,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	t.Parallel()
 
-	stackName := opts.StackName()
-
 	dir, err := TestLifeCycleInitialize(t, opts)
 	if err != nil {
 		return
@@ -225,11 +223,9 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 
 	preview := opts.PulumiCmd([]string{"preview"})
 	update := opts.PulumiCmd([]string{"update"})
-	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
 	if opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
-		destroy = append(destroy, "-d")
 	}
 
 	// Now preview and update the real changes.
@@ -254,15 +250,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
-		// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
-		_, derr := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
-		contract.IgnoreError(derr)
-		derr = RunCommand(t, "pulumi-destroy",
-			destroy, dir, opts)
-		contract.IgnoreError(derr)
-		derr = RunCommand(t, "pulumi-stack-rm",
-			opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
-		contract.IgnoreError(derr)
+		TestLifeCycleDestroy(t, opts, dir)
 	}()
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
@@ -346,6 +334,23 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	}
 
 	return dir, nil
+}
+
+func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
+	stackName := opts.StackName()
+
+	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
+	if opts.GetDebugUpdates() {
+		destroy = append(destroy, "-d")
+	}
+
+	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
+	_, err := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
+	contract.IgnoreError(err)
+	err = RunCommand(t, "pulumi-destroy", destroy, dir, opts)
+	contract.IgnoreError(err)
+	err = RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
+	contract.IgnoreError(err)
 }
 
 func performExtraRuntimeValidation(
