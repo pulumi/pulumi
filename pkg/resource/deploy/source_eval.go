@@ -317,7 +317,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		stables = append(stables, string(sta))
 	}
 	glog.V(5).Infof(
-		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, name=%v, stable=%v, #stables=%v #outs=%v",
+		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
 		state.Type, state.URN, stable, len(stables), len(props))
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes

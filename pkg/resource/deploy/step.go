@@ -75,12 +75,13 @@ func (s *SameStep) Apply(preview bool) (resource.Status, error) {
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	iter      *PlanIterator          // the current plan iteration.
-	reg       RegisterResourceEvent  // the registration intent to convey a URN back to.
-	old       *resource.State        // the state of the existing resource (only for replacements).
-	new       *resource.State        // the state of the resource after this step.
-	keys      []resource.PropertyKey // the keys causing replacement (only for replacements).
-	replacing bool                   // true if this is a create due to a replacement.
+	iter          *PlanIterator          // the current plan iteration.
+	reg           RegisterResourceEvent  // the registration intent to convey a URN back to.
+	old           *resource.State        // the state of the existing resource (only for replacements).
+	new           *resource.State        // the state of the resource after this step.
+	keys          []resource.PropertyKey // the keys causing replacement (only for replacements).
+	replacing     bool                   // true if this is a create due to a replacement.
+	pendingDelete bool                   // true if this replacement should create a pending delete.
 }
 
 var _ Step = (*CreateStep)(nil)
@@ -99,7 +100,7 @@ func NewCreateStep(iter *PlanIterator, reg RegisterResourceEvent, new *resource.
 }
 
 func NewCreateReplacementStep(iter *PlanIterator, reg RegisterResourceEvent,
-	old *resource.State, new *resource.State, keys []resource.PropertyKey) Step {
+	old *resource.State, new *resource.State, keys []resource.PropertyKey, pendingDelete bool) Step {
 	contract.Assert(reg != nil)
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -111,12 +112,13 @@ func NewCreateReplacementStep(iter *PlanIterator, reg RegisterResourceEvent,
 	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
 	return &CreateStep{
-		iter:      iter,
-		reg:       reg,
-		old:       old,
-		new:       new,
-		keys:      keys,
-		replacing: true,
+		iter:          iter,
+		reg:           reg,
+		old:           old,
+		new:           new,
+		keys:          keys,
+		replacing:     true,
+		pendingDelete: pendingDelete,
 	}
 }
 
@@ -159,7 +161,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	// Mark the old resource as pending deletion if necessary.
-	if s.replacing {
+	if s.replacing && s.pendingDelete {
 		s.old.Delete = true
 	}
 
@@ -176,15 +178,25 @@ type DeleteStep struct {
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(iter *PlanIterator, old *resource.State, replacing bool) Step {
+func NewDeleteStep(iter *PlanIterator, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!replacing || old.Delete)
+	contract.Assert(!old.Delete)
+	return &DeleteStep{
+		iter: iter,
+		old:  old,
+	}
+}
+func NewDeleteReplacementStep(iter *PlanIterator, old *resource.State, pendingDelete bool) Step {
+	contract.Assert(old != nil)
+	contract.Assert(old.URN != "")
+	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!pendingDelete || old.Delete)
 	return &DeleteStep{
 		iter:      iter,
 		old:       old,
-		replacing: replacing,
+		replacing: true,
 	}
 }
 
@@ -301,15 +313,17 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
 type ReplaceStep struct {
-	iter *PlanIterator          // the current plan iteration.
-	old  *resource.State        // the state of the existing resource.
-	new  *resource.State        // the new state snapshot.
-	keys []resource.PropertyKey // the keys causing replacement.
+	iter          *PlanIterator          // the current plan iteration.
+	old           *resource.State        // the state of the existing resource.
+	new           *resource.State        // the new state snapshot.
+	keys          []resource.PropertyKey // the keys causing replacement.
+	pendingDelete bool                   // true if a pending deletion should happen.
 }
 
 var _ Step = (*ReplaceStep)(nil)
 
-func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State, keys []resource.PropertyKey) Step {
+func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State,
+	keys []resource.PropertyKey, pendingDelete bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -319,10 +333,11 @@ func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &ReplaceStep{
-		iter: iter,
-		old:  old,
-		new:  new,
-		keys: keys,
+		iter:          iter,
+		old:           old,
+		new:           new,
+		keys:          keys,
+		pendingDelete: pendingDelete,
 	}
 }
 
@@ -338,8 +353,8 @@ func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *ReplaceStep) Logical() bool                { return true }
 
 func (s *ReplaceStep) Apply(preview bool) (resource.Status, error) {
-	// We should have marked the old resource for deletion in the CreateReplacement step.
-	contract.Assert(s.old.Delete)
+	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
+	contract.Assert(!s.pendingDelete || s.old.Delete)
 	return resource.StatusOK, nil
 }
 

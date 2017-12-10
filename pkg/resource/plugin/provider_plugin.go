@@ -146,11 +146,13 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success: #replaces=%v #stables=%v",
-		p.pkg, id, urn, len(replaces), len(stables))
+	dbr := resp.GetDeleteBeforeReplace()
+	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success: #replaces=%v #stables=%v delbefrepl=%v",
+		p.pkg, id, urn, len(replaces), len(stables), dbr)
 	return DiffResult{
-		ReplaceKeys: replaces,
-		StableKeys:  stables,
+		ReplaceKeys:         replaces,
+		StableKeys:          stables,
+		DeleteBeforeReplace: dbr,
 	}, nil
 }
 
