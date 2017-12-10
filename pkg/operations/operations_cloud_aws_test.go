@@ -19,7 +19,7 @@ func Test_extractLambdaLogMessage(t *testing.T) {
 }
 
 func Test_functionNameFromLogGroupNameRegExp(t *testing.T) {
-	match := functionNameFromLogGroupNameRegExp.FindStringSubmatch("/aws/lambda/examples-todoc57917fa-023a27bc")
+	match := functionNameFromLogGroupNameRegExp.FindStringSubmatch("/aws/lambda/examples-todoc57917fa023a27bc")
 	assert.Len(t, match, 2)
 	assert.Equal(t, "examples-todoc57917fa", match[1])
 }

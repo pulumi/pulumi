@@ -61,6 +61,7 @@ const (
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
+	glog.V(6).Infof("GetLogs[%v]", state.URN)
 	switch state.Type {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
@@ -71,6 +72,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.EndTime,
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
@@ -81,9 +83,11 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.EndTime,
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	default:
 		// Else this resource kind does not produce any logs.
+		glog.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
 		return nil, nil
 	}
 }
