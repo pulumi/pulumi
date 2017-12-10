@@ -11,25 +11,28 @@ import (
 
 func TestNewUniqueHex(t *testing.T) {
 	prefix := "prefix"
+	randlen := 8
 	maxlen := 100
-	id, err := NewUniqueHex(prefix, maxlen)
+	id, err := NewUniqueHex(prefix, randlen, maxlen)
 	assert.Nil(t, err)
-	assert.Equal(t, len(prefix)+8, len(id))
+	assert.Equal(t, len(prefix)+randlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
 
 func TestNewUniqueHexMaxLen2(t *testing.T) {
 	prefix := "prefix"
+	randlen := 8
 	maxlen := 13
-	_, err := NewUniqueHex(prefix, maxlen)
+	_, err := NewUniqueHex(prefix, randlen, maxlen)
 	assert.NotNil(t, err)
 }
 
 func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
 	prefix := "prefix"
 	// Just enough space to have 8 chars of randomenss
+	randlen := 8
 	maxlen := 14
-	id, err := NewUniqueHex(prefix, maxlen)
+	id, err := NewUniqueHex(prefix, randlen, maxlen)
 	assert.Nil(t, err)
 	assert.Equal(t, maxlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
@@ -37,7 +40,7 @@ func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
 
 func TestNewUniqueDefaults(t *testing.T) {
 	prefix := "prefix"
-	id, err := NewUniqueHex(prefix, -1)
+	id, err := NewUniqueHex(prefix, -1, -1)
 	assert.Nil(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
@@ -45,8 +48,9 @@ func TestNewUniqueDefaults(t *testing.T) {
 
 func TestNewUniqueHexID(t *testing.T) {
 	prefix := "prefix"
+	randlen := 8
 	maxlen := 100
-	id, err := NewUniqueHexID(prefix, maxlen)
+	id, err := NewUniqueHexID(prefix, randlen, maxlen)
 	assert.Nil(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
@@ -54,8 +58,9 @@ func TestNewUniqueHexID(t *testing.T) {
 
 func TestNewUniqueHexMaxLenID(t *testing.T) {
 	prefix := "prefix"
+	randlen := 8
 	maxlen := 20
-	id, err := NewUniqueHexID(prefix, maxlen)
+	id, err := NewUniqueHexID(prefix, randlen, maxlen)
 	assert.Nil(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
@@ -63,7 +68,7 @@ func TestNewUniqueHexMaxLenID(t *testing.T) {
 
 func TestNewUniqueDefaultsID(t *testing.T) {
 	prefix := "prefix"
-	id, err := NewUniqueHexID(prefix, -1)
+	id, err := NewUniqueHexID(prefix, -1, -1)
 	assert.Nil(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
