@@ -52,8 +52,9 @@ type CheckFailure struct {
 
 // DiffResult indicates whether an operation should replace or update an existing resource.
 type DiffResult struct {
-	ReplaceKeys []resource.PropertyKey // an optional list of replacement keys.
-	StableKeys  []resource.PropertyKey // an optional list of property keys that are stable.
+	ReplaceKeys         []resource.PropertyKey // an optional list of replacement keys.
+	StableKeys          []resource.PropertyKey // an optional list of property keys that are stable.
+	DeleteBeforeReplace bool                   // if true, this resource must be deleted before recreating it.
 }
 
 // Replace returns true if this diff represents a replacement.
