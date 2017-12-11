@@ -34,10 +34,15 @@ func AWSOperationsProvider(
 
 	// If provided, also pass along the access and secret keys so that we have permission to access operational data on
 	// resources in the target account.
-	awsAccessKey, _ := config[accessKey]
-	awsSecretKey, _ := config[secretKey]
+	//
+	// [pulumi/pulumi#608]: We are only approximating the actual logic that the AWS provider (via
+	// terraform-provdider-aws) uses to turn config into a valid AWS connection.  We should find some way to unify these
+	// as part of moving this code into a seperate process on the other side of an RPC boundary.
+	awsAccessKey := config[accessKey]
+	awsSecretKey := config[secretKey]
+	awsToken := config[token]
 
-	awsConnection, err := getAWSConnection(awsRegion, awsAccessKey, awsSecretKey)
+	awsConnection, err := getAWSConnection(awsRegion, awsAccessKey, awsSecretKey, awsToken)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +66,7 @@ const (
 	regionKey = "aws:config:region"
 	accessKey = "aws:config:accessKey"
 	secretKey = "aws:config:secretKey"
+	token     = "aws:config:token"
 
 	// AWS resource types
 	awsFunctionType = tokens.Type("aws:lambda/function:Function")
@@ -108,7 +114,7 @@ type awsConnection struct {
 var awsConnectionCache = map[string]*awsConnection{}
 var awsConnectionCacheMutex = sync.RWMutex{}
 
-func getAWSConnection(awsRegion, awsAccessKey, awsSecretKey string) (*awsConnection, error) {
+func getAWSConnection(awsRegion, awsAccessKey, awsSecretKey, token string) (*awsConnection, error) {
 	awsConnectionCacheMutex.RLock()
 	connection, ok := awsConnectionCache[awsRegion]
 	awsConnectionCacheMutex.RUnlock()
@@ -116,7 +122,7 @@ func getAWSConnection(awsRegion, awsAccessKey, awsSecretKey string) (*awsConnect
 		awsConfig := aws.NewConfig()
 		awsConfig.Region = aws.String(awsRegion)
 		if awsAccessKey != "" || awsSecretKey != "" {
-			awsConfig.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, "")
+			awsConfig.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, token)
 			glog.V(5).Infof("Using credentials from stack config for AWS operations provider.")
 		} else {
 			glog.V(5).Infof("Using ambient credentials for AWS operations provider.")
