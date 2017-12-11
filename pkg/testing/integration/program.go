@@ -214,6 +214,13 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	TestLifeCycleInitAndDestroy(t, opts, TestPreviewUpdateAndEdits)
+}
+
+func TestLifeCycleInitAndDestroy(
+	t *testing.T, opts *ProgramTestOptions,
+	between func(*testing.T, *ProgramTestOptions, string) string) {
+
 	t.Parallel()
 
 	dir, err := TestLifeCycleInitialize(t, opts)
@@ -221,43 +228,18 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		return
 	}
 
-	// Now preview and update the real changes.
-	_, err = fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-	contract.IgnoreError(err)
-
-	// Perform the initial stack creation.
-	initErr := previewAndUpdate(t, opts, dir, "initial")
-
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		TestLifeCycleDestroy(t, opts, dir)
 	}()
 
-	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
-	if initErr != nil {
-		return
-	}
-
-	// Perform an empty preview and update; nothing is expected to happen here.
-	if !opts.Quick {
-		_, err = fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		contract.IgnoreError(err)
-		if err = previewAndUpdate(t, opts, dir, "empty"); err != nil {
-			return
-		}
-	}
-
-	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err = performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return
-	}
-
-	// If there are any edits, apply them and run a preview and update for each one.
-	dir = TestEdits(t, opts, dir)
+	dir = between(t, opts, dir)
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	stackName := opts.StackName()
+
+	// Perform the initial stack creation.
 
 	dir, err := CopyTestToTemporaryDirectory(t, opts)
 	if !assert.NoError(t, err) {
@@ -270,8 +252,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	_, err = fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
-	contract.IgnoreError(err)
+	fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	if err = RunCommand(t, "pulumi-init",
 		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
 		return "", err
@@ -308,12 +289,38 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	}
 
 	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
-	_, err := fmt.Fprintf(opts.Stdout, "Destroying stack\n")
-	contract.IgnoreError(err)
-	err = RunCommand(t, "pulumi-destroy", destroy, dir, opts)
+	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
+	err := RunCommand(t, "pulumi-destroy", destroy, dir, opts)
 	contract.IgnoreError(err)
 	err = RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
 	contract.IgnoreError(err)
+}
+
+func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+	// Now preview and update the real changes.
+	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
+	initErr := previewAndUpdate(t, opts, dir, "initial")
+
+	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
+	if initErr != nil {
+		return dir
+	}
+
+	// Perform an empty preview and update; nothing is expected to happen here.
+	if !opts.Quick {
+		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		if err := previewAndUpdate(t, opts, dir, "empty"); err != nil {
+			return dir
+		}
+	}
+
+	// Run additional validation provided by the test options, passing in the checkpoint info.
+	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
+		return dir
+	}
+
+	// If there are any edits, apply them and run a preview and update for each one.
+	return TestEdits(t, opts, dir)
 }
 
 func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
@@ -339,8 +346,9 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 
 func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
 	for i, edit := range opts.EditDirs {
-		_, err := fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
-		contract.IgnoreError(err)
+		fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
+
+		var err error
 		dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 			return dir
@@ -421,20 +429,17 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 		opts.Stderr = stderr
 	}
 
-	_, err = fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
-	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
-	contract.IgnoreError(err)
-	_, err = fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
-	contract.IgnoreError(err)
+	fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
+	fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
+	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
 	// Now copy the source project, excluding the .pulumi directory.
 	dir, err = prepareProject(t, opts, dir, "", false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
-	_, err = fmt.Fprintf(stdout, "projdir: %v\n", dir)
-	contract.IgnoreError(err)
+
+	fmt.Fprintf(stdout, "projdir: %v\n", dir)
 	return dir, err
 }
 
@@ -444,8 +449,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	path := args[0]
 	command := strings.Join(args, " ")
 
-	_, err := fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
-	contract.IgnoreError(err)
+	fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
@@ -453,8 +457,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		for !finished {
 			time.Sleep(30 * time.Second)
 			if !finished {
-				_, stillerr := fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
-				contract.IgnoreError(stillerr)
+				fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
 			}
 		}
 	}()
@@ -503,11 +506,9 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	finished = true
 	if runerr != nil {
-		_, err = fmt.Fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
-		contract.IgnoreError(err)
+		fmt.Fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 		if !opts.Verbose {
-			_, err = fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
-			contract.IgnoreError(err)
+			fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
 		}
 	}
 	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
