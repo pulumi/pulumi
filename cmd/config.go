@@ -92,7 +92,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			_, err := requireStack(stackName)
+			s, err := requireStack(stackName)
 			if err != nil {
 				return err
 			}
@@ -102,11 +102,16 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			if save {
-				return deleteProjectConfiguration(stackName, key)
+			var stackToSave tokens.QName
+			if !all {
+				stackToSave = s.Name()
 			}
 
-			return deleteWorkspaceConfiguration(stackName, key)
+			if save {
+				return deleteProjectConfiguration(stackToSave, key)
+			}
+
+			return deleteWorkspaceConfiguration(stackToSave, key)
 		}),
 	}
 
@@ -136,7 +141,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			_, err := requireStack(stackName)
+			s, err := requireStack(stackName)
 			if err != nil {
 				return err
 			}
@@ -179,7 +184,11 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// And now save it.
-			err = setConfiguration(stackName, key, v, save)
+			var stackToSave tokens.QName
+			if !all {
+				stackToSave = s.Name()
+			}
+			err = setConfiguration(stackToSave, key, v, save)
 			if err != nil {
 				return err
 			}

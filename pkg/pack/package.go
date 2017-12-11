@@ -26,9 +26,9 @@ import (
 // TODO[pulumi/pulumi#423]: use DOM based marshalling so we can roundtrip the seralized structure perfectly.
 // nolint: lll
 type Package struct {
-	Name    tokens.PackageName `json:"name" yaml:"name"`       // a required fully qualified name.
-	Runtime string             `json:"runtime" yaml:"runtime"` // a required runtime that executes code.
-	Main    string             `json:"main" yaml:"main"`       // an optional override for the main program location.
+	Name    tokens.PackageName `json:"name" yaml:"name"`                     // a required fully qualified name.
+	Runtime string             `json:"runtime" yaml:"runtime"`               // a required runtime that executes code.
+	Main    string             `json:"main,omitempty" yaml:"main,omitempty"` // an optional override for the main program location.
 
 	Description *string `json:"description,omitempty" yaml:"description,omitempty"` // an optional informational description.
 	Author      *string `json:"author,omitempty" yaml:"author,omitempty"`           // an optional author.
