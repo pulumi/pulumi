@@ -37,7 +37,7 @@ func AWSOperationsProvider(
 	//
 	// [pulumi/pulumi#608]: We are only approximating the actual logic that the AWS provider (via
 	// terraform-provdider-aws) uses to turn config into a valid AWS connection.  We should find some way to unify these
-	// as part of moving this code into a seperate process on the other side of an RPC boundary.
+	// as part of moving this code into a separate process on the other side of an RPC boundary.
 	awsAccessKey := config[accessKey]
 	awsSecretKey := config[secretKey]
 	awsToken := config[token]
@@ -65,7 +65,7 @@ const (
 	// AWS config keys
 	regionKey = "aws:config:region"
 	accessKey = "aws:config:accessKey"
-	secretKey = "aws:config:secretKey"
+	secretKey = "aws:config:secretKey" // nolint: gas
 	token     = "aws:config:token"
 
 	// AWS resource types
