@@ -3,14 +3,17 @@
 package ints
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 // TestProjectMain tests out the ability to override the main entrypoint.
@@ -147,4 +150,106 @@ func TestStackParenting(t *testing.T) {
 			}
 		},
 	})
+}
+
+// TestConfigSave ensures that config commands in the Pulumi CLI work as expected.
+func TestConfigSave(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Initialize an empty stack.
+	pkgpath := filepath.Join(e.RootPath, "Pulumi.yaml")
+	err := pack.Save(pkgpath, &pack.Package{
+		Name:    "testing-config",
+		Runtime: "nodejs",
+	})
+	assert.NoError(t, err)
+	e.RunCommand("git", "init")
+	e.RunCommand("pulumi", "init")
+	e.RunCommand("pulumi", "stack", "init", "--local", "testing-2")
+	e.RunCommand("pulumi", "stack", "init", "--local", "testing-1")
+
+	// Now configure and save a few different things:
+	//     1) do not save.
+	e.RunCommand("pulumi", "config", "set", "configA", "value1")
+	//     2) save to the project file, under the current stack.
+	e.RunCommand("pulumi", "config", "set", "configB", "value2", "--save")
+	//     3) save to the project file, underneath an entirely different stack.
+	e.RunCommand("pulumi", "config", "set", "configC", "value3", "--save", "--stack", "testing-2")
+	//     4) save to the project file, across all stacks.
+	e.RunCommand("pulumi", "config", "set", "configD", "value4", "--save", "--all")
+	//     5) save the same config key with a different value in the stack versus all stacks.
+	e.RunCommand("pulumi", "config", "set", "configE", "value55", "--save")
+	e.RunCommand("pulumi", "config", "set", "configE", "value66", "--save", "--all")
+
+	// Now read back the config using the CLI:
+	{
+		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configA")
+		assert.Equal(t, "value1\n", stdout)
+		assert.Equal(t, "", stderr)
+	}
+	{
+		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configB")
+		assert.Equal(t, "value2\n", stdout)
+		assert.Equal(t, "", stderr)
+	}
+	{
+		// config is in a different stack, should yield a stderr:
+		stdout, stderr := e.RunCommandExpectError("pulumi", "config", "get", "configC")
+		assert.Equal(t, "", stdout)
+		assert.NotEqual(t, "", stderr)
+	}
+	{
+		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configC", "--stack", "testing-2")
+		assert.Equal(t, "value3\n", stdout)
+		assert.Equal(t, "", stderr)
+	}
+	{
+		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configD")
+		assert.Equal(t, "value4\n", stdout)
+		assert.Equal(t, "", stderr)
+	}
+	{
+		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configE")
+		assert.Equal(t, "value55\n", stdout)
+		assert.Equal(t, "", stderr)
+	}
+
+	// Finally, check that the project file contains what we expected.
+	cfgkey := func(k string) tokens.ModuleMember { return tokens.ModuleMember("testing-config:config:" + k) }
+	pkg, err := pack.Load(pkgpath)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(pkg.Config)) // --all
+	d, ok := pkg.Config[cfgkey("configD")]
+	assert.True(t, ok)
+	dv, err := d.Value(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "value4", dv)
+	ee, ok := pkg.Config[cfgkey("configE")]
+	assert.True(t, ok)
+	ev, err := ee.Value(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "value66", ev)
+	assert.Equal(t, 2, len(pkg.Stacks))
+	assert.Equal(t, 2, len(pkg.Stacks["testing-1"].Config))
+	b, ok := pkg.Stacks["testing-1"].Config[cfgkey("configB")]
+	assert.True(t, ok)
+	bv, err := b.Value(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "value2", bv)
+	e2, ok := pkg.Stacks["testing-1"].Config[cfgkey("configE")]
+	assert.True(t, ok)
+	e2v, err := e2.Value(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "value55", e2v)
+	assert.Equal(t, 1, len(pkg.Stacks["testing-2"].Config))
+	c, ok := pkg.Stacks["testing-2"].Config[cfgkey("configC")]
+	assert.True(t, ok)
+	cv, err := c.Value(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "value3", cv)
 }
