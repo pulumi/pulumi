@@ -46,6 +46,12 @@ export interface DiffResult {
      * An optional list of properties that will not ever change.
      */
     readonly stables?: string[];
+
+    /**
+     * If true, and a replacement occurs, the resource will first be deleted before being recreated.  This is to
+     * void potential side-by-side issues with the default create before delete behavior.
+     */
+    readonly deleteBeforeReplace?: boolean;
 }
 
 /**

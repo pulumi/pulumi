@@ -72,6 +72,22 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
 					assert.NotNil(t, checkpoint.Latest)
+					assert.Equal(t, 4, len(checkpoint.Latest.Resources))
+					stackRes := checkpoint.Latest.Resources[0]
+					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+					a := checkpoint.Latest.Resources[1]
+					assert.Equal(t, "a", string(a.URN.Name()))
+					c := checkpoint.Latest.Resources[2]
+					assert.Equal(t, "c", string(c.URN.Name()))
+					e := checkpoint.Latest.Resources[3]
+					assert.Equal(t, "e", string(e.URN.Name()))
+				},
+			},
+			{
+				Dir:      "step5",
+				Additive: true,
+				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+					assert.NotNil(t, checkpoint.Latest)
 					// assert.Equal(t, 5, len(checkpoint.Latest.Resources))
 					assert.Equal(t, 4, len(checkpoint.Latest.Resources))
 					stackRes := checkpoint.Latest.Resources[0]
@@ -88,7 +104,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step5",
+				Dir:      "step6",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
 					assert.NotNil(t, checkpoint.Latest)
