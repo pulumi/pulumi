@@ -487,12 +487,13 @@ func (iter *PlanIterator) computeDeletes() []Step {
 			res := prev.Resources[i]
 			if res.Delete {
 				glog.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
+				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(iter, res, true))
 			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] {
 				glog.V(7).Infof("Planner decided to delete '%v'", res.URN)
+				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteStep(iter, res))
 			}
-			iter.deletes[res.URN] = true
 		}
 	}
 	return dels

@@ -105,6 +105,9 @@ async function diffRPC(call: any, callback: any): Promise<void> {
                 if (result.replaces && result.replaces.length !== 0) {
                     resp.setReplacesList(result.replaces);
                 }
+                if (result.deleteBeforeReplace) {
+                    resp.setDeleteBeforeReplace(result.deleteBeforeReplace);
+                }
             }
         }
 
