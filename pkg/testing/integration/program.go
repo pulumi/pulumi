@@ -228,9 +228,6 @@ func TestLifeCycleInitAndDestroy(
 		return
 	}
 
-	// Now preview and update the real changes.
-	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		TestLifeCycleDestroy(t, opts, dir)
@@ -241,6 +238,8 @@ func TestLifeCycleInitAndDestroy(
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	stackName := opts.StackName()
+
+	// Perform the initial stack creation.
 
 	dir, err := CopyTestToTemporaryDirectory(t, opts)
 	if !assert.NoError(t, err) {
@@ -298,7 +297,8 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 }
 
 func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
-	// Perform the initial stack creation.
+	// Now preview and update the real changes.
+	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	initErr := previewAndUpdate(t, opts, dir, "initial")
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
