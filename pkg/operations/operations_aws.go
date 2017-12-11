@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/golang/glog"
@@ -31,7 +32,12 @@ func AWSOperationsProvider(
 		return nil, errors.New("no AWS region found")
 	}
 
-	awsConnection, err := getAWSConnection(awsRegion)
+	// If provided, also pass along the access and secret keys so that we have permission to access operational data on
+	// resources in the target account.
+	awsAccessKey, _ := config[accessKey]
+	awsSecretKey, _ := config[secretKey]
+
+	awsConnection, err := getAWSConnection(awsRegion, awsAccessKey, awsSecretKey)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +59,8 @@ var _ Provider = (*awsOpsProvider)(nil)
 const (
 	// AWS config keys
 	regionKey = "aws:config:region"
+	accessKey = "aws:config:accessKey"
+	secretKey = "aws:config:secretKey"
 
 	// AWS resource types
 	awsFunctionType = tokens.Type("aws:lambda/function:Function")
@@ -100,13 +108,19 @@ type awsConnection struct {
 var awsConnectionCache = map[string]*awsConnection{}
 var awsConnectionCacheMutex = sync.RWMutex{}
 
-func getAWSConnection(awsRegion string) (*awsConnection, error) {
+func getAWSConnection(awsRegion, awsAccessKey, awsSecretKey string) (*awsConnection, error) {
 	awsConnectionCacheMutex.RLock()
 	connection, ok := awsConnectionCache[awsRegion]
 	awsConnectionCacheMutex.RUnlock()
 	if !ok {
 		awsConfig := aws.NewConfig()
 		awsConfig.Region = aws.String(awsRegion)
+		if awsAccessKey != "" || awsSecretKey != "" {
+			awsConfig.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, "")
+			glog.V(5).Infof("Using credentials from stack config for AWS operations provider.")
+		} else {
+			glog.V(5).Infof("Using ambient credentials for AWS operations provider.")
+		}
 		sess, err := session.NewSession(awsConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create AWS session")
