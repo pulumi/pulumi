@@ -5,6 +5,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -27,12 +28,6 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
-	// Create a context for plugins.
-	ctx, err := plugin.NewContext(opts.Diag, nil, info.TracingSpan)
-	if err != nil {
-		return nil, err
-	}
-
 	// First, load the package metadata, in preparation for executing it and creating resources.
 	pkginfo, err := ReadPackageFromArg(info.PackageArg)
 	if err != nil {
@@ -42,6 +37,12 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 
 	// If the package contains an override for the main entrypoint, use it.
 	pwd, main, err := pkginfo.GetPwdMain()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a context for plugins.
+	ctx, err := plugin.NewContext(opts.Diag, nil, pwd, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +84,26 @@ type planResult struct {
 	Info    *planContext    // plan command information.
 	Plan    *deploy.Plan    // the plan created by this command.
 	Options deployOptions   // the deployment options.
+}
+
+// Chdir changes the directory so that all operations from now on are relative to the project we are working with.
+// It returns a function that, when run, restores the old working directory.
+func (res *planResult) Chdir() (func(), error) {
+	if res.Ctx.Pwd == "" {
+		return func() {}, nil
+	}
+	oldpwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	if err = os.Chdir(res.Ctx.Pwd); err != nil {
+		return nil, errors.Wrapf(err, "could not change to the project working directory")
+	}
+	return func() {
+		// Restore the working directory after planning completes.
+		cderr := os.Chdir(oldpwd)
+		contract.IgnoreError(cderr)
+	}, nil
 }
 
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the

@@ -80,6 +80,14 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 	}
 	if result != nil {
 		defer contract.IgnoreClose(result)
+
+		// Make the current working directory the same as the program's, and restore it upon exit.
+		done, err := result.Chdir()
+		if err != nil {
+			return err
+		}
+		defer done()
+
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
 			if err := eng.printPlan(result); err != nil {
