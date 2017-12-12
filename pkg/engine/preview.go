@@ -58,6 +58,14 @@ func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
 	}
 	if result != nil {
 		defer contract.IgnoreClose(result)
+
+		// Make the current working directory the same as the program's, and restore it upon exit.
+		done, err := result.Chdir()
+		if err != nil {
+			return err
+		}
+		defer done()
+
 		if err := eng.printPlan(result); err != nil {
 			return err
 		}
