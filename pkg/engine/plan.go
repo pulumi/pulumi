@@ -601,7 +601,11 @@ func printPropertyValue(
 			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
 	} else if v.IsComputed() || v.IsOutput() {
-		writeVerbatim(b, op, v.TypeString())
+		if planning {
+			writeVerbatim(b, op, v.TypeString())
+		} else {
+			write(b, op, "undefined")
+		}
 	} else {
 		contract.Assert(v.IsObject())
 		obj := v.ObjectValue()
