@@ -601,7 +601,17 @@ func printPropertyValue(
 			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
 	} else if v.IsComputed() || v.IsOutput() {
-		writeVerbatim(b, op, v.TypeString())
+		// We render computed and output values differently depending on whether or not we are planning or deploying:
+		// in the former case, we display `computed<type>` or `output<type>`; in the former we display `undefined`.
+		// This is because we currently cannot distinguish between user-supplied undefined values and input properties
+		// that are undefined because they were sourced from undefined values in other resources' output properties.
+		// Once we have richer information about the dataflow between resources, we should be able to do a better job
+		// here (pulumi/pulumi#234).
+		if planning {
+			writeVerbatim(b, op, v.TypeString())
+		} else {
+			write(b, op, "undefined")
+		}
 	} else {
 		contract.Assert(v.IsObject())
 		obj := v.ObjectValue()
