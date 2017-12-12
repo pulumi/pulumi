@@ -860,6 +860,7 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer contract.IgnoreClose(data)
 
 	fw, err := zw.Create(file)
 	if err != nil {
