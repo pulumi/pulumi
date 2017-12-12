@@ -69,7 +69,7 @@ func newStackLsCmd() *cobra.Command {
 
 			// Finally, print them all.
 			if success {
-				fmt.Printf("%-20s %-48s %-18s %-25s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
+				fmt.Printf("%-32s %-42s %-18s %-25s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
 				for _, name := range stackNames {
 					// Mark the name as current '*' if we've selected it.
 					stack := stacks[name]
@@ -96,7 +96,7 @@ func newStackLsCmd() *cobra.Command {
 						cloudInfo = none
 					}
 
-					fmt.Printf("%-20s %-48s %-18s %-25s\n", name, lastUpdate, resourceCount, cloudInfo)
+					fmt.Printf("%-32s %-42s %-18s %-25s\n", name, lastUpdate, resourceCount, cloudInfo)
 				}
 
 				// If we aren't logged into any clouds, print a warning, since it could be a mistake.
