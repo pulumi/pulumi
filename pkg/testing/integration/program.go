@@ -297,9 +297,15 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 }
 
 func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+	return TestPreviewAndUpdates(t, opts, dir, TestEdits)
+}
+
+func TestPreviewAndUpdates(
+	t *testing.T, opts *ProgramTestOptions, dir string,
+	testEdits func(*testing.T, *ProgramTestOptions, string) string) string {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-	initErr := previewAndUpdate(t, opts, dir, "initial")
+	initErr := PreviewAndUpdate(t, opts, dir, "initial")
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -309,21 +315,21 @@ func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir strin
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := previewAndUpdate(t, opts, dir, "empty"); err != nil {
+		if err := PreviewAndUpdate(t, opts, dir, "empty"); err != nil {
 			return dir
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
+	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
 		return dir
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
-	return TestEdits(t, opts, dir)
+	return testEdits(t, opts, dir)
 }
 
-func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
+func PreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	preview := opts.PulumiCmd([]string{"preview"})
 	update := opts.PulumiCmd([]string{"update"})
 	if opts.GetDebugUpdates() {
@@ -360,17 +366,17 @@ func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 		return dir
 	}
-	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
+	if err = PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
 		return dir
 	}
-	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
+	if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
 		return dir
 	}
 
 	return dir
 }
 
-func performExtraRuntimeValidation(
+func PerformExtraRuntimeValidation(
 	t *testing.T, opts *ProgramTestOptions,
 	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
 
