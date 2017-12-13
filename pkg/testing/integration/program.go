@@ -81,7 +81,7 @@ type ProgramTestOptions struct {
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 
-	// StackName allows the stack name to be explicity provided instead of computed from the
+	// StackName allows the stack name to be explicitly provided instead of computed from the
 	// environment during tests.
 	StackName string
 
@@ -134,7 +134,7 @@ func (opts *ProgramTestOptions) GetDebugUpdates() bool {
 	return opts.DebugUpdates || os.Getenv("PULUMI_TEST_DEBUG_UPDATES") != ""
 }
 
-// StackName returns a stack name to use for this test.
+// GetStackName returns a stack name to use for this test.
 func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	if opts.StackName == "" {
 		// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
