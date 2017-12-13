@@ -81,6 +81,8 @@ type ProgramTestOptions struct {
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 
+	UserStackName string
+
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
 
@@ -135,6 +137,10 @@ func (opts *ProgramTestOptions) GetDebugUpdates() bool {
 
 // StackName returns a stack name to use for this test.
 func (opts *ProgramTestOptions) StackName() tokens.QName {
+	if opts.UserStackName != "" {
+		return tokens.QName(opts.UserStackName)
+	}
+
 	// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
 	hostname, err := os.Hostname()
 	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
