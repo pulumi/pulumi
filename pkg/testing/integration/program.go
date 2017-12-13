@@ -81,10 +81,6 @@ type ProgramTestOptions struct {
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 
-	// StackName allows the stack name to be explicitly provided instead of computed from the
-	// environment during tests.
-	StackName string
-
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
 
@@ -134,38 +130,34 @@ func (opts *ProgramTestOptions) GetDebugUpdates() bool {
 	return opts.DebugUpdates || os.Getenv("PULUMI_TEST_DEBUG_UPDATES") != ""
 }
 
-// GetStackName returns a stack name to use for this test.
-func (opts *ProgramTestOptions) GetStackName() tokens.QName {
-	if opts.StackName == "" {
-		// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
-		hostname, err := os.Hostname()
-		contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
-		var host string
-		for _, c := range hostname {
-			if len(host) >= 10 {
-				break
-			}
-			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-				(c >= '0' && c <= '9') || c == '-' || c == '_' {
-				host += string(c)
-			}
+// StackName returns a stack name to use for this test.
+func (opts *ProgramTestOptions) StackName() tokens.QName {
+	// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
+	hostname, err := os.Hostname()
+	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
+	var host string
+	for _, c := range hostname {
+		if len(host) >= 10 {
+			break
 		}
-
-		var test string
-		for _, c := range filepath.Base(opts.Dir) {
-			if len(test) >= 10 {
-				break
-			}
-			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-				(c >= '0' && c <= '9') || c == '-' || c == '_' {
-				test += string(c)
-			}
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '-' || c == '_' {
+			host += string(c)
 		}
-
-		opts.StackName = strings.ToLower("p-it-" + host + "-" + test)
 	}
 
-	return tokens.QName(opts.StackName)
+	var test string
+	for _, c := range filepath.Base(opts.Dir) {
+		if len(test) >= 10 {
+			break
+		}
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '-' || c == '_' {
+			test += string(c)
+		}
+	}
+
+	return tokens.QName(strings.ToLower("p-it-" + host + "-" + test))
 }
 
 // With combines a source set of options with a set of overrides.
@@ -245,7 +237,7 @@ func TestLifeCycleInitAndDestroy(
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
-	stackName := opts.GetStackName()
+	stackName := opts.StackName()
 
 	// Perform the initial stack creation.
 
@@ -289,7 +281,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 }
 
 func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
-	stackName := opts.GetStackName()
+	stackName := opts.StackName()
 
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
 	if opts.GetDebugUpdates() {
@@ -305,15 +297,9 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 }
 
 func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
-	return TestPreviewAndUpdates(t, opts, dir, TestEdits)
-}
-
-func TestPreviewAndUpdates(
-	t *testing.T, opts *ProgramTestOptions, dir string,
-	testEdits func(*testing.T, *ProgramTestOptions, string) string) string {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-	initErr := PreviewAndUpdate(t, opts, dir, "initial")
+	initErr := previewAndUpdate(t, opts, dir, "initial")
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -323,23 +309,23 @@ func TestPreviewAndUpdates(
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := PreviewAndUpdate(t, opts, dir, "empty"); err != nil {
+		if err := previewAndUpdate(t, opts, dir, "empty"); err != nil {
 			return dir
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
+	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
 		return dir
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
-	return testEdits(t, opts, dir)
+	return TestEdits(t, opts, dir)
 }
 
-func PreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
+func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	preview := opts.PulumiCmd([]string{"preview"})
-	update := opts.PulumiCmd([]string{"update", "--color=raw"})
+	update := opts.PulumiCmd([]string{"update"})
 	if opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
@@ -367,24 +353,24 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
 }
 
 func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) string {
-	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
+	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
 
 	var err error
-	dir, err = PrepareProject(t, opts, edit.Dir, dir, edit.Additive)
+	dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 		return dir
 	}
-	if err = PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
+	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
 		return dir
 	}
-	if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
+	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
 		return dir
 	}
 
 	return dir
 }
 
-func PerformExtraRuntimeValidation(
+func performExtraRuntimeValidation(
 	t *testing.T, opts *ProgramTestOptions,
 	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
 
@@ -392,7 +378,7 @@ func PerformExtraRuntimeValidation(
 		return nil
 	}
 
-	stackName := opts.GetStackName()
+	stackName := opts.StackName()
 
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
@@ -454,7 +440,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = PrepareProject(t, opts, dir, "", false)
+	dir, err = prepareProject(t, opts, dir, "", false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -471,11 +457,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
-	var env []string
-	env = append(env, os.Environ()...)
-	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
-	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
-
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
 	go func() {
@@ -487,10 +468,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		}
 	}()
 
-	startTime := time.Now()
-
-	var runout []byte
-	var runerr error
+	var env []string
+	env = append(env, os.Environ()...)
+	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
+	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
 	cmd := exec.Cmd{
 		Path: path,
@@ -499,6 +480,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
+	startTime := time.Now()
+
+	var runout []byte
+	var runerr error
 	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
 		cmd.Stdout = opts.Stdout
 		cmd.Stderr = opts.Stderr
@@ -518,7 +503,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,
 			StepName:       name,
 			CommandLine:    command,
-			StackName:      string(opts.GetStackName()),
+			StackName:      string(opts.StackName()),
 			TestID:         wd,
 			TestName:       filepath.Base(opts.Dir),
 			IsError:        runerr != nil,
@@ -536,10 +521,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	return runerr
 }
 
-// PrepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
+// prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func PrepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
-	stackName := opts.GetStackName()
+func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
+	stackName := opts.StackName()
 
 	var dir string
 
