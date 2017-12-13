@@ -81,7 +81,9 @@ type ProgramTestOptions struct {
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 
-	UserStackName string
+	// StackName allows the stack name to be explicity provided instead of computed from the
+	// environment during tests.
+	StackName string
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
@@ -136,37 +138,37 @@ func (opts *ProgramTestOptions) GetDebugUpdates() bool {
 }
 
 // StackName returns a stack name to use for this test.
-func (opts *ProgramTestOptions) StackName() tokens.QName {
-	if opts.UserStackName != "" {
-		return tokens.QName(opts.UserStackName)
+func (opts *ProgramTestOptions) GetStackName() tokens.QName {
+	if opts.StackName == "" {
+		// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
+		hostname, err := os.Hostname()
+		contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
+		var host string
+		for _, c := range hostname {
+			if len(host) >= 10 {
+				break
+			}
+			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+				(c >= '0' && c <= '9') || c == '-' || c == '_' {
+				host += string(c)
+			}
+		}
+
+		var test string
+		for _, c := range filepath.Base(opts.Dir) {
+			if len(test) >= 10 {
+				break
+			}
+			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+				(c >= '0' && c <= '9') || c == '-' || c == '_' {
+				test += string(c)
+			}
+		}
+
+		opts.StackName = strings.ToLower("p-it-" + host + "-" + test)
 	}
 
-	// Fetch the host and test dir names, cleaned so to contain just [a-zA-Z0-9-_] chars.
-	hostname, err := os.Hostname()
-	contract.AssertNoErrorf(err, "failure to fetch hostname for stack prefix")
-	var host string
-	for _, c := range hostname {
-		if len(host) >= 10 {
-			break
-		}
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') || c == '-' || c == '_' {
-			host += string(c)
-		}
-	}
-
-	var test string
-	for _, c := range filepath.Base(opts.Dir) {
-		if len(test) >= 10 {
-			break
-		}
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') || c == '-' || c == '_' {
-			test += string(c)
-		}
-	}
-
-	return tokens.QName(strings.ToLower("p-it-" + host + "-" + test))
+	return tokens.QName(opts.StackName)
 }
 
 // With combines a source set of options with a set of overrides.
@@ -246,7 +248,7 @@ func TestLifeCycleInitAndDestroy(
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
-	stackName := opts.StackName()
+	stackName := opts.GetStackName()
 
 	// Perform the initial stack creation.
 
@@ -290,7 +292,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 }
 
 func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
-	stackName := opts.StackName()
+	stackName := opts.GetStackName()
 
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
 	if opts.GetDebugUpdates() {
@@ -393,7 +395,7 @@ func PerformExtraRuntimeValidation(
 		return nil
 	}
 
-	stackName := opts.StackName()
+	stackName := opts.GetStackName()
 
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
@@ -523,7 +525,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,
 			StepName:       name,
 			CommandLine:    command,
-			StackName:      string(opts.StackName()),
+			StackName:      string(opts.GetStackName()),
 			TestID:         wd,
 			TestName:       filepath.Base(opts.Dir),
 			IsError:        runerr != nil,
@@ -544,7 +546,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 // PrepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
 func PrepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
-	stackName := opts.StackName()
+	stackName := opts.GetStackName()
 
 	var dir string
 
