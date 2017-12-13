@@ -203,9 +203,8 @@ func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i 
 		return dir
 	}
 
-	// Now convert all the tty color control characters over to a simpler xml-like form for testing
-	// baseline purposes.
-	actual := convertControlCharacters(buf.String())
+	// Now convert all the color control sequences over to a simpler form for test baseline purposes.
+	actual := convertControlSequences(buf.String())
 
 	if edit.Expected != actual {
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
@@ -234,13 +233,13 @@ const (
 	Info      ColorEnum = "info"
 )
 
-// convertControlCharacters takes in the output of the pulumi update command (including tty control
-// characters) and converts it to a simpler form that is easier to baseline.  Control characters,
-// like '\x1b[38;5;2m', are converted to simpler code like <added>, with reset controls closing those
+// convertControlSequences takes in the output of the pulumi update command (including color sequences)
+// and converts it to a simpler form that is easier to baseline.  Control sequences,
+// like '<{%fg 2%}}', are converted to simpler code like <added>, with reset controls closing those
 // tags.
 //
 // It's a lot of string munging, but makes it much easier to baseline and validate update diffs.
-func convertControlCharacters(text string) string {
+func convertControlSequences(text string) string {
 	getColor := func(startInclusive, endExclusive int) ColorEnum {
 		switch text[startInclusive:endExclusive] {
 		case "<{%reset%}>":
