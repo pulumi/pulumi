@@ -108,7 +108,7 @@ type ProgramTestOptions struct {
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
 
-	// Allows overriding how the acutal command will be run.
+	// Allows overriding how the commands will actually be executed during the test run.
 	RunCommand func(t *testing.T, cmd exec.Cmd) error
 }
 
