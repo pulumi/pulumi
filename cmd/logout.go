@@ -22,7 +22,7 @@ func newLogoutCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If --all is passed, log out of all clouds.
 			if all {
-				bes, err := cloud.CurrentBackends()
+				bes, err := cloud.CurrentBackends(cmdutil.Diag())
 				if err != nil {
 					return errors.Wrap(err, "could not read list of current clouds")
 				}

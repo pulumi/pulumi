@@ -11,6 +11,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -26,11 +27,12 @@ type Backend interface {
 }
 
 type localBackend struct {
+	d           diag.Sink
 	engineCache map[tokens.QName]engine.Engine
 }
 
-func New() Backend {
-	return &localBackend{engineCache: make(map[tokens.QName]engine.Engine)}
+func New(d diag.Sink) Backend {
+	return &localBackend{d: d, engineCache: make(map[tokens.QName]engine.Engine)}
 }
 
 func (b *localBackend) Name() string {
@@ -200,7 +202,7 @@ func (b *localBackend) getEngine(stackName tokens.QName) (engine.Engine, error) 
 		return engine, nil
 	}
 
-	cfg, err := state.Configuration(stackName)
+	cfg, err := state.Configuration(b.d, stackName)
 	if err != nil {
 		return engine.Engine{}, err
 	}
@@ -210,7 +212,7 @@ func (b *localBackend) getEngine(stackName tokens.QName) (engine.Engine, error) 
 		return engine.Engine{}, err
 	}
 
-	localProvider := localStackProvider{decrypter: decrypter}
+	localProvider := newLocalStackProvider(b.d, decrypter)
 	pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
 	b.engineCache[stackName] = pulumiEngine
 	return pulumiEngine, nil

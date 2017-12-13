@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
@@ -25,8 +26,9 @@ import (
 func allBackends() ([]backend.Backend, bool) {
 	// Add all the known backends to the list and query them all.  We always use the local backend,
 	// in addition to all of those cloud backends we are currently logged into.
-	backends := []backend.Backend{local.New()}
-	cloudBackends, err := cloud.CurrentBackends()
+	d := cmdutil.Diag()
+	backends := []backend.Backend{local.New(d)}
+	cloudBackends, err := cloud.CurrentBackends(d)
 	if err != nil {
 		// Print the error, but keep going so that the local operations still occur.
 		_, fmterr := fmt.Fprintf(os.Stderr, "error: could not obtain current cloud backends: %v", err)
