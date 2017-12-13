@@ -117,17 +117,18 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	}
 
 	rmCmd.PersistentFlags().BoolVar(
-		&save, "save", false,
-		"Remove the configuration value in the project file instead instead of a locally set value")
-	rmCmd.PersistentFlags().BoolVar(
 		&all, "all", false,
 		"Remove a project wide configuration value that applies to all stacks")
+	rmCmd.PersistentFlags().BoolVar(
+		&save, "save", true,
+		"Remove the configuration value from the project file (if false, it is private to your workspace)")
 
 	return rmCmd
 }
 
 func newConfigSetCmd(stack *string) *cobra.Command {
 	var all bool
+	var plaintext bool
 	var save bool
 	var secret bool
 
@@ -194,8 +195,8 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			// If we saved a plaintext configuration value, warn the user.
-			if !secret && save {
+			// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
+			if !secret && !plaintext && save {
 				cmdutil.Diag().Warningf(
 					diag.Message(
 						"saved config key '%s' value '%s' as plaintext; "+
@@ -208,14 +209,17 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	}
 
 	setCmd.PersistentFlags().BoolVar(
-		&secret, "secret", false,
-		"Encrypt the value instead of storing it in plaintext")
-	setCmd.PersistentFlags().BoolVar(
-		&save, "save", false,
-		"Save the configuration value in the project file instead of locally")
-	setCmd.PersistentFlags().BoolVar(
 		&all, "all", false,
 		"Set a configuration value for all stacks for this project")
+	setCmd.PersistentFlags().BoolVar(
+		&plaintext, "plaintext", false,
+		"Save the value as plaintext (unencrypted)")
+	setCmd.PersistentFlags().BoolVar(
+		&save, "save", true,
+		"Save the configuration value in the project file (if false, it is private to your workspace)")
+	setCmd.PersistentFlags().BoolVar(
+		&secret, "secret", false,
+		"Encrypt the value instead of storing it in plaintext")
 
 	return setCmd
 }
@@ -264,7 +268,7 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value con
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	cfg, err := state.Configuration(stack.Name())
+	cfg, err := state.Configuration(cmdutil.Diag(), stack.Name())
 	if err != nil {
 		return err
 	}
@@ -303,7 +307,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
-	cfg, err := state.Configuration(stack.Name())
+	cfg, err := state.Configuration(cmdutil.Diag(), stack.Name())
 	if err != nil {
 		return err
 	}

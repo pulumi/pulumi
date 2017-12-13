@@ -46,17 +46,17 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 
 	// Create an iterator that can be used to perform the planning process.
 	return &PlanIterator{
-		p:        p,
-		opts:     opts,
-		src:      src,
-		urns:     make(map[resource.URN]bool),
-		creates:  make(map[resource.URN]bool),
-		updates:  make(map[resource.URN]bool),
-		replaces: make(map[resource.URN]bool),
-		deletes:  make(map[resource.URN]bool),
-		sames:    make(map[resource.URN]bool),
-		regs:     make(map[resource.URN]Step),
-		dones:    make(map[*resource.State]bool),
+		p:           p,
+		opts:        opts,
+		src:         src,
+		urns:        make(map[resource.URN]bool),
+		creates:     make(map[resource.URN]bool),
+		updates:     make(map[resource.URN]bool),
+		replaces:    make(map[resource.URN]bool),
+		deletes:     make(map[resource.URN]bool),
+		sames:       make(map[resource.URN]bool),
+		pendingNews: make(map[resource.URN]Step),
+		dones:       make(map[*resource.State]bool),
 	}, nil
 }
 
@@ -124,10 +124,11 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
+	pendingNews map[resource.URN]Step // a map of logical steps currently active.
+
 	stepqueue []Step                   // a queue of steps to drain.
-	delqueue  []*resource.State        // a queue of deletes left to perform.
+	delqueue  []Step                   // a queue of deletes left to perform.
 	resources []*resource.State        // the resulting ordered resource states.
-	regs      map[resource.URN]Step    // a map of logical steps currently active.
 	dones     map[*resource.State]bool // true for each old state we're done with.
 
 	srcdone bool // true if the source interpreter has been run to completion.
@@ -169,12 +170,12 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
-			if prior, has := iter.regs[urn]; has {
+			if prior, has := iter.pendingNews[urn]; has {
 				return resource.StatusOK,
 					goerr.Errorf("resource '%s' registered twice (%s and %s)", urn, prior.Op(), step.Op())
 			}
 
-			iter.regs[urn] = step
+			iter.pendingNews[urn] = step
 		}
 	}
 
@@ -378,9 +379,32 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 						urn, olds, new.Inputs)
 				}
 
+				// We have two approaches to performing replacements:
+				//
+				//     * CreateBeforeDelete: the default mode first creates a new instance of the resource, then
+				//       updates all dependent resources to point to the new one, and finally after all of that,
+				//       deletes the old resource.  This ensures minimal downtime.
+				//
+				//     * DeleteBeforeCreate: this mode can be used for resources that cannot be tolerate having
+				//       side-by-side old and new instances alive at once.  This first deletes the resource and
+				//       then creates the new one.  This may result in downtime, so is less preferred.  Note that
+				//       until pulumi/pulumi#624 is resolved, we cannot safely perform this operation on resources
+				//       that have dependent resources (we try to delete the resource while they refer to it).
+				//
+				// The provider is responsible for requesting which of these two modes to use.
+
+				if diff.DeleteBeforeReplace {
+					return []Step{
+						NewDeleteReplacementStep(iter, old, false),
+						NewReplaceStep(iter, old, new, diff.ReplaceKeys, false),
+						NewCreateReplacementStep(iter, e, old, new, diff.ReplaceKeys, false),
+					}, nil
+				}
+
 				return []Step{
-					NewCreateReplacementStep(iter, e, old, new, diff.ReplaceKeys),
-					NewReplaceStep(iter, old, new, diff.ReplaceKeys),
+					NewCreateReplacementStep(iter, e, old, new, diff.ReplaceKeys, true),
+					NewReplaceStep(iter, old, new, diff.ReplaceKeys, true),
+					// note that the delete step is generated "later" on, after all creates/updates finish.
 				}, nil
 			}
 
@@ -427,10 +451,10 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent) error {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
-	reg, has := iter.regs[urn]
+	reg, has := iter.pendingNews[urn]
 	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
-	delete(iter.regs, urn)
+	delete(iter.pendingNews, urn)
 
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
 	// might already be there, since otherwise "deleting" outputs would have no affect.
@@ -452,18 +476,23 @@ func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent
 
 // computeDeletes creates a list of deletes to perform.  This will include any resources in the snapshot that were
 // not encountered in the input, along with any resources that were replaced.
-func (iter *PlanIterator) computeDeletes() []*resource.State {
+func (iter *PlanIterator) computeDeletes() []Step {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
-	var dels []*resource.State
+	var dels []Step
 	if prev := iter.p.prev; prev != nil {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
+			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			res := prev.Resources[i]
-			urn := res.URN
-			contract.Assert(!iter.creates[urn] || res.Delete)
-			if res.Delete || (!iter.sames[urn] && !iter.updates[urn]) || iter.replaces[urn] {
-				dels = append(dels, res)
+			if res.Delete {
+				glog.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
+				iter.deletes[res.URN] = true
+				dels = append(dels, NewDeleteReplacementStep(iter, res, true))
+			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] {
+				glog.V(7).Infof("Planner decided to delete '%v'", res.URN)
+				iter.deletes[res.URN] = true
+				dels = append(dels, NewDeleteStep(iter, res))
 			}
 		}
 	}
@@ -475,14 +504,7 @@ func (iter *PlanIterator) nextDeleteStep() Step {
 	if len(iter.delqueue) > 0 {
 		del := iter.delqueue[0]
 		iter.delqueue = iter.delqueue[1:]
-		urn := del.URN
-		iter.deletes[urn] = true
-		if iter.replaces[urn] {
-			glog.V(7).Infof("Planner decided to delete '%v' due to replacement", urn)
-		} else {
-			glog.V(7).Infof("Planner decided to delete '%v'", urn)
-		}
-		return NewDeleteStep(iter, del, iter.replaces[urn])
+		return del
 	}
 	return nil
 }

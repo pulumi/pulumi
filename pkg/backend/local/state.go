@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -28,13 +29,18 @@ import (
 var DisableIntegrityChecking bool
 
 type localStackProvider struct {
+	d         diag.Sink
 	decrypter config.Decrypter
 }
 
-func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
+func newLocalStackProvider(d diag.Sink, decrypter config.Decrypter) *localStackProvider {
+	return &localStackProvider{d: d, decrypter: decrypter}
+}
+
+func (p *localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
 	contract.Require(name != "", "name")
 
-	config, err := state.Configuration(name)
+	config, err := state.Configuration(p.d, name)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +48,7 @@ func (p localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error)
 	return &deploy.Target{Name: name, Config: config, Decrypter: p.decrypter}, nil
 }
 
-func (p localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
+func (p *localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
 	contract.Require(name != "", "name")
 	_, snapshot, _, err := getStack(name)
 	return snapshot, err
@@ -52,7 +58,7 @@ type localStackMutation struct {
 	name tokens.QName
 }
 
-func (p localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMutation, error) {
+func (p *localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMutation, error) {
 	return localStackMutation{name: name}, nil
 }
 

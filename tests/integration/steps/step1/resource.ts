@@ -17,11 +17,17 @@ export class Provider implements pulumi.dynamic.ResourceProvider {
     constructor() {
         this.diff = async (id: pulumi.ID, olds: any, news: any) => {
             let replaces: string[] = [];
+            let deleteBeforeReplace: boolean = false;
             if ((olds as ResourceProps).replace !== (news as ResourceProps).replace) {
                 replaces.push("replace");
             }
+            if ((olds as ResourceProps).replaceDBR !== (news as ResourceProps).replaceDBR) {
+                replaces.push("replaceDBR");
+                deleteBeforeReplace = true;
+            }
             return {
                 replaces: replaces,
+                deleteBeforeReplace: deleteBeforeReplace,
             };
         };
 
@@ -65,5 +71,6 @@ export class Resource extends pulumi.dynamic.Resource {
 export interface ResourceProps {
     state?: any; // arbitrary state bag that can be updated without replacing.
     replace?: any; // arbitrary state bag that requires replacement when updating.
+    replaceDBR?: any; // arbitrary state bag that requires replacement (with delete-before-replace=true).
     resource?: pulumi.Resource; // to force a dependency on a resource.
 }

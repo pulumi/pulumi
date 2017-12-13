@@ -164,7 +164,7 @@ proto.pulumirpc.LogRequest.prototype.getSeverity = function() {
 
 /** @param {!proto.pulumirpc.LogSeverity} value */
 proto.pulumirpc.LogRequest.prototype.setSeverity = function(value) {
-  jspb.Message.setProto3EnumField(this, 1, value);
+  jspb.Message.setField(this, 1, value);
 };
 
 
@@ -179,7 +179,7 @@ proto.pulumirpc.LogRequest.prototype.getMessage = function() {
 
 /** @param {string} value */
 proto.pulumirpc.LogRequest.prototype.setMessage = function(value) {
-  jspb.Message.setProto3StringField(this, 2, value);
+  jspb.Message.setField(this, 2, value);
 };
 
 

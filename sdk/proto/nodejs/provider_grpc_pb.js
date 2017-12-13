@@ -192,7 +192,11 @@ var ResourceProviderService = exports.ResourceProviderService = {
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
-  // Check validates that the given property bag is valid for a resource of the given type.
+  // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
+  // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
+  // inputs returned by a call to Check should preserve the original representation of the properties as present in
+  // the program inputs. Though this rule is not required for correctness, violations thereof can negatively impact
+  // the end-user experience, as the provider inputs are using for detecting and rendering diffs.
   check: {
     path: '/pulumirpc.ResourceProvider/Check',
     requestStream: false,

@@ -33,13 +33,13 @@ func newStackInitCmd() *cobra.Command {
 				if ppc != "" {
 					return errors.New("cannot pass both --local and --ppc; PPCs only available in cloud mode")
 				}
-				b = local.New()
+				b = local.New(cmdutil.Diag())
 			} else {
 				// If no cloud URL override was given, fall back to the default.
 				if cloudURL == "" {
 					cloudURL = cloud.DefaultURL()
 				}
-				b = cloud.New(cloudURL)
+				b = cloud.New(cmdutil.Diag(), cloudURL)
 				opts = cloud.CreateStackOptions{CloudName: ppc}
 			}
 

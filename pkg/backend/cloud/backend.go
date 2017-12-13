@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -38,12 +39,13 @@ type Backend interface {
 }
 
 type cloudBackend struct {
+	d        diag.Sink
 	cloudURL string
 }
 
 // New creates a new Pulumi backend for the given cloud API URL.
-func New(cloudURL string) Backend {
-	return &cloudBackend{cloudURL: cloudURL}
+func New(d diag.Sink, cloudURL string) Backend {
+	return &cloudBackend{d: d, cloudURL: cloudURL}
 }
 
 func (b *cloudBackend) Name() string     { return b.cloudURL }
@@ -178,7 +180,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, de
 	if err != nil {
 		return err
 	}
-	updateRequest, err := makeProgramUpdateRequest(stackName)
+	updateRequest, err := b.makeProgramUpdateRequest(stackName)
 	if err != nil {
 		return err
 	}
@@ -322,8 +324,8 @@ func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
 }
 
 // getDecryptedConfig returns the stack's configuration with any secrets in plain-text.
-func getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	cfg, err := state.Configuration(stackName)
+func (b *cloudBackend) getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
+	cfg, err := state.Configuration(b.d, stackName)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting configuration")
 	}
@@ -371,7 +373,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 }
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
-func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequest, error) {
+func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequest, error) {
 	// Zip up the Pulumi program's directory, which may be a parent of CWD.
 	programPath, err := workspace.DetectPackage()
 	if err != nil {
@@ -395,7 +397,7 @@ func makeProgramUpdateRequest(stackName tokens.QName) (apitype.UpdateProgramRequ
 
 	// Gather up configuration.
 	// TODO(pulumi-service/issues/221): Have pulumi.com handle the encryption/decryption.
-	textConfig, err := getDecryptedConfig(stackName)
+	textConfig, err := b.getDecryptedConfig(stackName)
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting decrypted configuration")
 	}
@@ -424,6 +426,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 				time.Sleep(1 * time.Second)
 				continue
 			}
+			return apitype.StatusFailed, err
 		}
 
 		for _, event := range updateResults.Events {
@@ -504,7 +507,7 @@ func Logout(cloudURL string) error {
 }
 
 // CurrentBackends returns a list of the cloud backends the user is currently logged into.
-func CurrentBackends() ([]Backend, error) {
+func CurrentBackends(d diag.Sink) ([]Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
 		return nil, err
@@ -520,7 +523,7 @@ func CurrentBackends() ([]Backend, error) {
 		sort.Strings(cloudURLs)
 
 		for _, url := range cloudURLs {
-			backends = append(backends, New(url))
+			backends = append(backends, New(d, url))
 		}
 	}
 
