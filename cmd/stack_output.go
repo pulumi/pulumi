@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -26,7 +27,7 @@ func newStackOutputCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, outputs := getRootStackResource(s.Snapshot())
+			res, outputs := stack.GetRootStackResource(s.Snapshot())
 			if res == nil || outputs == nil {
 				return errors.New("current stack has no output properties")
 			}
