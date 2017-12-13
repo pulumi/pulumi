@@ -50,7 +50,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
 
-		loggedInto, logErr := cloud.CurrentBackends()
+		loggedInto, logErr := cloud.CurrentBackends(cmdutil.Diag())
 		contract.IgnoreError(logErr) // we want to make progress anyway.
 		if len(loggedInto) > 0 {
 			fmt.Printf("\n")

@@ -175,27 +175,25 @@ func TestConfigSave(t *testing.T) {
 
 	// Now configure and save a few different things:
 	//     1) do not save.
-	e.RunCommand("pulumi", "config", "set", "configA", "value1")
+	e.RunCommand("pulumi", "config", "set", "configA", "value1", "--save=false")
 	//     2) save to the project file, under the current stack.
-	e.RunCommand("pulumi", "config", "set", "configB", "value2", "--save")
+	e.RunCommand("pulumi", "config", "set", "configB", "value2")
 	//     3) save to the project file, underneath an entirely different stack.
-	e.RunCommand("pulumi", "config", "set", "configC", "value3", "--save", "--stack", "testing-2")
+	e.RunCommand("pulumi", "config", "set", "configC", "value3", "--stack", "testing-2")
 	//     4) save to the project file, across all stacks.
-	e.RunCommand("pulumi", "config", "set", "configD", "value4", "--save", "--all")
+	e.RunCommand("pulumi", "config", "set", "configD", "value4", "--all")
 	//     5) save the same config key with a different value in the stack versus all stacks.
-	e.RunCommand("pulumi", "config", "set", "configE", "value55", "--save")
-	e.RunCommand("pulumi", "config", "set", "configE", "value66", "--save", "--all")
+	e.RunCommand("pulumi", "config", "set", "configE", "value55")
+	e.RunCommand("pulumi", "config", "set", "configE", "value66", "--all")
 
 	// Now read back the config using the CLI:
 	{
-		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configA")
+		stdout, _ := e.RunCommand("pulumi", "config", "get", "configA")
 		assert.Equal(t, "value1\n", stdout)
-		assert.Equal(t, "", stderr)
 	}
 	{
-		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configB")
+		stdout, _ := e.RunCommand("pulumi", "config", "get", "configB")
 		assert.Equal(t, "value2\n", stdout)
-		assert.Equal(t, "", stderr)
 	}
 	{
 		// config is in a different stack, should yield a stderr:
@@ -204,19 +202,16 @@ func TestConfigSave(t *testing.T) {
 		assert.NotEqual(t, "", stderr)
 	}
 	{
-		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configC", "--stack", "testing-2")
+		stdout, _ := e.RunCommand("pulumi", "config", "get", "configC", "--stack", "testing-2")
 		assert.Equal(t, "value3\n", stdout)
-		assert.Equal(t, "", stderr)
 	}
 	{
-		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configD")
+		stdout, _ := e.RunCommand("pulumi", "config", "get", "configD")
 		assert.Equal(t, "value4\n", stdout)
-		assert.Equal(t, "", stderr)
 	}
 	{
-		stdout, stderr := e.RunCommand("pulumi", "config", "get", "configE")
+		stdout, _ := e.RunCommand("pulumi", "config", "get", "configE")
 		assert.Equal(t, "value55\n", stdout)
-		assert.Equal(t, "", stderr)
 	}
 
 	// Finally, check that the project file contains what we expected.
