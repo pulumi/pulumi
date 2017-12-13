@@ -77,6 +77,7 @@ func GetColor(debug bool, color string) (Color, error) {
 	switch color {
 	case "auto":
 		if debug {
+			// we will use color so long as we're not spewing to debug (which is colorless).
 			return Never, nil
 		}
 
@@ -95,10 +96,13 @@ func GetColor(debug bool, color string) (Color, error) {
 func (c Color) Colorize(v string) string {
 	switch c {
 	case "raw":
+		// Don't touch the string.  Output control sequences as is.
 		return v
 	case "always":
+		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
 		return colors.ColorizeText(v)
 	case "never":
+		// Remove all the colors that any other layers added.
 		return stripColors(v)
 	default:
 		panic("Unexpected color value: " + v)
