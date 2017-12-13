@@ -12,6 +12,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -193,10 +194,13 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			if secret {
-				fmt.Printf("Set key '%s' with encrypted value\n", key)
-			} else {
-				fmt.Printf("Set key '%s' with value '%s' as plaintext\n", key, value)
+			// If we saved a plaintext configuration value, warn the user.
+			if !secret && save {
+				cmdutil.Diag().Warningf(
+					diag.Message(
+						"saved config key '%s' value '%s' as plaintext; "+
+							"re-run with --secret to encrypt the value instead"),
+					key, value)
 			}
 
 			return nil

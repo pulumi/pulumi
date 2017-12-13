@@ -26,7 +26,7 @@ lint::
 	$(GOMETALINTER) ./cmd/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 
 test_fast::
-	go test -timeout 2m -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -timeout 5m -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
 	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}

@@ -20,7 +20,7 @@ import (
 func TestNullPlan(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := plugin.NewContext(cmdutil.Diag(), nil, nil)
+	ctx, err := plugin.NewContext(cmdutil.Diag(), nil, "", nil)
 	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, Manifest{}, nil)
@@ -41,7 +41,7 @@ func TestErrorPlan(t *testing.T) {
 
 	// First trigger an error from Iterate:
 	{
-		ctx, err := plugin.NewContext(cmdutil.Diag(), nil, nil)
+		ctx, err := plugin.NewContext(cmdutil.Diag(), nil, "", nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, Manifest{}, nil)
@@ -56,7 +56,7 @@ func TestErrorPlan(t *testing.T) {
 
 	// Next trigger an error from Next:
 	{
-		ctx, err := plugin.NewContext(cmdutil.Diag(), nil, nil)
+		ctx, err := plugin.NewContext(cmdutil.Diag(), nil, "", nil)
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, Manifest{}, nil)
@@ -133,7 +133,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 				// we don't actually execute the plan, so there's no need to implement the other functions.
 			}, nil
 		},
-	}, nil)
+	}, "", nil)
 	assert.Nil(t, err)
 
 	// Setup a fake namespace/target combination.

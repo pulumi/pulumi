@@ -55,7 +55,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(bin, args)
+	plug, err := execPlugin(bin, args, ctx.Pwd)
 	if err != nil {
 		// If we failed simply because we couldn't load the binary, return nil rather than an error.
 		if execerr, isexecerr := err.(*exec.Error); isexecerr && execerr.Err == exec.ErrNotFound {
@@ -184,7 +184,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	return plug, nil
 }
 
-func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
+func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	var args []string
 	// Flow the logging information if set.
 	if cmdutil.LogFlow {
@@ -203,6 +203,7 @@ func execPlugin(bin string, pluginArgs []string) (*plugin, error) {
 
 	// nolint: gas
 	cmd := exec.Command(bin, args...)
+	cmd.Dir = pwd
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()
 	err, _ := cmd.StderrPipe()

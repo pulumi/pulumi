@@ -7,11 +7,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -257,6 +259,49 @@ func TestArchiveZip(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "343da72cec1302441efd4a490d66f861d393fb270afb3ced27f92a0d96abc068", arch.Hash)
 	validateTestDirArchive(t, arch)
+}
+
+func findRepositoryRoot() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for d := wd; ; d = filepath.Dir(d) {
+		if d == "" || d == "." || d[len(d)-1] == filepath.Separator {
+			return "", errors.New("could not find repository root")
+		}
+		gitDir := filepath.Join(d, ".git")
+		_, err := os.Lstat(gitDir)
+		switch {
+		case err == nil:
+			return d, nil
+		case !os.IsNotExist(err):
+			return "", err
+		}
+	}
+}
+
+func TestArchiveTarFiles(t *testing.T) {
+	repoRoot, err := findRepositoryRoot()
+	assert.Nil(t, err)
+
+	arch, err := NewPathArchive(repoRoot)
+	assert.Nil(t, err)
+
+	err = arch.Archive(TarArchive, ioutil.Discard)
+	assert.Nil(t, err)
+}
+
+func TestArchiveZipFiles(t *testing.T) {
+	repoRoot, err := findRepositoryRoot()
+	assert.Nil(t, err)
+
+	arch, err := NewPathArchive(repoRoot)
+	assert.Nil(t, err)
+
+	err = arch.Archive(ZIPArchive, ioutil.Discard)
+	assert.Nil(t, err)
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive) {

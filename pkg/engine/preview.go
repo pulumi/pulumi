@@ -58,6 +58,14 @@ func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
 	}
 	if result != nil {
 		defer contract.IgnoreClose(result)
+
+		// Make the current working directory the same as the program's, and restore it upon exit.
+		done, err := result.Chdir()
+		if err != nil {
+			return err
+		}
+		defer done()
+
 		if err := eng.printPlan(result); err != nil {
 			return err
 		}
@@ -71,11 +79,10 @@ func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
 }
 
 type previewActions struct {
-	Summary bytes.Buffer
-	Ops     map[deploy.StepOp]int
-	Opts    deployOptions
-	Seen    map[resource.URN]deploy.Step
-	Shown   map[resource.URN]bool
+	Ops   map[deploy.StepOp]int
+	Opts  deployOptions
+	Seen  map[resource.URN]deploy.Step
+	Shown map[resource.URN]bool
 }
 
 func newPreviewActions(opts deployOptions) *previewActions {
@@ -90,8 +97,10 @@ func newPreviewActions(opts deployOptions) *previewActions {
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Print this step information (resource and all its properties).
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
-		printStep(&acts.Summary, step,
+		var b bytes.Buffer
+		printStep(&b, step,
 			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil, nil
 }
@@ -116,7 +125,9 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
-		printResourceOutputProperties(&acts.Summary, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		var b bytes.Buffer
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil
 }
