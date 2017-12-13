@@ -105,7 +105,7 @@ func (c Color) Colorize(v string) string {
 		// Remove all the colors that any other layers added.
 		return stripColors(v)
 	default:
-		panic("Unexpected color value: " + v)
+		panic("Unexpected color value: " + string(c))
 	}
 }
 
