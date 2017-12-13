@@ -73,26 +73,6 @@ const (
 	Raw    Color = "raw"
 )
 
-func GetColor(debug bool, color string) (Color, error) {
-	switch color {
-	case "auto":
-		if debug {
-			// we will use color so long as we're not spewing to debug (which is colorless).
-			return Never, nil
-		}
-
-		return Always, nil
-	case string(Always):
-		return Always, nil
-	case string(Never):
-		return Never, nil
-	case string(Raw):
-		return Raw, nil
-	}
-
-	return Never, fmt.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", color)
-}
-
 func (c Color) Colorize(v string) string {
 	switch c {
 	case "raw":

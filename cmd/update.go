@@ -5,7 +5,6 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -45,7 +44,7 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			col, err := diag.GetColor(debug, color)
+			col, err := GetColor(debug, color)
 			if err != nil {
 				return err
 			}
