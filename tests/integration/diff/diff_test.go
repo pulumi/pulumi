@@ -20,17 +20,42 @@ import (
 	"github.com/kr/pty"
 )
 
-type EditDirWithValidation struct {
-	*integration.EditDir
-	Expected string
+// TestDiffs tests many combinations of creates, updates, deletes, replacements, and checks the
+// output of the command against an expected baseline.
+func TestDiffs(t *testing.T) {
+	opts := integration.ProgramTestOptions{
+		Dir:          "step1",
+		Dependencies: []string{"pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+			assert.NotNil(t, checkpoint.Latest)
+			assert.Equal(t, 5, len(checkpoint.Latest.Resources))
+			stackRes := checkpoint.Latest.Resources[0]
+			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+			a := checkpoint.Latest.Resources[1]
+			assert.Equal(t, "a", string(a.URN.Name()))
+			b := checkpoint.Latest.Resources[2]
+			assert.Equal(t, "b", string(b.URN.Name()))
+			c := checkpoint.Latest.Resources[3]
+			assert.Equal(t, "c", string(c.URN.Name()))
+			d := checkpoint.Latest.Resources[4]
+			assert.Equal(t, "d", string(d.URN.Name()))
+		},
+	}
+
+	integration.TestLifeCycleInitAndDestroy(t, &opts, testPreviewUpdatesAndEdits)
 }
 
 func testPreviewUpdatesAndEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) string {
 	return integration.TestPreviewAndUpdates(t, opts, dir, testEdits)
 }
 
-func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) string {
+type EditDirWithValidation struct {
+	*integration.EditDir
+	Expected string
+}
 
+func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) string {
 	var edits = []EditDirWithValidation{
 		{
 			&integration.EditDir{
@@ -153,61 +178,66 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 	}
 
 	for i, edit := range edits {
-		var err error
-		dir, err = integration.PrepareProject(t, opts, edit.Dir, dir, edit.Additive)
-		if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-			return dir
+		dir = testEdit(t, opts, dir, i, edit)
+	}
+
+	return dir
+}
+
+func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i int, edit EditDirWithValidation) string {
+	var err error
+	dir, err = integration.PrepareProject(t, opts, edit.Dir, dir, edit.Additive)
+	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
+		return dir
+	}
+
+	var buf bytes.Buffer
+
+	// Intercept running the pulumi commands.  This way we can set up an environment with the
+	// appropriate shell/pty functionality set.  This will allow us to see the shell color commands
+	// issued by pulumi (which would otherwise be stripped by the OS).
+	opts.RunCommand = func(t *testing.T, cmd exec.Cmd) error {
+		f, err := pty.Start(&cmd)
+		if err != nil {
+			return err
 		}
 
-		var buf bytes.Buffer
-		opts.RunCommand = func(t *testing.T, cmd exec.Cmd) error {
-			f, err := pty.Start(&cmd)
-			if err != nil {
-				return err
-			}
+		go func() {
+			io.Copy(&buf, f)
+		}()
 
-			go func() {
-				io.Copy(&buf, f)
-			}()
-
-			if err = cmd.Wait(); err != nil {
-				return err
-			}
-
-			return nil
+		if err = cmd.Wait(); err != nil {
+			return err
 		}
 
-		if err = integration.PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
-			return dir
-		}
+		return nil
+	}
+
+	defer func() {
+		// Go back to the normal RunCommand handler.
 		opts.RunCommand = nil
+	}()
 
-		actual := buf.String()
+	if err = integration.PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
+		return dir
+	}
 
-		// Normalize all \r\n to \n's.  it makes all the string processing we need to do much simpler.
-		actual = strings.Replace(actual, "\r\n", "\n", -1)
+	// Now convert all the tty color control characters over to a simpler xml-like form for testing
+	// baseline purposes.
+	actual := convertControlCharacters(buf.String())
 
-		// remove the last line.  it contains the duration of the command and can't be tested.s
-		lines := strings.Split(actual, "\n")
-		actual = strings.Join(lines[:len(lines)-2], "\n")
+	if edit.Expected != actual {
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(edit.Expected),
+			B:        difflib.SplitLines(actual),
+			FromFile: "Expected",
+			FromDate: "",
+			ToFile:   "Actual",
+			ToDate:   "",
+			Context:  0,
+		})
 
-		// now convert all the tty color control characters over to a simpler xml-like form for testing
-		// baseline purposes.
-		actual = convertControlCharacters(actual)
-
-		if edit.Expected != actual {
-			diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-				A:        difflib.SplitLines(edit.Expected),
-				B:        difflib.SplitLines(actual),
-				FromFile: "Expected",
-				FromDate: "",
-				ToFile:   "Actual",
-				ToDate:   "",
-				Context:  0,
-			})
-
-			assert.False(t, true, "Difference between expected and actual:\n"+diff)
-		}
+		assert.False(t, true, "Difference between expected and actual:\n"+diff)
 	}
 
 	return dir
@@ -223,8 +253,21 @@ const (
 	Info      ColorEnum = "info"
 )
 
+// convertControlCharacters takes in the output of the pulumi update command (including tty control
+// characters) and converts it to a simpler form that is easier to baseline.  Control characters,
+// like '\x1b[38;5;2m', are converted to simpler code like <added>, with reset controls closing those
+// tags.
+//
+// It's a lot of string munging, but makes it much easier to baseline and validate update diffs.
 func convertControlCharacters(text string) string {
-	// First, replace multiple resets ith a single reset.
+	// Normalize all \r\n to \n's.  it makes all the string processing we need to do much simpler.
+	text = strings.Replace(text, "\r\n", "\n", -1)
+
+	// remove the last line.  it contains the duration of the command and can't be tested.s
+	lines := strings.Split(text, "\n")
+	text = strings.Join(lines[:len(lines)-2], "\n")
+
+	// Next, replace multiple resets ith a single reset.
 	const clearSequence = "\x1b[0m"
 	const unchangedSequence = "\x1b[38;5;8m"
 	const addedSequence = "\x1b[38;5;2m"
@@ -276,6 +319,8 @@ func convertControlCharacters(text string) string {
 		}
 	}
 
+	// Now, walk through the text looking for color codes. Replace them with xml sequences
+	// (like <added>) to make baselines easier to write and understand.
 	var result bytes.Buffer
 	currentColor := Clear
 
@@ -288,6 +333,7 @@ func convertControlCharacters(text string) string {
 	textLength := len(text)
 	for index := 0; index < textLength; {
 		if text[index] != '\x1b' {
+			// Normal character, just append to the buffer.
 			result.WriteByte(text[index])
 			index++
 			continue
@@ -301,7 +347,7 @@ func convertControlCharacters(text string) string {
 			// Ignore it if we see two of the same color in a row.
 			continue
 		} else if nextColor == Clear {
-			// see if we have something like "Add-Clear-Add".  If so, no need to change anything.
+			// see if we have something like "Add-Whitespace-Clear-Add".  If so, no need to change anything.
 			tempIndex := index
 			for tempIndex < textLength && text[tempIndex] == '\n' {
 				tempIndex++
@@ -316,6 +362,7 @@ func convertControlCharacters(text string) string {
 			}
 		}
 
+		// The color actually changed.  Close the current tag and start up the next one.
 		appendCloseTag()
 		currentColor = nextColor
 
@@ -324,37 +371,16 @@ func convertControlCharacters(text string) string {
 		}
 	}
 
+	// If we have a final open tag, then close it.
 	appendCloseTag()
 
-	// return result.String()
 	taggedString := result.String()
+
+	// We'll routinely end up with a line, followed by a newline, followed by and endtag (due to
+	// reset chars being written after lines are written).  To make this cleaner in the baseline
+	// swap the two so the line ends with the endtag and then is followed by the newline.s
 	r, _ := regexp.Compile(`(\n)(\<\/[a-z]+\>)`)
 	replacedString := r.ReplaceAllString(taggedString, "$2$1")
 
 	return replacedString
-}
-
-// TestSteps tests many combinations of creates, updates, deletes, replacements, and so on.
-func TestSteps(t *testing.T) {
-	opts := integration.ProgramTestOptions{
-		Dir:          "step1",
-		Dependencies: []string{"pulumi"},
-		Quick:        true,
-		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
-			assert.NotNil(t, checkpoint.Latest)
-			assert.Equal(t, 5, len(checkpoint.Latest.Resources))
-			stackRes := checkpoint.Latest.Resources[0]
-			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-			a := checkpoint.Latest.Resources[1]
-			assert.Equal(t, "a", string(a.URN.Name()))
-			b := checkpoint.Latest.Resources[2]
-			assert.Equal(t, "b", string(b.URN.Name()))
-			c := checkpoint.Latest.Resources[3]
-			assert.Equal(t, "c", string(c.URN.Name()))
-			d := checkpoint.Latest.Resources[4]
-			assert.Equal(t, "d", string(d.URN.Name()))
-		},
-	}
-
-	integration.TestLifeCycleInitAndDestroy(t, &opts, testPreviewUpdatesAndEdits)
 }
