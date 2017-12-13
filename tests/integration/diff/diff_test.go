@@ -5,8 +5,6 @@ package ints
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -15,8 +13,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/kr/pty"
 )
 
 // TestDiffs tests many combinations of creates, updates, deletes, replacements, and checks the
@@ -193,31 +189,14 @@ func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i 
 
 	var buf bytes.Buffer
 
-	// Intercept running the pulumi commands.  This way we can set up an environment with the
-	// appropriate shell/pty functionality set.  This will allow us to see the shell color commands
-	// issued by pulumi (which would otherwise be stripped by the OS).
-	opts.RunCommand = func(t *testing.T, cmd exec.Cmd) error {
-		f, err := pty.Start(&cmd)
-		if err != nil {
-			return err
-		}
-
-		go func() {
-			io.Copy(&buf, f)
-		}()
-
-		if err = cmd.Wait(); err != nil {
-			return err
-		}
-
-		return nil
-	}
+	var oldStdOut = opts.Stdout
+	opts.Stdout = &buf
+	opts.Verbose = true
 
 	defer func() {
-		// Go back to the normal RunCommand handler.
-		opts.RunCommand = nil
+		opts.Stdout = oldStdOut
+		opts.Verbose = false
 	}()
-
 	if err = integration.PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
 		return dir
 	}

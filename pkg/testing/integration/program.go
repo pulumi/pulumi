@@ -107,9 +107,6 @@ type ProgramTestOptions struct {
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
-
-	// Allows overriding how the commands will actually be executed during the test run.
-	RunCommand func(t *testing.T, cmd exec.Cmd) error
 }
 
 func (opts *ProgramTestOptions) PulumiCmd(args []string) []string {
@@ -502,16 +499,12 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
-	if opts.RunCommand != nil {
-		runerr = opts.RunCommand(t, cmd)
+	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
+		cmd.Stdout = opts.Stdout
+		cmd.Stderr = opts.Stderr
+		runerr = cmd.Run()
 	} else {
-		if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
-			cmd.Stdout = opts.Stdout
-			cmd.Stderr = opts.Stderr
-			runerr = cmd.Run()
-		} else {
-			runout, runerr = cmd.CombinedOutput()
-		}
+		runout, runerr = cmd.CombinedOutput()
 	}
 
 	endTime := time.Now()
