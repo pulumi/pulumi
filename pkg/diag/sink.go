@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"sync"
 
@@ -64,11 +65,56 @@ const (
 	Error   Severity = "error"
 )
 
+type Color string
+
+const (
+	Always Color = "always"
+	Never  Color = "never"
+	Raw    Color = "raw"
+)
+
+func GetColor(debug bool, color string) (Color, error) {
+	switch color {
+	case "auto":
+		if debug {
+			return Never, nil
+		}
+
+		return Always, nil
+	case string(Always):
+		return Always, nil
+	case string(Never):
+		return Never, nil
+	case string(Raw):
+		return Raw, nil
+	}
+
+	return Never, fmt.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", color)
+}
+
+func (c Color) Colorize(v string) string {
+	switch c {
+	case "raw":
+		return v
+	case "always":
+		return colors.ColorizeText(v)
+	case "never":
+		return stripColors(v)
+	default:
+		panic("Unexpected color value: " + v)
+	}
+}
+
+func stripColors(v string) string {
+	r, _ := regexp.Compile(`<\{%(.*?)%\}>`)
+	return r.ReplaceAllString(v, "")
+}
+
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Pwd    string // the working directory.
-	Colors bool   // if true, output will be colorized.
-	Debug  bool   // if true, debugging will be output to stdout.
+	Pwd   string // the working directory.
+	Color Color  // how output should be colorized.
+	Debug bool   // if true, debugging will be output to stdout.
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
@@ -197,9 +243,8 @@ func (d *defaultSink) getCount(sev Severity) int {
 	return d.counts[sev]
 }
 
-func (d *defaultSink) useColor(sev Severity) bool {
-	// we will use color so long as we're not spewing to debug (which is colorless).
-	return d.opts.Colors
+func (d *defaultSink) getColor() Color {
+	return d.opts.Color
 }
 
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {
@@ -212,19 +257,17 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	}
 
 	// Now print the message category's prefix (error/warning).
-	if d.useColor(sev) {
-		switch sev {
-		case Debug:
-			buffer.WriteString(colors.SpecDebug)
-		case Info, Infoerr:
-			buffer.WriteString(colors.SpecInfo)
-		case Error:
-			buffer.WriteString(colors.SpecError)
-		case Warning:
-			buffer.WriteString(colors.SpecWarning)
-		default:
-			contract.Failf("Unrecognized diagnostic severity: %v", sev)
-		}
+	switch sev {
+	case Debug:
+		buffer.WriteString(colors.SpecDebug)
+	case Info, Infoerr:
+		buffer.WriteString(colors.SpecInfo)
+	case Error:
+		buffer.WriteString(colors.SpecError)
+	case Warning:
+		buffer.WriteString(colors.SpecWarning)
+	default:
+		contract.Failf("Unrecognized diagnostic severity: %v", sev)
 	}
 
 	buffer.WriteString(string(sev))
@@ -236,15 +279,10 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	}
 
 	buffer.WriteString(": ")
-
-	if d.useColor(sev) {
-		buffer.WriteString(colors.Reset)
-	}
+	buffer.WriteString(colors.Reset)
 
 	// Finally, actually print the message itself.
-	if d.useColor(sev) {
-		buffer.WriteString(colors.SpecNote)
-	}
+	buffer.WriteString(colors.SpecNote)
 
 	if diag.Raw {
 		buffer.WriteString(diag.Message)
@@ -252,10 +290,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 		buffer.WriteString(fmt.Sprintf(diag.Message, args...))
 	}
 
-	if d.useColor(sev) {
-		buffer.WriteString(colors.Reset)
-	}
-
+	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
@@ -264,20 +299,14 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	s := buffer.String()
 
 	// If colorization was requested, compile and execute the directives now.
-	if d.useColor(sev) {
-		s = colors.ColorizeText(s)
-	}
-
-	return s
+	return d.getColor().Colorize(s)
 }
 
 func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Location) string {
 	var buffer bytes.Buffer
 
 	if doc != nil {
-		if d.useColor(sev) {
-			buffer.WriteString(colors.SpecLocation)
-		}
+		buffer.WriteString(colors.SpecLocation)
 
 		file := doc.File
 		if d.opts.Pwd != "" {
@@ -287,6 +316,7 @@ func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Locati
 				file = rel
 			}
 		}
+
 		buffer.WriteString(file)
 	}
 
@@ -300,16 +330,11 @@ func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Locati
 
 	var s string
 	if doc != nil || loc != nil {
-		if d.useColor(sev) {
-			buffer.WriteString(colors.Reset)
-		}
-
+		buffer.WriteString(colors.Reset)
 		s = buffer.String()
 
 		// If colorization was requested, compile and execute the directives now.
-		if d.useColor(sev) {
-			s = colors.ColorizeText(s)
-		}
+		s = d.getColor().Colorize(s)
 	}
 
 	return s

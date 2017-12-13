@@ -5,6 +5,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -20,6 +21,7 @@ func newUpdateCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
+	var color string
 	var cmd = &cobra.Command{
 		Use:        "update",
 		Aliases:    []string{"up"},
@@ -43,6 +45,11 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			col, err := diag.GetColor(debug, color)
+			if err != nil {
+				return err
+			}
+
 			return s.Update(debug, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
@@ -51,6 +58,7 @@ func newUpdateCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
+				Color:                col,
 			})
 		}),
 	}
@@ -79,6 +87,9 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&summary, "summary", false,
 		"Only display summarization of resources and operations")
+	cmd.PersistentFlags().StringVar(
+		&color, "color", "auto",
+		"Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

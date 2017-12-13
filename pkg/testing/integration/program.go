@@ -342,7 +342,7 @@ func TestPreviewAndUpdates(
 
 func PreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	preview := opts.PulumiCmd([]string{"preview"})
-	update := opts.PulumiCmd([]string{"update"})
+	update := opts.PulumiCmd([]string{"update", "--color=raw"})
 	if opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")

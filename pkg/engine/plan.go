@@ -164,7 +164,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	result.Options.Events <- stdOutEventWithColor(&prelude)
+	result.Options.Events <- stdOutEventWithColor(&prelude, result.Options.Color)
 
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
@@ -181,7 +181,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 	// Print a summary of operation counts.
 	var summary bytes.Buffer
 	printChangeSummary(&summary, actions.Ops, true)
-	result.Options.Events <- stdOutEventWithColor(&summary)
+	result.Options.Events <- stdOutEventWithColor(&summary, result.Options.Color)
 	return nil
 }
 
