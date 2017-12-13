@@ -351,7 +351,6 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 }
 
 func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
-	b.WriteString(colors.Reset)
 	b.WriteString(op.Color())
 	b.WriteString(getIndentationString(indent, op, prefix))
 	b.WriteString(fmt.Sprintf(format, a...))

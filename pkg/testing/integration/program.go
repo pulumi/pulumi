@@ -103,6 +103,9 @@ type ProgramTestOptions struct {
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+
+	// Allows overriding how the acutal command will be run.
+	RunCommand func(t *testing.T, cmd exec.Cmd) error
 }
 
 func (opts *ProgramTestOptions) PulumiCmd(args []string) []string {
@@ -359,10 +362,10 @@ func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
 }
 
 func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) string {
-	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit)
+	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	var err error
-	dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+	dir, err = PrepareProject(t, opts, edit.Dir, dir, edit.Additive)
 	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 		return dir
 	}
@@ -446,7 +449,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = prepareProject(t, opts, dir, "", false)
+	dir, err = PrepareProject(t, opts, dir, "", false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -463,6 +466,11 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
+	var env []string
+	env = append(env, os.Environ()...)
+	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
+	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
 	go func() {
@@ -474,10 +482,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		}
 	}()
 
-	var env []string
-	env = append(env, os.Environ()...)
-	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
-	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	startTime := time.Now()
+
+	var runout []byte
+	var runerr error
 
 	cmd := exec.Cmd{
 		Path: path,
@@ -486,16 +494,16 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
-	startTime := time.Now()
-
-	var runout []byte
-	var runerr error
-	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
-		cmd.Stdout = opts.Stdout
-		cmd.Stderr = opts.Stderr
-		runerr = cmd.Run()
+	if opts.RunCommand != nil {
+		runerr = opts.RunCommand(t, cmd)
 	} else {
-		runout, runerr = cmd.CombinedOutput()
+		if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
+			cmd.Stdout = opts.Stdout
+			cmd.Stderr = opts.Stderr
+			runerr = cmd.Run()
+		} else {
+			runout, runerr = cmd.CombinedOutput()
+		}
 	}
 
 	endTime := time.Now()
@@ -527,9 +535,9 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	return runerr
 }
 
-// prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
+// PrepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
+func PrepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
 	stackName := opts.StackName()
 
 	var dir string
