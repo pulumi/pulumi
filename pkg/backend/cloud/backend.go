@@ -424,6 +424,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 				time.Sleep(1 * time.Second)
 				continue
 			}
+			return apitype.StatusFailed, err
 		}
 
 		for _, event := range updateResults.Events {
