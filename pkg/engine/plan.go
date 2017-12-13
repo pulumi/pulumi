@@ -179,8 +179,9 @@ func (eng *Engine) printPlan(result *planResult) error {
 	}
 
 	// Print a summary of operation counts.
-	printChangeSummary(&actions.Summary, actions.Ops, true)
-	result.Options.Events <- stdOutEventWithColor(&actions.Summary)
+	var summary bytes.Buffer
+	printChangeSummary(&summary, actions.Ops, true)
+	result.Options.Events <- stdOutEventWithColor(&summary)
 	return nil
 }
 
