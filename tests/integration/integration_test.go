@@ -24,7 +24,7 @@ func TestProjectMain(t *testing.T) {
 		Dependencies: []string{"pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, test.StackName(), checkpoint.Stack)
+			assert.Equal(t, test.GetStackName(), checkpoint.Stack)
 		},
 	}
 	integration.ProgramTest(t, &test)
