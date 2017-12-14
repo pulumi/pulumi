@@ -503,11 +503,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
-	var env []string
-	env = append(env, os.Environ()...)
-	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
-	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
-
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
 	go func() {
@@ -519,6 +514,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		}
 	}()
 
+	var env []string
+	env = append(env, os.Environ()...)
+	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
+	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 	startTime := time.Now()
 
 	var runout []byte
