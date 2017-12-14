@@ -12,7 +12,6 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +24,8 @@ func TestDiffs(t *testing.T) {
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
 		StackName:    "diffstack",
-		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			checkpoint := stack.Checkpoint
 			assert.NotNil(t, checkpoint.Latest)
 			assert.Equal(t, 5, len(checkpoint.Latest.Resources))
 			stackRes := checkpoint.Latest.Resources[0]
@@ -59,7 +59,8 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 			&integration.EditDir{
 				Dir:      "step2",
 				Additive: true,
-				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
 					assert.Equal(t, 5, len(checkpoint.Latest.Resources))
 					stackRes := checkpoint.Latest.Resources[0]
@@ -93,7 +94,8 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 			&integration.EditDir{
 				Dir:      "step3",
 				Additive: true,
-				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
 					assert.Equal(t, 4, len(checkpoint.Latest.Resources))
 					stackRes := checkpoint.Latest.Resources[0]
@@ -121,7 +123,8 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 			&integration.EditDir{
 				Dir:      "step4",
 				Additive: true,
-				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
 					// assert.Equal(t, 5, len(checkpoint.Latest.Resources))
 					assert.Equal(t, 4, len(checkpoint.Latest.Resources))
@@ -147,7 +150,8 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 			&integration.EditDir{
 				Dir:      "step5",
 				Additive: true,
-				ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
 					assert.Equal(t, 1, len(checkpoint.Latest.Resources))
 					stackRes := checkpoint.Latest.Resources[0]
@@ -189,6 +193,8 @@ func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i 
 		return dir
 	}
 
+	// Now, run the actual update command, but with stdout swapped out so we can capture the verbose
+	// output and compare it to our expected baseline.
 	var buf bytes.Buffer
 
 	var oldStdOut = opts.Stdout
@@ -203,12 +209,25 @@ func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i 
 		return dir
 	}
 
-	// Now convert all the color control sequences over to a simpler form for test baseline purposes.
-	actual := convertControlSequences(buf.String())
+	text := buf.String()
 
-	if edit.Expected != actual {
+	// Remove the first and last lines.  The first contains the local 	path that the test is running
+	// in and last line contains the duration.
+	lines := strings.Split(text, "\n")
+	text = strings.Join(lines[1:len(lines)-2], "\n")
+
+	assertProgramOutput(t, edit.Expected, text)
+
+	return dir
+}
+
+func assertProgramOutput(t *testing.T, expected, outputWithControlSeqeunces string) {
+	// Now convert all the color control sequences over to a simpler form for test baseline purposes.
+	actual := convertControlSequences(outputWithControlSeqeunces)
+
+	if expected != actual {
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-			A:        difflib.SplitLines(edit.Expected),
+			A:        difflib.SplitLines(expected),
 			B:        difflib.SplitLines(actual),
 			FromFile: "Expected",
 			FromDate: "",
@@ -219,8 +238,6 @@ func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i 
 
 		assert.Fail(t, "Difference between expected and actual:\n"+diff)
 	}
-
-	return dir
 }
 
 type ColorEnum string
@@ -269,10 +286,6 @@ func convertControlSequences(text string) string {
 
 	// Normalize all \r\n to \n's.  it makes all the string processing we need to do much simpler.
 	text = strings.Replace(text, "\r\n", "\n", -1)
-
-	// remove the last line.  it contains the duration of the command and can't be tested.s
-	lines := strings.Split(text, "\n")
-	text = strings.Join(lines[1:len(lines)-2], "\n")
 
 	var result bytes.Buffer
 	currentColor := Clear
