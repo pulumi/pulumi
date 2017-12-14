@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
@@ -31,9 +30,9 @@ func TestExamples(t *testing.T) {
 		Secrets: map[string]string{
 			"secret": "this is my secret message",
 		},
-		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, minimal.StackName(), checkpoint.Stack)
+			assert.Equal(t, minimal.StackName(), stackInfo.Checkpoint.Stack)
 		},
 		ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
 	}
@@ -57,7 +56,7 @@ func TestExamples(t *testing.T) {
 		{
 			Dir:          path.Join(cwd, "formattable"),
 			Dependencies: []string{"pulumi"},
-			ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
 				assert.False(t, strings.Contains(stdout, "MISSING"))

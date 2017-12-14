@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -105,7 +103,7 @@ func newStackCmd() *cobra.Command {
 				}
 
 				// Print out the output properties for the stack, if present.
-				if res, outputs := getRootStackResource(snap); res != nil {
+				if res, outputs := stack.GetRootStackResource(snap); res != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
@@ -130,20 +128,6 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackSelectCmd())
 
 	return cmd
-}
-
-// getStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack exists,
-// its output properties, if any, are also returned in the resulting map.
-func getRootStackResource(snap *deploy.Snapshot) (*resource.State, map[string]interface{}) {
-	if snap != nil {
-		for _, res := range snap.Resources {
-			if res.Type == resource.RootStackType {
-				return res, stack.SerializeResource(res).Outputs
-			}
-		}
-	}
-	return nil, nil
-
 }
 
 func printStackOutputs(outputs map[string]interface{}) {
