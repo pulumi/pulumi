@@ -77,13 +77,13 @@ var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
 
 func (c Color) Colorize(v string) string {
 	switch c {
-	case "raw":
+	case Raw:
 		// Don't touch the string.  Output control sequences as is.
 		return v
-	case "always":
+	case Always:
 		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
 		return colors.ColorizeText(v)
-	case "never":
+	case Never:
 		// Remove all the colors that any other layers added.
 		return tagRegexp.ReplaceAllString(v, "")
 	default:
