@@ -73,6 +73,8 @@ const (
 	Raw    Color = "raw"
 )
 
+var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
+
 func (c Color) Colorize(v string) string {
 	switch c {
 	case "raw":
@@ -83,15 +85,10 @@ func (c Color) Colorize(v string) string {
 		return colors.ColorizeText(v)
 	case "never":
 		// Remove all the colors that any other layers added.
-		return stripColors(v)
+		return tagRegexp.ReplaceAllString(v, "")
 	default:
 		panic("Unexpected color value: " + string(c))
 	}
-}
-
-func stripColors(v string) string {
-	r, _ := regexp.Compile(`<\{%(.*?)%\}>`)
-	return r.ReplaceAllString(v, "")
 }
 
 // FormatOptions controls the output style and content.
