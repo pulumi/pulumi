@@ -43,6 +43,13 @@ type EditDir struct {
 	Dir                    string
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	Additive               bool // set to true to keep the prior test dir, applying this edit atop.
+
+	// Stdout is the writer to use for all stdout messages.
+	Stdout io.Writer
+	// Stderr is the writer to use for all stderr messages.
+	Stderr io.Writer
+	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
+	Verbose bool
 }
 
 // TestCommandStats is a collection of data related to running a single command during a test.
@@ -232,7 +239,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	TestLifeCycleInitAndDestroy(t, opts, TestPreviewUpdateAndEdits)
+	TestLifeCycleInitAndDestroy(t, opts, testPreviewUpdateAndEdits)
 }
 
 func TestLifeCycleInitAndDestroy(
@@ -314,11 +321,11 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 	contract.IgnoreError(err)
 }
 
-func TestPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
-	return TestPreviewAndUpdates(t, opts, dir, TestEdits)
+func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+	return testPreviewAndUpdates(t, opts, dir, testEdits)
 }
 
-func TestPreviewAndUpdates(
+func testPreviewAndUpdates(
 	t *testing.T, opts *ProgramTestOptions, dir string,
 	testEdits func(*testing.T, *ProgramTestOptions, string) string) string {
 	// Now preview and update the real changes.
@@ -368,15 +375,15 @@ func PreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 	return nil
 }
 
-func TestEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
 	for i, edit := range opts.EditDirs {
-		dir = TestEdit(t, opts, dir, i, edit)
+		dir = testEdit(t, opts, dir, i, edit)
 	}
 
 	return dir
 }
 
-func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) string {
+func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) string {
 	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	var err error
@@ -384,6 +391,26 @@ func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 		return dir
 	}
+
+	oldStdOut := opts.Stdout
+	oldStderr := opts.Stderr
+	oldVerbose := opts.Verbose
+	if edit.Stdout != nil {
+		opts.Stdout = edit.Stdout
+	}
+	if edit.Stderr != nil {
+		opts.Stderr = edit.Stderr
+	}
+	if edit.Verbose {
+		opts.Verbose = true
+	}
+
+	defer func() {
+		opts.Stdout = oldStdOut
+		opts.Stderr = oldStderr
+		opts.Verbose = oldVerbose
+	}()
+
 	if err = PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
 		return dir
 	}

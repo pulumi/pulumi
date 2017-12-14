@@ -4,7 +4,6 @@ package ints
 
 import (
 	"bytes"
-	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -19,6 +18,8 @@ import (
 // TestDiffs tests many combinations of creates, updates, deletes, replacements, and checks the
 // output of the command against an expected baseline.
 func TestDiffs(t *testing.T) {
+	var buf bytes.Buffer
+
 	opts := integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"pulumi"},
@@ -39,26 +40,12 @@ func TestDiffs(t *testing.T) {
 			d := checkpoint.Latest.Resources[4]
 			assert.Equal(t, "d", string(d.URN.Name()))
 		},
-	}
-
-	integration.TestLifeCycleInitAndDestroy(t, &opts, testPreviewUpdatesAndEdits)
-}
-
-func testPreviewUpdatesAndEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) string {
-	return integration.TestPreviewAndUpdates(t, opts, dir, testEdits)
-}
-
-type EditDirWithValidation struct {
-	*integration.EditDir
-	Expected string
-}
-
-func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) string {
-	var edits = []EditDirWithValidation{
-		{
-			&integration.EditDir{
+		EditDirs: []integration.EditDir{
+			integration.EditDir{
 				Dir:      "step2",
 				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
@@ -73,9 +60,9 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 					assert.Equal(t, "c", string(c.URN.Name()))
 					e := checkpoint.Latest.Resources[4]
 					assert.Equal(t, "e", string(e.URN.Name()))
-				},
-			},
-			`<unchanged>Performing changes:
+
+					expected :=
+						`<unchanged>Performing changes:
 * pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:diffstack::steps::pulumi:pulumi:Stack::steps-diffstack]</unchanged>
     <added>+ pulumi-nodejs:dynamic:Resource: (create)
@@ -88,12 +75,18 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 <info>info</info>: 2 changes performed:
     <added>+ 1 resource created</added>
     <removed>- 1 resource deleted</removed>
-      4 resources unchanged`,
-		},
-		{
-			&integration.EditDir{
+      4 resources unchanged`
+
+					assertPreviewOutput(t, expected, buf.String())
+
+					buf.Reset()
+				},
+			},
+			integration.EditDir{
 				Dir:      "step3",
 				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
@@ -106,9 +99,9 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 					assert.Equal(t, "c", string(c.URN.Name()))
 					e := checkpoint.Latest.Resources[3]
 					assert.Equal(t, "e", string(e.URN.Name()))
-				},
-			},
-			`<unchanged>Performing changes:
+
+					expected :=
+						`<unchanged>Performing changes:
 * pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:diffstack::steps::pulumi:pulumi:Stack::steps-diffstack]</unchanged>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
@@ -117,12 +110,18 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
         __provider: "exports.handler = __d1295c56b890ca4312c6b6aec1efc37f1270220f;\n\nfunction __d1295c56b890ca4312c6b6aec1efc37f1270220f() {\n  return (function() {\n    with({ provider: { diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 } }) {\n\nreturn (() => provider)\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {\n\nreturn ((id, olds, news) => __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        }))\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {\n  return (function() {\n    with({  }) {\n\nreturn (function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6, currentID: 0 }) {\n\nreturn ((inputs) => __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        }))\n\n    }\n  }).apply({ diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 }, undefined).apply(this, arguments);\n}\n\nfunction __599534012ff37f9801d962f9c6059b4bc0778921() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {\n\nreturn ((id, olds, news) => __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        }))\n\n    }\n  }).apply({ diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 }, undefined).apply(this, arguments);\n}\n\nfunction __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {\n\nreturn ((id, props) => __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        }))\n\n    }\n  }).apply({ diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 }, undefined).apply(this, arguments);\n}\n\n"</removed>
 <info>info</info>: 1 change performed:
     <removed>- 1 resource deleted</removed>
-      4 resources unchanged`,
-		},
-		{
-			&integration.EditDir{
+      4 resources unchanged`
+
+					assertPreviewOutput(t, expected, buf.String())
+
+					buf.Reset()
+				},
+			},
+			integration.EditDir{
 				Dir:      "step4",
 				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
@@ -139,26 +138,30 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
 					// aPendingDelete := checkpoint.Latest.Resources[4]
 					// assert.Equal(t, "a", string(aPendingDelete.URN.Name()))
 					// assert.True(t, aPendingDelete.Delete)
-				},
-			},
-			`<unchanged>Performing changes:
+
+					expected := `<unchanged>Performing changes:
 * pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:diffstack::steps::pulumi:pulumi:Stack::steps-diffstack]</unchanged>
-<info>info</info>: no changes required:`,
-		},
-		{
-			&integration.EditDir{
+<info>info</info>: no changes required:`
+
+					assertPreviewOutput(t, expected, buf.String())
+
+					buf.Reset()
+				},
+			},
+			integration.EditDir{
 				Dir:      "step5",
 				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
 					assert.Equal(t, 1, len(checkpoint.Latest.Resources))
 					stackRes := checkpoint.Latest.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-				},
-			},
-			`<unchanged>Performing changes:
+
+					expected := `<unchanged>Performing changes:
 * pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:diffstack::steps::pulumi:pulumi:Stack::steps-diffstack]</unchanged>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
@@ -175,50 +178,26 @@ func testEdits(t *testing.T, opts *integration.ProgramTestOptions, dir string) s
         __provider: "exports.handler = __d1295c56b890ca4312c6b6aec1efc37f1270220f;\n\nfunction __d1295c56b890ca4312c6b6aec1efc37f1270220f() {\n  return (function() {\n    with({ provider: { diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 } }) {\n\nreturn (() => provider)\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {\n\nreturn ((id, olds, news) => __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        }))\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {\n  return (function() {\n    with({  }) {\n\nreturn (function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6, currentID: 0 }) {\n\nreturn ((inputs) => __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        }))\n\n    }\n  }).apply({ diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 }, undefined).apply(this, arguments);\n}\n\nfunction __599534012ff37f9801d962f9c6059b4bc0778921() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {\n\nreturn ((id, olds, news) => __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        }))\n\n    }\n  }).apply({ diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 }, undefined).apply(this, arguments);\n}\n\nfunction __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543() {\n  return (function() {\n    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {\n\nreturn ((id, props) => __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        }))\n\n    }\n  }).apply({ diff: __effb2ddb97a3dfc121870990c86c6ee8f7b1dc44, create: __e47b2d874cf3cf54cd5a54e8e0cf1c8a4a3a25e9, update: __599534012ff37f9801d962f9c6059b4bc0778921, delete: __6c325c14b9ed07e0c974ca9a339ed96d2b5dd543 }, undefined).apply(this, arguments);\n}\n\n"</removed>
 <info>info</info>: 3 changes performed:
     <removed>- 3 resources deleted</removed>
-      1 resource unchanged`,
+      1 resource unchanged`
+
+					assertPreviewOutput(t, expected, buf.String())
+
+					buf.Reset()
+				},
+			},
 		},
 	}
 
-	for i, edit := range edits {
-		dir = testEdit(t, opts, dir, i, edit)
-	}
-
-	return dir
+	integration.ProgramTest(t, &opts)
 }
 
-func testEdit(t *testing.T, opts *integration.ProgramTestOptions, dir string, i int, edit EditDirWithValidation) string {
-	var err error
-	dir, err = integration.PrepareProject(t, opts, edit.Dir, dir, edit.Additive)
-	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-		return dir
-	}
-
-	// Now, run the actual update command, but with stdout swapped out so we can capture the verbose
-	// output and compare it to our expected baseline.
-	var buf bytes.Buffer
-
-	var oldStdOut = opts.Stdout
-	opts.Stdout = &buf
-	opts.Verbose = true
-
-	defer func() {
-		opts.Stdout = oldStdOut
-		opts.Verbose = false
-	}()
-	if err = integration.PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
-		return dir
-	}
-
-	text := buf.String()
-
+func assertPreviewOutput(t *testing.T, expected, outputWithControlSeqeunces string) {
 	// Remove the first and last lines.  The first contains the local 	path that the test is running
 	// in and last line contains the duration.
-	lines := strings.Split(text, "\n")
-	text = strings.Join(lines[1:len(lines)-2], "\n")
+	lines := strings.Split(outputWithControlSeqeunces, "\n")
+	outputWithControlSeqeunces = strings.Join(lines[1:len(lines)-2], "\n")
 
-	assertProgramOutput(t, edit.Expected, text)
-
-	return dir
+	assertProgramOutput(t, expected, outputWithControlSeqeunces)
 }
 
 func assertProgramOutput(t *testing.T, expected, outputWithControlSeqeunces string) {
