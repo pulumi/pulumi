@@ -13,6 +13,7 @@ type DestroyOptions struct {
 	DryRun   bool
 	Parallel int
 	Summary  bool
+	Color    diag.Color
 }
 
 func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts DestroyOptions) error {
@@ -31,9 +32,10 @@ func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts Destroy
 		DryRun:   opts.DryRun,
 		Parallel: opts.Parallel,
 		Summary:  opts.Summary,
+		Color:    opts.Color,
 		Events:   events,
 		Diag: newEventSink(events, diag.FormatOptions{
-			Colors: true,
+			Color: opts.Color,
 		}),
 	})
 }

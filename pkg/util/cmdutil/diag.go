@@ -15,7 +15,7 @@ var snk diag.Sink
 func Diag() diag.Sink {
 	if snk == nil {
 		snk = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-			Colors: true, // turn on colorization of warnings/errors.
+			Color: diag.Always, // turn on colorization of warnings/errors.
 		})
 	}
 	return snk

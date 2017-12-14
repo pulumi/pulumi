@@ -66,7 +66,7 @@ func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	if glog.V(9) {
 		glog.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagDebugEvent(s.opts.Colors, msg)
+	s.events <- diagDebugEvent(s.opts.Color, msg)
 	s.incrementCount(diag.Debug)
 }
 
@@ -75,7 +75,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoEvent(s.opts.Colors, msg)
+	s.events <- diagInfoEvent(s.opts.Color, msg)
 	s.incrementCount(diag.Info)
 }
 
@@ -84,7 +84,7 @@ func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoerrEvent(s.opts.Colors, msg)
+	s.events <- diagInfoerrEvent(s.opts.Color, msg)
 	s.incrementCount(diag.Infoerr)
 }
 
@@ -93,7 +93,7 @@ func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagErrorEvent(s.opts.Colors, msg)
+	s.events <- diagErrorEvent(s.opts.Color, msg)
 	s.incrementCount(diag.Error)
 }
 
@@ -102,7 +102,7 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagWarningEvent(s.opts.Colors, msg)
+	s.events <- diagWarningEvent(s.opts.Color, msg)
 	s.incrementCount(diag.Warning)
 }
 
@@ -118,9 +118,9 @@ func (s *eventSink) getCount(sev diag.Severity) int {
 	return s.counts[sev]
 }
 
-func (s *eventSink) useColor(sev diag.Severity) bool {
+func (s *eventSink) getColor(sev diag.Severity) diag.Color {
 	// we will use color so long as we're not spewing to debug (which is colorless).
-	return s.opts.Colors
+	return s.opts.Color
 }
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) string {
@@ -133,19 +133,17 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	}
 
 	// Now print the message category's prefix (error/warning).
-	if s.useColor(sev) {
-		switch sev {
-		case diag.Debug:
-			buffer.WriteString(colors.SpecDebug)
-		case diag.Info, diag.Infoerr:
-			buffer.WriteString(colors.SpecInfo)
-		case diag.Error:
-			buffer.WriteString(colors.SpecError)
-		case diag.Warning:
-			buffer.WriteString(colors.SpecWarning)
-		default:
-			contract.Failf("Unrecognized diagnostic severity: %v", sev)
-		}
+	switch sev {
+	case diag.Debug:
+		buffer.WriteString(colors.SpecDebug)
+	case diag.Info, diag.Infoerr:
+		buffer.WriteString(colors.SpecInfo)
+	case diag.Error:
+		buffer.WriteString(colors.SpecError)
+	case diag.Warning:
+		buffer.WriteString(colors.SpecWarning)
+	default:
+		contract.Failf("Unrecognized diagnostic severity: %v", sev)
 	}
 
 	buffer.WriteString(string(sev))
@@ -157,15 +155,10 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	}
 
 	buffer.WriteString(": ")
-
-	if s.useColor(sev) {
-		buffer.WriteString(colors.Reset)
-	}
+	buffer.WriteString(colors.Reset)
 
 	// Finally, actually print the message itself.
-	if s.useColor(sev) {
-		buffer.WriteString(colors.SpecNote)
-	}
+	buffer.WriteString(colors.SpecNote)
 
 	if d.Raw {
 		buffer.WriteString(d.Message)
@@ -173,25 +166,20 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 		buffer.WriteString(fmt.Sprintf(d.Message, args...))
 	}
 
-	if s.useColor(sev) {
-		buffer.WriteString(colors.Reset)
-	}
-
+	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
 	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
-	return buffer.String()
+	return s.getColor(sev).Colorize(buffer.String())
 }
 
 func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc *diag.Location) string {
 	var buffer bytes.Buffer
 
 	if doc != nil {
-		if s.useColor(sev) {
-			buffer.WriteString(colors.SpecLocation)
-		}
+		buffer.WriteString(colors.SpecLocation)
 
 		file := doc.File
 		if s.opts.Pwd != "" {
@@ -201,6 +189,7 @@ func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc
 				file = rel
 			}
 		}
+
 		buffer.WriteString(file)
 	}
 
@@ -213,9 +202,7 @@ func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc
 	}
 
 	// Reset the color if we wrote anything
-	if buffer.Len() > 0 && s.useColor(sev) {
-		buffer.WriteString(colors.Reset)
-	}
+	buffer.WriteString(colors.Reset)
 
-	return buffer.String()
+	return s.getColor(sev).Colorize(buffer.String())
 }

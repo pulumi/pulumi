@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -123,4 +124,24 @@ func getGitHubProjectForOrigin(dir string) (string, string, error) {
 
 func trimGitRemoteURL(url string, prefix string, suffix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
+}
+
+func GetColor(debug bool, color string) (diag.Color, error) {
+	switch color {
+	case "auto":
+		if debug {
+			// we will use color so long as we're not spewing to debug (which is colorless).
+			return diag.Never, nil
+		}
+
+		return diag.Always, nil
+	case "always":
+		return diag.Always, nil
+	case "never":
+		return diag.Never, nil
+	case "raw":
+		return diag.Raw, nil
+	}
+
+	return diag.Never, fmt.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", color)
 }

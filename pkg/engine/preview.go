@@ -21,6 +21,7 @@ type PreviewOptions struct {
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
+	Color                diag.Color
 }
 
 func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts PreviewOptions) error {
@@ -44,9 +45,10 @@ func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts Preview
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
+		Color:                opts.Color,
 		Events:               events,
 		Diag: newEventSink(events, diag.FormatOptions{
-			Colors: true,
+			Color: opts.Color,
 		}),
 	})
 }
@@ -100,7 +102,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 		var b bytes.Buffer
 		printStep(&b, step,
 			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
+		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 	}
 	return nil, nil
 }
@@ -127,7 +129,7 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
 		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
+		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 	}
 	return nil
 }

@@ -19,6 +19,7 @@ func newPreviewCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
+	var color string
 	var cmd = &cobra.Command{
 		Use:        "preview",
 		Aliases:    []string{"pre"},
@@ -42,6 +43,11 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
+			col, err := GetColor(debug, color)
+			if err != nil {
+				return err
+			}
+
 			return s.Preview(debug, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
@@ -49,6 +55,7 @@ func newPreviewCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
+				Color:                col,
 			})
 		}),
 	}
@@ -77,6 +84,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&summary, "summary", false,
 		"Only display summarization of resources and operations")
+	cmd.PersistentFlags().StringVar(
+		&color, "color", "auto",
+		"Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

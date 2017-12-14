@@ -17,6 +17,7 @@ func newDestroyCmd() *cobra.Command {
 	var parallel int
 	var summary bool
 	var yes bool
+	var color string
 	var cmd = &cobra.Command{
 		Use:        "destroy",
 		SuggestFor: []string{"delete", "down", "kill", "remove", "rm", "stop"},
@@ -36,6 +37,11 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
+			col, err := GetColor(debug, color)
+			if err != nil {
+				return err
+			}
+
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
 
@@ -43,6 +49,7 @@ func newDestroyCmd() *cobra.Command {
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,
+					Color:    col,
 				})
 			}
 
@@ -68,6 +75,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with the destruction anyway")
+	cmd.PersistentFlags().StringVar(
+		&color, "color", "auto",
+		"Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

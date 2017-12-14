@@ -31,64 +31,75 @@ func cancelEvent() Event {
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
 	Severity diag.Severity
-	UseColor bool
+	Color    diag.Color
 	Message  string
 }
 
-func stdOutEventWithColor(s fmt.Stringer) Event {
-	return Event{Type: StdoutColorEvent, Payload: s.String()}
+type StdoutEventPayload struct {
+	Color   diag.Color
+	Message string
 }
 
-func diagDebugEvent(useColor bool, msg string) Event {
+func stdOutEventWithColor(s fmt.Stringer, color diag.Color) Event {
+	return Event{
+		Type: StdoutColorEvent,
+		Payload: StdoutEventPayload{
+			Color:   color,
+			Message: s.String(),
+		},
+	}
+}
+
+func diagDebugEvent(color diag.Color, msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Severity: diag.Debug,
-			UseColor: useColor,
+			Color:    color,
 			Message:  msg,
 		},
 	}
 }
 
-func diagInfoEvent(useColor bool, msg string) Event {
+func diagInfoEvent(color diag.Color, msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Severity: diag.Info,
-			UseColor: useColor,
+			Color:    color,
 			Message:  msg,
 		},
 	}
 }
 
-func diagInfoerrEvent(useColor bool, msg string) Event {
+func diagInfoerrEvent(color diag.Color, msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Severity: diag.Infoerr,
-			UseColor: useColor,
+			Color:    color,
 			Message:  msg,
 		},
 	}
 }
 
-func diagErrorEvent(useColor bool, msg string) Event {
+func diagErrorEvent(color diag.Color, msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Severity: diag.Error,
-			UseColor: useColor,
+			Color:    color,
 			Message:  msg,
 		},
 	}
 }
 
-func diagWarningEvent(useColor bool, msg string) Event {
+func diagWarningEvent(color diag.Color, msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Severity: diag.Warning,
-			UseColor: useColor,
+			Color:    color,
 			Message:  msg,
 		},
 	}

@@ -164,7 +164,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	result.Options.Events <- stdOutEventWithColor(&prelude)
+	result.Options.Events <- stdOutEventWithColor(&prelude, result.Options.Color)
 
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
@@ -181,7 +181,7 @@ func (eng *Engine) printPlan(result *planResult) error {
 	// Print a summary of operation counts.
 	var summary bytes.Buffer
 	printChangeSummary(&summary, actions.Ops, true)
-	result.Options.Events <- stdOutEventWithColor(&summary)
+	result.Options.Events <- stdOutEventWithColor(&summary, result.Options.Color)
 	return nil
 }
 
@@ -373,7 +373,6 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 }
 
 func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
-	b.WriteString(colors.Reset)
 	b.WriteString(op.Color())
 	b.WriteString(getIndentationString(indent, op, prefix))
 	b.WriteString(fmt.Sprintf(format, a...))

@@ -19,14 +19,15 @@ import (
 )
 
 type DeployOptions struct {
-	Package              string   // the package we are deploying (or "" to use the default)
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	DryRun               bool     // true if we should just print the plan without performing it.
-	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
-	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool     // true if we should only summarize resources and operations.
+	Package              string     // the package we are deploying (or "" to use the default)
+	Analyzers            []string   // an optional set of analyzers to run as part of this deployment.
+	DryRun               bool       // true if we should just print the plan without performing it.
+	Parallel             int        // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool       // true to show the configuration variables being used.
+	ShowReplacementSteps bool       // true to show the replacement steps in the plan.
+	ShowSames            bool       // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool       // true if we should only summarize resources and operations.
+	Color                diag.Color // How output should be colorized.
 }
 
 func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOptions) error {
@@ -50,23 +51,25 @@ func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOp
 		ShowReplacementSteps: opts.ShowReplacementSteps,
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
+		Color:                opts.Color,
 		Events:               events,
 		Diag: newEventSink(events, diag.FormatOptions{
-			Colors: true,
+			Color: opts.Color,
 		}),
 	})
 }
 
 type deployOptions struct {
-	Create               bool         // true if we are creating resources.
-	Destroy              bool         // true if we are destroying the stack.
-	DryRun               bool         // true if we should just print the plan without performing it.
-	Analyzers            []string     // an optional set of analyzers to run as part of this deployment.
-	Parallel             int          // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool         // true to show the configuration variables being used.
-	ShowReplacementSteps bool         // true to show the replacement steps in the plan.
-	ShowSames            bool         // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool         // true if we should only summarize resources and operations.
+	Create               bool     // true if we are creating resources.
+	Destroy              bool     // true if we are destroying the stack.
+	DryRun               bool     // true if we should just print the plan without performing it.
+	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool     // true to show the configuration variables being used.
+	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
+	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool     // true if we should only summarize resources and operations.
+	Color                diag.Color
 	Detailed             bool         // true to show very detailed output, like properties that haven't changed.
 	DOT                  bool         // true if we should print the DOT file for this plan.
 	Events               chan<- Event // the channel to write events from the engine to.
@@ -98,7 +101,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 			var header bytes.Buffer
 			printPrelude(&header, result, false)
 			header.WriteString(fmt.Sprintf("%vPerforming changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			opts.Events <- stdOutEventWithColor(&header)
+			opts.Events <- stdOutEventWithColor(&header, opts.Color)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
@@ -125,7 +128,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 					colors.SpecAttention, colors.Reset))
 			}
 
-			opts.Events <- stdOutEventWithColor(&footer)
+			opts.Events <- stdOutEventWithColor(&footer, opts.Color)
 
 			if err != nil {
 				return err
@@ -167,7 +170,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
 		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
+		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
@@ -216,7 +219,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 	}
 
-	acts.Opts.Events <- stdOutEventWithColor(&b)
+	acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 
 	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
@@ -231,7 +234,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
 		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
+		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 	}
 
 	// There's a chance there are new outputs that weren't written out last time.

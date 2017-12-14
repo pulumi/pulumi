@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -28,7 +27,8 @@ Outer:
 		case engine.CancelEvent:
 			break Outer
 		case engine.StdoutColorEvent:
-			fmt.Print(colors.ColorizeText(event.Payload.(string)))
+			payload := event.Payload.(engine.StdoutEventPayload)
+			fmt.Print(payload.Color.Colorize(payload.Message))
 		case engine.DiagEvent:
 			payload := event.Payload.(engine.DiagEventPayload)
 			var out io.Writer
@@ -41,9 +41,7 @@ Outer:
 				out = ioutil.Discard
 			}
 			msg := payload.Message
-			if payload.UseColor {
-				msg = colors.ColorizeText(msg)
-			}
+			msg = payload.Color.Colorize(msg)
 			_, fmterr := fmt.Fprint(out, msg)
 			contract.IgnoreError(fmterr)
 		default:
