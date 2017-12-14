@@ -322,12 +322,6 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 }
 
 func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
-	return testPreviewAndUpdates(t, opts, dir, testEdits)
-}
-
-func testPreviewAndUpdates(
-	t *testing.T, opts *ProgramTestOptions, dir string,
-	testEdits func(*testing.T, *ProgramTestOptions, string) string) string {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	initErr := previewAndUpdate(t, opts, dir, "initial")
