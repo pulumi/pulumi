@@ -545,10 +545,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	env = append(env, os.Environ()...)
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
-	startTime := time.Now()
-
-	var runout []byte
-	var runerr error
 
 	cmd := exec.Cmd{
 		Path: path,
@@ -557,6 +553,10 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
+	startTime := time.Now()
+
+	var runout []byte
+	var runerr error
 	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
 		cmd.Stdout = opts.Stdout
 		cmd.Stderr = opts.Stderr
