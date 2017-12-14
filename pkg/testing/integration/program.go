@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -28,10 +30,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
+type RuntimeValidationStackInfo struct {
+	Checkpoint   stack.Checkpoint
+	Snapshot     deploy.Snapshot
+	RootResource resource.State
+	Outputs      map[string]interface{}
+}
+
 // EditDir is an optional edit to apply to the example, as subsequent deployments.
 type EditDir struct {
 	Dir                    string
-	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	Additive               bool // set to true to keep the prior test dir, applying this edit atop.
 }
 
@@ -75,7 +85,7 @@ type ProgramTestOptions struct {
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
 	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
-	ExtraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint)
+	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
 	RelativeWorkDir string
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
@@ -386,7 +396,7 @@ func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 
 func PerformExtraRuntimeValidation(
 	t *testing.T, opts *ProgramTestOptions,
-	extraRuntimeValidation func(t *testing.T, checkpoint stack.Checkpoint), dir string) error {
+	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string) error {
 
 	if extraRuntimeValidation == nil {
 		return nil
@@ -405,7 +415,29 @@ func PerformExtraRuntimeValidation(
 	} else if !assert.NotNil(t, chk, "expected checkpoint file to be populated from %v: %v", stackName, err) {
 		return errors.New("missing checkpoint")
 	}
-	extraRuntimeValidation(t, *chk)
+
+	// Deserialize snapshot from checkpoint
+	snapshot, err := stack.DeserializeCheckpoint(chk)
+	if !assert.NoError(t, err, "expected checkpoint deserialization to succeed") {
+		return err
+	} else if !assert.NotNil(t, snapshot, "expected snapshot to be populated from checkpoint file %v", stackName) {
+		return errors.New("missing snapshot")
+	}
+
+	// Get root resources from snapshot
+	rootResource, outputs := stack.GetRootStackResource(snapshot)
+	if !assert.NotNil(t, rootResource, "expected root resource to be populated from snapshot file %v", stackName) {
+		return errors.New("missing root resource")
+	}
+
+	// Populate stack info object with all of this data to pass to the validation function
+	stackInfo := RuntimeValidationStackInfo{
+		Checkpoint:   *chk,
+		Snapshot:     *snapshot,
+		RootResource: *rootResource,
+		Outputs:      outputs,
+	}
+	extraRuntimeValidation(t, stackInfo)
 	return nil
 }
 

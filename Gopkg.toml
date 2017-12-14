@@ -6,3 +6,7 @@
 [[constraint]]
   name = "google.golang.org/grpc"
   version = "v1.7.2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/dustin/go-humanize"

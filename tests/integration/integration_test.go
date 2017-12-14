@@ -10,7 +10,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -22,9 +21,9 @@ func TestProjectMain(t *testing.T) {
 	test = integration.ProgramTestOptions{
 		Dir:          "project_main",
 		Dependencies: []string{"pulumi"},
-		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, test.GetStackName(), checkpoint.Stack)
+			assert.Equal(t, test.GetStackName(), stackInfo.Checkpoint.Stack)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -79,11 +78,11 @@ func TestStackOutputs(t *testing.T) {
 		Dir:          "stack_outputs",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
-		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
-			assert.NotNil(t, checkpoint.Latest)
-			if assert.Equal(t, 1, len(checkpoint.Latest.Resources)) {
-				stackRes := checkpoint.Latest.Resources[0]
+			assert.NotNil(t, stackInfo.Checkpoint.Latest)
+			if assert.Equal(t, 1, len(stackInfo.Checkpoint.Latest.Resources)) {
+				stackRes := stackInfo.Checkpoint.Latest.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Equal(t, 0, len(stackRes.Inputs))
@@ -101,7 +100,7 @@ func TestStackParenting(t *testing.T) {
 		Dir:          "stack_parenting",
 		Dependencies: []string{"pulumi"},
 		Quick:        true,
-		ExtraRuntimeValidation: func(t *testing.T, checkpoint stack.Checkpoint) {
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains resources parented correctly.  This should look like this:
 			//
 			//     A      F
@@ -112,38 +111,38 @@ func TestStackParenting(t *testing.T) {
 			//
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
-			assert.NotNil(t, checkpoint.Latest)
-			if assert.Equal(t, 8, len(checkpoint.Latest.Resources)) {
-				stackRes := checkpoint.Latest.Resources[0]
+			assert.NotNil(t, stackInfo.Checkpoint.Latest)
+			if assert.Equal(t, 8, len(stackInfo.Checkpoint.Latest.Resources)) {
+				stackRes := stackInfo.Checkpoint.Latest.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
-				a := checkpoint.Latest.Resources[1]
+				a := stackInfo.Checkpoint.Latest.Resources[1]
 				assert.NotNil(t, a)
 				assert.Equal(t, "a", string(a.URN.Name()))
 				assert.NotEqual(t, "", a.Parent)
 				assert.Equal(t, stackRes.URN, a.Parent)
-				b := checkpoint.Latest.Resources[2]
+				b := stackInfo.Checkpoint.Latest.Resources[2]
 				assert.NotNil(t, b)
 				assert.Equal(t, "b", string(b.URN.Name()))
 				assert.Equal(t, a.URN, b.Parent)
-				c := checkpoint.Latest.Resources[3]
+				c := stackInfo.Checkpoint.Latest.Resources[3]
 				assert.NotNil(t, c)
 				assert.Equal(t, "c", string(c.URN.Name()))
 				assert.Equal(t, a.URN, c.Parent)
-				d := checkpoint.Latest.Resources[4]
+				d := stackInfo.Checkpoint.Latest.Resources[4]
 				assert.NotNil(t, d)
 				assert.Equal(t, "d", string(d.URN.Name()))
 				assert.Equal(t, c.URN, d.Parent)
-				e := checkpoint.Latest.Resources[5]
+				e := stackInfo.Checkpoint.Latest.Resources[5]
 				assert.NotNil(t, e)
 				assert.Equal(t, "e", string(e.URN.Name()))
 				assert.Equal(t, c.URN, e.Parent)
-				f := checkpoint.Latest.Resources[6]
+				f := stackInfo.Checkpoint.Latest.Resources[6]
 				assert.NotNil(t, f)
 				assert.Equal(t, "f", string(f.URN.Name()))
 				assert.Equal(t, stackRes.URN, f.Parent)
-				g := checkpoint.Latest.Resources[7]
+				g := stackInfo.Checkpoint.Latest.Resources[7]
 				assert.NotNil(t, g)
 				assert.Equal(t, "g", string(g.URN.Name()))
 				assert.Equal(t, f.URN, g.Parent)

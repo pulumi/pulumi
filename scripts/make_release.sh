@@ -6,7 +6,7 @@ ROOT=$(dirname $0)/..
 PUBDIR=$(mktemp -du)
 GITHASH=$(git rev-parse HEAD)
 PUBFILE=$(dirname ${PUBDIR})/${GITHASH}.tgz
-VERSION=$(git describe --tags 2>/dev/null)
+VERSION=$(git describe --tags --dirty 2>/dev/null)
 
 # Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
 # Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
@@ -22,7 +22,10 @@ function run_go_build() {
     fi
 
     mkdir -p "${PUBDIR}/bin"
-    go build -ldflags "-X main.version=${VERSION}" -o "${PUBDIR}/bin/${output_name}${bin_suffix}" "$1"
+    go build \
+       -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" \
+       -o "${PUBDIR}/bin/${output_name}${bin_suffix}" \
+       "$1"
 }
 
 # usage: copy_package <path-to-module> <module-name>

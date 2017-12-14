@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -38,7 +37,7 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			col, err := diag.GetColor(debug, color)
+			col, err := GetColor(debug, color)
 			if err != nil {
 				return err
 			}

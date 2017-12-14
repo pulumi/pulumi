@@ -65,53 +65,30 @@ const (
 	Error   Severity = "error"
 )
 
-type Color string
+type Color int
 
 const (
-	Always Color = "always"
-	Never  Color = "never"
-	Raw    Color = "raw"
+	Always Color = iota
+	Never
+	Raw
 )
 
-func GetColor(debug bool, color string) (Color, error) {
-	switch color {
-	case "auto":
-		if debug {
-			// we will use color so long as we're not spewing to debug (which is colorless).
-			return Never, nil
-		}
-
-		return Always, nil
-	case string(Always):
-		return Always, nil
-	case string(Never):
-		return Never, nil
-	case string(Raw):
-		return Raw, nil
-	}
-
-	return Never, fmt.Errorf("unsupported color option: '%s'.  Supported values are: auto, always, never, raw", color)
-}
+var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
 
 func (c Color) Colorize(v string) string {
 	switch c {
-	case "raw":
+	case Raw:
 		// Don't touch the string.  Output control sequences as is.
 		return v
-	case "always":
+	case Always:
 		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
 		return colors.ColorizeText(v)
-	case "never":
+	case Never:
 		// Remove all the colors that any other layers added.
-		return stripColors(v)
+		return tagRegexp.ReplaceAllString(v, "")
 	default:
 		panic("Unexpected color value: " + string(c))
 	}
-}
-
-func stripColors(v string) string {
-	r, _ := regexp.Compile(`<\{%(.*?)%\}>`)
-	return r.ReplaceAllString(v, "")
 }
 
 // FormatOptions controls the output style and content.

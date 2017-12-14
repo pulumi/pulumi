@@ -22,10 +22,6 @@ let leakDetectorScheduled: boolean = false;
  * leakCandidates tracks the list of potential leak candidates.
  */
 const leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
-/**
- * unhandledHandlerScheduled is true when the unhandled promise detector is scheduled for this process.
- */
-let unhandledHandlerScheduled: boolean = false;
 
 function promiseDebugString(p: Promise<any>): string {
     return `CONTEXT: ${(<any>p)._debugCtx}\n` +
@@ -40,19 +36,6 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     // Whack some stack onto the promise.
     (<any>p)._debugCtx = ctx;
     (<any>p)._debugStackTrace = new Error().stack;
-
-    // If the unhandled handler isn't active yet, schedule it.
-    if (!unhandledHandlerScheduled) {
-        process.on("unhandledRejection", (reason, innerPromise) => {
-            if (!log.hasErrors()) {
-                console.error("Unhandled promise rejection:");
-                console.error(reason);
-                console.error(reason.stack);
-                console.error(promiseDebugString(innerPromise));
-            }
-        });
-        unhandledHandlerScheduled = true;
-    }
 
     if (debugPromiseLeaks) {
         // Setup leak detection.

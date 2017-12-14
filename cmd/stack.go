@@ -5,12 +5,12 @@ package cmd
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -53,7 +53,7 @@ func newStackCmd() *cobra.Command {
 				if t := snap.Manifest.Time; t.IsZero() {
 					fmt.Printf("    Last update time unknown\n")
 				} else {
-					fmt.Printf("    Last updated at %v\n", snap.Manifest.Time)
+					fmt.Printf("    Last updated %s (%v)\n", humanize.Time(t), t)
 				}
 				var cliver string
 				if snap.Manifest.Version == "" {
@@ -105,7 +105,7 @@ func newStackCmd() *cobra.Command {
 				}
 
 				// Print out the output properties for the stack, if present.
-				if res, outputs := getRootStackResource(snap); res != nil {
+				if res, outputs := stack.GetRootStackResource(snap); res != nil {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
@@ -132,33 +132,23 @@ func newStackCmd() *cobra.Command {
 	return cmd
 }
 
-// getStackResource returns the root stack resource from a given snapshot, or nil if not found.  If the stack exists,
-// its output properties, if any, are also returned in the resulting map.
-func getRootStackResource(snap *deploy.Snapshot) (*resource.State, map[string]interface{}) {
-	if snap != nil {
-		for _, res := range snap.Resources {
-			if res.Type == resource.RootStackType {
-				return res, stack.SerializeResource(res).Outputs
-			}
-		}
-	}
-	return nil, nil
-
-}
-
 func printStackOutputs(outputs map[string]interface{}) {
 	fmt.Printf("Current stack outputs (%d):\n", len(outputs))
 	if len(outputs) == 0 {
 		fmt.Printf("    No output values currently in this stack\n")
 	} else {
+		maxkey := 48
 		var outkeys []string
 		for outkey := range outputs {
+			if len(outkey) > maxkey {
+				maxkey = len(outkey)
+			}
 			outkeys = append(outkeys, outkey)
 		}
 		sort.Strings(outkeys)
-		fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
+		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
 		for _, key := range outkeys {
-			fmt.Printf("    %-48s %v\n", key, outputs[key])
+			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %v\n", key, outputs[key])
 		}
 	}
 }

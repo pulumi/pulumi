@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -285,7 +286,15 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 	}
 
 	if cfg != nil {
-		fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
+		// Devote 48 characters to the config key, unless there's a key longer, in which case use that.
+		maxkey := 48
+		for key := range cfg {
+			if len(key) > maxkey {
+				maxkey = len(key)
+			}
+		}
+
+		fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", "KEY", "VALUE")
 		var keys []string
 		for key := range cfg {
 			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
@@ -299,7 +308,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 				return errors.Wrap(err, "could not decrypt configuration value")
 			}
 
-			fmt.Printf("%-32s %-32s\n", prettyKey(key), decrypted)
+			fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", prettyKey(key), decrypted)
 		}
 	}
 
