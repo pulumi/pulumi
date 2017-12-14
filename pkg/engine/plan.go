@@ -1014,8 +1014,10 @@ func getTextChangeString(old string, new string) string {
 
 var (
 	shaRegexp         = regexp.MustCompile("__[a-zA-Z0-9]{40}")
-	withRegexp        = regexp.MustCompile(`    with\(\{ .* \}\) \{`)
+	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
 	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
+	preambleRegexp    = regexp.MustCompile(`function __shaHash\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n`)
+	postambleRegexp   = regexp.MustCompile(`    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}\n`)
 )
 
 // massageText takes the text for a function and cleans it up a bit to make the user visible diffs
@@ -1041,18 +1043,27 @@ func massageText(text string) string {
 		return text
 	}
 
-	for {
-		newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
-		if len(newText) == len(text) {
-			break
-		}
+	replaceNewlines := func() {
+		for {
+			newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
+			if len(newText) == len(text) {
+				break
+			}
 
-		text = newText
+			text = newText
+		}
 	}
+
+	replaceNewlines()
 
 	text = shaRegexp.ReplaceAllString(text, "__shaHash")
 	text = withRegexp.ReplaceAllString(text, "    with (__closure) {")
 	text = environmentRegexp.ReplaceAllString(text, "  }).apply(__environment).apply(this, arguments);")
+
+	text = preambleRegexp.ReplaceAllString(text, "")
+	text = postambleRegexp.ReplaceAllString(text, "")
+
+	replaceNewlines()
 
 	return text
 }
@@ -1099,25 +1110,27 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 			}
 			lines = trimmedLines
 
+			const contextLines = 2
+
 			// Show the unchanged text in white.
 			if index == 0 {
 				// First chunk of the file.
-				if len(lines) > 4 {
+				if len(lines) > contextLines+1 {
 					writeDiff(deploy.OpSame, "...\n")
-					printLines(deploy.OpSame, len(lines)-3, len(lines))
+					printLines(deploy.OpSame, len(lines)-contextLines, len(lines))
 					continue
 				}
 			} else if index == len(diffs)-1 {
-				if len(lines) > 4 {
-					printLines(deploy.OpSame, 0, 3)
+				if len(lines) > contextLines+1 {
+					printLines(deploy.OpSame, 0, contextLines)
 					writeDiff(deploy.OpSame, "...\n")
 					continue
 				}
 			} else {
-				if len(lines) > 7 {
-					printLines(deploy.OpSame, 0, 3)
+				if len(lines) > (2*contextLines + 1) {
+					printLines(deploy.OpSame, 0, contextLines)
 					writeDiff(deploy.OpSame, "...\n")
-					printLines(deploy.OpSame, len(lines)-3, len(lines))
+					printLines(deploy.OpSame, len(lines)-contextLines, len(lines))
 					continue
 				}
 			}
