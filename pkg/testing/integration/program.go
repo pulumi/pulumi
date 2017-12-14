@@ -339,7 +339,7 @@ func TestPreviewAndUpdates(
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err := PerformExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
+	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
 		return dir
 	}
 
@@ -387,14 +387,14 @@ func TestEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 	if err = PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
 		return dir
 	}
-	if err = PerformExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
+	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
 		return dir
 	}
 
 	return dir
 }
 
-func PerformExtraRuntimeValidation(
+func performExtraRuntimeValidation(
 	t *testing.T, opts *ProgramTestOptions,
 	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string) error {
 
