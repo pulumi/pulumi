@@ -330,7 +330,7 @@ func testPreviewAndUpdates(
 	testEdits func(*testing.T, *ProgramTestOptions, string) string) string {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-	initErr := PreviewAndUpdate(t, opts, dir, "initial")
+	initErr := previewAndUpdate(t, opts, dir, "initial")
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -340,7 +340,7 @@ func testPreviewAndUpdates(
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := PreviewAndUpdate(t, opts, dir, "empty"); err != nil {
+		if err := previewAndUpdate(t, opts, dir, "empty"); err != nil {
 			return dir
 		}
 	}
@@ -354,7 +354,7 @@ func testPreviewAndUpdates(
 	return testEdits(t, opts, dir)
 }
 
-func PreviewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
+func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	preview := opts.PulumiCmd([]string{"preview"})
 	update := opts.PulumiCmd([]string{"update", "--color=raw"})
 	if opts.GetDebugUpdates() {
@@ -387,7 +387,7 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	var err error
-	dir, err = PrepareProject(t, opts, edit.Dir, dir, edit.Additive)
+	dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
 		return dir
 	}
@@ -411,7 +411,7 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 		opts.Verbose = oldVerbose
 	}()
 
-	if err = PreviewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
+	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
 		return dir
 	}
 	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
@@ -513,7 +513,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
 	// Now copy the source project, excluding the .pulumi directory.
-	dir, err = PrepareProject(t, opts, dir, "", false)
+	dir, err = prepareProject(t, opts, dir, "", false)
 	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
 		return dir, err
 	}
@@ -596,7 +596,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 // PrepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
-func PrepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
+func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
 	stackName := opts.GetStackName()
 
 	var dir string
