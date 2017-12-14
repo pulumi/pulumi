@@ -5,7 +5,9 @@ package cmd
 import (
 	"fmt"
 	"sort"
+	"strconv"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
@@ -51,7 +53,7 @@ func newStackCmd() *cobra.Command {
 				if t := snap.Manifest.Time; t.IsZero() {
 					fmt.Printf("    Last update time unknown\n")
 				} else {
-					fmt.Printf("    Last updated at %v\n", snap.Manifest.Time)
+					fmt.Printf("    Last updated %s (%v)\n", humanize.Time(t), t)
 				}
 				var cliver string
 				if snap.Manifest.Version == "" {
@@ -135,14 +137,18 @@ func printStackOutputs(outputs map[string]interface{}) {
 	if len(outputs) == 0 {
 		fmt.Printf("    No output values currently in this stack\n")
 	} else {
+		maxkey := 48
 		var outkeys []string
 		for outkey := range outputs {
+			if len(outkey) > maxkey {
+				maxkey = len(outkey)
+			}
 			outkeys = append(outkeys, outkey)
 		}
 		sort.Strings(outkeys)
-		fmt.Printf("    %-48s %s\n", "OUTPUT", "VALUE")
+		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
 		for _, key := range outkeys {
-			fmt.Printf("    %-48s %v\n", key, outputs[key])
+			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %v\n", key, outputs[key])
 		}
 	}
 }

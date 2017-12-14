@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/dustin/go-humanize"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -69,7 +70,16 @@ func newStackLsCmd() *cobra.Command {
 
 			// Finally, print them all.
 			if success {
-				fmt.Printf("%-32s %-42s %-18s %-25s\n", "NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
+				// Devote 48 characters to the name width, unless there is a longer name.
+				maxname := 48
+				for _, name := range stackNames {
+					if len(name) > maxname {
+						maxname = len(name)
+					}
+				}
+
+				fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
+					"NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
 				for _, name := range stackNames {
 					// Mark the name as current '*' if we've selected it.
 					stack := stacks[name]
@@ -83,7 +93,7 @@ func newStackLsCmd() *cobra.Command {
 					resourceCount := none
 					if snap := stack.Snapshot(); snap != nil {
 						if t := snap.Manifest.Time; !t.IsZero() {
-							lastUpdate = t.String()
+							lastUpdate = humanize.Time(t)
 						}
 						resourceCount = strconv.Itoa(len(snap.Resources))
 					}
@@ -96,7 +106,8 @@ func newStackLsCmd() *cobra.Command {
 						cloudInfo = none
 					}
 
-					fmt.Printf("%-32s %-42s %-18s %-25s\n", name, lastUpdate, resourceCount, cloudInfo)
+					fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
+						name, lastUpdate, resourceCount, cloudInfo)
 				}
 
 				// If we aren't logged into any clouds, print a warning, since it could be a mistake.
