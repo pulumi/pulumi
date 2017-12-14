@@ -1016,8 +1016,8 @@ var (
 	shaRegexp         = regexp.MustCompile("__[a-zA-Z0-9]{40}")
 	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
 	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
-	preambleRegexp    = regexp.MustCompile(`function __shaHash\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n`)
-	postambleRegexp   = regexp.MustCompile(`    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}\n`)
+	preambleRegexp    = regexp.MustCompile(`function __shaHash\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn \(`)
+	postambleRegexp   = regexp.MustCompile(`\)\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
 )
 
 // massageText takes the text for a function and cleans it up a bit to make the user visible diffs
