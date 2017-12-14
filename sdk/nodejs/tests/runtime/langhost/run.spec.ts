@@ -310,6 +310,12 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: res };
             },
         },
+        // A program that contains an unhandled promise rejection.
+        "unhandled_promise_rejection": {
+            program: path.join(base, "013.unhandled_promise_rejection"),
+            expectResourceCount: 0,
+            expectError: "Program exited with non-zero exit code: 1",
+        },
     };
 
     for (const casename of Object.keys(cases)) {
