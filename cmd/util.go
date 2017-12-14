@@ -135,11 +135,11 @@ func GetColor(debug bool, color string) (diag.Color, error) {
 		}
 
 		return diag.Always, nil
-	case string(diag.Always):
+	case "always":
 		return diag.Always, nil
-	case string(diag.Never):
+	case "never":
 		return diag.Never, nil
-	case string(diag.Raw):
+	case "raw":
 		return diag.Raw, nil
 	}
 

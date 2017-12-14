@@ -65,12 +65,12 @@ const (
 	Error   Severity = "error"
 )
 
-type Color string
+type Color int
 
 const (
-	Always Color = "always"
-	Never  Color = "never"
-	Raw    Color = "raw"
+	Always Color = iota
+	Never
+	Raw
 )
 
 var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
