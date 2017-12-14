@@ -588,7 +588,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	return runerr
 }
 
-// PrepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
+// prepareProject copies the source directory, src (excluding .pulumi), to a new temporary directory.  It then copies
 // .pulumi/ and Pulumi.yaml from origin, if any, for edits.  The function returns the newly resulting directory.
 func prepareProject(t *testing.T, opts *ProgramTestOptions, src, origin string, additive bool) (string, error) {
 	stackName := opts.GetStackName()
