@@ -1,1 +1,1 @@
-throw new Error("💥  goes the dynamite");
+throw new Error("💥 goes the dynamite");
