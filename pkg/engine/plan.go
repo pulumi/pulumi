@@ -1012,6 +1012,12 @@ func getTextChangeString(old string, new string) string {
 	return fmt.Sprintf("%s->%s", old, new)
 }
 
+var (
+	shaRegexp         = regexp.MustCompile("__[a-zA-Z0-9]{40}")
+	withRegexp        = regexp.MustCompile(`    with\(\{ .* \}\) \{`)
+	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
+)
+
 // massageText takes the text for a function and cleans it up a bit to make the user visible diffs
 // less noisy.  Specifically:
 //   1. it tries to condense things by changling multiple blank lines into a single blank line.
@@ -1026,11 +1032,12 @@ func getTextChangeString(old string, new string) string {
 //   2. Have our resource generation code supply not just the resource, but the "user presentable"
 //      resource that cuts out a lot of cruft.  We could then just diff that content here.
 func massageText(text string) string {
-	shaRegexp, _ := regexp.Compile("__[a-zA-Z0-9]{40}")
-	closureRegexp, _ := regexp.Compile(`    with\(\{ .* \}\) \{`)
 
 	// Only do this for strings that match our serialized function pattern.
-	if !shaRegexp.MatchString(text) || !closureRegexp.MatchString(text) {
+	if !shaRegexp.MatchString(text) ||
+		!withRegexp.MatchString(text) ||
+		!environmentRegexp.MatchString(text) {
+
 		return text
 	}
 
@@ -1044,7 +1051,8 @@ func massageText(text string) string {
 	}
 
 	text = shaRegexp.ReplaceAllString(text, "__shaHash")
-	text = closureRegexp.ReplaceAllString(text, "    with (__closure) {")
+	text = withRegexp.ReplaceAllString(text, "    with (__closure) {")
+	text = environmentRegexp.ReplaceAllString(text, "  }).apply(__environment).apply(this, arguments);")
 
 	return text
 }
