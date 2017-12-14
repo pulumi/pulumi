@@ -118,9 +118,9 @@ export function main(args: string[]): void {
     const programArgs: string[] = argv._.slice(1);
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
-    // Set up the process unhandled exception handler and the program exit handler.
+    // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
     let uncaught: Error | undefined;
-    process.on("uncaughtException", (err: Error) => {
+    const uncaughtHandler = (err: Error) => {
         // First, log the error.
         if (err instanceof RunError) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
@@ -134,7 +134,9 @@ export function main(args: string[]): void {
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
         uncaught = err;
-    });
+    };
+    process.on("uncaughtException", uncaughtHandler);
+    process.on("unhandledRejection", uncaughtHandler);
 
     process.on("exit", (code: number) => {
         runtime.disconnectSync();
