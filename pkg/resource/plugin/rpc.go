@@ -16,10 +16,11 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	SkipNulls          bool // true to skip nulls altogether in the resulting map.
-	KeepUnknowns       bool // true if we are keeping unknown values (otherwise we skip them).
-	ElideAssetContents bool // true if we are eliding the contents of assets.
-	ComputeAssetHashes bool // true if we are computing missing asset hashes on the fly.
+	Label              string // an optional label for debugging.
+	SkipNulls          bool   // true to skip nulls altogether in the resulting map.
+	KeepUnknowns       bool   // true if we are keeping unknown values (otherwise we skip them).
+	ElideAssetContents bool   // true if we are eliding the contents of assets.
+	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
 }
 
 const (
@@ -51,11 +52,11 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
-		glog.V(9).Infof("Marshaling property for RPC: %v=%v", key, v)
+		glog.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
 		if v.IsOutput() {
-			glog.V(9).Infof("Skipping output property %v", key)
+			glog.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
 		} else if opts.SkipNulls && v.IsNull() {
-			glog.V(9).Infof("Skipping null property %v (as requested)", key)
+			glog.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
 		} else {
 			m, err := MarshalPropertyValue(v, opts)
 			if err != nil {
@@ -126,7 +127,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		return nil, nil // return nil and the caller will ignore it.
 	}
 
-	contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
+	contract.Failf("Unrecognized property value in RPC[%s]: %v (type=%v)", opts.Label, v.V, reflect.TypeOf(v.V))
 	return nil, nil
 }
 
@@ -161,7 +162,7 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 		return MarshalNull(opts)
 	}
 
-	contract.Failf("Unexpected output/computed property element: %v", elem)
+	contract.Failf("Unexpected output/computed property element in RPC[%s]: %v", opts.Label, elem)
 	return nil
 }
 
@@ -185,9 +186,9 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 		if err != nil {
 			return nil, err
 		} else if v != nil {
-			glog.V(9).Infof("Unmarshaling property for RPC: %v=%v", key, v)
+			glog.V(9).Infof("Unmarshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
 			if opts.SkipNulls && v.IsNull() {
-				glog.V(9).Infof("Skipping unmarshaling of %v (it is null)", key)
+				glog.V(9).Infof("Skipping unmarshaling for RPC: %s is null", opts.Label, key)
 			} else {
 				result[pk] = *v
 			}
@@ -277,7 +278,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		return &m, nil
 
 	default:
-		contract.Failf("Unrecognized structpb value kind: %v", reflect.TypeOf(v.Kind))
+		contract.Failf("Unrecognized structpb value kind in RPC[%s]: %v", opts.Label, reflect.TypeOf(v.Kind))
 		return nil, nil
 	}
 }

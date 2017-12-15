@@ -255,8 +255,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	}
 
 	// Now unpack all of the arguments and prepare to perform the invocation.
+	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{KeepUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
@@ -267,7 +268,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{KeepUnknowns: true})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
 	}
@@ -286,16 +287,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	req *lumirpc.RegisterResourceRequest) (*lumirpc.RegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
+	t := tokens.Type(req.GetType())
+	name := tokens.QName(req.GetName())
+	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
+	custom := req.GetCustom()
+	parent := resource.URN(req.GetParent())
 	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetObject(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
 	if err != nil {
 		return nil, err
 	}
 
-	t := tokens.Type(req.GetType())
-	name := tokens.QName(req.GetName())
-	custom := req.GetCustom()
-	parent := resource.URN(req.GetParent())
 	glog.V(5).Infof("ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v",
 		t, name, custom, len(props), parent)
 
@@ -322,7 +324,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(props, plugin.MarshalOptions{KeepUnknowns: true})
+	obj, err := plugin.MarshalProperties(props, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +347,9 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	if urn == "" {
 		return nil, errors.New("missing required URN")
 	}
+	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)
 	outs, err := plugin.UnmarshalProperties(
-		req.GetOutputs(), plugin.MarshalOptions{KeepUnknowns: true, ComputeAssetHashes: true})
+		req.GetOutputs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
 	}

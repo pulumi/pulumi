@@ -48,16 +48,22 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) 
 
 func (p *provider) Pkg() tokens.Package { return p.pkg }
 
+// label returns a base label for tracing functions.
+func (p *provider) label() string {
+	return fmt.Sprintf("Provider[%s]", p.pkg)
+}
+
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
-	glog.V(7).Infof("resource[%v].Configure(#vars=%v) executing", p.pkg, len(vars))
+	label := fmt.Sprintf("%s.Configure()", p.label())
+	glog.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
 	config := make(map[string]string)
 	for k, v := range vars {
 		config[string(k)] = v
 	}
 	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Configure(#vars=%v,...) failed: err=%v", p.pkg, len(vars), err)
+		glog.V(7).Infof("%s failed: err=%v", label, err)
 		return err
 	}
 	return nil
@@ -67,13 +73,16 @@ func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
 
-	glog.V(7).Infof("resource[%v].Check(urn=%v,#olds=%v,#news=%v) executing", p.pkg, urn, len(olds), len(news))
+	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
+	glog.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{KeepUnknowns: true})
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{KeepUnknowns: true})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -84,14 +93,15 @@ func (p *provider) Check(urn resource.URN,
 		News: mnews,
 	})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Check(urn=%v,...) failed: err=%v", p.pkg, urn, err)
+		glog.V(7).Infof("%s failed: err=%v", label, err)
 		return nil, nil, err
 	}
 
 	// Unmarshal the provider inputs.
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
-		inputs, err = UnmarshalProperties(ins, MarshalOptions{KeepUnknowns: true})
+		inputs, err = UnmarshalProperties(ins, MarshalOptions{
+			Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -103,8 +113,7 @@ func (p *provider) Check(urn resource.URN,
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	glog.V(7).Infof("resource[%v].Check(urn=%v,...) success: inputs=#%v failures=#%v",
-		p.pkg, urn, len(inputs), len(failures))
+	glog.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
 	return inputs, failures, nil
 }
 
@@ -115,14 +124,17 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
-	glog.V(7).Infof("resource[%v].Diff(id=%v,urn=%v,#olds=%v,#news=%v) executing",
-		p.pkg, id, urn, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{ElideAssetContents: true})
+	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
+	glog.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{KeepUnknowns: true})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -134,7 +146,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Diff(id=%v,urn=%v,...) failed: %v", p.pkg, id, urn, err)
+		glog.V(7).Infof("%s failed: %v", label, err)
 		return DiffResult{}, err
 	}
 
@@ -147,8 +159,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		stables = append(stables, resource.PropertyKey(stable))
 	}
 	dbr := resp.GetDeleteBeforeReplace()
-	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success: #replaces=%v #stables=%v delbefrepl=%v",
-		p.pkg, id, urn, len(replaces), len(stables), dbr)
+	glog.V(7).Infof("%s success: #replaces=%d #stables=%d delbefrepl=%v",
+		label, len(replaces), len(stables), dbr)
 	return DiffResult{
 		ReplaceKeys:         replaces,
 		StableKeys:          stables,
@@ -161,9 +173,12 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
-	glog.V(7).Infof("resource[%v].Create(urn=%v,#props=%v) executing", p.pkg, urn, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{})
+	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
+	glog.V(7).Infof("%s executing (#props=%v)", label, len(props))
+
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label: fmt.Sprintf("%s.inputs", label)})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -173,7 +188,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		Properties: mprops,
 	})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Create(urn=%v,...) failed: err=%v", p.pkg, urn, err)
+		glog.V(7).Infof("%s failed: err=%v", label, err)
 		return "", nil, resource.StatusUnknown, err
 	}
 
@@ -183,12 +198,13 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
 
-	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+		Label: fmt.Sprintf("%s.outputs", label)})
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
 	}
 
-	glog.V(7).Infof("resource[%v].Create(urn=%v,...) success: id=%v; #outs=%v", p.pkg, urn, id, len(outs))
+	glog.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 	return id, outs, resource.StatusOK, nil
 }
 
@@ -199,14 +215,17 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
-	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,#olds=%v,#news=%v) executing",
-		p.pkg, id, urn, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{ElideAssetContents: true})
+	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
+	glog.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
+
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{})
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label: fmt.Sprintf("%s.news", label)})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
@@ -220,16 +239,17 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	resp, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) failed: %v", p.pkg, id, urn, err)
+		glog.V(7).Infof("%s failed: %v", label, err)
 		return nil, resource.StatusUnknown, err
 	}
 
-	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+		Label: fmt.Sprintf("%s.outputs", label)})
 	if err != nil {
 		return nil, resource.StatusUnknown, err
 	}
 
-	glog.V(7).Infof("resource[%v].Update(id=%v,urn=%v,...) success; #out=%v", p.pkg, id, urn, len(outs))
+	glog.V(7).Infof("%s success; #outs=%d", label, len(outs))
 	return outs, resource.StatusOK, nil
 }
 
@@ -238,12 +258,14 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
-	mprops, err := MarshalProperties(props, MarshalOptions{ElideAssetContents: true})
+	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
+	glog.V(7).Infof("%s executing (#props=%d)", label, len(props))
+
+	mprops, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
 	if err != nil {
 		return resource.StatusOK, err
 	}
 
-	glog.V(7).Infof("resource[%v].Delete(id=%v,urn=%v) executing", p.pkg, id, urn)
 	req := &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
@@ -251,11 +273,11 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
-		glog.V(7).Infof("resource[%v].Delete(id=%v,urn=%v) failed: %v", p.pkg, id, urn, err)
+		glog.V(7).Infof("%s failed: %v", label, err)
 		return resource.StatusUnknown, err
 	}
 
-	glog.V(7).Infof("resource[%v].Delete(id=%v,urn=%v) success", p.pkg, id, urn)
+	glog.V(7).Infof("%s success", label)
 	return resource.StatusOK, nil
 }
 
@@ -264,20 +286,24 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	[]CheckFailure, error) {
 	contract.Assert(tok != "")
 
-	margs, err := MarshalProperties(args, MarshalOptions{KeepUnknowns: true})
+	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
+	glog.V(7).Infof("%s executing (#args=%d)", label, len(args))
+
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label: fmt.Sprintf("%s.args", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v) executing", tok, len(args))
 	resp, err := p.client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v) failed: %v", p.pkg, tok, len(args), err)
+		glog.V(7).Infof("%s failed: %v", label, err)
 		return nil, nil, err
 	}
 
 	// Unmarshal any return values.
-	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{KeepUnknowns: true})
+	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
+		Label: fmt.Sprintf("%s.returns", label), KeepUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -288,17 +314,17 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	glog.V(7).Infof("resource[%v].Invoke(tok=%v,#args=%v,#ret=%v,#failures=%v) success",
-		p.pkg, tok, len(args), len(ret), len(failures))
+	glog.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
 	return ret, failures, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (p *provider) GetPluginInfo() (Info, error) {
-	glog.V(7).Infof("resource[%v].GetPluginInfo() executing", p.pkg)
+	label := fmt.Sprintf("%s.GetPluginInfo()", p.label())
+	glog.V(7).Infof("%s executing", label)
 	resp, err := p.client.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		glog.V(7).Infof("resource[%v].GetPluginInfo() failed: err=%v", p.pkg, err)
+		glog.V(7).Infof("%s failed: err=%v", label, err)
 		return Info{}, err
 	}
 	return Info{

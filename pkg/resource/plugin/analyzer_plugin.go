@@ -46,9 +46,15 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 func (a *analyzer) Name() tokens.QName { return a.name }
 
+// label returns a base label for tracing functions.
+func (a *analyzer) label() string {
+	return fmt.Sprintf("Analyzer[%s]", a.name)
+}
+
 // Analyze analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
-	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,#props=%v) executing", a.name, t, len(props))
+	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
+	glog.V(7).Infof("%s executing (#props=%d)", label, len(props))
 	mprops, err := MarshalProperties(props, MarshalOptions{})
 	if err != nil {
 		return nil, err
@@ -59,7 +65,7 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 		Properties: mprops,
 	})
 	if err != nil {
-		glog.V(7).Infof("analyzer[%v].Analyze(t=%v,...) failed: err=%v", a.name, t, err)
+		glog.V(7).Infof("%s failed: err=%v", label, err)
 		return nil, err
 	}
 
@@ -70,16 +76,17 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 			Reason:   failure.Reason,
 		})
 	}
-	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,...) success: failures=#%v", a.name, t, len(failures))
+	glog.V(7).Infof("%s success: failures=#%d", label, len(failures))
 	return failures, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (a *analyzer) GetPluginInfo() (Info, error) {
-	glog.V(7).Infof("analyzer[%v].GetPluginInfo() executing", a.name)
+	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
+	glog.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		glog.V(7).Infof("analyzer[%v].GetPluginInfo() failed: err=%v", a.name, err)
+		glog.V(7).Infof("%s failed: err=%v", a.label(), err)
 		return Info{}, err
 	}
 	return Info{
