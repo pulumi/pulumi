@@ -32,7 +32,7 @@ func TestExamples(t *testing.T) {
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, minimal.StackName(), stackInfo.Checkpoint.Stack)
+			assert.Equal(t, minimal.GetStackName(), stackInfo.Checkpoint.Stack)
 		},
 		ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
 	}

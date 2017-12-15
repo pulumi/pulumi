@@ -1,0 +1,3 @@
+name: steps
+description: A program that exercises all possible Pulumi resource steps.
+runtime: nodejs
