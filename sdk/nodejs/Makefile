@@ -33,6 +33,6 @@ install::
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
 test_fast::
-	istanbul cover --print none _mocha -- --timeout 15000 'bin/tests/runtime/closure.spec.js'
+	istanbul cover --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
