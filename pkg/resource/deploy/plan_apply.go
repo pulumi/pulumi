@@ -281,8 +281,10 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	// Check for an old resource before going any further.
 	old, hasold := iter.p.Olds()[urn]
 	var olds resource.PropertyMap
+	var oldouts resource.PropertyMap
 	if hasold {
 		olds = old.Inputs
+		oldouts = old.Outputs
 	}
 
 	// Fetch the provider for this resource type, assuming it isn't just a logical one.
@@ -298,7 +300,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	news, inputs := new.Inputs, new.Inputs
 	if prov != nil {
 		var failures []plugin.CheckFailure
-		inputs, failures, err = prov.Check(urn, olds, news)
+		inputs, failures, err = prov.Check(urn, oldouts, news)
 		if err != nil {
 			return nil, err
 		} else if iter.issueCheckErrors(new, urn, failures) {
@@ -352,7 +354,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 			// The properties changed; we need to figure out whether to do an update or replacement.
 			var diff plugin.DiffResult
 			if prov != nil {
-				if diff, err = prov.Diff(urn, old.ID, olds, inputs); err != nil {
+				if diff, err = prov.Diff(urn, old.ID, oldouts, inputs); err != nil {
 					return nil, err
 				}
 			}
