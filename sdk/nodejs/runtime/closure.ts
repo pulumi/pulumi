@@ -672,7 +672,7 @@ export function serializeJavaScriptText(c: Closure): string {
             "function " + name + "() {\n" +
             "  return (function() {\n" +
             "    with(" + envObjToString(environment) + ") {\n" +
-            "      return (/*<user-code>*/" + funcs[name].code + "/*</user-code>*/)\n" +
+            "      return (/*<user-code>*/" + funcs[name].code + "/*</user-code>*/);\n" +
             "    }\n" +
             "  }).apply(" + thisCapture + ", " + argumentsCapture + ").apply(this, arguments);\n" +
             "}\n";
