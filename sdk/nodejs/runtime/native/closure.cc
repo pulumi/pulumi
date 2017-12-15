@@ -101,10 +101,7 @@ Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
         }
     }
 
-    // Wrap the serialized function text in ()s so that it's a legal top-level script/module element.
-    return String::Concat(
-        String::Concat(String::NewFromUtf8(isolate, "("), code),
-            String::NewFromUtf8(isolate, ")"));
+    return code;
 }
 #undef BAD_PREFIX
 #undef STRLEN_LITERAL_ONLY
