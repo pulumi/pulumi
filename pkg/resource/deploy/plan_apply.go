@@ -284,7 +284,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	var oldouts resource.PropertyMap
 	if hasold {
 		olds = old.Inputs
-		oldouts = old.Outputs
+		oldouts = old.All()
 	}
 
 	// Fetch the provider for this resource type, assuming it isn't just a logical one.
