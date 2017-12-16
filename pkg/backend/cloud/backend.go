@@ -484,7 +484,7 @@ func Login(cloudURL string) error {
 	}
 
 	// Save them.
-	return workspace.StoreAccessToken(cloudURL, accessToken)
+	return workspace.StoreAccessToken(cloudURL, accessToken, true)
 }
 
 // isValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
@@ -507,25 +507,37 @@ func Logout(cloudURL string) error {
 }
 
 // CurrentBackends returns a list of the cloud backends the user is currently logged into.
-func CurrentBackends(d diag.Sink) ([]Backend, error) {
-	creds, err := workspace.GetStoredCredentials()
+func CurrentBackends(d diag.Sink) ([]Backend, string, error) {
+	urls, current, err := CurrentBackendURLs()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var backends []Backend
+	for _, url := range urls {
+		backends = append(backends, New(d, url))
+	}
+	return backends, current, nil
+}
+
+// CurrentBackendURLs returns a list of the cloud backend URLS the user is currently logged into.
+func CurrentBackendURLs() ([]string, string, error) {
+	creds, err := workspace.GetStoredCredentials()
+	if err != nil {
+		return nil, "", err
+	}
+
+	var current string
+	var cloudURLs []string
 	if creds.AccessTokens != nil {
+		current = creds.Current
+
 		// Sort the URLs so that we return them in a deterministic order.
-		var cloudURLs []string
 		for url := range creds.AccessTokens {
 			cloudURLs = append(cloudURLs, url)
 		}
 		sort.Strings(cloudURLs)
-
-		for _, url := range cloudURLs {
-			backends = append(backends, New(d, url))
-		}
 	}
 
-	return backends, nil
+	return cloudURLs, current, nil
 }

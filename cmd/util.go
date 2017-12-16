@@ -29,7 +29,7 @@ func allBackends() ([]backend.Backend, bool) {
 	// in addition to all of those cloud backends we are currently logged into.
 	d := cmdutil.Diag()
 	backends := []backend.Backend{local.New(d)}
-	cloudBackends, err := cloud.CurrentBackends(d)
+	cloudBackends, _, err := cloud.CurrentBackends(d)
 	if err != nil {
 		// Print the error, but keep going so that the local operations still occur.
 		_, fmterr := fmt.Fprintf(os.Stderr, "error: could not obtain current cloud backends: %v", err)

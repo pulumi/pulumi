@@ -30,18 +30,38 @@ const (
 )
 
 // DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
-// variable.  If no override is found, the default is the pulumi.com cloud.
+// variable.  If no override is found, and we are authenticated with only one cloud, choose that.  Otherwise,
+// we will default to the https://api.pulumi.com/ endpoint.
 func DefaultURL() string {
-	cloudURL := os.Getenv(defaultURLEnvVar)
-	return ValueOrDefaultURL(cloudURL)
+	return ValueOrDefaultURL("")
 }
 
 // ValueOrDefaultURL returns the value if specified, or the default cloud URL otherwise.
 func ValueOrDefaultURL(cloudURL string) string {
-	if cloudURL == "" {
-		cloudURL = defaultURL
+	// If we have a cloud URL, just return it.
+	if cloudURL != "" {
+		return cloudURL
 	}
-	return cloudURL
+
+	// Otherwise, respect the PULUMI_API override.
+	if cloudURL := os.Getenv(defaultURLEnvVar); cloudURL != "" {
+		return cloudURL
+	}
+
+	// If that didn't work, see if we're authenticated with any clouds.
+	urls, current, err := CurrentBackendURLs()
+	if err == nil {
+		if current != "" {
+			// If there's a current cloud selected, return that.
+			return current
+		} else if len(urls) == 1 {
+			// Else, if we're authenticated with a single cloud, use that.
+			return urls[0]
+		}
+	}
+
+	// If none of those led to a cloud URL, simply return the default.
+	return defaultURL
 }
 
 // cloudProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
@@ -93,6 +113,8 @@ func pulumiRESTCall(cloudAPI, method, path string, reqObj interface{}, respObj i
 	token, err := workspace.GetAccessToken(cloudAPI)
 	if err != nil {
 		return fmt.Errorf("getting stored credentials: %v", err)
+	} else if token == "" {
+		return fmt.Errorf("not yet authenticated with %s; please 'pulumi login' first", cloudAPI)
 	}
 	return pulumiRESTCallWithAccessToken(cloudAPI, method, path, reqObj, respObj, token)
 }

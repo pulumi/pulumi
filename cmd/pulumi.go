@@ -50,13 +50,17 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
 
-		loggedInto, logErr := cloud.CurrentBackends(cmdutil.Diag())
+		loggedInto, current, logErr := cloud.CurrentBackends(cmdutil.Diag())
 		contract.IgnoreError(logErr) // we want to make progress anyway.
 		if len(loggedInto) > 0 {
 			fmt.Printf("\n")
 			fmt.Printf("Currently logged into the Pulumi Cloud ☁️\n")
 			for _, be := range loggedInto {
-				fmt.Printf("    %s\n", be.Name())
+				var marker string
+				if be.Name() == current {
+					marker = "*"
+				}
+				fmt.Printf("    %s%s\n", be.Name(), marker)
 			}
 		}
 	})
