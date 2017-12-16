@@ -39,11 +39,14 @@ func DeleteAccessToken(key string) error {
 	if creds.AccessTokens != nil {
 		delete(creds.AccessTokens, key)
 	}
+	if creds.Current == key {
+		creds.Current = ""
+	}
 	return StoreCredentials(creds)
 }
 
 // StoreAccessToken saves the given access token underneath the given key.
-func StoreAccessToken(key string, token string) error {
+func StoreAccessToken(key string, token string, current bool) error {
 	creds, err := GetStoredCredentials()
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -52,13 +55,17 @@ func StoreAccessToken(key string, token string) error {
 		creds.AccessTokens = make(map[string]string)
 	}
 	creds.AccessTokens[key] = token
+	if current {
+		creds.Current = key
+	}
 	return StoreCredentials(creds)
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
 // a map from the cloud API URL to the associated access token.
 type Credentials struct {
-	AccessTokens map[string]string `json:"accessTokens"`
+	Current      string            `json:"current,omitempty"`      // the currently selected key.
+	AccessTokens map[string]string `json:"accessTokens,omitempty"` // a map of arbitrary key strings to tokens.
 }
 
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
