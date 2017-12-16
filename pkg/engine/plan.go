@@ -460,7 +460,7 @@ func printObject(
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, indent int) {
+	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, planning bool, indent int) {
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New()
 	if new == nil || new.Outputs == nil {
@@ -497,7 +497,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 					firstout = false
 				}
 				printPropertyTitle(b, string(k), maxkey, indent, op, false)
-				printPropertyValue(b, out, false, indent, op, false)
+				printPropertyValue(b, out, planning, indent, op, false)
 			}
 		}
 	}

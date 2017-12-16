@@ -128,7 +128,7 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, 0 /*indent*/)
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, true, 0 /*indent*/)
 		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 	}
 	return nil
