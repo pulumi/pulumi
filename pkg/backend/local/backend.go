@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -251,6 +252,7 @@ func getLocalStacks() ([]tokens.QName, error) {
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
 		_, _, _, err := getStack(name)
 		if err != nil {
+			glog.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.
 		}
 
