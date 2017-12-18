@@ -446,16 +446,28 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 }
 
 func printEvent(event apitype.UpdateEvent) {
-	stream := os.Stdout // Ignoring event.Kind which could be StderrEvent.
-	rawEntry, ok := event.Fields["text"]
-	if !ok || rawEntry == nil {
-		return
+	// Pluck out the string.
+	if raw, ok := event.Fields["text"]; ok && raw != nil {
+		if text, ok := raw.(string); ok {
+			// Colorize by default, but honor the engine's settings, if any.
+			if colorize, ok := event.Fields["colorize"].(string); ok {
+				text = colors.Colorization(colorize).Colorize(text)
+			} else {
+				text = colors.ColorizeText(text)
+			}
+
+			// Choose the stream to write to (by default stdout).
+			var stream io.Writer
+			if apitype.UpdateEventKind(event.Kind) == apitype.StderrEvent {
+				stream = os.Stderr
+			} else {
+				stream = os.Stdout
+			}
+
+			// And write to it.
+			fmt.Fprint(stream, text)
+		}
 	}
-	text := rawEntry.(string)
-	if colorize, ok := event.Fields["colorize"].(bool); ok && colorize {
-		text = colors.ColorizeText(text)
-	}
-	fmt.Fprint(stream, text)
 }
 
 // Login logs into the target cloud URL.

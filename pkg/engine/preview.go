@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -21,7 +22,7 @@ type PreviewOptions struct {
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
-	Color                diag.Color
+	Color                colors.Colorization
 }
 
 func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts PreviewOptions) error {

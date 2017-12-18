@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"sync"
 
@@ -65,37 +64,11 @@ const (
 	Error   Severity = "error"
 )
 
-type Color int
-
-const (
-	Always Color = iota
-	Never
-	Raw
-)
-
-var tagRegexp = regexp.MustCompile(`<\{%(.*?)%\}>`)
-
-func (c Color) Colorize(v string) string {
-	switch c {
-	case Raw:
-		// Don't touch the string.  Output control sequences as is.
-		return v
-	case Always:
-		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
-		return colors.ColorizeText(v)
-	case Never:
-		// Remove all the colors that any other layers added.
-		return tagRegexp.ReplaceAllString(v, "")
-	default:
-		panic("Unexpected color value: " + string(c))
-	}
-}
-
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Pwd   string // the working directory.
-	Color Color  // how output should be colorized.
-	Debug bool   // if true, debugging will be output to stdout.
+	Pwd   string              // the working directory.
+	Color colors.Colorization // how output should be colorized.
+	Debug bool                // if true, debugging will be output to stdout.
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
@@ -224,10 +197,6 @@ func (d *defaultSink) getCount(sev Severity) int {
 	return d.counts[sev]
 }
 
-func (d *defaultSink) getColor() Color {
-	return d.opts.Color
-}
-
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {
 	var buffer bytes.Buffer
 
@@ -280,7 +249,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	s := buffer.String()
 
 	// If colorization was requested, compile and execute the directives now.
-	return d.getColor().Colorize(s)
+	return d.opts.Color.Colorize(s)
 }
 
 func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Location) string {
@@ -315,7 +284,7 @@ func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Locati
 		s = buffer.String()
 
 		// If colorization was requested, compile and execute the directives now.
-		s = d.getColor().Colorize(s)
+		s = d.opts.Color.Colorize(s)
 	}
 
 	return s

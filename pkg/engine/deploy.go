@@ -19,15 +19,15 @@ import (
 )
 
 type DeployOptions struct {
-	Package              string     // the package we are deploying (or "" to use the default)
-	Analyzers            []string   // an optional set of analyzers to run as part of this deployment.
-	DryRun               bool       // true if we should just print the plan without performing it.
-	Parallel             int        // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool       // true to show the configuration variables being used.
-	ShowReplacementSteps bool       // true to show the replacement steps in the plan.
-	ShowSames            bool       // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool       // true if we should only summarize resources and operations.
-	Color                diag.Color // How output should be colorized.
+	Package              string              // the package we are deploying (or "" to use the default)
+	Analyzers            []string            // an optional set of analyzers to run as part of this deployment.
+	DryRun               bool                // true if we should just print the plan without performing it.
+	Parallel             int                 // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool                // true to show the configuration variables being used.
+	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
+	ShowSames            bool                // true to show the resources that aren't updated in addition to updates.
+	Summary              bool                // true if we should only summarize resources and operations.
+	Color                colors.Colorization // How output should be colorized.
 }
 
 func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOptions) error {
@@ -69,7 +69,7 @@ type deployOptions struct {
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
-	Color                diag.Color
+	Color                colors.Colorization
 	Detailed             bool         // true to show very detailed output, like properties that haven't changed.
 	DOT                  bool         // true if we should print the DOT file for this plan.
 	Events               chan<- Event // the channel to write events from the engine to.
