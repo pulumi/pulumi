@@ -4,6 +4,7 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -13,7 +14,7 @@ type DestroyOptions struct {
 	DryRun   bool
 	Parallel int
 	Summary  bool
-	Color    diag.Color
+	Color    colors.Colorization
 }
 
 func (eng *Engine) Destroy(stack tokens.QName, events chan<- Event, opts DestroyOptions) error {

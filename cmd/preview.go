@@ -43,7 +43,7 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			col, err := GetColor(debug, color)
+			col, err := parseColorization(debug, color)
 			if err != nil {
 				return err
 			}

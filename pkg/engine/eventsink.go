@@ -66,7 +66,7 @@ func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	if glog.V(9) {
 		glog.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagDebugEvent(s.opts.Color, msg)
+	s.events <- diagDebugEvent(msg, s.opts.Color)
 	s.incrementCount(diag.Debug)
 }
 
@@ -75,7 +75,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoEvent(s.opts.Color, msg)
+	s.events <- diagInfoEvent(msg, s.opts.Color)
 	s.incrementCount(diag.Info)
 }
 
@@ -84,7 +84,7 @@ func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoerrEvent(s.opts.Color, msg)
+	s.events <- diagInfoerrEvent(msg, s.opts.Color)
 	s.incrementCount(diag.Infoerr)
 }
 
@@ -93,7 +93,7 @@ func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagErrorEvent(s.opts.Color, msg)
+	s.events <- diagErrorEvent(msg, s.opts.Color)
 	s.incrementCount(diag.Error)
 }
 
@@ -102,7 +102,7 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagWarningEvent(s.opts.Color, msg)
+	s.events <- diagWarningEvent(msg, s.opts.Color)
 	s.incrementCount(diag.Warning)
 }
 
@@ -116,11 +116,6 @@ func (s *eventSink) getCount(sev diag.Severity) int {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.counts[sev]
-}
-
-func (s *eventSink) getColor(sev diag.Severity) diag.Color {
-	// we will use color so long as we're not spewing to debug (which is colorless).
-	return s.opts.Color
 }
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) string {
@@ -172,7 +167,7 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
 	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
-	return s.getColor(sev).Colorize(buffer.String())
+	return s.opts.Color.Colorize(buffer.String())
 }
 
 func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc *diag.Location) string {
@@ -204,5 +199,5 @@ func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc
 	// Reset the color if we wrote anything
 	buffer.WriteString(colors.Reset)
 
-	return s.getColor(sev).Colorize(buffer.String())
+	return s.opts.Color.Colorize(buffer.String())
 }

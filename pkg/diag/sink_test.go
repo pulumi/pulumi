@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
 func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
-	return newDefaultSink(FormatOptions{Color: Always}, map[Severity]io.Writer{
+	return newDefaultSink(FormatOptions{Color: colors.Never}, map[Severity]io.Writer{
 		Debug:   ioutil.Discard,
 		Info:    ioutil.Discard,
 		Infoerr: ioutil.Discard,

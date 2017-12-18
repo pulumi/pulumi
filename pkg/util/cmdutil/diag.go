@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -15,7 +16,7 @@ var snk diag.Sink
 func Diag() diag.Sink {
 	if snk == nil {
 		snk = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-			Color: diag.Always, // turn on colorization of warnings/errors.
+			Color: colors.Always, // turn on colorization of warnings/errors.
 		})
 	}
 	return snk
