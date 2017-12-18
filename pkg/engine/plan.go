@@ -379,10 +379,6 @@ func writeWithIndent(b *bytes.Buffer, indent int, op deploy.StepOp, prefix bool,
 	b.WriteString(colors.Reset)
 }
 
-func writeWithIndentPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
-	writeWithIndent(b, indent, op, true, format, a...)
-}
-
 func writeWithIndentNoPrefix(b *bytes.Buffer, indent int, op deploy.StepOp, format string, a ...interface{}) {
 	writeWithIndent(b, indent, op, false, format, a...)
 }
@@ -560,7 +556,7 @@ func printPropertyValue(
 				writeWithIndent(b, indent, op, prefix, "    [%d]: ", i)
 				printPropertyValue(b, elem, planning, indent+1, op, prefix)
 			}
-			writeWithIndent(b, indent, op, prefix, "]")
+			writeWithIndentNoPrefix(b, indent, op, "]")
 		}
 	} else if v.IsAsset() {
 		a := v.AssetValue()
@@ -574,7 +570,7 @@ func printPropertyValue(
 			for _, line := range lines {
 				writeWithIndentNoPrefix(b, indent, op, "    %s\n", line)
 			}
-			writeWithIndent(b, indent, op, prefix, "}")
+			writeWithIndentNoPrefix(b, indent, op, "}")
 		} else if path, has := a.GetPath(); has {
 			write(b, op, "asset(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
@@ -593,7 +589,7 @@ func printPropertyValue(
 			for _, name := range names {
 				printAssetOrArchive(b, assets[name], name, planning, indent, op, prefix)
 			}
-			writeWithIndent(b, indent, op, prefix, "}")
+			writeWithIndentNoPrefix(b, indent, op, "}")
 		} else if path, has := a.GetPath(); has {
 			write(b, op, "archive(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
@@ -620,7 +616,7 @@ func printPropertyValue(
 		} else {
 			writeVerbatim(b, op, "{\n")
 			printObject(b, obj, planning, indent+1, op, prefix)
-			writeWithIndent(b, indent, op, prefix, "}")
+			writeWithIndentNoPrefix(b, indent, op, "}")
 		}
 	}
 	writeVerbatim(b, op, "\n")
@@ -811,7 +807,7 @@ func printArchiveDiff(
 			titleFunc(op, true)
 			write(b, op, "archive(assets:%s) {\n", hashChange)
 			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1)
-			writeWithIndentPrefix(b, indent, deploy.OpUpdate, "}\n")
+			writeWithIndentNoPrefix(b, indent, deploy.OpUpdate, "}\n")
 			return
 		}
 	}
@@ -975,7 +971,7 @@ func printAssetDiff(
 
 			b.WriteString(diffToPrettyString(diffs2, indent+1))
 
-			writeWithIndentPrefix(b, indent, op, "}\n")
+			writeWithIndentNoPrefix(b, indent, op, "}\n")
 			return
 		}
 	} else if oldPath, has := oldAsset.GetPath(); has {
