@@ -19,11 +19,12 @@ type State struct {
 	Inputs  PropertyMap // the resource's input properties (as specified by the program).
 	Outputs PropertyMap // the resource's complete output state (as returned by the resource provider).
 	Parent  URN         // an optional parent URN that this resource belongs to.
+	Protect bool        // true to "protect" this resource (protected resources cannot be deleted).
 }
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, outputs PropertyMap, parent URN) *State {
+	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
@@ -36,6 +37,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Inputs:  inputs,
 		Outputs: outputs,
 		Parent:  parent,
+		Protect: protect,
 	}
 }
 

@@ -174,10 +174,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	if step.Op() != deploy.OpSame {
-		return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
-	}
-	return nil, nil
+	return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
 }
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
@@ -221,12 +218,9 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 
 	acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
 
-	// If necessary, write out the current snapshot. Note that even if a failure has occurred, we should still have a
+	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	if ctx != nil {
-		return ctx.(SnapshotMutation).End(step.Iterator().Snap())
-	}
-	return nil
+	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
 }
 
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {

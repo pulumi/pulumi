@@ -192,6 +192,10 @@ func shouldShow(seen map[resource.URN]deploy.Step, step deploy.Step, opts deploy
 
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op() == deploy.OpSame {
+		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
+		if step.Old().Protect != step.New().Protect {
+			return true
+		}
 		return opts.ShowSames
 	} else if step.Op() == deploy.OpCreateReplacement || step.Op() == deploy.OpDeleteReplaced {
 		return opts.ShowReplacementSteps
@@ -347,7 +351,17 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 }
 
 func printStepHeader(b *bytes.Buffer, step deploy.Step) {
-	b.WriteString(fmt.Sprintf("%s: (%s)\n", string(step.Type()), step.Op()))
+	var extra string
+	old := step.Old()
+	new := step.New()
+	if new != nil && !new.Protect && old != nil && old.Protect {
+		// show an unlocked symbol, since we are unprotecting a resource.
+		extra = " 🔓"
+	} else if (new != nil && new.Protect) || (old != nil && old.Protect) {
+		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
+		extra = " 🔒"
+	}
+	b.WriteString(fmt.Sprintf("%s: (%s)%s\n", string(step.Type()), step.Op(), extra))
 }
 
 func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {

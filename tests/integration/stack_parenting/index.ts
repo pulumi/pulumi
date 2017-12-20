@@ -21,7 +21,7 @@ class Provider implements pulumi.dynamic.ResourceProvider {
 
 class Resource extends pulumi.dynamic.Resource {
     constructor(name: string, parent?: pulumi.Resource) {
-        super(Provider.instance, name, {}, parent, undefined);
+        super(Provider.instance, name, {}, { parent: parent });
     }
 }
 

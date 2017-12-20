@@ -68,7 +68,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     name: jspb.Message.getFieldWithDefault(msg, 2, ""),
     parent: jspb.Message.getFieldWithDefault(msg, 3, ""),
     custom: jspb.Message.getFieldWithDefault(msg, 4, false),
-    object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    protect: jspb.Message.getFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -125,6 +126,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setObject(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setProtect(value);
       break;
     default:
       reader.skipField();
@@ -189,6 +194,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       5,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getProtect();
+  if (f) {
+    writer.writeBool(
+      6,
+      f
     );
   }
 };
@@ -283,6 +295,23 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearObject = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.hasObject = function() {
   return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * optional bool protect = 6;
+ * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
+ * You should avoid comparisons like {@code val === true/false} in those cases.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getProtect = function() {
+  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 6, false));
+};
+
+
+/** @param {boolean} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setProtect = function(value) {
+  jspb.Message.setField(this, 6, value);
 };
 
 

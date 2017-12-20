@@ -55,6 +55,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			"out-empty-map": map[string]interface{}{},
 		}),
 		"",
+		false,
 	)
 
 	dep := SerializeResource(res)

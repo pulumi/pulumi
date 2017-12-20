@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/golang/glog"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -153,6 +155,8 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 	if err = ioutil.WriteFile(file, b, 0600); err != nil {
 		return errors.Wrap(err, "An IO error occurred during the current operation")
 	}
+
+	glog.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {

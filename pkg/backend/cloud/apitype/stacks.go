@@ -14,6 +14,7 @@ type Resource struct {
 	Defaults map[string]interface{} `json:"defaults"`
 	Outputs  map[string]interface{} `json:"outputs"`
 	Parent   string                 `json:"parent"`
+	Protect  bool                   `json:"protect"`
 }
 
 // Stack describes a Stack running on a Pulumi Cloud.

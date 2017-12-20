@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { Computed, ComputedValue, ComputedValues, ID, Resource, URN } from "../resource";
+import { Computed, ComputedValue, ComputedValues, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { PropertyTransfer, resolveProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
@@ -14,8 +14,9 @@ const resproto = require("../proto/resource_pb.js");
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: ComputedValues | undefined, parent: Resource | undefined,
-                                 dependsOn: Resource[] | undefined): void {
+                                 props: ComputedValues | undefined, opts: ResourceOptions | undefined): void {
+    opts = opts || {};
+
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
@@ -38,7 +39,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
     const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(res, label, props, dependsOn), `transferProperties(${label})`);
+        transferProperties(res, label, props, opts.dependsOn), `transferProperties(${label})`);
 
     // Now run the operation, serializing the invocation if necessary.
     const opLabel = `monitor.registerResource(${label})`;
@@ -63,8 +64,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             const monitor: any = getMonitor();
             if (monitor) {
                 let parentURN: URN | undefined;
-                if (parent) {
-                    parentURN = await parent.urn;
+                if (opts && opts.parent) {
+                    parentURN = await opts.parent.urn;
                 }
 
                 const req = new resproto.RegisterResourceRequest();
@@ -73,6 +74,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 req.setParent(parentURN);
                 req.setCustom(custom);
                 req.setObject(obj);
+                req.setProtect(opts && opts.protect);
 
                 const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
                     monitor.registerResource(req, (err: Error, innerResponse: any) => {
