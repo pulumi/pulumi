@@ -48,6 +48,7 @@ type Resource struct {
 	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider (DEPRECATED, see #637).
 	Outputs  map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
 	Parent   resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
+	Protect  bool                   `json:"protect,omitempty" yaml:"protect,omitempty"`   // true if this resource is protected, and cannot be deleted.
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
@@ -102,6 +103,7 @@ func SerializeResource(res *resource.State) Resource {
 		Parent:  res.Parent,
 		Inputs:  inputs,
 		Outputs: outputs,
+		Protect: res.Protect,
 	}
 }
 
@@ -174,7 +176,7 @@ func DeserializeResource(res Resource) (*resource.State, error) {
 	}
 
 	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs, res.Parent), nil
+		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs, res.Parent, res.Protect), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

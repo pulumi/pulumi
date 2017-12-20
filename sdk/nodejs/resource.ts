@@ -24,11 +24,9 @@ export abstract class Resource {
      * @param name The _unqiue_ name of the resource.
      * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
-     * @param parent An optional parent resource to which this resource belongs.
-     * @param dependsOn Optional additional explicit dependencies on other resources.
+     * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, custom: boolean, props?: ComputedValues,
-                parent?: Resource, dependsOn?: Resource[]) {
+    constructor(t: string, name: string, custom: boolean, props?: ComputedValues, opts?: ResourceOptions) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -37,15 +35,34 @@ export abstract class Resource {
         }
 
         // If there wasn't an explicit parent, and a root resource exists, parent to that.
-        if (!parent) {
-            parent = getRootResource();
+        opts = opts || {};
+        if (!opts.parent) {
+            opts.parent = getRootResource();
         }
 
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        registerResource(this, t, name, custom, props, parent, dependsOn);
+        registerResource(this, t, name, custom, props, opts);
     }
+}
+
+/**
+ * ResourceOptions is a bag of optional settings that control a resource's behavior.
+ */
+export interface ResourceOptions {
+    /**
+     * An optional parent resource to which this resource belongs.
+     */
+    parent?: Resource;
+    /**
+     * An optional additional explicit dependencies on other resources.
+     */
+    dependsOn?: Resource[];
+    /**
+     * When set to true, protect ensures this resource cannot be deleted.
+     */
+    protect?: boolean;
 }
 
 /**
@@ -70,11 +87,10 @@ export abstract class CustomResource extends Resource {
      * @param t The type of the resource.
      * @param name The _unqiue_ name of the resource.
      * @param props The arguments to use to populate the new resource.
-     * @param parent An optional parent resource to which this resource belongs.
-     * @param dependsOn Optional additional explicit dependencies on other resources.
+     * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
-        super(t, name, true, props, parent, dependsOn);
+    constructor(t: string, name: string, props?: ComputedValues, opts?: ResourceOptions) {
+        super(t, name, true, props, opts);
     }
 }
 
@@ -92,11 +108,11 @@ export class ComponentResource extends Resource {
      * @param t The type of the resource.
      * @param name The _unqiue_ name of the resource.
      * @param props The arguments to use to populate the new resource.
-     * @param parent An optional parent resource to which this resource belongs.
-     * @param dependsOn Optional additional explicit dependencies on other resources.
+     * @param opts A bag of options that control this resource's behavior.
+     * @param protect True to ensure this resource cannot be deleted.
      */
-    constructor(t: string, name: string, props?: ComputedValues, parent?: Resource, dependsOn?: Resource[]) {
-        super(t, name, false, props, parent, dependsOn);
+    constructor(t: string, name: string, props?: ComputedValues, opts?: ResourceOptions) {
+        super(t, name, false, props, opts);
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating

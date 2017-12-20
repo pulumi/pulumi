@@ -47,6 +47,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			resource.NewPropertyMapFromMap(res.Inputs),
 			resource.NewPropertyMapFromMap(res.Outputs),
 			resource.URN(res.Parent),
+			res.Protect,
 		))
 	}
 	snapshot := deploy.NewSnapshot(stackName, deploy.Manifest{}, resources)

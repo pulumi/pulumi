@@ -22,6 +22,7 @@ message RegisterResourceRequest {
     string parent = 3;                 // an optional parent URN that this child resource belongs to.
     bool custom = 4;                   // true if the resource is a custom, managed by a plugin's CRUD operations.
     google.protobuf.Struct object = 5; // an object produced by the interpreter/source.
+    bool protect = 6;                  // true if the resource should be marked protected.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

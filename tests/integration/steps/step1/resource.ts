@@ -63,8 +63,8 @@ export class Provider implements pulumi.dynamic.ResourceProvider {
 }
 
 export class Resource extends pulumi.dynamic.Resource {
-    constructor(name: string, props: ResourceProps, parent?: pulumi.Resource) {
-        super(Provider.instance, name, props, parent, undefined);
+    constructor(name: string, props: ResourceProps, opts?: pulumi.ResourceOptions) {
+        super(Provider.instance, name, props, opts);
     }
 }
 

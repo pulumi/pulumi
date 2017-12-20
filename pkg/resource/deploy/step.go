@@ -3,6 +3,8 @@
 package deploy
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -64,11 +66,16 @@ func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, error) {
-	*s.new = *s.old
+	// Retain the URN, ID, and outputs:
+	s.new.URN = s.old.URN
+	s.new.ID = s.old.ID
+	s.new.Outputs = s.old.Outputs
+
 	if !preview {
 		s.iter.MarkStateSnapshot(s.old)
 		s.iter.AppendStateSnapshot(s.new)
 	}
+
 	s.reg.Done(&RegisterResult{State: s.new, Stable: true})
 	return resource.StatusOK, nil
 }
@@ -216,6 +223,12 @@ func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
+	// Refuse to delete protected resources.
+	if s.old.Protect {
+		return resource.StatusOK,
+			errors.Errorf("refusing to delete protected resource '%s'", s.old.URN)
+	}
+
 	if !preview {
 		if s.old.Custom {
 			// Invoke the Delete RPC function for this provider:
@@ -277,7 +290,7 @@ func (s *UpdateStep) Logical() bool           { return true }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	if preview {
-		// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
+		// In the case of an update, the URN and ID are the same, however, the outputs remain unknown.
 		s.new.URN = s.old.URN
 		s.new.ID = s.old.ID
 	} else {

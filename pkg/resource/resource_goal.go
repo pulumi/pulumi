@@ -13,15 +13,17 @@ type Goal struct {
 	Custom     bool         // true if this resource is custom, managed by a plugin.
 	Properties PropertyMap  // the resource's property state.
 	Parent     URN          // an optional parent URN for this resource.
+	Protect    bool         // true to protect this resource from deletion.
 }
 
 // NewGoal allocates a new resource goal state.
-func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap, parent URN) *Goal {
+func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap, parent URN, protect bool) *Goal {
 	return &Goal{
 		Type:       t,
 		Name:       name,
 		Custom:     custom,
 		Properties: props,
 		Parent:     parent,
+		Protect:    protect,
 	}
 }
