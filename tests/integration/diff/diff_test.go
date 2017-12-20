@@ -21,10 +21,11 @@ func TestDiffs(t *testing.T) {
 	var buf bytes.Buffer
 
 	opts := integration.ProgramTestOptions{
-		Dir:          "step1",
-		Dependencies: []string{"pulumi"},
-		Quick:        true,
-		StackName:    "diffstack",
+		Dir:                    "step1",
+		Dependencies:           []string{"pulumi"},
+		Quick:                  true,
+		StackName:              "diffstack",
+		UpdateCommandlineFlags: []string{"--color=raw"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			checkpoint := stack.Checkpoint
 			assert.NotNil(t, checkpoint.Latest)

@@ -97,6 +97,8 @@ type ProgramTestOptions struct {
 	RelativeWorkDir string
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
+	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
+	UpdateCommandlineFlags []string
 
 	// StackName allows the stack name to be explicitly provided instead of computed from the
 	// environment during tests.
@@ -350,10 +352,13 @@ func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir strin
 
 func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
 	preview := opts.PulumiCmd([]string{"preview"})
-	update := opts.PulumiCmd([]string{"update", "--color=raw"})
+	update := opts.PulumiCmd([]string{"update"})
 	if opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
+	}
+	if opts.UpdateCommandlineFlags != nil {
+		update = append(update, opts.UpdateCommandlineFlags...)
 	}
 
 	if !opts.Quick {
