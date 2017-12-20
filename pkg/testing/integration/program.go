@@ -44,6 +44,10 @@ type EditDir struct {
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	Additive               bool // set to true to keep the prior test dir, applying this edit atop.
 
+	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
+	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
+	ExpectFailure bool
+
 	// Stdout is the writer to use for all stdout messages.
 	Stdout io.Writer
 	// Stderr is the writer to use for all stderr messages.
@@ -95,6 +99,9 @@ type ProgramTestOptions struct {
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
 	RelativeWorkDir string
+	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
+	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
+	ExpectFailure bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
@@ -239,28 +246,30 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
 //
-// All commands must return success return codes for the test to succeed.
+// All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	TestLifeCycleInitAndDestroy(t, opts, testPreviewUpdateAndEdits)
+	err := TestLifeCycleInitAndDestroy(t, opts, testPreviewUpdateAndEdits)
+	assert.NoError(t, err)
 }
 
 func TestLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
-	between func(*testing.T, *ProgramTestOptions, string) string) {
+	between func(*testing.T, *ProgramTestOptions, string) error) error {
 
 	t.Parallel()
 
 	dir, err := TestLifeCycleInitialize(t, opts)
 	if err != nil {
-		return
+		return err
 	}
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
-		TestLifeCycleDestroy(t, opts, dir)
+		destroyErr := TestLifeCycleDestroy(t, opts, dir)
+		assert.NoError(t, destroyErr)
 	}()
 
-	dir = between(t, opts, dir)
+	return between(t, opts, dir)
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
@@ -269,7 +278,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	// Perform the initial stack creation.
 
 	dir, err := CopyTestToTemporaryDirectory(t, opts)
-	if !assert.NoError(t, err) {
+	if err != nil {
 		return "", err
 	}
 
@@ -307,7 +316,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	return dir, nil
 }
 
-func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
+func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	stackName := opts.GetStackName()
 
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
@@ -317,40 +326,41 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) {
 
 	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
 	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
-	err := RunCommand(t, "pulumi-destroy", destroy, dir, opts)
-	contract.IgnoreError(err)
-	err = RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
-	contract.IgnoreError(err)
+	if err := RunCommand(t, "pulumi-destroy", destroy, dir, opts); err != nil {
+		return err
+	}
+	return RunCommand(t, "pulumi-stack-rm",
+		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
 }
 
-func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
-	initErr := previewAndUpdate(t, opts, dir, "initial")
+	initErr := previewAndUpdate(t, opts, dir, "initial", opts.ExpectFailure)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
-		return dir
+		return initErr
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := previewAndUpdate(t, opts, dir, "empty"); err != nil {
-			return dir
+		if err := previewAndUpdate(t, opts, dir, "empty", false); err != nil {
+			return err
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return dir
+		return err
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
 	return testEdits(t, opts, dir)
 }
 
-func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string) error {
+func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string, shouldFail bool) error {
 	preview := opts.PulumiCmd([]string{"preview"})
 	update := opts.PulumiCmd([]string{"update"})
 	if opts.GetDebugUpdates() {
@@ -363,32 +373,46 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 
 	if !opts.Quick {
 		if err := RunCommand(t, "pulumi-preview-"+name, preview, dir, opts); err != nil {
+			if shouldFail {
+				fmt.Fprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
+				return nil
+			}
 			return err
 		}
 	}
 
 	if err := RunCommand(t, "pulumi-update-"+name, update, dir, opts); err != nil {
+		if shouldFail {
+			fmt.Fprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			return nil
+		}
 		return err
+	}
+
+	// If we expected a failure, but none occurred, return an error.
+	if shouldFail {
+		return errors.New("expected this step to fail, but it succeeded")
 	}
 
 	return nil
 }
 
-func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) string {
+func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	for i, edit := range opts.EditDirs {
-		dir = testEdit(t, opts, dir, i, edit)
+		if err := testEdit(t, opts, dir, i, edit); err != nil {
+			return err
+		}
 	}
-
-	return dir
+	return nil
 }
 
-func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) string {
+func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) error {
 	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	var err error
 	dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
-	if !assert.NoError(t, err, "Expected to apply edit %v atop %v, but got an error %v", edit, dir, err) {
-		return dir
+	if err != nil {
+		return errors.Wrapf(err, "Expected to apply edit %v atop %v, but got an error", edit, dir)
 	}
 
 	oldStdOut := opts.Stdout
@@ -410,14 +434,14 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 		opts.Verbose = oldVerbose
 	}()
 
-	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i)); err != nil {
-		return dir
+	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
+		return err
 	}
 	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
-		return dir
+		return err
 	}
 
-	return dir
+	return err
 }
 
 func performExtraRuntimeValidation(
@@ -432,20 +456,20 @@ func performExtraRuntimeValidation(
 
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
-	if !assert.NoError(t, err, "expected to load project workspace at %v: %v", dir, err) {
-		return err
+	if err != nil {
+		return errors.Wrapf(err, "expected to load project workspace at %v", dir)
 	}
 	chk, err := stack.GetCheckpoint(ws, stackName)
-	if !assert.NoError(t, err, "expected to load checkpoint file for target %v: %v", stackName, err) {
-		return err
+	if err != nil {
+		return errors.Wrapf(err, "expected to load checkpoint file for target %v: %v", stackName)
 	} else if !assert.NotNil(t, chk, "expected checkpoint file to be populated from %v: %v", stackName, err) {
 		return errors.New("missing checkpoint")
 	}
 
 	// Deserialize snapshot from checkpoint
 	snapshot, err := stack.DeserializeCheckpoint(chk)
-	if !assert.NoError(t, err, "expected checkpoint deserialization to succeed") {
-		return err
+	if err != nil {
+		return errors.Wrapf(err, "expected checkpoint deserialization to succeed")
 	} else if !assert.NotNil(t, snapshot, "expected snapshot to be populated from checkpoint file %v", stackName) {
 		return errors.New("missing snapshot")
 	}
@@ -473,16 +497,16 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	if opts.Bin == "" {
 		var pulumi string
 		pulumi, err = exec.LookPath("pulumi")
-		if !assert.NoError(t, err, "Expected to find `pulumi` binary on $PATH: %v", err) {
-			return dir, err
+		if err != nil {
+			return "", errors.Wrapf(err, "Expected to find `pulumi` binary on $PATH")
 		}
 		opts.Bin = pulumi
 	}
 	if opts.YarnBin == "" {
 		var yarn string
 		yarn, err = exec.LookPath("yarn")
-		if !assert.NoError(t, err, "Expected to find `yarn` binary on $PATH: %v", err) {
-			return dir, err
+		if err != nil {
+			return "", errors.Wrapf(err, "Expected to find `yarn` binary on $PATH")
 		}
 		opts.YarnBin = yarn
 	}
@@ -513,12 +537,12 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 
 	// Now copy the source project, excluding the .pulumi directory.
 	dir, err = prepareProject(t, opts, dir, "", false)
-	if !assert.NoError(t, err, "Failed to copy source project %v to a new temp dir: %v", dir, err) {
-		return dir, err
+	if err != nil {
+		return "", errors.Wrapf(err, "Failed to copy source project %v to a new temp dir: %v", dir)
 	}
 
 	fmt.Fprintf(stdout, "projdir: %v\n", dir)
-	return dir, err
+	return dir, nil
 }
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
@@ -589,7 +613,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 			fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
 		}
 	}
-	assert.NoError(t, runerr, "Expected to successfully invoke '%v' in %v: %v", command, wd, runerr)
+
 	return runerr
 }
 
