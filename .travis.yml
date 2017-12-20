@@ -37,6 +37,9 @@ install:
     # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
     - make ensure
+before_script:
+    # Ensure the working tree is clean (make ensure may have updated lock files)
+    - ${GOPATH}/src/github.com/pulumi/home/scripts/check-worktree-is-clean.sh
 script:
     - make travis_${TRAVIS_EVENT_TYPE} TEST_FAST_TIMEOUT=10m
 notifications:
