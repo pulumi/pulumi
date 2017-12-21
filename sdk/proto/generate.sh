@@ -12,7 +12,9 @@
 #            go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 #     4) Install the Node.js gRPC SDK, which includes the gRPC Node.js compiler plugin
 #            npm install -g grpc-tools
-#        and add the `grpc_tools_node_protoc_plugin` binary to your PATH.
+#        and add the `grpc_tools_node_protoc_plugin` binary to your PATH.a
+#     5) Install the Python gRPC SDK, which includes the gRPC Python compiler plugin
+#            python -m pip install grpcio grpcio-tools
 #
 # The results are checked into bin/; at this moment, they need to be copied to their final destinations manually.
 set -e
@@ -21,17 +23,21 @@ PROTOC=$(which protoc || { >&2 echo "error: Protobuf compiler (protoc) not found
 
 echo Generating Protobuf/gRPC SDK files:
 
-GO_LUMIRPC=./go
+GO_PULUMIRPC=./go
 GO_PROTOFLAGS="plugins=grpc"
-echo -e "\tGo: $GO_LUMIRPC [$GO_PROTOFLAGS]"
-mkdir -p $GO_LUMIRPC
-$PROTOC --go_out=$GO_PROTOFLAGS:$GO_LUMIRPC *.proto
+echo -e "\tGo: $GO_PULUMIRPC [$GO_PROTOFLAGS]"
+mkdir -p $GO_PULUMIRPC
+$PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC *.proto
 
-JS_LUMIRPC=./nodejs
+JS_PULUMIRPC=./nodejs
 JS_PROTOFLAGS="import_style=commonjs,binary"
-echo -e "\tJS: $JS_LUMIRPC [$JS_PROTOFLAGS]"
-mkdir -p $JS_LUMIRPC
-$PROTOC --js_out=$JS_PROTOFLAGS:$JS_LUMIRPC --grpc_out=$JS_LUMIRPC --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` *.proto
+echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"
+mkdir -p $JS_PULUMIRPC
+$PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=$JS_PULUMIRPC --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` *.proto
+
+PY_PULUMIRPC=./python
+echo -e "\tPython: $PY_PULUMIRPC"
+mkdir -p $PY_PULUMIRPC
+python -m grpc_tools.protoc -I./ --python_out=$PY_PULUMIRPC --grpc_python_out=$PY_PULUMIRPC *.proto
 
 echo Done.
-
