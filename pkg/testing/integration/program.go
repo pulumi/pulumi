@@ -399,20 +399,21 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 
 func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	for i, edit := range opts.EditDirs {
-		if err := testEdit(t, opts, dir, i, edit); err != nil {
+		var err error
+		if dir, err = testEdit(t, opts, dir, i, edit); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) error {
+func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) (string, error) {
 	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	var err error
 	dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 	if err != nil {
-		return errors.Wrapf(err, "Expected to apply edit %v atop %v, but got an error", edit, dir)
+		return "", errors.Wrapf(err, "Expected to apply edit %v atop %v, but got an error", edit, dir)
 	}
 
 	oldStdOut := opts.Stdout
@@ -435,13 +436,13 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 	}()
 
 	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
-		return err
+		return "", err
 	}
 	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
-		return err
+		return "", err
 	}
 
-	return err
+	return dir, nil
 }
 
 func performExtraRuntimeValidation(
