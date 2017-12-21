@@ -538,7 +538,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	// Now copy the source project, excluding the .pulumi directory.
 	dir, err = prepareProject(t, opts, dir, "", false)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to copy source project %v to a new temp dir: %v", dir)
+		return "", errors.Wrapf(err, "Failed to copy source project %v to a new temp dir", dir)
 	}
 
 	fmt.Fprintf(stdout, "projdir: %v\n", dir)
