@@ -2,6 +2,14 @@ package apitype
 
 import "github.com/pulumi/pulumi/pkg/tokens"
 
+// ConfigValue describes a single (possibly secret) configuration value.
+type ConfigValue struct {
+	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
+	String string `json:"string"`
+	// Secret is true if this value is a secret and false otherwise.
+	Secret bool `json:"secret"`
+}
+
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
 	// Properties from the Project file. Subset of pack.Package.
@@ -11,7 +19,7 @@ type UpdateProgramRequest struct {
 	Description string             `json:"description"`
 
 	// Configuration values.
-	Config map[tokens.ModuleMember]string `json:"config"`
+	Config map[tokens.ModuleMember]ConfigValue `json:"config"`
 }
 
 // UpdateProgramResponse is the result of an update program request.

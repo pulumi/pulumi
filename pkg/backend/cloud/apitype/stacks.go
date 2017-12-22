@@ -43,3 +43,27 @@ type CreateStackResponse struct {
 	// The name of the cloud used if the default was sent.
 	CloudName string `json:"cloudName"`
 }
+
+// EncryptValueRequest defines the request body for encrypting a value.
+type EncryptValueRequest struct {
+	// The value to encrypt.
+	Plaintext []byte `json:"plaintext"`
+}
+
+// EncryptValueResponse defines the response body for an encrypted value.
+type EncryptValueResponse struct {
+	// The encrypted value.
+	Ciphertext []byte `json:"ciphertext"`
+}
+
+// DecryptValueRequest defines the request body for decrypting a value.
+type DecryptValueRequest struct {
+	// The value to decrypt.
+	Ciphertext []byte `json:"ciphertext"`
+}
+
+// DecryptValueResponse defines the response body for a decrypted value.
+type DecryptValueResponse struct {
+	// The decrypted value.
+	Plaintext []byte `json:"plaintext"`
+}

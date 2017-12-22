@@ -21,15 +21,24 @@ type Encrypter interface {
 	EncryptValue(plaintext string) (string, error)
 }
 
-// Decrypter decrypts encrypted cyphertext to its plaintext representation.
+// Decrypter decrypts encrypted ciphertext to its plaintext representation.
 type Decrypter interface {
-	DecryptValue(cypertext string) (string, error)
+	DecryptValue(ciphertext string) (string, error)
 }
 
 // Crypter can both encrypt and decrypt values.
 type Crypter interface {
 	Encrypter
 	Decrypter
+}
+
+// A nopDecrypter simply returns the ciphertext as-is.
+type nopDecrypter int
+
+var NopDecrypter Decrypter = nopDecrypter(0)
+
+func (nopDecrypter) DecryptValue(ciphertext string) (string, error) {
+	return ciphertext, nil
 }
 
 // NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "********", it can
