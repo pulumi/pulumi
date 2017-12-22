@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -133,6 +135,55 @@ func (b *cloudBackend) RemoveStack(stackName tokens.QName, force bool) (bool, er
 	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
 	//     resources and `force` was not true", we should sniff for that message and return a true for the boolean.
 	return false, pulumiRESTCall(b.cloudURL, "DELETE", path, nil, nil, nil)
+}
+
+// cloudCrypter is an encrypter/decrypter that uses the Pulumi cloud to encrypt/decrypt a stack's secrets.
+type cloudCrypter struct {
+	backend   *cloudBackend
+	stackName string
+}
+
+func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
+	projID, err := getCloudProjectIdentifier()
+	if err != nil {
+		return "", err
+	}
+
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/encrypt",
+		projID.Owner, projID.Repository, projID.Project, c.stackName)
+
+	var resp apitype.EncryptValueResponse
+	req := apitype.EncryptValueRequest{Plaintext: []byte(plaintext)}
+	if err := pulumiRESTCall(c.backend.cloudURL, "POST", path, &req, &resp, nil); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(resp.Ciphertext), nil
+}
+
+func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
+	projID, err := getCloudProjectIdentifier()
+	if err != nil {
+		return "", err
+	}
+
+	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
+	if err != nil {
+		return "", err
+	}
+
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/decrypt",
+		projID.Owner, projID.Repository, projID.Project, c.stackName)
+
+	var resp apitype.DecryptValueResponse
+	req := apitype.DecryptValueRequest{Ciphertext: ciphertext}
+	if err := pulumiRESTCall(c.backend.cloudURL, "POST", path, &req, &resp, nil); err != nil {
+		return "", err
+	}
+	return string(resp.Plaintext), nil
+}
+
+func (b *cloudBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, error) {
+	return &cloudCrypter{backend: b, stackName: string(stackName)}, nil
 }
 
 // updateKind is an enum for describing the kinds of updates we support.
@@ -319,29 +370,6 @@ func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
 	return stacks, nil
 }
 
-// getDecryptedConfig returns the stack's configuration with any secrets in plain-text.
-func (b *cloudBackend) getDecryptedConfig(stackName tokens.QName) (map[tokens.ModuleMember]string, error) {
-	cfg, err := state.Configuration(b.d, stackName)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting configuration")
-	}
-
-	decrypter, err := state.DefaultCrypter(cfg)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting a default encrypter")
-	}
-
-	textConfig := make(map[tokens.ModuleMember]string)
-	for key := range cfg {
-		decrypted, err := cfg[key].Value(decrypter)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not decrypt configuration value")
-		}
-		textConfig[key] = decrypted
-	}
-	return textConfig, nil
-}
-
 // getCloudProjectIdentifier returns information about the current repository and project, based on the current
 // working directory.
 func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
@@ -391,11 +419,20 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName) (apitype
 		return ""
 	}
 
-	// Gather up configuration.
-	// TODO(pulumi-service/issues/221): Have pulumi.com handle the encryption/decryption.
-	textConfig, err := b.getDecryptedConfig(stackName)
+	// Convert the configuration into its wire form.
+	cfg, err := state.Configuration(b.d, stackName)
 	if err != nil {
-		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting decrypted configuration")
+		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting configuration")
+	}
+	wireConfig := make(map[tokens.ModuleMember]apitype.ConfigValue)
+	for k, cv := range cfg {
+		v, err := cv.Value(config.NopDecrypter)
+		contract.Assert(err == nil)
+
+		wireConfig[k] = apitype.ConfigValue{
+			String: v,
+			Secret: cv.Secure(),
+		}
 	}
 
 	return apitype.UpdateProgramRequest{
@@ -403,7 +440,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName) (apitype
 		Runtime:     pkg.Runtime,
 		Main:        pkg.Main,
 		Description: valueOrEmpty(pkg.Description),
-		Config:      textConfig,
+		Config:      wireConfig,
 	}, nil
 }
 

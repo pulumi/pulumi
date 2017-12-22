@@ -44,6 +44,11 @@ func DestroyStack(s Stack, debug bool, opts engine.DestroyOptions) error {
 	return s.Backend().Destroy(s.Name(), debug, opts)
 }
 
+// GetStackCrypter fetches the encrypter/decrypter for a stack.
+func GetStackCrypter(s Stack) (config.Crypter, error) {
+	return s.Backend().GetStackCrypter(s.Name())
+}
+
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
 func GetStackLogs(s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
 	return s.Backend().GetLogs(s.Name(), query)

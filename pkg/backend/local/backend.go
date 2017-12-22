@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -95,6 +96,10 @@ func (b *localBackend) RemoveStack(stackName tokens.QName, force bool) (bool, er
 	}
 
 	return false, removeStack(stackName)
+}
+
+func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, error) {
+	return symmetricCrypter()
 }
 
 func (b *localBackend) Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error {
@@ -208,7 +213,7 @@ func (b *localBackend) getEngine(stackName tokens.QName) (engine.Engine, error) 
 		return engine.Engine{}, err
 	}
 
-	decrypter, err := state.DefaultCrypter(cfg)
+	decrypter, err := defaultCrypter(cfg)
 	if err != nil {
 		return engine.Engine{}, err
 	}

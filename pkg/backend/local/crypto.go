@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package state
+package local
 
 import (
 	cryptorand "crypto/rand"
@@ -24,19 +24,19 @@ func readPassphrase(prompt string) (string, error) {
 	return cmdutil.ReadConsoleNoEcho(prompt)
 }
 
-// DefaultCrypter gets the right value encrypter/decrypter given the project configuration.
-func DefaultCrypter(cfg config.Map) (config.Crypter, error) {
+// defaultCrypter gets the right value encrypter/decrypter given the project configuration.
+func defaultCrypter(cfg config.Map) (config.Crypter, error) {
 	// If there is no config, we can use a standard panic crypter.
 	if !cfg.HasSecureValue() {
 		return config.NewPanicCrypter(), nil
 	}
 
 	// Otherwise, we will use an encrypted one.
-	return SymmetricCrypter()
+	return symmetricCrypter()
 }
 
 // SymmetricCrypter gets the right value encrypter/decrypter for this project.
-func SymmetricCrypter() (config.Crypter, error) {
+func symmetricCrypter() (config.Crypter, error) {
 	// First, read the package to see if we've got a key.
 	pkg, err := workspace.GetPackage()
 	if err != nil {

@@ -173,7 +173,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			// Encrypt the config value if needed.
 			var v config.Value
 			if secret {
-				c, cerr := state.SymmetricCrypter()
+				c, cerr := backend.GetStackCrypter(s)
 				if cerr != nil {
 					return cerr
 				}
@@ -277,7 +277,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 	// By default, we will use a blinding decrypter to show '******'.  If requested, display secrets in plaintext.
 	var decrypter config.Decrypter
 	if cfg.HasSecureValue() && showSecrets {
-		decrypter, err = state.SymmetricCrypter()
+		decrypter, err = backend.GetStackCrypter(stack)
 		if err != nil {
 			return err
 		}
@@ -326,7 +326,7 @@ func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
 			var d config.Decrypter
 			if v.Secure() {
 				var err error
-				if d, err = state.DefaultCrypter(cfg); err != nil {
+				if d, err = backend.GetStackCrypter(stack); err != nil {
 					return errors.Wrap(err, "could not create a decrypter")
 				}
 			} else {

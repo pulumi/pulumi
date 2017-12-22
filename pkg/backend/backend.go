@@ -6,6 +6,7 @@ package backend
 import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -25,6 +26,9 @@ type Backend interface {
 	RemoveStack(name tokens.QName, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
 	ListStacks() ([]Stack, error)
+
+	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
+	GetStackCrypter(stack tokens.QName) (config.Crypter, error)
 
 	// Preview initiates a preview of the current workspace's contents.
 	Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error
