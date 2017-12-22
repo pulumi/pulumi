@@ -254,7 +254,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 
 func TestLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
-	between func(*testing.T, *ProgramTestOptions, string) error) error {
+	between func(*testing.T, *ProgramTestOptions, string) (string, error)) error {
 
 	t.Parallel()
 
@@ -265,11 +265,14 @@ func TestLifeCycleInitAndDestroy(
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
-		destroyErr := TestLifeCycleDestroy(t, opts, dir)
-		assert.NoError(t, destroyErr)
+		if dir != "" {
+			destroyErr := TestLifeCycleDestroy(t, opts, dir)
+			assert.NoError(t, destroyErr)
+		}
 	}()
 
-	return between(t, opts, dir)
+	dir, err = between(t, opts, dir)
+	return err
 }
 
 func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
@@ -333,27 +336,27 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) er
 		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
 }
 
-func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
+func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, error) {
 	// Now preview and update the real changes.
 	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
 	initErr := previewAndUpdate(t, opts, dir, "initial", opts.ExpectFailure)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
-		return initErr
+		return dir, initErr
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
 		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 		if err := previewAndUpdate(t, opts, dir, "empty", false); err != nil {
-			return err
+			return dir, err
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
 	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
-		return err
+		return dir, err
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
@@ -397,25 +400,25 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 	return nil
 }
 
-func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
+func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, error) {
 	for i, edit := range opts.EditDirs {
 		var err error
 		if dir, err = testEdit(t, opts, dir, i, edit); err != nil {
-			return err
+			return dir, err
 		}
 	}
-	return nil
+	return dir, nil
 }
 
 func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) (string, error) {
 	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
-	var err error
-	dir, err = prepareProject(t, opts, edit.Dir, dir, edit.Additive)
+	newDir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 	if err != nil {
-		return "", errors.Wrapf(err, "Expected to apply edit %v atop %v, but got an error", edit, dir)
+		return dir, errors.Wrapf(err, "Expected to apply edit %v atop %v, but got an error", edit, dir)
 	}
 
+	dir = newDir
 	oldStdOut := opts.Stdout
 	oldStderr := opts.Stderr
 	oldVerbose := opts.Verbose
@@ -436,10 +439,10 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 	}()
 
 	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
-		return "", err
+		return dir, err
 	}
 	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
-		return "", err
+		return dir, err
 	}
 
 	return dir, nil
