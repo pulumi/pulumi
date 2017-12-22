@@ -98,6 +98,10 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				// Reverse engineer the name of the function that was the source of this message from the LogGroup name.
 				match := functionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
 				if len(match) != 2 {
+					// Try older format as well
+					match = oldFunctionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
+				}
+				if len(match) != 2 {
 					glog.V(5).Infof("Skipping invalid log name found in log collector %s. " +
 						"Possibly mismatched versions of pulumi and pulumi-cloud.")
 					continue
@@ -158,7 +162,9 @@ type encodedLogMessage struct {
 
 var (
 	// Extract function name from LogGroup name
-	functionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
+	functionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)-[0-9A-Fa-f]{7}$`)
+	// Used prior to pulumi-terraform@1307256eeeefdd87ffd76581cd3ab73c3d7cfd4a
+	oldFunctionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
 	// Extract Lambda log parts from Lambda log format
 	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t(.*)")
 )
