@@ -93,7 +93,7 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) err
 
 	var createStackResp apitype.CreateStackResponse
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
-	if err := pulumiRESTCall(b.cloudURL, "POST", path, &createStackReq, &createStackResp); err != nil {
+	if err := pulumiRESTCall(b.cloudURL, "POST", path, nil, &createStackReq, &createStackResp); err != nil {
 		return err
 	}
 	fmt.Printf("Created stack '%s' hosted in Pulumi Cloud PPC %s\n",
@@ -132,7 +132,7 @@ func (b *cloudBackend) RemoveStack(stackName tokens.QName, force bool) (bool, er
 
 	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
 	//     resources and `force` was not true", we should sniff for that message and return a true for the boolean.
-	return false, pulumiRESTCall(b.cloudURL, "DELETE", path, nil, nil)
+	return false, pulumiRESTCall(b.cloudURL, "DELETE", path, nil, nil, nil)
 }
 
 // updateKind is an enum for describing the kinds of updates we support.
@@ -192,7 +192,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, de
 
 	// Create the initial update object.
 	var updateResponse apitype.UpdateProgramResponse
-	if err = pulumiRESTCall(b.cloudURL, "POST", restURLRoot, &updateRequest, &updateResponse); err != nil {
+	if err = pulumiRESTCall(b.cloudURL, "POST", restURLRoot, nil, &updateRequest, &updateResponse); err != nil {
 		return err
 	}
 
@@ -208,7 +208,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, de
 	restURLWithUpdateID := fmt.Sprintf("%s/%s", restURLRoot, updateResponse.UpdateID)
 	var startUpdateResponse apitype.StartUpdateResponse
 	if err = pulumiRESTCall(b.cloudURL, "POST", restURLWithUpdateID,
-		nil /* no req body */, &startUpdateResponse); err != nil {
+		nil, nil /* no req body */, &startUpdateResponse); err != nil {
 		return err
 	}
 	if action == update {
@@ -281,11 +281,7 @@ func uploadProgram(uploadURL string, progress bool) error {
 }
 
 func (b *cloudBackend) GetLogs(stackName tokens.QName,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	// TODO[pulumi/pulumi-service#227]: Relax these conditions once the service can take these arguments.
-	if query.StartTime != nil || query.EndTime != nil {
-		return nil, errors.New("cloud backend does not (yet) support filtering logs by start time or end time")
-	}
+	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
 
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
@@ -295,7 +291,7 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	var response apitype.LogsResult
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/logs",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
-	if err = pulumiRESTCall(b.cloudURL, "GET", path, nil, &response); err != nil {
+	if err = pulumiRESTCall(b.cloudURL, "GET", path, logQuery, nil, &response); err != nil {
 		return nil, err
 	}
 
@@ -317,7 +313,7 @@ func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
-	if err := pulumiRESTCall(b.cloudURL, "GET", path, nil, &stacks); err != nil {
+	if err := pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &stacks); err != nil {
 		return nil, err
 	}
 	return stacks, nil
@@ -419,7 +415,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 	for {
 		var updateResults apitype.UpdateResults
 		pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
-		if err := pulumiRESTCall(b.cloudURL, "GET", pathWithIndex, nil, &updateResults); err != nil {
+		if err := pulumiRESTCall(b.cloudURL, "GET", pathWithIndex, nil, nil, &updateResults); err != nil {
 			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep continuing.
 			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
 			if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 504 {
@@ -504,7 +500,7 @@ func Login(cloudURL string) error {
 func isValidAccessToken(cloud, accessToken string) (bool, error) {
 	// Make a request to get the authenticated user. If it returns a successful result, the token
 	// checks out.
-	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, accessToken); err != nil {
+	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, nil, accessToken); err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
 		}
