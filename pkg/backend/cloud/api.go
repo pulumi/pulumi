@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/google/go-querystring/query"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
@@ -109,19 +110,35 @@ func pulumiAPICall(apiEndpoint, method, path string, body []byte, accessToken st
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string, reqObj interface{}, respObj interface{}) error {
+func pulumiRESTCall(cloudAPI, method, path string,
+	queryObj interface{}, reqObj interface{}, respObj interface{}) error {
 	token, err := workspace.GetAccessToken(cloudAPI)
 	if err != nil {
 		return fmt.Errorf("getting stored credentials: %v", err)
 	} else if token == "" {
 		return fmt.Errorf("not yet authenticated with %s; please 'pulumi login' first", cloudAPI)
 	}
-	return pulumiRESTCallWithAccessToken(cloudAPI, method, path, reqObj, respObj, token)
+	return pulumiRESTCallWithAccessToken(cloudAPI, method, path, queryObj, reqObj, respObj, token)
 }
 
 // pulumiRESTCallWithAccessToken requires you pass in the auth token rather than reading it from the machine's config.
 func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
-	reqObj interface{}, respObj interface{}, token string) error {
+	queryObj interface{}, reqObj interface{}, respObj interface{}, token string) error {
+
+	// Compute query string from query object
+	querystring := ""
+	if queryObj != nil {
+		queryValues, err := query.Values(queryObj)
+		if err != nil {
+			return fmt.Errorf("marshalling query object as JSON: %v", err)
+		}
+		query := queryValues.Encode()
+		if len(query) > 0 {
+			querystring = "?" + query
+		}
+	}
+
+	// Compute request body from request object
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
@@ -131,12 +148,14 @@ func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
 		}
 	}
 
-	url, resp, err := pulumiAPICall(cloudAPI, method, path, reqBody, token)
+	// Make API call
+	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, token)
 	if err != nil {
 		return fmt.Errorf("calling API: %v", err)
 	}
 	defer contract.IgnoreClose(resp.Body)
 
+	// Read API response
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("reading response from API: %v", err)

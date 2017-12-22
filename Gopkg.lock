@@ -63,6 +63,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  revision = "53e6ce116135b80d037921a7fdd5138cf32d7a8a"
+
+[[projects]]
+  branch = "master"
   name = "github.com/grpc-ecosystem/grpc-opentracing"
   packages = ["go/otgrpc"]
   revision = "01f8541d537215b2867e2745a1eb85c58c7c6b81"
@@ -243,6 +249,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ac5550bbf6f0b4eb66c683d5ac3a605fc5ecf4b3055b0763122555230f5d4577"
+  inputs-digest = "01b1f6c048372cd64343444869df4fcf42496764cbd49c6c2caaa88da1457f96"
   solver-name = "gps-cdcl"
   solver-version = 1
