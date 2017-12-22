@@ -23,7 +23,7 @@ type ResourceFilter string
 // optional, leaving them off returns all logs.
 //
 // IDEA: We are currently using this type both within the engine and as an
-// apitype. We should consider splitting this into seperate types for the engine
+// apitype. We should consider splitting this into separate types for the engine
 // and on the wire.
 type LogQuery struct {
 	// StartTime is an optional time indiciating that only logs from after this time should be produced.

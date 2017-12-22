@@ -110,7 +110,8 @@ func pulumiAPICall(apiEndpoint, method, path string, body []byte, accessToken st
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string, queryObj interface{}, reqObj interface{}, respObj interface{}) error {
+func pulumiRESTCall(cloudAPI, method, path string,
+	queryObj interface{}, reqObj interface{}, respObj interface{}) error {
 	token, err := workspace.GetAccessToken(cloudAPI)
 	if err != nil {
 		return fmt.Errorf("getting stored credentials: %v", err)
@@ -123,8 +124,6 @@ func pulumiRESTCall(cloudAPI, method, path string, queryObj interface{}, reqObj 
 // pulumiRESTCallWithAccessToken requires you pass in the auth token rather than reading it from the machine's config.
 func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
 	queryObj interface{}, reqObj interface{}, respObj interface{}, token string) error {
-
-	var err error
 
 	// Compute query string from query object
 	querystring := ""
@@ -141,6 +140,7 @@ func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
 
 	// Compute request body from request object
 	var reqBody []byte
+	var err error
 	if reqObj != nil {
 		reqBody, err = json.Marshal(reqObj)
 		if err != nil {
