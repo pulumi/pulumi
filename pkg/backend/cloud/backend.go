@@ -154,7 +154,7 @@ func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
 
 	var resp apitype.EncryptValueResponse
 	req := apitype.EncryptValueRequest{Plaintext: []byte(plaintext)}
-	if err := pulumiRESTCall(c.backend.cloudURL, "POST", path, &req, &resp, nil); err != nil {
+	if err := pulumiRESTCall(c.backend.cloudURL, "POST", path, nil, &req, &resp); err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(resp.Ciphertext), nil
@@ -176,7 +176,7 @@ func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
 
 	var resp apitype.DecryptValueResponse
 	req := apitype.DecryptValueRequest{Ciphertext: ciphertext}
-	if err := pulumiRESTCall(c.backend.cloudURL, "POST", path, &req, &resp, nil); err != nil {
+	if err := pulumiRESTCall(c.backend.cloudURL, "POST", path, nil, &req, &resp); err != nil {
 		return "", err
 	}
 	return string(resp.Plaintext), nil
