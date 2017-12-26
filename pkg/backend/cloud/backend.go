@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -444,8 +446,6 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName) (apitype
 	}, nil
 }
 
-const maxRetryTime = 5 * time.Second
-
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
 func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) {
@@ -453,67 +453,18 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 	eventIndex := "0"
 	for {
 		// Query for the latest update results, including log entries so we can provide active status updates.
-		var retries int
-		var retryTime time.Duration
-		var updateResults apitype.UpdateResults
-		for {
-			pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
-			err := pulumiRESTCall(b.cloudURL, "GET", pathWithIndex, nil, nil, &updateResults)
-			if err == nil {
-				break
-			}
-
-			// There are three kinds of errors we might see:
-			//     1) Expected HTTP errors (like timeouts); silently retry.
-			//     2) Unexpected HTTP errors (like Unauthorized, etc); exit with an error.
-			//     3) Anything else; this could be any number of things, including transient errors (flaky network).
-			//        In this case, we warn the user and keep retrying; they can ^C if it's not transient.
-			warn := true
-			if errResp, ok := err.(*apitype.ErrorResponse); ok {
-				if errResp.Code == 504 {
-					// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep
-					// continuing.  The sole exception is if we've done this 10 times.  At that point, we will have
-					// been waiting for many seconds, and want to let the user know something might be wrong.
-					// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
-					if retries < 10 {
-						warn = false
-					}
-					glog.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
-						b.cloudURL, errResp.Code, retries, err)
-				} else {
-					// Otherwise, we will issue an error.
-					glog.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
-						b.cloudURL, errResp.Code, retries, err)
-					return apitype.StatusFailed, err
-				}
-			} else {
-				glog.V(3).Infof("Enexpected %s error after %d retries (retrying): %v", b.cloudURL, retries, err)
-			}
-
-			// Compute a new retry time.  Start at 100ms and increase by 1.5x from there, up to a maximum of 5 seconds.
-			// The increasing delay avoids accidcentally DoSing the service endpoint.
-			if retryTime == 0 {
-				retryTime = 100 * time.Millisecond
-			} else {
-				retryTime = time.Duration(int64(float64(retryTime.Nanoseconds()) * 1.5))
-				if retryTime > maxRetryTime {
-					retryTime = maxRetryTime
-				}
-			}
-
-			// Issue a warning if appropriate.
-			if warn {
-				b.d.Warningf(diag.Message("error querying update status: %v"), err)
-				b.d.Warningf(diag.Message("retrying in %vs... ^C to stop (this will not cancel the update)"),
-					retryTime.Seconds())
-			}
-
-			// Now sleep and then go back around and try again...
-			retries++
-			time.Sleep(retryTime)
+		pathWithIndex := fmt.Sprintf("%s?afterIndex=%s", path, eventIndex)
+		_, results, err := retry.Until(context.Background(), retry.Acceptor{
+			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+				return b.tryNextUpdate(pathWithIndex, try, nextRetryTime)
+			},
+		})
+		if err != nil {
+			return apitype.StatusFailed, err
 		}
 
 		// We got a result, print it out.
+		updateResults := results.(apitype.UpdateResults)
 		for _, event := range updateResults.Events {
 			printEvent(event)
 			eventIndex = event.Index
@@ -528,6 +479,56 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 			return updateStatus, nil
 		}
 	}
+}
+
+// tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which resutls in a
+// false returned in the first return value.  If a non-nil error is returned, this operation should fail.
+func (b *cloudBackend) tryNextUpdate(pathWithIndex string,
+	try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+	// Perform the REST call.
+	var results apitype.UpdateResults
+	err := pulumiRESTCall(b.cloudURL, "GET", pathWithIndex, nil, nil, &results)
+
+	// If there is no error, we're done.
+	if err == nil {
+		return true, results, nil
+	}
+
+	// There are three kinds of errors we might see:
+	//     1) Expected HTTP errors (like timeouts); silently retry.
+	//     2) Unexpected HTTP errors (like Unauthorized, etc); exit with an error.
+	//     3) Anything else; this could be any number of things, including transient errors (flaky network).
+	//        In this case, we warn the user and keep retrying; they can ^C if it's not transient.
+	warn := true
+	if errResp, ok := err.(*apitype.ErrorResponse); ok {
+		if errResp.Code == 504 {
+			// If our request to the Pulumi Service returned a 504 (Gateway Timeout), ignore it and keep
+			// continuing.  The sole exception is if we've done this 10 times.  At that point, we will have
+			// been waiting for many seconds, and want to let the user know something might be wrong.
+			// TODO(pulumi/pulumi-ppc/issues/60): Elminate these timeouts all together.
+			if try < 10 {
+				warn = false
+			}
+			glog.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
+				b.cloudURL, errResp.Code, try, err)
+		} else {
+			// Otherwise, we will issue an error.
+			glog.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
+				b.cloudURL, errResp.Code, try, err)
+			return false, nil, err
+		}
+	} else {
+		glog.V(3).Infof("Unexpected %s error after %d retries (retrying): %v", b.cloudURL, try, err)
+	}
+
+	// Issue a warning if appropriate.
+	if warn {
+		b.d.Warningf(diag.Message("error querying update status: %v"), err)
+		b.d.Warningf(diag.Message("retrying in %vs... ^C to stop (this will not cancel the update)"),
+			nextRetryTime.Seconds())
+	}
+
+	return false, nil, nil
 }
 
 func printEvent(event apitype.UpdateEvent) {
