@@ -4,6 +4,7 @@ package engine
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -559,7 +560,7 @@ func printPropertyValue(
 	} else if v.IsNumber() {
 		write(b, op, "%v", v.NumberValue())
 	} else if v.IsString() {
-		write(b, op, "%q", v.StringValue())
+		writePossibleJSONString(b, op, v.StringValue())
 	} else if v.IsArray() {
 		arr := v.ArrayValue()
 		if len(arr) == 0 {
@@ -634,6 +635,19 @@ func printPropertyValue(
 		}
 	}
 	writeVerbatim(b, op, "\n")
+}
+
+func writePossibleJSONString(b *bytes.Buffer, op deploy.StepOp, val string) {
+	var bytes = []byte(val)
+	var js json.RawMessage
+
+	if json.Unmarshal(bytes, &js) == nil {
+		b.WriteString(colors.Reset)
+		b.WriteString(op.Color())
+		json.Compact(b, bytes)
+	} else {
+		write(b, op, "%q", val)
+	}
 }
 
 func printAssetOrArchive(
