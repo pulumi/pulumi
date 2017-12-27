@@ -120,7 +120,7 @@ func (md *mapper) defaultTags() (tags []string, optionalTags []string, skipTags 
 	} else {
 		skipTags = md.opts.SkipTags
 	}
-	return
+	return tags, optionalTags, skipTags
 }
 
 // structFieldTags includes a field's information plus any parsed tags.
