@@ -102,8 +102,8 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 					match = oldFunctionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
 				}
 				if len(match) != 2 {
-					glog.V(5).Infof("Skipping invalid log name found in log collector %s. " +
-						"Possibly mismatched versions of pulumi and pulumi-cloud.")
+					glog.V(5).Infof("Skipping invalid log name found in log collector %s. "+
+						"Possibly mismatched versions of pulumi and pulumi-cloud.", state.URN)
 					continue
 				}
 				logName := match[1]
