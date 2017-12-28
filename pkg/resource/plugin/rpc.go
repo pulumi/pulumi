@@ -188,7 +188,7 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 		} else if v != nil {
 			glog.V(9).Infof("Unmarshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
 			if opts.SkipNulls && v.IsNull() {
-				glog.V(9).Infof("Skipping unmarshaling for RPC: %s is null", opts.Label, key)
+				glog.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is null", opts.Label, key)
 			} else {
 				result[pk] = *v
 			}
