@@ -171,7 +171,7 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
         const props: any = req.getProperties().toJavaScript();
         const provider: any = await getProvider(props);
         if (provider.delete) {
-            provider.delete(req.getId(), props);
+            await provider.delete(req.getId(), props);
         }
         callback(undefined, new emptyproto.Empty());
     } catch (e) {
