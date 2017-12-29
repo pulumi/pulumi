@@ -4,15 +4,14 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
@@ -40,15 +39,15 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// Ask all known backends about this stack.
+			var result error
 			bes, hasClouds := allBackends()
 			toSelect := tokens.QName(args[0])
 			for _, b := range bes {
 				stack, err := b.GetStack(toSelect)
 				if err != nil {
 					// If there is an error, file it away, but keep going in case it's a transient cloud error.
-					_, fmterr := fmt.Fprintf(os.Stderr,
-						"error: could not query '%s' backend for possible stack select", b.Name())
-					contract.IgnoreError(fmterr)
+					result = multierror.Append(result, errors.Wrapf(err,
+						"could not query '%s' backend for stack selection", b.Name()))
 					continue
 				} else if stack != nil {
 					return state.SetCurrentStack(toSelect)
@@ -59,10 +58,9 @@ func newStackSelectCmd() *cobra.Command {
 			// message if no clouds are logged into, since that is presumably a common mistake.
 			msg := fmt.Sprintf("no stack named '%s' found", toSelect)
 			if !hasClouds {
-				return errors.New(msg +
-					"; you aren't logged into the Pulumi Cloud -- did you forget to 'pulumi login'?")
+				msg += "; you aren't logged into the Pulumi Cloud -- did you forget to 'pulumi login'?"
 			}
-			return errors.New(msg)
+			return multierror.Append(result, errors.New(msg))
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(

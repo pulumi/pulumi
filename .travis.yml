@@ -44,4 +44,3 @@ script:
     - make travis_${TRAVIS_EVENT_TYPE} TEST_FAST_TIMEOUT=10m
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
-
