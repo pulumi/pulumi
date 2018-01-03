@@ -108,6 +108,18 @@ type ProgramTestOptions struct {
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 
+	// CloudURL is an optional URL to a Pulumi Service API. If set, the program test will attempt to login
+	// to that CloudURL (assuming PULUMI_ACCESS_TOKEN is set) and create the stack using that hosted service.
+	// If nil, will test Pulumi using the fire-and-forget mode.
+	CloudURL string
+	// Owner and Repo are optional values to specify during calls to `pulumi init`. Otherwise the --owner and
+	// --repo flags will not be set.
+	Owner string
+	Repo  string
+	// PPCName is the name of the PPC to use when running a test against the hosted service. If
+	// not set, the --cloud flag will not be set on `pulumi stack init`.
+	PPCName string
+
 	// StackName allows the stack name to be explicitly provided instead of computed from the
 	// environment during tests.
 	StackName string
@@ -215,6 +227,18 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
+	if overrides.CloudURL != "" {
+		opts.CloudURL = overrides.CloudURL
+	}
+	if overrides.Owner != "" {
+		opts.Owner = overrides.Owner
+	}
+	if overrides.Repo != "" {
+		opts.Repo = overrides.Repo
+	}
+	if overrides.PPCName != "" {
+		opts.PPCName = overrides.PPCName
+	}
 	if overrides.EditDirs != nil {
 		opts.EditDirs = overrides.EditDirs
 	}
@@ -237,6 +261,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   yarn link <each opts.Depencies>
 //   yarn run build
 //   pulumi init
+//   (*) pulumi login
 //   pulumi stack init integrationtesting
 //   pulumi config set <each opts.Config>
 //   pulumi config set --secret <each opts.Secrets>
@@ -246,6 +271,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi update (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
+//   (*) pulumi logout
+//
+//   (*) Only if ProgramTestOptions.CloudURL is non-nil.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -293,13 +321,41 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	pioutil.MustFprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
-	if err = RunCommand(t, "pulumi-init",
-		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
+
+	initArgs := []string{"init"}
+	initArgs = addFlagIfNonNil(initArgs, "--owner", opts.Owner)
+	initArgs = addFlagIfNonNil(initArgs, "--name", opts.Repo)
+	if err = RunCommand(t, "pulumi-init", opts.PulumiCmd(initArgs), dir, opts); err != nil {
 		return "", err
 	}
 
-	if err = RunCommand(t, "pulumi-stack-init",
-		opts.PulumiCmd([]string{"stack", "init", "--local", string(stackName)}), dir, opts); err != nil {
+	// Login as needed.
+	if opts.CloudURL != "" {
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Fatalf("Unable to run pulumi login. PULUMI_ACCESS_TOKEN environment variable not set.")
+		}
+
+		// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
+		// e.g. replacing the current user's with that of a test account.
+		if err = os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
+			t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
+		}
+
+		args := opts.PulumiCmd([]string{"login", "--cloud-url", opts.CloudURL})
+		if err = RunCommand(t, "pulumi-login", args, dir, opts); err != nil {
+			return "", err
+		}
+	}
+
+	// Stack init
+	stackInitArgs := []string{"stack", "init", string(stackName)}
+	if opts.CloudURL == "" {
+		stackInitArgs = append(stackInitArgs, "--local")
+	} else {
+		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--cloud-url", opts.CloudURL)
+		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", opts.PPCName)
+	}
+	if err = RunCommand(t, "pulumi-stack-init", opts.PulumiCmd(stackInitArgs), dir, opts); err != nil {
 		return "", err
 	}
 
@@ -333,8 +389,18 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) er
 	if err := RunCommand(t, "pulumi-destroy", destroy, dir, opts); err != nil {
 		return err
 	}
-	return RunCommand(t, "pulumi-stack-rm",
-		opts.PulumiCmd([]string{"stack", "rm", "--yes", string(stackName)}), dir, opts)
+
+	args := []string{"stack", "rm", "--yes", string(stackName)}
+	if err := RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd(args), dir, opts); err != nil {
+		return err
+	}
+
+	if opts.CloudURL != "" {
+		args = []string{"logout", "--cloud-url", opts.CloudURL}
+		return RunCommand(t, "pulumi-logout", opts.PulumiCmd(args), dir, opts)
+	}
+
+	return nil
 }
 
 func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, error) {
@@ -719,6 +785,14 @@ func withOptionalYarnFlags(args []string) []string {
 		return append(args, flags)
 	}
 
+	return args
+}
+
+// addFlagIfNonNil will take a set of command-line flags, and add a new one if the provided flag value is non-nil.
+func addFlagIfNonNil(args []string, flag, flagValue string) []string {
+	if flagValue != "" {
+		args = append(args, flag, flagValue)
+	}
 	return args
 }
 
