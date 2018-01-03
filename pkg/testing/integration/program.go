@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	pioutil "github.com/pulumi/pulumi/pkg/util/ioutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -291,7 +292,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	fmt.Fprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	pioutil.MustFprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 	if err = RunCommand(t, "pulumi-init",
 		opts.PulumiCmd([]string{"init"}), dir, opts); err != nil {
 		return "", err
@@ -328,7 +329,7 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) er
 	}
 
 	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
-	fmt.Fprintf(opts.Stdout, "Destroying stack\n")
+	pioutil.MustFprintf(opts.Stdout, "Destroying stack\n")
 	if err := RunCommand(t, "pulumi-destroy", destroy, dir, opts); err != nil {
 		return err
 	}
@@ -338,7 +339,7 @@ func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) er
 
 func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, error) {
 	// Now preview and update the real changes.
-	fmt.Fprintf(opts.Stdout, "Performing primary preview and update\n")
+	pioutil.MustFprintf(opts.Stdout, "Performing primary preview and update\n")
 	initErr := previewAndUpdate(t, opts, dir, "initial", opts.ExpectFailure)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
@@ -348,7 +349,7 @@ func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir strin
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !opts.Quick {
-		fmt.Fprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		pioutil.MustFprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 		if err := previewAndUpdate(t, opts, dir, "empty", false); err != nil {
 			return dir, err
 		}
@@ -377,7 +378,7 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 	if !opts.Quick {
 		if err := RunCommand(t, "pulumi-preview-"+name, preview, dir, opts); err != nil {
 			if shouldFail {
-				fmt.Fprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
+				pioutil.MustFprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
 				return nil
 			}
 			return err
@@ -386,7 +387,7 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 
 	if err := RunCommand(t, "pulumi-update-"+name, update, dir, opts); err != nil {
 		if shouldFail {
-			fmt.Fprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			pioutil.MustFprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
 			return nil
 		}
 		return err
@@ -411,7 +412,7 @@ func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) (string, erro
 }
 
 func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) (string, error) {
-	fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
+	pioutil.MustFprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	newDir, err := prepareProject(t, opts, edit.Dir, dir, edit.Additive)
 	if err != nil {
@@ -535,9 +536,9 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 		opts.Stderr = stderr
 	}
 
-	fmt.Fprintf(opts.Stdout, "sample: %v\n", dir)
-	fmt.Fprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
-	fmt.Fprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
+	pioutil.MustFprintf(opts.Stdout, "sample: %v\n", dir)
+	pioutil.MustFprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
+	pioutil.MustFprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
 	// Now copy the source project, excluding the .pulumi directory.
 	dir, err = prepareProject(t, opts, dir, "", false)
@@ -545,7 +546,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 		return "", errors.Wrapf(err, "Failed to copy source project %v to a new temp dir", dir)
 	}
 
-	fmt.Fprintf(stdout, "projdir: %v\n", dir)
+	pioutil.MustFprintf(stdout, "projdir: %v\n", dir)
 	return dir, nil
 }
 
@@ -555,7 +556,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	path := args[0]
 	command := strings.Join(args, " ")
 
-	fmt.Fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
+	pioutil.MustFprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
@@ -563,7 +564,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		for !finished {
 			time.Sleep(30 * time.Second)
 			if !finished {
-				fmt.Fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
+				pioutil.MustFprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
 			}
 		}
 	}()
@@ -612,9 +613,9 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	finished = true
 	if runerr != nil {
-		fmt.Fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+		pioutil.MustFprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 		if !opts.Verbose {
-			fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
+			pioutil.MustFprintf(opts.Stderr, "%s\n", string(runout))
 		}
 	}
 

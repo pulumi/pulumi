@@ -143,6 +143,10 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
 			}
 
+			if all && secret {
+				return errors.New("if --all is specified, the value may not be marked secret")
+			}
+
 			// Ensure the stack exists.
 			s, err := requireStack(stackName)
 			if err != nil {

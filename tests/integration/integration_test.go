@@ -246,4 +246,7 @@ func TestConfigSave(t *testing.T) {
 	cv, err := c.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value3", cv)
+
+	// We do not allow storing secrets for all stacks, since the encryption key for the secret is tied to the stack
+	e.RunCommandExpectError("pulumi", "config", "set", "secretA", "valueA", "--all", "--secret")
 }
