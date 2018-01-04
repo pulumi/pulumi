@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-package tests
+package cloud
 
 import (
 	"os"
@@ -9,18 +9,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRequireLogin(t *testing.T) {
+// requirePulumiAPISet will skip the test unless the PULUMI_API is set.
+func requirePulumiAPISet(t *testing.T) {
 	if os.Getenv("PULUMI_API") == "" {
-		t.Skip("PULUMI_API environment variable not set. This means the Cloud-variant Pulumi commands won't run.")
+		t.Skip("PULUMI_API environment variable not set. Skipping this test.")
 	}
-	// Use the alt path for credentials as to not impact the local deverloper's machine.
-	if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
-		t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
-	}
+}
+
+func TestRequireLogin(t *testing.T) {
+	requirePulumiAPISet(t)
 
 	t.Run("SanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
@@ -31,15 +31,16 @@ func TestRequireLogin(t *testing.T) {
 		// logout and confirm auth error.
 		e.RunCommand("pulumi", "logout")
 
-		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "--local", "foo")
+		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "foo")
 		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "error: getting stored credentials: credentials file not found")
+		assert.Contains(t, err, "error: could not create stack: not yet authenticated with")
+		assert.Contains(t, err, "; please 'pulumi login' first")
 
 		// login and confirm things work.
 		os.Setenv(cloud.AccessTokenEnvVar, integration.TestAccountAccessToken)
 		e.RunCommand("pulumi", "login")
 
-		e.RunCommand("pulumi", "stack", "init", "--local", "foo")
+		e.RunCommand("pulumi", "stack", "init", "foo")
 		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
 	})
 }
