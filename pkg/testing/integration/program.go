@@ -117,7 +117,7 @@ type ProgramTestOptions struct {
 	Owner string
 	Repo  string
 	// PPCName is the name of the PPC to use when running a test against the hosted service. If
-	// not set, the --cloud flag will not be set on `pulumi stack init`.
+	// not set, the --ppc flag will not be set on `pulumi stack init`.
 	PPCName string
 
 	// StackName allows the stack name to be explicitly provided instead of computed from the
@@ -273,7 +273,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi stack rm --yes integrationtesting
 //   (*) pulumi logout
 //
-//   (*) Only if ProgramTestOptions.CloudURL is non-nil.
+//   (*) Only if ProgramTestOptions.CloudURL is not empty.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -788,7 +788,7 @@ func withOptionalYarnFlags(args []string) []string {
 	return args
 }
 
-// addFlagIfNonNil will take a set of command-line flags, and add a new one if the provided flag value is non-nil.
+// addFlagIfNonNil will take a set of command-line flags, and add a new one if the provided flag value is not empty.
 func addFlagIfNonNil(args []string, flag, flagValue string) []string {
 	if flagValue != "" {
 		args = append(args, flag, flagValue)
