@@ -10,10 +10,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
+
+// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
+// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
+//
+// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
+const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 func newLogsCmd() *cobra.Command {
 	var stack string
@@ -41,6 +48,11 @@ func newLogsCmd() *cobra.Command {
 				resourceFilter = &rf
 			}
 
+			fmt.Printf(
+				colors.ColorizeText(colors.BrightMagenta+"Collecting logs since %s.\n\n"+colors.Reset),
+				startTime.Format(timeFormat),
+			)
+
 			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
 			// approach here to ensure we don't grow memory unboundedly while following logs.
 			//
@@ -60,7 +72,7 @@ func newLogsCmd() *cobra.Command {
 				for _, logEntry := range logs {
 					if _, shownAlready := shown[logEntry]; !shownAlready {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(time.RFC3339Nano), logEntry.ID, logEntry.Message)
+						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat), logEntry.ID, logEntry.Message)
 						shown[logEntry] = true
 					}
 				}
@@ -81,9 +93,9 @@ func newLogsCmd() *cobra.Command {
 		&follow, "follow", "f", false,
 		"Follow the log stream in real time (like tail -f)")
 	logsCmd.PersistentFlags().StringVar(
-		&since, "since", "",
+		&since, "since", "1h",
 		"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp.  "+
-			"Defaults to returning all logs.")
+			"Defaults to returning the last 1 hour of logs.")
 	logsCmd.PersistentFlags().StringVarP(
 		&resource, "resource", "r", "",
 		"Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.")
