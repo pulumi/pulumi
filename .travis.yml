@@ -40,6 +40,10 @@ install:
 before_script:
     # Ensure the working tree is clean (make ensure may have updated lock files)
     - ${GOPATH}/src/github.com/pulumi/home/scripts/check-worktree-is-clean.sh
+    # Set stdout back to blocking to avoid problems writing large outputs.
+    # The call to `nvm` above may have changed it.
+    # https://github.com/pulumi/pulumi-ppc/issues/176
+    - python -c 'import fcntl, os, sys; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print("stdout was " + ("nonblocking" if flags & os.O_NONBLOCK else "blocking")); fcntl.fcntl(sys.stdout, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)'
 script:
     - make travis_${TRAVIS_EVENT_TYPE} TEST_FAST_TIMEOUT=10m
 notifications:
