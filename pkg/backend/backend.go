@@ -4,6 +4,8 @@
 package backend
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -39,4 +41,9 @@ type Backend interface {
 
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error)
+
+	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
+	ExportDeployment(stackName tokens.QName) (json.RawMessage, error)
+	// ImportDeployment imports the given deployment into the indicated stack.
+	ImportDeployment(stackName tokens.QName, deployment json.RawMessage) error
 }

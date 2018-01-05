@@ -42,7 +42,7 @@ func TestDiffs(t *testing.T) {
 			assert.Equal(t, "d", string(d.URN.Name()))
 		},
 		EditDirs: []integration.EditDir{
-			integration.EditDir{
+			{
 				Dir:      "step2",
 				Additive: true,
 				Stdout:   &buf,
@@ -83,7 +83,7 @@ func TestDiffs(t *testing.T) {
 					buf.Reset()
 				},
 			},
-			integration.EditDir{
+			{
 				Dir:      "step3",
 				Additive: true,
 				Stdout:   &buf,
@@ -118,7 +118,7 @@ func TestDiffs(t *testing.T) {
 					buf.Reset()
 				},
 			},
-			integration.EditDir{
+			{
 				Dir:      "step4",
 				Additive: true,
 				Stdout:   &buf,
@@ -150,7 +150,7 @@ func TestDiffs(t *testing.T) {
 					buf.Reset()
 				},
 			},
-			integration.EditDir{
+			{
 				Dir:      "step5",
 				Additive: true,
 				Stdout:   &buf,

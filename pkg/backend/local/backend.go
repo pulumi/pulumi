@@ -3,6 +3,7 @@
 package local
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -197,6 +199,58 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 		return nil, err
 	}
 	return *logs, err
+}
+
+func (b *localBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage, error) {
+	pulumiEngine, err := b.getEngine(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	snap, err := pulumiEngine.Snapshots.GetSnapshot(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := json.Marshal(stack.SerializeDeployment(snap))
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(data), nil
+}
+
+func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMessage) error {
+	pulumiEngine, err := b.getEngine(stackName)
+	if err != nil {
+		return err
+	}
+
+	target, err := pulumiEngine.Targets.GetTarget(stackName)
+	if err != nil {
+		return err
+	}
+
+	var deployment stack.Deployment
+	if err = json.Unmarshal(src, &deployment); err != nil {
+		return err
+	}
+
+	checkpoint := &stack.Checkpoint{
+		Stack:  target.Name,
+		Config: target.Config,
+		Latest: &deployment,
+	}
+	snap, err := stack.DeserializeCheckpoint(checkpoint)
+	if err != nil {
+		return err
+	}
+
+	mut, err := pulumiEngine.Snapshots.BeginMutation(target.Name)
+	if err != nil {
+		return err
+	}
+
+	return mut.End(snap)
 }
 
 func (b *localBackend) getEngine(stackName tokens.QName) (engine.Engine, error) {

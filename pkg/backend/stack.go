@@ -3,6 +3,8 @@
 package backend
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -22,6 +24,8 @@ type Stack interface {
 	Update(debug bool, opts engine.DeployOptions) error               // update this stack.
 	Destroy(debug bool, opts engine.DestroyOptions) error             // destroy this stack's resources.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
+	ExportDeployment() (json.RawMessage, error)                       // export this stack's deployment as an opaque JSON message.
+	ImportDeployment(json.RawMessage) error                           // import the given deployment into this stack.
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
@@ -52,4 +56,14 @@ func GetStackCrypter(s Stack) (config.Crypter, error) {
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
 func GetStackLogs(s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
 	return s.Backend().GetLogs(s.Name(), query)
+}
+
+// ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
+func ExportStackDeployment(s Stack) (json.RawMessage, error) {
+	return s.Backend().ExportDeployment(s.Name())
+}
+
+// ImportStackDeployment imports the given deployment into the indicated stack.
+func ImportStackDeployment(s Stack, deployment json.RawMessage) error {
+	return s.Backend().ImportDeployment(s.Name(), deployment)
 }
