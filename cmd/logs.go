@@ -16,6 +16,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
+// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
+// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
+//
+// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
+const timeFormat = "2006-01-02T15:04:05.000Z07:00"
+
 func newLogsCmd() *cobra.Command {
 	var stack string
 	var follow bool
@@ -44,7 +50,7 @@ func newLogsCmd() *cobra.Command {
 
 			fmt.Printf(
 				colors.ColorizeText(colors.BrightMagenta+"Collecting logs since %s.\n\n"+colors.Reset),
-				startTime.Format(time.RFC3339Nano),
+				startTime.Format(timeFormat),
 			)
 
 			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
@@ -66,7 +72,7 @@ func newLogsCmd() *cobra.Command {
 				for _, logEntry := range logs {
 					if _, shownAlready := shown[logEntry]; !shownAlready {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(time.RFC3339Nano), logEntry.ID, logEntry.Message)
+						fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat), logEntry.ID, logEntry.Message)
 						shown[logEntry] = true
 					}
 				}
