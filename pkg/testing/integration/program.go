@@ -277,17 +277,17 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	err := TestLifeCycleInitAndDestroy(t, opts, testPreviewUpdateAndEdits)
+	err := testLifeCycleInitAndDestroy(t, opts, testPreviewUpdateAndEdits)
 	assert.NoError(t, err)
 }
 
-func TestLifeCycleInitAndDestroy(
+func testLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
 	between func(*testing.T, *ProgramTestOptions, string) (string, error)) error {
 
 	t.Parallel()
 
-	dir, err := TestLifeCycleInitialize(t, opts)
+	dir, err := testLifeCycleInitialize(t, opts)
 	if err != nil {
 		return err
 	}
@@ -295,7 +295,7 @@ func TestLifeCycleInitAndDestroy(
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		if dir != "" {
-			destroyErr := TestLifeCycleDestroy(t, opts, dir)
+			destroyErr := testLifeCycleDestroy(t, opts, dir)
 			assert.NoError(t, destroyErr)
 		}
 	}()
@@ -304,7 +304,7 @@ func TestLifeCycleInitAndDestroy(
 	return err
 }
 
-func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
+func testLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	stackName := opts.GetStackName()
 
 	// Perform the initial stack creation.
@@ -376,7 +376,7 @@ func TestLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions) (string, er
 	return dir, nil
 }
 
-func TestLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) error {
+func testLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) error {
 	stackName := opts.GetStackName()
 
 	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
