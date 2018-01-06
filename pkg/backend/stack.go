@@ -24,7 +24,7 @@ type Stack interface {
 	Update(debug bool, opts engine.DeployOptions) error               // update this stack.
 	Destroy(debug bool, opts engine.DestroyOptions) error             // destroy this stack's resources.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
-	ExportDeployment() (json.RawMessage, error)                       // export this stack's deployment as an opaque JSON message.
+	ExportDeployment() (json.RawMessage, error)                       // export this stack's deployment.
 	ImportDeployment(json.RawMessage) error                           // import the given deployment into this stack.
 }
 

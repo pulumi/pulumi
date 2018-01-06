@@ -32,7 +32,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			var deployment json.RawMessage
-			if err := json.NewDecoder(os.Stdin).Decode(&deployment); err != nil {
+			if err = json.NewDecoder(os.Stdin).Decode(&deployment); err != nil {
 				return err
 			}
 
