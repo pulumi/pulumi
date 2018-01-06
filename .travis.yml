@@ -31,6 +31,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; export PIP=pip2.7; fi
     # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
     - $PIP install --upgrade --user awscli
+    - export PULUMI_FAILED_TESTS_DIR=$(mktemp -d); echo "${PULUMI_FAILED_TESTS_DIR}"
 cache:
     yarn: true
 install:
@@ -46,5 +47,8 @@ before_script:
     - python -c 'import fcntl, os, sys; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print("stdout was " + ("nonblocking" if flags & os.O_NONBLOCK else "blocking")); fcntl.fcntl(sys.stdout, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)'
 script:
     - make travis_${TRAVIS_EVENT_TYPE} TEST_FAST_TIMEOUT=10m
+after_failure:
+    # Copy any data from failed tests to S3.
+    - aws --region us-west-2 s3 cp --recursive "${PULUMI_FAILED_TESTS_DIR}" "s3://eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/failures"
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
