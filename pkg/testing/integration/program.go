@@ -280,6 +280,14 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	assert.NoError(t, err)
 }
 
+func uniqueSuffix() string {
+	// .<timestamp>.<five random hex characters>
+	timestamp := time.Now().Format("20060102-150405")
+	suffix, err := resource.NewUniqueHex("."+timestamp+".", 5, -1)
+	contract.Assert(err == nil)
+	return suffix
+}
+
 func testLifeCycleInitAndDestroy(
 	t *testing.T, opts *ProgramTestOptions,
 	between func(*testing.T, *ProgramTestOptions, string) error) error {
@@ -632,6 +640,21 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	return targetDir, nil
 }
 
+func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
+	logFileDir := filepath.Join(runDir, "command-output")
+	if err := os.MkdirAll(logFileDir, 0700); err != nil {
+		return "", errors.Wrapf(err, "Failed to create '%s'", logFileDir)
+	}
+
+	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
+
+	if err := ioutil.WriteFile(logFile, output, 0644); err != nil {
+		return "", errors.Wrapf(err, "Failed to write '%s'", logFile)
+	}
+
+	return logFile, nil
+}
+
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
 func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
@@ -696,8 +719,14 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	finished = true
 	if runerr != nil {
 		pioutil.MustFprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
-		if !opts.Verbose {
-			pioutil.MustFprintf(opts.Stderr, "%s\n", string(runout))
+	}
+
+	// If we collected any program output, write it to a log file -- success or failure.
+	if len(runout) > 0 {
+		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
+			pioutil.MustFprintf(opts.Stderr, "Failed to write output: %v\n", err)
+		} else {
+			pioutil.MustFprintf(opts.Stderr, "Wrote output to %s\n", logFile)
 		}
 	}
 
@@ -750,13 +779,9 @@ func prepareProject(t *testing.T, opts *ProgramTestOptions, sourceDir, targetDir
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	if builderr := RunCommand(t,
+	return RunCommand(t,
 		"yarn-build",
-		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd, opts); builderr != nil {
-		return builderr
-	}
-
-	return nil
+		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd, opts)
 }
 
 func withOptionalYarnFlags(args []string) []string {
