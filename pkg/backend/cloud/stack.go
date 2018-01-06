@@ -3,6 +3,8 @@
 package cloud
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -90,4 +92,12 @@ func (s *cloudStack) Destroy(debug bool, opts engine.DestroyOptions) error {
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {
 	return backend.GetStackLogs(s, query)
+}
+
+func (s *cloudStack) ExportDeployment() (json.RawMessage, error) {
+	return backend.ExportStackDeployment(s)
+}
+
+func (s *cloudStack) ImportDeployment(deployment json.RawMessage) error {
+	return backend.ImportStackDeployment(s, deployment)
 }

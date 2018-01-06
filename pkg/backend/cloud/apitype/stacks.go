@@ -2,7 +2,11 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/pkg/tokens"
+import (
+	"encoding/json"
+
+	"github.com/pulumi/pulumi/pkg/tokens"
+)
 
 // Resource describes a Cloud resource constructed by Pulumi.
 type Resource struct {
@@ -66,4 +70,21 @@ type DecryptValueRequest struct {
 type DecryptValueResponse struct {
 	// The decrypted value.
 	Plaintext []byte `json:"plaintext"`
+}
+
+// StackExport describes an exported stack.
+type StackExport struct {
+	// The opaque Pulumi deployment.
+	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
+
+// ExportStackResponse defines the response body for exporting a Stack.
+type ExportStackResponse StackExport
+
+// ImportStackRequest defines the request body for importing a Stack.
+type ImportStackRequest StackExport
+
+// ImportStackResponse defines the response body for importing a Stack.
+type ImportStackResponse struct {
+	UpdateID string `json:"updateId"`
 }

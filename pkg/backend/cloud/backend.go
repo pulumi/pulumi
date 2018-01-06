@@ -5,6 +5,7 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -354,6 +355,48 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	}
 
 	return logs, nil
+}
+
+func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage, error) {
+	projID, err := getCloudProjectIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	var response apitype.ExportStackResponse
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/export",
+		projID.Owner, projID.Repository, projID.Project, string(stackName))
+	if err := pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &response); err != nil {
+		return nil, err
+	}
+
+	return response.Deployment, nil
+}
+
+func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment json.RawMessage) error {
+	projID, err := getCloudProjectIdentifier()
+	if err != nil {
+		return err
+	}
+
+	stackPath := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s",
+		projID.Owner, projID.Repository, projID.Project, string(stackName))
+
+	request := apitype.ImportStackRequest{Deployment: deployment}
+	var response apitype.ImportStackResponse
+	if err = pulumiRESTCall(b.cloudURL, "POST", stackPath+"/import", nil, &request, &response); err != nil {
+		return err
+	}
+
+	// Wait for the import to complete, which also polls and renders event output to STDOUT.
+	importPath := fmt.Sprintf("%s/update/%s", stackPath, response.UpdateID)
+	status, err := b.waitForUpdate(importPath)
+	if err != nil {
+		return errors.Wrap(err, "waiting for import")
+	} else if status != apitype.StatusSucceeded {
+		return errors.Errorf("import unsuccessful: status %v", status)
+	}
+	return nil
 }
 
 // listCloudStacks returns all stacks for the current repository x workspace on the Pulumi Cloud.
