@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -347,6 +348,34 @@ func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
 
 	return errors.Errorf(
 		"configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stack.Name())
+}
+
+func deleteAllStackConfiguration(stackName tokens.QName) error {
+	contract.Require(stackName != "", "stackName")
+
+	w, err := workspace.New()
+	if err != nil {
+		return err
+	}
+
+	pkg, err := w.GetPackage()
+	if err != nil {
+		return err
+	}
+
+	delete(w.Settings().Config, stackName)
+
+	err = w.Save()
+	if err != nil {
+		return err
+	}
+
+	if info, has := pkg.Stacks[stackName]; has {
+		info.Config = nil
+		pkg.Stacks[stackName] = info
+	}
+
+	return workspace.SavePackage(pkg)
 }
 
 func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {

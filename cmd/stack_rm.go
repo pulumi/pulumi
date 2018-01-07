@@ -51,6 +51,11 @@ func newStackRmCmd() *cobra.Command {
 					return err
 				}
 
+				err = deleteAllStackConfiguration(s.Name())
+				if err != nil {
+					return err
+				}
+
 				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
 				fmt.Println(colors.ColorizeText(msg))
 
