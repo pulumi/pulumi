@@ -52,6 +52,11 @@ type StackInfo struct {
 	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config.
 }
 
+// IsEmpty returns True if this object contains no information (i.e. all members have their zero values)
+func (s *StackInfo) IsEmpty() bool {
+	return len(s.Config) == 0
+}
+
 var _ diag.Diagable = (*Package)(nil)
 
 func (pkg *Package) Where() (*diag.Document, *diag.Location) {
@@ -112,6 +117,12 @@ func Save(path string, pkg *Package) error {
 	contract.Require(path != "", "pkg")
 	contract.Require(pkg != nil, "pkg")
 	contract.Requiref(pkg.Validate() == nil, "pkg", "Validate()")
+
+	for name, info := range pkg.Stacks {
+		if info.IsEmpty() {
+			delete(pkg.Stacks, name)
+		}
+	}
 
 	m, err := marshallerForPath(path)
 	if err != nil {

@@ -18,8 +18,9 @@ import (
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
 	Settings() *Settings                 // returns a mutable pointer to the optional workspace settings info.
-	Repository() *Repository             // the repository this project belongs to
-	StackPath(stack tokens.QName) string // returns the path to store stack information
+	Repository() *Repository             // returns the repository this project belongs to.
+	StackPath(stack tokens.QName) string // returns the path to store stack information.
+	GetPackage() (*pack.Package, error)  // returns a copy of the package associated with this workspace.
 	Save() error                         // saves any modifications to the workspace.
 }
 
@@ -84,8 +85,8 @@ func (pw *projectWorkspace) Repository() *Repository {
 	return pw.repo
 }
 
-func (pw *projectWorkspace) DetectPackage() (string, error) {
-	return pw.project, nil
+func (pw *projectWorkspace) GetPackage() (*pack.Package, error) {
+	return pack.Load(pw.project)
 }
 
 func (pw *projectWorkspace) Save() error {
