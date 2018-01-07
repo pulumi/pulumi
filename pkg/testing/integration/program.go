@@ -301,8 +301,15 @@ func testLifeCycleInitAndDestroy(
 
 	defer func() {
 		if t.Failed() {
-			// Keep temp dir around
+			// Test failed -- keep temporary files around for debugging.
+			// Maybe also copy to "failed tests" directory.
+			failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
+			if failedTestsDir != "" {
+				dest := filepath.Join(failedTestsDir, t.Name()+uniqueSuffix())
+				contract.IgnoreError(fsutil.CopyFile(dest, dir, nil))
+			}
 		} else {
+			// Test passed -- delete temporary files.
 			contract.IgnoreError(os.RemoveAll(dir))
 		}
 	}()
