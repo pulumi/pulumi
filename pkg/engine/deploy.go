@@ -14,12 +14,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type DeployOptions struct {
-	Package              string              // the package we are deploying (or "" to use the default)
 	Analyzers            []string            // an optional set of analyzers to run as part of this deployment.
 	DryRun               bool                // true if we should just print the plan without performing it.
 	Parallel             int                 // the degree of parallelism for resource operations (<=1 for serial).
@@ -30,13 +28,13 @@ type DeployOptions struct {
 	Color                colors.Colorization // How output should be colorized.
 }
 
-func (eng *Engine) Deploy(stack tokens.QName, events chan<- Event, opts DeployOptions) error {
-	contract.Require(stack != tokens.QName(""), "stack")
+func (eng *Engine) Deploy(update Update, events chan<- Event, opts DeployOptions) error {
+	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := eng.planContextFromStack(stack, opts.Package)
+	info, err := eng.planContextFromUpdate(update)
 	if err != nil {
 		return err
 	}
@@ -105,7 +103,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := newDeployActions(opts, result.Info.Target, eng)
+			actions := newDeployActions(info.Update, opts)
 			summary, _, _, err := result.Walk(actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
@@ -149,19 +147,17 @@ type deployActions struct {
 	Seen         map[resource.URN]deploy.Step
 	Shown        map[resource.URN]bool
 	MaybeCorrupt bool
+	Update       Update
 	Opts         deployOptions
-	Target       *deploy.Target
-	Engine       *Engine
 }
 
-func newDeployActions(opts deployOptions, target *deploy.Target, engine *Engine) *deployActions {
+func newDeployActions(update Update, opts deployOptions) *deployActions {
 	return &deployActions{
 		Ops:    make(map[deploy.StepOp]int),
 		Seen:   make(map[resource.URN]deploy.Step),
 		Shown:  make(map[resource.URN]bool),
+		Update: update,
 		Opts:   opts,
-		Target: target,
-		Engine: engine,
 	}
 }
 
@@ -174,7 +170,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	return acts.Update.BeginMutation()
 }
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
@@ -233,7 +229,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	mutation, err := acts.Engine.Snapshots.BeginMutation(acts.Target.Name)
+	mutation, err := acts.Update.BeginMutation()
 	if err != nil {
 		return err
 	}

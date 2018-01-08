@@ -10,12 +10,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type PreviewOptions struct {
-	Package              string   // the package to compute the preview for
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool     // true to show the configuration variables being used.
@@ -25,13 +23,13 @@ type PreviewOptions struct {
 	Color                colors.Colorization
 }
 
-func (eng *Engine) Preview(stack tokens.QName, events chan<- Event, opts PreviewOptions) error {
-	contract.Require(stack != tokens.QName(""), "stack")
+func (eng *Engine) Preview(update Update, events chan<- Event, opts PreviewOptions) error {
+	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := eng.planContextFromStack(stack, opts.Package)
+	info, err := eng.planContextFromUpdate(update)
 	if err != nil {
 		return err
 	}

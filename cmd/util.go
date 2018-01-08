@@ -17,10 +17,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // allBackends returns all known backends.  The boolean is true if any are cloud backends.
@@ -145,4 +147,29 @@ func parseColorization(debug bool, color string) (colors.Colorization, error) {
 
 	return colors.Never, fmt.Errorf(
 		"unsupported color option: '%s'.  Supported values are: auto, always, never, raw", color)
+}
+
+// readPackage attempts to detect and read the package for the current workspace. If an error occurs, it will be
+// printed to Stderr, and the returned value will be nil. If the package is successfully detected and read, it
+// is returned along with the path to its containing directory, which will be used as the root of the package's
+// Pulumi program.
+func readPackage() (*pack.Package, string, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Now that we got here, we have a path, so we will try to load it.
+	pkgpath, err := workspace.DetectPackageFrom(pwd)
+	if err != nil {
+		return nil, "", errors.Errorf("could not locate a package to load: %v", err)
+	} else if pkgpath == "" {
+		return nil, "", errors.Errorf("could not find Pulumi.yaml (searching upwards from %s)", pwd)
+	}
+	pkg, err := pack.Load(pkgpath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return pkg, filepath.Dir(pkgpath), nil
 }

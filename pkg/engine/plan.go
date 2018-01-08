@@ -26,16 +26,16 @@ import (
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
 func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
-	contract.Assert(info.Target != nil)
+	contract.Assert(info.Update != nil)
 
-	// First, load the package metadata, in preparation for executing it and creating resources.
-	pkginfo, err := ReadPackageFromArg(info.PackageArg)
-	if err != nil {
-		return nil, errors.Errorf("Error loading package: %v", err)
-	}
-	contract.Assert(pkginfo != nil)
+	// First, load the package metadata and the deployment target in preparation for executing the package's program
+	// and creating resources.
+	pkg, target := info.Update.GetPackage(), info.Update.GetTarget()
+	contract.Assert(pkg != nil)
+	contract.Assert(target != nil)
 
 	// If the package contains an override for the main entrypoint, use it.
+	pkginfo := &Pkginfo{Pkg: pkg, Root: info.Update.GetRoot()}
 	pwd, main, err := pkginfo.GetPwdMain()
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 		Pkg:     pkginfo.Pkg,
 		Pwd:     pwd,
 		Program: main,
-		Target:  info.Target,
+		Target:  target,
 	}, opts.Destroy, opts.DryRun)
 
 	// If there are any analyzers in the project file, add them.
@@ -70,7 +70,7 @@ func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, err
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
+	plan := deploy.NewPlan(ctx, target, target.Snapshot, source, analyzers)
 	return &planResult{
 		Ctx:     ctx,
 		Info:    info,
@@ -213,7 +213,7 @@ func isRootStack(step deploy.Step) bool {
 func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
 	// If there are configuration variables, show them.
 	if result.Options.ShowConfig {
-		printConfig(b, result.Info.Target.Config)
+		printConfig(b, result.Info.Update.GetTarget().Config)
 	}
 }
 
