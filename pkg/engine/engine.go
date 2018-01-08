@@ -3,30 +3,21 @@
 package engine
 
 import (
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-type Engine struct {
-	Targets   TargetProvider
-	Snapshots SnapshotProvider
-}
-
-// TargetProvider abstracts away retriving a target
-type TargetProvider interface {
-	GetTarget(name tokens.QName) (*deploy.Target, error)
-}
-
-// SnapshotMutation abstracts away managing changes to snapshots
-type SnapshotMutation interface {
-	// End indicates that the current mutation has completed and that its results (given by snapshot) should be
-	// persisted. See the comments on SnapshotProvider.BeginMutation for more details.
-	End(snapshot *deploy.Snapshot) error
-}
-
-// SnapshotProvider abstracts away retrieving and storing snapshots
-type SnapshotProvider interface {
-	GetSnapshot(name tokens.QName) (*deploy.Snapshot, error)
+// Update abstracts away information about an apply, preview, or destroy.
+type Update interface {
+	// GetRoot returns the root directory for this update. This defines the scope for any filesystem resources
+	// accessed by this update.
+	GetRoot() string
+	// GetPackage returns information about the package associated with this update. This includes information such as
+	// the runtime that will be used to execute the Pulumi program and the program's relative working directory.
+	GetPackage() *pack.Package
+	// GetTarget returns information about the target of this update. This includes the name of the stack being
+	// updated, the configuration values associated with the target and the target's latest snapshot.
+	GetTarget() *deploy.Target
 
 	// BeginMutation and SnapshotMutation.End allow a snapshot provider to be robust in the face of failures that occur
 	// between the points at which they are called. The semantics are as follows:
@@ -39,5 +30,12 @@ type SnapshotProvider interface {
 	// and cannot be assumed to represent the actual state of the system. This ensures that if the engine crashes during
 	// (2), then the current snapshot is known to be unreliable. During (3), the snapshot provider should persist the
 	// provided snapshot and record that it is known to be reliable.
-	BeginMutation(name tokens.QName) (SnapshotMutation, error)
+	BeginMutation() (SnapshotMutation, error)
+}
+
+// SnapshotMutation abstracts away managing changes to snapshots.
+type SnapshotMutation interface {
+	// End indicates that the current mutation has completed and that its results (given by snapshot) should be
+	// persisted. See the comments on SnapshotProvider.BeginMutation for more details.
+	End(snapshot *deploy.Snapshot) error
 }

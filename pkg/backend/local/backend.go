@@ -12,11 +12,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -31,12 +31,11 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d           diag.Sink
-	engineCache map[tokens.QName]engine.Engine
+	d diag.Sink
 }
 
 func New(d diag.Sink) Backend {
-	return &localBackend{d: d, engineCache: make(map[tokens.QName]engine.Engine)}
+	return &localBackend{d: d}
 }
 
 func (b *localBackend) Name() string {
@@ -104,8 +103,10 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return symmetricCrypter()
 }
 
-func (b *localBackend) Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error {
-	pulumiEngine, err := b.getEngine(stackName)
+func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
+	opts engine.PreviewOptions) error {
+
+	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
 		return err
 	}
@@ -115,7 +116,7 @@ func (b *localBackend) Preview(stackName tokens.QName, debug bool, opts engine.P
 
 	go displayEvents(events, done, debug)
 
-	if err = pulumiEngine.Preview(stackName, events, opts); err != nil {
+	if err = engine.Preview(update, events, opts); err != nil {
 		return err
 	}
 
@@ -125,8 +126,10 @@ func (b *localBackend) Preview(stackName tokens.QName, debug bool, opts engine.P
 	return nil
 }
 
-func (b *localBackend) Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error {
-	pulumiEngine, err := b.getEngine(stackName)
+func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
+	opts engine.DeployOptions) error {
+
+	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
 		return err
 	}
@@ -136,7 +139,7 @@ func (b *localBackend) Update(stackName tokens.QName, debug bool, opts engine.De
 
 	go displayEvents(events, done, debug)
 
-	if err = pulumiEngine.Deploy(stackName, events, opts); err != nil {
+	if err = engine.Deploy(update, events, opts); err != nil {
 		return err
 	}
 
@@ -146,8 +149,10 @@ func (b *localBackend) Update(stackName tokens.QName, debug bool, opts engine.De
 	return nil
 }
 
-func (b *localBackend) Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error {
-	pulumiEngine, err := b.getEngine(stackName)
+func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
+	opts engine.DestroyOptions) error {
+
+	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
 		return err
 	}
@@ -157,7 +162,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, debug bool, opts engine.D
 
 	go displayEvents(events, done, debug)
 
-	if err := pulumiEngine.Destroy(stackName, events, opts); err != nil {
+	if err := engine.Destroy(update, events, opts); err != nil {
 		return err
 	}
 
@@ -169,30 +174,20 @@ func (b *localBackend) Destroy(stackName tokens.QName, debug bool, opts engine.D
 }
 
 func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
-	pulumiEngine, err := b.getEngine(stackName)
+	target, err := b.getTarget(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	snap, err := pulumiEngine.Snapshots.GetSnapshot(stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := pulumiEngine.Targets.GetTarget(stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	contract.Assert(snap != nil)
 	contract.Assert(target != nil)
+	contract.Assert(target.Snapshot != nil)
 
 	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
 		return nil, err
 	}
 
-	components := operations.NewResourceTree(snap.Resources)
+	components := operations.NewResourceTree(target.Snapshot.Resources)
 	ops := components.OperationsProvider(config)
 	logs, err := ops.GetLogs(query)
 	if logs == nil {
@@ -202,12 +197,7 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 }
 
 func (b *localBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage, error) {
-	pulumiEngine, err := b.getEngine(stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	snap, err := pulumiEngine.Snapshots.GetSnapshot(stackName)
+	_, snap, _, err := getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -220,12 +210,7 @@ func (b *localBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage
 }
 
 func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMessage) error {
-	pulumiEngine, err := b.getEngine(stackName)
-	if err != nil {
-		return err
-	}
-
-	target, err := pulumiEngine.Targets.GetTarget(stackName)
+	config, _, _, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -236,8 +221,8 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMess
 	}
 
 	checkpoint := &stack.Checkpoint{
-		Stack:  target.Name,
-		Config: target.Config,
+		Stack:  stackName,
+		Config: config,
 		Latest: &deployment,
 	}
 	snap, err := stack.DeserializeCheckpoint(checkpoint)
@@ -245,37 +230,7 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMess
 		return err
 	}
 
-	mut, err := pulumiEngine.Snapshots.BeginMutation(target.Name)
-	if err != nil {
-		return err
-	}
-
-	return mut.End(snap)
-}
-
-func (b *localBackend) getEngine(stackName tokens.QName) (engine.Engine, error) {
-	if b.engineCache == nil {
-		b.engineCache = make(map[tokens.QName]engine.Engine)
-	}
-
-	if engine, has := b.engineCache[stackName]; has {
-		return engine, nil
-	}
-
-	cfg, err := state.Configuration(b.d, stackName)
-	if err != nil {
-		return engine.Engine{}, err
-	}
-
-	decrypter, err := defaultCrypter(cfg)
-	if err != nil {
-		return engine.Engine{}, err
-	}
-
-	localProvider := newLocalStackProvider(b.d, decrypter)
-	pulumiEngine := engine.Engine{Targets: localProvider, Snapshots: localProvider}
-	b.engineCache[stackName] = pulumiEngine
-	return pulumiEngine, nil
+	return saveStack(stackName, config, snap)
 }
 
 func getLocalStacks() ([]tokens.QName, error) {

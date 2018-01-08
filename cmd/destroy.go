@@ -42,10 +42,15 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
+			pkg, root, err := readPackage()
+			if err != nil {
+				return err
+			}
+
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
 
-				return s.Destroy(debug, engine.DestroyOptions{
+				return s.Destroy(pkg, root, debug, engine.DestroyOptions{
 					DryRun:   preview,
 					Parallel: parallel,
 					Summary:  summary,

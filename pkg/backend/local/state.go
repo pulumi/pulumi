@@ -13,9 +13,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -30,41 +30,34 @@ import (
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
-type localStackProvider struct {
-	d         diag.Sink
-	decrypter config.Decrypter
+// update is an implementation of engine.Update backed by local state.
+type update struct {
+	root   string
+	pkg    *pack.Package
+	target *deploy.Target
 }
 
-func newLocalStackProvider(d diag.Sink, decrypter config.Decrypter) *localStackProvider {
-	return &localStackProvider{d: d, decrypter: decrypter}
+func (u *update) GetRoot() string {
+	return u.root
 }
 
-func (p *localStackProvider) GetTarget(name tokens.QName) (*deploy.Target, error) {
-	contract.Require(name != "", "name")
-
-	config, err := state.Configuration(p.d, name)
-	if err != nil {
-		return nil, err
-	}
-
-	return &deploy.Target{Name: name, Config: config, Decrypter: p.decrypter}, nil
+func (u *update) GetPackage() *pack.Package {
+	return u.pkg
 }
 
-func (p *localStackProvider) GetSnapshot(name tokens.QName) (*deploy.Snapshot, error) {
-	contract.Require(name != "", "name")
-	_, snapshot, _, err := getStack(name)
-	return snapshot, err
+func (u *update) GetTarget() *deploy.Target {
+	return u.target
 }
 
 type localStackMutation struct {
 	name tokens.QName
 }
 
-func (p *localStackProvider) BeginMutation(name tokens.QName) (engine.SnapshotMutation, error) {
-	return localStackMutation{name: name}, nil
+func (u *update) BeginMutation() (engine.SnapshotMutation, error) {
+	return &localStackMutation{name: u.target.Name}, nil
 }
 
-func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
+func (m *localStackMutation) End(snapshot *deploy.Snapshot) error {
 	stack := snapshot.Stack
 	contract.Assert(m.name == stack)
 
@@ -74,6 +67,44 @@ func (m localStackMutation) End(snapshot *deploy.Snapshot) error {
 	}
 
 	return saveStack(stack, config, snapshot)
+}
+
+func (b *localBackend) newUpdate(stackName tokens.QName, pkg *pack.Package, root string) (*update, error) {
+	contract.Require(stackName != "", "stackName")
+
+	// Construct the deployment target.
+	target, err := b.getTarget(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Construct and return a new update.
+	return &update{
+		root:   root,
+		pkg:    pkg,
+		target: target,
+	}, nil
+}
+
+func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
+	cfg, err := state.Configuration(b.d, stackName)
+	if err != nil {
+		return nil, err
+	}
+	decrypter, err := defaultCrypter(cfg)
+	if err != nil {
+		return nil, err
+	}
+	_, snapshot, _, err := getStack(stackName)
+	if err != nil {
+		return nil, err
+	}
+	return &deploy.Target{
+		Name:      stackName,
+		Config:    cfg,
+		Decrypter: decrypter,
+		Snapshot:  snapshot,
+	}, nil
 }
 
 func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {

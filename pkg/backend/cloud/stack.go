@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -78,16 +79,16 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *cloudStack) Preview(debug bool, opts engine.PreviewOptions) error {
-	return backend.PreviewStack(s, debug, opts)
+func (s *cloudStack) Preview(pkg *pack.Package, root string, debug bool, opts engine.PreviewOptions) error {
+	return backend.PreviewStack(s, pkg, root, debug, opts)
 }
 
-func (s *cloudStack) Update(debug bool, opts engine.DeployOptions) error {
-	return backend.UpdateStack(s, debug, opts)
+func (s *cloudStack) Update(pkg *pack.Package, root string, debug bool, opts engine.DeployOptions) error {
+	return backend.UpdateStack(s, pkg, root, debug, opts)
 }
 
-func (s *cloudStack) Destroy(debug bool, opts engine.DestroyOptions) error {
-	return backend.DestroyStack(s, debug, opts)
+func (s *cloudStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.DestroyOptions) error {
+	return backend.DestroyStack(s, pkg, root, debug, opts)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

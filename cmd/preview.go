@@ -48,7 +48,12 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			return s.Preview(debug, engine.PreviewOptions{
+			pkg, root, err := readPackage()
+			if err != nil {
+				return err
+			}
+
+			return s.Preview(pkg, root, debug, engine.PreviewOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,

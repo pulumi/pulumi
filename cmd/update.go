@@ -49,7 +49,12 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			return s.Update(debug, engine.DeployOptions{
+			pkg, root, err := readPackage()
+			if err != nil {
+				return err
+			}
+
+			return s.Update(pkg, root, debug, engine.DeployOptions{
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				Parallel:             parallel,

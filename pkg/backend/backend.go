@@ -8,6 +8,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -33,11 +34,11 @@ type Backend interface {
 	GetStackCrypter(stack tokens.QName) (config.Crypter, error)
 
 	// Preview initiates a preview of the current workspace's contents.
-	Preview(stackName tokens.QName, debug bool, opts engine.PreviewOptions) error
+	Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool, opts engine.PreviewOptions) error
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(stackName tokens.QName, debug bool, opts engine.DeployOptions) error
+	Update(stackName tokens.QName, pkg *pack.Package, root string, debug bool, opts engine.DeployOptions) error
 	// Destroy destroys all of this stack's resources.
-	Destroy(stackName tokens.QName, debug bool, opts engine.DestroyOptions) error
+	Destroy(stackName tokens.QName, pkg *pack.Package, root string, debug bool, opts engine.DestroyOptions) error
 
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error)
