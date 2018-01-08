@@ -20,7 +20,7 @@ func TestPrefixer(t *testing.T) {
 	buf := bytes.NewBuffer(byts)
 	prefixer := newPrefixer(buf, "OK: ")
 	_, err := prefixer.Write([]byte("\nsadsada\n\nasdsadsa\nasdsadsa\n"))
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 	assert.Equal(t, []byte("OK: \nOK: sadsada\nOK: \nOK: asdsadsa\nOK: asdsadsa\n"), buf.Bytes())
 }
 
@@ -39,7 +39,7 @@ func TestRunCommandLog(t *testing.T) {
 	}
 
 	tempdir, err := ioutil.TempDir("", "test")
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 	defer os.RemoveAll(tempdir)
 
 	args := []string{node, "-e", "console.log('output from node');"}

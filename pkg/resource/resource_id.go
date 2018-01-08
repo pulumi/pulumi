@@ -61,7 +61,7 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 
 	bs := make([]byte, randlen+1/2)
 	n, err := cryptorand.Read(bs)
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 	contract.Assert(n == len(bs))
 
 	return prefix + hex.EncodeToString(bs)[:randlen], nil

@@ -472,7 +472,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName) (apitype
 	wireConfig := make(map[tokens.ModuleMember]apitype.ConfigValue)
 	for k, cv := range cfg {
 		v, err := cv.Value(config.NopDecrypter)
-		contract.Assert(err == nil)
+		contract.AssertNoError(err)
 
 		wireConfig[k] = apitype.ConfigValue{
 			String: v,

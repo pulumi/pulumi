@@ -75,7 +75,7 @@ func symmetricCrypter() (config.Crypter, error) {
 	// Encrypt a message and store it with the salt so we can test if the password is correct later.
 	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
 	msg, err := crypter.EncryptValue("pulumi")
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 
 	// Now store the result on the package and save it.
 	pkg.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
