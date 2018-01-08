@@ -33,8 +33,7 @@ func TestSteps(t *testing.T) {
 		},
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
-				Additive: true,
+				Dir: "step2",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
 					assert.Equal(t, 5, len(stackInfo.Checkpoint.Latest.Resources))
@@ -51,8 +50,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step3",
-				Additive: true,
+				Dir: "step3",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
 					assert.Equal(t, 4, len(stackInfo.Checkpoint.Latest.Resources))
@@ -67,8 +65,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step4",
-				Additive: true,
+				Dir: "step4",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
 					assert.Equal(t, 4, len(stackInfo.Checkpoint.Latest.Resources))
@@ -83,8 +80,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step5",
-				Additive: true,
+				Dir: "step5",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
 					// assert.Equal(t, 5, len(checkpoint.Latest.Resources))
@@ -103,8 +99,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step6",
-				Additive: true,
+				Dir: "step6",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
 					assert.Equal(t, 1, len(stackInfo.Checkpoint.Latest.Resources))

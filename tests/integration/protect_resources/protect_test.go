@@ -29,8 +29,7 @@ func TestSteps(t *testing.T) {
 		},
 		EditDirs: []integration.EditDir{
 			{
-				Dir:      "step2",
-				Additive: true,
+				Dir: "step2",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// An update to "eternal"; should still be there.
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
@@ -43,14 +42,12 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step3",
-				Additive: true,
+				Dir: "step3",
 				// This step will fail because the resource is protected.
 				ExpectFailure: true,
 			},
 			{
-				Dir:      "step4",
-				Additive: true,
+				Dir: "step4",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// "eternal" should now be unprotected.
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
@@ -63,8 +60,7 @@ func TestSteps(t *testing.T) {
 				},
 			},
 			{
-				Dir:      "step5",
-				Additive: true,
+				Dir: "step5",
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// Finally, "eternal" should be deleted.
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)

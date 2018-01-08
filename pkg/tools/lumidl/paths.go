@@ -15,6 +15,6 @@ func RelFilename(root string, prog *loader.Program, p goPos) string {
 	pos := p.Pos()
 	source := prog.Fset.Position(pos).Filename // the source filename.`
 	rel, err := filepath.Rel(root, source)     // make it relative to the root.
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 	return rel
 }
