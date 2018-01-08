@@ -23,19 +23,19 @@ type PreviewOptions struct {
 	Color                colors.Colorization
 }
 
-func (eng *Engine) Preview(update Update, events chan<- Event, opts PreviewOptions) error {
+func Preview(update Update, events chan<- Event, opts PreviewOptions) error {
 	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := eng.planContextFromUpdate(update)
+	info, err := planContextFromUpdate(update)
 	if err != nil {
 		return err
 	}
 	defer info.Close()
 
-	return eng.previewLatest(info, deployOptions{
+	return previewLatest(info, deployOptions{
 		Destroy:              false,
 		DryRun:               true,
 		Analyzers:            opts.Analyzers,
@@ -52,8 +52,8 @@ func (eng *Engine) Preview(update Update, events chan<- Event, opts PreviewOptio
 	})
 }
 
-func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
-	result, err := eng.plan(info, opts)
+func previewLatest(info *planContext, opts deployOptions) error {
+	result, err := plan(info, opts)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (eng *Engine) previewLatest(info *planContext, opts deployOptions) error {
 		}
 		defer done()
 
-		if err := eng.printPlan(result); err != nil {
+		if err := printPlan(result); err != nil {
 			return err
 		}
 	}

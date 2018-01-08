@@ -7,8 +7,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 )
 
-type Engine int
-
 // Update abstracts away information about an apply, preview, or destroy.
 type Update interface {
 	// GetRoot returns the root directory for this update. This defines the scope for any filesystem resources

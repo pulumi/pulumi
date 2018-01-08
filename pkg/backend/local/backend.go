@@ -31,12 +31,11 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d           diag.Sink
-	engineCache map[tokens.QName]engine.Engine
+	d diag.Sink
 }
 
 func New(d diag.Sink) Backend {
-	return &localBackend{d: d, engineCache: make(map[tokens.QName]engine.Engine)}
+	return &localBackend{d: d}
 }
 
 func (b *localBackend) Name() string {
@@ -117,8 +116,7 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 
 	go displayEvents(events, done, debug)
 
-	var pulumiEngine engine.Engine
-	if err = pulumiEngine.Preview(update, events, opts); err != nil {
+	if err = engine.Preview(update, events, opts); err != nil {
 		return err
 	}
 
@@ -141,8 +139,7 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 
 	go displayEvents(events, done, debug)
 
-	var pulumiEngine engine.Engine
-	if err = pulumiEngine.Deploy(update, events, opts); err != nil {
+	if err = engine.Deploy(update, events, opts); err != nil {
 		return err
 	}
 
@@ -165,8 +162,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 
 	go displayEvents(events, done, debug)
 
-	var pulumiEngine engine.Engine
-	if err := pulumiEngine.Destroy(update, events, opts); err != nil {
+	if err := engine.Destroy(update, events, opts); err != nil {
 		return err
 	}
 

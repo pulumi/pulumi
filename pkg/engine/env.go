@@ -8,7 +8,7 @@ import (
 )
 
 // Callers must call Close on the resulting planContext once they have completed the associated planning operation
-func (eng *Engine) planContextFromUpdate(update Update) (*planContext, error) {
+func planContextFromUpdate(update Update) (*planContext, error) {
 	contract.Require(update != nil, "update")
 
 	// Create a root span for the operation

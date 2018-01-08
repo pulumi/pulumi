@@ -28,19 +28,19 @@ type DeployOptions struct {
 	Color                colors.Colorization // How output should be colorized.
 }
 
-func (eng *Engine) Deploy(update Update, events chan<- Event, opts DeployOptions) error {
+func Deploy(update Update, events chan<- Event, opts DeployOptions) error {
 	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := eng.planContextFromUpdate(update)
+	info, err := planContextFromUpdate(update)
 	if err != nil {
 		return err
 	}
 	defer info.Close()
 
-	return eng.deployLatest(info, deployOptions{
+	return deployLatest(info, deployOptions{
 		Destroy:              false,
 		DryRun:               opts.DryRun,
 		Analyzers:            opts.Analyzers,
@@ -74,8 +74,8 @@ type deployOptions struct {
 	Diag                 diag.Sink    // the sink to use for diag'ing.
 }
 
-func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
-	result, err := eng.plan(info, opts)
+func deployLatest(info *planContext, opts deployOptions) error {
+	result, err := plan(info, opts)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (eng *Engine) deployLatest(info *planContext, opts deployOptions) error {
 
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			if err := eng.printPlan(result); err != nil {
+			if err := printPlan(result); err != nil {
 				return err
 			}
 		} else {

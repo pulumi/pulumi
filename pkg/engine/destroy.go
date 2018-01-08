@@ -15,18 +15,18 @@ type DestroyOptions struct {
 	Color    colors.Colorization
 }
 
-func (eng *Engine) Destroy(update Update, events chan<- Event, opts DestroyOptions) error {
+func Destroy(update Update, events chan<- Event, opts DestroyOptions) error {
 	contract.Require(update != nil, "update")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := eng.planContextFromUpdate(update)
+	info, err := planContextFromUpdate(update)
 	if err != nil {
 		return err
 	}
 	defer info.Close()
 
-	return eng.deployLatest(info, deployOptions{
+	return deployLatest(info, deployOptions{
 		Destroy:  true,
 		DryRun:   opts.DryRun,
 		Parallel: opts.Parallel,

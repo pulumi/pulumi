@@ -24,7 +24,7 @@ import (
 )
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func (eng *Engine) plan(info *planContext, opts deployOptions) (*planResult, error) {
+func plan(info *planContext, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Update != nil)
 
@@ -157,7 +157,7 @@ func (res *planResult) Close() error {
 	return res.Ctx.Close()
 }
 
-func (eng *Engine) printPlan(result *planResult) error {
+func printPlan(result *planResult) error {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
 	printPrelude(&prelude, result, true)
