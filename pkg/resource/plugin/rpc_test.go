@@ -88,3 +88,24 @@ func TestComputedSkip(t *testing.T) {
 		assert.Nil(t, cprop)
 	}
 }
+
+func TestComputedReject(t *testing.T) {
+	// Ensure that computed properties produce errors when RejectUnknowns == true.
+	opts := MarshalOptions{RejectUnknowns: true}
+	{
+		cprop, err := MarshalPropertyValue(
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+		assert.NotNil(t, err)
+		assert.Nil(t, cprop)
+	}
+	{
+		cprop, err := MarshalPropertyValue(
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), MarshalOptions{KeepUnknowns: true})
+		assert.Nil(t, err)
+		cpropU, err := UnmarshalPropertyValue(cprop, opts)
+		assert.NotNil(t, err)
+		assert.Nil(t, cpropU)
+	}
+}
