@@ -19,6 +19,7 @@ type MarshalOptions struct {
 	Label              string // an optional label for debugging.
 	SkipNulls          bool   // true to skip nulls altogether in the resulting map.
 	KeepUnknowns       bool   // true if we are keeping unknown values (otherwise we skip them).
+	RejectUnknowns     bool   // true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
 	ElideAssetContents bool   // true if we are eliding the contents of assets.
 	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
 }
@@ -114,7 +115,9 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		}
 		return MarshalStruct(obj, opts), nil
 	} else if v.IsComputed() {
-		if opts.KeepUnknowns {
+		if opts.RejectUnknowns {
+			return nil, errors.New("unexpected unknown property value")
+		} else if opts.KeepUnknowns {
 			return marshalUnknownProperty(v.ComputedValue().Element, opts), nil
 		}
 		return nil, nil // return nil and the caller will ignore it.
@@ -216,7 +219,9 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		// If it's a string, it could be an unknown property, or just a regular string.
 		s := v.GetStringValue()
 		if unk, isunk := unmarshalUnknownPropertyValue(s, opts); isunk {
-			if opts.KeepUnknowns {
+			if opts.RejectUnknowns {
+				return nil, errors.New("unexpected unknown property value")
+			} else if opts.KeepUnknowns {
 				return &unk, nil
 			}
 			return nil, nil

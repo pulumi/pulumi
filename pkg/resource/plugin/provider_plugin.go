@@ -76,13 +76,11 @@ func (p *provider) Check(urn resource.URN,
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	glog.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true})
+	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label)})
 	if err != nil {
 		return nil, nil, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
+	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,7 +99,7 @@ func (p *provider) Check(urn resource.URN,
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
 		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: true})
+			Label: fmt.Sprintf("%s.inputs", label), RejectUnknowns: true})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -133,8 +131,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
+	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -177,8 +174,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	glog.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{
-		Label: fmt.Sprintf("%s.inputs", label)})
+	mprops, err := MarshalProperties(props, MarshalOptions{Label: fmt.Sprintf("%s.inputs", label)})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -199,7 +195,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	}
 
 	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label)})
+		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
 	}
@@ -224,8 +220,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label: fmt.Sprintf("%s.news", label)})
+	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
@@ -244,7 +239,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
-		Label: fmt.Sprintf("%s.outputs", label)})
+		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
 		return nil, resource.StatusUnknown, err
 	}
@@ -289,8 +284,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	glog.V(7).Infof("%s executing (#args=%d)", label, len(args))
 
-	margs, err := MarshalProperties(args, MarshalOptions{
-		Label: fmt.Sprintf("%s.args", label), KeepUnknowns: true})
+	margs, err := MarshalProperties(args, MarshalOptions{Label: fmt.Sprintf("%s.args", label)})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -303,7 +297,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label: fmt.Sprintf("%s.returns", label), KeepUnknowns: true})
+		Label: fmt.Sprintf("%s.returns", label), RejectUnknowns: true})
 	if err != nil {
 		return nil, nil, err
 	}
