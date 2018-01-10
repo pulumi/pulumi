@@ -644,11 +644,11 @@ func performExtraRuntimeValidation(
 }
 
 // CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir string, err error) {
+func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (string, error) {
 	// Ensure the required programs are present.
 	if opts.Bin == "" {
 		var pulumi string
-		pulumi, err = exec.LookPath("pulumi")
+		pulumi, err := exec.LookPath("pulumi")
 		if err != nil {
 			return "", errors.Wrapf(err, "Expected to find `pulumi` binary on $PATH")
 		}
@@ -656,7 +656,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	}
 	if opts.YarnBin == "" {
 		var yarn string
-		yarn, err = exec.LookPath("yarn")
+		yarn, err := exec.LookPath("yarn")
 		if err != nil {
 			return "", errors.Wrapf(err, "Expected to find `yarn` binary on $PATH")
 		}
@@ -683,7 +683,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 		opts.Stderr = stderr
 	}
 
-	pioutil.MustFprintf(opts.Stdout, "sample: %v\n", dir)
+	pioutil.MustFprintf(opts.Stdout, "sample: %v\n", sourceDir)
 	pioutil.MustFprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
 	pioutil.MustFprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
@@ -694,23 +694,25 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	}
 
 	// Clean up the temporary directory on failure
+	deleteTargetDir := true
 	defer func() {
-		if err != nil {
+		if deleteTargetDir {
 			contract.IgnoreError(os.RemoveAll(targetDir))
 		}
 	}()
 
 	// Copy the source project
-	if copyerr := fsutil.CopyFile(targetDir, sourceDir, nil); copyerr != nil {
-		return "", copyerr
+	if err = fsutil.CopyFile(targetDir, sourceDir, nil); err != nil {
+		return "", err
 	}
 
 	err = prepareProject(t, opts, targetDir)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to prepare %v", dir)
+		return "", errors.Wrapf(err, "Failed to prepare %v", targetDir)
 	}
 
 	pioutil.MustFprintf(stdout, "projdir: %v\n", targetDir)
+	deleteTargetDir = false
 	return targetDir, nil
 }
 
