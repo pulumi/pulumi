@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
