@@ -605,7 +605,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
 	sourceDir := opts.Dir
 	var prefix string
-	if len(dir) <= 30 {
+	if len(sourceDir) <= 30 {
 		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir)
 	} else {
 		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir[len(sourceDir)-30:])
