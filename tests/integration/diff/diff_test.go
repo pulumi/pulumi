@@ -43,9 +43,10 @@ func TestDiffs(t *testing.T) {
 		},
 		EditDirs: []integration.EditDir{
 			{
-				Dir:     "step2",
-				Stdout:  &buf,
-				Verbose: true,
+				Dir:      "step2",
+				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
@@ -83,9 +84,10 @@ func TestDiffs(t *testing.T) {
 				},
 			},
 			{
-				Dir:     "step3",
-				Stdout:  &buf,
-				Verbose: true,
+				Dir:      "step3",
+				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
@@ -117,9 +119,10 @@ func TestDiffs(t *testing.T) {
 				},
 			},
 			{
-				Dir:     "step4",
-				Stdout:  &buf,
-				Verbose: true,
+				Dir:      "step4",
+				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
@@ -148,9 +151,10 @@ func TestDiffs(t *testing.T) {
 				},
 			},
 			{
-				Dir:     "step5",
-				Stdout:  &buf,
-				Verbose: true,
+				Dir:      "step5",
+				Additive: true,
+				Stdout:   &buf,
+				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					checkpoint := stack.Checkpoint
 					assert.NotNil(t, checkpoint.Latest)
