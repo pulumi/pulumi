@@ -45,6 +45,10 @@ type EditDir struct {
 	Dir                    string
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 
+	// Additive is true if Dir should be copied *on top* of the test directory.
+	// Otherwise Dir *replaces* the test directory, except we keep .pulumi/ and Pulumi.yaml.
+	Additive bool
+
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
@@ -500,9 +504,67 @@ func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
 func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) error {
 	pioutil.MustFprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
-	err := prepareProject(t, opts, edit.Dir, dir)
+	if edit.Additive {
+		// Just copy new files into dir
+		if err := fsutil.CopyFile(dir, edit.Dir, nil); err != nil {
+			return errors.Wrapf(err, "Couldn't copy %v into %v", edit.Dir, dir)
+		}
+	} else {
+		// Create a new temporary directory
+		newDir, err := ioutil.TempDir("", opts.StackName+"-")
+		if err != nil {
+			return errors.Wrapf(err, "Couldn't create new temporary directory")
+		}
+
+		// Delete whichever copy of the test is unused when we return
+		dirToDelete := newDir
+		defer func() {
+			contract.IgnoreError(os.RemoveAll(dirToDelete))
+		}()
+
+		// Copy everything except Pulumi.yaml and .pulumi from source into new directory
+		exclusions := make(map[string]bool)
+		projectYaml := workspace.ProjectFile + ".yaml"
+		exclusions[workspace.BookkeepingDir] = true
+		exclusions[projectYaml] = true
+
+		if err := fsutil.CopyFile(newDir, edit.Dir, exclusions); err != nil {
+			return errors.Wrapf(err, "Couldn't copy %v into %v", edit.Dir, newDir)
+		}
+
+		// Copy Pulumi.yaml and .pulumi from old directory to new directory
+		oldProjectYaml := filepath.Join(dir, projectYaml)
+		newProjectYaml := filepath.Join(newDir, projectYaml)
+
+		oldProjectDir := filepath.Join(dir, workspace.BookkeepingDir)
+		newProjectDir := filepath.Join(newDir, workspace.BookkeepingDir)
+
+		if err := fsutil.CopyFile(newProjectYaml, oldProjectYaml, nil); err != nil {
+			return errors.Wrapf(err, "Couldn't copy Pulumi.yaml")
+		}
+		if err := fsutil.CopyFile(newProjectDir, oldProjectDir, nil); err != nil {
+			return errors.Wrapf(err, "Couldn't copy .pulumi")
+		}
+
+		// Finally, replace our current temp directory with the new one.
+		dirOld := dir + ".old"
+		if err := os.Rename(dir, dirOld); err != nil {
+			return errors.Wrapf(err, "Couldn't rename %v to %v", dir, dirOld)
+		}
+
+		// There's a brief window here where the old temp dir name could be taken from us.
+
+		if err := os.Rename(newDir, dir); err != nil {
+			return errors.Wrapf(err, "Couldn't rename %v to %v", newDir, dir)
+		}
+
+		// Keep dir, delete oldDir
+		dirToDelete = dirOld
+	}
+
+	err := prepareProject(t, opts, dir)
 	if err != nil {
-		return errors.Wrapf(err, "Expected to apply edit %v atop %v, but got an error", edit, dir)
+		return errors.Wrapf(err, "Couldn't prepare project in %v", dir)
 	}
 
 	oldStdOut := opts.Stdout
@@ -625,7 +687,6 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 	pioutil.MustFprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
 	pioutil.MustFprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
 
-	// Copy the source project
 	stackName := string(opts.GetStackName())
 	targetDir, err := ioutil.TempDir("", stackName+"-")
 	if err != nil {
@@ -639,9 +700,14 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (dir s
 		}
 	}()
 
-	err = prepareProject(t, opts, sourceDir, targetDir)
+	// Copy the source project
+	if copyerr := fsutil.CopyFile(targetDir, sourceDir, nil); copyerr != nil {
+		return "", copyerr
+	}
+
+	err = prepareProject(t, opts, targetDir)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to copy source project %v to a new temp dir", dir)
+		return "", errors.Wrapf(err, "Failed to prepare %v", dir)
 	}
 
 	pioutil.MustFprintf(stdout, "projdir: %v\n", targetDir)
@@ -748,29 +814,23 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	return runerr
 }
 
-// prepareProject adds files in sourceDir to targetDir, then runs setup necessary to get the
-// project ready for `pulumi` commands.
-func prepareProject(t *testing.T, opts *ProgramTestOptions, sourceDir, targetDir string) error {
-	// Copy new files to targetDir
-	if copyerr := fsutil.CopyFile(targetDir, sourceDir, nil); copyerr != nil {
-		return copyerr
-	}
-
+// prepareProject runs setup necessary to get the project ready for `pulumi` commands.
+func prepareProject(t *testing.T, opts *ProgramTestOptions, projectDir string) error {
 	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
 	// may run concurrently and yarn may fail if invoked concurrently
 	// https://github.com/yarnpkg/yarn/issues/683
-	yarnrcerr := ioutil.WriteFile(filepath.Join(targetDir, ".yarnrc"), []byte("--mutex network\n"), 0644)
+	yarnrcerr := ioutil.WriteFile(filepath.Join(projectDir, ".yarnrc"), []byte("--mutex network\n"), 0644)
 	if yarnrcerr != nil {
 		return yarnrcerr
 	}
 
 	// Load up the package so we can run Yarn in the correct location.
-	projfile := filepath.Join(targetDir, workspace.ProjectFile+".yaml")
+	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
 	pkg, err := pack.Load(projfile)
 	if err != nil {
 		return err
 	}
-	pkginfo := &engine.Pkginfo{Pkg: pkg, Root: targetDir}
+	pkginfo := &engine.Pkginfo{Pkg: pkg, Root: projectDir}
 	cwd, _, err := pkginfo.GetPwdMain()
 	if err != nil {
 		return err
