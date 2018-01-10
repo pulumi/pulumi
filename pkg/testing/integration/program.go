@@ -727,6 +727,13 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	finished = true
 	if runerr != nil {
 		pioutil.MustFprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+
+		if !opts.Verbose {
+			// We've seen long fprintf's fail on Travis, so avoid panicing.
+			if _, err := fmt.Fprintf(opts.Stderr, "%s\n", string(runout)); err != nil {
+				pioutil.MustFprintf(opts.Stderr, "\n\nOutput truncated: %v\n", err)
+			}
+		}
 	}
 
 	// If we collected any program output, write it to a log file -- success or failure.
