@@ -304,17 +304,18 @@ func testLifeCycleInitAndDestroy(
 		return errors.Wrap(err, "Couldn't copy test to temporary directory")
 	}
 
+	// Keep the temporary test directory around for debugging unless
+	// the test completes successfully.
+	keepTestDir := true
 	defer func() {
-		if t.Failed() {
-			// Test failed -- keep temporary files around for debugging.
-			// Maybe also copy to "failed tests" directory.
+		if keepTestDir {
+			// Maybe copy to "failed tests" directory.
 			failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
 			if failedTestsDir != "" {
 				dest := filepath.Join(failedTestsDir, t.Name()+uniqueSuffix())
 				contract.IgnoreError(fsutil.CopyFile(dest, dir, nil))
 			}
 		} else {
-			// Test passed -- delete temporary files.
 			contract.IgnoreError(os.RemoveAll(dir))
 		}
 	}()
@@ -332,7 +333,13 @@ func testLifeCycleInitAndDestroy(
 		}
 	}()
 
-	return between(t, opts, dir)
+	err = between(t, opts, dir)
+	if err != nil {
+		return err
+	}
+
+	keepTestDir = false
+	return nil
 }
 
 func testLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions, dir string) error {
