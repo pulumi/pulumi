@@ -95,7 +95,7 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) err
 		StackName: string(stackName),
 	}
 
-	var createStackResp apitype.CreateStackResponse
+	var createStackResp apitype.CreateStackResponseByName
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
 	if err := pulumiRESTCall(b.cloudURL, "POST", path, nil, &createStackReq, &createStackResp); err != nil {
 		return err
