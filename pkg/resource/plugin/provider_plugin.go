@@ -71,16 +71,18 @@ func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
-	olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	glog.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label)})
+	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: allowUnknowns})
 	if err != nil {
 		return nil, nil, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
+	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -99,7 +101,7 @@ func (p *provider) Check(urn resource.URN,
 	var inputs resource.PropertyMap
 	if ins := resp.GetInputs(); ins != nil {
 		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label: fmt.Sprintf("%s.inputs", label), RejectUnknowns: true})
+			Label: fmt.Sprintf("%s.inputs", label), KeepUnknowns: allowUnknowns, RejectUnknowns: !allowUnknowns})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -117,7 +119,7 @@ func (p *provider) Check(urn resource.URN,
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (DiffResult, error) {
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -127,11 +129,12 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	glog.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true})
+		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label)})
+	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns})
 	if err != nil {
 		return DiffResult{}, err
 	}

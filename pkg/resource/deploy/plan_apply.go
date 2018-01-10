@@ -296,11 +296,14 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		}
 	}
 
+	// We only allow unknown property values to be exposed to the provider if we are performing a preview.
+	allowUnknowns := iter.p.preview
+
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	news, inputs := new.Inputs, new.Inputs
 	if prov != nil {
 		var failures []plugin.CheckFailure
-		inputs, failures, err = prov.Check(urn, olds, news)
+		inputs, failures, err = prov.Check(urn, olds, news, allowUnknowns)
 		if err != nil {
 			return nil, err
 		} else if iter.issueCheckErrors(new, urn, failures) {
@@ -354,7 +357,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 			// The properties changed; we need to figure out whether to do an update or replacement.
 			var diff plugin.DiffResult
 			if prov != nil {
-				if diff, err = prov.Diff(urn, old.ID, oldState, inputs); err != nil {
+				if diff, err = prov.Diff(urn, old.ID, oldState, inputs, allowUnknowns); err != nil {
 					return nil, err
 				}
 			}
@@ -367,7 +370,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 				// had assumed that we were going to carry them over from the old resource, which is no longer true.
 				if prov != nil {
 					var failures []plugin.CheckFailure
-					inputs, failures, err = prov.Check(urn, nil, news)
+					inputs, failures, err = prov.Check(urn, nil, news, allowUnknowns)
 					if err != nil {
 						return nil, err
 					} else if iter.issueCheckErrors(new, urn, failures) {

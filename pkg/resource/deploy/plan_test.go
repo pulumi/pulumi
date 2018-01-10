@@ -24,7 +24,7 @@ func TestNullPlan(t *testing.T) {
 	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, Manifest{}, nil)
-	plan := NewPlan(ctx, targ, prev, NullSource, nil)
+	plan := NewPlan(ctx, targ, prev, NullSource, nil, false)
 	iter, err := plan.Start(Options{})
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
@@ -45,7 +45,7 @@ func TestErrorPlan(t *testing.T) {
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, Manifest{}, nil)
-		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
+		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil, false)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, iter)
 		assert.NotNil(t, err)
@@ -60,7 +60,7 @@ func TestErrorPlan(t *testing.T) {
 		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, Manifest{}, nil)
-		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
+		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil, false)
 		iter, err := plan.Start(Options{})
 		assert.Nil(t, err)
 		assert.NotNil(t, iter)
@@ -216,7 +216,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	source := NewFixedSource(pkgname, []SourceEvent{newStateA, newStateB, newStateC})
 
 	// Next up, create a plan from the new and old, and validate its shape.
-	plan := NewPlan(ctx, targ, oldsnap, source, nil)
+	plan := NewPlan(ctx, targ, oldsnap, source, nil, false)
 
 	// Next, validate the steps and ensure that we see all of the expected ones.  Note that there aren't any
 	// dependencies between the steps, so we must validate it in a way that's insensitive of order.
@@ -398,7 +398,7 @@ func (prov *testProvider) Configure(vars map[tokens.ModuleMember]string) error {
 	return prov.config(vars)
 }
 func (prov *testProvider) Check(urn resource.URN,
-	olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.check(urn, olds, news)
 }
 func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
@@ -406,7 +406,7 @@ func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (
 	return prov.create(urn, props)
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (plugin.DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
 	return prov.diff(urn, id, olds, news)
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,

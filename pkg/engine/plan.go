@@ -70,7 +70,7 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := deploy.NewPlan(ctx, target, target.Snapshot, source, analyzers)
+	plan := deploy.NewPlan(ctx, target, target.Snapshot, source, analyzers, opts.DryRun)
 	return &planResult{
 		Ctx:     ctx,
 		Info:    info,
