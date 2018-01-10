@@ -46,9 +46,9 @@ To build Pulumi, ensure `$GOPATH` is set, and clone into a standard Go workspace
     $ git clone git@github.com:pulumi/pulumi $GOPATH/src/github.com/pulumi/pulumi
     $ cd $GOPATH/src/github.com/pulumi/pulumi
 
-The first time you build, you must `make configure` to install dependencies and perform other machine setup:
+The first time you build, you must `make ensure` to install dependencies and perform other machine setup:
 
-    $ make configure
+    $ make ensure
 
 In the future, you can synch dependencies simply by running `dep ensure` explicitly:
 
