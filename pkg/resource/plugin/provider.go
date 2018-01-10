@@ -28,9 +28,11 @@ type Provider interface {
 	Configure(vars map[tokens.ModuleMember]string) error
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
-	Check(urn resource.URN, olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	Check(urn resource.URN, olds, news resource.PropertyMap,
+		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
-	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap) (DiffResult, error)
+	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+		allowUnknowns bool) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
 	Create(urn resource.URN, news resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	// Update updates an existing resource with new values.

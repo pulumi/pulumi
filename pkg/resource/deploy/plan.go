@@ -23,6 +23,7 @@ type Plan struct {
 	olds      map[resource.URN]*resource.State // a map of all old resources.
 	source    Source                           // the source of new resources.
 	analyzers []tokens.QName                   // the analyzers to run during this plan's generation.
+	preview   bool                             // true if this plan is to be previewed rather than applied.
 }
 
 // NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
@@ -34,7 +35,9 @@ type Plan struct {
 //
 // Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
 // a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
-func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName) *Plan {
+func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName,
+	preview bool) *Plan {
+
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
 	contract.Assert(source != nil)
@@ -61,6 +64,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		olds:      olds,
 		source:    source,
 		analyzers: analyzers,
+		preview:   preview,
 	}
 }
 
