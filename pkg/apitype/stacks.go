@@ -13,10 +13,12 @@ type StackSummary struct {
 	// ID is the unique identifier for a stack in the context of its PPC.
 	ID string `json:"id"`
 
-	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has been applied.
+	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has
+	// been applied.
 	ActiveUpdate string `json:"activeUpdate"`
 
-	// ResourceCount is the number of resources associated with this stack. NOTE: this is currently unimplemented.
+	// ResourceCount is the number of resources associated with this stack. NOTE: this is currently
+	// unimplemented.
 	ResourceCount int `json:"resourceCount"`
 }
 
@@ -26,8 +28,8 @@ type ListStacksResponse struct {
 	Stacks []StackSummary `json:"stacks"`
 }
 
-// CreateStackResponse describes the data returned by the `POST /stacks` endpoint of the PPC API.
-type CreateStackResponseById struct {
+// CreateStackResponseByID describes the data returned by the `POST /stacks` endpoint of the PPC API.
+type CreateStackResponseByID struct {
 	// ID is the unique identifier for the newly-created stack.
 	ID string `json:"id"`
 }
@@ -74,17 +76,19 @@ type CreateStackResponseByName struct {
 	CloudName string `json:"cloudName"`
 }
 
-// GetStackResponse describes the data returned by the `/GET /stack/{stackID}` endpoint of the PPC API. If the `deployment` query
-// parameter is set to `true`, `Deployment` will be set and `Resources will be empty.
+// GetStackResponse describes the data returned by the `/GET /stack/{stackID}` endpoint of the PPC API. If the
+// `deployment` query parameter is set to `true`, `Deployment` will be set and `Resources will be empty.
 type GetStackResponse struct {
 	// ID is the unique identifier for a stack in the context of its PPC.
 	ID string `json:"id"`
 
-	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has been applied.
+	// ActiveUpdate is the unique identifier for the stack's active update. This may be empty if no update has
+	// been applied.
 	ActiveUpdate string `json:"activeUpdate"`
 
-	// UnknownState indicates whether or not the contents of the resources array contained in the response is known to accurately
-	// represent the cloud resources managed by this stack. A stack that is in an unknown state cannot be updated.
+	// UnknownState indicates whether or not the contents of the resources array contained in the response is
+	// known to accurately represent the cloud resources managed by this stack. A stack that is in an unknown
+	// state cannot be updated.
 	// TODO: [pulumi/pulumi-ppc#29]: make this state recoverable. This could be as simple as import/export.
 	UnknownState bool `json:"unknownState"`
 
