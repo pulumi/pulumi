@@ -71,7 +71,7 @@ const (
 // UpdateEvent describes an event that happened on the Pulumi Cloud while processing an update.
 type UpdateEvent struct {
 	Index  string                 `json:"index"`
-	Kind   string                 `json:"kind"`
+	Kind   UpdateEventKind        `json:"kind"`
 	Fields map[string]interface{} `json:"fields"`
 }
 
@@ -94,7 +94,7 @@ const (
 // UpdateResults returns a series of events and the current status of an update. The vents can
 // be filtered. See API call for more details.
 type UpdateResults struct {
-	Status string        `json:"status"`
+	Status UpdateStatus  `json:"status"`
 	Events []UpdateEvent `json:"events"`
 }
 
