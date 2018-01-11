@@ -36,15 +36,14 @@ type CreateStackResponseByID struct {
 
 // Resource describes a Cloud resource constructed by Pulumi.
 type Resource struct {
-	Type     string                 `json:"type"`
-	URN      string                 `json:"urn"`
-	Custom   bool                   `json:"custom"`
-	ID       string                 `json:"id"`
-	Inputs   map[string]interface{} `json:"inputs"`
-	Defaults map[string]interface{} `json:"defaults"` // TODO: extra in pulumi
-	Outputs  map[string]interface{} `json:"outputs"`
-	Parent   string                 `json:"parent"`
-	Protect  bool                   `json:"protect"` // TODO: extra in pulumi
+	Type    string                 `json:"type"`
+	URN     string                 `json:"urn"`
+	Custom  bool                   `json:"custom"`
+	ID      string                 `json:"id"`
+	Inputs  map[string]interface{} `json:"inputs"`
+	Outputs map[string]interface{} `json:"outputs"`
+	Parent  string                 `json:"parent"`
+	Protect bool                   `json:"protect"`
 }
 
 // Stack describes a Stack running on a Pulumi Cloud.
