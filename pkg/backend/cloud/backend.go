@@ -447,12 +447,12 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting configuration")
 	}
-	wireConfig := make(map[tokens.ModuleMember]apitype.ConfigValue)
+	wireConfig := make(map[string]apitype.ConfigValue)
 	for k, cv := range cfg {
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
-		wireConfig[k] = apitype.ConfigValue{
+		wireConfig[string(k)] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
 		}
@@ -463,7 +463,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 		description = *pkg.Description
 	}
 	return apitype.UpdateProgramRequest{
-		Name:        pkg.Name,
+		Name:        string(pkg.Name),
 		Runtime:     pkg.Runtime,
 		Main:        pkg.Main,
 		Description: description,
