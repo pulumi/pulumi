@@ -1,7 +1,5 @@
 package apitype
 
-import "github.com/pulumi/pulumi/pkg/tokens"
-
 // ConfigValue describes a single (possibly secret) configuration value.
 type ConfigValue struct {
 	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
@@ -19,26 +17,18 @@ type CreateUpdateConfig struct {
 // UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
 type UpdateProgramRequest struct {
 	// Properties from the Project file. Subset of pack.Package.
-	Name        tokens.PackageName `json:"name"`
-	Runtime     string             `json:"runtime"`
-	Main        string             `json:"main"`
-	Description string             `json:"description"`
+	Name        string `json:"name"`
+	Runtime     string `json:"runtime"`
+	Main        string `json:"main"`
+	Description string `json:"description"`
 
 	// Configuration values.
-	Config map[tokens.ModuleMember]ConfigValue `json:"config"`
+	Config map[string]ConfigValue `json:"config"`
 }
 
-/*
-// ConfigValue describes a single (possibly secret) configuration value.
-type ConfigValue struct {
-	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
-	String string `json:"string"`
-	// Secret is true if this value is a secret and false otherwise.
-	Secret bool `json:"secret"`
-}
-
-// UpdateProgramRequest is the request type for updating (aka deploying) a Pulumi program.
-type UpdateProgramRequest struct {
+// UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go unmarshalConfig()
+// TODO(#478): remove support for string-only config.
+type UpdateProgramRequestUntyped struct {
 	// Properties from the Project file.
 	Name        string `json:"name"`
 	Runtime     string `json:"runtime"`
@@ -49,7 +39,6 @@ type UpdateProgramRequest struct {
 	// either a string or a ConfigValue.
 	Config map[string]interface{} `json:"config"`
 }
-*/
 
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
