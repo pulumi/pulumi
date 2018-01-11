@@ -496,12 +496,11 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 		}
 
 		// Check if in termal state and if so return.
-		updateStatus := apitype.UpdateStatus(updateResults.Status)
-		switch updateStatus {
+		switch updateResults.Status {
 		case apitype.StatusFailed:
 			fallthrough
 		case apitype.StatusSucceeded:
-			return updateStatus, nil
+			return updateResults.Status, nil
 		}
 	}
 }
@@ -569,7 +568,7 @@ func printEvent(event apitype.UpdateEvent) {
 
 			// Choose the stream to write to (by default stdout).
 			var stream io.Writer
-			if apitype.UpdateEventKind(event.Kind) == apitype.StderrEvent {
+			if event.Kind == apitype.StderrEvent {
 				stream = os.Stderr
 			} else {
 				stream = os.Stdout
