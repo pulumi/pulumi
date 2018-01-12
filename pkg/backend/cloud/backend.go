@@ -19,8 +19,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -95,7 +95,7 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) err
 		StackName: string(stackName),
 	}
 
-	var createStackResp apitype.CreateStackResponse
+	var createStackResp apitype.CreateStackResponseByName
 	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
 	if err := pulumiRESTCall(b.cloudURL, "POST", path, nil, &createStackReq, &createStackResp); err != nil {
 		return err
@@ -447,12 +447,12 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting configuration")
 	}
-	wireConfig := make(map[tokens.ModuleMember]apitype.ConfigValue)
+	wireConfig := make(map[string]apitype.ConfigValue)
 	for k, cv := range cfg {
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
-		wireConfig[k] = apitype.ConfigValue{
+		wireConfig[string(k)] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
 		}
@@ -463,7 +463,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 		description = *pkg.Description
 	}
 	return apitype.UpdateProgramRequest{
-		Name:        pkg.Name,
+		Name:        string(pkg.Name),
 		Runtime:     pkg.Runtime,
 		Main:        pkg.Main,
 		Description: description,
@@ -496,12 +496,11 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 		}
 
 		// Check if in termal state and if so return.
-		updateStatus := apitype.UpdateStatus(updateResults.Status)
-		switch updateStatus {
+		switch updateResults.Status {
 		case apitype.StatusFailed:
 			fallthrough
 		case apitype.StatusSucceeded:
-			return updateStatus, nil
+			return updateResults.Status, nil
 		}
 	}
 }
@@ -569,7 +568,7 @@ func printEvent(event apitype.UpdateEvent) {
 
 			// Choose the stream to write to (by default stdout).
 			var stream io.Writer
-			if apitype.UpdateEventKind(event.Kind) == apitype.StderrEvent {
+			if event.Kind == apitype.StderrEvent {
 				stream = os.Stderr
 			} else {
 				stream = os.Stdout
