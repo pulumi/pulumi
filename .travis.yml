@@ -1,19 +1,21 @@
 jobs:
-    include:
-        -
-            os: linux
-        -
-            if: type IN (push, api, cron)
-            os: osx
+  include:
+    - os: linux
+    - os: osx
 language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
+git:
+  depth: false
+branches:
+  only:
+    - master
+cache:
+    yarn: true
 before_install:
     - export PULUMI_ROOT=/opt/pulumi
     # on OSX, /opt/ is not writeable by normal users, so we create /opt/pulumi as root and take ownership of it
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then sudo mkdir /opt/pulumi && sudo chown $USER /opt/pulumi; fi
-    # Travis only fetches 50 commits by default, and we want them all so we can do git describe --tags
-    - git fetch --unshallow
     # Dep for Go dependency management.
     - go get -v github.com/golang/dep/cmd/dep
     # Gometalinter for good Go linting/hygiene.
@@ -32,8 +34,6 @@ before_install:
     # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
     - $PIP install --upgrade --user awscli
     - export PULUMI_FAILED_TESTS_DIR=$(mktemp -d); echo "${PULUMI_FAILED_TESTS_DIR}"
-cache:
-    yarn: true
 install:
     # Clone the Pulumi-wide repo so we can use its scripts.
     - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
