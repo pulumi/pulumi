@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+# Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
+import argparse
+import os
+import pulumi
+import pulumi.runtime
+import runpy
+import sys
+
+if __name__ == "__main__":
+    # Parse the arguments, program name, and optional arguments.
+    ap = argparse.ArgumentParser(description='Execute a Pulumi Python program')
+    ap.add_argument('--project', help='Set the project name')
+    ap.add_argument('--stack', help='Set the stack name')
+    ap.add_argument('--parallel', help='Run P resource operations in parallel (default=none)')
+    ap.add_argument('--dry_run', help='Simulate resource changes, but without making them')
+    ap.add_argument('--pwd', help='Change the working directory before running the program')
+    ap.add_argument('--monitor', help='An RPC address for the resource monitor to connect to')
+    ap.add_argument('--engine', help='An RPC address for the engine to connect to')
+    ap.add_argument('--tracing', help='A Zipkin-compatible endpoint to send tracing data to')
+    ap.add_argument('PROGRAM', help='The Python program to run')
+    ap.add_argument('ARGS', help='Arguments to pass to the program', nargs='*')
+    args = ap.parse_args()
+
+    # If any config variables are present, parse and set them, so subsequent accesses are fast.
+    config_env = pulumi.runtime.get_config_env()
+    for k, v in config_env.items():
+        pulumi.runtime.set_config(k, v)
+
+    # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
+    pulumi.runtime.configure(
+        pulumi.runtime.Settings(
+            monitor=args.monitor,
+            engine=args.engine,
+            project=args.project,
+            stack=args.stack,
+            parallel=args.parallel,
+            dry_run=args.dry_run
+        )
+    )
+
+    # Finally, swap in the args, chdir if needed, and run the program as if it had been executed directly.
+    sys.argv = [args.PROGRAM] + args.ARGS
+    if not args.pwd is None:
+        os.chdir(args.pwd)
+    try:
+        runpy.run_path(args.PROGRAM, run_name='__main__')
+    except pulumi.RunError as e:
+        sys.stderr.write(e.message)
+        sys.exit(1)

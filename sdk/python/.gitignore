@@ -1,0 +1,3 @@
+*.pyc
+/bin/
+/*.egg-info

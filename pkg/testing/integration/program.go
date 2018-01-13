@@ -771,14 +771,6 @@ func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) 
 		return "", errors.Wrap(err, "Couldn't create temporary directory")
 	}
 
-	// Clean up the temporary directory on failure
-	deleteTargetDir := true
-	defer func() {
-		if deleteTargetDir {
-			contract.IgnoreError(os.RemoveAll(targetDir))
-		}
-	}()
-
 	// Copy the source project
 	if err = fsutil.CopyFile(targetDir, sourceDir, nil); err != nil {
 		return "", err
@@ -790,49 +782,64 @@ func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) 
 	}
 
 	fprintf(stdout, "projdir: %v\n", targetDir)
-	deleteTargetDir = false
 	return targetDir, nil
 }
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *programTester) prepareProject(projectDir string) error {
-	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
-	// may run concurrently and yarn may fail if invoked concurrently
-	// https://github.com/yarnpkg/yarn/issues/683
-	// Also add --network-concurrency 1 since we've been seeing
-	// https://github.com/yarnpkg/yarn/issues/4563 as well
-	yarnrcerr := ioutil.WriteFile(filepath.Join(projectDir, ".yarnrc"),
-		[]byte("--mutex network\n--network-concurrency 1\n"), 0644)
-	if yarnrcerr != nil {
-		return yarnrcerr
-	}
-
-	// Load up the package so we can run Yarn in the correct location.
+	// Load up the package so we know things like what language the project is.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
 	if err != nil {
 		return err
 	}
 	projinfo := &engine.Projinfo{Proj: proj, Root: projectDir}
+
+	// Based on the language, invoke the right routine to prepare the target directory.
+	switch proj.Runtime {
+	case "nodejs":
+		return pt.prepareNodeJSProject(projinfo)
+	case "python":
+		return pt.preparePythonProject(projinfo)
+	default:
+		return errors.Errorf("unrecognized project runtime: %s", proj.Runtime)
+	}
+}
+
+// prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
+func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
+	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
+	// may run concurrently and yarn may fail if invoked concurrently
+	// https://github.com/yarnpkg/yarn/issues/683
+	// Also add --network-concurrency 1 since we've been seeing
+	// https://github.com/yarnpkg/yarn/issues/4563 as well
+	if err := ioutil.WriteFile(
+		filepath.Join(projinfo.Root, ".yarnrc"),
+		[]byte("--mutex network\n--network-concurrency 1\n"), 0644); err != nil {
+		return err
+	}
+
+	// Get the correct pwd to run Yarn in.
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
 	}
 
-	if rwd := pt.opts.RelativeWorkDir; rwd != "" {
-		cwd = path.Join(cwd, rwd)
-	}
-
 	// Now ensure dependencies are present.
-	if insterr := pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); insterr != nil {
-		return insterr
+	if err = pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); err != nil {
+		return err
 	}
 	for _, dependency := range pt.opts.Dependencies {
-		if linkerr := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); linkerr != nil {
-			return linkerr
+		if err = pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+			return err
 		}
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
 	return pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd)
+}
+
+// preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
+func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
+	return nil
 }

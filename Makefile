@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi Fabric
-SUB_PROJECTS := sdk/nodejs
+SUB_PROJECTS := sdk/nodejs sdk/python
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi
