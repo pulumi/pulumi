@@ -3,18 +3,15 @@
 package integration
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	pioutil "github.com/pulumi/pulumi/pkg/util/ioutil"
@@ -152,15 +148,6 @@ type ProgramTestOptions struct {
 	YarnBin string
 }
 
-func (opts *ProgramTestOptions) PulumiCmd(args []string) []string {
-	cmd := []string{opts.Bin}
-	if du := opts.GetDebugLogLevel(); du > 0 {
-		cmd = append(cmd, "--logtostderr")
-		cmd = append(cmd, "-v="+strconv.Itoa(du))
-	}
-	return append(cmd, args...)
-}
-
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
 	if opts.DebugLogLevel > 0 {
 		return opts.DebugLogLevel
@@ -281,27 +268,80 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
-	err := testLifeCycleInitAndDestroy(t, opts, testPreviewUpdateAndEdits)
+	t.Parallel()
+
+	pt := newProgramTester(t, opts)
+	err := pt.testLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
 }
 
-func uniqueSuffix() string {
-	// .<timestamp>.<five random hex characters>
-	timestamp := time.Now().Format("20060102-150405")
-	suffix, err := resource.NewUniqueHex("."+timestamp+".", 5, -1)
-	contract.AssertNoError(err)
-	return suffix
+// programTester contains state associated with running a single test pass.
+type programTester struct {
+	t       *testing.T          // the Go tester for this run.
+	opts    *ProgramTestOptions // options that control this test run.
+	bin     string              // the `pulumi` binary we are using.
+	yarnBin string              // the `yarn` binary we are using.
 }
 
-func testLifeCycleInitAndDestroy(
-	t *testing.T, opts *ProgramTestOptions,
-	between func(*testing.T, *ProgramTestOptions, string) error) error {
+func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
+	return &programTester{t: t, opts: opts}
+}
 
-	t.Parallel()
+func (pt *programTester) getBin() (string, error) {
+	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
+}
 
-	dir, err := CopyTestToTemporaryDirectory(t, opts)
+func (pt *programTester) getYarnBin() (string, error) {
+	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
+}
+
+func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
+	bin, err := pt.getBin()
 	if err != nil {
-		return errors.Wrap(err, "Couldn't copy test to temporary directory")
+		return nil, err
+	}
+	cmd := []string{bin}
+	if du := pt.opts.GetDebugLogLevel(); du > 0 {
+		cmd = append(cmd, "--logtostderr")
+		cmd = append(cmd, "-v="+strconv.Itoa(du))
+	}
+	return append(cmd, args...), nil
+}
+
+func (pt *programTester) yarnCmd(args []string) ([]string, error) {
+	bin, err := pt.getYarnBin()
+	if err != nil {
+		return nil, err
+	}
+	result := []string{bin}
+	result = append(result, args...)
+	return withOptionalYarnFlags(result), nil
+}
+
+func (pt *programTester) runCommand(name string, args []string, wd string) error {
+	return RunCommand(pt.t, name, args, wd, pt.opts)
+}
+
+func (pt *programTester) runPulumiCommand(name string, args []string, wd string) error {
+	cmd, err := pt.pulumiCmd(args)
+	if err != nil {
+		return err
+	}
+	return pt.runCommand(name, cmd, wd)
+}
+
+func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
+	cmd, err := pt.yarnCmd(args)
+	if err != nil {
+		return err
+	}
+	return pt.runCommand(name, cmd, wd)
+}
+
+func (pt *programTester) testLifeCycleInitAndDestroy() error {
+	dir, err := pt.copyTestToTemporaryDirectory()
+	if err != nil {
+		return errors.Wrap(err, "copying test to temp dir")
 	}
 
 	// Keep the temporary test directory around for debugging unless
@@ -312,7 +352,7 @@ func testLifeCycleInitAndDestroy(
 			// Maybe copy to "failed tests" directory.
 			failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
 			if failedTestsDir != "" {
-				dest := filepath.Join(failedTestsDir, t.Name()+uniqueSuffix())
+				dest := filepath.Join(failedTestsDir, pt.t.Name()+uniqueSuffix())
 				contract.IgnoreError(fsutil.CopyFile(dest, dir, nil))
 			}
 		} else {
@@ -320,86 +360,85 @@ func testLifeCycleInitAndDestroy(
 		}
 	}()
 
-	err = testLifeCycleInitialize(t, opts, dir)
+	err = pt.testLifeCycleInitialize(dir)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "initializing test project")
 	}
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
 		if dir != "" {
-			destroyErr := testLifeCycleDestroy(t, opts, dir)
-			assert.NoError(t, destroyErr)
+			destroyErr := pt.testLifeCycleDestroy(dir)
+			assert.NoError(pt.t, destroyErr)
 		}
 	}()
 
-	err = between(t, opts, dir)
-	if err != nil {
-		return err
+	if err = pt.testPreviewUpdateAndEdits(dir); err != nil {
+		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
 	keepTestDir = false
 	return nil
 }
 
-func testLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions, dir string) error {
-	stackName := opts.GetStackName()
+func (pt *programTester) testLifeCycleInitialize(dir string) error {
+	stackName := pt.opts.GetStackName()
 
 	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
-	if opts.RelativeWorkDir != "" {
-		dir = path.Join(dir, opts.RelativeWorkDir)
+	if pt.opts.RelativeWorkDir != "" {
+		dir = path.Join(dir, pt.opts.RelativeWorkDir)
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	pioutil.MustFprintf(opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	pioutil.MustFprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
 	initArgs := []string{"init"}
-	initArgs = addFlagIfNonNil(initArgs, "--owner", opts.Owner)
-	initArgs = addFlagIfNonNil(initArgs, "--name", opts.Repo)
-	if err := RunCommand(t, "pulumi-init", opts.PulumiCmd(initArgs), dir, opts); err != nil {
+	initArgs = addFlagIfNonNil(initArgs, "--owner", pt.opts.Owner)
+	initArgs = addFlagIfNonNil(initArgs, "--name", pt.opts.Repo)
+	if err := pt.runPulumiCommand("pulumi-init", initArgs, dir); err != nil {
 		return err
 	}
 
 	// Login as needed.
-	if opts.CloudURL != "" {
+	if pt.opts.CloudURL != "" {
 		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-			t.Fatalf("Unable to run pulumi login. PULUMI_ACCESS_TOKEN environment variable not set.")
+			pt.t.Fatalf("Unable to run pulumi login. PULUMI_ACCESS_TOKEN environment variable not set.")
 		}
 
 		// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
 		// e.g. replacing the current user's with that of a test account.
 		if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
-			t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
+			pt.t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
 		}
 
-		args := opts.PulumiCmd([]string{"login", "--cloud-url", opts.CloudURL})
-		if err := RunCommand(t, "pulumi-login", args, dir, opts); err != nil {
+		if err := pt.runPulumiCommand("pulumi-login",
+			append([]string{"login", "--cloud-url", pt.opts.CloudURL}), dir); err != nil {
 			return err
 		}
 	}
 
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(stackName)}
-	if opts.CloudURL == "" {
+	if pt.opts.CloudURL == "" {
 		stackInitArgs = append(stackInitArgs, "--local")
 	} else {
-		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--cloud-url", opts.CloudURL)
-		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", opts.PPCName)
+		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--cloud-url", pt.opts.CloudURL)
+		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
 	}
-	if err := RunCommand(t, "pulumi-stack-init", opts.PulumiCmd(stackInitArgs), dir, opts); err != nil {
+	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
 
-	for key, value := range opts.Config {
-		if err := RunCommand(t, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", key, value}), dir, opts); err != nil {
+	for key, value := range pt.opts.Config {
+		if err := pt.runPulumiCommand("pulumi-config",
+			[]string{"config", "set", key, value}, dir); err != nil {
 			return err
 		}
 	}
 
-	for key, value := range opts.Secrets {
-		if err := RunCommand(t, "pulumi-config",
-			opts.PulumiCmd([]string{"config", "set", "--secret", key, value}), dir, opts); err != nil {
+	for key, value := range pt.opts.Secrets {
+		if err := pt.runPulumiCommand("pulumi-config",
+			[]string{"config", "set", "--secret", key, value}, dir); err != nil {
 			return err
 		}
 	}
@@ -407,37 +446,36 @@ func testLifeCycleInitialize(t *testing.T, opts *ProgramTestOptions, dir string)
 	return nil
 }
 
-func testLifeCycleDestroy(t *testing.T, opts *ProgramTestOptions, dir string) error {
-	stackName := opts.GetStackName()
+func (pt *programTester) testLifeCycleDestroy(dir string) error {
+	stackName := pt.opts.GetStackName()
 
-	destroy := opts.PulumiCmd([]string{"destroy", "--yes"})
-	if opts.GetDebugUpdates() {
+	// Destroy and remove the stack.
+	pioutil.MustFprintf(pt.opts.Stdout, "Destroying stack\n")
+	destroy := []string{"destroy", "--yes"}
+	if pt.opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
 	}
-
-	// Finally, tear down the stack, and clean up the stack.  Ignore errors to try to get as clean as possible.
-	pioutil.MustFprintf(opts.Stdout, "Destroying stack\n")
-	if err := RunCommand(t, "pulumi-destroy", destroy, dir, opts); err != nil {
+	if err := pt.runPulumiCommand("pulumi-destroy", destroy, dir); err != nil {
 		return err
 	}
 
-	args := []string{"stack", "rm", "--yes", string(stackName)}
-	if err := RunCommand(t, "pulumi-stack-rm", opts.PulumiCmd(args), dir, opts); err != nil {
+	if err := pt.runPulumiCommand("pulumi-stack-rm",
+		[]string{"stack", "rm", "--yes", string(stackName)}, dir); err != nil {
 		return err
 	}
 
-	if opts.CloudURL != "" {
-		args = []string{"logout", "--cloud-url", opts.CloudURL}
-		return RunCommand(t, "pulumi-logout", opts.PulumiCmd(args), dir, opts)
+	if pt.opts.CloudURL != "" {
+		return pt.runPulumiCommand("pulumi-logout",
+			[]string{"logout", "--cloud-url", pt.opts.CloudURL}, dir)
 	}
 
 	return nil
 }
 
-func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
+func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
-	pioutil.MustFprintf(opts.Stdout, "Performing primary preview and update\n")
-	initErr := previewAndUpdate(t, opts, dir, "initial", opts.ExpectFailure)
+	pioutil.MustFprintf(pt.opts.Stdout, "Performing primary preview and update\n")
+	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -445,46 +483,46 @@ func testPreviewUpdateAndEdits(t *testing.T, opts *ProgramTestOptions, dir strin
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
-	if !opts.Quick {
-		pioutil.MustFprintf(opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := previewAndUpdate(t, opts, dir, "empty", false); err != nil {
+	if !pt.opts.Quick {
+		pioutil.MustFprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		if err := pt.previewAndUpdate(dir, "empty", false); err != nil {
 			return err
 		}
 	}
 
 	// Run additional validation provided by the test options, passing in the checkpoint info.
-	if err := performExtraRuntimeValidation(t, opts, opts.ExtraRuntimeValidation, dir); err != nil {
+	if err := pt.performExtraRuntimeValidation(pt.opts.ExtraRuntimeValidation, dir); err != nil {
 		return err
 	}
 
 	// If there are any edits, apply them and run a preview and update for each one.
-	return testEdits(t, opts, dir)
+	return pt.testEdits(dir)
 }
 
-func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name string, shouldFail bool) error {
-	preview := opts.PulumiCmd([]string{"preview"})
-	update := opts.PulumiCmd([]string{"update"})
-	if opts.GetDebugUpdates() {
+func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bool) error {
+	preview := []string{"preview"}
+	update := []string{"update"}
+	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
 	}
-	if opts.UpdateCommandlineFlags != nil {
-		update = append(update, opts.UpdateCommandlineFlags...)
+	if pt.opts.UpdateCommandlineFlags != nil {
+		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
 
-	if !opts.Quick {
-		if err := RunCommand(t, "pulumi-preview-"+name, preview, dir, opts); err != nil {
+	if !pt.opts.Quick {
+		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir); err != nil {
 			if shouldFail {
-				pioutil.MustFprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
+				pioutil.MustFprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
 				return nil
 			}
 			return err
 		}
 	}
 
-	if err := RunCommand(t, "pulumi-update-"+name, update, dir, opts); err != nil {
+	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir); err != nil {
 		if shouldFail {
-			pioutil.MustFprintf(opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			pioutil.MustFprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
 			return nil
 		}
 		return err
@@ -498,18 +536,18 @@ func previewAndUpdate(t *testing.T, opts *ProgramTestOptions, dir string, name s
 	return nil
 }
 
-func testEdits(t *testing.T, opts *ProgramTestOptions, dir string) error {
-	for i, edit := range opts.EditDirs {
+func (pt *programTester) testEdits(dir string) error {
+	for i, edit := range pt.opts.EditDirs {
 		var err error
-		if err = testEdit(t, opts, dir, i, edit); err != nil {
+		if err = pt.testEdit(dir, i, edit); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit EditDir) error {
-	pioutil.MustFprintf(opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
+func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
+	pioutil.MustFprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	if edit.Additive {
 		// Just copy new files into dir
@@ -518,7 +556,7 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 		}
 	} else {
 		// Create a new temporary directory
-		newDir, err := ioutil.TempDir("", opts.StackName+"-")
+		newDir, err := ioutil.TempDir("", pt.opts.StackName+"-")
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't create new temporary directory")
 		}
@@ -569,49 +607,48 @@ func testEdit(t *testing.T, opts *ProgramTestOptions, dir string, i int, edit Ed
 		dirToDelete = dirOld
 	}
 
-	err := prepareProject(t, opts, dir)
+	err := pt.prepareProject(dir)
 	if err != nil {
 		return errors.Wrapf(err, "Couldn't prepare project in %v", dir)
 	}
 
-	oldStdOut := opts.Stdout
-	oldStderr := opts.Stderr
-	oldVerbose := opts.Verbose
+	oldStdOut := pt.opts.Stdout
+	oldStderr := pt.opts.Stderr
+	oldVerbose := pt.opts.Verbose
 	if edit.Stdout != nil {
-		opts.Stdout = edit.Stdout
+		pt.opts.Stdout = edit.Stdout
 	}
 	if edit.Stderr != nil {
-		opts.Stderr = edit.Stderr
+		pt.opts.Stderr = edit.Stderr
 	}
 	if edit.Verbose {
-		opts.Verbose = true
+		pt.opts.Verbose = true
 	}
 
 	defer func() {
-		opts.Stdout = oldStdOut
-		opts.Stderr = oldStderr
-		opts.Verbose = oldVerbose
+		pt.opts.Stdout = oldStdOut
+		pt.opts.Stderr = oldStderr
+		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = previewAndUpdate(t, opts, dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
 		return err
 	}
-	if err = performExtraRuntimeValidation(t, opts, edit.ExtraRuntimeValidation, dir); err != nil {
+	if err = pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func performExtraRuntimeValidation(
-	t *testing.T, opts *ProgramTestOptions,
+func (pt *programTester) performExtraRuntimeValidation(
 	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string) error {
 
 	if extraRuntimeValidation == nil {
 		return nil
 	}
 
-	stackName := opts.GetStackName()
+	stackName := pt.opts.GetStackName()
 
 	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
 	ws, err := workspace.NewFrom(dir)
@@ -621,7 +658,7 @@ func performExtraRuntimeValidation(
 	chk, err := stack.GetCheckpoint(ws, stackName)
 	if err != nil {
 		return errors.Wrapf(err, "expected to load checkpoint file for target %v: %v", stackName)
-	} else if !assert.NotNil(t, chk, "expected checkpoint file to be populated from %v: %v", stackName, err) {
+	} else if !assert.NotNil(pt.t, chk, "expected checkpoint file to be populated from %v: %v", stackName, err) {
 		return errors.New("missing checkpoint")
 	}
 
@@ -629,13 +666,13 @@ func performExtraRuntimeValidation(
 	snapshot, err := stack.DeserializeCheckpoint(chk)
 	if err != nil {
 		return errors.Wrapf(err, "expected checkpoint deserialization to succeed")
-	} else if !assert.NotNil(t, snapshot, "expected snapshot to be populated from checkpoint file %v", stackName) {
+	} else if !assert.NotNil(pt.t, snapshot, "expected snapshot to be populated from checkpoint file %v", stackName) {
 		return errors.New("missing snapshot")
 	}
 
 	// Get root resources from snapshot
 	rootResource, outputs := stack.GetRootStackResource(snapshot)
-	if !assert.NotNil(t, rootResource, "expected root resource to be populated from snapshot file %v", stackName) {
+	if !assert.NotNil(pt.t, rootResource, "expected root resource to be populated from snapshot file %v", stackName) {
 		return errors.New("missing root resource")
 	}
 
@@ -646,55 +683,40 @@ func performExtraRuntimeValidation(
 		RootResource: *rootResource,
 		Outputs:      outputs,
 	}
-	extraRuntimeValidation(t, stackInfo)
+	extraRuntimeValidation(pt.t, stackInfo)
 	return nil
 }
 
-// CopyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (string, error) {
-	// Ensure the required programs are present.
-	if opts.Bin == "" {
-		var pulumi string
-		pulumi, err := exec.LookPath("pulumi")
-		if err != nil {
-			return "", errors.Wrapf(err, "Expected to find `pulumi` binary on $PATH")
-		}
-		opts.Bin = pulumi
-	}
-	if opts.YarnBin == "" {
-		var yarn string
-		yarn, err := exec.LookPath("yarn")
-		if err != nil {
-			return "", errors.Wrapf(err, "Expected to find `yarn` binary on $PATH")
-		}
-		opts.YarnBin = yarn
-	}
-
+// copyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
+func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) {
 	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
 	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
-	sourceDir := opts.Dir
+	sourceDir := pt.opts.Dir
 	var prefix string
 	if len(sourceDir) <= 30 {
 		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir)
 	} else {
 		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir[len(sourceDir)-30:])
 	}
-	stdout := opts.Stdout
+	stdout := pt.opts.Stdout
 	if stdout == nil {
 		stdout = newPrefixer(os.Stdout, prefix)
-		opts.Stdout = stdout
+		pt.opts.Stdout = stdout
 	}
-	stderr := opts.Stderr
+	stderr := pt.opts.Stderr
 	if stderr == nil {
 		stderr = newPrefixer(os.Stderr, prefix)
-		opts.Stderr = stderr
+		pt.opts.Stderr = stderr
 	}
 
-	pioutil.MustFprintf(opts.Stdout, "sample: %v\n", sourceDir)
-	pioutil.MustFprintf(opts.Stdout, "pulumi: %v\n", opts.Bin)
-	pioutil.MustFprintf(opts.Stdout, "yarn: %v\n", opts.YarnBin)
+	pioutil.MustFprintf(pt.opts.Stdout, "sample: %v\n", sourceDir)
+	bin, err := pt.getBin()
+	if err != nil {
+		return "", err
+	}
+	pioutil.MustFprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
 
-	stackName := string(opts.GetStackName())
+	stackName := string(pt.opts.GetStackName())
 	targetDir, err := ioutil.TempDir("", stackName+"-")
 	if err != nil {
 		return "", errors.Wrap(err, "Couldn't create temporary directory")
@@ -713,7 +735,7 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (strin
 		return "", err
 	}
 
-	err = prepareProject(t, opts, targetDir)
+	err = pt.prepareProject(targetDir)
 	if err != nil {
 		return "", errors.Wrapf(err, "Failed to prepare %v", targetDir)
 	}
@@ -723,108 +745,8 @@ func CopyTestToTemporaryDirectory(t *testing.T, opts *ProgramTestOptions) (strin
 	return targetDir, nil
 }
 
-func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
-	logFileDir := filepath.Join(runDir, "command-output")
-	if err := os.MkdirAll(logFileDir, 0700); err != nil {
-		return "", errors.Wrapf(err, "Failed to create '%s'", logFileDir)
-	}
-
-	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
-
-	if err := ioutil.WriteFile(logFile, output, 0644); err != nil {
-		return "", errors.Wrapf(err, "Failed to write '%s'", logFile)
-	}
-
-	return logFile, nil
-}
-
-// RunCommand executes the specified command and additional arguments, wrapping any output in the
-// specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
-	path := args[0]
-	command := strings.Join(args, " ")
-
-	pioutil.MustFprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
-
-	// Spawn a goroutine to print out "still running..." messages.
-	finished := false
-	go func() {
-		for !finished {
-			time.Sleep(30 * time.Second)
-			if !finished {
-				pioutil.MustFprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
-			}
-		}
-	}()
-
-	var env []string
-	env = append(env, os.Environ()...)
-	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
-	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
-
-	cmd := exec.Cmd{
-		Path: path,
-		Dir:  wd,
-		Args: args,
-		Env:  env,
-	}
-
-	startTime := time.Now()
-
-	var runout []byte
-	var runerr error
-	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
-		cmd.Stdout = opts.Stdout
-		cmd.Stderr = opts.Stderr
-		runerr = cmd.Run()
-	} else {
-		runout, runerr = cmd.CombinedOutput()
-	}
-
-	endTime := time.Now()
-
-	if opts.ReportStats != nil {
-		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
-		// of this data.
-		opts.ReportStats.ReportCommand(TestCommandStats{
-			StartTime:      startTime.Format("2006/01/02 15:04:05"),
-			EndTime:        endTime.Format("2006/01/02 15:04:05"),
-			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,
-			StepName:       name,
-			CommandLine:    command,
-			StackName:      string(opts.GetStackName()),
-			TestID:         wd,
-			TestName:       filepath.Base(opts.Dir),
-			IsError:        runerr != nil,
-		})
-	}
-
-	finished = true
-	if runerr != nil {
-		pioutil.MustFprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
-
-		if !opts.Verbose {
-			// We've seen long fprintf's fail on Travis, so avoid panicing.
-			if _, err := fmt.Fprintf(opts.Stderr, "%s\n", string(runout)); err != nil {
-				pioutil.MustFprintf(opts.Stderr, "\n\nOutput truncated: %v\n", err)
-			}
-		}
-	}
-
-	// If we collected any program output, write it to a log file -- success or failure.
-	if len(runout) > 0 {
-		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
-			pioutil.MustFprintf(opts.Stderr, "Failed to write output: %v\n", err)
-		} else {
-			pioutil.MustFprintf(opts.Stderr, "Wrote output to %s\n", logFile)
-		}
-	}
-
-	return runerr
-}
-
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
-func prepareProject(t *testing.T, opts *ProgramTestOptions, projectDir string) error {
+func (pt *programTester) prepareProject(projectDir string) error {
 	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
 	// may run concurrently and yarn may fail if invoked concurrently
 	// https://github.com/yarnpkg/yarn/issues/683
@@ -845,76 +767,20 @@ func prepareProject(t *testing.T, opts *ProgramTestOptions, projectDir string) e
 		return err
 	}
 
-	if opts.RelativeWorkDir != "" {
-		cwd = path.Join(cwd, opts.RelativeWorkDir)
+	if rwd := pt.opts.RelativeWorkDir; rwd != "" {
+		cwd = path.Join(cwd, rwd)
 	}
 
 	// Now ensure dependencies are present.
-	if insterr := RunCommand(t,
-		"yarn-install",
-		withOptionalYarnFlags([]string{opts.YarnBin, "install", "--verbose"}), cwd, opts); insterr != nil {
+	if insterr := pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); insterr != nil {
 		return insterr
 	}
-	for _, dependency := range opts.Dependencies {
-		if linkerr := RunCommand(t,
-			"yarn-link",
-			withOptionalYarnFlags([]string{opts.YarnBin, "link", dependency}), cwd, opts); linkerr != nil {
+	for _, dependency := range pt.opts.Dependencies {
+		if linkerr := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); linkerr != nil {
 			return linkerr
 		}
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
-	return RunCommand(t,
-		"yarn-build",
-		withOptionalYarnFlags([]string{opts.YarnBin, "run", "build"}), cwd, opts)
-}
-
-func withOptionalYarnFlags(args []string) []string {
-	flags := os.Getenv("YARNFLAGS")
-
-	if flags != "" {
-		return append(args, flags)
-	}
-
-	return args
-}
-
-// addFlagIfNonNil will take a set of command-line flags, and add a new one if the provided flag value is not empty.
-func addFlagIfNonNil(args []string, flag, flagValue string) []string {
-	if flagValue != "" {
-		args = append(args, flag, flagValue)
-	}
-	return args
-}
-
-type prefixer struct {
-	writer    io.Writer
-	prefix    []byte
-	anyOutput bool
-}
-
-// newPrefixer wraps an io.Writer, prepending a fixed prefix after each \n emitting on the wrapped writer
-func newPrefixer(writer io.Writer, prefix string) *prefixer {
-	return &prefixer{writer, []byte(prefix), false}
-}
-
-var _ io.Writer = (*prefixer)(nil)
-
-func (prefixer *prefixer) Write(p []byte) (int, error) {
-	n := 0
-	lines := bytes.SplitAfter(p, []byte{'\n'})
-	for _, line := range lines {
-		if len(line) > 0 {
-			_, err := prefixer.writer.Write(prefixer.prefix)
-			if err != nil {
-				return n, err
-			}
-		}
-		m, err := prefixer.writer.Write(line)
-		n += m
-		if err != nil {
-			return n, err
-		}
-	}
-	return n, nil
+	return pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd)
 }
