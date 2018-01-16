@@ -48,13 +48,15 @@ type Package struct {
 }
 
 // StackInfo holds stack specific information about a package
+// nolint: lll
 type StackInfo struct {
-	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config.
+	EncryptionSalt string     `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"` // base64 encoded encryption salt.
+	Config         config.Map `json:"config,omitempty" yaml:"config,omitempty"`                 // optional config.
 }
 
 // IsEmpty returns True if this object contains no information (i.e. all members have their zero values)
 func (s *StackInfo) IsEmpty() bool {
-	return len(s.Config) == 0
+	return len(s.Config) == 0 && s.EncryptionSalt == ""
 }
 
 var _ diag.Diagable = (*Package)(nil)

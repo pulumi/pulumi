@@ -372,6 +372,7 @@ func deleteAllStackConfiguration(stackName tokens.QName) error {
 
 	if info, has := pkg.Stacks[stackName]; has {
 		info.Config = nil
+		info.EncryptionSalt = ""
 		pkg.Stacks[stackName] = info
 	}
 
