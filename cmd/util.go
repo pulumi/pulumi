@@ -182,10 +182,13 @@ func registerUpdateOptionsFlags(cmd *cobra.Command, opts *engine.UpdateOptions) 
 	cf := colorFlag{
 		Output: &opts.Color,
 	}
+	// Provide a default. Otherwise if no --color option is specified, the value will be "" which is an invalid
+	// state for colors.Colorization.
+	opts.Color = colors.Always
 	cmd.PersistentFlags().Var(&cf, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	cmd.PersistentFlags().BoolVarP(
-		&opts.DryRun, "dry-run", "d", false,
+		&opts.DryRun, "dry-run", "r", false,
 		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().IntVarP(
 		&opts.Parallel, "parallel", "p", 0,
