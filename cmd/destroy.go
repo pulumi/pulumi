@@ -12,12 +12,9 @@ import (
 
 func newDestroyCmd() *cobra.Command {
 	var debug bool
-	var preview bool
 	var stack string
-	var parallel int
-	var summary bool
 	var yes bool
-	var color string
+	var opts engine.UpdateOptions
 	var cmd = &cobra.Command{
 		Use:        "destroy",
 		SuggestFor: []string{"delete", "down", "kill", "remove", "rm", "stop"},
@@ -36,26 +33,14 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			col, err := parseColorization(debug, color)
-			if err != nil {
-				return err
-			}
-
 			pkg, root, err := readPackage()
 			if err != nil {
 				return err
 			}
 
-			if preview || yes ||
+			if opts.DryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
-
-				return s.Destroy(pkg, root, debug, engine.UpdateOptions{
-					DryRun:   preview,
-					Parallel: parallel,
-					Summary:  summary,
-					Color:    col,
-				})
+				return s.Destroy(pkg, root, debug, opts)
 			}
 
 			return nil
@@ -65,24 +50,13 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
-	cmd.PersistentFlags().BoolVarP(
-		&preview, "preview", "n", false,
-		"Don't actually delete resources; just preview the planned deletions")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
-	cmd.PersistentFlags().IntVarP(
-		&parallel, "parallel", "p", 0,
-		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
-	cmd.PersistentFlags().BoolVar(
-		&summary, "summary", false,
-		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with the destruction anyway")
-	cmd.PersistentFlags().StringVar(
-		&color, "color", "auto",
-		"Colorize output. Choices are: always, never, raw, auto")
+	registerUpdateOptionsFlags(cmd, &opts)
 
 	return cmd
 }
