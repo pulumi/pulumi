@@ -131,14 +131,9 @@ func trimGitRemoteURL(url string, prefix string, suffix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
-func parseColorization(debug bool, color string) (colors.Colorization, error) {
+func parseColorization(color string) (colors.Colorization, error) {
 	switch color {
-	case "auto":
-		if debug {
-			// we will use color so long as we're not spewing to debug (which is colorless).
-			return colors.Never, nil
-		}
-
+	case "auto", "": // default to Always
 		return colors.Always, nil
 	case "always":
 		return colors.Always, nil
@@ -215,26 +210,21 @@ type colorFlag struct {
 	value  string
 }
 
-var _ pflag.Value = colorFlag{}
+var _ pflag.Value = &colorFlag{}
 
-func (cf colorFlag) String() string {
+func (cf *colorFlag) String() string {
 	return cf.value
 }
 
-func (cf colorFlag) Set(v string) error {
-	switch v {
-	case "always", "never", "raw", "auto":
-		break
-	default:
-		return errors.New("invalid value for color flag. Must be { always, never, raw, auto }")
+func (cf *colorFlag) Set(v string) error {
+	c, err := parseColorization(v)
+	if err != nil {
+		return err
 	}
-
-	cf.value = v
-	if cf.Output != nil {
-		*cf.Output = colors.Colorization(v)
-	}
+	*cf.Output = c
 	return nil
 }
-func (cf colorFlag) Type() string {
+
+func (cf *colorFlag) Type() string {
 	return "color.Colorize"
 }
