@@ -53,7 +53,7 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			return s.Preview(pkg, root, debug, engine.PreviewOptions{
+			return s.Preview(pkg, root, debug, engine.UpdateOptions{
 				Analyzers:            analyzers,
 				Parallel:             parallel,
 				ShowConfig:           showConfig,

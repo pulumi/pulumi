@@ -50,15 +50,15 @@ func (s *localStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *localStack) Preview(pkg *pack.Package, root string, debug bool, opts engine.PreviewOptions) error {
+func (s *localStack) Preview(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return backend.PreviewStack(s, pkg, root, debug, opts)
 }
 
-func (s *localStack) Update(pkg *pack.Package, root string, debug bool, opts engine.DeployOptions) error {
+func (s *localStack) Update(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return backend.UpdateStack(s, pkg, root, debug, opts)
 }
 
-func (s *localStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.DestroyOptions) error {
+func (s *localStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return backend.DestroyStack(s, pkg, root, debug, opts)
 }
 

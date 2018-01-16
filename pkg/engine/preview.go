@@ -7,23 +7,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-type PreviewOptions struct {
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
-	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool     // true if we should only summarize resources and operations.
-	Color                colors.Colorization
-}
-
-func Preview(update Update, events chan<- Event, opts PreviewOptions) error {
+func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
@@ -36,16 +25,11 @@ func Preview(update Update, events chan<- Event, opts PreviewOptions) error {
 	defer info.Close()
 
 	return previewLatest(info, deployOptions{
-		Destroy:              false,
-		DryRun:               true,
-		Analyzers:            opts.Analyzers,
-		Parallel:             opts.Parallel,
-		ShowConfig:           opts.ShowConfig,
-		ShowReplacementSteps: opts.ShowReplacementSteps,
-		ShowSames:            opts.ShowSames,
-		Summary:              opts.Summary,
-		Color:                opts.Color,
-		Events:               events,
+		UpdateOptions: opts,
+
+		Create:  false,
+		Destroy: false,
+
 		Diag: newEventSink(events, diag.FormatOptions{
 			Color: opts.Color,
 		}),

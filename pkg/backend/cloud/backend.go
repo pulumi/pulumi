@@ -198,19 +198,19 @@ const (
 )
 
 func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, _ engine.PreviewOptions) error {
+	debug bool, _ engine.UpdateOptions) error {
 
 	return b.updateStack(preview, stackName, pkg, root, debug)
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, _ engine.DeployOptions) error {
+	debug bool, _ engine.UpdateOptions) error {
 
 	return b.updateStack(update, stackName, pkg, root, debug)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, _ engine.DestroyOptions) error {
+	debug bool, _ engine.UpdateOptions) error {
 
 	return b.updateStack(destroy, stackName, pkg, root, debug)
 }
