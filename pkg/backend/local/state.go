@@ -91,7 +91,7 @@ func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 	if err != nil {
 		return nil, err
 	}
-	decrypter, err := defaultCrypter(cfg)
+	decrypter, err := defaultCrypter(stackName, cfg)
 	if err != nil {
 		return nil, err
 	}

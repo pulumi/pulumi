@@ -11,7 +11,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -25,33 +27,73 @@ func readPassphrase(prompt string) (string, error) {
 }
 
 // defaultCrypter gets the right value encrypter/decrypter given the project configuration.
-func defaultCrypter(cfg config.Map) (config.Crypter, error) {
+func defaultCrypter(stackName tokens.QName, cfg config.Map) (config.Crypter, error) {
 	// If there is no config, we can use a standard panic crypter.
 	if !cfg.HasSecureValue() {
 		return config.NewPanicCrypter(), nil
 	}
 
 	// Otherwise, we will use an encrypted one.
-	return symmetricCrypter()
+	return symmetricCrypter(stackName)
 }
 
-// SymmetricCrypter gets the right value encrypter/decrypter for this project.
-func symmetricCrypter() (config.Crypter, error) {
+// symmetricCrypter gets the right value encrypter/decrypter for this project.
+func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
 	// First, read the package to see if we've got a key.
 	pkg, err := workspace.GetPackage()
 	if err != nil {
 		return nil, err
 	}
 
-	// If there's already a salt, use it.
+	if pkg.Stacks == nil {
+		pkg.Stacks = make(map[tokens.QName]pack.StackInfo)
+	}
+
+	// If we have a top level EncryptionSalt, we are reading an older version of Pulumi.yaml where local stacks shared
+	// a key. To migrate, we'll simply move this salt to any local stack that has encrypted config and then unset the
+	// package wide salt.
 	if pkg.EncryptionSalt != "" {
-		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
-			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
-		if phraseErr != nil {
-			return nil, phraseErr
+		localStacks, stacksErr := getLocalStacks()
+		if stacksErr != nil {
+			return nil, stacksErr
 		}
 
-		return symmetricCrypterFromPhraseAndState(phrase, pkg.EncryptionSalt)
+		for _, localStack := range localStacks {
+			stackInfo := pkg.Stacks[localStack]
+			contract.Assertf(stackInfo.EncryptionSalt == "", "package and stack %v had an encryption salt", localStack)
+
+			if stackInfo.Config.HasSecureValue() {
+				stackInfo.EncryptionSalt = pkg.EncryptionSalt
+			}
+
+			pkg.Stacks[localStack] = stackInfo
+		}
+
+		pkg.EncryptionSalt = ""
+
+		// Now store the result on the package and save it.
+		if err = workspace.SavePackage(pkg); err != nil {
+			return nil, err
+		}
+	}
+
+	// If there's already a salt for the local stack, we can just use that.
+	if info, has := pkg.Stacks[stackName]; has {
+		if info.EncryptionSalt != "" {
+
+			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+				"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
+			if phraseErr != nil {
+				return nil, phraseErr
+			}
+
+			crypter, crypterErr := symmetricCrypterFromPhraseAndState(phrase, info.EncryptionSalt)
+			if crypterErr != nil {
+				return nil, crypterErr
+			}
+
+			return crypter, nil
+		}
 	}
 
 	// Read a passphrase and confirm it.
@@ -78,7 +120,9 @@ func symmetricCrypter() (config.Crypter, error) {
 	contract.AssertNoError(err)
 
 	// Now store the result on the package and save it.
-	pkg.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
+	stackInfo := pkg.Stacks[stackName]
+	stackInfo.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
+	pkg.Stacks[stackName] = stackInfo
 	if err = workspace.SavePackage(pkg); err != nil {
 		return nil, err
 	}

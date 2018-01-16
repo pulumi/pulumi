@@ -100,7 +100,7 @@ func (b *localBackend) RemoveStack(stackName tokens.QName, force bool) (bool, er
 }
 
 func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, error) {
-	return symmetricCrypter()
+	return symmetricCrypter(stackName)
 }
 
 func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
