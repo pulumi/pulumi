@@ -1,5 +1,7 @@
 package apitype
 
+import "github.com/pulumi/pulumi/pkg/diag/colors"
+
 // ConfigValue describes a single (possibly secret) configuration value.
 type ConfigValue struct {
 	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
@@ -22,8 +24,22 @@ type UpdateProgramRequest struct {
 	Main        string `json:"main"`
 	Description string `json:"description"`
 
+	Options UpdateOptions `json:"options"`
+
 	// Configuration values.
 	Config map[string]ConfigValue `json:"config"`
+}
+
+// UpdateOptions is the set of operations for configuring the output of an update.
+type UpdateOptions struct {
+	Analyzers            []string            // an optional set of analyzers to run as part of this deployment.
+	Color                colors.Colorization // How output should be colorized.
+	DryRun               bool                // true if we should just print the plan without performing it.
+	Parallel             int                 // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool                // true to show the configuration variables being used.
+	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
+	ShowSames            bool                // true to show the resources that aren't updated in addition to updates.
+	Summary              bool                // true if we should only summarize resources and operations.
 }
 
 // UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go
