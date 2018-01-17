@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	pioutil "github.com/pulumi/pulumi/pkg/util/ioutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -275,6 +274,16 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	assert.NoError(t, err)
 }
 
+// fprintf works like fmt.FPrintf, except it explicitly drops the return values. This keeps the linters happy, since
+// they don't like to see errors dropped on the floor. It is possible that our call to fmt.Fprintf will fail, even
+// for "standard" streams like `stdout` and `stderr`, if they have been set to non-blocking by an external process.
+// In that case, we just drop the error on the floor and continue. We see this behavior in Travis when we try to write
+// a lot of messages quickly (as we do when logging test failures)
+func fprintf(w io.Writer, format string, a ...interface{}) {
+	_, err := fmt.Fprintf(w, format, a...)
+	contract.IgnoreError(err)
+}
+
 // programTester contains state associated with running a single test pass.
 type programTester struct {
 	t       *testing.T          // the Go tester for this run.
@@ -390,7 +399,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	pioutil.MustFprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
 	initArgs := []string{"init"}
 	initArgs = addFlagIfNonNil(initArgs, "--owner", pt.opts.Owner)
@@ -450,7 +459,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	stackName := pt.opts.GetStackName()
 
 	// Destroy and remove the stack.
-	pioutil.MustFprintf(pt.opts.Stdout, "Destroying stack\n")
+	fprintf(pt.opts.Stdout, "Destroying stack\n")
 	destroy := []string{"destroy", "--yes"}
 	if pt.opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
@@ -474,7 +483,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
-	pioutil.MustFprintf(pt.opts.Stdout, "Performing primary preview and update\n")
+	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
 	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
@@ -484,7 +493,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.Quick {
-		pioutil.MustFprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
+		fprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
 		if err := pt.previewAndUpdate(dir, "empty", false); err != nil {
 			return err
 		}
@@ -513,7 +522,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bo
 	if !pt.opts.Quick {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir); err != nil {
 			if shouldFail {
-				pioutil.MustFprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
+				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
 				return nil
 			}
 			return err
@@ -522,7 +531,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bo
 
 	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir); err != nil {
 		if shouldFail {
-			pioutil.MustFprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
 			return nil
 		}
 		return err
@@ -547,7 +556,7 @@ func (pt *programTester) testEdits(dir string) error {
 }
 
 func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
-	pioutil.MustFprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
+	fprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
 
 	if edit.Additive {
 		// Just copy new files into dir
@@ -709,12 +718,12 @@ func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) 
 		pt.opts.Stderr = stderr
 	}
 
-	pioutil.MustFprintf(pt.opts.Stdout, "sample: %v\n", sourceDir)
+	fprintf(pt.opts.Stdout, "sample: %v\n", sourceDir)
 	bin, err := pt.getBin()
 	if err != nil {
 		return "", err
 	}
-	pioutil.MustFprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
+	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
 
 	stackName := string(pt.opts.GetStackName())
 	targetDir, err := ioutil.TempDir("", stackName+"-")
@@ -740,7 +749,7 @@ func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) 
 		return "", errors.Wrapf(err, "Failed to prepare %v", targetDir)
 	}
 
-	pioutil.MustFprintf(stdout, "projdir: %v\n", targetDir)
+	fprintf(stdout, "projdir: %v\n", targetDir)
 	deleteTargetDir = false
 	return targetDir, nil
 }
