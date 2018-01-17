@@ -5,7 +5,6 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -15,7 +14,10 @@ func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var stack string
 	var yes bool
+
+	var color string
 	var opts engine.UpdateOptions
+
 	var cmd = &cobra.Command{
 		Use:        "destroy",
 		SuggestFor: []string{"delete", "down", "kill", "remove", "rm", "stop"},
@@ -39,6 +41,13 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
+			// The --color flag doesn't directly change the opts.Color value, so we parse and set it here.
+			col, err := parseColorization(debug, color)
+			if err != nil {
+				return err
+			}
+			opts.Color = col
+
 			if opts.DryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
 				return s.Destroy(pkg, root, debug, opts)
@@ -59,6 +68,9 @@ func newDestroyCmd() *cobra.Command {
 		"Skip confirmation prompts, and proceed with the destruction anyway")
 
 	// Flags for setting engine.UpdateOptions.
+	cmd.PersistentFlags().StringVar(
+		&color, "color", "auto",
+		"Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
 		&opts.Analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
@@ -80,15 +92,6 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&opts.Summary, "summary", false,
 		"Only display summarization of resources and operations")
-
-	// We use a custom flag type so that we can accept colorization options as a color.Colorization type.
-	cf := colorFlag{
-		Output: &opts.Color,
-	}
-	// Provide a default. Otherwise if no --color option is specified, the value will be "" which is an invalid
-	// state for colors.Colorization.
-	opts.Color = colors.Always
-	cmd.PersistentFlags().Var(&cf, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

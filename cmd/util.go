@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -129,9 +128,13 @@ func trimGitRemoteURL(url string, prefix string, suffix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
-func parseColorization(color string) (colors.Colorization, error) {
+func parseColorization(debug bool, color string) (colors.Colorization, error) {
 	switch color {
-	case "auto", "": // default to Always
+	case "auto":
+		if debug {
+			// We will use color so long as we're not spewing to debug (which is colorless).
+			return colors.Never, nil
+		}
 		return colors.Always, nil
 	case "always":
 		return colors.Always, nil
@@ -168,29 +171,4 @@ func readPackage() (*pack.Package, string, error) {
 	}
 
 	return pkg, filepath.Dir(pkgpath), nil
-}
-
-// colorFlag is a custom cobra.Command flag to wrap a colors.Colorization value.
-type colorFlag struct {
-	Output *colors.Colorization
-	value  string
-}
-
-var _ pflag.Value = &colorFlag{}
-
-func (cf *colorFlag) String() string {
-	return cf.value
-}
-
-func (cf *colorFlag) Set(v string) error {
-	c, err := parseColorization(v)
-	if err != nil {
-		return err
-	}
-	*cf.Output = c
-	return nil
-}
-
-func (cf *colorFlag) Type() string {
-	return "color.Colorize"
 }
