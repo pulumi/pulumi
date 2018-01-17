@@ -128,26 +128,6 @@ func trimGitRemoteURL(url string, prefix string, suffix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
-func parseColorization(debug bool, color string) (colors.Colorization, error) {
-	switch color {
-	case "auto":
-		if debug {
-			// We will use color so long as we're not spewing to debug (which is colorless).
-			return colors.Never, nil
-		}
-		return colors.Always, nil
-	case "always":
-		return colors.Always, nil
-	case "never":
-		return colors.Never, nil
-	case "raw":
-		return colors.Raw, nil
-	}
-
-	return colors.Never, fmt.Errorf(
-		"unsupported color option: '%s'.  Supported values are: auto, always, never, raw", color)
-}
-
 // readPackage attempts to detect and read the package for the current workspace. If an error occurs, it will be
 // printed to Stderr, and the returned value will be nil. If the package is successfully detected and read, it
 // is returned along with the path to its containing directory, which will be used as the root of the package's
@@ -171,4 +151,42 @@ func readPackage() (*pack.Package, string, error) {
 	}
 
 	return pkg, filepath.Dir(pkgpath), nil
+}
+
+type colorFlag struct {
+	value colors.Colorization
+}
+
+func (cf *colorFlag) String() string {
+	return string(cf.Colorization())
+}
+
+func (cf *colorFlag) Set(value string) error {
+	switch value {
+	case "always":
+		cf.value = colors.Always
+	case "never":
+		cf.value = colors.Never
+	case "raw":
+		cf.value = colors.Raw
+	// Backwards compat for old flag values.
+	case "auto":
+		cf.value = colors.Always
+	default:
+		return errors.New("bad value")
+	}
+
+	return nil
+}
+
+func (cf *colorFlag) Type() string {
+	return "colors.Colorization"
+}
+
+func (cf *colorFlag) Colorization() colors.Colorization {
+	if cf.value == "" {
+		return colors.Always
+	}
+
+	return cf.value
 }

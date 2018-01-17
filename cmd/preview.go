@@ -14,8 +14,15 @@ func newPreviewCmd() *cobra.Command {
 	var debug bool
 	var stack string
 
-	var color string
-	var opts engine.UpdateOptions
+	// Flags for engine.UpdateOptions.
+	var analyzers []string
+	var color colorFlag
+	var dryRun bool
+	var parallel int
+	var showConfig bool
+	var showReplacementSteps bool
+	var showSames bool
+	var summary bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -44,14 +51,16 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			// The --color flag doesn't directly change the opts.Color value, so we parse and set it here.
-			col, err := parseColorization(debug, color)
-			if err != nil {
-				return err
-			}
-			opts.Color = col
-
-			return s.Preview(pkg, root, debug, opts)
+			return s.Preview(pkg, root, debug, engine.UpdateOptions{
+				Analyzers:            analyzers,
+				DryRun:               dryRun,
+				Color:                color.Colorization(),
+				Parallel:             parallel,
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSames:            showSames,
+				Summary:              summary,
+			})
 		}),
 	}
 
@@ -62,30 +71,29 @@ func newPreviewCmd() *cobra.Command {
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
 
-	// Flags for setting engine.UpdateOptions.
-	cmd.PersistentFlags().StringVar(
-		&color, "color", "auto",
-		"Colorize output. Choices are: always, never, raw, auto")
+	// Flags for engine.UpdateOptions.
+	cmd.PersistentFlags().VarP(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
-		&opts.Analyzers, "analyzer", []string{},
+		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVarP(
-		&opts.DryRun, "dry-run", "r", false,
+		&dryRun, "dry-run", "r", false,
 		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().IntVarP(
-		&opts.Parallel, "parallel", "p", 0,
+		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVar(
-		&opts.ShowConfig, "show-config", false,
+		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
-		&opts.ShowReplacementSteps, "show-replacement-steps", true,
+		&showReplacementSteps, "show-replacement-steps", true,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
-		&opts.ShowSames, "show-sames", false,
+		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVar(
-		&opts.Summary, "summary", false,
+		&summary, "summary", false,
 		"Only display summarization of resources and operations")
 
 	return cmd
