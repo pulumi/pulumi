@@ -50,5 +50,6 @@ script:
 after_failure:
     # Copy any data from failed tests to S3.
     - aws --region us-west-2 s3 cp --recursive "${PULUMI_FAILED_TESTS_DIR}" "s3://eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/failures"
+    - echo "one or more tests failed, to view detailed failure information, visit https://s3.console.aws.amazon.com/s3/buckets/eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/failures/"
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis

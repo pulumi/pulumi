@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	pioutil "github.com/pulumi/pulumi/pkg/util/ioutil"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
@@ -20,7 +19,7 @@ import (
 func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
-	pioutil.MustFprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
+	fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
 	// Spawn a goroutine to print out "still running..." messages.
 	finished := false
@@ -28,7 +27,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		for !finished {
 			time.Sleep(30 * time.Second)
 			if !finished {
-				pioutil.MustFprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
+				fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
 			}
 		}
 	}()
@@ -77,12 +76,12 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	finished = true
 	if runerr != nil {
-		pioutil.MustFprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+		fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 
 		if !opts.Verbose {
 			// We've seen long fprintf's fail on Travis, so avoid panicing.
 			if _, err := fmt.Fprintf(opts.Stderr, "%s\n", string(runout)); err != nil {
-				pioutil.MustFprintf(opts.Stderr, "\n\nOutput truncated: %v\n", err)
+				fprintf(opts.Stderr, "\n\nOutput truncated: %v\n", err)
 			}
 		}
 	}
@@ -90,9 +89,9 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	// If we collected any program output, write it to a log file -- success or failure.
 	if len(runout) > 0 {
 		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
-			pioutil.MustFprintf(opts.Stderr, "Failed to write output: %v\n", err)
+			fprintf(opts.Stderr, "Failed to write output: %v\n", err)
 		} else {
-			pioutil.MustFprintf(opts.Stderr, "Wrote output to %s\n", logFile)
+			fprintf(opts.Stderr, "Wrote output to %s\n", logFile)
 		}
 	}
 
