@@ -30,6 +30,7 @@ func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 		Create:  false,
 		Destroy: false,
 
+		Events: events,
 		Diag: newEventSink(events, diag.FormatOptions{
 			Color: opts.Color,
 		}),
