@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -31,7 +32,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr str
 	if err != nil {
 		return nil, err
 	} else if plug == nil {
-		return nil, nil
+		return nil, errors.Errorf("unable to find language runtime %q on PATH", srvexe)
 	}
 
 	return &langhost{
