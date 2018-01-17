@@ -5,6 +5,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -52,7 +53,38 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
-	registerUpdateOptionsFlags(cmd, &opts)
+
+	// Flags for setting engine.UpdateOptions.
+	cmd.PersistentFlags().StringSliceVar(
+		&opts.Analyzers, "analyzer", []string{},
+		"Run one or more analyzers as part of this update")
+	cmd.PersistentFlags().BoolVarP(
+		&opts.DryRun, "dry-run", "r", false,
+		"Don't create/delete resources; just preview the planned operations")
+	cmd.PersistentFlags().IntVarP(
+		&opts.Parallel, "parallel", "p", 0,
+		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+	cmd.PersistentFlags().BoolVar(
+		&opts.ShowConfig, "show-config", false,
+		"Show configuration keys and variables")
+	cmd.PersistentFlags().BoolVar(
+		&opts.ShowReplacementSteps, "show-replacement-steps", true,
+		"Show detailed resource replacement creates and deletes instead of a single step")
+	cmd.PersistentFlags().BoolVar(
+		&opts.ShowSames, "show-sames", false,
+		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&opts.Summary, "summary", false,
+		"Only display summarization of resources and operations")
+
+	// We use a custom flag type so that we can accept colorization options as a color.Colorization type.
+	cf := colorFlag{
+		Output: &opts.Color,
+	}
+	// Provide a default. Otherwise if no --color option is specified, the value will be "" which is an invalid
+	// state for colors.Colorization.
+	opts.Color = colors.Always
+	cmd.PersistentFlags().Var(&cf, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }
