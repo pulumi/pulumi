@@ -472,9 +472,33 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 	}, nil
 }
 
+type DisplayEventType string
+
+const (
+	UpdateEvent   DisplayEventType = "UpdateEvent"
+	ShutdownEvent DisplayEventType = "Shutdown"
+)
+
+type displayEvent struct {
+	Kind    DisplayEventType
+	Payload interface{}
+}
+
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
 func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) {
+	events := make(chan displayEvent)
+	done := make(chan bool)
+
+	defer func() {
+		events <- displayEvent{Kind: ShutdownEvent, Payload: nil}
+		<-done
+		close(events)
+		close(done)
+	}()
+
+	go displayEvents(events, done)
+
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
 	eventIndex := "0"
 	for {
@@ -492,7 +516,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 		// We got a result, print it out.
 		updateResults := results.(apitype.UpdateResults)
 		for _, event := range updateResults.Events {
-			printEvent(event)
+			events <- displayEvent{Kind: UpdateEvent, Payload: event}
 			eventIndex = event.Index
 		}
 
@@ -502,6 +526,50 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 			fallthrough
 		case apitype.StatusSucceeded:
 			return updateResults.Status, nil
+		}
+	}
+}
+
+func displayEvents(events <-chan displayEvent, done chan<- bool) {
+	spinner, ticker := cmdutil.NewSpinnerAndTicker()
+
+	defer func() {
+		ticker.Stop()
+		done <- true
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			spinner.Tick()
+		case event := <-events:
+			spinner.Reset()
+			if event.Kind == ShutdownEvent {
+				return
+			}
+
+			payload := event.Payload.(apitype.UpdateEvent)
+			// Pluck out the string.
+			if raw, ok := payload.Fields["text"]; ok && raw != nil {
+				if text, ok := raw.(string); ok {
+					// Colorize by default, but honor the engine's settings, if any.
+					if colorize, ok := payload.Fields["colorize"].(string); ok {
+						text = colors.Colorization(colorize).Colorize(text)
+					} else {
+						text = colors.ColorizeText(text)
+					}
+
+					// Choose the stream to write to (by default stdout).
+					var stream io.Writer
+					if payload.Kind == apitype.StderrEvent {
+						stream = os.Stderr
+					} else {
+						stream = os.Stdout
+					}
+
+					fmt.Fprint(stream, text)
+				}
+			}
 		}
 	}
 }
@@ -554,31 +622,6 @@ func (b *cloudBackend) tryNextUpdate(pathWithIndex string,
 	}
 
 	return false, nil, nil
-}
-
-func printEvent(event apitype.UpdateEvent) {
-	// Pluck out the string.
-	if raw, ok := event.Fields["text"]; ok && raw != nil {
-		if text, ok := raw.(string); ok {
-			// Colorize by default, but honor the engine's settings, if any.
-			if colorize, ok := event.Fields["colorize"].(string); ok {
-				text = colors.Colorization(colorize).Colorize(text)
-			} else {
-				text = colors.ColorizeText(text)
-			}
-
-			// Choose the stream to write to (by default stdout).
-			var stream io.Writer
-			if event.Kind == apitype.StderrEvent {
-				stream = os.Stderr
-			} else {
-				stream = os.Stdout
-			}
-
-			// And write to it.
-			fmt.Fprint(stream, text)
-		}
-	}
 }
 
 // Login logs into the target cloud URL.
