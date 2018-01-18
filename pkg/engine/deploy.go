@@ -17,18 +17,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-type DeployOptions struct {
+// UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
+type UpdateOptions struct {
 	Analyzers            []string            // an optional set of analyzers to run as part of this deployment.
+	Color                colors.Colorization // How output should be colorized.
 	DryRun               bool                // true if we should just print the plan without performing it.
 	Parallel             int                 // the degree of parallelism for resource operations (<=1 for serial).
 	ShowConfig           bool                // true to show the configuration variables being used.
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
 	ShowSames            bool                // true to show the resources that aren't updated in addition to updates.
 	Summary              bool                // true if we should only summarize resources and operations.
-	Color                colors.Colorization // How output should be colorized.
 }
 
-func Deploy(update Update, events chan<- Event, opts DeployOptions) error {
+func Deploy(update Update, events chan<- Event, opts UpdateOptions) error {
 	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
@@ -41,16 +42,12 @@ func Deploy(update Update, events chan<- Event, opts DeployOptions) error {
 	defer info.Close()
 
 	return deployLatest(info, deployOptions{
-		Destroy:              false,
-		DryRun:               opts.DryRun,
-		Analyzers:            opts.Analyzers,
-		Parallel:             opts.Parallel,
-		ShowConfig:           opts.ShowConfig,
-		ShowReplacementSteps: opts.ShowReplacementSteps,
-		ShowSames:            opts.ShowSames,
-		Summary:              opts.Summary,
-		Color:                opts.Color,
-		Events:               events,
+		UpdateOptions: opts,
+
+		Create:  true,
+		Destroy: false,
+
+		Events: events,
 		Diag: newEventSink(events, diag.FormatOptions{
 			Color: opts.Color,
 		}),
@@ -58,20 +55,15 @@ func Deploy(update Update, events chan<- Event, opts DeployOptions) error {
 }
 
 type deployOptions struct {
-	Create               bool     // true if we are creating resources.
-	Destroy              bool     // true if we are destroying the stack.
-	DryRun               bool     // true if we should just print the plan without performing it.
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
-	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary              bool     // true if we should only summarize resources and operations.
-	Color                colors.Colorization
-	Detailed             bool         // true to show very detailed output, like properties that haven't changed.
-	DOT                  bool         // true if we should print the DOT file for this plan.
-	Events               chan<- Event // the channel to write events from the engine to.
-	Diag                 diag.Sink    // the sink to use for diag'ing.
+	UpdateOptions
+
+	Create  bool // true if we are creating resources.
+	Destroy bool // true if we are destroying the stack.
+
+	Detailed bool         // true to show very detailed output, like properties that haven't changed.
+	DOT      bool         // true if we should print the DOT file for this plan.
+	Events   chan<- Event // the channel to write events from the engine to.
+	Diag     diag.Sink    // the sink to use for diag'ing.
 }
 
 func deployLatest(info *planContext, opts deployOptions) error {

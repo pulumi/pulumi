@@ -4,18 +4,10 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-type DestroyOptions struct {
-	DryRun   bool
-	Parallel int
-	Summary  bool
-	Color    colors.Colorization
-}
-
-func Destroy(update Update, events chan<- Event, opts DestroyOptions) error {
+func Destroy(update Update, events chan<- Event, opts UpdateOptions) error {
 	contract.Require(update != nil, "update")
 
 	defer func() { events <- cancelEvent() }()
@@ -27,12 +19,12 @@ func Destroy(update Update, events chan<- Event, opts DestroyOptions) error {
 	defer info.Close()
 
 	return deployLatest(info, deployOptions{
-		Destroy:  true,
-		DryRun:   opts.DryRun,
-		Parallel: opts.Parallel,
-		Summary:  opts.Summary,
-		Color:    opts.Color,
-		Events:   events,
+		UpdateOptions: opts,
+
+		Create:  false,
+		Destroy: true,
+
+		Events: events,
 		Diag: newEventSink(events, diag.FormatOptions{
 			Color: opts.Color,
 		}),

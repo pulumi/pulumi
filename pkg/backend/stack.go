@@ -21,11 +21,11 @@ type Stack interface {
 	Backend() Backend           // the backend this stack belongs to.
 
 	// preview changes to this stack.
-	Preview(pkg *pack.Package, root string, debug bool, opts engine.PreviewOptions) error
+	Preview(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
 	// update this stack.
-	Update(pkg *pack.Package, root string, debug bool, opts engine.DeployOptions) error
+	Update(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
 	// destroy this stack's resources.
-	Destroy(pkg *pack.Package, root string, debug bool, opts engine.DestroyOptions) error
+	Destroy(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
@@ -39,17 +39,17 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 }
 
 // PreviewStack initiates a preview of the current workspace's contents.
-func PreviewStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.PreviewOptions) error {
+func PreviewStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return s.Backend().Preview(s.Name(), pkg, root, debug, opts)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.DeployOptions) error {
+func UpdateStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return s.Backend().Update(s.Name(), pkg, root, debug, opts)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.DestroyOptions) error {
+func DestroyStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return s.Backend().Destroy(s.Name(), pkg, root, debug, opts)
 }
 

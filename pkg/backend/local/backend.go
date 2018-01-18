@@ -104,7 +104,7 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 }
 
 func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
-	opts engine.PreviewOptions) error {
+	opts engine.UpdateOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -127,7 +127,7 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 }
 
 func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
-	opts engine.DeployOptions) error {
+	opts engine.UpdateOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -150,7 +150,7 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
-	opts engine.DestroyOptions) error {
+	opts engine.UpdateOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {

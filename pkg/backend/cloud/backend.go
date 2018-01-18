@@ -198,26 +198,26 @@ const (
 )
 
 func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, _ engine.PreviewOptions) error {
+	debug bool, opts engine.UpdateOptions) error {
 
-	return b.updateStack(preview, stackName, pkg, root, debug)
+	return b.updateStack(preview, stackName, pkg, root, debug, opts)
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, _ engine.DeployOptions) error {
+	debug bool, opts engine.UpdateOptions) error {
 
-	return b.updateStack(update, stackName, pkg, root, debug)
+	return b.updateStack(update, stackName, pkg, root, debug, opts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, _ engine.DestroyOptions) error {
+	debug bool, opts engine.UpdateOptions) error {
 
-	return b.updateStack(destroy, stackName, pkg, root, debug)
+	return b.updateStack(destroy, stackName, pkg, root, debug, opts)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool) error {
+	debug bool, opts engine.UpdateOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	var actionLabel string
@@ -241,7 +241,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	if err != nil {
 		return err
 	}
-	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg)
+	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, opts)
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
 func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
-	pkg *pack.Package) (apitype.UpdateProgramRequest, error) {
+	pkg *pack.Package, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
 	cfg, err := state.Configuration(b.d, stackName)
@@ -468,6 +468,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 		Main:        pkg.Main,
 		Description: description,
 		Config:      wireConfig,
+		Options:     apitype.UpdateOptions(opts), // Convert type to the apitype package version.
 	}, nil
 }
 

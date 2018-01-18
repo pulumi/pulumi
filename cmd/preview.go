@@ -11,15 +11,18 @@ import (
 )
 
 func newPreviewCmd() *cobra.Command {
-	var analyzers []string
 	var debug bool
 	var stack string
+
+	// Flags for engine.UpdateOptions.
+	var analyzers []string
+	var color colorFlag
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
-	var color string
+
 	var cmd = &cobra.Command{
 		Use:        "preview",
 		Aliases:    []string{"pre"},
@@ -42,38 +45,37 @@ func newPreviewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			col, err := parseColorization(debug, color)
-			if err != nil {
-				return err
-			}
-
 			pkg, root, err := readPackage()
 			if err != nil {
 				return err
 			}
 
-			return s.Preview(pkg, root, debug, engine.PreviewOptions{
+			return s.Preview(pkg, root, debug, engine.UpdateOptions{
 				Analyzers:            analyzers,
+				DryRun:               false,
+				Color:                color.Colorization(),
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-				Color:                col,
 			})
 		}),
 	}
 
-	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
-		"Run one or more analyzers as part of this preview")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
+
+	// Flags for engine.UpdateOptions.
+	cmd.PersistentFlags().VarP(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().StringSliceVar(
+		&analyzers, "analyzer", []string{},
+		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
@@ -89,9 +91,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&summary, "summary", false,
 		"Only display summarization of resources and operations")
-	cmd.PersistentFlags().StringVar(
-		&color, "color", "auto",
-		"Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

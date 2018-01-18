@@ -79,15 +79,15 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *cloudStack) Preview(pkg *pack.Package, root string, debug bool, opts engine.PreviewOptions) error {
+func (s *cloudStack) Preview(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return backend.PreviewStack(s, pkg, root, debug, opts)
 }
 
-func (s *cloudStack) Update(pkg *pack.Package, root string, debug bool, opts engine.DeployOptions) error {
+func (s *cloudStack) Update(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return backend.UpdateStack(s, pkg, root, debug, opts)
 }
 
-func (s *cloudStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.DestroyOptions) error {
+func (s *cloudStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
 	return backend.DestroyStack(s, pkg, root, debug, opts)
 }
 
