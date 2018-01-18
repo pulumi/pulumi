@@ -109,7 +109,7 @@ const (
 	StatusSucceeded UpdateStatus = "succeeded"
 )
 
-// UpdateResults returns a series of events and the current status of an update. The vents can be filtered. See
+// UpdateResults returns a series of events and the current status of an update. The events can be filtered. See
 // API call for more details.
 type UpdateResults struct {
 	Status UpdateStatus  `json:"status"`
