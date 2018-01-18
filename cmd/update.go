@@ -81,7 +81,7 @@ func newUpdateCmd() *cobra.Command {
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&preview, "preview", "r", false,
+		&preview, "preview", "n", false,
 		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
