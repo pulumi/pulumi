@@ -18,8 +18,8 @@ func newDestroyCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var color colorFlag
-	var dryRun bool
 	var parallel int
+	var preview bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -48,11 +48,11 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			if dryRun || yes ||
+			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
 				return s.Destroy(pkg, root, debug, engine.UpdateOptions{
 					Analyzers:            analyzers,
-					DryRun:               dryRun,
+					DryRun:               preview,
 					Color:                color.Colorization(),
 					Parallel:             parallel,
 					ShowConfig:           showConfig,
@@ -82,17 +82,17 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().BoolVarP(
-		&dryRun, "dry-run", "r", false,
-		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
+	cmd.PersistentFlags().BoolVarP(
+		&preview, "preview", "r", false,
+		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", true,
+		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,

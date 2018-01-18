@@ -173,7 +173,7 @@ func (cf *colorFlag) Set(value string) error {
 	case "auto":
 		cf.value = colors.Always
 	default:
-		return errors.New("bad value")
+		return errors.Errorf("unsupported color option: '%s'.  Supported values are: always, never, raw", value)
 	}
 
 	return nil

@@ -17,7 +17,6 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var color colorFlag
-	var dryRun bool
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
@@ -53,7 +52,7 @@ func newPreviewCmd() *cobra.Command {
 
 			return s.Preview(pkg, root, debug, engine.UpdateOptions{
 				Analyzers:            analyzers,
-				DryRun:               dryRun,
+				DryRun:               false,
 				Color:                color.Colorization(),
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
@@ -77,9 +76,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().BoolVarP(
-		&dryRun, "dry-run", "r", false,
-		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
@@ -87,7 +83,7 @@ func newPreviewCmd() *cobra.Command {
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
-		&showReplacementSteps, "show-replacement-steps", true,
+		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,

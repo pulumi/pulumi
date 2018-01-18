@@ -30,16 +30,18 @@ type UpdateProgramRequest struct {
 	Config map[string]ConfigValue `json:"config"`
 }
 
-// UpdateOptions is the set of operations for configuring the output of an update.
+// UpdateOptions is the set of operations for configuring the output of an update. Should mirror
+// engine.UpdateOptions exactly; we put it in this package to add flexibility in case there is a
+// breaking change in the engine-type.
 type UpdateOptions struct {
-	Analyzers            []string            // an optional set of analyzers to run as part of this deployment.
-	Color                colors.Colorization // How output should be colorized.
-	DryRun               bool                // true if we should just print the plan without performing it.
-	Parallel             int                 // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool                // true to show the configuration variables being used.
-	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
-	ShowSames            bool                // true to show the resources that aren't updated in addition to updates.
-	Summary              bool                // true if we should only summarize resources and operations.
+	Analyzers            []string            `json:"analyzers"`
+	Color                colors.Colorization `json:"color"`
+	DryRun               bool                `json:"dryRun"`
+	Parallel             int                 `json:"parallel"`
+	ShowConfig           bool                `json:"showConfig"`
+	ShowReplacementSteps bool                `json:"showReplacementSteps"`
+	ShowSames            bool                `json:"showNames"`
+	Summary              bool                `json:"summary"`
 }
 
 // UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go
