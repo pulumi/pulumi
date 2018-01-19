@@ -52,6 +52,14 @@ func TestExamples(t *testing.T) {
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
 			Dependencies: []string{"pulumi"},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				for _, res := range stackInfo.Snapshot.Resources {
+					if res.Parent == "" {
+						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
+							"every resource but the root resource should have a parent, but %v didn't", res.URN)
+					}
+				}
+			},
 		},
 		{
 			Dir:          path.Join(cwd, "formattable"),

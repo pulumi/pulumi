@@ -25,6 +25,8 @@ class NullResource extends dynamic.Resource {
         const a = new NullResource("a");
         await sleep(1000);
         const b = new NullResource("b");
+        await sleep(1000);
+        const c = new NullResource("c");
         const urn = await b.urn;
         assert.notStrictEqual(urn, undefined, "expected a defined urn");
         assert.notStrictEqual(urn, "", "expected a valid urn");
