@@ -19,7 +19,7 @@ type Repository struct {
 }
 
 func (r *Repository) Save() error {
-	b, err := json.Marshal(r)
+	b, err := json.MarshalIndent(r, "", "    ")
 	if err != nil {
 		return err
 	}
