@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackInitCmd() *cobra.Command {
@@ -39,6 +40,13 @@ func newStackInitCmd() *cobra.Command {
 				if cloudURL == "" {
 					cloudURL = cloud.DefaultURL()
 				}
+
+				// Check to see if the user is logged in, if they are not, fail with a nicer message
+				if creds, err := workspace.GetAccessToken(cloudURL); err != nil || creds == "" {
+					return errors.New("you must be logged in to create stacks in the Pulumi Cloud. Run " +
+						"`pulumi login` to log in or pass `--local` to create the stack locally.")
+				}
+
 				b = cloud.New(cmdutil.Diag(), cloudURL)
 				opts = cloud.CreateStackOptions{CloudName: ppc}
 			}
