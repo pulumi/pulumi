@@ -105,7 +105,7 @@ func (pw *projectWorkspace) Save() error {
 		return err
 	}
 
-	b, err := json.Marshal(pw.settings)
+	b, err := json.MarshalIndent(pw.settings, "", "    ")
 	if err != nil {
 		return err
 	}
