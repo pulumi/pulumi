@@ -52,7 +52,7 @@ func previewLatest(info *planContext, opts deployOptions) error {
 		}
 		defer done()
 
-		if _, err := printPlan(result); err != nil {
+		if err := printPlan(result); err != nil {
 			return err
 		}
 	}

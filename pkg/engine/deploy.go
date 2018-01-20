@@ -87,9 +87,8 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 		defer done()
 
 		if opts.DryRun {
-			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(result)
-			if err != nil {
+			// If a dry run, just print the plan, don't actually carry out the deployment. (Reporting 0 changes.)
+			if err := printPlan(result); err != nil {
 				return resourceChanges, err
 			}
 		} else {
