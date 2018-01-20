@@ -29,7 +29,10 @@ type UpdateOptions struct {
 	Summary              bool                // true if we should only summarize resources and operations.
 }
 
-func Deploy(update Update, events chan<- Event, opts UpdateOptions) error {
+// ResourceChanges contains the aggregate resource changes by operation type.
+type ResourceChanges map[deploy.StepOp]int
+
+func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
 	contract.Require(update != nil, "update")
 	contract.Require(events != nil, "events")
 
@@ -37,7 +40,7 @@ func Deploy(update Update, events chan<- Event, opts UpdateOptions) error {
 
 	info, err := planContextFromUpdate(update)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer info.Close()
 
@@ -66,25 +69,28 @@ type deployOptions struct {
 	Diag     diag.Sink    // the sink to use for diag'ing.
 }
 
-func deployLatest(info *planContext, opts deployOptions) error {
+func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error) {
 	result, err := plan(info, opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	var resourceChanges ResourceChanges
 	if result != nil {
 		defer contract.IgnoreClose(result)
 
 		// Make the current working directory the same as the program's, and restore it upon exit.
 		done, err := result.Chdir()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer done()
 
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			if err := printPlan(result); err != nil {
-				return err
+			resourceChanges, err = printPlan(result)
+			if err != nil {
+				return resourceChanges, err
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
@@ -99,7 +105,7 @@ func deployLatest(info *planContext, opts deployOptions) error {
 			summary, _, _, err := result.Walk(actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
-				return err
+				return resourceChanges, err
 			}
 			contract.Assert(summary != nil)
 
@@ -107,7 +113,8 @@ func deployLatest(info *planContext, opts deployOptions) error {
 			var footer bytes.Buffer
 
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-			if c := printChangeSummary(&footer, actions.Ops, false); c != 0 {
+			resourceChanges = ResourceChanges(actions.Ops)
+			if c := printChangeSummary(&footer, resourceChanges, false); c != 0 {
 				footer.WriteString(fmt.Sprintf("%vUpdate duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
 			}
@@ -121,15 +128,16 @@ func deployLatest(info *planContext, opts deployOptions) error {
 			opts.Events <- stdOutEventWithColor(&footer, opts.Color)
 
 			if err != nil {
-				return err
+				return resourceChanges, err
 			}
 		}
 	}
+
 	if !opts.Diag.Success() {
 		// If any error that wasn't printed above, be sure to make it evident in the output.
-		return goerr.New("One or more errors occurred during this update")
+		return resourceChanges, goerr.New("One or more errors occurred during this update")
 	}
-	return nil
+	return resourceChanges, nil
 }
 
 // deployActions pretty-prints the plan application process as it goes.

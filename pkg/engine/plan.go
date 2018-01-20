@@ -157,7 +157,9 @@ func (res *planResult) Close() error {
 	return res.Ctx.Close()
 }
 
-func printPlan(result *planResult) error {
+// printPlan prints the plan's result to the plan's Options.Events stream. Returns a summary of
+// the resources changed as a result of the plan.
+func printPlan(result *planResult) (ResourceChanges, error) {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
 	printPrelude(&prelude, result, true)
@@ -169,20 +171,21 @@ func printPlan(result *planResult) error {
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
-		return errors.Errorf("An error occurred while advancing the preview: %v", err)
+		return nil, errors.Errorf("An error occurred while advancing the preview: %v", err)
 	}
 
 	if !result.Options.Diag.Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-		return errors.New("One or more errors occurred during this preview")
+		return nil, errors.New("One or more errors occurred during this preview")
 	}
 
 	// Print a summary of operation counts.
 	var summary bytes.Buffer
-	printChangeSummary(&summary, actions.Ops, true)
+	changes := ResourceChanges(actions.Ops)
+	printChangeSummary(&summary, changes, true)
 	result.Options.Events <- stdOutEventWithColor(&summary, result.Options.Color)
-	return nil
+	return changes, nil
 }
 
 // shouldShow returns true if a step should show in the output.
@@ -233,14 +236,15 @@ func printConfig(b *bytes.Buffer, cfg config.Map) {
 	}
 }
 
-func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview bool) int {
-	changes := 0
-	for op, c := range counts {
+// printChangeSummary writes summary informatiom about the resoures changed to the provided buffer.
+// Returns the total number of resources changed regardless of operation type.
+func printChangeSummary(b *bytes.Buffer, changes ResourceChanges, preview bool) int {
+	changeCount := 0
+	for op, c := range changes {
 		if op != deploy.OpSame {
-			changes += c
+			changeCount += c
 		}
 	}
-
 	var kind string
 	if preview {
 		kind = "previewed"
@@ -249,19 +253,19 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview b
 	}
 
 	var changesLabel string
-	if changes == 0 {
+	if changeCount == 0 {
 		kind = "required"
 		changesLabel = "no"
 	} else {
-		changesLabel = strconv.Itoa(changes)
+		changesLabel = strconv.Itoa(changeCount)
 	}
 
-	if changes > 0 || counts[deploy.OpSame] > 0 {
+	if changeCount > 0 || changes[deploy.OpSame] > 0 {
 		kind += ":"
 	}
 
 	b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v\n",
-		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changes), kind))
+		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind))
 
 	var planTo string
 	if preview {
@@ -271,7 +275,7 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview b
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
 		if op != deploy.OpSame {
-			if c := counts[op]; c > 0 {
+			if c := changes[op]; c > 0 {
 				opDescription := string(op)
 				if !preview {
 					opDescription = op.PastTense()
@@ -281,11 +285,11 @@ func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, preview b
 			}
 		}
 	}
-	if c := counts[deploy.OpSame]; c > 0 {
+	if c := changes[deploy.OpSame]; c > 0 {
 		b.WriteString(fmt.Sprintf("      %v %v unchanged\n", c, plural("resource", c)))
 	}
 
-	return changes
+	return changeCount
 }
 
 func plural(s string, c int) string {

@@ -7,14 +7,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Destroy(update Update, events chan<- Event, opts UpdateOptions) error {
+func Destroy(update Update, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
 	contract.Require(update != nil, "update")
 
 	defer func() { events <- cancelEvent() }()
 
 	info, err := planContextFromUpdate(update)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer info.Close()
 
