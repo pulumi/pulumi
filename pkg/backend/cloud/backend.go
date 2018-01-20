@@ -613,14 +613,26 @@ func Login(cloudURL string) error {
 // isValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
 // or not. Returns error on any unexpected error.
 func isValidAccessToken(cloud, accessToken string) (bool, error) {
-	// Make a request to get the authenticated user. If it returns a successful result, the token
-	// checks out.
-	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, nil, accessToken); err != nil {
+	errValidatingToken := errors.New("error validating access token. Is cloud URL correct?")
+
+	// Make a request to get the authenticated user. If it returns a successful response,
+	// we know the access token is legit. We also parse the response as JSON and confirm
+	// it has a name field that is non-empty (like the Pulumi Service would return).
+	respObj := struct {
+		Name string `json:"name"`
+	}{}
+	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, &respObj, accessToken); err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
 		}
-		return false, fmt.Errorf("testing access token: %v", err)
+		glog.V(1).Infof("Error response testing access token: %v", err)
+		return false, errValidatingToken
 	}
+
+	if respObj.Name == "" {
+		return false, errValidatingToken
+	}
+
 	return true, nil
 }
 
