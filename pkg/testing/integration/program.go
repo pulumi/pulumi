@@ -269,6 +269,15 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	t.Parallel()
 
+	// If the test panics, recover and log instead of letting the panic escape the test. Even though *this* test will
+	// have run deferred functions and cleaned up, if the panic reaches toplevel it will kill the process and prevent
+	// other tests running in parallel from cleaning up.
+	defer func() {
+		if failure := recover(); failure != nil {
+			t.Errorf("panic testing %v: %v", opts.Dir, failure)
+		}
+	}()
+
 	pt := newProgramTester(t, opts)
 	err := pt.testLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
