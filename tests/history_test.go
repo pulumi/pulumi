@@ -83,6 +83,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
 
 		// Update the history-test stack.
+		e.RunCommand("npm", "install")
 		e.RunCommand("npm", "run", "build")
 		e.RunCommand("pulumi", "update", "-m", "updating stack...")
 
@@ -112,6 +113,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
 
 		// Update the history-test stack.
+		e.RunCommand("npm", "install")
 		e.RunCommand("npm", "run", "build")
 		e.RunCommand("pulumi", "update", "-m", "first update (successful)")
 
@@ -190,6 +192,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs")
 
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
+		e.RunCommand("npm", "install")
 		e.RunCommand("npm", "run", "build")
 
 		// Update 1, git repo that has no commits.
