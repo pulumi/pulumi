@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -15,6 +16,7 @@ import (
 
 func newHistoryCmd() *cobra.Command {
 	var stack string
+	var outputJSON bool
 
 	var cmd = &cobra.Command{
 		Use:        "history",
@@ -37,7 +39,15 @@ func newHistoryCmd() *cobra.Command {
 				return errors.Wrap(err, "getting history")
 			}
 
-			printUpdateHistory(updates)
+			if outputJSON {
+				b, err := json.MarshalIndent(updates, "", "    ")
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(b))
+			} else {
+				printUpdateHistory(updates)
+			}
 
 			return nil
 		}),
@@ -46,6 +56,11 @@ func newHistoryCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
+
+	// See pulumi/issues/496, which tracks adding a --format option across all commands.
+	cmd.PersistentFlags().BoolVar(
+		&outputJSON, "output-json", false,
+		"Output stack history as JSON")
 
 	return cmd
 }
