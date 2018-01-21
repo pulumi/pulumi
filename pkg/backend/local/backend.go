@@ -139,7 +139,7 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 
 	go displayEvents(events, done, debug)
 
-	if err = engine.Deploy(update, events, opts); err != nil {
+	if _, err = engine.Deploy(update, events, opts); err != nil {
 		return err
 	}
 
@@ -162,7 +162,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 
 	go displayEvents(events, done, debug)
 
-	if err := engine.Destroy(update, events, opts); err != nil {
+	if _, err := engine.Destroy(update, events, opts); err != nil {
 		return err
 	}
 
