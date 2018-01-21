@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
@@ -83,26 +85,51 @@ func detectOwnerAndName(dir string) (string, string, error) {
 	return user.Username, filepath.Base(dir), nil
 }
 
-func getGitHubProjectForOrigin(dir string) (string, string, error) {
+// getGitRepository returns the git repository by walking up from the provided directory.
+// If no repository is found, will return (nil, nil).
+func getGitRepository(dir string) (*git.Repository, error) {
 	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
 	if err != nil {
-		return "", "", errors.Wrap(err, "could not detect git repository")
+		return nil, errors.Wrapf(err, "searching for git repository from %v", dir)
 	}
 	if gitRoot == "" {
-		return "", "", errors.Errorf("could not locate git repository starting at: %s", dir)
+		return nil, nil
 	}
 
-	repo, err := git.NewFilesystemRepository(gitRoot)
+	// Open the git repo in the .git folder's parent, not the .git folder itself.
+	repo, err := git.PlainOpen(path.Join(gitRoot, ".."))
+	if err == git.ErrRepositoryNotExists {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "reading git repository")
+	}
+	return repo, nil
+}
+
+func getGitHubProjectForOrigin(dir string) (string, string, error) {
+	repo, err := getGitRepository(dir)
+	if repo == nil {
+		return "", "", fmt.Errorf("no git repository found from %v", dir)
+	}
 	if err != nil {
 		return "", "", err
 	}
+	return getGitHubProjectForOriginByRepo(repo)
+}
 
+// Returns the GitHub login, and GitHub repo name if the "origin" remote is
+// a GitHub URL.
+func getGitHubProjectForOriginByRepo(repo *git.Repository) (string, string, error) {
 	remote, err := repo.Remote("origin")
 	if err != nil {
 		return "", "", errors.Wrap(err, "could not read origin information")
 	}
 
-	remoteURL := remote.Config().URL
+	remoteURL := ""
+	if len(remote.Config().URLs) > 0 {
+		remoteURL = remote.Config().URLs[0]
+	}
 	project := ""
 
 	const GitHubSSHPrefix = "git@github.com:"
@@ -198,5 +225,46 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		Message:     msg,
 		Environment: make(map[string]string),
 	}
+
+	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
+	repo, err := getGitRepository(root)
+	if err != nil {
+		return m, errors.Wrap(err, "looking for git repository")
+	}
+	if repo != nil && err == nil {
+		const gitErrCtx = "reading git repo (%v)" // Message passed with wrapped errors from go-git.
+
+		// Commit at HEAD.
+		head, err := repo.Head()
+		if err == nil {
+			m.Environment["git.head"] = head.Hash().String()
+		} else {
+			// Ignore "reference not found" in the odd case where the HEAD commit doesn't exist.
+			// (git init, but no commits yet.)
+			if err != plumbing.ErrReferenceNotFound {
+				return m, errors.Wrapf(err, gitErrCtx, "getting head")
+			}
+		}
+
+		// If the current commit is dirty.
+		w, err := repo.Worktree()
+		if err != nil {
+			return m, errors.Wrapf(err, gitErrCtx, "getting worktree")
+		}
+		s, err := w.Status()
+		if err != nil {
+			return m, errors.Wrapf(err, gitErrCtx, "getting worktree status")
+		}
+		dirty := !s.IsClean()
+		m.Environment["git.dirty"] = fmt.Sprint(dirty)
+
+		// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
+		ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
+		if err == nil {
+			m.Environment["github.login"] = ghLogin
+			m.Environment["github.repo"] = ghRepo
+		}
+	}
+
 	return m, nil
 }

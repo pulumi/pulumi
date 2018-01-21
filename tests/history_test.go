@@ -34,6 +34,22 @@ func assertHasNoHistory(e *ptesting.Environment) {
 	assert.Equal(e.T, "Stack has never been updated\n", out)
 }
 
+func assertEnvValue(t *testing.T, update backend.UpdateInfo, key, val string) {
+	t.Helper()
+	v, ok := update.Environment[key]
+	if !ok {
+		t.Errorf("Did not find key %q in update environment", key)
+	} else {
+		assert.Equal(t, val, v, "Comparing Environment values for key %q", key)
+	}
+}
+
+func assertEnvKeyNotFound(t *testing.T, update backend.UpdateInfo, key string) {
+	t.Helper()
+	_, found := update.Environment[key]
+	assert.False(t, found, "Did not expect to find key %q in update environment", key)
+}
+
 func TestHistoryCommand(t *testing.T) {
 	// We fail if no stack is selected.
 	t.Run("NoStackSelected", func(t *testing.T) {
@@ -87,7 +103,7 @@ func TestHistoryCommand(t *testing.T) {
 	})
 
 	// That the history command contains accurate data about the update history.
-	t.Run("DataInHistory", func(t *testing.T) {
+	t.Run("Data(Deploy,Kind,Result)", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
@@ -129,7 +145,9 @@ func TestHistoryCommand(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error marshalling `pulumi history` output as JSON: %v", err)
 		}
-		assert.Equal(t, 4, len(updateRecords))
+		if len(updateRecords) != 4 {
+			t.Fatalf("didn't get expected number of updates from testcase. Raw history output:\n%v", stdout)
+		}
 
 		// The most recent updates are listed first.
 		update := updateRecords[0]
@@ -162,5 +180,93 @@ func TestHistoryCommand(t *testing.T) {
 
 		// Call stack rm to run the "delete history file too" codepath.
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
+	})
+
+	// We include git-related data in the environment metadata.
+	t.Run("Data(Environment[Git])", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/stack_outputs")
+
+		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
+		e.RunCommand("npm", "run", "build")
+
+		// Update 1, git repo that has no commits.
+		e.RunCommand("pulumi", "update", "-m", "first update (git repo has no commits)")
+
+		// Update 2, repo has commit, but no remote.
+		e.RunCommand("git", "add", ".")
+		e.RunCommand("git", "commit", "-m", "First commit of test files")
+		e.RunCommand("pulumi", "update", "-m", "second update (git commit, no remote)")
+
+		// Update 3, repo has remote and is dirty (by rewriting index.ts).
+		indexTS := path.Join(e.CWD, "index.ts")
+		origContents, err := ioutil.ReadFile(indexTS)
+		assert.NoError(t, err, "Reading index.ts")
+
+		err = ioutil.WriteFile(indexTS, []byte("change to file..."), os.ModePerm)
+		assert.NoError(t, err, "writing index.ts")
+
+		e.RunCommand("git", "remote", "add", "origin", "git@github.com:rick/c-132")
+		e.RunCommand("pulumi", "update", "-m", "third update (is dirty, has remote)")
+
+		// Update 4, repo is now clean again.
+		err = ioutil.WriteFile(indexTS, origContents, os.ModePerm)
+		assert.NoError(t, err, "writing index.ts")
+
+		e.RunCommand("pulumi", "update", "-m", "fourth update (is clean)")
+
+		// Confirm the history is as expected. Output as JSON and parse the result.
+		stdout, stderr := e.RunCommand("pulumi", "history", "--output-json")
+		assert.Equal(t, "", stderr)
+
+		var updateRecords []backend.UpdateInfo
+		err = json.Unmarshal([]byte(stdout), &updateRecords)
+		if err != nil {
+			t.Fatalf("Error marshalling `pulumi history` output as JSON: %v", err)
+		}
+		if len(updateRecords) != 4 {
+			t.Fatalf("didn't get expected number of updates from testcase. Raw history output:\n%v", stdout)
+		}
+
+		// The first update doesn't have any git information, since
+		// nothing has been committed yet.
+		t.Log("Checking first update...")
+		update := updateRecords[3]
+		assertEnvKeyNotFound(e.T, update, "git.head")
+
+		// The second update has a commit.
+		t.Log("Checking second update...")
+		update = updateRecords[2]
+		// Get the commit SHA for the commit we make before the second update. It isn't 100% stable since
+		// `CreateBasicPulumiRepo` runs `pulumi init` with a flag based on the current time.
+		headSHA, ok := update.Environment["git.head"]
+		assert.True(t, ok, "Didn't find git.head in environment")
+		assert.Equal(t, 40, len(headSHA), "Commit SHA was not expected length")
+		assertEnvValue(e.T, update, "git.dirty", "false")
+		// The github-related info is still not set though.
+		assertEnvKeyNotFound(e.T, update, "github.login")
+		assertEnvKeyNotFound(e.T, update, "github.repo")
+
+		// The third commit sets a remote (which we detect as a GitHub repo) and is now dirty.
+		t.Log("Checking third update...")
+		update = updateRecords[1]
+		assertEnvValue(e.T, update, "git.head", headSHA)
+		assertEnvValue(e.T, update, "git.dirty", "true")
+		assertEnvValue(e.T, update, "github.login", "rick")
+		assertEnvValue(e.T, update, "github.repo", "c-132")
+
+		// The fourth commit is clean (by restoring to the previous commit).
+		t.Log("Checking fourth update...")
+		update = updateRecords[0]
+		assertEnvValue(e.T, update, "git.head", headSHA)
+		assertEnvValue(e.T, update, "git.dirty", "false")
+		assertEnvValue(e.T, update, "github.login", "rick")
+		assertEnvValue(e.T, update, "github.repo", "c-132")
+
+		if t.Failed() {
+			t.Logf("Test failed. Printing raw history output:\n%v", stdout)
+		}
 	})
 }
