@@ -190,3 +190,13 @@ func (cf *colorFlag) Colorization() colors.Colorization {
 
 	return cf.value
 }
+
+// getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
+// performing the update.
+func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
+	m := backend.UpdateMetadata{
+		Message:     msg,
+		Environment: make(map[string]string),
+	}
+	return m, nil
+}

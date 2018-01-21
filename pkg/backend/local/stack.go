@@ -54,12 +54,14 @@ func (s *localStack) Preview(pkg *pack.Package, root string, debug bool, opts en
 	return backend.PreviewStack(s, pkg, root, debug, opts)
 }
 
-func (s *localStack) Update(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return backend.UpdateStack(s, pkg, root, debug, opts)
+func (s *localStack) Update(pkg *pack.Package, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	return backend.UpdateStack(s, pkg, root, debug, m, opts)
 }
 
-func (s *localStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return backend.DestroyStack(s, pkg, root, debug, opts)
+func (s *localStack) Destroy(pkg *pack.Package, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	return backend.DestroyStack(s, pkg, root, debug, m, opts)
 }
 
 func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

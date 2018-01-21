@@ -204,13 +204,13 @@ func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
 	return b.updateStack(update, stackName, pkg, root, debug, opts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
 	return b.updateStack(destroy, stackName, pkg, root, debug, opts)
 }

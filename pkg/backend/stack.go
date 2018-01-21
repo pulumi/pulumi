@@ -20,12 +20,12 @@ type Stack interface {
 	Snapshot() *deploy.Snapshot // the latest deployment snapshot.
 	Backend() Backend           // the backend this stack belongs to.
 
-	// preview changes to this stack.
+	// Preview changes to this stack.
 	Preview(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
-	// update this stack.
-	Update(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
-	// destroy this stack's resources.
-	Destroy(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
+	// Update this stack.
+	Update(pkg *pack.Package, root string, debug bool, m UpdateMetadata, opts engine.UpdateOptions) error
+	// Destroy this stack's resources.
+	Destroy(pkg *pack.Package, root string, debug bool, m UpdateMetadata, opts engine.UpdateOptions) error
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
@@ -44,13 +44,15 @@ func PreviewStack(s Stack, pkg *pack.Package, root string, debug bool, opts engi
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return s.Backend().Update(s.Name(), pkg, root, debug, opts)
+func UpdateStack(s Stack, pkg *pack.Package, root string,
+	debug bool, m UpdateMetadata, opts engine.UpdateOptions) error {
+	return s.Backend().Update(s.Name(), pkg, root, debug, m, opts)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(s Stack, pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return s.Backend().Destroy(s.Name(), pkg, root, debug, opts)
+func DestroyStack(s Stack, pkg *pack.Package, root string,
+	debug bool, m UpdateMetadata, opts engine.UpdateOptions) error {
+	return s.Backend().Destroy(s.Name(), pkg, root, debug, m, opts)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.

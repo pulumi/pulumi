@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -13,6 +14,8 @@ import (
 func newUpdateCmd() *cobra.Command {
 	var debug bool
 	var stack string
+
+	var message string
 
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
@@ -51,7 +54,12 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			return s.Update(pkg, root, debug, engine.UpdateOptions{
+			m, err := getUpdateMetadata(message, root)
+			if err != nil {
+				return errors.Wrap(err, "gathering environment metadata")
+			}
+
+			return s.Update(pkg, root, debug, m, engine.UpdateOptions{
 				Analyzers:            analyzers,
 				DryRun:               preview,
 				Color:                color.Colorization(),
@@ -70,6 +78,10 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
+
+	cmd.PersistentFlags().StringVarP(
+		&message, "message", "m", "",
+		"Optional message to associate with the update operation")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().VarP(

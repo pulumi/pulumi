@@ -7,6 +7,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
 
+// UpdateMetadata describes optional metadata about an update.
+type UpdateMetadata struct {
+	// Message is an optional message associated with the update.
+	Message string `json:"message"`
+	// Environment contains optional data from the deploying environment. e.g. the current
+	// source code control commit information.
+	Environment map[string]string `json:"environment"`
+}
+
 // UpdateKind is an enum for the type of update performed.
 type UpdateKind string
 

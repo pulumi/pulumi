@@ -3,6 +3,7 @@
 package local
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -222,6 +224,8 @@ func removeStack(name tokens.QName) error {
 	// Just make a backup of the file and don't write out anything new.
 	file := w.StackPath(name)
 	backupTarget(file)
+	file = w.HistoryPath(name)
+	backupTarget(file)
 	return nil
 }
 
@@ -234,4 +238,69 @@ func backupTarget(file string) string {
 	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
+}
+
+// getHistory returns locally stored update history. The first element of the result will be
+// the most recent update record.
+func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
+	w, err := workspace.New()
+	if err != nil {
+		return nil, err
+	}
+
+	contract.Require(name != "", "name")
+	file := w.HistoryPath(name)
+
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		// We would expect the file not to exist for a stack that has never been deployed.
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var updates []backend.UpdateInfo
+	if err = json.Unmarshal(b, &updates); err != nil {
+		return nil, err
+	}
+
+	if len(updates) > 0 {
+		firstUpdateVersion := updates[len(updates)-1].Version
+		contract.Assertf(firstUpdateVersion == 1, "Last update record was not Version 1 (%d)", firstUpdateVersion)
+	}
+
+	return updates, nil
+}
+
+// saveUpdateHistory replaces all history information for the given stack with the slice provided.
+func saveHistory(name tokens.QName, updates []backend.UpdateInfo) error {
+	w, err := workspace.New()
+	if err != nil {
+		return err
+	}
+
+	contract.Require(name != "", "name")
+	file := w.HistoryPath(name)
+
+	b, err := json.MarshalIndent(&updates, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(file, b, os.ModePerm)
+}
+
+// addToHistory saves a new, completed UpdateInfo to disk. The struct's
+// Version will be ignored, and replaced with the correct value.
+func addToHistory(name tokens.QName, newUpdate backend.UpdateInfo) error {
+	allUpdates, err := getHistory(name)
+	if err != nil {
+		return errors.Wrap(err, "getting previous history information")
+	}
+
+	newUpdate.Version = len(allUpdates) + 1
+
+	withLatest := append([]backend.UpdateInfo{newUpdate}, allUpdates...)
+	return saveHistory(name, withLatest)
 }

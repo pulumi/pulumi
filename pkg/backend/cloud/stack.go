@@ -83,12 +83,14 @@ func (s *cloudStack) Preview(pkg *pack.Package, root string, debug bool, opts en
 	return backend.PreviewStack(s, pkg, root, debug, opts)
 }
 
-func (s *cloudStack) Update(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return backend.UpdateStack(s, pkg, root, debug, opts)
+func (s *cloudStack) Update(pkg *pack.Package, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	return backend.UpdateStack(s, pkg, root, debug, m, opts)
 }
 
-func (s *cloudStack) Destroy(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return backend.DestroyStack(s, pkg, root, debug, opts)
+func (s *cloudStack) Destroy(pkg *pack.Package, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	return backend.DestroyStack(s, pkg, root, debug, m, opts)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {
