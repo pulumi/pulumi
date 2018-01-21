@@ -331,6 +331,10 @@ func uploadProgram(pkg *pack.Package, programFolder, uploadURL string, progress 
 	return nil
 }
 
+func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
+	return nil, errors.New("not yet implemented")
+}
+
 func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
 

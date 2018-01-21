@@ -173,6 +173,10 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 	return nil
 }
 
+func (b *localBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
+	return nil, errors.New("not yet implemented")
+}
+
 func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
 	target, err := b.getTarget(stackName)
 	if err != nil {

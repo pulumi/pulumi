@@ -1,0 +1,59 @@
+// Copyright 2018, Pulumi Corporation.  All rights reserved.
+
+package backend
+
+import (
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+)
+
+// UpdateKind is an enum for the type of update performed.
+type UpdateKind string
+
+const (
+	// DeployUpdate is the prototypical Pulumi program update.
+	DeployUpdate UpdateKind = "update"
+	// PreviewUpdate is a preview of an update, without impacting resources.
+	PreviewUpdate = "preview"
+	// DestroyUpdate is an update which removes all resources.
+	DestroyUpdate = "destroy"
+)
+
+// UpdateResult is an enum for the result of the update.
+type UpdateResult string
+
+const (
+	// InProgressResult is for updates that have not yet completed.
+	InProgressResult = "in-progress"
+	// SucceededResult is for updates that completed successfully.
+	SucceededResult UpdateResult = "succeeded"
+	// FailedResult is for updates that have failed.
+	FailedResult = "failed"
+)
+
+// UpdateInfo describes a previous update.
+type UpdateInfo struct {
+	// Version is a counter for sequencing updates. The first update to a Stack will have
+	// Version 1, the next 2, and so on.
+	Version int `json:"version"`
+
+	// Information known before an update is started.
+
+	Kind      UpdateKind `json:"kind"`
+	StartTime int64      `json:"startTime"`
+	// Message is an optional message associated with the update.
+	Message string `json:"message"`
+	// Environment contains optional data from the deploying environment. e.g. the current
+	// source code control commit information.
+	Environment map[string]string `json:"environment"`
+
+	// Config used for the update.
+	Config config.Map `json:"config"`
+
+	// Information obtained from an update completing.
+
+	Result  UpdateResult `json:"result"`
+	EndTime int64        `json:"startTime"`
+
+	ResourceChanges engine.ResourceChanges `json:"resourceChanges"`
+}

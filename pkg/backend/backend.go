@@ -40,6 +40,9 @@ type Backend interface {
 	// Destroy destroys all of this stack's resources.
 	Destroy(stackName tokens.QName, pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error
 
+	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
+	// descending order by Version.
+	GetHistory(stackName tokens.QName) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error)
 
