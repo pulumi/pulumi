@@ -1,6 +1,9 @@
 package apitype
 
-import "github.com/pulumi/pulumi/pkg/diag/colors"
+import (
+	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+)
 
 // ConfigValue describes a single (possibly secret) configuration value.
 type ConfigValue struct {
@@ -28,6 +31,8 @@ type UpdateProgramRequest struct {
 
 	// Configuration values.
 	Config map[string]ConfigValue `json:"config"`
+
+	Metadata UpdateMetadata `json:"metadata"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update. Should mirror
@@ -43,6 +48,10 @@ type UpdateOptions struct {
 	ShowSames            bool                `json:"showNames"`
 	Summary              bool                `json:"summary"`
 }
+
+// UpdateMetadata describes optional metadata about an update. Should mirror backend.UpdateMetadata
+// exactly. Duplicated here for flexibility and for insulation from breaking changes.
+type UpdateMetadata backend.UpdateMetadata
 
 // UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go
 // unmarshalConfig()
@@ -222,3 +231,13 @@ type GetApplyUpdateResultsResponse UpdateResults
 // GetPreviewUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/preview`
 // endpoint of the PPC API.
 type GetPreviewUpdateResultsResponse UpdateResults
+
+// UpdateInfo describes a previous update. This should match backend.UpdateInfo exactly. Duplicated here for
+// flexibility
+type UpdateInfo backend.UpdateInfo
+
+// GetHistoryResponse is the response from the Pulumi Service when requesting
+// a stack's history.
+type GetHistoryResponse struct {
+	Updates []UpdateInfo `json:"updates"`
+}

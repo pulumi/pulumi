@@ -62,7 +62,7 @@ type UpdateInfo struct {
 	// Information obtained from an update completing.
 
 	Result  UpdateResult `json:"result"`
-	EndTime int64        `json:"startTime"`
+	EndTime int64        `json:"endTime"`
 
 	ResourceChanges engine.ResourceChanges `json:"resourceChanges"`
 }

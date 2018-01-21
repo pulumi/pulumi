@@ -200,24 +200,24 @@ const (
 func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string,
 	debug bool, opts engine.UpdateOptions) error {
 
-	return b.updateStack(preview, stackName, pkg, root, debug, opts)
+	return b.updateStack(preview, stackName, pkg, root, debug, backend.UpdateMetadata{}, opts)
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
-	return b.updateStack(update, stackName, pkg, root, debug, opts)
+	return b.updateStack(update, stackName, pkg, root, debug, m, opts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
-	return b.updateStack(destroy, stackName, pkg, root, debug, opts)
+	return b.updateStack(destroy, stackName, pkg, root, debug, m, opts)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	var actionLabel string
@@ -241,7 +241,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	if err != nil {
 		return err
 	}
-	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, opts)
+	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, m, opts)
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,26 @@ func uploadProgram(pkg *pack.Package, programFolder, uploadURL string, progress 
 }
 
 func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
-	return nil, errors.New("not yet implemented")
+	projID, err := getCloudProjectIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	var response apitype.GetHistoryResponse
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/history",
+		projID.Owner, projID.Repository, projID.Project, string(stackName))
+	if err = pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert apitype.UpdateInfo objects to the backend type.
+	var beUpdates []backend.UpdateInfo
+	for _, update := range response.Updates {
+		beUpdate := backend.UpdateInfo(update)
+		beUpdates = append(beUpdates, beUpdate)
+	}
+
+	return beUpdates, nil
 }
 
 func (b *cloudBackend) GetLogs(stackName tokens.QName,
@@ -444,7 +463,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
 func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
-	pkg *pack.Package, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
+	pkg *pack.Package, m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
 	cfg, err := state.Configuration(b.d, stackName)
@@ -473,6 +492,10 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 		Description: description,
 		Config:      wireConfig,
 		Options:     apitype.UpdateOptions(opts), // Convert type to the apitype package version.
+		Metadata: apitype.UpdateMetadata{
+			Message:     m.Message,
+			Environment: m.Environment,
+		},
 	}, nil
 }
 
