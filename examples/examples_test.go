@@ -62,6 +62,10 @@ func TestExamples(t *testing.T) {
 			},
 		},
 		{
+			Dir:          path.Join(cwd, "dynamic-provider/derived-inputs"),
+			Dependencies: []string{"pulumi"},
+		},
+		{
 			Dir:          path.Join(cwd, "formattable"),
 			Dependencies: []string{"pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
