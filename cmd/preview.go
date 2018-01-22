@@ -52,7 +52,7 @@ func newPreviewCmd() *cobra.Command {
 
 			return s.Preview(pkg, root, debug, engine.UpdateOptions{
 				Analyzers:            analyzers,
-				DryRun:               false,
+				DryRun:               true,
 				Color:                color.Colorization(),
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
