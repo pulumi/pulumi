@@ -83,8 +83,8 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
 
 		// Update the history-test stack.
-		e.RunCommand("npm", "install")
-		e.RunCommand("npm", "run", "build")
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "run", "build")
 		e.RunCommand("pulumi", "update", "-m", "updating stack...")
 
 		// Confirm we see the update message in thie history output.
@@ -113,8 +113,8 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
 
 		// Update the history-test stack.
-		e.RunCommand("npm", "install")
-		e.RunCommand("npm", "run", "build")
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "run", "build")
 		e.RunCommand("pulumi", "update", "-m", "first update (successful)")
 
 		// Now we "break" the program, by adding gibberish to bin/index.js.
@@ -153,25 +153,21 @@ func TestHistoryCommand(t *testing.T) {
 
 		// The most recent updates are listed first.
 		update := updateRecords[0]
-		assert.Equal(t, 4, update.Version)
 		assert.Equal(t, "fourth update (destroy)", update.Message)
 		assert.True(t, backend.DestroyUpdate == update.Kind)
 		assert.True(t, backend.SucceededResult == update.Result)
 
 		update = updateRecords[1]
-		assert.Equal(t, 3, update.Version)
 		assert.Equal(t, "third update (successful)", update.Message)
 		assert.True(t, backend.DeployUpdate == update.Kind)
 		assert.True(t, backend.SucceededResult == update.Result)
 
 		update = updateRecords[2]
-		assert.Equal(t, 2, update.Version)
 		assert.Equal(t, "second update (failure)", update.Message)
 		assert.True(t, backend.DeployUpdate == update.Kind)
 		assert.True(t, backend.FailedResult == update.Result)
 
 		update = updateRecords[3]
-		assert.Equal(t, 1, update.Version)
 		assert.Equal(t, "first update (successful)", update.Message)
 		assert.True(t, backend.DeployUpdate == update.Kind)
 		assert.True(t, backend.SucceededResult == update.Result)
@@ -192,8 +188,8 @@ func TestHistoryCommand(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs")
 
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
-		e.RunCommand("npm", "install")
-		e.RunCommand("npm", "run", "build")
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "run", "build")
 
 		// Update 1, git repo that has no commits.
 		e.RunCommand("pulumi", "update", "-m", "first update (git repo has no commits)")
@@ -242,8 +238,8 @@ func TestHistoryCommand(t *testing.T) {
 		// The second update has a commit.
 		t.Log("Checking second update...")
 		update = updateRecords[2]
-		// Get the commit SHA for the commit we make before the second update. It isn't 100% stable since
-		// `CreateBasicPulumiRepo` runs `pulumi init` with a flag based on the current time.
+		// We don't know what the SHA will be ahead of time, since the code we use to call `pulumi init`
+		// uses the current time as part of the --name flag.
 		headSHA, ok := update.Environment["git.head"]
 		assert.True(t, ok, "Didn't find git.head in environment")
 		assert.Equal(t, 40, len(headSHA), "Commit SHA was not expected length")

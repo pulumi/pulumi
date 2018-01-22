@@ -71,6 +71,6 @@ func printUpdateHistory(updates []backend.UpdateInfo) {
 		return
 	}
 	for _, update := range updates {
-		fmt.Printf("%-3d %8v %8v %v\n", update.Version, update.Kind, update.Result, update.Message)
+		fmt.Printf("%8v %8v %v\n", update.Kind, update.Result, update.Message)
 	}
 }

@@ -265,11 +265,6 @@ func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 		return nil, err
 	}
 
-	if len(updates) > 0 {
-		firstUpdateVersion := updates[len(updates)-1].Version
-		contract.Assertf(firstUpdateVersion == 1, "Last update record was not Version 1 (%d)", firstUpdateVersion)
-	}
-
 	return updates, nil
 }
 
@@ -291,15 +286,12 @@ func saveHistory(name tokens.QName, updates []backend.UpdateInfo) error {
 	return ioutil.WriteFile(file, b, os.ModePerm)
 }
 
-// addToHistory saves a new, completed UpdateInfo to disk. The struct's
-// Version will be ignored, and replaced with the correct value.
+// addToHistory saves a new, completed UpdateInfo to disk.
 func addToHistory(name tokens.QName, newUpdate backend.UpdateInfo) error {
 	allUpdates, err := getHistory(name)
 	if err != nil {
 		return errors.Wrap(err, "getting previous history information")
 	}
-
-	newUpdate.Version = len(allUpdates) + 1
 
 	withLatest := append([]backend.UpdateInfo{newUpdate}, allUpdates...)
 	return saveHistory(name, withLatest)

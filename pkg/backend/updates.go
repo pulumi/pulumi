@@ -42,10 +42,6 @@ const (
 
 // UpdateInfo describes a previous update.
 type UpdateInfo struct {
-	// Version is a counter for sequencing updates. The first update to a Stack will have
-	// Version 1, the next 2, and so on.
-	Version int `json:"version"`
-
 	// Information known before an update is started.
 
 	Kind      UpdateKind `json:"kind"`
