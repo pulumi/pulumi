@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -238,4 +239,58 @@ func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
 	default:
 		return nil, nil
 	}
+}
+
+// Behavior:
+// Do a search for a resource that has an OperationsProvider.
+// If a node has a provider, return it, and don't recurse farther.
+// If a node does not have a provider, recurse into all children.
+//   If exactly one child has a provider, return it.
+//   If more than one child has a provider, or zero children, error.
+// If there is an error...
+//   ... and the search encountered >0 errors, use the first one.
+//   ... and the search encountered 0 errors, create a new one.
+func (ops *resourceOperations) GetResourceData() (map[string]string, error) {
+	result, err := ops.GetResourceDataRecursive()
+	if err != nil {
+		return nil, err
+	}
+
+	if result == nil {
+		return nil, errors.New("Resource had no children with OperationsProvider")
+	}
+
+	return result, nil
+}
+
+func (ops *resourceOperations) GetResourceDataRecursive() (map[string]string, error) {
+	if opsProvider, _ := ops.getOperationsProvider(); opsProvider != nil {
+		if result, err := opsProvider.GetResourceData(); err == nil {
+			return result, nil
+		}
+	}
+
+	var result map[string]string
+	for _, child := range ops.resource.Children {
+		childOps := &resourceOperations{
+			resource: child,
+			config:   ops.config,
+		}
+
+		singleResult, err := childOps.GetResourceDataRecursive()
+		if err != nil {
+			return nil, err
+		}
+
+		if singleResult != nil {
+			if result != nil {
+				return nil, errors.New("Resource had multiple children with OperationsProvider")
+			}
+
+			result = singleResult
+		}
+	}
+
+	// result is okay to be nil
+	return result, nil
 }
