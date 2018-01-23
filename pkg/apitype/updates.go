@@ -3,6 +3,8 @@ package apitype
 import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 )
 
 // ConfigValue describes a single (possibly secret) configuration value.
@@ -35,9 +37,10 @@ type UpdateProgramRequest struct {
 	Metadata UpdateMetadata `json:"metadata"`
 }
 
-// UpdateOptions is the set of operations for configuring the output of an update. Should mirror
-// engine.UpdateOptions exactly; we put it in this package to add flexibility in case there is a
-// breaking change in the engine-type.
+// UpdateOptions is the set of operations for configuring the output of an update.
+//
+// Should generally mirror engine.UpdateOptions, but we clone it in this package to add
+// flexibility in case there is a breaking change in the engine-type.
 type UpdateOptions struct {
 	Analyzers            []string            `json:"analyzers"`
 	Color                colors.Colorization `json:"color"`
@@ -49,9 +52,17 @@ type UpdateOptions struct {
 	Summary              bool                `json:"summary"`
 }
 
-// UpdateMetadata describes optional metadata about an update. Should mirror backend.UpdateMetadata
-// exactly. Duplicated here for flexibility and for insulation from breaking changes.
-type UpdateMetadata backend.UpdateMetadata
+// UpdateMetadata describes optional metadata about an update.
+//
+// Should generally mirror backend.UpdateMetadata, but we clone it in this package to add
+// flexibility in case there is a breaking change in the backend-type.
+type UpdateMetadata struct {
+	// Message is an optional message associated with the update.
+	Message string `json:"message"`
+	// Environment contains optional data from the deploying environment. e.g. the current
+	// source code control commit information.
+	Environment map[string]string `json:"environment"`
+}
 
 // UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go
 // unmarshalConfig()
@@ -232,9 +243,25 @@ type GetApplyUpdateResultsResponse UpdateResults
 // endpoint of the PPC API.
 type GetPreviewUpdateResultsResponse UpdateResults
 
-// UpdateInfo describes a previous update. This should match backend.UpdateInfo exactly. Duplicated here for
-// flexibility
-type UpdateInfo backend.UpdateInfo
+// UpdateInfo describes a previous update.
+//
+// Should generally mirror backend.UpdateInfo, but we clone it in this package to add
+// flexibility in case there is a breaking change in the backend-type.
+type UpdateInfo struct {
+	// Information known before an update is started.
+
+	Kind        backend.UpdateKind `json:"kind"`
+	StartTime   int64              `json:"startTime"`
+	Message     string             `json:"message"`
+	Environment map[string]string  `json:"environment"`
+	Config      config.Map         `json:"config"`
+
+	// Information obtained from an update completing.
+
+	Result          backend.UpdateResult   `json:"result"`
+	EndTime         int64                  `json:"endTime"`
+	ResourceChanges engine.ResourceChanges `json:"resourceChanges"`
+}
 
 // GetHistoryResponse is the response from the Pulumi Service when requesting
 // a stack's history.

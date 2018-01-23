@@ -347,7 +347,20 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
 	for _, update := range response.Updates {
-		beUpdate := backend.UpdateInfo(update)
+		beUpdate := backend.UpdateInfo{
+			Kind:      update.Kind,
+			StartTime: update.StartTime,
+
+			Message:     update.Message,
+			Environment: update.Environment,
+
+			Config: update.Config,
+
+			Result:  update.Result,
+			EndTime: update.EndTime,
+
+			ResourceChanges: update.ResourceChanges,
+		}
 		beUpdates = append(beUpdates, beUpdate)
 	}
 
