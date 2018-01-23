@@ -1,0 +1,5 @@
+#!/bin/bash
+set -o nounset -o errexit -o pipefail
+
+tar czf - -C "${PULUMI_FAILED_TESTS_DIR}" . | aws --region us-west-2 s3 cp - "s3://eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/failed-tests.tar.gz" --acl bucket-owner-full-control
+echo "one or more tests failed, to view detailed failure information, visit https://s3.console.aws.amazon.com/s3/buckets/eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/"
