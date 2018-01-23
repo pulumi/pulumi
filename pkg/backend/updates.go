@@ -42,6 +42,19 @@ const (
 	FailedResult = "failed"
 )
 
+// Keys we use for values put into UpdateInfo.Environment.
+const (
+	// GitHead is the commit hash of HEAD.
+	GitHead = "git.head"
+	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
+	GitDirty = "git.dirty"
+
+	// GitHubLogin is the user/organization who owns the local repo, if the origin remote is hosted on GitHub.com.
+	GitHubLogin = "github.login"
+	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
+	GitHubRepo = "github.repo"
+)
+
 // UpdateInfo describes a previous update.
 type UpdateInfo struct {
 	// Information known before an update is started.

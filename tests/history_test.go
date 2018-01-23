@@ -237,39 +237,39 @@ func TestHistoryCommand(t *testing.T) {
 		// nothing has been committed yet.
 		t.Log("Checking first update...")
 		update := updateRecords[3]
-		assertEnvKeyNotFound(e.T, update, "git.head")
+		assertEnvKeyNotFound(e.T, update, backend.GitHead)
 
 		// The second update has a commit.
 		t.Log("Checking second update...")
 		update = updateRecords[2]
 		// We don't know what the SHA will be ahead of time, since the code we use to call `pulumi init`
 		// uses the current time as part of the --name flag.
-		headSHA, ok := update.Environment["git.head"]
-		assert.True(t, ok, "Didn't find git.head in environment")
+		headSHA, ok := update.Environment[backend.GitHead]
+		assert.True(t, ok, "Didn't find %s in environment", backend.GitHead)
 		assert.Equal(t, 40, len(headSHA), "Commit SHA was not expected length")
-		assertEnvValue(e.T, update, "git.dirty", "false")
+		assertEnvValue(e.T, update, backend.GitDirty, "false")
 		// The github-related info is still not set though.
-		assertEnvKeyNotFound(e.T, update, "github.login")
-		assertEnvKeyNotFound(e.T, update, "github.repo")
+		assertEnvKeyNotFound(e.T, update, backend.GitHubLogin)
+		assertEnvKeyNotFound(e.T, update, backend.GitHubRepo)
 
 		// The third commit sets a remote (which we detect as a GitHub repo) and is now dirty.
 		t.Log("Checking third update...")
 		update = updateRecords[1]
-		assertEnvValue(e.T, update, "git.head", headSHA)
-		assertEnvValue(e.T, update, "git.dirty", "true")
-		assertEnvValue(e.T, update, "github.login", "rick")
-		assertEnvValue(e.T, update, "github.repo", "c-132")
+		assertEnvValue(e.T, update, backend.GitHead, headSHA)
+		assertEnvValue(e.T, update, backend.GitDirty, "true")
+		assertEnvValue(e.T, update, backend.GitHubLogin, "rick")
+		assertEnvValue(e.T, update, backend.GitHubRepo, "c-132")
 
 		// The fourth commit is clean (by restoring to the previous commit).
 		t.Log("Checking fourth update...")
 		update = updateRecords[0]
-		assertEnvValue(e.T, update, "git.head", headSHA)
-		assertEnvValue(e.T, update, "git.dirty", "false")
-		assertEnvValue(e.T, update, "github.login", "rick")
-		assertEnvValue(e.T, update, "github.repo", "c-132")
+		assertEnvValue(e.T, update, backend.GitHead, headSHA)
+		assertEnvValue(e.T, update, backend.GitDirty, "false")
+		assertEnvValue(e.T, update, backend.GitHubLogin, "rick")
+		assertEnvValue(e.T, update, backend.GitHubRepo, "c-132")
 
 		if t.Failed() {
-			t.Logf("Test failed. Printing raw history output:\n%v", stdout)
+			t.Logf("Test failed. Printing raw history output:\n%v\n", stdout)
 		}
 	})
 }

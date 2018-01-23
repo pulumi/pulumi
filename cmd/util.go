@@ -237,7 +237,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		// Commit at HEAD.
 		head, err := repo.Head()
 		if err == nil {
-			m.Environment["git.head"] = head.Hash().String()
+			m.Environment[backend.GitHead] = head.Hash().String()
 		} else {
 			// Ignore "reference not found" in the odd case where the HEAD commit doesn't exist.
 			// (git init, but no commits yet.)
@@ -256,13 +256,13 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 			return m, errors.Wrapf(err, gitErrCtx, "getting worktree status")
 		}
 		dirty := !s.IsClean()
-		m.Environment["git.dirty"] = fmt.Sprint(dirty)
+		m.Environment[backend.GitDirty] = fmt.Sprint(dirty)
 
 		// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
 		ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
 		if err == nil {
-			m.Environment["github.login"] = ghLogin
-			m.Environment["github.repo"] = ghRepo
+			m.Environment[backend.GitHubLogin] = ghLogin
+			m.Environment[backend.GitHubRepo] = ghRepo
 		}
 	}
 
