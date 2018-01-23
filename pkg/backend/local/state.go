@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -224,9 +226,9 @@ func removeStack(name tokens.QName) error {
 	// Just make a backup of the file and don't write out anything new.
 	file := w.StackPath(name)
 	backupTarget(file)
-	file = w.HistoryPath(name)
-	backupTarget(file)
-	return nil
+
+	historyDir := w.HistoryDirectory(name)
+	return os.RemoveAll(historyDir)
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
@@ -247,13 +249,12 @@ func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	contract.Require(name != "", "name")
-	file := w.HistoryPath(name)
 
-	b, err := ioutil.ReadFile(file)
+	dir := w.HistoryDirectory(name)
+	allFiles, err := ioutil.ReadDir(dir)
 	if err != nil {
-		// We would expect the file not to exist for a stack that has never been deployed.
+		// History doesn't exist until a stack has been updated.
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
@@ -261,38 +262,64 @@ func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 	}
 
 	var updates []backend.UpdateInfo
-	if err = json.Unmarshal(b, &updates); err != nil {
-		return nil, err
+	for _, file := range allFiles {
+		filepath := path.Join(dir, file.Name())
+
+		// Open all of the history files, ignoring the checkpoints.
+		if !strings.HasSuffix(filepath, ".history.json") {
+			continue
+		}
+
+		var update backend.UpdateInfo
+		b, err := ioutil.ReadFile(filepath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+		}
+		err = json.Unmarshal(b, &update)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+		}
+
+		updates = append(updates, update)
 	}
 
 	return updates, nil
 }
 
-// saveUpdateHistory replaces all history information for the given stack with the slice provided.
-func saveHistory(name tokens.QName, updates []backend.UpdateInfo) error {
+// addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.
+func addToHistory(name tokens.QName, update backend.UpdateInfo) error {
+	contract.Require(name != "", "name")
+
 	w, err := workspace.New()
 	if err != nil {
 		return err
 	}
 
-	contract.Require(name != "", "name")
-	file := w.HistoryPath(name)
+	dir := w.HistoryDirectory(name)
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
 
-	b, err := json.MarshalIndent(&updates, "", "    ")
+	// Prefix for the update and checkpoint files.
+	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, update.StartTime))
+
+	// Save the history file.
+	b, err := json.MarshalIndent(&update, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(file, b, os.ModePerm)
-}
-
-// addToHistory saves a new, completed UpdateInfo to disk.
-func addToHistory(name tokens.QName, newUpdate backend.UpdateInfo) error {
-	allUpdates, err := getHistory(name)
-	if err != nil {
-		return errors.Wrap(err, "getting previous history information")
+	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
+	if err = ioutil.WriteFile(historyFile, b, os.ModePerm); err != nil {
+		return err
 	}
 
-	withLatest := append([]backend.UpdateInfo{newUpdate}, allUpdates...)
-	return saveHistory(name, withLatest)
+	// Make a copy of the checkpoint file. (Assuming it aleady exists.)
+	b, err = ioutil.ReadFile(w.StackPath(name))
+	if err != nil {
+		return err
+	}
+
+	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
+	return ioutil.WriteFile(checkpointFile, b, os.ModePerm)
 }

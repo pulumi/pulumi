@@ -51,6 +51,10 @@ func assertEnvKeyNotFound(t *testing.T, update backend.UpdateInfo, key string) {
 }
 
 func TestHistoryCommand(t *testing.T) {
+	// The --output-json flag on pulumi history is hidden behind an environment variable.
+	os.Setenv("PULUMI_DEBUG_COMMANDS", "1")
+	defer os.Unsetenv("PULUMI_DEBUG_COMMANDS")
+
 	// We fail if no stack is selected.
 	t.Run("NoStackSelected", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)

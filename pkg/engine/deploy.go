@@ -232,9 +232,6 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	if err != nil {
 		return err
 	}
-	if err = mutation.End(step.Iterator().Snap()); err != nil {
-		return err
-	}
 
-	return nil
+	return mutation.End(step.Iterator().Snap())
 }

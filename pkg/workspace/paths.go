@@ -18,6 +18,7 @@ const ProjectFile = "Pulumi"           // the base name of a project file.
 const GitDir = ".git"                  // the name of the folder git uses to store information.
 const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we store state here (like .git for git).
 const StackDir = "stacks"              // the name of the directory that holds stack information for projects.
+const HistoryDir = "history"           // the name of the directory that holds historical information for projects.
 const WorkspaceDir = "workspaces"      // the name of the directory that holds workspace information for projects.
 const RepoFile = "settings.json"       // the name of the file that holds information specific to the entire repository.
 const ConfigDir = "config"             // the name of the folder that holds local configuration information.

@@ -5,6 +5,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ import (
 
 func newHistoryCmd() *cobra.Command {
 	var stack string
-	var outputJSON bool
+	var outputJSON bool // Requires PULUMI_DEBUG_COMMANDS
 
 	var cmd = &cobra.Command{
 		Use:        "history",
@@ -39,6 +40,9 @@ func newHistoryCmd() *cobra.Command {
 				return errors.Wrap(err, "getting history")
 			}
 
+			// Sort the updates to ensure the most recent updates come first.
+			backend.Sort(updates)
+
 			if outputJSON {
 				b, err := json.MarshalIndent(updates, "", "    ")
 				if err != nil {
@@ -57,10 +61,11 @@ func newHistoryCmd() *cobra.Command {
 		&stack, "stack", "s", "",
 		"Choose an stack other than the currently selected one")
 
-	// See pulumi/issues/496, which tracks adding a --format option across all commands.
-	cmd.PersistentFlags().BoolVar(
-		&outputJSON, "output-json", false,
-		"Output stack history as JSON")
+	// pulumi/issues/496 tracks adding a --format option across all commands. Rather than expose a partial solution
+	// for just `history`, we put the JSON flag behind an env var so we can use in tests w/o making public.
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
+		cmd.PersistentFlags().BoolVar(&outputJSON, "output-json", false, "Output stack history as JSON")
+	}
 
 	return cmd
 }
