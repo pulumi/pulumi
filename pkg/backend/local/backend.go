@@ -164,7 +164,10 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 		EndTime:         end,
 		ResourceChanges: changes,
 	}
-	saveErr := addToHistory(stackName, info)
+	var saveErr error
+	if !opts.DryRun {
+		saveErr = addToHistory(stackName, info)
+	}
 
 	if updateErr != nil {
 		// We swallow saveErr as it is less important than the updateErr.
@@ -210,7 +213,10 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 		EndTime:         end,
 		ResourceChanges: changes,
 	}
-	saveErr := addToHistory(stackName, info)
+	var saveErr error
+	if !opts.DryRun {
+		saveErr = addToHistory(stackName, info)
+	}
 
 	if updateErr != nil {
 		// We swallow saveErr as it is less important than the updateErr.
