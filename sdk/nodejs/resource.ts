@@ -127,42 +127,28 @@ export class ComponentResource extends Resource {
 export type DependencyVal<T> = T | Dependency<T>;
 
 export class Dependency<T> {
-    // Internal implementation details. Hidden from the .d.ts file by using @internal and also
-    // naming with __. Users are not allowed to call these methods.  If they do, pulumi cannot
-    // provide any guarantees.  TODO: is there any way to make it so that users can't even get
-    // access to these members?  Maybe by using Symbols or WeakMaps and the like.
+    // Internal implementation details. Hidden from the .d.ts file by using @internal. Users are not
+    //  allowed to call these methods.  If they do, pulumi cannot provide any guarantees.  TODO: we
+    //  could make this all hidden by using weakmaps and storinthe data in a side table.  But that's
+    //  likely not necessary to do.
 
+    // What do show for this Dependency during preview. i.e. something like "table.PropName".
+    //
+    // Only callable on the outside.  Should only be called during preview.
     /* @internal */ public readonly previewDisplay: string;
-
-    /* @internal */ private readonly resourcesData: Set<Resource>;
 
     // Method that actually produces the concrete value of this dependency, as well as the total
     // deployment-time set of resources this dependency depends on.  This code path will end up
     // executing apply funcs, and should only be called during real deployment and not during
     // previews.
+    //
+    // Only callable on the outside.
     /* @internal */ public readonly getValue: () => Promise<T>;
 
-    /* @internal */ public constructor(
-            display: string,
-            resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
-
-        this.previewDisplay = display;
-        this.resourcesData = resources;
-
-        // __getValue lazily.  i.e. we will only apply funcs when asked the first time, and we will
-        // also only apply them once (no matter how many times __getValue() is called).
-
-        let computeValueTask: Promise<T> | undefined = undefined;
-        this.getValue = () => {
-            if (!computeValueTask) {
-                computeValueTask = createComputeValueTask();
-            }
-
-            return computeValueTask;
-        };
-    }
-
-    // Public API methods.
+    // The list of resource that this dependency value depends on.
+    //
+    // Only callable on the outside.
+    /* @internal */ public readonly resources: () => Set<Resource>;
 
     // Transforms the data of the dependency with the provided func.  The result remains a Dependency
     // so that dependent resources can be properly tracked.
@@ -172,19 +158,43 @@ export class Dependency<T> {
     // 'func' is not allowed to make resources.
     //
     // Outside only.  Note: this is the *only* outside public API.
-    public apply<U>(func: (t: T) => U): Dependency<U> {
-        // Wrap the display with <> to indicate that it's been transformed in some manner.
-        // However, don't bother doing this if we're already wrapping some transformed
-        // dependency.  i.e. we'll only ever show 'table.prop' or '<table.prop>', not
-        // '<<<<table.prop>>>>'.
-        const display = this.previewDisplay.length > 0 && this.previewDisplay.charAt(0) === "<"
-            ? this.previewDisplay
-            : "<" + this.previewDisplay + ">";
+    public  readonly apply: <U>(func: (t: T) => U) => Dependency<U>;
 
-        return new Dependency<U>(
-            display,
-            this.resourcesData,
-            () => this.getValue().then(func));
+    /* @internal */ public constructor(
+            display: string,
+            resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
+
+        this.previewDisplay = display;
+
+        // Always create a copy so that no one accidentally modifies our Resource list.
+        this.resources = () => new Set<Resource>(resources);
+
+        // getValue is lazy.  i.e. we will only apply funcs when asked the first time, and we will
+        // also only apply them once (no matter how many times getValue() is called).
+
+        let computeValueTask: Promise<T> | undefined = undefined;
+        this.getValue = () => {
+            if (!computeValueTask) {
+                computeValueTask = createComputeValueTask();
+            }
+
+            return computeValueTask;
+        };
+
+        this.apply = <U>(func: (t: T) => U) => {
+            // Wrap the display with <> to indicate that it's been transformed in some manner.
+            // However, don't bother doing this if we're already wrapping some transformed
+            // dependency.  i.e. we'll only ever show 'table.prop' or '<table.prop>', not
+            // '<<<<table.prop>>>>'.
+            const innerDisplay = display.length > 0 && display.charAt(0) === "<"
+                ? display
+                : "<" + display + ">";
+
+            return new Dependency<U>(
+                display,
+                resources,
+                () => this.getValue().then(func));
+        }
     }
 
     // Retrieves the underlying value of this dependency.
@@ -192,13 +202,6 @@ export class Dependency<T> {
     // Inside only.  Note: this is the *only* inside API available.
     public get(): T {
         throw new Error("Cannot call during deployment.");
-    }
-
-    // The list of resource that this dependency value depends on.
-    // Only callable on the outside.
-    /* @internal */ public resources(): Set<Resource> {
-        // Always create a copy so that no one accidentally modifies our Resource list.
-        return new Set<Resource>(this.resourcesData);
     }
 }
 
