@@ -46,19 +46,24 @@ export class Dependency<T> {
 
     /* @internal */ private readonly __resourcesData: Set<Resource>;
 
-    // The function we use to lazily create __computeValueTask.
-    /* @internal */ private readonly __createComputeValueTask: () => Promise<T>;
-
-    // The single task we produce that represents the computation of getting the concrete value
-    // We use a singleton task so that we don't end up causing computation (especially user provided 
-    // funcs) from executing many times over.  We also lazily create this as we don't want apply-funcs
-    // to run until necessary.
-    /* @internal */ private __computeValueTask: Promise<T>;
-
     /* @internal */ public constructor(previewDisplay: string, resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
         this.__previewDisplay = previewDisplay;
         this.__resourcesData = resources;
-        this.__createComputeValueTask = createComputeValueTask;
+
+        // We don't want to kick off the work to compute the value (as that may then run user
+        // funcs during preview.  Also, when asked for the value we only want to compute
+        // user funcs once.  So we lazily kick off the task the first time __getValue is called,
+        // and then we cache and return that same task in the future so that any additional 
+        // awaits on it don't cause more work to happen.
+
+        let __computeValueTask: Promise<T> = undefined;
+        this.__getValue = () => {
+            if (!__computeValueTask) {
+                __computeValueTask = createComputeValueTask();
+            }
+
+            return __computeValueTask;
+        };
     }
 
 
@@ -70,16 +75,7 @@ export class Dependency<T> {
     // This function is implemented lazily.  i.e. when the result is awaited, 'apply' funcs 
     // will only ever execute once.  Values are then automatically cached and will be returned
     // if called and awaited again.
-    /* @internal */ public __getValue(): Promise<T> {
-        // Ensure that we always hand out the same task.  This way, no matter how many
-        // times anyone calls __getValueAndResourcesAsync or awaits it, the computation is only
-        // executed once.
-        if (!this.__computeValueTask) {
-            this.__computeValueTask = this.__createComputeValueTask();
-        }
-
-        return this.__computeValueTask;
-    }
+    /* @internal */ public __getValue: () => Promise<T>;
 
     // The list of resource that this dependency value depends on.
     // Only callable on the outside.
