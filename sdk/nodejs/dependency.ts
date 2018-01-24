@@ -95,11 +95,7 @@ export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: D<T1>, d2: D<T2>, d3
 export function combine<T>(...ds: D<T>[]): D<T[]>;
 export function combine(...ds: D<{}>[]): D<{}[]> {
     const allResources = new Set<Resource>();
-    for (const d of ds) {
-        for (const r of d.__resources()) {
-            allResources.add(r);
-        }
-    }
+    ds.forEach(d => d.__resources().forEach(r => allResources.add(r)));
 
     const previewDisplay = "(" + ds.map(d => d.__previewDisplay).join(", ") + ")"
 
