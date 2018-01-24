@@ -131,8 +131,6 @@ export class ComponentResource extends Resource {
     }
 }
 
-export type DependencyVal<T> = T | Dependency<T>;
-
 export class Dependency<T> {
     // Internal implementation details. Hidden from the .d.ts file by using @internal. Users are not
     //  allowed to call these methods.  If they do, pulumi cannot provide any guarantees.  TODO: we
@@ -244,16 +242,16 @@ export function combine(...ds: Dependency<{}>[]): Dependency<{}[]> {
  * values.  The undefined values are used during planning, when the actual final value of a resource
  * may not yet be known.
  */
-export type Computed<T> = Promise<T | undefined>;
+export type Computed<T> = Dependency<T>;
 
 /**
  * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise
  * for one.
  */
-export type ComputedValue<T> = T | undefined | Computed<T>;
+export type ComputedValue<T> = T | Dependency<T>;
 
 /**
  * ComputedValues is a map of property name to optional property input, one for each resource
  * property value.
  */
-export type ComputedValues = { [key: string]: ComputedValue<any> };
+export type ComputedValues = { [key: string]: Dependency<any> };
