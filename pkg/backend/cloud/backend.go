@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -347,24 +348,57 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
 	for _, update := range response.Updates {
+		// Convert types from the apitype package into their internal counterparts.
+		cfg, err := convertConfig(update.Config)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting configuration")
+		}
+		changes := convertResourceChanges(update.ResourceChanges)
+
 		beUpdate := backend.UpdateInfo{
-			Kind:      update.Kind,
+			Kind:      backend.UpdateKind(update.Kind),
 			StartTime: update.StartTime,
 
 			Message:     update.Message,
 			Environment: update.Environment,
 
-			Config: update.Config,
+			Config: cfg,
 
-			Result:  update.Result,
+			Result:  backend.UpdateResult(update.Result),
 			EndTime: update.EndTime,
 
-			ResourceChanges: update.ResourceChanges,
+			ResourceChanges: changes,
 		}
 		beUpdates = append(beUpdates, beUpdate)
 	}
 
 	return beUpdates, nil
+}
+
+// convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.
+func convertResourceChanges(changes map[apitype.OpType]int) engine.ResourceChanges {
+	b := make(engine.ResourceChanges)
+	for k, v := range changes {
+		b[deploy.StepOp(k)] = v
+	}
+	return b
+}
+
+// convertResourceChanges converts the apitype version of config.Map into the internal version.
+func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error) {
+	c := make(config.Map)
+	for k, v := range apiConfig {
+		mm, err := tokens.ParseModuleMember(k)
+		if err != nil {
+			return nil, err
+		}
+		if v.Secret {
+			c[mm] = config.NewSecureValue(v.String)
+		} else {
+			c[mm] = config.NewValue(v.String)
+		}
+	}
+	return c, nil
 }
 
 func (b *cloudBackend) GetLogs(stackName tokens.QName,
