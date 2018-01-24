@@ -75,7 +75,7 @@ export abstract class CustomResource extends Resource {
      * id is the provider-assigned unique ID for this managed resource.  It is set during deployments and may be
      * missing (undefined) during planning phases.
      */
-    public readonly id: Computed<ID>;
+    public readonly id: ComputeDependency<ID>;
 
     /**
      * Creates and registers a new managed resource.  t is the fully qualified type token and name is the "name" part
@@ -124,11 +124,116 @@ export class ComponentResource extends Resource {
     }
 }
 
+export type DependencyVal<T> = T | Dependency<T>;
+
+export class Dependency<T> {
+    // Internal implementation details. Hidden from the .d.ts file by using @internal and also
+    // naming with __. Users are not allowed to call these methods.  If they do, pulumi cannot
+    // provide any guarantees.  TODO: is there any way to make it so that users can't even get
+    // access to these members?  Maybe by using Symbols or WeakMaps and the like.
+
+    /* @internal */ public readonly previewDisplay: string;
+
+    /* @internal */ private readonly resourcesData: Set<Resource>;
+
+    // Method that actually produces the concrete value of this dependency, as well as the total
+    // deployment-time set of resources this dependency depends on.  This code path will end up
+    // executing apply funcs, and should only be called during real deployment and not during
+    // previews.
+    /* @internal */ public readonly getValue: () => Promise<T>;
+
+    /* @internal */ public constructor(
+            display: string,
+            resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
+
+        this.previewDisplay = display;
+        this.resourcesData = resources;
+
+        // __getValue lazily.  i.e. we will only apply funcs when asked the first time, and we will
+        // also only apply them once (no matter how many times __getValue() is called).
+
+        let computeValueTask: Promise<T> | undefined = undefined;
+        this.getValue = () => {
+            if (!computeValueTask) {
+                computeValueTask = createComputeValueTask();
+            }
+
+            return computeValueTask;
+        };
+    }
+
+    // Public API methods.
+
+    // Transforms the data of the dependency with the provided func.  The result remains a Dependency
+    // so that dependent resources can be properly tracked.
+    //
+    // The inner func should not return a Dependency itself. (TODO: can we check for that?)
+    //
+    // 'func' is not allowed to make resources.
+    //
+    // Outside only.  Note: this is the *only* outside public API.
+    public apply<U>(func: (t: T) => U): Dependency<U> {
+        // Wrap the display with <> to indicate that it's been transformed in some manner.
+        // However, don't bother doing this if we're already wrapping some transformed
+        // dependency.  i.e. we'll only ever show 'table.prop' or '<table.prop>', not
+        // '<<<<table.prop>>>>'.
+        const display = this.previewDisplay.length > 0 && this.previewDisplay.charAt(0) === "<"
+            ? this.previewDisplay
+            : "<" + this.previewDisplay + ">";
+
+        return new Dependency<U>(
+            display,
+            this.resourcesData,
+            () => this.getValue().then(func));
+    }
+
+    // Retrieves the underlying value of this dependency.
+    //
+    // Inside only.  Note: this is the *only* inside API available.
+    public get(): T {
+        throw new Error("Cannot call during deployment.");
+    }
+
+    // The list of resource that this dependency value depends on.
+    // Only callable on the outside.
+    /* @internal */ public resources(): Set<Resource> {
+        // Always create a copy so that no one accidentally modifies our Resource list.
+        return new Set<Resource>(this.resourcesData);
+    }
+}
+
+// Helper function actually allow Resource to create Dependency objects for its output properties.
+// Should only be called by pulumi, not by users (TODO: i think).
+export function createDependency<T>(previewDisplay: string, resource: Resource, value: Promise<T>): Dependency<T> {
+    return new Dependency<T>(previewDisplay, new Set<Resource>([resource]), () => value);
+}
+
+// tslint:disable:max-line-length
+export function combine<T1, T2>(d1: Dependency<T1>, d2: Dependency<T2>): Dependency<[T1, T2]>;
+export function combine<T1, T2, T3>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>): Dependency<[T1, T2, T3]>;
+export function combine<T1, T2, T3, T4>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>): Dependency<[T1, T2, T3, T4]>;
+export function combine<T1, T2, T3, T4, T5>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>): Dependency<[T1, T2, T3, T4, T5]>;
+export function combine<T1, T2, T3, T4, T5, T6>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>, d6: Dependency<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
+export function combine<T1, T2, T3, T4, T5, T6, T7>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>, d6: Dependency<T6>, d7: Dependency<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
+export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>, d6: Dependency<T6>, d7: Dependency<T7>, d8: Dependency<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+export function combine<T>(...ds: Dependency<T>[]): Dependency<T[]>;
+export function combine(...ds: Dependency<{}>[]): Dependency<{}[]> {
+    const allResources = new Set<Resource>();
+    ds.forEach(d => d.resources().forEach(r => allResources.add(r)));
+
+    const previewDisplay = "(" + ds.map(d => d.previewDisplay).join(", ") + ")";
+
+    return new Dependency<{}[]>(
+        previewDisplay,
+        allResources,
+        () => Promise.all(ds.map(d => d.getValue())));
+}
+
 /**
  * Computed is a property output for a resource.  It is just a promise that also permits undefined values.  The
  * undefined values are used during planning, when the actual final value of a resource may not yet be known.
  */
-export type Computed<T> = Promise<T | undefined>;
+export type ComputeDependency<T> = Promise<T | undefined>;
 
 /**
  * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise for one.
