@@ -75,7 +75,7 @@ export abstract class CustomResource extends Resource {
      * id is the provider-assigned unique ID for this managed resource.  It is set during deployments and may be
      * missing (undefined) during planning phases.
      */
-    public readonly id: ComputeDependency<ID>;
+    public readonly id: Computed<ID>;
 
     /**
      * Creates and registers a new managed resource.  t is the fully qualified type token and name is the "name" part
@@ -236,7 +236,7 @@ export function combine(...ds: Dependency<{}>[]): Dependency<{}[]> {
  * Computed is a property output for a resource.  It is just a promise that also permits undefined values.  The
  * undefined values are used during planning, when the actual final value of a resource may not yet be known.
  */
-export type ComputeDependency<T> = Promise<T | undefined>;
+export type Computed<T> = Promise<T | undefined>;
 
 /**
  * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise for one.
