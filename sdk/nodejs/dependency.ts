@@ -265,11 +265,7 @@ export function dep_forOf<T extends Iterable<TItem>, U, TItem>(
     eachVal: (t: T, item: TItem) => DependencyVal<U>): Dependency<U[]> {
 
     return source.apply<U[]>(t => {
-        const subDeps: DependencyVal<U>[] = [];
-        for (const item of t) {
-            subDeps.push(eachVal(t, item));
-        }
-
+        const subDeps = Array.from(t).map(item => eachVal(t, item));
         const combined = combine(...subDeps);
         return combined;
     });
@@ -280,11 +276,7 @@ export function dep_forIn<T, U>(
     eachVal: (t: T, key: keyof T) => DependencyVal<U>): Dependency<U[]> {
 
     return source.apply<U[]>(t => {
-        const subDeps: DependencyVal<U>[] = [];
-        for (const key in t) {
-            subDeps.push(eachVal(t, key));
-        }
-
+        const subDeps = Object.keys(t).map(key => eachVal(t, <keyof T>key));
         const combined = combine(...subDeps);
         return combined;
     });
