@@ -253,18 +253,18 @@ class CombinedDependency<T> extends Dependency<T> {
 }
 
 export function dep_if<T>(
-    d: Dependency<boolean>,
-    whenTrue: () => DependencyVal<T>,
-    whenFalse: () => DependencyVal<T>): Dependency<T> {
+        d: Dependency<boolean>,
+        whenTrue: () => DependencyVal<T>,
+        whenFalse: () => DependencyVal<T>): Dependency<T> {
 
-    return d.apply<T>(b => b ? whenTrue() : whenFalse());
+    return d.apply(b => b ? whenTrue() : whenFalse());
 }
 
 export function dep_forOf<T extends Iterable<TItem>, U, TItem>(
-    source: Dependency<T>,
-    eachVal: (t: T, item: TItem) => DependencyVal<U>): Dependency<U[]> {
+        source: Dependency<T>,
+        eachVal: (t: T, item: TItem) => DependencyVal<U>): Dependency<U[]> {
 
-    return source.apply<U[]>(t => {
+    return source.apply(t => {
         const subDeps = Array.from(t).map(item => eachVal(t, item));
         const combined = combine(...subDeps);
         return combined;
@@ -272,10 +272,10 @@ export function dep_forOf<T extends Iterable<TItem>, U, TItem>(
 }
 
 export function dep_forIn<T, U>(
-    source: Dependency<T>,
-    eachVal: (t: T, key: keyof T) => DependencyVal<U>): Dependency<U[]> {
+        source: Dependency<T>,
+        eachVal: (t: T, key: keyof T) => DependencyVal<U>): Dependency<U[]> {
 
-    return source.apply<U[]>(t => {
+    return source.apply(t => {
         const subDeps = Object.keys(t).map(key => eachVal(t, <keyof T>key));
         const combined = combine(...subDeps);
         return combined;
