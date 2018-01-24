@@ -46,15 +46,18 @@ export class Dependency<T> {
 
     /* @internal */ private readonly __resourcesData: Set<Resource>;
 
+    // Method that actually produces the concrete value of this dependency, as well as the total
+    // deployment-time set of resources this dependency depends on.  This code path will end up 
+    // executing apply funcs, and should only be called during real deployment and not during
+    // previews.
+    /* @internal */ public readonly __getValue: () => Promise<T>;
+
     /* @internal */ public constructor(previewDisplay: string, resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
         this.__previewDisplay = previewDisplay;
         this.__resourcesData = resources;
 
-        // We don't want to kick off the work to compute the value (as that may then run user
-        // funcs during preview.  Also, when asked for the value we only want to compute
-        // user funcs once.  So we lazily kick off the task the first time __getValue is called,
-        // and then we cache and return that same task in the future so that any additional 
-        // awaits on it don't cause more work to happen.
+        // __getValue lazily.  i.e. we will only apply funcs when asked the first time, and we will
+        // also only apply them once (no matter how many times __getValue() is called).
 
         let __computeValueTask: Promise<T> = undefined;
         this.__getValue = () => {
@@ -65,17 +68,6 @@ export class Dependency<T> {
             return __computeValueTask;
         };
     }
-
-
-    // Method that actually produces the concrete value of this dependency, as well as the total
-    // deployment-time set of resources this dependency depends on.  This code path will end up 
-    // executing apply funcs, and should not be called during preview, only during realy
-    // deployment.
-    //
-    // This function is implemented lazily.  i.e. when the result is awaited, 'apply' funcs 
-    // will only ever execute once.  Values are then automatically cached and will be returned
-    // if called and awaited again.
-    /* @internal */ public __getValue: () => Promise<T>;
 
     // The list of resource that this dependency value depends on.
     // Only callable on the outside.
