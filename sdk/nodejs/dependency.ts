@@ -4,14 +4,7 @@ export abstract class Resource {
 
 export type DependencyVal<T> = T | Dependency<T>;
 
-export abstract class Dependency<T> {
-    private readonly __resourcesData: Set<Resource>;
-
-    /* @internal */ public constructor(resources: Set<Resource>) {
-        this.__called = false;
-        this.__resourcesData = resources;
-    }
-
+export class Dependency<T> {
     // Public API methods.
 
     // Transforms the data of the dependency with the provided func.  The result remains a Dependency 
@@ -23,7 +16,9 @@ export abstract class Dependency<T> {
     //
     // Outside only.  Note: this is the *only* outside public API.
     public apply<U>(func: (t: T) => U): Dependency<U> {
-        return new ApplyDependency<T, U>(this, func);
+        return new Dependency<U>(
+            this.__resourcesData,
+            () => this.__getValue().then(func));
     }
 
     // Retrieves the underlying value of this dependency.
@@ -38,11 +33,22 @@ export abstract class Dependency<T> {
     // provide any guarantees.  TODO: is there any way to make it so that users can't even get
     // access to these members?  Maybe by using Symbols or WeakMaps and the like.
 
+    private readonly __resourcesData: Set<Resource>;
+
+    // The function we use to lazily create __computeValueTask.
+    private readonly __createComputeValueTask: () => Promise<T>;
+
     // The single task we produce that represents the computation of getting the concrete value
     // We use a singleton task so that we don't end up causing computation (especially user provided 
     // funcs) from executing many times over.  We also lazily create this as we don't want apply-funcs
     // to run until necessary.
-    /* @internal */ private __getValueTask: Promise<T>;
+    private __computeValueTask: Promise<T>;
+
+    /* @internal */ public constructor(resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
+        this.__resourcesData = resources;
+        this.__createComputeValueTask = createComputeValueTask;
+    }
+
 
     // Method that actually produces the concrete value of this dependency, as well as the total
     // deployment-time set of resources this dependency depends on.  This code path will end up 
@@ -56,11 +62,11 @@ export abstract class Dependency<T> {
         // Ensure that we always hand out the same task.  This way, no matter how many
         // times anyone calls __getValueAndResourcesAsync or awaits it, the computation is only
         // executed once.
-        if (!this.__getValueTask) {
-            this.__getValueTask = this.__computeValue();
+        if (!this.__computeValueTask) {
+            this.__computeValueTask = this.__createComputeValueTask();
         }
 
-        return this.__getValueTask;
+        return this.__computeValueTask;
     }
 
     // The list of resource that this dependency value depends on.
@@ -68,48 +74,6 @@ export abstract class Dependency<T> {
     /* @internal */ public __resources(): Set<Resource> {
         // Always create a copy so that no one accidentally modifies our Resource list.
         return new Set<Resource>(this.__resourcesData);
-    }
-
-    // Abstract methods for our subclasses to implement.  They will only ever be called once.
-
-    /* @internal */ protected abstract __computeValue(): Promise<T>;
-
-    // Helper that our subclasses can use to assert that __getValueAndResourcesWorkerAsync
-    // is only called once.
-
-    /* @internal */ private __called;
-    /* @internal */ protected __ensuredCalledOnlyOnce(): void {
-        if (this.__called) {
-            throw new Error("Should not be possible to call this multiple times.");
-        }
-        this.__called = true;
-    }
-}
-
-class ApplyDependency<T, U> extends Dependency<U> {
-    public constructor(
-            private readonly source: Dependency<T>,
-            private readonly func: (t: T) => U) {
-        super(source.__resources());
-    }
-
-    protected async __computeValue(): Promise<U> {
-        this.__ensuredCalledOnlyOnce();
-        return this.source.__getValue().then(t => this.func(t));
-    }
-}
-
-class SimpleDependency<T> extends Dependency<T> {
-    public constructor(
-        private readonly resources: Set<Resource>,
-        private readonly val: Promise<T>) {
-
-        super(resources);
-    }
-
-    protected async __computeValue(): Promise<T> {
-        this.__ensuredCalledOnlyOnce();
-        return this.val;
     }
 }
 
@@ -119,7 +83,7 @@ class SimpleDependency<T> extends Dependency<T> {
 // TODO: this probably should only take "value: Promise<T>".  Output properties of a resource 
 // will always be promises...
 export function createDependency<T>(value: Promise<T>, resource: Resource): Dependency<T> {
-    return new SimpleDependency<T>(new Set<Resource>([resource]), value);
+    return new Dependency<T>(new Set<Resource>([resource]), () => value);
 }
 
 export type D<T> = Dependency<T>;
@@ -133,39 +97,16 @@ export function combine<T1, T2, T3, T4, T5, T6, T7>(d1: D<T1>, d2: D<T2>, d3: D<
 export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: D<T1>, d2: D<T2>, d3: D<T3>, d4: D<T4>, d5: D<T5>, d6: D<T6>, d7: D<T7>, d8: D<T8>): D<[T1, T2, T3, T4, T5, T6, T7, T8]>;
 export function combine<T>(...ds: D<T>[]): D<T[]>;
 export function combine(...ds: D<{}>[]): D<{}[]> {
-    return new CombinedDependency<{}[]>(ds);
-}
-
-function getAllResources(ds: Dependency<{}>[]): Set<Resource> {
-    const result = new Set<Resource>();
-
+    const allResources = new Set<Resource>();
     for (const d of ds) {
         for (const r of d.__resources()) {
-            result.add(r);
+            allResources.add(r);
         }
     }
 
-    return result;
-}
-
-class CombinedDependency<T> extends Dependency<T> {
-    public constructor(private readonly ds: Dependency<{}>[]) {
-        super(getAllResources(ds));
-    }
-
-    protected __computeValue(): Promise<T> {
-        this.__ensuredCalledOnlyOnce();
-
-        const allValues = this.ds.map(d => d.__getValue());
-        const all = Promise.all(allValues);
-
-        // Nasty sideways cast.  Basically, we know from the construction of the 'combine'
-        // functions that T will be the tuple type corresponding to the types of each of
-        // our ds '{}' types.  i.e. if we're combining Dependency<string> and Dependency<number>
-        // then T will be [string, number].   The promise value we're returning is just {}[]
-        // so we blindly cast that away into [...types] since we know it's safe.
-        return <Promise<T>><Promise<any>>all;
-    }
+    return new Dependency<{}[]>(
+        allResources,
+        () => Promise.all(this.ds.map(d => d.__getValue())));
 }
 
 // Note: these are now no longer safe.  During preview we do not run .apply funcs.  As such, we
