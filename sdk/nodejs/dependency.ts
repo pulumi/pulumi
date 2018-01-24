@@ -16,7 +16,16 @@ export class Dependency<T> {
     //
     // Outside only.  Note: this is the *only* outside public API.
     public apply<U>(func: (t: T) => U): Dependency<U> {
+        // Wrap the display with <> to indicate that it's been transformed in some manner.
+        // However, don't bother doing this if we're already wrapping some transformed 
+        // dependency.  i.e. we'll only ever show 'table.prop' or '<table.prop>', not 
+        // '<<<<table.prop>>>>'.
+        const display = this.__previewDisplay.length > 0 && this.__previewDisplay.charAt(0) == '<'
+            ? this.__previewDisplay
+            : "<" + this.__previewDisplay + ">";
+
         return new Dependency<U>(
+            display,
             this.__resourcesData,
             () => this.__getValue().then(func));
     }
@@ -33,18 +42,21 @@ export class Dependency<T> {
     // provide any guarantees.  TODO: is there any way to make it so that users can't even get
     // access to these members?  Maybe by using Symbols or WeakMaps and the like.
 
-    private readonly __resourcesData: Set<Resource>;
+    /* @internal */ public readonly __previewDisplay: string;
+
+    /* @internal */ private readonly __resourcesData: Set<Resource>;
 
     // The function we use to lazily create __computeValueTask.
-    private readonly __createComputeValueTask: () => Promise<T>;
+    /* @internal */ private readonly __createComputeValueTask: () => Promise<T>;
 
     // The single task we produce that represents the computation of getting the concrete value
     // We use a singleton task so that we don't end up causing computation (especially user provided 
     // funcs) from executing many times over.  We also lazily create this as we don't want apply-funcs
     // to run until necessary.
-    private __computeValueTask: Promise<T>;
+    /* @internal */ private __computeValueTask: Promise<T>;
 
-    /* @internal */ public constructor(resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
+    /* @internal */ public constructor(previewDisplay: string, resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
+        this.__previewDisplay = previewDisplay;
         this.__resourcesData = resources;
         this.__createComputeValueTask = createComputeValueTask;
     }
@@ -79,11 +91,8 @@ export class Dependency<T> {
 
 // Helper function actually allow Resource to create Dependency objects for its output properties.
 // Should only be called by pulumi, not by users (TODO: i think).
-//
-// TODO: this probably should only take "value: Promise<T>".  Output properties of a resource 
-// will always be promises...
-export function createDependency<T>(value: Promise<T>, resource: Resource): Dependency<T> {
-    return new Dependency<T>(new Set<Resource>([resource]), () => value);
+export function createDependency<T>(previewDisplay: string, resource: Resource, value: Promise<T>): Dependency<T> {
+    return new Dependency<T>(previewDisplay, new Set<Resource>([resource]), () => value);
 }
 
 export type D<T> = Dependency<T>;
@@ -104,7 +113,10 @@ export function combine(...ds: D<{}>[]): D<{}[]> {
         }
     }
 
+    const previewDisplay = "(" + ds.map(d => d.__previewDisplay).join(", ") + ")"
+
     return new Dependency<{}[]>(
+        previewDisplay,
         allResources,
         () => Promise.all(this.ds.map(d => d.__getValue())));
 }
