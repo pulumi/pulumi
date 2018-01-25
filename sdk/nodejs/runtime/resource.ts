@@ -67,42 +67,43 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             if (!monitor) {
                 // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
                 log.warn(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
-            } else {
-                let parentURN: URN | undefined;
-                if (opts && opts.parent) {
-                    parentURN = await opts.parent.urn;
-                }
-
-                const req = new resproto.RegisterResourceRequest();
-                req.setType(t);
-                req.setName(name);
-                req.setParent(parentURN);
-                req.setCustom(custom);
-                req.setObject(obj);
-                req.setProtect(opts && opts.protect);
-
-                const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
-                    monitor.registerResource(req, (err: Error, innerResponse: any) => {
-                        log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
-                            `err: ${err}, resp: ${innerResponse}`);
-                        if (err) {
-                            log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
-                            reject(err);
-                        }
-                        else {
-                            resolve(innerResponse);
-                        }
-                    });
-                }), opLabel);
-
-                urn = resp.getUrn();
-                id = resp.getId();
-                propsStruct = resp.getObject();
-                stable = resp.getStable();
-
-                const stablesList: string[] | undefined = resp.getStablesList();
-                stables = new Set<string>(stablesList);
+                return;
             }
+
+            let parentURN: URN | undefined;
+            if (opts && opts.parent) {
+                parentURN = await opts.parent.urn;
+            }
+
+            const req = new resproto.RegisterResourceRequest();
+            req.setType(t);
+            req.setName(name);
+            req.setParent(parentURN);
+            req.setCustom(custom);
+            req.setObject(obj);
+            req.setProtect(opts && opts.protect);
+
+            const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
+                monitor.registerResource(req, (err: Error, innerResponse: any) => {
+                    log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
+                        `err: ${err}, resp: ${innerResponse}`);
+                    if (err) {
+                        log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
+                        reject(err);
+                    }
+                    else {
+                        resolve(innerResponse);
+                    }
+                });
+            }), opLabel);
+
+            urn = resp.getUrn();
+            id = resp.getId();
+            propsStruct = resp.getObject();
+            stable = resp.getStable();
+
+            const stablesList: string[] | undefined = resp.getStablesList();
+            stables = new Set<string>(stablesList);
         }
         finally {
             // Always make sure to resolve the URN property, even if it is undefined due to a missing monitor.
@@ -112,7 +113,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).  If it isn't
             // available, ensure the ID gets resolved, just resolve it to undefined (indicating it isn't known).
             if (resolveID) {
-                resolveID!(id || undefined);
+                resolveID(id);
             }
 
             // Propagate any other properties that were given to us as outputs.
