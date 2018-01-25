@@ -26,7 +26,7 @@ export abstract class Resource {
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, custom: boolean, props?: ComputedValues, opts?: ResourceOptions) {
+    constructor(t: string, name: string, custom: boolean, props: ComputedValues = {}, opts: ResourceOptions = {}) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -35,7 +35,6 @@ export abstract class Resource {
         }
 
         // If there wasn't an explicit parent, and a root resource exists, parent to that.
-        opts = opts || {};
         if (!opts.parent) {
             opts.parent = getRootResource();
         }
@@ -43,7 +42,7 @@ export abstract class Resource {
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        registerResource(this, t, name, custom, props || {}, opts || {});
+        registerResource(this, t, name, custom, props, opts);
     }
 }
 
