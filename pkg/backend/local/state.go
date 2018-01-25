@@ -3,15 +3,19 @@
 package local
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -222,7 +226,9 @@ func removeStack(name tokens.QName) error {
 	// Just make a backup of the file and don't write out anything new.
 	file := w.StackPath(name)
 	backupTarget(file)
-	return nil
+
+	historyDir := w.HistoryDirectory(name)
+	return os.RemoveAll(historyDir)
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
@@ -234,4 +240,86 @@ func backupTarget(file string) string {
 	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
+}
+
+// getHistory returns locally stored update history. The first element of the result will be
+// the most recent update record.
+func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
+	w, err := workspace.New()
+	if err != nil {
+		return nil, err
+	}
+	contract.Require(name != "", "name")
+
+	dir := w.HistoryDirectory(name)
+	allFiles, err := ioutil.ReadDir(dir)
+	if err != nil {
+		// History doesn't exist until a stack has been updated.
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var updates []backend.UpdateInfo
+	for _, file := range allFiles {
+		filepath := path.Join(dir, file.Name())
+
+		// Open all of the history files, ignoring the checkpoints.
+		if !strings.HasSuffix(filepath, ".history.json") {
+			continue
+		}
+
+		var update backend.UpdateInfo
+		b, err := ioutil.ReadFile(filepath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+		}
+		err = json.Unmarshal(b, &update)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+		}
+
+		updates = append(updates, update)
+	}
+
+	return updates, nil
+}
+
+// addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.
+func addToHistory(name tokens.QName, update backend.UpdateInfo) error {
+	contract.Require(name != "", "name")
+
+	w, err := workspace.New()
+	if err != nil {
+		return err
+	}
+
+	dir := w.HistoryDirectory(name)
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+
+	// Prefix for the update and checkpoint files.
+	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, update.StartTime))
+
+	// Save the history file.
+	b, err := json.MarshalIndent(&update, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
+	if err = ioutil.WriteFile(historyFile, b, os.ModePerm); err != nil {
+		return err
+	}
+
+	// Make a copy of the checkpoint file. (Assuming it aleady exists.)
+	b, err = ioutil.ReadFile(w.StackPath(name))
+	if err != nil {
+		return err
+	}
+
+	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
+	return ioutil.WriteFile(checkpointFile, b, os.ModePerm)
 }

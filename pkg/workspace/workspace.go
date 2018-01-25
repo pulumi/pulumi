@@ -17,11 +17,12 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings                 // returns a mutable pointer to the optional workspace settings info.
-	Repository() *Repository             // returns the repository this project belongs to.
-	StackPath(stack tokens.QName) string // returns the path to store stack information.
-	GetPackage() (*pack.Package, error)  // returns a copy of the package associated with this workspace.
-	Save() error                         // saves any modifications to the workspace.
+	Settings() *Settings                        // returns a mutable pointer to the optional workspace settings info.
+	Repository() *Repository                    // returns the repository this project belongs to.
+	StackPath(stack tokens.QName) string        // returns the path to store stack information.
+	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
+	GetPackage() (*pack.Package, error)         // returns a copy of the package associated with this workspace.
+	Save() error                                // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
@@ -117,6 +118,14 @@ func (pw *projectWorkspace) StackPath(stack tokens.QName) string {
 	path := filepath.Join(pw.Repository().Root, StackDir, pw.name.String())
 	if stack != "" {
 		path = filepath.Join(path, qnamePath(stack)+".json")
+	}
+	return path
+}
+
+func (pw *projectWorkspace) HistoryDirectory(stack tokens.QName) string {
+	path := filepath.Join(pw.Repository().Root, HistoryDir, pw.name.String())
+	if stack != "" {
+		return filepath.Join(path, qnamePath(stack))
 	}
 	return path
 }

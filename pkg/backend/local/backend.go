@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -126,8 +127,8 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 	return nil
 }
 
-func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
-	opts engine.UpdateOptions) error {
+func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -139,18 +140,44 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 
 	go displayEvents(events, done, debug)
 
-	if _, err = engine.Deploy(update, events, opts); err != nil {
-		return err
-	}
+	// Perform the update
+	start := time.Now().Unix()
+	changes, updateErr := engine.Deploy(update, events, opts)
+	end := time.Now().Unix()
 
 	<-done
 	close(events)
 	close(done)
-	return nil
+
+	// Save update results.
+	result := backend.SucceededResult
+	if updateErr != nil {
+		result = backend.FailedResult
+	}
+	info := backend.UpdateInfo{
+		Kind:            backend.DeployUpdate,
+		StartTime:       start,
+		Message:         m.Message,
+		Environment:     m.Environment,
+		Config:          update.GetTarget().Config,
+		Result:          result,
+		EndTime:         end,
+		ResourceChanges: changes,
+	}
+	var saveErr error
+	if !opts.DryRun {
+		saveErr = addToHistory(stackName, info)
+	}
+
+	if updateErr != nil {
+		// We swallow saveErr as it is less important than the updateErr.
+		return updateErr
+	}
+	return errors.Wrap(saveErr, "saving update info")
 }
 
-func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
-	opts engine.UpdateOptions) error {
+func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -162,15 +189,48 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 
 	go displayEvents(events, done, debug)
 
-	if _, err := engine.Destroy(update, events, opts); err != nil {
-		return err
-	}
+	// Perform the destroy
+	start := time.Now().Unix()
+	changes, updateErr := engine.Destroy(update, events, opts)
+	end := time.Now().Unix()
 
 	<-done
 	close(events)
 	close(done)
 
-	return nil
+	// Save update results.
+	result := backend.SucceededResult
+	if updateErr != nil {
+		result = backend.FailedResult
+	}
+	info := backend.UpdateInfo{
+		Kind:            backend.DestroyUpdate,
+		StartTime:       start,
+		Message:         m.Message,
+		Environment:     m.Environment,
+		Config:          update.GetTarget().Config,
+		Result:          result,
+		EndTime:         end,
+		ResourceChanges: changes,
+	}
+	var saveErr error
+	if !opts.DryRun {
+		saveErr = addToHistory(stackName, info)
+	}
+
+	if updateErr != nil {
+		// We swallow saveErr as it is less important than the updateErr.
+		return updateErr
+	}
+	return errors.Wrap(saveErr, "saving update info")
+}
+
+func (b *localBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
+	updates, err := getHistory(stackName)
+	if err != nil {
+		return nil, err
+	}
+	return updates, nil
 }
 
 func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {

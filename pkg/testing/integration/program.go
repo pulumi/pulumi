@@ -652,11 +652,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
 		return err
 	}
-	if err = pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir); err != nil {
-		return err
-	}
-
-	return nil
+	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
 }
 
 func (pt *programTester) performExtraRuntimeValidation(

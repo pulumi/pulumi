@@ -23,11 +23,17 @@ function usage(): void {
     console.error(`        --parallel=p        run up to p resource operations in parallel (default is serial)`);
     console.error(`        --dry-run           true to simulate resource changes, but without making them`);
     console.error(`        --pwd=pwd           change the working directory before running the program`);
-    console.error(`        --monitor=addr      the RPC address for a resource monitor to connect to`);
+    console.error(`        --monitor=addr      [required] the RPC address for a resource monitor to connect to`);
     console.error(`        --engine=addr       the RPC address for a resource engine to connect to`);
     console.error(`        --tracing=url       a Zipkin-compatible endpoint to send tracing data to`);
     console.error(``);
     console.error(`    and [program] is a JavaScript program to run in Node.js, and [arg]... optional args to it.`);
+}
+
+function printErrorUsageAndExit(message: string): never {
+    console.error(message);
+    usage();
+    return process.exit(-1);
 }
 
 export function main(args: string[]): void {
@@ -38,10 +44,7 @@ export function main(args: string[]): void {
         string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             if (arg.indexOf("-") === 0) {
-                console.error(`fatal: Unrecognized flag ${arg}`);
-                usage();
-                process.exit(-1);
-                return false;
+                return printErrorUsageAndExit(`error: Unrecognized flag ${arg}`);
             }
             return true;
         },
@@ -69,9 +72,8 @@ export function main(args: string[]): void {
     if (argv["parallel"]) {
         parallel = parseInt(argv["parallel"], 10);
         if (isNaN(parallel)) {
-            console.error(`error: --parallel flag must specify a number: ${argv["parallel"]} is not a number`);
-            usage();
-            process.exit(-1);
+            return printErrorUsageAndExit(
+                `error: --parallel flag must specify a number: ${argv["parallel"]} is not a number`);
         }
     }
 
@@ -79,11 +81,12 @@ export function main(args: string[]): void {
     const dryRun: boolean = !!(argv["dry-run"]);
 
     // If there is a monitor argument, connect to it.
-    let monitor: Object | undefined;
-    const monitorAddr: string | undefined = argv["monitor"];
-    if (monitorAddr) {
-        monitor = new resrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
+    const monitorAddr = argv["monitor"];
+    if (!monitorAddr) {
+        return printErrorUsageAndExit(`error: --monitor=addr must be provided.`);
     }
+
+    const monitor = new resrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
 
     // If there is an engine argument, connect to it too.
     let engine: Object | undefined;
@@ -104,9 +107,7 @@ export function main(args: string[]): void {
 
     // Pluck out the program and arguments.
     if (argv._.length === 0) {
-        console.error("fatal: Missing program to execute");
-        usage();
-        process.exit(-1);
+        return printErrorUsageAndExit("error: Missing program to execute");
     }
     let program: string = argv._[0];
     if (program.indexOf("/") !== 0) {
