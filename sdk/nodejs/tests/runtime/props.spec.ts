@@ -4,6 +4,8 @@ import * as assert from "assert";
 import { ComputedValues, runtime } from "../../index";
 import { asyncTest } from "../util";
 
+const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+
 describe("runtime", () => {
     describe("transferProperties", () => {
         it("marshals basic properties correctly", asyncTest(async () => {
@@ -11,12 +13,12 @@ describe("runtime", () => {
                 "aNum": 42,
                 "bStr": "a string",
                 "cUnd": undefined,
-                "dArr": [ "x", 42, true, undefined ],
+                "dArr": Promise.resolve([ "x", 42, Promise.resolve(true), Promise.resolve(undefined) ]),
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            const transfer: runtime.PropertyTransfer =
-                await runtime.transferProperties(undefined, "test", inputs, undefined);
-            const result: any = runtime.deserializeProperties(transfer.obj);
+            const transfer = gstruct.Struct.fromJavaScript(
+                await runtime.serializeAllProperties("test", inputs));
+            const result = runtime.deserializeProperties(transfer);
             assert.equal(result.aNum, 42);
             assert.equal(result.bStr, "a string");
             assert.equal(result.cUnd, undefined);

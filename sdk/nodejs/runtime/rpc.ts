@@ -13,7 +13,7 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * PropertyTransfer is the result of transferring all properties.
  */
 export interface PropertyTransfer {
-    obj: any; // the bag of input properties after awaiting them.
+    obj: {[key: string]: any}; // the bag of input properties after awaiting them.
     resolvers: {[key: string]: ((v: any) => void)}; // a map of resolvers for output properties that will resolve.
 }
 
@@ -83,6 +83,47 @@ export function transferProperties(
             resolvers: resolvers,
         };
     }));
+}
+
+/**
+ * transferProperties stores the properties on the resource object and returns a gRPC serializable
+ * proto.google.protobuf.Struct out of a resource's properties.
+ */
+export function serializeAllProperties(label: string, props: ComputedValues): Promise<{[key: string]: any}> {
+    // First set up an array of all promises that we will await on before completing the transfer.
+    const eventuals: Promise<any>[] = [];
+
+    // Set up an object that will hold the serialized object properties and then serialize them.
+    const obj: {[key: string]: any} = {};
+
+    for (const k of Object.keys(props)) {
+        // Skip "id" and "urn", since we handle those specially.
+        if (k === "id" || k === "urn") {
+            continue;
+        }
+
+        // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
+        // after all properties have settled, and we may need to wait for them before this transfer finishes.
+        if (props[k] !== undefined) {
+            const serialize = serializeProperty(props[k], `${label}.${k}`).then(
+                (v: any) => {
+                    assert(!(v instanceof Promise),
+                        `Expected value '${label}.${k}' to settle; instead, it's a promise`);
+                    obj[k] = v;
+                },
+                (err: Error) => {
+                    throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
+                },
+            );
+            eventuals.push(
+                debuggablePromise(serialize, `serializeProperty(${label}, ${k}, ${props[k]})`));
+        }
+    }
+
+    // Now return a promise that resolves when all assignments above have settled.  Note that we do
+    // not use await here, because we don't actually want to block the above assignments of
+    // properties.
+    return Promise.all(eventuals).then(() => obj);
 }
 
 /**
@@ -184,8 +225,10 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
         }
         return unknownComputedValue;
     }
-    else if (prop === null || typeof prop === "boolean" ||
-            typeof prop === "number" || typeof prop === "string") {
+    else if (prop === null ||
+             typeof prop === "boolean" ||
+             typeof prop === "number" ||
+             typeof prop === "string") {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
         }
@@ -212,15 +255,10 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
-            [specialSigKey]: (prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig),
+            [specialSigKey]: prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig,
         };
-        for (const k of Object.keys(prop)) {
-            if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: asset.${k}`);
-            }
-            obj[k] = await serializeProperty((<any>prop)[k], `asset<${ctx}>.${k}`);
-        }
-        return obj;
+
+        return await serializeAllKeys(prop, obj);
     }
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
@@ -232,13 +270,17 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx);
     }
     else {
-        const obj: any = {};
-        for (const k of Object.keys(prop)) {
+        return await serializeAllKeys(prop, {});
+    }
+
+    async function serializeAllKeys(innerProp: any, obj: any) {
+        for (const k of Object.keys(innerProp)) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
-            obj[k] = await serializeProperty(prop[k], `${ctx}.${k}`);
+            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`);
         }
+
         return obj;
     }
 }

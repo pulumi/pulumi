@@ -3,9 +3,10 @@
 import * as log from "../log";
 import { Computed, ComputedValue, ComputedValues, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { PropertyTransfer, resolveProperties, transferProperties } from "./rpc";
+import { PropertyTransfer, resolveProperties, serializeAllProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
+const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 /**
@@ -130,8 +131,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  */
 export function registerResourceOutputs(res: Resource, outputs: ComputedValues) {
     // Produce the "extra" values, if any, that we'll use in the RPC call.
-    const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(undefined, `completeResource`, outputs, undefined));
+    const transfer = debuggablePromise(serializeAllProperties(`completeResource`, outputs));
 
     // Now run the operation. Note that we explicitly do not serialize output registration with respect to other
     // resource operations, as outputs may depend on properties of other resources that will not resolve until
@@ -141,7 +141,7 @@ export function registerResourceOutputs(res: Resource, outputs: ComputedValues) 
         // The registration could very well still be taking place, so we will need to wait for its URN.  Additionally,
         // the output properties might have come from other resources, so we must await those too.
         const urn: URN = await res.urn;
-        const outputsObj: any = (await transfer).obj;
+        const outputsObj = gstruct.Struct.fromJavaScript(await transfer);
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
 
