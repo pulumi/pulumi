@@ -98,12 +98,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 stable = resp.getStable();
 
                 const stablesList: string[] | undefined = resp.getStablesList();
-                if (stablesList) {
-                    stables = new Set<string>();
-                    for (const sta of stablesList) {
-                        stables.add(sta);
-                    }
-                }
+                stables = new Set<string>(stablesList);
             }
             else {
                 // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
