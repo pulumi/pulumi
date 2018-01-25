@@ -20,15 +20,12 @@ export function invoke(tok: string, props: ComputedValues): Promise<any> {
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     const invokeError: Error = new Error(`Invoke of '${tok}' failed`);
 
-    // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
-    const transfer = debuggablePromise(
-        serializeAllProperties(`invoke:${tok}`, props));
-
     const done: () => void = rpcKeepAlive();
     return new Promise<any>(async (resolve, reject) => {
         // Wait for all values to be available, and then perform the RPC.
         try {
-            const obj = gstruct.Struct.fromJavaScript(await transfer);
+            const serialized = await serializeAllProperties(`invoke:${tok}`, props);
+            const obj = gstruct.Struct.fromJavaScript(serialized);
             log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
             // Fetch the monitor and make an RPC request.
