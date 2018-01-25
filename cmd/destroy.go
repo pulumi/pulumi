@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -14,6 +15,8 @@ func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var stack string
 	var yes bool
+
+	var message string
 
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
@@ -48,9 +51,14 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
+			m, err := getUpdateMetadata(message, root)
+			if err != nil {
+				return errors.Wrap(err, "gathering environment metadata")
+			}
+
 			if preview || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
-				return s.Destroy(pkg, root, debug, engine.UpdateOptions{
+				return s.Destroy(pkg, root, debug, m, engine.UpdateOptions{
 					Analyzers:            analyzers,
 					DryRun:               preview,
 					Color:                color.Colorization(),
@@ -75,6 +83,10 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with the destruction anyway")
+
+	cmd.PersistentFlags().StringVarP(
+		&message, "message", "m", "",
+		"Optional message to associate with the destroy operation")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().VarP(

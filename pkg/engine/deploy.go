@@ -87,8 +87,9 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 		defer done()
 
 		if opts.DryRun {
-			// If a dry run, just print the plan, don't actually carry out the deployment. (Reporting 0 changes.)
-			if err := printPlan(result); err != nil {
+			// If a dry run, just print the plan, don't actually carry out the deployment.
+			resourceChanges, err = printPlan(result)
+			if err != nil {
 				return resourceChanges, err
 			}
 		} else {
@@ -232,9 +233,6 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	if err != nil {
 		return err
 	}
-	if err = mutation.End(step.Iterator().Snap()); err != nil {
-		return err
-	}
 
-	return nil
+	return mutation.End(step.Iterator().Snap())
 }
