@@ -30,36 +30,30 @@ export function invoke(tok: string, props: ComputedValues): Promise<any> {
 
             // Fetch the monitor and make an RPC request.
             const monitor: any = getMonitor();
-            if (monitor) {
-                const req = new resproto.InvokeRequest();
-                req.setTok(tok);
-                req.setArgs(obj);
-                const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {
-                    monitor.invoke(req, (err: Error, innerResponse: any) => {
-                        log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
-                        if (err) {
-                            innerReject(err);
-                        }
-                        else {
-                            innerResolve(innerResponse);
-                        }
-                    });
-                }));
 
-                // If there were failures, propagate them.
-                const failures: any = resp.getFailuresList();
-                if (failures && failures.length) {
-                    throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
-                }
+            const req = new resproto.InvokeRequest();
+            req.setTok(tok);
+            req.setArgs(obj);
+            const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {
+                monitor.invoke(req, (err: Error, innerResponse: any) => {
+                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                    if (err) {
+                        innerReject(err);
+                    }
+                    else {
+                        innerResolve(innerResponse);
+                    }
+                });
+            }));
 
-                // Finally propagate any other properties that were given to us as outputs.
-                resolve(deserializeProperties(resp.getReturn()));
+            // If there were failures, propagate them.
+            const failures: any = resp.getFailuresList();
+            if (failures && failures.length) {
+                throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
             }
-            else {
-                // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-                log.debug(`Not sending Invoke RPC to monitor -- it doesn't exist: invoke tok=${tok}`);
-                resolve(undefined);
-            }
+
+            // Finally propagate any other properties that were given to us as outputs.
+            resolve(deserializeProperties(resp.getReturn()));
         }
         catch (err) {
             reject(err);
