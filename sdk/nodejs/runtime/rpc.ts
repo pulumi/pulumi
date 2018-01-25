@@ -13,8 +13,12 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * PropertyTransfer is the result of transferring all properties.
  */
 export interface PropertyTransfer {
-    obj: {[key: string]: any}; // the bag of input properties after awaiting them.
-    resolvers: {[key: string]: ((v: any) => void)}; // a map of resolvers for output properties that will resolve.
+    // the bag of input properties after awaiting them.
+    obj: {[key: string]: any};
+
+    // a map of resolvers for output properties.  they will be resolved post-RPC call to
+    // registerResource with the values that the runtime engine returns.
+    resolvers: {[key: string]: (v: any) => void};
 }
 
 /**
