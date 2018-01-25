@@ -43,7 +43,7 @@ export abstract class Resource {
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        registerResource(this, t, name, custom, props, opts);
+        registerResource(this, t, name, custom, props || {}, opts || {});
     }
 }
 

@@ -22,67 +22,33 @@ export interface PropertyTransfer {
  * proto.google.protobuf.Struct out of a resource's properties.
  */
 export function transferProperties(
-        onto: any | undefined, label: string, props: ComputedValues | undefined,
-        dependsOn: Resource[] | undefined): Promise<PropertyTransfer> {
-    // First set up an array of all promises that we will await on before completing the transfer.
-    const eventuals: Promise<any>[] = [];
-
-    // If the dependsOn array is present, make sure we wait on those.
-    if (dependsOn) {
-        for (const dep of dependsOn) {
-            eventuals.push(dep.urn);
+        onto: Resource, label: string, props: ComputedValues, dependsOn: Resource[]): Promise<PropertyTransfer> {
+    const resolvers: {[key: string]: (v: any) => void} = {};
+    for (const k of Object.keys(props)) {
+        // Skip "id" and "urn", since we handle those specially.
+        if (k === "id" || k === "urn") {
+            continue;
         }
-    }
 
-    // Set up an object that will hold the serialized object properties and then serialize them.
-    const obj: any = {};
-    const resolvers: {[key: string]: ((v: any) => void)} = {};
-    if (props) {
-        for (const k of Object.keys(props)) {
-            // Skip "id" and "urn", since we handle those specially.
-            if (k === "id" || k === "urn") {
-                continue;
-            }
-
-            // Create a property to wrap the value and store it on the resource.
-            if (onto) {
-                if (onto.hasOwnProperty(k)) {
-                    throw new Error(`Property '${k}' is already initialized on target '${label}`);
-                }
-                onto[k] =
-                    debuggablePromise(
-                        new Promise<any>((resolve) => { resolvers[k] = resolve; }),
-                        `transferProperty(${label}, ${k}, ${props[k]})`,
-                    );
-            }
-
-            // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
-            // after all properties have settled, and we may need to wait for them before this transfer finishes.
-            if (props[k] !== undefined) {
-                const serialize: Promise<any> = serializeProperty(props[k], `${label}.${k}`).then(
-                    (v: any) => {
-                        assert(!(v instanceof Promise),
-                            `Expected value '${label}.${k}' to settle; instead, it's a promise`);
-                        obj[k] = v;
-                    },
-                    (err: Error) => {
-                        throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
-                    },
-                );
-                eventuals.push(
-                    debuggablePromise(serialize, `serializeProperty(${label}, ${k}, ${props[k]})`));
-            }
+        // Create a property to wrap the value and store it on the resource.
+        if (onto.hasOwnProperty(k)) {
+            throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
+        (<any>onto)[k] =
+            debuggablePromise(
+                new Promise<any>(resolve => resolvers[k] = resolve),
+                `transferProperty(${label}, ${k}, ${props[k]})`);
     }
 
     // Now return a promise that resolves when all assignments above have settled.  Note that we do not
     // use await here, because we don't actually want to block the above assignments of properties.
-    return debuggablePromise(Promise.all(eventuals).then(() => {
-        return {
-            obj: gstruct.Struct.fromJavaScript(obj),
-            resolvers: resolvers,
-        };
-    }));
+    const allUrns = Promise.all(dependsOn.map(d => d.urn));
+    const serializedPropsPromise = serializeAllProperties(label, props);
+
+    return debuggablePromise(Promise.all([allUrns, serializedPropsPromise]).then(([_, serializedProps]) => ({
+        obj: serializedProps,
+        resolvers: resolvers,
+    })));
 }
 
 /**

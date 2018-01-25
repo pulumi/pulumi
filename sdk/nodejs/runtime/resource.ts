@@ -15,7 +15,7 @@ const resproto = require("../proto/resource_pb.js");
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: ComputedValues | undefined, opts: ResourceOptions | undefined): void {
+                                 props: ComputedValues, opts: ResourceOptions): void {
     opts = opts || {};
 
     const label = `resource:${name}[${t}]`;
@@ -40,7 +40,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
     const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(res, label, props, opts.dependsOn), `transferProperties(${label})`);
+        transferProperties(res, label, props, opts.dependsOn || []), `transferProperties(${label})`);
 
     // Now run the operation, serializing the invocation if necessary.
     const opLabel = `monitor.registerResource(${label})`;
@@ -57,7 +57,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         let stable: boolean = false;
         let stables: Set<string> | undefined = undefined;
         try {
-            const obj: any = result.obj;
+            const obj = gstruct.Struct.fromJavaScript(result.obj);
             log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
                 (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
