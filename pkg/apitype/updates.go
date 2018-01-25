@@ -1,6 +1,10 @@
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+
 package apitype
 
-import "github.com/pulumi/pulumi/pkg/diag/colors"
+import (
+	"github.com/pulumi/pulumi/pkg/diag/colors"
+)
 
 // ConfigValue describes a single (possibly secret) configuration value.
 type ConfigValue struct {
@@ -28,11 +32,14 @@ type UpdateProgramRequest struct {
 
 	// Configuration values.
 	Config map[string]ConfigValue `json:"config"`
+
+	Metadata UpdateMetadata `json:"metadata"`
 }
 
-// UpdateOptions is the set of operations for configuring the output of an update. Should mirror
-// engine.UpdateOptions exactly; we put it in this package to add flexibility in case there is a
-// breaking change in the engine-type.
+// UpdateOptions is the set of operations for configuring the output of an update.
+//
+// Should generally mirror engine.UpdateOptions, but we clone it in this package to add
+// flexibility in case there is a breaking change in the engine-type.
 type UpdateOptions struct {
 	Analyzers            []string            `json:"analyzers"`
 	Color                colors.Colorization `json:"color"`
@@ -42,6 +49,18 @@ type UpdateOptions struct {
 	ShowReplacementSteps bool                `json:"showReplacementSteps"`
 	ShowSames            bool                `json:"showNames"`
 	Summary              bool                `json:"summary"`
+}
+
+// UpdateMetadata describes optional metadata about an update.
+//
+// Should generally mirror backend.UpdateMetadata, but we clone it in this package to add
+// flexibility in case there is a breaking change in the backend-type.
+type UpdateMetadata struct {
+	// Message is an optional message associated with the update.
+	Message string `json:"message"`
+	// Environment contains optional data from the deploying environment. e.g. the current
+	// source code control commit information.
+	Environment map[string]string `json:"environment"`
 }
 
 // UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go

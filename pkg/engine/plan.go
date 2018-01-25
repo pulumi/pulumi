@@ -158,7 +158,7 @@ func (res *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(result *planResult) error {
+func printPlan(result *planResult) (ResourceChanges, error) {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
 	printPrelude(&prelude, result, true)
@@ -170,20 +170,21 @@ func printPlan(result *planResult) error {
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
-		return errors.Errorf("An error occurred while advancing the preview: %v", err)
+		return nil, errors.Errorf("An error occurred while advancing the preview: %v", err)
 	}
 
 	if !result.Options.Diag.Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-		return errors.New("One or more errors occurred during this preview")
+		return nil, errors.New("One or more errors occurred during this preview")
 	}
 
 	// Print a summary of operation counts.
 	var summary bytes.Buffer
-	printChangeSummary(&summary, ResourceChanges(actions.Ops), true)
+	changes := ResourceChanges(actions.Ops)
+	printChangeSummary(&summary, changes, true)
 	result.Options.Events <- stdOutEventWithColor(&summary, result.Options.Color)
-	return nil
+	return changes, nil
 }
 
 // shouldShow returns true if a step should show in the output.
