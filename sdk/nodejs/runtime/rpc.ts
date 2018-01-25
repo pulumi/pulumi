@@ -14,11 +14,11 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  */
 export interface PropertyTransfer {
     // the bag of input properties after awaiting them.
-    obj: {[key: string]: any};
+    obj: Record<string, any>;
 
     // a map of resolvers for output properties.  they will be resolved post-RPC call to
     // registerResource with the values that the runtime engine returns.
-    resolvers: {[key: string]: (v: any) => void};
+    resolvers: Record<string, (v: any) => void>;
 }
 
 /**
@@ -40,7 +40,8 @@ export interface PropertyTransfer {
  */
 export function transferProperties(
         onto: Resource, label: string, props: ComputedValues, dependsOn: Resource[]): Promise<PropertyTransfer> {
-    const resolvers: {[key: string]: (v: any) => void} = {};
+
+    const resolvers: Record<string, (v: any) => void> = {};
     for (const k of Object.keys(props)) {
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
@@ -72,12 +73,12 @@ export function transferProperties(
  * transferProperties stores the properties on the resource object and returns a gRPC serializable
  * proto.google.protobuf.Struct out of a resource's properties.
  */
-export function serializeAllProperties(label: string, props: ComputedValues): Promise<{[key: string]: any}> {
+export function serializeAllProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
     // First set up an array of all promises that we will await on before completing the transfer.
     const eventuals: Promise<any>[] = [];
 
     // Set up an object that will hold the serialized object properties and then serialize them.
-    const obj: {[key: string]: any} = {};
+    const obj: Record<string, any> = {};
 
     for (const k of Object.keys(props)) {
         // Skip "id" and "urn", since we handle those specially.
@@ -149,7 +150,7 @@ export function resolveProperties(res: Resource, transfer: PropertyTransfer,
             // If there is no property yet, zero initialize it.  This ensures unexpected properties are
             // still made available on the object.  This isn't ideal, because any code running prior to the actual
             // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
-            (res as any)[k] = debuggablePromise(new Promise<any>((r) => { resolve = r; }));
+            (res as any)[k] = debuggablePromise(new Promise<any>(r => resolve = r));
         }
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
@@ -311,7 +312,7 @@ function deserializeProperty(prop: any): any {
                     }
                 case specialArchiveSig:
                     if (prop["assets"]) {
-                        const assets: {[name: string]: asset.Asset} = {};
+                        const assets: Record<string, asset.Asset> = {};
                         for (const name of Object.keys(prop["assets"])) {
                             const a = deserializeProperty(prop["assets"][name]);
                             if (!(a instanceof asset.Asset) && !(a instanceof asset.Archive)) {
