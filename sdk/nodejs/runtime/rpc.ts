@@ -10,79 +10,53 @@ import { excessiveDebugOutput, options } from "./settings";
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 /**
- * PropertyTransfer is the result of transferring all properties.
+ * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
+ * the 'props' input/output props.  *Importantly* all these promises are completely unresolved. This
+ * is because we don't want anyone to observe the values of these properties until the rpc call to
+ * registerResource actually returns.  This is because the registerResource call may actually
+ * override input values, and we only want people to see the final value.
+ *
+ * The result of this call (beyond the stateful changes to 'onto') is the set of Promise resolvers
+ * that will be called post-RPC call.  When the registerResource RPC call comes back, the values
+ * that the engine actualy produced will be used to resolve all the unresolved promised placed on
+ * 'onto'.
  */
-export interface PropertyTransfer {
-    obj: any; // the bag of input properties after awaiting them.
-    resolvers: {[key: string]: ((v: any) => void)}; // a map of resolvers for output properties that will resolve.
+export function transferProperties(
+        onto: Resource, label: string, props: ComputedValues): Record<string, (v: any) => void> {
+
+    const resolvers: Record<string, (v: any) => void> = {};
+    for (const k of Object.keys(props)) {
+        // Skip "id" and "urn", since we handle those specially.
+        if (k === "id" || k === "urn") {
+            continue;
+        }
+
+        // Create a property to wrap the value and store it on the resource.
+        if (onto.hasOwnProperty(k)) {
+            throw new Error(`Property '${k}' is already initialized on target '${label}`);
+        }
+        (<any>onto)[k] =
+            debuggablePromise(
+                new Promise<any>(resolve => resolvers[k] = resolve),
+                `transferProperty(${label}, ${k}, ${props[k]})`);
+    }
+
+    return resolvers;
 }
 
 /**
- * transferProperties stores the properties on the resource object and returns a gRPC serializable
- * proto.google.protobuf.Struct out of a resource's properties.
+ * serializeAllProperties walks the props object passed in, awaiting all interior promises,
+ * creating a reaosnable POJO object that can be remoted over to registerResource.
  */
-export function transferProperties(
-        onto: any | undefined, label: string, props: ComputedValues | undefined,
-        dependsOn: Resource[] | undefined): Promise<PropertyTransfer> {
-    // First set up an array of all promises that we will await on before completing the transfer.
-    const eventuals: Promise<any>[] = [];
-
-    // If the dependsOn array is present, make sure we wait on those.
-    if (dependsOn) {
-        for (const dep of dependsOn) {
-            eventuals.push(dep.urn);
+export async function serializeProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
+    const result: Record<string, any> = {};
+    for (const k of Object.keys(props)) {
+        if (k !== "id" && k !== "urn" && props[k] !== undefined) {
+            result[k] = await serializeProperty(props[k], `${label}.${k}`);
         }
     }
 
-    // Set up an object that will hold the serialized object properties and then serialize them.
-    const obj: any = {};
-    const resolvers: {[key: string]: ((v: any) => void)} = {};
-    if (props) {
-        for (const k of Object.keys(props)) {
-            // Skip "id" and "urn", since we handle those specially.
-            if (k === "id" || k === "urn") {
-                continue;
-            }
-
-            // Create a property to wrap the value and store it on the resource.
-            if (onto) {
-                if (onto.hasOwnProperty(k)) {
-                    throw new Error(`Property '${k}' is already initialized on target '${label}`);
-                }
-                onto[k] =
-                    debuggablePromise(
-                        new Promise<any>((resolve) => { resolvers[k] = resolve; }),
-                        `transferProperty(${label}, ${k}, ${props[k]})`,
-                    );
-            }
-
-            // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
-            // after all properties have settled, and we may need to wait for them before this transfer finishes.
-            if (props[k] !== undefined) {
-                const serialize: Promise<any> = serializeProperty(props[k], `${label}.${k}`).then(
-                    (v: any) => {
-                        assert(!(v instanceof Promise),
-                            `Expected value '${label}.${k}' to settle; instead, it's a promise`);
-                        obj[k] = v;
-                    },
-                    (err: Error) => {
-                        throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
-                    },
-                );
-                eventuals.push(
-                    debuggablePromise(serialize, `serializeProperty(${label}, ${k}, ${props[k]})`));
-            }
-        }
-    }
-
-    // Now return a promise that resolves when all assignments above have settled.  Note that we do not
-    // use await here, because we don't actually want to block the above assignments of properties.
-    return debuggablePromise(Promise.all(eventuals).then(() => {
-        return {
-            obj: gstruct.Struct.fromJavaScript(obj),
-            resolvers: resolvers,
-        };
-    }));
+    return result;
 }
 
 /**
@@ -101,9 +75,10 @@ export function deserializeProperties(outputsStruct: any): any {
  * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
  * resource's matching properties to the values inside.
  */
-export function resolveProperties(res: Resource, transfer: PropertyTransfer,
-                                  t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
-                                  stable: boolean, stables: Set<string> | undefined): void {
+export function resolveProperties(
+    res: Resource, resolvers: Record<string, (v: any) => void>,
+    t: string, name: string, inputs: ComputedValues, outputsStruct: any,
+    stable: boolean, stables: Set<string>): void {
 
     // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same
     // property exists in the inputs and outputs states, the output wins.
@@ -120,17 +95,17 @@ export function resolveProperties(res: Resource, transfer: PropertyTransfer,
         }
 
         // Otherwise, unmarshal the value, and store it on the resource object.
-        let resolve: (v: any) => void | undefined = transfer.resolvers[k];
+        let resolve = resolvers[k];
         if (resolve === undefined) {
             // If there is no property yet, zero initialize it.  This ensures unexpected properties are
             // still made available on the object.  This isn't ideal, because any code running prior to the actual
             // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
-            (res as any)[k] = debuggablePromise(new Promise<any>((r) => { resolve = r; }));
+            (res as any)[k] = debuggablePromise(new Promise<any>(r => resolve = r));
         }
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know if it's final.
-            if (!options.dryRun || stable || (stables && stables.has(k))) {
+            if (!options.dryRun || stable || stables.has(k)) {
                 resolve(props[k]);
             }
             else {
@@ -145,13 +120,13 @@ export function resolveProperties(res: Resource, transfer: PropertyTransfer,
 
     // Now latch all properties in case the inputs did not contain any values.  If we're doing a dry-run, we won't
     // actually propagate the provisional state, because we cannot know for sure that it is final yet.
-    for (const k of Object.keys(transfer.resolvers)) {
+    for (const k of Object.keys(resolvers)) {
         if (!props.hasOwnProperty(k)) {
             if (!options.dryRun) {
                 throw new Error(
                     `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
             }
-            transfer.resolvers[k](undefined);
+            resolvers[k](undefined);
         }
     }
 }
@@ -184,8 +159,10 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
         }
         return unknownComputedValue;
     }
-    else if (prop === null || typeof prop === "boolean" ||
-            typeof prop === "number" || typeof prop === "string") {
+    else if (prop === null ||
+             typeof prop === "boolean" ||
+             typeof prop === "number" ||
+             typeof prop === "string") {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
         }
@@ -212,15 +189,10 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
-            [specialSigKey]: (prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig),
+            [specialSigKey]: prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig,
         };
-        for (const k of Object.keys(prop)) {
-            if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: asset.${k}`);
-            }
-            obj[k] = await serializeProperty((<any>prop)[k], `asset<${ctx}>.${k}`);
-        }
-        return obj;
+
+        return await serializeAllKeys(prop, obj);
     }
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
@@ -232,13 +204,17 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx);
     }
     else {
-        const obj: any = {};
-        for (const k of Object.keys(prop)) {
+        return await serializeAllKeys(prop, {});
+    }
+
+    async function serializeAllKeys(innerProp: any, obj: any) {
+        for (const k of Object.keys(innerProp)) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
-            obj[k] = await serializeProperty(prop[k], `${ctx}.${k}`);
+            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`);
         }
+
         return obj;
     }
 }
@@ -286,7 +262,7 @@ function deserializeProperty(prop: any): any {
                     }
                 case specialArchiveSig:
                     if (prop["assets"]) {
-                        const assets: {[name: string]: asset.Asset} = {};
+                        const assets: Record<string, asset.Asset> = {};
                         for (const name of Object.keys(prop["assets"])) {
                             const a = deserializeProperty(prop["assets"][name]);
                             if (!(a instanceof asset.Asset) && !(a instanceof asset.Archive)) {
