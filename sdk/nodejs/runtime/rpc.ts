@@ -77,7 +77,7 @@ export function deserializeProperties(outputsStruct: any): any {
  */
 export function resolveProperties(
     res: Resource, resolvers: Record<string, (v: any) => void>,
-    t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
+    t: string, name: string, inputs: ComputedValues, outputsStruct: any,
     stable: boolean, stables: Set<string>): void {
 
     // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same

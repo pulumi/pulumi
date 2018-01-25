@@ -80,7 +80,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             req.setObject(obj);
             req.setProtect(opts.protect);
 
-            const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
+            const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
                 monitor.registerResource(req, (err: Error, innerResponse: any) => {
                     log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
                         `err: ${err}, resp: ${innerResponse}`);
@@ -91,8 +91,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     else {
                         resolve(innerResponse);
                     }
-                });
-            }), opLabel);
+                })), opLabel);
 
             urn = resp.getUrn();
             id = resp.getId();
@@ -103,12 +102,14 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             stables = new Set<string>(stablesList);
         }
         finally {
-            // Always make sure to resolve the URN property, even if it is undefined due to a missing monitor.
+            // Always make sure to resolve the URN property, even if it is undefined due to a
+            // missing monitor.
             resolveURN(urn);
 
-            // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
-            // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).  If it isn't
-            // available, ensure the ID gets resolved, just resolve it to undefined (indicating it isn't known).
+            // If an ID is present, then it's safe to say it's final, because the resource planner
+            // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
+            // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
+            // it to undefined (indicating it isn't known).
             if (resolveID) {
                 resolveID(id);
             }
