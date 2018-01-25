@@ -140,29 +140,28 @@ export function registerResourceOutputs(res: Resource, outputs: ComputedValues) 
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
-        if (monitor) {
-            const req = new resproto.RegisterResourceOutputsRequest();
-            req.setUrn(urn);
-            req.setOutputs(outputsObj);
-
-            await debuggablePromise(new Promise((resolve, reject) => {
-                monitor.registerResourceOutputs(req, (err: Error, innerResponse: any) => {
-                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
-                        `err: ${err}, resp: ${innerResponse}`);
-                    if (err) {
-                        log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
-                        reject(err);
-                    }
-                    else {
-                        resolve();
-                    }
-                });
-            }), opLabel);
-        }
-        else {
+        if (!monitor) {
             // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
             log.warn(`Not sending RPC to monitor -- it doesn't exist: urn=${urn}`);
+            return;
         }
+
+        const req = new resproto.RegisterResourceOutputsRequest();
+        req.setUrn(urn);
+        req.setOutputs(outputsObj);
+
+        await debuggablePromise(new Promise((resolve, reject) =>
+            monitor.registerResourceOutputs(req, (err: Error, innerResponse: any) => {
+                log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
+                    `err: ${err}, resp: ${innerResponse}`);
+                if (err) {
+                    log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
+                    reject(err);
+                }
+                else {
+                    resolve();
+                }
+            })), opLabel);
     }, false);
 }
 
