@@ -3,7 +3,7 @@
 import * as log from "../log";
 import { Computed, ComputedValue, ComputedValues, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { PropertyTransfer, resolveProperties, serializeAllProperties, transferProperties } from "./rpc";
+import { resolveProperties, serializeProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -38,17 +38,18 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         );
     }
 
-    // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
-    const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(res, label, props, opts.dependsOn || []), `transferProperties(${label})`);
+    // Now "transfer" all input properties into unresolved Promises on res.  This way,
+    // this resource will look like it has all its output properties to anyone it is
+    // passed to.  However, those promises won't actually resolve until the registerResource
+    // RPC returns
+    const resolvers = transferProperties(res, label, props);
 
     // Now run the operation, serializing the invocation if necessary.
     const opLabel = `monitor.registerResource(${label})`;
     runAsyncResourceOp(opLabel, async () => {
-        // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
-        // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
-        // time, we want to give the illusion of non-blocking code, so we return immediately.
-        const result: PropertyTransfer = await transfer;
+        // Before we can proceed, all our dependencies must be finished.
+        const dependsOn = opts.dependsOn || [];
+        await debuggablePromise(Promise.all(dependsOn.map(d => d.urn)), `dependsOn(${label})`);
 
         // Make sure to assign all of these properties.
         let urn: URN | undefined = undefined;
@@ -57,7 +58,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         let stable: boolean = false;
         let stables: Set<string> | undefined = undefined;
         try {
-            const obj = gstruct.Struct.fromJavaScript(result.obj);
+            const obj = gstruct.Struct.fromJavaScript(await serializeProperties(label, props));
             log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
                 (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
@@ -121,7 +122,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             }
 
             // Propagate any other properties that were given to us as outputs.
-            resolveProperties(res, result, t, name, props, propsStruct, stable, stables);
+            resolveProperties(res, resolvers, t, name, props, propsStruct, stable, stables);
         }
     });
 }
@@ -139,8 +140,8 @@ export function registerResourceOutputs(res: Resource, outputs: ComputedValues) 
         // The registration could very well still be taking place, so we will need to wait for its URN.  Additionally,
         // the output properties might have come from other resources, so we must await those too.
         const urn: URN = await res.urn;
-        const serialized = await serializeAllProperties(`completeResource`, outputs);
-        const outputsObj = gstruct.Struct.fromJavaScript(await serialized);
+        const outputsObj = gstruct.Struct.fromJavaScript(
+            await serializeProperties(`completeResource`, outputs));
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
 

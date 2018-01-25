@@ -3,7 +3,7 @@
 import * as log from "../log";
 import { ComputedValues } from "../resource";
 import { debuggablePromise } from "./debuggable";
-import { deserializeProperties, PropertyTransfer, serializeAllProperties } from "./rpc";
+import { deserializeProperties, serializeProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -24,8 +24,8 @@ export function invoke(tok: string, props: ComputedValues): Promise<any> {
     return new Promise<any>(async (resolve, reject) => {
         // Wait for all values to be available, and then perform the RPC.
         try {
-            const serialized = await serializeAllProperties(`invoke:${tok}`, props);
-            const obj = gstruct.Struct.fromJavaScript(serialized);
+            const obj = gstruct.Struct.fromJavaScript(
+                await serializeProperties(`invoke:${tok}`, props));
             log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
             // Fetch the monitor and make an RPC request.

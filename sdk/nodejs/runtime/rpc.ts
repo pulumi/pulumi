@@ -10,36 +10,19 @@ import { excessiveDebugOutput, options } from "./settings";
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 /**
- * PropertyTransfer is the result of transferring all properties.
- */
-export interface PropertyTransfer {
-    // the bag of input properties after awaiting them.
-    obj: Record<string, any>;
-
-    // a map of resolvers for output properties.  they will be resolved post-RPC call to
-    // registerResource with the values that the runtime engine returns.
-    resolvers: Record<string, (v: any) => void>;
-}
-
-/**
- * transferProperties does two important pieces of work.
- *
- * First, it sets up the 'onto' resource  so that it has Promise-valued properties for all the
- * 'props' input/output props.  *Importantly* all these promises are completely unresolved.  This is
- * because we don't want anyone to observe the values of these properties until the rpc call to
+ * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
+ * the 'props' input/output props.  *Importantly* all these promises are completely unresolved. This
+ * is because we don't want anyone to observe the values of these properties until the rpc call to
  * registerResource actually returns.  This is because the registerResource call may actually
  * override input values, and we only want people to see the final value.
  *
- * Second, it serializes (i.e. awaits all interior promises) of 'props' creating a raw JSON value
- * that can be sent over RPC to the resource monitor.
- *
- * The result of this call (beyond the stateful changes to 'onto') are the JSON object that can
- * be remoted, and the set of Promise resolvers that will be called post-RPC call.  When the
- * registerResource RPC call comes back, the values that the engine actualy produced will be
- * used to resolve all the unresolved promised placed on 'onto'.
+ * The result of this call (beyond the stateful changes to 'onto') is the set of Promise resolvers
+ * that will be called post-RPC call.  When the registerResource RPC call comes back, the values
+ * that the engine actualy produced will be used to resolve all the unresolved promised placed on
+ * 'onto'.
  */
 export function transferProperties(
-        onto: Resource, label: string, props: ComputedValues, dependsOn: Resource[]): Promise<PropertyTransfer> {
+        onto: Resource, label: string, props: ComputedValues): Record<string, (v: any) => void> {
 
     const resolvers: Record<string, (v: any) => void> = {};
     for (const k of Object.keys(props)) {
@@ -58,22 +41,14 @@ export function transferProperties(
                 `transferProperty(${label}, ${k}, ${props[k]})`);
     }
 
-    // Now return a promise that resolves when all assignments above have settled.  Note that we do not
-    // use await here, because we don't actually want to block the above assignments of properties.
-    const allUrns = Promise.all(dependsOn.map(d => d.urn));
-    const serializedPropsPromise = serializeAllProperties(label, props);
-
-    return debuggablePromise(Promise.all([allUrns, serializedPropsPromise]).then(([_, serializedProps]) => ({
-        obj: serializedProps,
-        resolvers: resolvers,
-    })));
+    return resolvers;
 }
 
 /**
  * serializeAllProperties walks the props object passed in, awaiting all interior promises,
  * creating a reaosnable POJO object that can be remoted over to registerResource.
  */
-export async function serializeAllProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
+export async function serializeProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (k !== "id" && k !== "urn" && props[k] !== undefined) {
@@ -100,9 +75,10 @@ export function deserializeProperties(outputsStruct: any): any {
  * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
  * resource's matching properties to the values inside.
  */
-export function resolveProperties(res: Resource, transfer: PropertyTransfer,
-                                  t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
-                                  stable: boolean, stables: Set<string> | undefined): void {
+export function resolveProperties(
+    res: Resource, resolvers: Record<string, (v: any) => void>,
+    t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
+    stable: boolean, stables: Set<string> | undefined): void {
 
     // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same
     // property exists in the inputs and outputs states, the output wins.
@@ -119,7 +95,7 @@ export function resolveProperties(res: Resource, transfer: PropertyTransfer,
         }
 
         // Otherwise, unmarshal the value, and store it on the resource object.
-        let resolve: (v: any) => void | undefined = transfer.resolvers[k];
+        let resolve = resolvers[k];
         if (resolve === undefined) {
             // If there is no property yet, zero initialize it.  This ensures unexpected properties are
             // still made available on the object.  This isn't ideal, because any code running prior to the actual
@@ -144,13 +120,13 @@ export function resolveProperties(res: Resource, transfer: PropertyTransfer,
 
     // Now latch all properties in case the inputs did not contain any values.  If we're doing a dry-run, we won't
     // actually propagate the provisional state, because we cannot know for sure that it is final yet.
-    for (const k of Object.keys(transfer.resolvers)) {
+    for (const k of Object.keys(resolvers)) {
         if (!props.hasOwnProperty(k)) {
             if (!options.dryRun) {
                 throw new Error(
                     `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
             }
-            transfer.resolvers[k](undefined);
+            resolvers[k](undefined);
         }
     }
 }
