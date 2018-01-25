@@ -10,16 +10,15 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 /**
- * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs can be a bag of
- * computed values (Ts or Promise<T>s), and the result is a Promise<any> that resolves when the invoke finishes.
+ * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
+ * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
+ * resolves when the invoke finishes.
  */
 export async function invoke(tok: string, props: ComputedValues): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
-    // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
-    const invokeError: Error = new Error(`Invoke of '${tok}' failed`);
-
+    // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
         const obj = gstruct.Struct.fromJavaScript(
