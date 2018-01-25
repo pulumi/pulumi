@@ -64,7 +64,10 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
             // Fetch the monitor and make an RPC request.
             const monitor: any = getMonitor();
-            if (monitor) {
+            if (!monitor) {
+                // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
+                log.warn(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
+            } else {
                 let parentURN: URN | undefined;
                 if (opts && opts.parent) {
                     parentURN = await opts.parent.urn;
@@ -99,10 +102,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
                 const stablesList: string[] | undefined = resp.getStablesList();
                 stables = new Set<string>(stablesList);
-            }
-            else {
-                // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-                log.warn(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
             }
         }
         finally {
