@@ -23,7 +23,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
-    let resolveURN: ((urn: URN | undefined) => void) | undefined;
+    let resolveURN: (urn: URN | undefined) => void;
     (res as any).urn = debuggablePromise(
         new Promise<URN | undefined>((resolve) => { resolveURN = resolve; }),
         `resolveURN(${label})`,
@@ -107,7 +107,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         }
         finally {
             // Always make sure to resolve the URN property, even if it is undefined due to a missing monitor.
-            resolveURN!(urn);
+            resolveURN(urn);
 
             // If an ID is present, then it's safe to say it's final, because the resource planner wouldn't hand
             // it back to us otherwise (e.g., if the resource was being replaced, it would be missing).  If it isn't
