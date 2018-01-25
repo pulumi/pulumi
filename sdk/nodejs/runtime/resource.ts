@@ -48,75 +48,61 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const dependsOn = opts.dependsOn || [];
         await debuggablePromise(Promise.all(dependsOn.map(d => d.urn)), `dependsOn(${label})`);
 
-        // Make sure to assign all of these properties.
-        let urn: URN | undefined;
-        let id: ID | undefined;
-        let propsStruct: any | undefined;
-        let stable = false;
-        let stables = new Set<string>();
-        try {
-            const obj = gstruct.Struct.fromJavaScript(await serializeProperties(label, props));
-            log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
-                (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
+        const obj = gstruct.Struct.fromJavaScript(await serializeProperties(label, props));
+        log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
+            (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
 
-            // Fetch the monitor and make an RPC request.
-            const monitor: any = getMonitor();
-            if (!monitor) {
-                // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-                log.warn(`Not sending RPC to monitor -- it doesn't exist: t=${t}, name=${name}`);
-                return;
-            }
+        // Fetch the monitor and make an RPC request.
+        const monitor: any = getMonitor();
 
-            let parentURN: URN | undefined;
-            if (opts.parent) {
-                parentURN = await opts.parent.urn;
-            }
-
-            const req = new resproto.RegisterResourceRequest();
-            req.setType(t);
-            req.setName(name);
-            req.setParent(parentURN);
-            req.setCustom(custom);
-            req.setObject(obj);
-            req.setProtect(opts.protect);
-
-            const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
-                monitor.registerResource(req, (err: Error, innerResponse: any) => {
-                    log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
-                        `err: ${err}, resp: ${innerResponse}`);
-                    if (err) {
-                        log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
-                        reject(err);
-                    }
-                    else {
-                        resolve(innerResponse);
-                    }
-                })), opLabel);
-
-            urn = resp.getUrn();
-            id = resp.getId();
-            propsStruct = resp.getObject();
-            stable = resp.getStable();
-
-            const stablesList: string[] | undefined = resp.getStablesList();
-            stables = new Set<string>(stablesList);
+        let parentURN: URN | undefined;
+        if (opts.parent) {
+            parentURN = await opts.parent.urn;
         }
-        finally {
-            // Always make sure to resolve the URN property, even if it is undefined due to a
-            // missing monitor.
-            resolveURN(urn);
 
-            // If an ID is present, then it's safe to say it's final, because the resource planner
-            // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
-            // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
-            // it to undefined (indicating it isn't known).
-            if (resolveID) {
-                resolveID(id);
-            }
+        const req = new resproto.RegisterResourceRequest();
+        req.setType(t);
+        req.setName(name);
+        req.setParent(parentURN);
+        req.setCustom(custom);
+        req.setObject(obj);
+        req.setProtect(opts.protect);
 
-            // Propagate any other properties that were given to us as outputs.
-            resolveProperties(res, resolvers, t, name, props, propsStruct, stable, stables);
+        const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
+            monitor.registerResource(req, (err: Error, innerResponse: any) => {
+                log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
+                    `err: ${err}, resp: ${innerResponse}`);
+                if (err) {
+                    log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
+                    reject(err);
+                }
+                else {
+                    resolve(innerResponse);
+                }
+            })), opLabel);
+
+        const urn = resp.getUrn();
+        const id = resp.getId();
+        const propsStruct = resp.getObject();
+        const stable = resp.getStable();
+
+        const stablesList: string[] | undefined = resp.getStablesList();
+        const stables = new Set<string>(stablesList);
+
+        // Always make sure to resolve the URN property, even if it is undefined due to a
+        // missing monitor.
+        resolveURN(urn);
+
+        // If an ID is present, then it's safe to say it's final, because the resource planner
+        // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
+        // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
+        // it to undefined (indicating it isn't known).
+        if (resolveID) {
+            resolveID(id);
         }
+
+        // Propagate any other properties that were given to us as outputs.
+        resolveProperties(res, resolvers, t, name, props, propsStruct, stable, stables);
     });
 }
 
@@ -140,11 +126,6 @@ export function registerResourceOutputs(res: Resource, outputs: ComputedValues) 
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
-        if (!monitor) {
-            // If the monitor doesn't exist, still make sure to resolve all properties to undefined.
-            log.warn(`Not sending RPC to monitor -- it doesn't exist: urn=${urn}`);
-            return;
-        }
 
         const req = new resproto.RegisterResourceOutputsRequest();
         req.setUrn(urn);

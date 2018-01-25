@@ -15,7 +15,7 @@ export interface Options {
     readonly project?: string; // the name of the current project.
     readonly stack?: string; // the name of the current stack being deployed into.
     readonly engine?: Object; // a live connection to the engine, used for logging, etc.
-    readonly monitor?: Object; // a live connection to the resource monitor that tracks deployments.
+    readonly monitor: Object; // a live connection to the resource monitor that tracks deployments.
     readonly parallel?: number; // the degree of parallelism for resource operations (default is serial).
     readonly dryRun?: boolean; // whether we are performing a preview (true) or a real deployment (false).
     readonly includeStackTraces?: boolean; // whether we include full stack traces in resource errors or not.
@@ -24,7 +24,7 @@ export interface Options {
 /**
  * options are the current deployment options being used for this entire session.
  */
-export let options: Options = {
+export let options: Options = <any>{
     dryRun: false,
     includeStackTraces: true,
 };
@@ -44,7 +44,7 @@ export function hasMonitor(): boolean {
 /**
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
-export function getMonitor(): Object | undefined {
+export function getMonitor(): Object {
     if (!configured) {
         configured = true;
         console.warn("warning: Pulumi Fabric monitor is missing; no resources will be created");
