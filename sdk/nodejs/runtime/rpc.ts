@@ -18,8 +18,21 @@ export interface PropertyTransfer {
 }
 
 /**
- * transferProperties stores the properties on the resource object and returns a gRPC serializable
- * proto.google.protobuf.Struct out of a resource's properties.
+ * transferProperties does two important pieces of work.
+ *
+ * First, it sets up the 'onto' resource  so that it has Promise-valued properties for all the
+ * 'props' input/output props.  *Importantly* all these promises are completely unresolved.  This is
+ * because we don't want anyone to observe the values of these properties until the rpc call to
+ * registerResource actually returns.  This is because the registerResource call may actually
+ * override input values, and we only want people to see the final value.
+ *
+ * Second, it serializes (i.e. awaits all interior promises) of 'props' creating a raw JSON value
+ * that can be sent over RPC to the resource monitor.
+ *
+ * The result of this call (beyond the stateful changes to 'onto') are the JSON object that can
+ * be remoted, and the set of Promise resolvers that will be called post-RPC call.  When the
+ * registerResource RPC call comes back, the values that the engine actualy produced will be
+ * used to resolve all the unresolved promised placed on 'onto'.
  */
 export function transferProperties(
         onto: Resource, label: string, props: ComputedValues, dependsOn: Resource[]): Promise<PropertyTransfer> {
