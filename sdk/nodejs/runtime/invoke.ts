@@ -13,54 +13,48 @@ const resproto = require("../proto/resource_pb.js");
  * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs can be a bag of
  * computed values (Ts or Promise<T>s), and the result is a Promise<any> that resolves when the invoke finishes.
  */
-export function invoke(tok: string, props: ComputedValues): Promise<any> {
+export async function invoke(tok: string, props: ComputedValues): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     const invokeError: Error = new Error(`Invoke of '${tok}' failed`);
 
-    const done: () => void = rpcKeepAlive();
-    return new Promise<any>(async (resolve, reject) => {
-        // Wait for all values to be available, and then perform the RPC.
-        try {
-            const obj = gstruct.Struct.fromJavaScript(
-                await serializeProperties(`invoke:${tok}`, props));
-            log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+    const done = rpcKeepAlive();
+    try {
+        const obj = gstruct.Struct.fromJavaScript(
+            await serializeProperties(`invoke:${tok}`, props));
+        log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
-            // Fetch the monitor and make an RPC request.
-            const monitor: any = getMonitor();
+        // Fetch the monitor and make an RPC request.
+        const monitor: any = getMonitor();
 
-            const req = new resproto.InvokeRequest();
-            req.setTok(tok);
-            req.setArgs(obj);
-            const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {
-                monitor.invoke(req, (err: Error, innerResponse: any) => {
-                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
-                    if (err) {
-                        innerReject(err);
-                    }
-                    else {
-                        innerResolve(innerResponse);
-                    }
-                });
-            }));
+        const req = new resproto.InvokeRequest();
+        req.setTok(tok);
+        req.setArgs(obj);
+        const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {
+            monitor.invoke(req, (err: Error, innerResponse: any) => {
+                log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                if (err) {
+                    innerReject(err);
+                }
+                else {
+                    innerResolve(innerResponse);
+                }
+            });
+        }));
 
-            // If there were failures, propagate them.
-            const failures: any = resp.getFailuresList();
-            if (failures && failures.length) {
-                throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
-            }
-
-            // Finally propagate any other properties that were given to us as outputs.
-            resolve(deserializeProperties(resp.getReturn()));
+        // If there were failures, propagate them.
+        const failures: any = resp.getFailuresList();
+        if (failures && failures.length) {
+            throw new Error(`Invoke of '${tok}' failed: ${failures[0].reason} (${failures[0].property})`);
         }
-        catch (err) {
-            reject(err);
-        }
-        finally {
-            done();
-        }
-    });
+
+        // Finally propagate any other properties that were given to us as outputs.
+        return deserializeProperties(resp.getReturn());
+    }
+    finally {
+        done();
+    }
 }
 
