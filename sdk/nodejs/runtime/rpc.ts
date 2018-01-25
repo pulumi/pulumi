@@ -70,44 +70,18 @@ export function transferProperties(
 }
 
 /**
- * transferProperties stores the properties on the resource object and returns a gRPC serializable
- * proto.google.protobuf.Struct out of a resource's properties.
+ * serializeAllProperties walks the props object passed in, awaiting all interior promises,
+ * creating a reaosnable POJO object that can be remoted over to registerResource.
  */
-export function serializeAllProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
-    // First set up an array of all promises that we will await on before completing the transfer.
-    const eventuals: Promise<any>[] = [];
-
-    // Set up an object that will hold the serialized object properties and then serialize them.
-    const obj: Record<string, any> = {};
-
+export async function serializeAllProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
+    const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
-        // Skip "id" and "urn", since we handle those specially.
-        if (k === "id" || k === "urn") {
-            continue;
-        }
-
-        // Now serialize the value and store it in our map.  This operation may return eventuals that resolve
-        // after all properties have settled, and we may need to wait for them before this transfer finishes.
-        if (props[k] !== undefined) {
-            const serialize = serializeProperty(props[k], `${label}.${k}`).then(
-                (v: any) => {
-                    assert(!(v instanceof Promise),
-                        `Expected value '${label}.${k}' to settle; instead, it's a promise`);
-                    obj[k] = v;
-                },
-                (err: Error) => {
-                    throw new Error(`Property '${k}' could not be serialized: ${errorString(err)}`);
-                },
-            );
-            eventuals.push(
-                debuggablePromise(serialize, `serializeProperty(${label}, ${k}, ${props[k]})`));
+        if (k !== "id" && k !== "urn" && props[k] !== undefined) {
+            result[k] = await serializeProperty(props[k], `${label}.${k}`);
         }
     }
 
-    // Now return a promise that resolves when all assignments above have settled.  Note that we do
-    // not use await here, because we don't actually want to block the above assignments of
-    // properties.
-    return Promise.all(eventuals).then(() => obj);
+    return result;
 }
 
 /**
