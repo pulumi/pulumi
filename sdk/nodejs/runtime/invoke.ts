@@ -31,7 +31,7 @@ export async function invoke(tok: string, props: ComputedValues): Promise<any> {
         const req = new resproto.InvokeRequest();
         req.setTok(tok);
         req.setArgs(obj);
-        const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {
+        const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
             monitor.invoke(req, (err: Error, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
@@ -40,8 +40,7 @@ export async function invoke(tok: string, props: ComputedValues): Promise<any> {
                 else {
                     innerResolve(innerResponse);
                 }
-            });
-        }));
+            })));
 
         // If there were failures, propagate them.
         const failures: any = resp.getFailuresList();
