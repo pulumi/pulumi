@@ -3,32 +3,29 @@
 import * as log from "../log";
 import { ComputedValues } from "../resource";
 import { debuggablePromise } from "./debuggable";
-import { deserializeProperties, PropertyTransfer, transferProperties } from "./rpc";
+import { deserializeProperties, serializeProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
+const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 /**
  * invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs can be a bag of
  * computed values (Ts or Promise<T>s), and the result is a Promise<any> that resolves when the invoke finishes.
  */
-export function invoke(tok: string, props: ComputedValues | undefined): Promise<any> {
+export function invoke(tok: string, props: ComputedValues): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     // Pre-allocate an error so we have a clean stack to print even if an asynchronous operation occurs.
     const invokeError: Error = new Error(`Invoke of '${tok}' failed`);
 
-    // Now "transfer" all input properties; this simply awaits any promises and resolves when they all do.
-    const transfer: Promise<PropertyTransfer> = debuggablePromise(
-        transferProperties(undefined, `invoke:${tok}`, props, undefined));
-
     const done: () => void = rpcKeepAlive();
     return new Promise<any>(async (resolve, reject) => {
         // Wait for all values to be available, and then perform the RPC.
         try {
-            const result: PropertyTransfer = await transfer;
-            const obj: any = result.obj;
+            const obj = gstruct.Struct.fromJavaScript(
+                await serializeProperties(`invoke:${tok}`, props));
             log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
             // Fetch the monitor and make an RPC request.
