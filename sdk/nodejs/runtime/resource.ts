@@ -16,7 +16,6 @@ const resproto = require("../proto/resource_pb.js");
  */
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
                                  props: ComputedValues, opts: ResourceOptions): void {
-    opts = opts || {};
 
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
@@ -25,17 +24,15 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // Simply initialize the URN property and get prepared to resolve it later on.
     let resolveURN: (urn: URN | undefined) => void;
     (res as any).urn = debuggablePromise(
-        new Promise<URN | undefined>((resolve) => { resolveURN = resolve; }),
-        `resolveURN(${label})`,
-    );
+        new Promise<URN | undefined>(resolve => resolveURN = resolve),
+        `resolveURN(${label})`);
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID | undefined) => void) | undefined;
     if (custom) {
         (res as any).id = debuggablePromise(
-            new Promise<ID | undefined>((resolve) => { resolveID = resolve; }),
-            `resolveID(${label})`,
-        );
+            new Promise<ID | undefined>(resolve => resolveID = resolve),
+            `resolveID(${label})`);
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
@@ -52,11 +49,11 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         await debuggablePromise(Promise.all(dependsOn.map(d => d.urn)), `dependsOn(${label})`);
 
         // Make sure to assign all of these properties.
-        let urn: URN | undefined = undefined;
-        let id: ID | undefined = undefined;
-        let propsStruct: any | undefined = undefined;
-        let stable: boolean = false;
-        let stables: Set<string> | undefined = undefined;
+        let urn: URN | undefined;
+        let id: ID | undefined;
+        let propsStruct: any | undefined;
+        let stable = false;
+        let stables = new Set<string>();
         try {
             const obj = gstruct.Struct.fromJavaScript(await serializeProperties(label, props));
             log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
@@ -71,7 +68,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             }
 
             let parentURN: URN | undefined;
-            if (opts && opts.parent) {
+            if (opts.parent) {
                 parentURN = await opts.parent.urn;
             }
 
@@ -81,7 +78,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             req.setParent(parentURN);
             req.setCustom(custom);
             req.setObject(obj);
-            req.setProtect(opts && opts.protect);
+            req.setProtect(opts.protect);
 
             const resp: any = await debuggablePromise(new Promise((resolve, reject) => {
                 monitor.registerResource(req, (err: Error, innerResponse: any) => {

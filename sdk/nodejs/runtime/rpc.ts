@@ -78,7 +78,7 @@ export function deserializeProperties(outputsStruct: any): any {
 export function resolveProperties(
     res: Resource, resolvers: Record<string, (v: any) => void>,
     t: string, name: string, inputs: ComputedValues | undefined, outputsStruct: any,
-    stable: boolean, stables: Set<string> | undefined): void {
+    stable: boolean, stables: Set<string>): void {
 
     // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same
     // property exists in the inputs and outputs states, the output wins.
@@ -105,7 +105,7 @@ export function resolveProperties(
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know if it's final.
-            if (!options.dryRun || stable || (stables && stables.has(k))) {
+            if (!options.dryRun || stable || stables.has(k)) {
                 resolve(props[k]);
             }
             else {
