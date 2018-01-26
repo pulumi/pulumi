@@ -214,19 +214,31 @@ export function createUndefinedDependency<T>(): Dependency<T | undefined> {
 }
 
 // tslint:disable:max-line-length
-export function combine<T1, T2>(d1: Dependency<T1>, d2: Dependency<T2>): Dependency<[T1, T2]>;
-export function combine<T1, T2, T3>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>): Dependency<[T1, T2, T3]>;
-export function combine<T1, T2, T3, T4>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>): Dependency<[T1, T2, T3, T4]>;
-export function combine<T1, T2, T3, T4, T5>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>): Dependency<[T1, T2, T3, T4, T5]>;
-export function combine<T1, T2, T3, T4, T5, T6>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>, d6: Dependency<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
-export function combine<T1, T2, T3, T4, T5, T6, T7>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>, d6: Dependency<T6>, d7: Dependency<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
-export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>, d4: Dependency<T4>, d5: Dependency<T5>, d6: Dependency<T6>, d7: Dependency<T7>, d8: Dependency<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-export function combine<T>(...ds: Dependency<T>[]): Dependency<T[]>;
-export function combine(...ds: Dependency<{}>[]): Dependency<{}[]> {
+export function combine<T1, T2>(d1: ComputedValue<T1>, d2: ComputedValue<T2>): Dependency<[T1, T2]>;
+export function combine<T1, T2, T3>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>): Dependency<[T1, T2, T3]>;
+export function combine<T1, T2, T3, T4>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>): Dependency<[T1, T2, T3, T4]>;
+export function combine<T1, T2, T3, T4, T5>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>): Dependency<[T1, T2, T3, T4, T5]>;
+export function combine<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
+export function combine<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
+export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>, d8: ComputedValue<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+export function combine<T>(...ds: ComputedValue<T>[]): Dependency<T[]>;
+export function combine(...ds: ComputedValue<{}>[]): Dependency<{}[]> {
     const allResources = new Set<Resource>();
-    ds.forEach(d => d.resources().forEach(r => allResources.add(r)));
 
-    return new Dependency<{}[]>(allResources, () => Promise.all(ds.map(d => d.promise())));
+    return new Dependency<{}[]>(allResources, () => {
+        const promises: Promise<{}>[] = [];
+
+        for (const d of ds) {
+            if (d instanceof Dependency) {
+                d.resources().forEach(r => allResources.add(r));
+                promises.push(d.promise());
+            } else {
+                promises.push(Promise.resolve(d));
+            }
+        }
+
+        return Promise.all(promises);
+    });
 }
 
 /**
