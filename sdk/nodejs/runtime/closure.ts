@@ -189,11 +189,8 @@ async function serializeCapturedObjectAsync(
 
     const moduleName = findRequirableModuleName(obj);
 
-    if (obj === undefined ||
-        obj === null ||
-        typeof obj === "boolean" ||
-        typeof obj === "number" ||
-        typeof obj === "string") {
+    if (obj === undefined || obj === null ||
+        typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
         entry.json = obj;
     } else if (moduleName) {
