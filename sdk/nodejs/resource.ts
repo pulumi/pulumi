@@ -161,14 +161,18 @@ export class Dependency<T> {
     // Only callable on the outside.
     /* @internal */ public readonly resources: () => Set<Resource>;
 
-    // Transforms the data of the dependency with the provided func.  The result remains a Dependency
-    // so that dependent resources can be properly tracked.
-    //
-    // The inner func should not return a Dependency itself. (TODO: can we check for that?)
-    //
-    // 'func' is not allowed to make resources.
-    //
-    // Outside only.  Note: this is the *only* outside public API.
+    /**
+     * Transforms the data of the dependency with the provided func.  The result remains a
+     * Dependency so that dependent resources can be properly tracked.
+     *
+     * The inner func should not return a Dependency itself. (TODO: can we check for that?)
+     *
+     * 'func' is not allowed to make resources.
+     *
+     * This function is only callable during execution of the Pulumi program during deployment or
+     * preview.  It is not available for functions that end up executing in the cloud during
+     * runtime.  To get the value of the Dependency during cloud runtime executure, use `get()`.
+     */
     public readonly apply: <U>(func: (t: T) => U) => Dependency<U>;
 
     /* @internal */ public constructor(
@@ -202,17 +206,24 @@ export class Dependency<T> {
                 : "<" + display + ">";
 
             return new Dependency<U>(
-                display,
+                innerDisplay,
                 resources,
                 () => this.getValue().then(func));
         };
     }
 
-    // Retrieves the underlying value of this dependency.
-    //
-    // Inside only.  Note: this is the *only* inside API available.
+    /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Dependency values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow dependency values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
     public get(): T {
-        throw new Error("Cannot call during deployment.");
+        throw new Error(`Cannot call during deployment or preview.
+To manipulate the value of this dependency, use 'apply' instead.`);
     }
 }
 
