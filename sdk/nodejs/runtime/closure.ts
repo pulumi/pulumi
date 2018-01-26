@@ -27,14 +27,23 @@ export type Environment = {[key: string]: EnvironmentEntry};
  * EnvironmentEntry is the environment slot for a named lexically captured variable.
  */
 export interface EnvironmentEntry {
-    json?: any;               // a value which can be safely json serialized.
-    closure?: Closure;        // a closure we are dependent on.
-    obj?: Environment;        // an object which may contain nested closures.
-    arr?: EnvironmentEntry[]; // an array which may contain nested closures.
-    module?: string;          // a reference to a requirable module name.
+    // a value which can be safely json serialized.
+    json?: any;
 
-    // A Resource Dependency<T> property.  It will be serialized over as a get() method that returns
-    // the raw underlying value.
+    // a closure we are dependent on.
+    closure?: Closure;
+
+    // an object which may contain nested closures.
+    obj?: Environment;
+
+    // an array which may contain nested closures.
+    arr?: EnvironmentEntry[];
+
+    // a reference to a requirable module name.
+    module?: string;
+
+     // A Resource Dependency<T> property.  It will be serialized over as a get() method that
+     // returns the raw underlying value.
     dep?: EnvironmentEntry;
 }
 

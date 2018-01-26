@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-// tslint:disable-next-line:max-line-length
-import { Computed, ComputedValue, ComputedValues, createDependency, Dependency, ID, Resource, ResourceOptions, URN } from "../resource";
+import { Computed, ComputedValue, ComputedValues, createDependency, Dependency,
+         ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { deserializeProperties, resolveProperties, serializeProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
