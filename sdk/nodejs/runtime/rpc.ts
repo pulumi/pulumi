@@ -3,7 +3,7 @@
 import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComputedValue, ComputedValues, CustomResource, Resource } from "../resource";
+import { ComputedValue, ComputedValues, createDependency, CustomResource, Dependency, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, options } from "./settings";
 
@@ -22,7 +22,7 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * 'onto'.
  */
 export function transferProperties(
-        onto: Resource, label: string, props: ComputedValues): Record<string, (v: any) => void> {
+        onto: Resource, name: string, label: string, props: ComputedValues): Record<string, (v: any) => void> {
 
     const resolvers: Record<string, (v: any) => void> = {};
     for (const k of Object.keys(props)) {
@@ -35,10 +35,12 @@ export function transferProperties(
         if (onto.hasOwnProperty(k)) {
             throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
-        (<any>onto)[k] =
+        (<any>onto)[k] = createDependency(
+            `${name}.${k}`,
+            onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolvers[k] = resolve),
-                `transferProperty(${label}, ${k}, ${props[k]})`);
+                `transferProperty(${label}, ${k}, ${props[k]})`));
     }
 
     return resolvers;
@@ -48,11 +50,12 @@ export function transferProperties(
  * serializeAllProperties walks the props object passed in, awaiting all interior promises,
  * creating a reaosnable POJO object that can be remoted over to registerResource.
  */
-export async function serializeProperties(label: string, props: ComputedValues): Promise<Record<string, any>> {
+export async function serializeProperties(
+        label: string, props: ComputedValues, dependsOn: Resource[] = []): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (k !== "id" && k !== "urn" && props[k] !== undefined) {
-            result[k] = await serializeProperty(props[k], `${label}.${k}`);
+            result[k] = await serializeProperty(props[k], `${label}.${k}`, dependsOn);
         }
     }
 
@@ -72,23 +75,16 @@ export function deserializeProperties(outputsStruct: any): any {
 }
 
 /**
- * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
- * resource's matching properties to the values inside.
+ * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all
+ * of the resource's matching properties to the values inside.
  */
 export function resolveProperties(
     res: Resource, resolvers: Record<string, (v: any) => void>,
-    t: string, name: string, inputs: ComputedValues, outputsStruct: any,
+    t: string, name: string, allProps: any,
     stable: boolean, stables: Set<string>): void {
 
-    // Produce a combined set of property states, starting with inputs and then applying outputs.  If the same
-    // property exists in the inputs and outputs states, the output wins.
-    const props: any = inputs || {};
-    if (outputsStruct) {
-        Object.assign(props, deserializeProperties(outputsStruct));
-    }
-
     // Now go ahead and resolve all properties present in the inputs and outputs set.
-    for (const k of Object.keys(props)) {
+    for (const k of Object.keys(allProps)) {
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
             continue;
@@ -97,16 +93,21 @@ export function resolveProperties(
         // Otherwise, unmarshal the value, and store it on the resource object.
         let resolve = resolvers[k];
         if (resolve === undefined) {
-            // If there is no property yet, zero initialize it.  This ensures unexpected properties are
-            // still made available on the object.  This isn't ideal, because any code running prior to the actual
-            // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
-            (res as any)[k] = debuggablePromise(new Promise<any>(r => resolve = r));
+            // If there is no property yet, zero initialize it.  This ensures unexpected properties
+            // are still made available on the object.  This isn't ideal, because any code running
+            // prior to the actual resource CRUD operation can't hang computations off of it, but
+            // it's better than tossing it.
+            (res as any)[k] = createDependency(
+                `${name}.${k}`,
+                res,
+                debuggablePromise(new Promise<any>(r => resolve = r)));
         }
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
-            // can propagate its final value.  Otherwise, it must be undefined, since we don't know if it's final.
+            // can propagate its final value.  Otherwise, it must be undefined, since we don't know
+            // if it's final.
             if (!options.dryRun || stable || stables.has(k)) {
-                resolve(props[k]);
+                resolve(allProps[k]);
             }
             else {
                 resolve(undefined);
@@ -121,7 +122,7 @@ export function resolveProperties(
     // Now latch all properties in case the inputs did not contain any values.  If we're doing a dry-run, we won't
     // actually propagate the provisional state, because we cannot know for sure that it is final yet.
     for (const k of Object.keys(resolvers)) {
-        if (!props.hasOwnProperty(k)) {
+        if (!allProps.hasOwnProperty(k)) {
             if (!options.dryRun) {
                 throw new Error(
                     `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
@@ -132,9 +133,9 @@ export function resolveProperties(
 }
 
 /**
- * unknownComputedValue is a special value that the monitor recognizes.
+ * Protobuf js doesn't like undefined values.  so we just encode as a string
  */
-export const unknownComputedValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+export const undefinedValue = "e7392c84-b9d3-47af-b648-6c964c08a268";
 /**
  * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
  */
@@ -152,12 +153,12 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promise<any> {
+async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsOn: Resource[]): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: undefined`);
         }
-        return unknownComputedValue;
+        return undefinedValue;
     }
     else if (prop === null ||
              typeof prop === "boolean" ||
@@ -174,7 +175,7 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
-            elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`));
+            elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`, dependsOn));
         }
         return elems;
     }
@@ -183,7 +184,9 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: resource ID`);
         }
-        return serializeProperty(prop.id, `${ctx}.id`);
+
+        dependsOn.push(prop);
+        return serializeProperty(prop.id, `${ctx}.id`, dependsOn);
     }
     else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
@@ -197,13 +200,20 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: promise<T>`);
+            log.debug(`Serialize property [${ctx}]: Promise<T>`);
         }
-        const subctx = `promise<${ctx}>`;
+        const subctx = `Promise<${ctx}>`;
         return serializeProperty(
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx);
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx, dependsOn);
     }
-    else {
+    else if (prop instanceof Dependency) {
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: Dependency<T>`);
+        }
+
+        dependsOn.push(...prop.resources());
+        return await serializeProperty(prop.getValue(), `${ctx}.id`, dependsOn);
+    } else {
         return await serializeAllKeys(prop, {});
     }
 
@@ -212,7 +222,7 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
-            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`);
+            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`, dependsOn);
         }
 
         return obj;
@@ -223,16 +233,16 @@ async function serializeProperty(prop: ComputedValue<any>, ctx?: string): Promis
  * deserializeProperty unpacks some special types, reversing the above process.
  */
 function deserializeProperty(prop: any): any {
-    if (prop === undefined) {
+    if (prop === undefined || prop === undefinedValue) {
         return undefined;
     }
     else if (prop === null || typeof prop === "boolean" || typeof prop === "number") {
         return prop;
     }
     else if (typeof prop === "string") {
-        if (prop === unknownComputedValue) {
-            return undefined;
-        }
+        // if (prop === unknownComputedValue) {
+        //     return undefined;
+        // }
         return prop;
     }
     else if (prop instanceof Array) {

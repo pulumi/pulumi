@@ -23,11 +23,11 @@ export class Blob extends Asset {
  * FileAsset is a kind of asset produced from a given path to a file on the local filesystem.
  */
 export class FileAsset extends Asset {
-    public readonly path: Computed<string>; // the path to the asset file.
+    public readonly path: Promise<string>; // the path to the asset file.
 
-    constructor(path: ComputedValue<string>) {
+    constructor(path: string | Promise<string>) {
         super();
-        this.path = Promise.resolve<string | undefined>(path);
+        this.path = Promise.resolve(path);
     }
 }
 
@@ -35,11 +35,11 @@ export class FileAsset extends Asset {
  * StringAsset is a kind of asset produced from an in-memory UTF8-encoded string.
  */
 export class StringAsset extends Asset {
-    public readonly text: Computed<string>; // the string contents.
+    public readonly text: Promise<string>; // the string contents.
 
-    constructor(text: ComputedValue<string>) {
+    constructor(text: string | Promise<string>) {
         super();
-        this.text = Promise.resolve<string | undefined>(text);
+        this.text = Promise.resolve(text);
     }
 }
 
@@ -49,11 +49,11 @@ export class StringAsset extends Asset {
  * specific providers may recognize alternative schemes; this is merely the base-most set that all providers support.
  */
 export class RemoteAsset extends Asset {
-    public readonly uri: Computed<string>; // the URI where the asset lives.
+    public readonly uri: Promise<string>; // the URI where the asset lives.
 
-    constructor(uri: ComputedValue<string>) {
+    constructor(uri: string | Promise<string>) {
         super();
-        this.uri = Promise.resolve<string | undefined>(uri);
+        this.uri = Promise.resolve(uri);
     }
 }
 

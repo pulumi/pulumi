@@ -23,23 +23,23 @@ class ResourceB extends pulumi.CustomResource {
 
 // First create and validate a simple resource A with an input and output.
 let a = new ResourceA("resourceA");
-a.urn.then(urn => {
+a.urn.getValue().then(urn => {
     console.log(`A.URN: ${urn}`);
     assert.equal(urn, "test:index:ResourceA::resourceA");
 });
-a.id.then(id => {
+a.id.getValue().then(id => {
     if (id) {
         console.log(`A.ID: ${id}`);
         assert.equal(id, "resourceA");
     }
 });
-a.inprop.then(prop => {
+a.inprop.getValue().then(prop => {
     if (prop) {
         console.log(`A.InProp: ${prop}`);
         assert.equal(prop, 777);
     }
 });
-a.outprop.then(prop => {
+a.outprop.getValue().then(prop => {
     if (prop) {
         console.log(`A.OutProp: ${prop}`);
         assert.equal(prop, "output yeah");
@@ -48,23 +48,23 @@ a.outprop.then(prop => {
 
 // Next, create and validate another resource B which depends upon resource A.
 let b = new ResourceB("resourceB", a);
-b.urn.then(urn => {
+b.urn.getValue().then(urn => {
     console.log(`B.URN: ${urn}`);
     assert.equal(urn, "test:index:ResourceB::resourceB");
 });
-b.id.then(id => {
+b.id.getValue().then(id => {
     if (id) {
         console.log(`B.ID: ${id}`);
         assert.equal(id, "resourceB");
     }
 });
-b.otherIn.then(prop => {
+b.otherIn.getValue().then(prop => {
     if (prop) {
         console.log(`B.OtherIn: ${prop}`);
         assert.equal(prop, 777);
     }
 });
-b.otherOut.then(prop => {
+b.otherOut.getValue().then(prop => {
     if (prop) {
         console.log(`B.OtherOut: ${prop}`);
         assert.equal(prop, "output yeah");

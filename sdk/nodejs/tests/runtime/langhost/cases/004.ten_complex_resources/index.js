@@ -7,29 +7,29 @@ let MyResource = require("./resource").MyResource;
 for (let i = 0; i < 10; i++) {
     let name = "testResource" + i;
     let res = new MyResource(name, i);
-    res.urn.then(urn => {
+    res.urn.getValue().then(urn => {
         console.log(`${name}.URN: ${urn}`);
         assert.equal(urn, "test:index:MyResource::" + name);
     });
-    res.id.then(id => {
+    res.id.getValue().then(id => {
         if (id) {
             console.log(`${name}.ID: ${id}`);
             assert.equal(id, name);
         }
     });
-    res.outseq.then(seq => {
+    res.outseq.getValue().then(seq => {
         if (seq) {
             console.log(`${name}.Seq: ${seq}`);
             assert.equal(seq, i);
         }
     });
-    res.outprop1.then(prop => {
+    res.outprop1.getValue().then(prop => {
         if (prop) {
             console.log(`${name}.OutProp1: ${prop}`);
             assert.equal(prop, "output properties ftw");
         }
     });
-    res.outprop2.then(prop => {
+    res.outprop2.getValue().then(prop => {
         if (prop) {
             console.log(`${name}.OutProp2: ${prop}`);
             assert.equal(prop, 998.6);

@@ -253,7 +253,4 @@ export type ComputedValue<T> = T | Dependency<T>;
  * ComputedValues is a map of property name to optional property input, one for each resource
  * property value.
  */
-// NOTE: This type should actually be { [key: string]: ComputedValue<any> }, however TS correctly
-// expands that out to { [key: string]: any }, which means we have no type safety.  So, for now we
-// just force all values to be Dependencies to help track down code that needs to be fixed up.
-export type ComputedValues = { [key: string]: Dependency<any> };
+export type ComputedValues = { [key: string]: ComputedValue<any> };
