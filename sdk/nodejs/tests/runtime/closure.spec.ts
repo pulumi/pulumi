@@ -974,7 +974,7 @@ return (function () { () => { console.log(this + arguments); }; })
     });
 
     {
-        const v = { d: resource.createDependency("", <any>undefined, Promise.resolve(4)) };
+        const v = { d: resource.createDependency(<any>undefined, Promise.resolve(4)) };
         cases.push({
             title: "Dependency capture",
             // tslint:disable-next-line
@@ -1005,9 +1005,9 @@ return (function () { console.log(v); })
 
     {
         const v = {
-            d1: resource.createDependency("", <any>undefined, Promise.resolve(4)),
-            d2: resource.createDependency("", <any>undefined, Promise.resolve("str")),
-            d3: resource.createDependency("", <any>undefined, Promise.resolve(undefined)),
+            d1: resource.createDependency(<any>undefined, Promise.resolve(4)),
+            d2: resource.createDependency(<any>undefined, Promise.resolve("str")),
+            d3: resource.createDependency(<any>undefined, Promise.resolve(undefined)),
         };
         cases.push({
             title: "Multiple dependency capture",

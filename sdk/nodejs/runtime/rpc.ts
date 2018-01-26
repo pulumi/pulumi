@@ -22,7 +22,7 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * 'onto'.
  */
 export function transferProperties(
-        onto: Resource, name: string, label: string, props: ComputedValues): Record<string, (v: any) => void> {
+        onto: Resource, label: string, props: ComputedValues): Record<string, (v: any) => void> {
 
     const resolvers: Record<string, (v: any) => void> = {};
     for (const k of Object.keys(props)) {
@@ -36,7 +36,6 @@ export function transferProperties(
             throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
         (<any>onto)[k] = createDependency(
-            `${name}.${k}`,
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolvers[k] = resolve),
@@ -98,7 +97,6 @@ export function resolveProperties(
             // prior to the actual resource CRUD operation can't hang computations off of it, but
             // it's better than tossing it.
             (res as any)[k] = createDependency(
-                `${name}.${k}`,
                 res,
                 debuggablePromise(new Promise<any>(r => resolve = r)));
         }

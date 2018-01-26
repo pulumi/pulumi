@@ -25,7 +25,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // Simply initialize the URN property and get prepared to resolve it later on.
     let resolveURN: (urn: URN) => void;
     (res as any).urn = createDependency(
-        `${name}.urn`,
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
@@ -35,7 +34,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     let resolveID: ((v: ID) => void) | undefined;
     if (custom) {
         (res as any).id = createDependency(
-            `${name}.id`,
             res,
             debuggablePromise(
                 new Promise<ID>(resolve => resolveID = resolve),
@@ -46,7 +44,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
     // RPC returns
-    const resolvers = transferProperties(res, name, label, inputProps);
+    const resolvers = transferProperties(res, label, inputProps);
 
     // Now run the operation, serializing the invocation if necessary.
     const opLabel = `monitor.registerResource(${label})`;

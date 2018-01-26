@@ -138,11 +138,6 @@ export class ComponentResource extends Resource {
  * dependency graph' to be crated, which properly tracks the relationship between resources.
  */
 export class Dependency<T> {
-    // What do show for this Dependency during preview. i.e. something like "table.PropName".
-    //
-    // Only callable on the outside.  Should only be called during preview.
-    /* @internal */ public readonly previewDisplay: string;
-
     // Method that actually produces the concrete value of this dependency, as well as the total
     // deployment-time set of resources this dependency depends on.  This code path will end up
     // executing apply funcs, and should only be called during real deployment and not during
@@ -181,12 +176,7 @@ export class Dependency<T> {
      */
      public readonly get: () => T;
 
-    /* @internal */ public constructor(
-            display: string,
-            resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
-
-        this.previewDisplay = display;
-
+    /* @internal */ public constructor(resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
 
@@ -203,18 +193,7 @@ export class Dependency<T> {
         };
 
         this.apply = <U>(func: (t: T) => U) => {
-            // Wrap the display with <> to indicate that it's been transformed in some manner.
-            // However, don't bother doing this if we're already wrapping some transformed
-            // dependency.  i.e. we'll only ever show 'table.prop' or '<table.prop>', not
-            // '<<<<table.prop>>>>'.
-            const innerDisplay = display.length > 0 && display.charAt(0) === "<"
-                ? display
-                : "<" + display + ">";
-
-            return new Dependency<U>(
-                innerDisplay,
-                resources,
-                () => this.promise().then(func));
+            return new Dependency<U>(resources, () => this.promise().then(func));
         };
 
         this.get = () => {
@@ -226,8 +205,8 @@ To manipulate the value of this dependency, use 'apply' instead.`);
 
 // Helper function actually allow Resource to create Dependency objects for its output properties.
 // Should only be called by pulumi, not by users (TODO: i think).
-export function createDependency<T>(previewDisplay: string, resource: Resource, value: Promise<T>): Dependency<T> {
-    return new Dependency<T>(previewDisplay, new Set<Resource>([resource]), () => value);
+export function createDependency<T>(resource: Resource, value: Promise<T>): Dependency<T> {
+    return new Dependency<T>(new Set<Resource>([resource]), () => value);
 }
 
 // tslint:disable:max-line-length
@@ -243,12 +222,7 @@ export function combine(...ds: Dependency<{}>[]): Dependency<{}[]> {
     const allResources = new Set<Resource>();
     ds.forEach(d => d.resources().forEach(r => allResources.add(r)));
 
-    const previewDisplay = "(" + ds.map(d => d.previewDisplay).join(", ") + ")";
-
-    return new Dependency<{}[]>(
-        previewDisplay,
-        allResources,
-        () => Promise.all(ds.map(d => d.promise())));
+    return new Dependency<{}[]>(allResources, () => Promise.all(ds.map(d => d.promise())));
 }
 
 /**
