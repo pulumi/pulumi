@@ -4,6 +4,7 @@
 
 import * as assert from "assert";
 import { runtime } from "../../index";
+import * as resource from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
 
 interface ClosureCase {
@@ -109,6 +110,24 @@ describe("closure", () => {
             assert.notEqual(hash1, hash2);
         });
 
+        it("is affected by dependency.", () => {
+            const closure1: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { json: 100 } },
+            };
+
+            const closure2: runtime.Closure = {
+                code: "",
+                runtime: "",
+                environment: { cap1: { dep: { json: 100 } } },
+            };
+
+            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
+            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
+            assert.notEqual(hash1, hash2);
+        });
+
         it("is not affected by environment order.", () => {
             const closure1: runtime.Closure = {
                 code: "",
@@ -160,6 +179,7 @@ describe("closure", () => {
             closureHash: "",
         });
     }
+
     // A few simple positive cases for functions/arrows (no captures).
     cases.push({
         title: "Empty function closure",
@@ -185,6 +205,7 @@ return (function () { })
 
 `,
     });
+
     cases.push({
         title: "Function closure with this capture",
         // tslint:disable-next-line
@@ -234,6 +255,7 @@ return (function () { console.log(this + arguments); })
 
 `,
     });
+
     cases.push({
         title: "Empty arrow closure",
         // tslint:disable-next-line
@@ -258,6 +280,7 @@ return (() => { })
 
 `,
     });
+
     cases.push({
         title: "Arrow closure with this capture",
         // tslint:disable-next-line
@@ -470,6 +493,7 @@ return (function () { () => { console.log(this); }; })
 
 `,
     });
+
     cases.push({
         title: "Arrow closure with this and arguments capture inside function closure",
         // tslint:disable-next-line
@@ -494,6 +518,7 @@ return (function () { () => { console.log(this + arguments); }; })
 
 `,
     });
+
     cases.push({
         title: "Empty function closure w/ args",
         // tslint:disable-next-line
@@ -505,6 +530,7 @@ return (function () { () => { console.log(this + arguments); }; })
         },
         closureHash: "__e680605f156fcaa89016e23c51d3e2328602ebad",
     });
+
     cases.push({
         title: "Empty arrow closure w/ args",
         // tslint:disable-next-line
@@ -730,6 +756,7 @@ return (function () { () => { console.log(this + arguments); }; })
             closureHash: "__5fa215795194604118a7543ce20b8e273837ae79",
         });
     }
+
     cases.push({
         title: "Don't capture built-ins",
         // tslint:disable-next-line
@@ -741,6 +768,7 @@ return (function () { () => { console.log(this + arguments); }; })
         },
         closureHash: "__fa1c10acee8dd79b39d0f8109d2bc3252b19619a",
     });
+
     {
         const os = require("os");
         cases.push({
@@ -758,6 +786,7 @@ return (function () { () => { console.log(this + arguments); }; })
             closureHash: "__3fa97b166e39ae989158bb37acfa12c7abc25b53",
         });
     }
+
     {
         const util = require("../util");
         cases.push({
@@ -775,6 +804,7 @@ return (function () { () => { console.log(this + arguments); }; })
             closureHash: "__cd171f28483c78d2a63bdda674a8f577dd4b41db",
         });
     }
+
     cases.push({
         title: "Don't capture catch variables",
         // tslint:disable-next-line
@@ -807,6 +837,7 @@ return (function () { () => { console.log(this + arguments); }; })
     xcap.ggg();
     xcap.zzz.a[0]("x", "y");
 };
+
         cases.push({
             title: "Serializes recursive function captures",
             // tslint:disable-next-line
@@ -883,6 +914,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 json: 42,
             },
         };
+
         cases.push({
             title: "Serializes `this` capturing arrow functions",
             func: cap.f,
@@ -894,6 +926,7 @@ return (function () { () => { console.log(this + arguments); }; })
             closureHash: "__8d564176f3cd517bfe3c6e9d6b4da488a1198c0d",
         });
     }
+
     cases.push({
         title: "Don't serialize `this` in function expressions",
         func: function() { return this; },
@@ -904,6 +937,7 @@ return (function () { () => { console.log(this + arguments); }; })
         },
         closureHash: "__05dabc231611ca558334d59d661ebfb242b31b5d",
     });
+
     const mutable: any = {};
     cases.push({
         title: "Serialize mutable objects by value at the time of capture (pre-mutation)",
@@ -938,6 +972,74 @@ return (function () { () => { console.log(this + arguments); }; })
             closureHash: "__18d08ca03253fe3dda134c1e5e5889f514cb3841",
         }],
     });
+
+    {
+        const v = { d: resource.createDependency("", <any>undefined, Promise.resolve(4)) };
+        cases.push({
+            title: "Dependency capture",
+            // tslint:disable-next-line
+            func: function () { console.log(v); },
+            expect: {
+                code: "(function () { console.log(v); })",
+                environment: {
+                    "v": { "obj": { "d": { "dep": { "json": 4 } } } },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__48592975f6308867ccf82dc02acb984a2eb0d858",
+            expectText: `exports.handler = __48592975f6308867ccf82dc02acb984a2eb0d858;
+
+function __48592975f6308867ccf82dc02acb984a2eb0d858() {
+  return (function() {
+    with({ v: { d: { get: () => 4 } } }) {
+
+return (function () { console.log(v); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const v = {
+            d1: resource.createDependency("", <any>undefined, Promise.resolve(4)),
+            d2: resource.createDependency("", <any>undefined, Promise.resolve("str")),
+            d3: resource.createDependency("", <any>undefined, Promise.resolve(undefined)),
+        };
+        cases.push({
+            title: "Multiple dependency capture",
+            // tslint:disable-next-line
+            func: function () { console.log(v); },
+            expect: {
+                code: "(function () { console.log(v); })",
+                environment: {
+                    "v": { "obj": {
+                        "d1": { "dep": { "json": 4 } },
+                        "d2": { "dep": { "json": "str" } },
+                        "d3": { "dep": { "json": undefined } },
+                    } },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__a3ddd89d1cda2b7856c44281d244dfb82c37e340",
+            expectText: `exports.handler = __a3ddd89d1cda2b7856c44281d244dfb82c37e340;
+
+function __a3ddd89d1cda2b7856c44281d244dfb82c37e340() {
+  return (function() {
+    with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined } } }) {
+
+return (function () { console.log(v); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
 
     // Make a callback to keep running tests.
     let remaining = cases;

@@ -90,7 +90,7 @@ async function flattenEnvironmentEntry(
     flatCache.set(entry, result);
 
     const e: AsyncEnvironmentEntry = await entry;
-    if (e.json) {
+    if (e.hasOwnProperty("json")) {
         result.json = e.json;
     }
     else if (e.module) {
@@ -113,7 +113,7 @@ async function flattenEnvironmentEntry(
         result.arr = arr;
     }
     else {
-        throw new Error(`Malformed flattened environment entry: ${e}`);
+        throw new Error(`Malformed flattened environment entry: ${e}, ${Object.keys(e).join()}`);
     }
     return result;
 }
@@ -792,7 +792,7 @@ class FuncsForClosure {
             return undefined;
         }
 
-        return [
+        const array = [
             entry.json,
             this.convertClosureToNormalizedObject(seenClosures, entry.closure),
             this.convertEnvironmentToNormalizedObject(seenClosures, entry.obj),
@@ -800,8 +800,13 @@ class FuncsForClosure {
                 ? entry.arr.map(child => this.convertEnvironmentEntryToNormalizedObject(seenClosures, child))
                 : undefined,
             entry.module,
-            this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep),
         ];
+
+        if (entry.dep) {
+            array.push(this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep));
+        }
+
+        return array;
     }
 
     private envFromEnvObj(env: Environment): {[key: string]: string} {
