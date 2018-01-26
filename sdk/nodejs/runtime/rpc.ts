@@ -133,7 +133,7 @@ export function resolveProperties(
 /**
  * Protobuf js doesn't like undefined values.  so we just encode as a string
  */
-export const undefinedValue = "e7392c84-b9d3-47af-b648-6c964c08a268";
+export const undefinedValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
  * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
  */
