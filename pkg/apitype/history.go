@@ -24,6 +24,8 @@ const (
 type UpdateResult string
 
 const (
+	// NotStartedResult is for updates that have not started.
+	NotStartedResult UpdateResult = "not-started"
 	// InProgressResult is for updates that have not yet completed.
 	InProgressResult UpdateResult = "in-progress"
 	// SucceededResult is for updates that completed successfully.
