@@ -130,6 +130,13 @@ export class ComponentResource extends Resource {
     }
 }
 
+/**
+ * Dependency helps encode the relationship between Resources in a Pulumi application. Specifically
+ * a Dependency holds onto a piece of Data and the Resource it was generated from. A Dependency
+ * value can then be provided when constructing new Resources, allowing that new Resource to know
+ * both the value as well as the Resource the value came from.  This allows for a precise 'Resource
+ * dependency graph' to be crated, which properly tracks the relationship between resources.
+ */
 export class Dependency<T> {
     // Internal implementation details. Hidden from the .d.ts file by using @internal. Users are not
     //  allowed to call these methods.  If they do, pulumi cannot provide any guarantees.  TODO: we
