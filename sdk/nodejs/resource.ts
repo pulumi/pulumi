@@ -11,14 +11,16 @@ export type URN = string; // an automatically generated logical URN, used to sta
  */
 export abstract class Resource {
     /**
-     * urn is the stable logical URN used to distinctly address a resource, both before and after deployments.
+     * urn is the stable logical URN used to distinctly address a resource, both before and after
+     * deployments.
      */
     public readonly urn: Promise<URN>;
 
     /**
-     * Creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
-     * to use in creating a stable and globally unique URN for the object.  dependsOn is an optional list of other
-     * resources that this resource depends on, controlling the order in which we perform resource operations.
+     * Creates and registers a new resource object.  t is the fully qualified type token and name is
+     * the "name" part to use in creating a stable and globally unique URN for the object.
+     * dependsOn is an optional list of other resources that this resource depends on, controlling
+     * the order in which we perform resource operations.
      *
      * @param t The type of the resource.
      * @param name The _unqiue_ name of the resource.
@@ -39,9 +41,10 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
 
-        // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
-        // properties will be resolved asynchronously after the operation completes, so that dependent computations
-        // resolve normally.  If we are just planning, on the other hand, values will never resolve.
+        // Now kick off the resource registration.  If we are actually performing a deployment, this
+        // resource's properties will be resolved asynchronously after the operation completes, so
+        // that dependent computations resolve normally.  If we are just planning, on the other
+        // hand, values will never resolve.
         registerResource(this, t, name, custom, props, opts);
     }
 }
@@ -65,23 +68,25 @@ export interface ResourceOptions {
 }
 
 /**
- * CustomResource is a resource whose create, read, update, and delete (CRUD) operations are managed by performing
- * external operations on some physical entity.  The engine understands how to diff and perform partial updates of
- * them, and these CRUD operations are implemented in a dynamically loaded plugin for the defining package.
+ * CustomResource is a resource whose create, read, update, and delete (CRUD) operations are managed
+ * by performing external operations on some physical entity.  The engine understands how to diff
+ * and perform partial updates of them, and these CRUD operations are implemented in a dynamically
+ * loaded plugin for the defining package.
  */
 export abstract class CustomResource extends Resource {
     /**
-     * id is the provider-assigned unique ID for this managed resource.  It is set during deployments and may be
-     * missing (undefined) during planning phases.
+     * id is the provider-assigned unique ID for this managed resource.  It is set during
+     * deployments and may be missing (undefined) during planning phases.
      */
     public readonly id: Computed<ID>;
 
     /**
-     * Creates and registers a new managed resource.  t is the fully qualified type token and name is the "name" part
-     * to use in creating a stable and globally unique URN for the object.  dependsOn is an optional list of other
-     * resources that this resource depends on, controlling the order in which we perform resource operations.
-     * Creating an instance does not necessarily perform a create on the physical entity which it represents, and
-     * instead, this is dependent upon the diffing of the new goal state compared to the current known resource state.
+     * Creates and registers a new managed resource.  t is the fully qualified type token and name
+     * is the "name" part to use in creating a stable and globally unique URN for the object.
+     * dependsOn is an optional list of other resources that this resource depends on, controlling
+     * the order in which we perform resource operations. Creating an instance does not necessarily
+     * perform a create on the physical entity which it represents, and instead, this is dependent
+     * upon the diffing of the new goal state compared to the current known resource state.
      *
      * @param t The type of the resource.
      * @param name The _unqiue_ name of the resource.
@@ -94,15 +99,17 @@ export abstract class CustomResource extends Resource {
 }
 
 /**
- * ComponentResource is a resource that aggregates one or more other child resources into a higher level abstraction.
- * The component resource itself is a resource, but does not require custom CRUD operations for provisioning.
+ * ComponentResource is a resource that aggregates one or more other child resources into a higher
+ * level abstraction. The component resource itself is a resource, but does not require custom CRUD
+ * operations for provisioning.
  */
 export class ComponentResource extends Resource {
     /**
-     * Creates and registers a new component resource.  t is the fully qualified type token and name is the "name" part
-     * to use in creating a stable and globally unique URN for the object. parent is the optional parent for this
-     * component, and dependsOn is an optional list of other resources that this resource depends on, controlling the
-     * order in which we perform resource operations.
+     * Creates and registers a new component resource.  t is the fully qualified type token and name
+     * is the "name" part to use in creating a stable and globally unique URN for the object. parent
+     * is the optional parent for this component, and dependsOn is an optional list of other
+     * resources that this resource depends on, controlling the order in which we perform resource
+     * operations.
      *
      * @param t The type of the resource.
      * @param name The _unqiue_ name of the resource.
@@ -124,17 +131,20 @@ export class ComponentResource extends Resource {
 }
 
 /**
- * Computed is a property output for a resource.  It is just a promise that also permits undefined values.  The
- * undefined values are used during planning, when the actual final value of a resource may not yet be known.
+ * Computed is a property output for a resource.  It is just a promise that also permits undefined
+ * values.  The undefined values are used during planning, when the actual final value of a resource
+ * may not yet be known.
  */
 export type Computed<T> = Promise<T | undefined>;
 
 /**
- * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise for one.
+ * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise
+ * for one.
  */
 export type ComputedValue<T> = T | undefined | Promise<T | undefined>;
 
 /**
- * ComputedValues is a map of property name to optional property input, one for each resource property value.
+ * ComputedValues is a map of property name to optional property input, one for each resource
+ * property value.
  */
 export type ComputedValues = { [key: string]: ComputedValue<any> };

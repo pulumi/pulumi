@@ -72,8 +72,8 @@ export function deserializeProperties(outputsStruct: any): any {
 }
 
 /**
- * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
- * resource's matching properties to the values inside.
+ * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all
+ * of the resource's matching properties to the values inside.
  */
 export function resolveProperties(
     res: Resource, resolvers: Record<string, (v: any) => void>,
@@ -97,14 +97,16 @@ export function resolveProperties(
         // Otherwise, unmarshal the value, and store it on the resource object.
         let resolve = resolvers[k];
         if (resolve === undefined) {
-            // If there is no property yet, zero initialize it.  This ensures unexpected properties are
-            // still made available on the object.  This isn't ideal, because any code running prior to the actual
-            // resource CRUD operation can't hang computations off of it, but it's better than tossing it.
+            // If there is no property yet, zero initialize it.  This ensures unexpected properties
+            // are still made available on the object.  This isn't ideal, because any code running
+            // prior to the actual resource CRUD operation can't hang computations off of it, but
+            // it's better than tossing it.
             (res as any)[k] = debuggablePromise(new Promise<any>(r => resolve = r));
         }
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
-            // can propagate its final value.  Otherwise, it must be undefined, since we don't know if it's final.
+            // can propagate its final value.  Otherwise, it must be undefined, since we don't know
+            // if it's final.
             if (!options.dryRun || stable || stables.has(k)) {
                 resolve(props[k]);
             }
