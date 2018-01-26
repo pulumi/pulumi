@@ -103,7 +103,7 @@ async function flattenEnvironmentEntry(
     else if (e.arr) {
         const arr: EnvironmentEntry[] = [];
         for (const elem of e.arr) {
-            arr.push( await flattenEnvironmentEntry(elem, flatCache));
+            arr.push(await flattenEnvironmentEntry(elem, flatCache));
         }
         result.arr = arr;
     }
