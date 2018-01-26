@@ -50,11 +50,11 @@ export function transferProperties(
  * creating a reaosnable POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
-        label: string, props: ComputedValues, dependsOn: Resource[] = []): Promise<Record<string, any>> {
+        label: string, props: ComputedValues, dependentResources: Resource[] = []): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (k !== "id" && k !== "urn" && props[k] !== undefined) {
-            result[k] = await serializeProperty(props[k], `${label}.${k}`, dependsOn);
+            result[k] = await serializeProperty(props[k], `${label}.${k}`, dependentResources);
         }
     }
 
@@ -151,7 +151,7 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsOn: Resource[]): Promise<any> {
+async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependentResources: Resource[]): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: undefined`);
@@ -173,7 +173,7 @@ async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsO
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
-            elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`, dependsOn));
+            elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`, dependentResources));
         }
         return elems;
     }
@@ -183,8 +183,8 @@ async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsO
             log.debug(`Serialize property [${ctx}]: resource ID`);
         }
 
-        dependsOn.push(prop);
-        return serializeProperty(prop.id, `${ctx}.id`, dependsOn);
+        dependentResources.push(prop);
+        return serializeProperty(prop.id, `${ctx}.id`, dependentResources);
     }
     else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
@@ -202,15 +202,15 @@ async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsO
         }
         const subctx = `Promise<${ctx}>`;
         return serializeProperty(
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx, dependsOn);
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx, dependentResources);
     }
     else if (prop instanceof Dependency) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Dependency<T>`);
         }
 
-        dependsOn.push(...prop.resources());
-        return await serializeProperty(prop.promise(), `${ctx}.id`, dependsOn);
+        dependentResources.push(...prop.resources());
+        return await serializeProperty(prop.promise(), `${ctx}.id`, dependentResources);
     } else {
         return await serializeAllKeys(prop, {});
     }
@@ -220,7 +220,7 @@ async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsO
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
-            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`, dependsOn);
+            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`, dependentResources);
         }
 
         return obj;

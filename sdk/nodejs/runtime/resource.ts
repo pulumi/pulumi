@@ -50,14 +50,17 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     const opLabel = `monitor.registerResource(${label})`;
     runAsyncResourceOp(opLabel, async () => {
         // Before we can proceed, all our dependencies must be finished.
-        const dependsOn = opts.dependsOn || [];
+        if (opts.dependsOn) {
+            await debuggablePromise(Promise.all(opts.dependsOn.map(d => d.urn)), `dependsOn(${label})`);
+        }
 
         // Serialize out all our props to their final values.  In doing so, we'll also collect all
         // the Resources pointed to by any Dependency objects we encounter, adding them to
-        // 'dependsOn'
-        const flattenedInputProps = await serializeProperties(label, inputProps, dependsOn);
+        // 'propertyDependencies'
+        const implicitResourceDependencies: Resource[] = [];
+        const flattenedInputProps = await serializeProperties(
+            label, inputProps, implicitResourceDependencies);
 
-        await debuggablePromise(Promise.all(dependsOn.map(d => d.urn)), `dependsOn(${label})`);
 
         log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(flattenedInputProps)}` : ``));
