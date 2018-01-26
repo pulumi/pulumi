@@ -181,6 +181,9 @@ async function serializeCapturedObjectAsync(
         return await serializeCapturedObjectAsync(await obj, entryCache);
     }
 
+    // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
+    // AsyncEnvironmentEntry in the cache.  That way, if we encounter this obj again while recursing
+    // we can just return that placeholder.
     const entry: AsyncEnvironmentEntry = {};
     entryCache.set(obj, entry);
 
