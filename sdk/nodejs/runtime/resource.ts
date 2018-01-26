@@ -2,7 +2,7 @@
 
 import * as log from "../log";
 // tslint:disable-next-line:max-line-length
-import { Computed, ComputedValue, ComputedValues, createDependency, ID, Resource, ResourceOptions, URN } from "../resource";
+import { Computed, ComputedValue, ComputedValues, createDependency, Dependency, ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { deserializeProperties, resolveProperties, serializeProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
@@ -95,7 +95,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
         const urn = resp.getUrn();
         const id = resp.getId();
-        const serializedOutputPropsProtoBuf = resp.getObject();
+        const outputProps = resp.getObject();
         const stable = resp.getStable();
 
         const stablesList: string[] | undefined = resp.getStablesList();
@@ -115,10 +115,26 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
         // Produce a combined set of property states, starting with inputs and then applying
         // outputs.  If the same property exists in the inputs and outputs states, the output wins.
-        const allProps = flattenedInputProps;
-        if (serializedOutputPropsProtoBuf) {
-            const flattenedOutputProps = deserializeProperties(serializedOutputPropsProtoBuf);
-            Object.assign(allProps, flattenedOutputProps);
+        const allProps: Record<string, any> = {};
+        if (outputProps) {
+            Object.assign(allProps, deserializeProperties(outputProps));
+        }
+
+        for (const key of Object.keys(inputProps)) {
+            if (!allProps[key]) {
+                // input prop the engine didn't give us a final value for.  Just use the
+                // value passed into the resource.  Note: unwrap dependencies so that we
+                // can reparent the value against ourself.  i.e. if resource B is passed
+                // resources A.depProp as an input, and the engine doesn't produce an
+                // output for it, we want resource B to expose depProp as a DependencyProp
+                // pointing to B and not A.
+                const inputProp = inputProps[key];
+                if (inputProp instanceof Dependency) {
+                    allProps[key] = await inputProp.getValue();
+                } else {
+                    allProps[key] = inputProp;
+                }
+            }
         }
 
         resolveProperties(res, resolvers, t, name, allProps, stable, stables);
