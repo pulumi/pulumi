@@ -209,6 +209,10 @@ export function createDependency<T>(resource: Resource, value: Promise<T>): Depe
     return new Dependency<T>(new Set<Resource>([resource]), () => value);
 }
 
+export function createUndefinedDependency<T>(): Dependency<T | undefined> {
+    return new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(undefined));
+}
+
 // tslint:disable:max-line-length
 export function combine<T1, T2>(d1: Dependency<T1>, d2: Dependency<T2>): Dependency<[T1, T2]>;
 export function combine<T1, T2, T3>(d1: Dependency<T1>, d2: Dependency<T2>, d3: Dependency<T3>): Dependency<[T1, T2, T3]>;
