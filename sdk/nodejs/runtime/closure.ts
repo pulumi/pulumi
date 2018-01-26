@@ -838,9 +838,10 @@ class FuncsForClosure {
 }
 
 /**
- * Converts an environment object into a string which can be embedded into a serialized function body.  Note that this
- * is not JSON serialization, as we may have proeprty values which are variable references to other global functions.
- * In other words, there can be free variables in the resulting object literal.
+ * Converts an environment object into a string which can be embedded into a serialized function
+ * body.  Note that this is not JSON serialization, as we may have proeprty values which are
+ * variable references to other global functions. In other words, there can be free variables in the
+ * resulting object literal.
  *
  * @param envObj The environment object to convert to a string.
  */
