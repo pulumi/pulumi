@@ -212,7 +212,7 @@ async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependsO
         }
 
         dependsOn.push(...prop.resources());
-        return await serializeProperty(prop.getValue(), `${ctx}.id`, dependsOn);
+        return await serializeProperty(prop.promise(), `${ctx}.id`, dependsOn);
     } else {
         return await serializeAllKeys(prop, {});
     }

@@ -30,23 +30,23 @@ class MyResource extends pulumi.CustomResource {
 }
 
 let res = new MyResource("testResource1");
-res.urn.getValue().then(urn => {
+res.urn.promise().then(urn => {
     console.log(`URN: ${urn}`);
     assert.equal(urn, "test:index:MyResource::testResource1");
 });
-res.id.getValue().then(id => {
+res.id.promise().then(id => {
     if (id) {
         console.log(`ID: ${id}`);
         assert.equal(id, "testResource1");
     }
 });
-res.outprop1.getValue().then(prop => {
+res.outprop1.promise().then(prop => {
     if (prop) {
         console.log(`OutProp1: ${prop}`);
         assert.equal(prop, "output properties ftw");
     }
 });
-res.outprop2.getValue().then(prop => {
+res.outprop2.promise().then(prop => {
     if (prop) {
         console.log(`OutProp2: ${prop}`);
         assert.equal(prop, 998.6);

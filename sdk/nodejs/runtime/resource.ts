@@ -69,7 +69,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
         let parentURN: URN | undefined;
         if (opts.parent) {
-            parentURN = await opts.parent.urn.getValue();
+            parentURN = await opts.parent.urn.promise();
         }
 
         const req = new resproto.RegisterResourceRequest();
@@ -130,7 +130,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 // pointing to B and not A.
                 const inputProp = inputProps[key];
                 if (inputProp instanceof Dependency) {
-                    allProps[key] = await inputProp.getValue();
+                    allProps[key] = await inputProp.promise();
                 } else {
                     allProps[key] = inputProp;
                 }
@@ -154,7 +154,7 @@ export function registerResourceOutputs(res: Resource, outputs: ComputedValues) 
         // The registration could very well still be taking place, so we will need to wait for its
         // URN.  Additionally, the output properties might have come from other resources, so we
         // must await those too.
-        const urn = await res.urn.getValue();
+        const urn = await res.urn.promise();
         const outputsObj = gstruct.Struct.fromJavaScript(
             await serializeProperties(`completeResource`, outputs));
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +

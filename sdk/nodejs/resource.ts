@@ -138,11 +138,6 @@ export class ComponentResource extends Resource {
  * dependency graph' to be crated, which properly tracks the relationship between resources.
  */
 export class Dependency<T> {
-    // Internal implementation details. Hidden from the .d.ts file by using @internal. Users are not
-    //  allowed to call these methods.  If they do, pulumi cannot provide any guarantees.  TODO: we
-    //  could make this all hidden by using weakmaps and storinthe data in a side table.  But that's
-    //  likely not necessary to do.
-
     // What do show for this Dependency during preview. i.e. something like "table.PropName".
     //
     // Only callable on the outside.  Should only be called during preview.
@@ -154,7 +149,7 @@ export class Dependency<T> {
     // previews.
     //
     // Only callable on the outside.
-    /* @internal */ public readonly getValue: () => Promise<T>;
+    /* @internal */ public readonly promise: () => Promise<T>;
 
     // The list of resource that this dependency value depends on.
     //
@@ -175,6 +170,17 @@ export class Dependency<T> {
      */
     public readonly apply: <U>(func: (t: T) => U) => Dependency<U>;
 
+    /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Dependency values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow dependency values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
+     public readonly get: () => T;
+
     /* @internal */ public constructor(
             display: string,
             resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
@@ -188,7 +194,7 @@ export class Dependency<T> {
         // also only apply them once (no matter how many times getValue() is called).
 
         let computeValueTask: Promise<T> | undefined = undefined;
-        this.getValue = () => {
+        this.promise = () => {
             if (!computeValueTask) {
                 computeValueTask = createComputeValueTask();
             }
@@ -208,22 +214,13 @@ export class Dependency<T> {
             return new Dependency<U>(
                 innerDisplay,
                 resources,
-                () => this.getValue().then(func));
+                () => this.promise().then(func));
         };
-    }
 
-    /**
-     * Retrieves the underlying value of this dependency.
-     *
-     * This function is only callable in code that runs in the cloud post-deployment.  At this
-     * point all Dependency values will be known and can be safely retrieved. During pulumi deployment
-     * or preview execution this must not be called (and will throw).  This is because doing so
-     * would allow dependency values to flow into Resources while losing the data that would allow
-     * the dependency graph to be changed.
-     */
-    public get(): T {
-        throw new Error(`Cannot call during deployment or preview.
+        this.get = () => {
+            throw new Error(`Cannot call during deployment or preview.
 To manipulate the value of this dependency, use 'apply' instead.`);
+        };
     }
 }
 
@@ -251,7 +248,7 @@ export function combine(...ds: Dependency<{}>[]): Dependency<{}[]> {
     return new Dependency<{}[]>(
         previewDisplay,
         allResources,
-        () => Promise.all(ds.map(d => d.getValue())));
+        () => Promise.all(ds.map(d => d.promise())));
 }
 
 /**
