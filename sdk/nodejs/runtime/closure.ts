@@ -40,7 +40,7 @@ export interface EnvironmentEntry {
  */
 export function serializeClosure(func: Function): Promise<Closure> {
     // entryCache stores a map of entry to promise, to support mutually recursive captures.
-    const entryCache = new Map<Object, Promise<AsyncEnvironmentEntry>>();
+    const entryCache = new Map<Object, AsyncEnvironmentEntry>();
 
     // First get the async version.  We will then await it to turn it into a flattened, async-free computed closure.
     // This must be done "at the top" because we must not block the creation of the dataflow graph of closure
@@ -48,12 +48,12 @@ export function serializeClosure(func: Function): Promise<Closure> {
     const closure: AsyncClosure = serializeClosureAsync(func, entryCache);
 
     // Now turn the AsyncClosure into a normal closure, and return it.
-    const flatCache = new Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>();
+    const flatCache = new Map<AsyncEnvironmentEntry, EnvironmentEntry>();
     return flattenClosure(closure, flatCache);
 }
 
 async function flattenClosure(closure: AsyncClosure,
-                              flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Closure> {
+                              flatCache: Map<AsyncEnvironmentEntry, EnvironmentEntry>): Promise<Closure> {
     return {
         code: closure.code,
         runtime: closure.runtime,
@@ -63,20 +63,20 @@ async function flattenClosure(closure: AsyncClosure,
 
 async function flattenEnvironment(
         env: AsyncEnvironment,
-        flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<Environment> {
+        flatCache: Map<AsyncEnvironmentEntry, EnvironmentEntry>): Promise<Environment> {
     const result: Environment = {};
     for (const key of Object.keys(env)) {
-        result[key] = await flattenEnvironmentEntry(env[key], flatCache);
+        result[key] = await flattenEnvironmentEntry(await env[key], flatCache);
     }
     return result;
 }
 
 async function flattenEnvironmentEntry(
-        entry: Promise<AsyncEnvironmentEntry>,
-        flatCache: Map<Promise<AsyncEnvironmentEntry>, EnvironmentEntry>): Promise<EnvironmentEntry> {
+        entry: AsyncEnvironmentEntry,
+        flatCache: Map<AsyncEnvironmentEntry, EnvironmentEntry>): Promise<EnvironmentEntry> {
 
     // See if there's an entry for this object already; if there is, use it.
-    let result: EnvironmentEntry | undefined = flatCache.get(entry);
+    let result = flatCache.get(entry);
     if (result) {
         return result;
     }
@@ -125,7 +125,7 @@ export interface AsyncClosure {
 /**
  * AsyncEnvironment is the eventual captured lexical environment for a closure.
  */
-export type AsyncEnvironment = {[key: string]: Promise<AsyncEnvironmentEntry>};
+export type AsyncEnvironment = Record<string, Promise<AsyncEnvironmentEntry>>;
 
 /**
  * AsyncEnvironmentEntry is the eventual environment slot for a named lexically captured variable.
@@ -134,7 +134,7 @@ export interface AsyncEnvironmentEntry {
     json?: any;                             // a value which can be safely json serialized.
     closure?: AsyncClosure;                 // a closure we are dependent on.
     obj?: AsyncEnvironment;                 // an object which may contain nested closures.
-    arr?: Promise<AsyncEnvironmentEntry>[]; // an array which may contain nested closures.
+    arr?: AsyncEnvironmentEntry[]; // an array which may contain nested closures.
     module?: string;                        // a reference to a requirable module name.
 }
 
@@ -142,7 +142,7 @@ export interface AsyncEnvironmentEntry {
  * serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a final closure.
  */
 function serializeClosureAsync(
-        func: Function, entryCache: Map<Object, Promise<AsyncEnvironmentEntry>>): AsyncClosure {
+        func: Function, entryCache: Map<Object, AsyncEnvironmentEntry>): AsyncClosure {
     // Invoke the native runtime.  Note that we pass a callback to our function below to compute
     // free variables. This must be a callback and not the result of this function alone, since we
     // may recursively compute them.
@@ -160,70 +160,63 @@ function serializeClosureAsync(
  * serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
  */
 function serializeCapturedObject(
-        obj: any, entryCache: Map<Object, Promise<AsyncEnvironmentEntry>>): Promise<AsyncEnvironmentEntry> {
+        obj: any, entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
-    let result: Promise<AsyncEnvironmentEntry> | undefined = entryCache.get(obj);
+    const result = entryCache.get(obj);
     if (result) {
-        return result;
+        return Promise.resolve(result);
     }
 
-    // If it doesn't exist, actually do it, but stick the promise in the cache first for recursive scenarios.
-    let resultResolve: ((v: AsyncEnvironmentEntry) => void) | undefined = undefined;
-    result = debuggablePromise(new Promise<AsyncEnvironmentEntry>((resolve) => { resultResolve = resolve; }));
-    entryCache.set(obj, result);
-    serializeCapturedObjectAsync(obj, resultResolve!, entryCache);
-    return result;
+    return serializeCapturedObjectAsync(obj, entryCache);
 }
 
 /**
  * serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
  */
-function serializeCapturedObjectAsync(
-        obj: any, resolve: (v: AsyncEnvironmentEntry) => void,
-        entryCache: Map<Object, Promise<AsyncEnvironmentEntry>>): void {
-    const moduleName = findRequirableModuleName(obj);
-    if (obj === undefined || obj === null ||
-            typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
-        // Serialize primitives as-is.
-        return resolve({ json: obj });
-    }
-
-    if (moduleName) {
-        // Serialize any value which was found as a requirable module name as a reference to the module
-        return resolve({module: moduleName});
-    }
-
-    // tslint:disable-next-line:max-line-length
-    // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
-    if (obj instanceof Array ||
-        Object.prototype.toString.call(obj) === "[object Arguments]") {
-
-        // Recursively serialize elements of an array.
-        const arr: Promise<AsyncEnvironmentEntry>[] = [];
-        for (const elem of obj) {
-            arr.push(serializeCapturedObject(elem, entryCache));
-        }
-
-        return resolve({ arr: arr });
-    }
-
-    if (obj instanceof Function) {
-        // Serialize functions recursively, and store them in a closure property.
-        return resolve({ closure: serializeClosureAsync(obj, entryCache) });
-    }
+async function serializeCapturedObjectAsync(
+        obj: any, entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
 
     if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
-        obj.then((v) => serializeCapturedObjectAsync(v, resolve, entryCache));
-        return;
+        return await serializeCapturedObjectAsync(await obj, entryCache);
     }
 
-    // For all other objects, serialize all of their enumerable properties (skipping non-enumerable members, etc).
-    const env: AsyncEnvironment = {};
-    for (const key of Object.keys(obj)) {
-        env[key] = serializeCapturedObject(obj[key], entryCache);
+    // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
+    // AsyncEnvironmentEntry in the cache.  That way, if we encounter this obj again while recursing
+    // we can just return that placeholder.
+    const entry: AsyncEnvironmentEntry = {};
+    entryCache.set(obj, entry);
+
+    const moduleName = findRequirableModuleName(obj);
+
+    if (obj === undefined || obj === null ||
+        typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
+        // Serialize primitives as-is.
+        entry.json = obj;
+    } else if (moduleName) {
+        // Serialize any value which was found as a requirable module name as a reference to the module
+        entry.module = moduleName;
+    } else if (obj instanceof Array ||
+               Object.prototype.toString.call(obj) === "[object Arguments]") {
+        // tslint:disable-next-line:max-line-length
+        // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
+
+        // Recursively serialize elements of an array.
+        entry.arr = [];
+        for (const elem of obj) {
+            entry.arr.push(await serializeCapturedObject(elem, entryCache));
+        }
+    } else if (obj instanceof Function) {
+        // Serialize functions recursively, and store them in a closure property.
+        entry.closure = await serializeClosureAsync(obj, entryCache);
+    } else {
+        // For all other objects, serialize all of their properties.
+        entry.obj = {};
+        for (const key of Object.keys(obj)) {
+            entry.obj[key] = serializeCapturedObject(obj[key], entryCache);
+        }
     }
-    resolve({ obj: env });
+    return entry;
 }
 
 // These modules are built-in to Node.js, and are available via `require(...)`
