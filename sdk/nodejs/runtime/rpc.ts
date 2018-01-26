@@ -240,9 +240,6 @@ function deserializeProperty(prop: any): any {
         return prop;
     }
     else if (typeof prop === "string") {
-        // if (prop === unknownComputedValue) {
-        //     return undefined;
-        // }
         return prop;
     }
     else if (prop instanceof Array) {
