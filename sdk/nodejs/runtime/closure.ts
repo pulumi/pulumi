@@ -32,6 +32,9 @@ export interface EnvironmentEntry {
     obj?: Environment;        // an object which may contain nested closures.
     arr?: EnvironmentEntry[]; // an array which may contain nested closures.
     module?: string;          // a reference to a requirable module name.
+
+    // A Resource Dependency<T> property.  It will be serialized over as a get() method that returns
+    // the raw underlying value.
     dep?: EnvironmentEntry;
 }
 
