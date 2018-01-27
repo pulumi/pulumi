@@ -16,7 +16,7 @@ func newStackExportCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "export",
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Export a stack's deployment to standard out.\n",
+		Short: "Export a stack's deployment to standard out",
 		Long: "Export a stack's deployment to standard out.\n" +
 			"\n" +
 			"The deployment can then be hand-edited and used to update the stack via\n" +
