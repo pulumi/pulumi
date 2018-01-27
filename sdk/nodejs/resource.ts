@@ -237,8 +237,12 @@ export function createDependency<T>(resource: Resource, value: Promise<T>): Depe
     return new Dependency<T>(new Set<Resource>([resource]), () => value);
 }
 
-export function createUndefinedDependency<T>(): Dependency<T | undefined> {
+function createUndefinedDependency<T>(): Dependency<T | undefined> {
     return new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(undefined));
+}
+
+export function makeOpt<T>(d?: Dependency<T>): Dependency<T | undefined> {
+    return d ? d.apply(t => t) : createUndefinedDependency<T>();
 }
 
 /**
