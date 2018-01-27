@@ -298,7 +298,7 @@ export type Computed<T> = Dependency<T>;
  * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise
  * for one.
  */
-export type ComputedValue<T> = T | Dependency<T>;
+export type ComputedValue<T> = T | Promise<T> | Dependency<T>;
 
 /**
  * ComputedValues is a map of property name to optional property input, one for each resource
