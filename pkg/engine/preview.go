@@ -24,6 +24,10 @@ func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 	}
 	defer info.Close()
 
+	// Always set opts.DryRun to `true` when processing previews: if we do not do this, the engine will assume that it
+	// should elide unknown input/output properties when interacting with the language and resource providers and we
+	// will produce unexpected results.
+	opts.DryRun = true
 	return previewLatest(info, deployOptions{
 		UpdateOptions: opts,
 
