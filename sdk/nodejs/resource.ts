@@ -155,15 +155,28 @@ export class Dependency<T> {
      * Transforms the data of the dependency with the provided func.  The result remains a
      * Dependency so that dependent resources can be properly tracked.
      *
-     * The inner func should not return a Dependency itself. (TODO: can we check for that?)
-     *
      * 'func' is not allowed to make resources.
+     *
+     * 'func' can return Dependency objects.  This can be handy if you have a Dependency<SomeVal>
+     * and you want to get a transitive dependency of it.  i.e.
+     *
+     * ```ts
+     * var d1: Dependency<SomeVal>;
+     * var d2 = d1.apply(v => v.x.y.OtherDep); // getting a dependency off of 'v'.
+     * ```
+     *
+     * In this example, taking a dependency on d2 means a resource will depend on all the resources
+     * of d1.  It will *not* depend on the resources of v.x.y.OtherDep.
+     *
+     * Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
+     * If you need have multiple dependencies and a single dependency is needed that combines both
+     * set of resources, then 'combine' should be used instead.
      *
      * This function is only callable during execution of the Pulumi program during deployment or
      * preview.  It is not available for functions that end up executing in the cloud during
      * runtime.  To get the value of the Dependency during cloud runtime executure, use `get()`.
      */
-    public readonly apply: <U>(func: (t: T) => U) => Dependency<U>;
+    public readonly apply: <U>(func: (t: T) => U | Dependency<U>) => Dependency<U>;
 
     /**
      * Retrieves the underlying value of this dependency.
@@ -192,9 +205,24 @@ export class Dependency<T> {
             return computeValueTask;
         };
 
-        this.apply = <U>(func: (t: T) => U) => {
-            return new Dependency<U>(resources, () => this.promise().then(func));
+        this.apply = <U>(func: (t: T) => U | Dependency<U>) => {
+            return new Dependency<U>(resources, async () => {
+                const val = await this.promise();
+                const transformed = func(val);
+                if (transformed instanceof Dependency) {
+                    // Note: if the func returned a Dependency, we unwrap that to get the inner
+                    // value returned by that Dependency.  Note that we are *not* capturing the
+                    // Resources of this inner Dependency.  That's intentional.  As the dependency
+                    // returned is only supposed to be related this *this* dependency object,
+                    // those dependeny resources should already be in our transitively reachable
+                    // resource graph.
+                    return await transformed.promise();
+                } else {
+                    return transformed;
+                }
+            });
         };
+
 
         this.get = () => {
             throw new Error(`Cannot call during deployment or preview.
@@ -213,6 +241,24 @@ export function createUndefinedDependency<T>(): Dependency<T | undefined> {
     return new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(undefined));
 }
 
+/**
+ * Allows for multiple Dependency objects to be combined into a single Dependency object.  The
+ * single Dependency will depend on the union of Resources that the individual dependencies depend
+ * on.
+ *
+ * This can be used in the following manner:
+ *
+ * ```ts
+ * var d1: Dependency<string>;
+ * var d2: Dependency<number>;
+ *
+ * var d3: Dependency<ResultType> = combine(d1, d2).apply((s: string, n: number) => ...);
+ * ```
+ *
+ * In this example, taking a dependency on d3 means a resource will depend on all the resources of
+ * d1 and d2.
+ *
+ */
 // tslint:disable:max-line-length
 export function combine<T1, T2>(d1: ComputedValue<T1>, d2: ComputedValue<T2>): Dependency<[T1, T2]>;
 export function combine<T1, T2, T3>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>): Dependency<[T1, T2, T3]>;
