@@ -97,8 +97,11 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
         // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
         // it to undefined (indicating it isn't known).
+        //
+        // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
+        // undefined so that later parts of our system don't have to deal with values like 'null'.
         if (resolveID) {
-            resolveID(id);
+            resolveID(id || undefined);
         }
 
         // Propagate any other properties that were given to us as outputs.
