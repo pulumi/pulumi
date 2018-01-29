@@ -12,7 +12,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -43,8 +42,6 @@ type Package struct {
 	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
 
 	Stacks map[tokens.QName]StackInfo `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
-
-	Doc *diag.Document `json:"-" yaml:"-"` // the document from which this package came.
 }
 
 // StackInfo holds stack specific information about a package
@@ -57,12 +54,6 @@ type StackInfo struct {
 // IsEmpty returns True if this object contains no information (i.e. all members have their zero values)
 func (s *StackInfo) IsEmpty() bool {
 	return len(s.Config) == 0 && s.EncryptionSalt == ""
-}
-
-var _ diag.Diagable = (*Package)(nil)
-
-func (pkg *Package) Where() (*diag.Document, *diag.Location) {
-	return pkg.Doc, nil
 }
 
 func (pkg *Package) Validate() error {

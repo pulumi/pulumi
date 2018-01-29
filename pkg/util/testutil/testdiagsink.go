@@ -59,7 +59,3 @@ func (d *TestDiagSink) Warningf(dia *diag.Diag, args ...interface{}) {
 func (d *TestDiagSink) Stringify(sev diag.Severity, dia *diag.Diag, args ...interface{}) string {
 	return d.sink.Stringify(sev, dia, args...)
 }
-
-func (d *TestDiagSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc *diag.Location) string {
-	return d.sink.StringifyLocation(sev, doc, loc)
-}

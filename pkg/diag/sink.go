@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -49,8 +48,6 @@ type Sink interface {
 
 	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Lumi.yaml:7:39: error goes here\n").
 	Stringify(sev Severity, diag *Diag, args ...interface{}) string
-	// StringifyLocation stringifies a source document location.
-	StringifyLocation(sev Severity, doc *Document, loc *Location) string
 }
 
 // Severity dictates the kind of diagnostic.
@@ -200,12 +197,6 @@ func (d *defaultSink) getCount(sev Severity) int {
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {
 	var buffer bytes.Buffer
 
-	// First print the location if there is one.
-	if diag.Doc != nil || diag.Loc != nil {
-		buffer.WriteString(d.StringifyLocation(sev, diag.Doc, diag.Loc))
-		buffer.WriteString(": ")
-	}
-
 	// Now print the message category's prefix (error/warning).
 	switch sev {
 	case Debug:
@@ -250,42 +241,4 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 
 	// If colorization was requested, compile and execute the directives now.
 	return d.opts.Color.Colorize(s)
-}
-
-func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Location) string {
-	var buffer bytes.Buffer
-
-	if doc != nil {
-		buffer.WriteString(colors.SpecLocation)
-
-		file := doc.File
-		if d.opts.Pwd != "" {
-			// If a PWD is available, try to create a relative path.
-			rel, err := filepath.Rel(d.opts.Pwd, file)
-			if err == nil {
-				file = rel
-			}
-		}
-
-		buffer.WriteString(file)
-	}
-
-	if loc != nil && !loc.IsEmpty() {
-		buffer.WriteRune('(')
-		buffer.WriteString(strconv.Itoa(loc.Start.Line))
-		buffer.WriteRune(',')
-		buffer.WriteString(strconv.Itoa(loc.Start.Column))
-		buffer.WriteRune(')')
-	}
-
-	var s string
-	if doc != nil || loc != nil {
-		buffer.WriteString(colors.Reset)
-		s = buffer.String()
-
-		// If colorization was requested, compile and execute the directives now.
-		s = d.opts.Color.Colorize(s)
-	}
-
-	return s
 }

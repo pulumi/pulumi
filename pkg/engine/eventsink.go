@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -121,12 +120,6 @@ func (s *eventSink) getCount(sev diag.Severity) int {
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) string {
 	var buffer bytes.Buffer
 
-	// First print the location if there is one.
-	if d.Doc != nil || d.Loc != nil {
-		buffer.WriteString(s.StringifyLocation(sev, d.Doc, d.Loc))
-		buffer.WriteString(": ")
-	}
-
 	// Now print the message category's prefix (error/warning).
 	switch sev {
 	case diag.Debug:
@@ -166,38 +159,6 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
 	//     the buffer within the target document, to demonstrate the offending line/column range of code.
-
-	return s.opts.Color.Colorize(buffer.String())
-}
-
-func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc *diag.Location) string {
-	var buffer bytes.Buffer
-
-	if doc != nil {
-		buffer.WriteString(colors.SpecLocation)
-
-		file := doc.File
-		if s.opts.Pwd != "" {
-			// If a PWD is available, try to create a relative path.
-			rel, err := filepath.Rel(s.opts.Pwd, file)
-			if err == nil {
-				file = rel
-			}
-		}
-
-		buffer.WriteString(file)
-	}
-
-	if loc != nil && !loc.IsEmpty() {
-		buffer.WriteRune('(')
-		buffer.WriteString(strconv.Itoa(loc.Start.Line))
-		buffer.WriteRune(',')
-		buffer.WriteString(strconv.Itoa(loc.Start.Column))
-		buffer.WriteRune(')')
-	}
-
-	// Reset the color if we wrote anything
-	buffer.WriteString(colors.Reset)
 
 	return s.opts.Color.Colorize(buffer.String())
 }
