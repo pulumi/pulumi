@@ -17,7 +17,7 @@ func newStackImportCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "import",
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Import a deployment from standard in into an existing stack.\n",
+		Short: "Import a deployment from standard in into an existing stack",
 		Long: "Import a deployment from standard in into an existing stack.\n" +
 			"\n" +
 			"A deployment that was exported from a stack using `pulumi stack export` and\n" +
