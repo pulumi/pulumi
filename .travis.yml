@@ -8,8 +8,6 @@ go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 git:
   depth: false
-cache:
-    yarn: true
 before_install:
     - export PULUMI_ROOT=/opt/pulumi
     # on OSX, /opt/ is not writeable by normal users, so we create /opt/pulumi as root and take ownership of it

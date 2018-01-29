@@ -764,7 +764,10 @@ func (pt *programTester) prepareProject(projectDir string) error {
 	// Write a .yarnrc file to pass --mutex network to all yarn invocations, since tests
 	// may run concurrently and yarn may fail if invoked concurrently
 	// https://github.com/yarnpkg/yarn/issues/683
-	yarnrcerr := ioutil.WriteFile(filepath.Join(projectDir, ".yarnrc"), []byte("--mutex network\n"), 0644)
+	// Also add --network-concurrency 1 since we've been seeing
+	// https://github.com/yarnpkg/yarn/issues/4563 as well
+	yarnrcerr := ioutil.WriteFile(filepath.Join(projectDir, ".yarnrc"),
+		[]byte("--mutex network\n--network-concurrency 1\n"), 0644)
 	if yarnrcerr != nil {
 		return yarnrcerr
 	}
