@@ -288,13 +288,10 @@ export function combine(...cvs: ComputedValue<{}>[]): Dependency<{}[]> {
     });
 }
 
-/* @internal */
 export function convertToDependency<T>(cv: ComputedValue<T>): Dependency<T> {
-    if (cv instanceof Dependency) {
-        return cv;
-    } else {
-        return new Dependency<T>(new Set<Resource>(), () => Promise.resolve(cv));
-    }
+    return cv instanceof Dependency
+        ? cv
+        : new Dependency<T>(new Set<Resource>(), () => Promise.resolve(cv));
 }
 
 /**
