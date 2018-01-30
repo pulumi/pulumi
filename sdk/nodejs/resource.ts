@@ -238,9 +238,7 @@ export function createDependency<T>(resource: Resource, value: Promise<T>): Depe
 }
 
 export function resolve<T>(cv: ComputedValue<T>): Dependency<T>;
-export function resolve<T>(cv: ComputedValue<T | undefined>): Dependency<T | undefined>;
 export function resolve<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
-export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined>;
 export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
     return cv instanceof Dependency
         ? cv
