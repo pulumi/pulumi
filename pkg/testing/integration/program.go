@@ -76,6 +76,10 @@ type TestCommandStats struct {
 	TestName string `json:"testName"`
 	// IsError is true if the command failed
 	IsError bool `json:"isError"`
+	// The Cloud that the test was run against, or empty for local deployments
+	CloudURL string `json:"cloudURL"`
+	// The PPC that the test was run against, or empty for local deployments or for the default PPC
+	CloudPPC string `json:"cloudPPC"`
 }
 
 // TestStatsReporter reports results and metadata from a test run.
