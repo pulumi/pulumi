@@ -47,7 +47,6 @@ func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCha
 	return deployLatest(info, deployOptions{
 		UpdateOptions: opts,
 
-		Create:  true,
 		Destroy: false,
 
 		Events: events,
@@ -60,7 +59,6 @@ func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCha
 type deployOptions struct {
 	UpdateOptions
 
-	Create  bool // true if we are creating resources.
 	Destroy bool // true if we are destroying the stack.
 
 	Detailed bool         // true to show very detailed output, like properties that haven't changed.
