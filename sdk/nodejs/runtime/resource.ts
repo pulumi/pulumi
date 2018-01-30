@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { Computed, ComputedValue, ComputedValues, createDependency, Dependency,
+import { Computed, ComputedValue, ComputedValues, Dependency,
          ID, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { deserializeProperties, resolveProperties, serializeProperties, transferProperties } from "./rpc";
@@ -24,7 +24,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     // Simply initialize the URN property and get prepared to resolve it later on.
     let resolveURN: (urn: URN) => void;
-    (res as any).urn = createDependency(
+    (res as any).urn = Dependency.create(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
@@ -33,7 +33,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID) => void) | undefined;
     if (custom) {
-        (res as any).id = createDependency(
+        (res as any).id = Dependency.create(
             res,
             debuggablePromise(
                 new Promise<ID>(resolve => resolveID = resolve),

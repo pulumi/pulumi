@@ -189,6 +189,62 @@ export class Dependency<T> {
      */
      public readonly get: () => T;
 
+    // Statics
+    /* @internal */ public static create<T>(resource: Resource, value: Promise<T>): Dependency<T> {
+        return new Dependency<T>(new Set<Resource>([resource]), () => value);
+    }
+
+    public static resolve<T>(cv: ComputedValue<T>): Dependency<T>;
+    public static resolve<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
+    public static resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
+        return cv instanceof Dependency
+            ? cv
+            : new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(cv));
+    }
+
+    /**
+     * Allows for multiple Dependency objects to be combined into a single Dependency object.  The
+     * single Dependency will depend on the union of Resources that the individual dependencies depend
+     * on.
+     *
+     * This can be used in the following manner:
+     *
+     * ```ts
+     * var d1: Dependency<string>;
+     * var d2: Dependency<number>;
+     *
+     * var d3: Dependency<ResultType> = combine(d1, d2).apply((s: string, n: number) => ...);
+     * ```
+     *
+     * In this example, taking a dependency on d3 means a resource will depend on all the resources of
+     * d1 and d2.
+     *
+     */
+    // tslint:disable:max-line-length
+    public static all<T1, T2>(d1: ComputedValue<T1>, d2: ComputedValue<T2>): Dependency<[T1, T2]>;
+    public static all<T1, T2, T3>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>): Dependency<[T1, T2, T3]>;
+    public static all<T1, T2, T3, T4>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>): Dependency<[T1, T2, T3, T4]>;
+    public static all<T1, T2, T3, T4, T5>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>): Dependency<[T1, T2, T3, T4, T5]>;
+    public static all<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
+    public static all<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
+    public static all<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>, d8: ComputedValue<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+    public static all<T>(...ds: ComputedValue<T>[]): Dependency<T[]>;
+    public static all(...cvs: ComputedValue<{}>[]): Dependency<{}[]> {
+        const allResources = new Set<Resource>();
+
+        return new Dependency<{}[]>(allResources, () => {
+            const promises: Promise<{}>[] = [];
+
+            for (const cv of cvs) {
+                const d = Dependency.resolve(cv);
+                d.resources().forEach(r => allResources.add(r));
+                promises.push(d.promise());
+            }
+
+            return Promise.all(promises);
+        });
+    }
+
     /* @internal */ public constructor(resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
@@ -229,63 +285,6 @@ export class Dependency<T> {
 To manipulate the value of this dependency, use 'apply' instead.`);
         };
     }
-}
-
-// Helper function actually allow Resource to create Dependency objects for its output properties.
-// Should only be called by pulumi, not by users (TODO: i think).
-export function createDependency<T>(resource: Resource, value: Promise<T>): Dependency<T> {
-    return new Dependency<T>(new Set<Resource>([resource]), () => value);
-}
-
-export function resolve<T>(cv: ComputedValue<T>): Dependency<T>;
-export function resolve<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
-export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
-    return cv instanceof Dependency
-        ? cv
-        : new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(cv));
-}
-
-/**
- * Allows for multiple Dependency objects to be combined into a single Dependency object.  The
- * single Dependency will depend on the union of Resources that the individual dependencies depend
- * on.
- *
- * This can be used in the following manner:
- *
- * ```ts
- * var d1: Dependency<string>;
- * var d2: Dependency<number>;
- *
- * var d3: Dependency<ResultType> = combine(d1, d2).apply((s: string, n: number) => ...);
- * ```
- *
- * In this example, taking a dependency on d3 means a resource will depend on all the resources of
- * d1 and d2.
- *
- */
-// tslint:disable:max-line-length
-export function combine<T1, T2>(d1: ComputedValue<T1>, d2: ComputedValue<T2>): Dependency<[T1, T2]>;
-export function combine<T1, T2, T3>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>): Dependency<[T1, T2, T3]>;
-export function combine<T1, T2, T3, T4>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>): Dependency<[T1, T2, T3, T4]>;
-export function combine<T1, T2, T3, T4, T5>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>): Dependency<[T1, T2, T3, T4, T5]>;
-export function combine<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
-export function combine<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
-export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>, d8: ComputedValue<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-export function combine<T>(...ds: ComputedValue<T>[]): Dependency<T[]>;
-export function combine(...cvs: ComputedValue<{}>[]): Dependency<{}[]> {
-    const allResources = new Set<Resource>();
-
-    return new Dependency<{}[]>(allResources, () => {
-        const promises: Promise<{}>[] = [];
-
-        for (const cv of cvs) {
-            const d = resolve(cv);
-            d.resources().forEach(r => allResources.add(r));
-            promises.push(d.promise());
-        }
-
-        return Promise.all(promises);
-    });
 }
 
 /**

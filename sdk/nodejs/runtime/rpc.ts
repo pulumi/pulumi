@@ -3,7 +3,7 @@
 import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComputedValue, ComputedValues, createDependency, CustomResource, Dependency, Resource } from "../resource";
+import { ComputedValue, ComputedValues, CustomResource, Dependency, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, options } from "./settings";
 
@@ -35,7 +35,7 @@ export function transferProperties(
         if (onto.hasOwnProperty(k)) {
             throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
-        (<any>onto)[k] = createDependency(
+        (<any>onto)[k] = Dependency.create(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolvers[k] = resolve),
@@ -96,7 +96,7 @@ export function resolveProperties(
             // are still made available on the object.  This isn't ideal, because any code running
             // prior to the actual resource CRUD operation can't hang computations off of it, but
             // it's better than tossing it.
-            (res as any)[k] = createDependency(
+            (res as any)[k] = Dependency.create(
                 res,
                 debuggablePromise(new Promise<any>(r => resolve = r)));
         }
