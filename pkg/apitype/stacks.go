@@ -104,7 +104,7 @@ type GetStackResponse struct {
 type Manifest struct {
 	// Time of the update.
 	Time int64 `json:"time"`
-	// Magic number, used to identify itegrity of the checkpoint.
+	// Magic number, used to identify integrity of the checkpoint.
 	Magic string `json:"magic"`
 	// Version of the Pulumi engine used to render the checkpoint.
 	Version string `json:"version"`
