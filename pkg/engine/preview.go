@@ -31,7 +31,6 @@ func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 	return previewLatest(info, deployOptions{
 		UpdateOptions: opts,
 
-		Create:  false,
 		Destroy: false,
 
 		Events: events,
