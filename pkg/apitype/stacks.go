@@ -93,9 +93,30 @@ type GetStackResponse struct {
 
 	// Resources provides the list of cloud resources managed by this stack.
 	Resources []Resource `json:"resources"`
+	// Manifest is the Manifest from the last rendered checkpoint.
+	Manifest Manifest `json:"manifest"`
 
 	// Deployment provides a view of the stack as an opaque Pulumi deployment.
 	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
+
+// Manifest captures meta-information about this checkpoint file, such as versions of binaries, etc.
+type Manifest struct {
+	// Time of the update.
+	Time int64 `json:"time"`
+	// Magic number, used to identify integrity of the checkpoint.
+	Magic string `json:"magic"`
+	// Version of the Pulumi engine used to render the checkpoint.
+	Version string `json:"version"`
+	// Plugins contains the binary version info of plug-ins used.
+	Plugins []PluginInfo `json:"plugins,omitempty"`
+}
+
+// PluginInfo captures the version and information about a plugin.
+type PluginInfo struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Version string `json:"version"`
 }
 
 // EncryptValueRequest defines the request body for encrypting a value.
