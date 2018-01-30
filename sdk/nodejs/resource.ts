@@ -237,19 +237,11 @@ export function createDependency<T>(resource: Resource, value: Promise<T>): Depe
     return new Dependency<T>(new Set<Resource>([resource]), () => value);
 }
 
-function createUndefinedDependency<T>(): Dependency<T | undefined> {
-    return new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(undefined));
-}
-
 export function resolve<T>(cv: ComputedValue<T>): Dependency<T>;
 export function resolve<T>(cv: ComputedValue<T | undefined>): Dependency<T | undefined>;
 export function resolve<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
 export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined>;
 export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
-    if (cv === undefined) {
-        return createUndefinedDependency<T>();
-    }
-
     return cv instanceof Dependency
         ? cv
         : new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(cv));
