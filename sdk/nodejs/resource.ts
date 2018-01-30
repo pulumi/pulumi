@@ -241,8 +241,8 @@ function createUndefinedDependency<T>(): Dependency<T | undefined> {
     return new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(undefined));
 }
 
-export function makeOpt<T>(d?: Dependency<T>): Dependency<T | undefined> {
-    return d ? d : createUndefinedDependency<T>();
+export function makeOpt<T>(d?: ComputedValue<T>): Dependency<T | undefined> {
+    return d ? convertToDependency(d) : createUndefinedDependency<T>();
 }
 
 /**
