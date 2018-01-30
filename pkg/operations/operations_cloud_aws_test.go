@@ -31,7 +31,8 @@ func Test_oldFunctionNameFromLogGroupNameRegExp(t *testing.T) {
 }
 
 func Test_extractMultilineLambdaLogMessage(t *testing.T) {
-	res := extractLambdaLogMessage("2018-01-30T06:48:09.447Z\t840a5ca2-0589-11e8-af88-c5048a8b7b82\tfirst line\nsecond line\n\n", "foo")
+	res := extractLambdaLogMessage(
+		"2018-01-30T06:48:09.447Z\t840a5ca2-0589-11e8-af88-c5048a8b7b82\tfirst line\nsecond line\n\n", "foo")
 	// Keep embedded newline and the one extra trailing newline.
 	assert.Equal(t, "first line\nsecond line\n", res.Message)
 }
