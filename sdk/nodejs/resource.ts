@@ -242,7 +242,7 @@ function createUndefinedDependency<T>(): Dependency<T | undefined> {
 }
 
 export function makeOpt<T>(d?: Dependency<T>): Dependency<T | undefined> {
-    return d ? d.apply(t => t) : createUndefinedDependency<T>();
+    return d ? d : createUndefinedDependency<T>();
 }
 
 /**
@@ -272,23 +272,29 @@ export function combine<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1>, d2: Compu
 export function combine<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
 export function combine<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>, d8: ComputedValue<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
 export function combine<T>(...ds: ComputedValue<T>[]): Dependency<T[]>;
-export function combine(...ds: ComputedValue<{}>[]): Dependency<{}[]> {
+export function combine(...cvs: ComputedValue<{}>[]): Dependency<{}[]> {
     const allResources = new Set<Resource>();
 
     return new Dependency<{}[]>(allResources, () => {
         const promises: Promise<{}>[] = [];
 
-        for (const d of ds) {
-            if (d instanceof Dependency) {
-                d.resources().forEach(r => allResources.add(r));
-                promises.push(d.promise());
-            } else {
-                promises.push(Promise.resolve(d));
-            }
+        for (const cv of cvs) {
+            const d = convertToDependency(cv);
+            d.resources().forEach(r => allResources.add(r));
+            promises.push(d.promise());
         }
 
         return Promise.all(promises);
     });
+}
+
+/* @internal */
+export function convertToDependency<T>(cv: ComputedValue<T>): Dependency<T> {
+    if (cv instanceof Dependency) {
+        return cv;
+    } else {
+        return new Dependency<T>(new Set<Resource>(), () => Promise.resolve(cv));
+    }
 }
 
 /**
