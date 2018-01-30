@@ -21,7 +21,6 @@ func Destroy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCh
 	return deployLatest(info, deployOptions{
 		UpdateOptions: opts,
 
-		Create:  false,
 		Destroy: true,
 
 		Events: events,
