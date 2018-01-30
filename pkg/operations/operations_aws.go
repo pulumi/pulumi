@@ -15,6 +15,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -50,6 +51,7 @@ func AWSOperationsProvider(
 	prov := &awsOpsProvider{
 		awsConnection: awsConnection,
 		component:     component,
+		region:        awsRegion,
 	}
 	return prov, nil
 }
@@ -57,6 +59,7 @@ func AWSOperationsProvider(
 type awsOpsProvider struct {
 	awsConnection *awsConnection
 	component     *Resource
+	region        string
 }
 
 var _ Provider = (*awsOpsProvider)(nil)
@@ -104,6 +107,16 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		glog.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
 		return nil, nil
 	}
+}
+
+func (ops *awsOpsProvider) GetResourceData() (map[string]string, error) {
+	result := make(map[string]string)
+	consoleLink := ops.getConsoleLink(ops.component.State)
+	if len(consoleLink) > 0 {
+		result["consoleLink"] = consoleLink
+	}
+
+	return result, nil
 }
 
 type awsConnection struct {
@@ -196,4 +209,59 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	}
 
 	return logs
+}
+
+func (ops *awsOpsProvider) getConsoleLink(state *resource.State) string {
+	switch state.Type {
+	case "aws:apigateway/deployment:Deployment":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/apigateway/home?region=%s#/apis/%s",
+			ops.region, ops.region, state.Inputs["restApi"].StringValue())
+	case "aws:apigateway/restApi:RestApi":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/apigateway/home?region=%s#/apis/%s",
+			ops.region, ops.region, state.ID)
+	case "aws:apigateway/stage:Stage":
+		return ""
+	case "aws:cloudwatch/eventRule:EventRule":
+		fallthrough
+	case "aws:cloudwatch/eventTarget:EventTarget":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#rules:name=%s",
+			ops.region, ops.region, state.ID)
+	case "aws:cloudwatch/logGroup:LogGroup":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=%s",
+			ops.region, ops.region, state.ID)
+	case "aws:cloudwatch/logSubscriptionFilter:LogSubscriptionFilter":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logStream:group=%s",
+			ops.region, ops.region, state.ID)
+	case "aws:dynamodb/table:Table":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/dynamodb/home?region=%s#tables:selected=%s",
+			ops.region, ops.region, state.ID)
+	case "aws:iam/rolePolicyAttachment:RolePolicyAttachment":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/iam/home?region=%s#/policies/%s",
+			ops.region, ops.region, state.Inputs["policyArn"].StringValue())
+	case "aws:iam/role:Role":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/iam/home?region=%s#/roles/%s",
+			ops.region, ops.region, state.ID)
+	case "aws:lambda/function:Function":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/lambda/home?region=%s#/functions/%s",
+			ops.region, ops.region, state.ID)
+	case "aws:lambda/permission:Permission":
+		return ""
+	case "aws:s3/bucket:Bucket":
+		return fmt.Sprintf("https://s3.console.aws.amazon.com/s3/buckets/%s/?region=%s",
+			state.ID, ops.region)
+	case "aws:s3/bucketObject:BucketObject":
+		return fmt.Sprintf("https://s3.console.aws.amazon.com/s3/buckets/%s/%s/?region=%s",
+			state.Inputs["bucket"].StringValue(), state.ID, ops.region)
+	case "aws:serverless:Function":
+		return ""
+	case "aws:sns/topicSubscription:TopicSubscription":
+		// TODO: No direct link
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/sns/v2/home?region=%s#/subscriptions",
+			ops.region, ops.region)
+	case "aws:sns/topic:Topic":
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/sns/v2/home?region=%s#/topics/%s",
+			ops.region, ops.region, state.ID)
+	default:
+		return ""
+	}
 }

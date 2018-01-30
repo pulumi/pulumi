@@ -5,12 +5,14 @@ package operations
 import (
 	"encoding/json"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
@@ -81,4 +83,47 @@ func TestCrawler(t *testing.T) {
 	}
 	assert.Equal(t, 1, len(function.State.Inputs))
 	assert.Equal(t, 3, len(function.Children))
+}
+
+func TestConsoleLink(t *testing.T) {
+	config := make(map[tokens.ModuleMember]string)
+	config["aws:config:region"] = "my_test_region"
+
+	components := getPulumiResources(t, "testdata/todo.json")
+	recurse(t, components, config)
+
+	components = getPulumiResources(t, "testdata/crawler.json")
+	recurse(t, components, config)
+}
+
+func recurse(t *testing.T, comp *Resource, config map[tokens.ModuleMember]string) {
+	resourceData, err := comp.OperationsProvider(config).GetResourceData()
+	if err == nil {
+		assert.NoError(t, err)
+		if resourceData != nil {
+			consoleLink, hasConsoleLink := resourceData["consoleLink"]
+			assert.True(t, !hasConsoleLink || len(consoleLink) > 0,
+				"console link is either missing or nonempty: present=%v, value=%v, type=%v",
+				hasConsoleLink, consoleLink, comp.State.Type)
+
+			shouldHaveConsoleLink := strings.HasPrefix(string(comp.State.Type), "aws")
+			switch comp.State.Type {
+			case "aws:lambda/permission:Permission":
+				fallthrough
+			case "aws:serverless:Function":
+				fallthrough
+			case "aws:apigateway/stage:Stage":
+				// Missing implementation for these types
+				shouldHaveConsoleLink = false
+			}
+			assert.Equal(t, shouldHaveConsoleLink, hasConsoleLink, "Couldn't find console link in: %#v", comp.State)
+
+			if shouldHaveConsoleLink {
+				assert.Contains(t, consoleLink, "console.aws.amazon.com")
+			}
+		}
+	}
+	for _, child := range comp.Children {
+		recurse(t, child, config)
+	}
 }

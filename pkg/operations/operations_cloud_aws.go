@@ -194,3 +194,8 @@ func extractLambdaLogMessage(message string, id string) *LogEntry {
 	glog.V(9).Infof("Could not match Lambda log message: %s", message)
 	return nil
 }
+
+func (ops *cloudOpsProvider) GetResourceData() (map[string]string, error) {
+	// Cloud package components do not have source console links.
+	return nil, nil
+}

@@ -40,4 +40,5 @@ type Provider interface {
 	// GetLogs returns logs matching a query
 	GetLogs(query LogQuery) (*[]LogEntry, error)
 	// TODO[pulumi/pulumi#609] Add support for metrics
+	GetResourceData() (map[string]string, error)
 }
