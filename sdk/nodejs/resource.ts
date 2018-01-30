@@ -241,8 +241,18 @@ function createUndefinedDependency<T>(): Dependency<T | undefined> {
     return new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(undefined));
 }
 
-export function makeOpt<T>(d?: ComputedValue<T>): Dependency<T | undefined> {
-    return d ? convertToDependency(d) : createUndefinedDependency<T>();
+export function resolve<T>(cv: ComputedValue<T>): Dependency<T>;
+export function resolve<T>(cv: ComputedValue<T | undefined>): Dependency<T | undefined>;
+export function resolve<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
+export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined>;
+export function resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
+    if (cv === undefined) {
+        return createUndefinedDependency<T>();
+    }
+
+    return cv instanceof Dependency
+        ? cv
+        : new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(cv));
 }
 
 /**
@@ -279,19 +289,13 @@ export function combine(...cvs: ComputedValue<{}>[]): Dependency<{}[]> {
         const promises: Promise<{}>[] = [];
 
         for (const cv of cvs) {
-            const d = convertToDependency(cv);
+            const d = resolve(cv);
             d.resources().forEach(r => allResources.add(r));
             promises.push(d.promise());
         }
 
         return Promise.all(promises);
     });
-}
-
-export function convertToDependency<T>(cv: ComputedValue<T>): Dependency<T> {
-    return cv instanceof Dependency
-        ? cv
-        : new Dependency<T>(new Set<Resource>(), () => Promise.resolve(cv));
 }
 
 /**
