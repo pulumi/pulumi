@@ -975,7 +975,7 @@ return (function () { () => { console.log(this + arguments); }; })
     });
 
     {
-        const v = { d: Dependency.resolve(4) };
+        const v = { d: Dependency.from(4) };
         cases.push({
             title: "Dependency capture",
             // tslint:disable-next-line
@@ -1006,9 +1006,9 @@ return (function () { console.log(v); })
 
     {
         const v = {
-            d1: Dependency.resolve(4),
-            d2: Dependency.resolve("str"),
-            d3: Dependency.resolve(undefined),
+            d1: Dependency.from(4),
+            d2: Dependency.from("str"),
+            d3: Dependency.from(undefined),
         };
         cases.push({
             title: "Multiple dependency capture",

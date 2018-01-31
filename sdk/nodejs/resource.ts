@@ -194,9 +194,9 @@ export class Dependency<T> {
         return new Dependency<T>(new Set<Resource>([resource]), () => value);
     }
 
-    public static resolve<T>(cv: ComputedValue<T>): Dependency<T>;
-    public static resolve<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
-    public static resolve<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
+    public static from<T>(cv: ComputedValue<T>): Dependency<T>;
+    public static from<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
+    public static from<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
         return cv instanceof Dependency
             ? cv
             : new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(cv));
@@ -253,7 +253,7 @@ export class Dependency<T> {
             const promises: Promise<{}>[] = [];
 
             for (const cv of argArray) {
-                const d = Dependency.resolve(cv);
+                const d = Dependency.from(cv);
                 promises.push(d.promise());
             }
 
@@ -265,7 +265,7 @@ export class Dependency<T> {
     public static unwrap<T, U>(val: { [key: string]: T }, func: (t: T) => ComputedValue<U>): Dependency<{ [key: string]: U }>;
     public static unwrap<T, U>(val: any, func?: any): Dependency<{ [key: string]: U }> {
         const array = Object.keys(val).map(k =>
-            Dependency.resolve<U>(func ? func(val[k]) : val[k]).apply(v => ({ key: k, value: v})));
+            Dependency.from<U>(func ? func(val[k]) : val[k]).apply(v => ({ key: k, value: v})));
 
         return Dependency.all(array)
                          .apply(keysAndValues => {
