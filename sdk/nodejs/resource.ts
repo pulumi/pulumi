@@ -245,6 +245,23 @@ export class Dependency<T> {
         });
     }
 
+    public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }>;
+    public static unwrap<T>(val: { [key: number]: ComputedValue<T> }): Dependency<{ [key: number]: T }>;
+    public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }> {
+        const array = Object.keys(val).map(k =>
+            Dependency.resolve(val[k]).apply(v => ({ key: k, value: v})));
+
+        return Dependency.all(...array)
+                         .apply(keysAndValues => {
+                            const result: { [key: string]: T } = {};
+                            for (const kvp of keysAndValues) {
+                                result[kvp.key] = kvp.value;
+                            }
+
+                            return result;
+                         });
+    }
+
     /* @internal */ public constructor(resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
