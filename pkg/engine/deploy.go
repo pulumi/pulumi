@@ -19,14 +19,13 @@ import (
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 type UpdateOptions struct {
-	Analyzers            []string            // an optional set of analyzers to run as part of this deployment.
-	Color                colors.Colorization // How output should be colorized.
-	DryRun               bool                // true if we should just print the plan without performing it.
-	Parallel             int                 // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool                // true to show the configuration variables being used.
-	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
-	ShowSames            bool                // true to show the resources that aren't updated in addition to updates.
-	Summary              bool                // true if we should only summarize resources and operations.
+	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	DryRun               bool     // true if we should just print the plan without performing it.
+	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
+	ShowConfig           bool     // true to show the configuration variables being used.
+	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
+	ShowSames            bool     // true to show the resources that aren't updated in addition to updates.
+	Summary              bool     // true if we should only summarize resources and operations.
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
@@ -50,9 +49,7 @@ func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCha
 		Destroy: false,
 
 		Events: events,
-		Diag: newEventSink(events, diag.FormatOptions{
-			Color: opts.Color,
-		}),
+		Diag:   newEventSink(events),
 	})
 }
 
@@ -95,7 +92,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			var header bytes.Buffer
 			printPrelude(&header, result, false)
 			header.WriteString(fmt.Sprintf("%vPerforming changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			opts.Events <- stdOutEventWithColor(&header, opts.Color)
+			opts.Events <- stdOutEventWithColor(&header)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
@@ -123,7 +120,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 					colors.SpecAttention, colors.Reset))
 			}
 
-			opts.Events <- stdOutEventWithColor(&footer, opts.Color)
+			opts.Events <- stdOutEventWithColor(&footer)
 
 			if err != nil {
 				return resourceChanges, err
@@ -164,7 +161,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
 		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
 	// Inform the snapshot service that we are about to perform a step.
@@ -210,7 +207,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 	}
 
-	acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
+	acts.Opts.Events <- stdOutEventWithColor(&b)
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
@@ -222,7 +219,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
 		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
 	// There's a chance there are new outputs that weren't written out last time.

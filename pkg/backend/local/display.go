@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -17,7 +18,7 @@ import (
 // displayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
 // Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
 // await all the events being written.
-func displayEvents(events <-chan engine.Event, done chan<- bool, debug bool) {
+func displayEvents(events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker()
 
 	defer func() {
@@ -36,7 +37,7 @@ func displayEvents(events <-chan engine.Event, done chan<- bool, debug bool) {
 				return
 			case engine.StdoutColorEvent:
 				payload := event.Payload.(engine.StdoutEventPayload)
-				fmt.Print(payload.Color.Colorize(payload.Message))
+				fmt.Print(opts.Color.Colorize(payload.Message))
 			case engine.DiagEvent:
 				payload := event.Payload.(engine.DiagEventPayload)
 				var out io.Writer
@@ -49,7 +50,7 @@ func displayEvents(events <-chan engine.Event, done chan<- bool, debug bool) {
 					out = ioutil.Discard
 				}
 				msg := payload.Message
-				msg = payload.Color.Colorize(msg)
+				msg = opts.Color.Colorize(msg)
 				_, fmterr := fmt.Fprint(out, msg)
 				contract.IgnoreError(fmterr)
 			default:
