@@ -247,9 +247,11 @@ export class Dependency<T> {
 
     public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }>;
     public static unwrap<T>(val: { [key: number]: ComputedValue<T> }): Dependency<{ [key: number]: T }>;
-    public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }> {
+    public static unwrap<T, U>(val: { [key: string]: T }, func: (t: T) => ComputedValue<U>): Dependency<{ [key: string]: U }>;
+    public static unwrap<T, U>(val: { [key: number]: T }, func: (t: T) => ComputedValue<U>): Dependency<{ [key: number]: U }>;
+    public static unwrap<T, U>(val: any, func?: any): Dependency<{ [key: string]: T }> {
         const array = Object.keys(val).map(k =>
-            Dependency.resolve(val[k]).apply(v => ({ key: k, value: v})));
+            Dependency.resolve(func ? func(val[k]) : val[k]).apply(v => ({ key: k, value: v})));
 
         return Dependency.all(...array)
                          .apply(keysAndValues => {
