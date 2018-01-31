@@ -58,10 +58,9 @@ type deployOptions struct {
 
 	Destroy bool // true if we are destroying the stack.
 
-	Detailed bool         // true to show very detailed output, like properties that haven't changed.
-	DOT      bool         // true if we should print the DOT file for this plan.
-	Events   chan<- Event // the channel to write events from the engine to.
-	Diag     diag.Sink    // the sink to use for diag'ing.
+	DOT    bool         // true if we should print the DOT file for this plan.
+	Events chan<- Event // the channel to write events from the engine to.
+	Diag   diag.Sink    // the sink to use for diag'ing.
 }
 
 func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error) {
@@ -160,8 +159,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Report the beginning of the step if appropriate.
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary,
-			acts.Opts.Detailed, false, 0 /*indent*/, acts.Opts.Debug)
+		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, false, 0 /*indent*/, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
