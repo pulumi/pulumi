@@ -79,18 +79,19 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *cloudStack) Preview(pkg *pack.Package, root string, debug bool, opts engine.UpdateOptions) error {
-	return backend.PreviewStack(s, pkg, root, debug, opts)
+func (s *cloudStack) Preview(pkg *pack.Package, root string,
+	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.PreviewStack(s, pkg, root, debug, opts, displayOpts)
 }
 
 func (s *cloudStack) Update(pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
-	return backend.UpdateStack(s, pkg, root, debug, m, opts)
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.UpdateStack(s, pkg, root, debug, m, opts, displayOpts)
 }
 
 func (s *cloudStack) Destroy(pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
-	return backend.DestroyStack(s, pkg, root, debug, m, opts)
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.DestroyStack(s, pkg, root, debug, m, opts, displayOpts)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

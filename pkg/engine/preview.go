@@ -6,7 +6,6 @@ import (
 	"bytes"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -34,9 +33,7 @@ func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 		Destroy: false,
 
 		Events: events,
-		Diag: newEventSink(events, diag.FormatOptions{
-			Color: opts.Color,
-		}),
+		Diag:   newEventSink(events),
 	})
 }
 
@@ -89,7 +86,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 		var b bytes.Buffer
 		printStep(&b, step,
 			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil, nil
 }
@@ -116,7 +113,7 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
 		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, true, 0 /*indent*/)
-		acts.Opts.Events <- stdOutEventWithColor(&b, acts.Opts.Color)
+		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil
 }

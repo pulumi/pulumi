@@ -3,7 +3,6 @@
 package engine
 
 import (
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -24,8 +23,6 @@ func Destroy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCh
 		Destroy: true,
 
 		Events: events,
-		Diag: newEventSink(events, diag.FormatOptions{
-			Color: opts.Color,
-		}),
+		Diag:   newEventSink(events),
 	})
 }

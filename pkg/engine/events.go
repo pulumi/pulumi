@@ -41,66 +41,66 @@ type StdoutEventPayload struct {
 	Color   colors.Colorization
 }
 
-func stdOutEventWithColor(s fmt.Stringer, color colors.Colorization) Event {
+func stdOutEventWithColor(s fmt.Stringer) Event {
 	return Event{
 		Type: StdoutColorEvent,
 		Payload: StdoutEventPayload{
 			Message: s.String(),
-			Color:   color,
+			Color:   colors.Raw,
 		},
 	}
 }
 
-func diagDebugEvent(msg string, color colors.Colorization) Event {
+func diagDebugEvent(msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Message:  msg,
-			Color:    color,
+			Color:    colors.Raw,
 			Severity: diag.Debug,
 		},
 	}
 }
 
-func diagInfoEvent(msg string, color colors.Colorization) Event {
+func diagInfoEvent(msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Message:  msg,
-			Color:    color,
+			Color:    colors.Raw,
 			Severity: diag.Info,
 		},
 	}
 }
 
-func diagInfoerrEvent(msg string, color colors.Colorization) Event {
+func diagInfoerrEvent(msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Message:  msg,
-			Color:    color,
+			Color:    colors.Raw,
 			Severity: diag.Infoerr,
 		},
 	}
 }
 
-func diagErrorEvent(msg string, color colors.Colorization) Event {
+func diagErrorEvent(msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Message:  msg,
-			Color:    color,
+			Color:    colors.Raw,
 			Severity: diag.Error,
 		},
 	}
 }
 
-func diagWarningEvent(msg string, color colors.Colorization) Event {
+func diagWarningEvent(msg string) Event {
 	return Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			Message:  msg,
-			Color:    color,
+			Color:    colors.Raw,
 			Severity: diag.Warning,
 		},
 	}
