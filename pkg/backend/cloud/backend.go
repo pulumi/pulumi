@@ -589,7 +589,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
 			DryRun:               opts.DryRun,
 			Parallel:             opts.Parallel,
-			ShowConfig:           opts.ShowConfig,
+			ShowConfig:           false, // This is a legacy option now, the engine will always emit config information
 			ShowReplacementSteps: opts.ShowReplacementSteps,
 			ShowSames:            opts.ShowSames,
 		},

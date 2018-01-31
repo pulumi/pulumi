@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -38,6 +40,8 @@ func displayEvents(action string,
 			switch event.Type {
 			case engine.CancelEvent:
 				return
+			case engine.PreludeEvent:
+				displayPreludeEvent(os.Stdout, event.Payload.(engine.PreludeEventPayload), opts)
 			case engine.StdoutColorEvent:
 				payload := event.Payload.(engine.StdoutEventPayload)
 				out = os.Stdout
@@ -61,4 +65,27 @@ func displayEvents(action string,
 			}
 		}
 	}
+}
+
+// nolint: gas
+func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts backend.DisplayOptions) {
+	if opts.ShowConfig {
+		fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
+
+		var keys []string
+		for key := range event.Config {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			fmt.Fprintf(out, "    %v: %v\n", key, event.Config[key])
+		}
+	}
+
+	action := "Previewing"
+	if !event.IsPreview {
+		action = "Performing"
+	}
+
+	fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
 }

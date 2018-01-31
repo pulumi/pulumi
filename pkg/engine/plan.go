@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -184,14 +183,9 @@ func (res *planResult) Close() error {
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
 func printPlan(result *planResult) (ResourceChanges, error) {
-	// First print config/unchanged/etc. if necessary.
-	var prelude bytes.Buffer
-	printPrelude(&prelude, result, true)
+	result.Options.Events <- preludeEvent(result.Options.DryRun, result.Info.Update.GetTarget().Config)
 
-	// Now walk the plan's steps and and pretty-print them out.
-	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	result.Options.Events <- stdOutEventWithColor(&prelude)
-
+	// Walk the plan's steps and and pretty-print them out.
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
@@ -235,29 +229,6 @@ func shouldShow(seen map[resource.URN]deploy.Step, step deploy.Step, opts deploy
 // isRootStack returns true if the step pertains to the rootmost stack component.
 func isRootStack(step deploy.Step) bool {
 	return step.URN().Type() == resource.RootStackType
-}
-
-func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
-	// If there are configuration variables, show them.
-	if result.Options.ShowConfig {
-		printConfig(b, result.Info.Update.GetTarget().Config)
-	}
-}
-
-func printConfig(b *bytes.Buffer, cfg config.Map) {
-	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
-	if cfg != nil {
-		var keys config.KeyArray
-		for key := range cfg {
-			keys = append(keys, key)
-		}
-		sort.Sort(keys)
-		for _, key := range keys {
-			v, err := cfg[key].Value(config.NewBlindingDecrypter())
-			contract.AssertNoError(err)
-			b.WriteString(fmt.Sprintf("    %v: %v\n", key, v))
-		}
-	}
 }
 
 // printChangeSummary writes summary informatiom about the resoures changed to the provided buffer.

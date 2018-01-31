@@ -64,13 +64,13 @@ func newUpdateCmd() *cobra.Command {
 				Analyzers:            analyzers,
 				DryRun:               preview,
 				Parallel:             parallel,
-				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
 				Debug:                debug,
 			}, backend.DisplayOptions{
-				Color: color.Colorization(),
+				Color:      color.Colorization(),
+				ShowConfig: showConfig,
 			})
 		}),
 	}

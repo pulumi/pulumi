@@ -21,7 +21,6 @@ type UpdateOptions struct {
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	DryRun               bool     // true if we should just print the plan without performing it.
 	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated in addition to updates.
 	Summary              bool     // true if we should only summarize resources and operations.
@@ -88,10 +87,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
-			var header bytes.Buffer
-			printPrelude(&header, result, false)
-			header.WriteString(fmt.Sprintf("%vPerforming changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			opts.Events <- stdOutEventWithColor(&header)
+			opts.Events <- preludeEvent(opts.DryRun, result.Info.Update.GetTarget().Config)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
