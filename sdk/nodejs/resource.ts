@@ -221,15 +221,15 @@ export class Dependency<T> {
      *
      */
     // tslint:disable:max-line-length
-    public static all<T1, T2>(d1: ComputedValue<T1>, d2: ComputedValue<T2>): Dependency<[T1, T2]>;
-    public static all<T1, T2, T3>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>): Dependency<[T1, T2, T3]>;
-    public static all<T1, T2, T3, T4>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>): Dependency<[T1, T2, T3, T4]>;
-    public static all<T1, T2, T3, T4, T5>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>): Dependency<[T1, T2, T3, T4, T5]>;
-    public static all<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
-    public static all<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
-    public static all<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>, d8: ComputedValue<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-    public static all<T>(ds: ComputedValue<T>[]): Dependency<T[]>;
-    public static all<T>(...ds: ComputedValue<T>[]): Dependency<T[]>;
+    public static all<T1, T2>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined): Dependency<[T1, T2]>;
+    public static all<T1, T2, T3>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined): Dependency<[T1, T2, T3]>;
+    public static all<T1, T2, T3, T4>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined): Dependency<[T1, T2, T3, T4]>;
+    public static all<T1, T2, T3, T4, T5>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined): Dependency<[T1, T2, T3, T4, T5]>;
+    public static all<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined, d6: ComputedValue<T6> | undefined): Dependency<[T1, T2, T3, T4, T5, T6]>;
+    public static all<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined, d6: ComputedValue<T6> | undefined, d7: ComputedValue<T7> | undefined): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
+    public static all<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined, d6: ComputedValue<T6> | undefined, d7: ComputedValue<T7> | undefined, d8: ComputedValue<T8> | undefined): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+    public static all<T>(ds: (ComputedValue<T> | undefined)[]): Dependency<T[]>;
+    public static all<T>(...ds: (ComputedValue<T> | undefined)[]): Dependency<T[]>;
     public static all(): Dependency<{}[]> {
         let argArray: ComputedValue<{}>[];
         if (arguments.length === 1 && arguments[0] instanceof Array) {
