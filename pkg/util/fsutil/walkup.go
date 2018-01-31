@@ -28,7 +28,6 @@ func WalkUp(path string, walkFn func(string) bool, visitParentFn func(string) bo
 			name := file.Name()
 			path := filepath.Join(curr, name)
 			if walkFn(path) {
-
 				return path, nil
 			}
 		}
