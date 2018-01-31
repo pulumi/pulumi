@@ -241,7 +241,12 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	if err != nil {
 		return err
 	}
-	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, opts)
+	context, main, err := getContextAndMain(pkg, root)
+	if err != nil {
+		return err
+	}
+
+	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, main, opts)
 	if err != nil {
 		return err
 	}
@@ -259,7 +264,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 
 	// Upload the program's contents to the signed URL if appropriate.
 	if action != destroy {
-		err = uploadProgram(pkg, root, updateResponse.UploadURL, true /* print upload size to STDOUT */)
+		err = uploadArchive(context, updateResponse.UploadURL, pkg.UseDefaultIgnores(), true /* show progress */)
 		if err != nil {
 			return err
 		}
@@ -286,17 +291,17 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	return nil
 }
 
-// uploadProgram archives the current Pulumi program and uploads it to a signed URL. "current"
+// uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
-func uploadProgram(pkg *pack.Package, programFolder, uploadURL string, progress bool) error {
+func uploadArchive(context string, uploadURL string, useDefaultIgnores bool, progress bool) error {
 	parsedURL, err := url.Parse(uploadURL)
 	if err != nil {
 		return errors.Wrap(err, "parsing URL")
 	}
 
 	// programPath is the path to the Pulumi.yaml file. Need its parent folder.
-	archiveContents, err := archive.Process(programFolder, pkg.UseDefaultIgnores())
+	archiveContents, err := archive.Process(context, useDefaultIgnores)
 	if err != nil {
 		return errors.Wrap(err, "creating archive")
 	}
@@ -439,8 +444,8 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 }
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
-func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
-	pkg *pack.Package, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
+func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, pkg *pack.Package, main string,
+	opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
 	cfg, err := state.Configuration(b.d, stackName)
@@ -465,7 +470,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 	return apitype.UpdateProgramRequest{
 		Name:        string(pkg.Name),
 		Runtime:     pkg.Runtime,
-		Main:        pkg.Main,
+		Main:        main,
 		Description: description,
 		Config:      wireConfig,
 		Options:     apitype.UpdateOptions(opts), // Convert type to the apitype package version.
