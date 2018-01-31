@@ -228,16 +228,32 @@ export class Dependency<T> {
     public static all<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>): Dependency<[T1, T2, T3, T4, T5, T6]>;
     public static all<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
     public static all<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1>, d2: ComputedValue<T2>, d3: ComputedValue<T3>, d4: ComputedValue<T4>, d5: ComputedValue<T5>, d6: ComputedValue<T6>, d7: ComputedValue<T7>, d8: ComputedValue<T8>): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+    public static all<T>(ds: ComputedValue<T>[]): Dependency<T[]>;
     public static all<T>(...ds: ComputedValue<T>[]): Dependency<T[]>;
-    public static all(...cvs: ComputedValue<{}>[]): Dependency<{}[]> {
+    public static all(): Dependency<{}[]> {
+        let argArray: ComputedValue<{}>[];
+        if (arguments.length === 1 && arguments[0] instanceof Array) {
+            argArray = arguments[0];
+        } else {
+            argArray = [];
+            for (let i = 0, n = arguments.length; i < n; i++) {
+                argArray.push(arguments[i]);
+            }
+        }
+
         const allResources = new Set<Resource>();
+
+        for (const cv of argArray) {
+            if (cv instanceof Dependency) {
+                cv.resources().forEach(r => allResources.add(r));
+            }
+        }
 
         return new Dependency<{}[]>(allResources, () => {
             const promises: Promise<{}>[] = [];
 
-            for (const cv of cvs) {
+            for (const cv of argArray) {
                 const d = Dependency.resolve(cv);
-                d.resources().forEach(r => allResources.add(r));
                 promises.push(d.promise());
             }
 
@@ -246,16 +262,14 @@ export class Dependency<T> {
     }
 
     public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }>;
-    public static unwrap<T>(val: { [key: number]: ComputedValue<T> }): Dependency<{ [key: number]: T }>;
     public static unwrap<T, U>(val: { [key: string]: T }, func: (t: T) => ComputedValue<U>): Dependency<{ [key: string]: U }>;
-    public static unwrap<T, U>(val: { [key: number]: T }, func: (t: T) => ComputedValue<U>): Dependency<{ [key: number]: U }>;
-    public static unwrap<T, U>(val: any, func?: any): Dependency<{ [key: string]: T }> {
+    public static unwrap<T, U>(val: any, func?: any): Dependency<{ [key: string]: U }> {
         const array = Object.keys(val).map(k =>
-            Dependency.resolve(func ? func(val[k]) : val[k]).apply(v => ({ key: k, value: v})));
+            Dependency.resolve<U>(func ? func(val[k]) : val[k]).apply(v => ({ key: k, value: v})));
 
-        return Dependency.all(...array)
+        return Dependency.all(array)
                          .apply(keysAndValues => {
-                            const result: { [key: string]: T } = {};
+                            const result: { [key: string]: U } = {};
                             for (const kvp of keysAndValues) {
                                 result[kvp.key] = kvp.value;
                             }
