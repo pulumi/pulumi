@@ -236,9 +236,9 @@ export class Dependency<T> {
         if (arguments.length === 1 && arguments[0] instanceof Array) {
             argArray = arguments[0];
         } else {
-            argArray = [];
+            argArray = new Array(arguments.length);
             for (let i = 0, n = arguments.length; i < n; i++) {
-                argArray.push(arguments[i]);
+                argArray[i] = arguments[i];
             }
         }
 
