@@ -61,7 +61,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const flattenedInputProps = await serializeProperties(
             label, inputProps, implicitResourceDependencies);
 
-
         log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(flattenedInputProps)}` : ``));
 

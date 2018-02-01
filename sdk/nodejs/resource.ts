@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as runtime from "./runtime";
 import { registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
@@ -190,8 +191,8 @@ export class Dependency<T> {
      public readonly get: () => T;
 
     // Statics
-    /* @internal */ public static create<T>(resource: Resource, value: Promise<T>): Dependency<T> {
-        return new Dependency<T>(new Set<Resource>([resource]), () => value);
+    /* @internal */ public static create<T>(resource: Resource, promise: Promise<T>): Dependency<T> {
+        return new Dependency<T>(new Set<Resource>([resource]), promise);
     }
 
     public static from<T>(cv: ComputedValue<T>): Dependency<T>;
@@ -199,7 +200,7 @@ export class Dependency<T> {
     public static from<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
         return cv instanceof Dependency
             ? cv
-            : new Dependency<T | undefined>(new Set<Resource>(), () => Promise.resolve(cv));
+            : new Dependency<T | undefined>(new Set<Resource>(), Promise.resolve(cv));
     }
 
     /**
@@ -242,23 +243,17 @@ export class Dependency<T> {
         }
 
         const allResources = new Set<Resource>();
+        const promises: Promise<{}>[] = [];
 
         for (const cv of argArray) {
             if (cv instanceof Dependency) {
                 cv.resources().forEach(r => allResources.add(r));
             }
+
+            promises.push(Dependency.from(cv).promise());
         }
 
-        return new Dependency<{}[]>(allResources, () => {
-            const promises: Promise<{}>[] = [];
-
-            for (const cv of argArray) {
-                const d = Dependency.from(cv);
-                promises.push(d.promise());
-            }
-
-            return Promise.all(promises);
-        });
+        return new Dependency<{}[]>(allResources, Promise.all(promises));
     }
 
     public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }>;
@@ -278,26 +273,23 @@ export class Dependency<T> {
                          });
     }
 
-    /* @internal */ public constructor(resources: Set<Resource>, createComputeValueTask: () => Promise<T>) {
+    /* @internal */ public constructor(resources: Set<Resource>, promise: Promise<T>) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
 
         // getValue is lazy.  i.e. we will only apply funcs when asked the first time, and we will
         // also only apply them once (no matter how many times getValue() is called).
 
-        let computeValueTask: Promise<T> | undefined = undefined;
-        this.promise = () => {
-            if (!computeValueTask) {
-                computeValueTask = createComputeValueTask();
-            }
-
-            return computeValueTask;
-        };
+        this.promise = () => promise;
 
         this.apply = <U>(func: (t: T) => U | Dependency<U>) => {
-            return new Dependency<U>(resources, async () => {
-                const val = await this.promise();
-                const transformed = func(val);
+            if (runtime.options.dryRun) {
+                // During previews we never actually apply the func.
+                return new Dependency<U>(resources, Promise.resolve(<U><any>undefined));
+            }
+
+            return new Dependency<U>(resources, promise.then(v => {
+                const transformed = func(v);
                 if (transformed instanceof Dependency) {
                     // Note: if the func returned a Dependency, we unwrap that to get the inner
                     // value returned by that Dependency.  Note that we are *not* capturing the
@@ -305,11 +297,11 @@ export class Dependency<T> {
                     // returned is only supposed to be related this *this* dependency object,
                     // those dependeny resources should already be in our transitively reachable
                     // resource graph.
-                    return await transformed.promise();
+                    return transformed.promise();
                 } else {
                     return transformed;
                 }
-            });
+            }));
         };
 
 
