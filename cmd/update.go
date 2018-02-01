@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -62,12 +63,13 @@ func newUpdateCmd() *cobra.Command {
 			return s.Update(pkg, root, debug, m, engine.UpdateOptions{
 				Analyzers:            analyzers,
 				DryRun:               preview,
-				Color:                color.Colorization(),
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
+			}, backend.DisplayOptions{
+				Color: color.Colorization(),
 			})
 		}),
 	}

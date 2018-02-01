@@ -5,6 +5,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -53,12 +54,13 @@ func newPreviewCmd() *cobra.Command {
 			return s.Preview(pkg, root, debug, engine.UpdateOptions{
 				Analyzers:            analyzers,
 				DryRun:               true,
-				Color:                color.Colorization(),
 				Parallel:             parallel,
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
+			}, backend.DisplayOptions{
+				Color: color.Colorization(),
 			})
 		}),
 	}

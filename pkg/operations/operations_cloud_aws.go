@@ -166,7 +166,7 @@ var (
 	// Used prior to pulumi-terraform@1307256eeeefdd87ffd76581cd3ab73c3d7cfd4a
 	oldFunctionNameFromLogGroupNameRegExp = regexp.MustCompile(`^/aws/lambda/(.*)[0-9A-Fa-f]{8}$`)
 	// Extract Lambda log parts from Lambda log format
-	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t(.*)")
+	logRegexp = regexp.MustCompile("^(.{23}Z)\t[a-g0-9\\-]{36}\t((?s).*)\n")
 )
 
 // extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific

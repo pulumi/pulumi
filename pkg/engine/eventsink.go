@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -14,12 +13,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func newEventSink(events chan<- Event, opts diag.FormatOptions) diag.Sink {
+func newEventSink(events chan<- Event) diag.Sink {
 	contract.Require(events != nil, "events")
 
 	return &eventSink{
 		events: events,
-		opts:   opts,
 		counts: make(map[diag.Severity]int),
 	}
 }
@@ -29,7 +27,6 @@ const eventSinkIDPrefix = "PU"
 // eventSink is a sink which writes all events to a channel
 type eventSink struct {
 	events chan<- Event          // the channel to emit events into.
-	opts   diag.FormatOptions    // a set of options that control output style and content.
 	counts map[diag.Severity]int // the number of messages that have been issued per severity.
 	mutex  sync.RWMutex          // a mutex for guarding updates to the counts map
 }
@@ -66,7 +63,7 @@ func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	if glog.V(9) {
 		glog.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagDebugEvent(msg, s.opts.Color)
+	s.events <- diagDebugEvent(msg)
 	s.incrementCount(diag.Debug)
 }
 
@@ -75,7 +72,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoEvent(msg, s.opts.Color)
+	s.events <- diagInfoEvent(msg)
 	s.incrementCount(diag.Info)
 }
 
@@ -84,7 +81,7 @@ func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoerrEvent(msg, s.opts.Color)
+	s.events <- diagInfoerrEvent(msg)
 	s.incrementCount(diag.Infoerr)
 }
 
@@ -93,7 +90,7 @@ func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagErrorEvent(msg, s.opts.Color)
+	s.events <- diagErrorEvent(msg)
 	s.incrementCount(diag.Error)
 }
 
@@ -102,7 +99,7 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagWarningEvent(msg, s.opts.Color)
+	s.events <- diagWarningEvent(msg)
 	s.incrementCount(diag.Warning)
 }
 
@@ -120,12 +117,6 @@ func (s *eventSink) getCount(sev diag.Severity) int {
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) string {
 	var buffer bytes.Buffer
-
-	// First print the location if there is one.
-	if d.Doc != nil || d.Loc != nil {
-		buffer.WriteString(s.StringifyLocation(sev, d.Doc, d.Loc))
-		buffer.WriteString(": ")
-	}
 
 	// Now print the message category's prefix (error/warning).
 	switch sev {
@@ -167,37 +158,5 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
 	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
-	return s.opts.Color.Colorize(buffer.String())
-}
-
-func (s *eventSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc *diag.Location) string {
-	var buffer bytes.Buffer
-
-	if doc != nil {
-		buffer.WriteString(colors.SpecLocation)
-
-		file := doc.File
-		if s.opts.Pwd != "" {
-			// If a PWD is available, try to create a relative path.
-			rel, err := filepath.Rel(s.opts.Pwd, file)
-			if err == nil {
-				file = rel
-			}
-		}
-
-		buffer.WriteString(file)
-	}
-
-	if loc != nil && !loc.IsEmpty() {
-		buffer.WriteRune('(')
-		buffer.WriteString(strconv.Itoa(loc.Start.Line))
-		buffer.WriteRune(',')
-		buffer.WriteString(strconv.Itoa(loc.Start.Column))
-		buffer.WriteRune(')')
-	}
-
-	// Reset the color if we wrote anything
-	buffer.WriteString(colors.Reset)
-
-	return s.opts.Color.Colorize(buffer.String())
+	return buffer.String()
 }

@@ -199,26 +199,26 @@ const (
 )
 
 func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, opts engine.UpdateOptions) error {
+	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(preview, stackName, pkg, root, debug, backend.UpdateMetadata{}, opts)
+	return b.updateStack(preview, stackName, pkg, root, debug, backend.UpdateMetadata{}, opts, displayOpts)
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(update, stackName, pkg, root, debug, m, opts)
+	return b.updateStack(update, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(destroy, stackName, pkg, root, debug, m, opts)
+	return b.updateStack(destroy, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	var actionLabel string
@@ -242,7 +242,12 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	if err != nil {
 		return err
 	}
-	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, m, opts)
+	context, main, err := getContextAndMain(pkg, root)
+	if err != nil {
+		return err
+	}
+
+	updateRequest, err := b.makeProgramUpdateRequest(stackName, pkg, main, m, opts)
 	if err != nil {
 		return err
 	}
@@ -260,7 +265,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 
 	// Upload the program's contents to the signed URL if appropriate.
 	if action != destroy {
-		err = uploadProgram(pkg, root, updateResponse.UploadURL, true /* print upload size to STDOUT */)
+		err = uploadArchive(context, updateResponse.UploadURL, pkg.UseDefaultIgnores(), true /* show progress */)
 		if err != nil {
 			return err
 		}
@@ -278,7 +283,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	}
 
 	// Wait for the update to complete, which also polls and renders event output to STDOUT.
-	status, err := b.waitForUpdate(restURLWithUpdateID)
+	status, err := b.waitForUpdate(restURLWithUpdateID, displayOpts)
 	if err != nil {
 		return errors.Wrapf(err, "waiting for %s", action)
 	} else if status != apitype.StatusSucceeded {
@@ -287,17 +292,17 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	return nil
 }
 
-// uploadProgram archives the current Pulumi program and uploads it to a signed URL. "current"
+// uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
-func uploadProgram(pkg *pack.Package, programFolder, uploadURL string, progress bool) error {
+func uploadArchive(context string, uploadURL string, useDefaultIgnores bool, progress bool) error {
 	parsedURL, err := url.Parse(uploadURL)
 	if err != nil {
 		return errors.Wrap(err, "parsing URL")
 	}
 
 	// programPath is the path to the Pulumi.yaml file. Need its parent folder.
-	archiveContents, err := archive.Process(programFolder, pkg.UseDefaultIgnores())
+	archiveContents, err := archive.Process(context, useDefaultIgnores)
 	if err != nil {
 		return errors.Wrap(err, "creating archive")
 	}
@@ -457,7 +462,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment json.
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	importPath := fmt.Sprintf("%s/update/%s", stackPath, response.UpdateID)
-	status, err := b.waitForUpdate(importPath)
+	status, err := b.waitForUpdate(importPath, backend.DisplayOptions{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")
 	} else if status != apitype.StatusSucceeded {
@@ -509,8 +514,8 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 }
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
-func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
-	pkg *pack.Package, m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
+func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, pkg *pack.Package, main string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
 	cfg, err := state.Configuration(b.d, stackName)
@@ -535,10 +540,18 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName,
 	return apitype.UpdateProgramRequest{
 		Name:        string(pkg.Name),
 		Runtime:     pkg.Runtime,
-		Main:        pkg.Main,
+		Main:        main,
 		Description: description,
 		Config:      wireConfig,
-		Options:     apitype.UpdateOptions(opts), // Convert type to the apitype package version.
+		Options: apitype.UpdateOptions{
+			Analyzers:            opts.Analyzers,
+			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
+			DryRun:               opts.DryRun,
+			Parallel:             opts.Parallel,
+			ShowConfig:           opts.ShowConfig,
+			ShowReplacementSteps: opts.ShowReplacementSteps,
+			ShowSames:            opts.ShowSames,
+		},
 		Metadata: apitype.UpdateMetadata{
 			Message:     m.Message,
 			Environment: m.Environment,
@@ -560,7 +573,7 @@ type displayEvent struct {
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
-func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) {
+func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
 	events := make(chan displayEvent)
 	done := make(chan bool)
 
@@ -571,7 +584,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 		close(done)
 	}()
 
-	go displayEvents(events, done)
+	go displayEvents(events, done, displayOpts)
 
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
 	eventIndex := "0"
@@ -604,7 +617,7 @@ func (b *cloudBackend) waitForUpdate(path string) (apitype.UpdateStatus, error) 
 	}
 }
 
-func displayEvents(events <-chan displayEvent, done chan<- bool) {
+func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker()
 
 	defer func() {
@@ -626,12 +639,7 @@ func displayEvents(events <-chan displayEvent, done chan<- bool) {
 			// Pluck out the string.
 			if raw, ok := payload.Fields["text"]; ok && raw != nil {
 				if text, ok := raw.(string); ok {
-					// Colorize by default, but honor the engine's settings, if any.
-					if colorize, ok := payload.Fields["colorize"].(string); ok {
-						text = colors.Colorization(colorize).Colorize(text)
-					} else {
-						text = colors.ColorizeText(text)
-					}
+					text = opts.Color.Colorize(text)
 
 					// Choose the stream to write to (by default stdout).
 					var stream io.Writer

@@ -105,7 +105,7 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 }
 
 func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
-	opts engine.UpdateOptions) error {
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -115,7 +115,7 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug)
+	go displayEvents(events, done, debug, displayOpts)
 
 	if err = engine.Preview(update, events, opts); err != nil {
 		return err
@@ -128,7 +128,7 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 }
 
 func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -138,7 +138,7 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug)
+	go displayEvents(events, done, debug, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
@@ -177,7 +177,7 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions) error {
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	update, err := b.newUpdate(stackName, pkg, root)
 	if err != nil {
@@ -187,7 +187,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug)
+	go displayEvents(events, done, debug, displayOpts)
 
 	// Perform the destroy
 	start := time.Now().Unix()

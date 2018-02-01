@@ -60,8 +60,8 @@ At this point you can run `make` to build and run tests:
 
 This installs the `pulumi` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
 
-The Makefile also supports just running tests (`make test`), just running the linter (`make lint`), just running Govet
-(`make vet`), and so on.  Please just refer to the Makefile for the full list of targets.
+The Makefile also supports just running tests (`make test_all` or `make test_fast`), just running the linter
+(`make lint`), just running Govet (`make vet`), and so on.  Please just refer to the Makefile for the full list of targets.
 
 ### Debugging
 

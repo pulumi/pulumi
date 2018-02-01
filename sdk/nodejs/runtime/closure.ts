@@ -566,6 +566,7 @@ class FreeVariableComputer {
     private visitVariableDeclaration(node: ts.VariableDeclaration, walk: walkCallback): void {
         // tslint:disable-next-line:max-line-length
         const isLet = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Let) !== 0;
+        // tslint:disable-next-line:max-line-length
         const isConst = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
         const isVar = !isLet && !isConst;
 

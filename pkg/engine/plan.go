@@ -165,7 +165,7 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	result.Options.Events <- stdOutEventWithColor(&prelude, result.Options.Color)
+	result.Options.Events <- stdOutEventWithColor(&prelude)
 
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
@@ -183,7 +183,7 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 	var summary bytes.Buffer
 	changes := ResourceChanges(actions.Ops)
 	printChangeSummary(&summary, changes, true)
-	result.Options.Events <- stdOutEventWithColor(&summary, result.Options.Color)
+	result.Options.Events <- stdOutEventWithColor(&summary)
 	return changes, nil
 }
 
