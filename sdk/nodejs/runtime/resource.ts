@@ -124,7 +124,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         }
 
         for (const key of Object.keys(inputProps)) {
-            if (!allProps[key]) {
+            if (!allProps.hasOwnProperty(key)) {
                 // input prop the engine didn't give us a final value for.  Just use the
                 // value passed into the resource.  Note: unwrap dependencies so that we
                 // can reparent the value against ourself.  i.e. if resource B is passed
