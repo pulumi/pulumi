@@ -859,7 +859,15 @@ class FuncsForClosure {
             return `require("${envEntry.module}")`;
         }
         else if (envEntry.dep !== undefined) {
-            return `{ get: () => ${this.envEntryToString(envEntry.dep)} }`;
+            // get: () => { ... }
+            // parses as a lambda with a block body, not as a lambda returning an object
+            // initializer.  If we have a block body, wrap it with parens.
+            let value = this.envEntryToString(envEntry.dep);
+            if (value && value.charAt(0) === "{") {
+                value = `(${value})`;
+            }
+
+            return `{ get: () => ${value} }`;
         }
         else {
             return undefined;

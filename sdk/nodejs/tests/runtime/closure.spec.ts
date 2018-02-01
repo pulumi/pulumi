@@ -1009,6 +1009,7 @@ return (function () { console.log(v); })
             d1: Dependency.from(4),
             d2: Dependency.from("str"),
             d3: Dependency.from(undefined),
+            d4: Dependency.from({ a: 1, b: true }),
         };
         cases.push({
             title: "Multiple dependency capture",
@@ -1021,16 +1022,20 @@ return (function () { console.log(v); })
                         "d1": { "dep": { "json": 4 } },
                         "d2": { "dep": { "json": "str" } },
                         "d3": { "dep": { "json": undefined } },
+                        "d4": { "dep": { "obj": {
+                            "a": { "json": 1 },
+                            "b": { "json": true },
+                        } } },
                     } },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__a3ddd89d1cda2b7856c44281d244dfb82c37e340",
-            expectText: `exports.handler = __a3ddd89d1cda2b7856c44281d244dfb82c37e340;
+            closureHash: "__010ddd8e314a6fdc60244562536298871169f9fb",
+            expectText: `exports.handler = __010ddd8e314a6fdc60244562536298871169f9fb;
 
-function __a3ddd89d1cda2b7856c44281d244dfb82c37e340() {
+function __010ddd8e314a6fdc60244562536298871169f9fb() {
   return (function() {
-    with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined } } }) {
+    with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined }, d4: { get: () => ({ a: 1, b: true }) } } }) {
 
 return (function () { console.log(v); })
 
