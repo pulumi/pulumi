@@ -792,14 +792,14 @@ func (pt *programTester) prepareProject(projectDir string) error {
 		cwd = path.Join(cwd, rwd)
 	}
 
-	// Now ensure dependencies are present.
-	if insterr := pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); insterr != nil {
-		return insterr
-	}
+	// Now ensure dependencies are present.  First link and then install.
 	for _, dependency := range pt.opts.Dependencies {
 		if linkerr := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); linkerr != nil {
 			return linkerr
 		}
+	}
+	if insterr := pt.runYarnCommand("yarn-install", []string{"install", "--verbose"}, cwd); insterr != nil {
+		return insterr
 	}
 
 	// And finally compile it using whatever build steps are in the package.json file.
