@@ -140,9 +140,7 @@ export class ComponentResource extends Resource {
  */
 export class Dependency<T> {
     // Method that actually produces the concrete value of this dependency, as well as the total
-    // deployment-time set of resources this dependency depends on.  This code path will end up
-    // executing apply funcs, and should only be called during real deployment and not during
-    // previews.
+    // deployment-time set of resources this dependency depends on.
     //
     // Only callable on the outside.
     /* @internal */ public readonly promise: () => Promise<T>;
@@ -171,11 +169,12 @@ export class Dependency<T> {
      *
      * Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
      * If you need have multiple dependencies and a single dependency is needed that combines both
-     * set of resources, then 'combine' should be used instead.
+     * set of resources, then 'Dependency.all' should be used instead.
      *
-     * This function is only callable during execution of the Pulumi program during deployment or
-     * preview.  It is not available for functions that end up executing in the cloud during
-     * runtime.  To get the value of the Dependency during cloud runtime executure, use `get()`.
+     * This function will only be called execution of a 'pulumi update' request.  It will not run
+     * during 'pulumi preview' (as the values of resources are of course not known then). It is not
+     * available for functions that end up executing in the cloud during runtime.  To get the value
+     * of the Dependency during cloud runtime executure, use `get()`.
      */
     public readonly apply: <U>(func: (t: T) => U | Dependency<U>) => Dependency<U>;
 
@@ -214,7 +213,7 @@ export class Dependency<T> {
      * var d1: Dependency<string>;
      * var d2: Dependency<number>;
      *
-     * var d3: Dependency<ResultType> = combine(d1, d2).apply((s: string, n: number) => ...);
+     * var d3: Dependency<ResultType> = Dependency.all(d1, d2).apply(([s, n]) => ...);
      * ```
      *
      * In this example, taking a dependency on d3 means a resource will depend on all the resources of
@@ -242,18 +241,12 @@ export class Dependency<T> {
             }
         }
 
-        const allResources = new Set<Resource>();
-        const promises: Promise<{}>[] = [];
+        const allDeps = argArray.map(a => Dependency.from(a));
 
-        for (const cv of argArray) {
-            if (cv instanceof Dependency) {
-                cv.resources().forEach(r => allResources.add(r));
-            }
+        const resources = allDeps.reduce<Resource[]>((arr, dep) => (arr.push(...dep.resources()), arr), []);
+        const promises = allDeps.map(d => d.promise());
 
-            promises.push(Dependency.from(cv).promise());
-        }
-
-        return new Dependency<{}[]>(allResources, Promise.all(promises));
+        return new Dependency<{}[]>(new Set<Resource>(resources), Promise.all(promises));
     }
 
     public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }>;
@@ -276,9 +269,6 @@ export class Dependency<T> {
     /* @internal */ public constructor(resources: Set<Resource>, promise: Promise<T>) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
-
-        // getValue is lazy.  i.e. we will only apply funcs when asked the first time, and we will
-        // also only apply them once (no matter how many times getValue() is called).
 
         this.promise = () => promise;
 
