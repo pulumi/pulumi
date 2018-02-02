@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	goerr "github.com/pkg/errors"
+	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/compiler/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -87,12 +87,12 @@ func (p *Plan) configure() error {
 		pkgt := tokens.Package(pkg)
 		prov, err := p.TryProvider(pkgt)
 		if err != nil {
-			return goerr.Wrapf(err, "failed to get pkg '%v' resource provider", pkg)
+			return errors.Wrapf(err, "failed to get pkg '%v' resource provider", pkg)
 		} else if prov != nil {
 			// Note that it's legal for a provider to be missing for this package.  This simply indicates that
 			// the configuration variable affects the program/package, and not a Go provider.
 			if err = prov.Configure(pkgconfigs[pkgt]); err != nil {
-				return goerr.Wrapf(err, "failed to configure pkg '%v' resource provider", pkg)
+				return errors.Wrapf(err, "failed to configure pkg '%v' resource provider", pkg)
 			}
 		}
 		initialized[pkg] = true
@@ -159,7 +159,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 		var eventerr error
 		eventctx, eventerr = e.OnResourceStepPre(step)
 		if eventerr != nil {
-			return resource.StatusOK, goerr.Wrapf(eventerr, "pre-step event returned an error")
+			return resource.StatusOK, errors.Wrapf(eventerr, "pre-step event returned an error")
 		}
 	}
 
@@ -173,7 +173,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 		if step.Logical() && step.New() != nil {
 			if prior, has := iter.pendingNews[urn]; has {
 				return resource.StatusOK,
-					goerr.Errorf("resource '%s' registered twice (%s and %s)", urn, prior.Op(), step.Op())
+					errors.Errorf("resource '%s' registered twice (%s and %s)", urn, prior.Op(), step.Op())
 			}
 
 			iter.pendingNews[urn] = step
@@ -183,7 +183,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 	// If there is a post-event, raise it, and in any case, return the results.
 	if e := iter.opts.Events; e != nil {
 		if eventerr := e.OnResourceStepPost(eventctx, step, status, err); eventerr != nil {
-			return status, goerr.Wrapf(eventerr, "post-step event returned an error")
+			return status, errors.Wrapf(eventerr, "post-step event returned an error")
 		}
 	}
 
@@ -271,7 +271,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	if iter.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		iter.p.Diag().Errorf(errors.ErrorDuplicateResourceURN, urn)
+		iter.p.Diag().Errorf(diag.ErrorDuplicateResourceURN, urn)
 	}
 	iter.urns[urn] = true
 
@@ -321,7 +321,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		if err != nil {
 			return nil, err
 		} else if analyzer == nil {
-			return nil, goerr.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
+			return nil, errors.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
 		var failures []plugin.AnalyzeFailure
 		failures, err = analyzer.Analyze(new.Type, inputs)
@@ -330,13 +330,13 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		}
 		for _, failure := range failures {
 			invalid = true
-			iter.p.Diag().Errorf(errors.ErrorAnalyzeResourceFailure, a, urn, failure.Property, failure.Reason)
+			iter.p.Diag().Errorf(diag.ErrorAnalyzeResourceFailure, a, urn, failure.Property, failure.Reason)
 		}
 	}
 
 	// If the resource isn't valid, don't proceed any further.
 	if invalid {
-		return nil, goerr.New("One or more resource validation errors occurred; refusing to proceed")
+		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
 	}
 
 	// Now decide what to do, step-wise:
@@ -376,7 +376,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 					if err != nil {
 						return nil, err
 					} else if iter.issueCheckErrors(new, urn, failures) {
-						return nil, goerr.New("One or more resource validation errors occurred; refusing to proceed")
+						return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
 					}
 					new.Inputs = inputs
 				}
@@ -446,10 +446,10 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue,
+			iter.p.Diag().Errorf(diag.ErrorResourcePropertyInvalidValue,
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			iter.p.Diag().Errorf(errors.ErrorResourceInvalid, new.Type, urn.Name(), failure.Reason)
+			iter.p.Diag().Errorf(diag.ErrorResourceInvalid, new.Type, urn.Name(), failure.Reason)
 		}
 	}
 	return true
@@ -472,7 +472,7 @@ func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := iter.opts.Events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
-			return goerr.Wrapf(eventerr, "resource complete event returned an error")
+			return errors.Wrapf(eventerr, "resource complete event returned an error")
 		}
 	}
 
@@ -607,7 +607,7 @@ func (iter *PlanIterator) Provider(t tokens.Type) (plugin.Provider, error) {
 	if err != nil {
 		return nil, err
 	} else if prov == nil {
-		return nil, goerr.Errorf("could not load resource provider for package '%v' from $PATH", pkg)
+		return nil, errors.Errorf("could not load resource provider for package '%v' from $PATH", pkg)
 	}
 	return prov, nil
 }

@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	goerr "github.com/pkg/errors"
+	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/compiler/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -130,7 +129,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 
 	if !opts.Diag.Success() {
 		// If any error that wasn't printed above, be sure to make it evident in the output.
-		return resourceChanges, goerr.New("One or more errors occurred during this update")
+		return resourceChanges, errors.New("One or more errors occurred during this update")
 	}
 	return resourceChanges, nil
 }
@@ -176,7 +175,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 	stepop := step.Op()
 	if err != nil {
 		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
+		acts.Opts.Diag.Errorf(diag.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
 		stepnum := acts.Steps + 1
