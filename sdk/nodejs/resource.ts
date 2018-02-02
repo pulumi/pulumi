@@ -176,7 +176,7 @@ export class Dependency<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Dependency during cloud runtime executure, use `get()`.
      */
-    public readonly apply: <U>(func: (t: T) => U | Dependency<U>) => Dependency<U>;
+    public readonly apply: <U>(func: (t: T) => ComputedValue<U>) => Dependency<U>;
 
     /**
      * Retrieves the underlying value of this dependency.
@@ -272,14 +272,14 @@ export class Dependency<T> {
 
         this.promise = () => promise;
 
-        this.apply = <U>(func: (t: T) => U | Dependency<U>) => {
+        this.apply = <U>(func: (t: T) => ComputedValue<U>) => {
             if (runtime.options.dryRun) {
                 // During previews we never actually apply the func.
                 return new Dependency<U>(resources, Promise.resolve(<U><any>undefined));
             }
 
-            return new Dependency<U>(resources, promise.then(v => {
-                const transformed = func(v);
+            return new Dependency<U>(resources, promise.then(async v => {
+                const transformed = await func(v);
                 if (transformed instanceof Dependency) {
                     // Note: if the func returned a Dependency, we unwrap that to get the inner
                     // value returned by that Dependency.  Note that we are *not* capturing the
@@ -287,7 +287,7 @@ export class Dependency<T> {
                     // returned is only supposed to be related this *this* dependency object,
                     // those dependeny resources should already be in our transitively reachable
                     // resource graph.
-                    return transformed.promise();
+                    return await transformed.promise();
                 } else {
                     return transformed;
                 }
