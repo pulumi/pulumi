@@ -195,8 +195,8 @@ export class Dependency<T> {
     }
 
     public static from<T>(cv: ComputedValue<T>): Dependency<T>;
-    public static from<T>(cv?: ComputedValue<T>): Dependency<T | undefined>;
-    public static from<T>(cv?: ComputedValue<T | undefined>): Dependency<T | undefined> {
+    public static from<T>(cv: ComputedValue<T> | undefined): Dependency<T | undefined>;
+    public static from<T>(cv: ComputedValue<T | undefined>): Dependency<T | undefined> {
         return cv instanceof Dependency
             ? cv
             : new Dependency<T | undefined>(new Set<Resource>(), Promise.resolve(cv));
