@@ -20,7 +20,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
-        (excessiveDebugOutput ? `, props=...` : ``));
+        (excessiveDebugOutput ? `, inputProps=...` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
     let resolveURN: (urn: URN) => void;
