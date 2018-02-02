@@ -99,23 +99,9 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			}
 			contract.Assert(summary != nil)
 
-			// Print a summary.
-			var footer bytes.Buffer
-
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			resourceChanges = ResourceChanges(actions.Ops)
-			if c := printChangeSummary(&footer, resourceChanges, false); c != 0 {
-				footer.WriteString(fmt.Sprintf("%vUpdate duration: %v%v\n",
-					colors.SpecUnimportant, time.Since(start), colors.Reset))
-			}
-
-			if actions.MaybeCorrupt {
-				footer.WriteString(fmt.Sprintf(
-					"%vA catastrophic error occurred; resources states may be unknown%v\n",
-					colors.SpecAttention, colors.Reset))
-			}
-
-			opts.Events <- stdOutEventWithColor(&footer)
+			opts.Events <- updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 
 			if err != nil {
 				return resourceChanges, err

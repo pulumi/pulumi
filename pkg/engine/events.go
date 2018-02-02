@@ -4,6 +4,7 @@ package engine
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -26,6 +27,7 @@ const (
 	StdoutColorEvent EventType = "stdoutcolor"
 	DiagEvent        EventType = "diag"
 	PreludeEvent     EventType = "prelude"
+	SummaryEvent     EventType = "summary"
 )
 
 func cancelEvent() Event {
@@ -49,6 +51,13 @@ type PreludeEventPayload struct {
 	Config    map[string]string // the keys and values for config. For encrypted config, the values may be blinded
 }
 
+type SummaryEventPayload struct {
+	IsPreview       bool            // true if this summary is for a plan operation
+	MaybeCorrupt    bool            // true if one or more resources may be corrupt
+	Duration        time.Duration   // the duration of the entire update operation (zero values for previews)
+	ResourceChanges ResourceChanges // count of changed resources, useful for reporting
+}
+
 func preludeEvent(isPreview bool, cfg config.Map) Event {
 	configStringMap := make(map[string]string, len(cfg))
 	for k, v := range cfg {
@@ -63,6 +72,30 @@ func preludeEvent(isPreview bool, cfg config.Map) Event {
 		Payload: PreludeEventPayload{
 			IsPreview: isPreview,
 			Config:    configStringMap,
+		},
+	}
+}
+
+func previewSummaryEvent(resourceChanges ResourceChanges) Event {
+	return Event{
+		Type: SummaryEvent,
+		Payload: SummaryEventPayload{
+			IsPreview:       true,
+			MaybeCorrupt:    false,
+			Duration:        0,
+			ResourceChanges: resourceChanges,
+		},
+	}
+}
+
+func updateSummaryEvent(maybeCorrupt bool, duration time.Duration, resourceChanges ResourceChanges) Event {
+	return Event{
+		Type: SummaryEvent,
+		Payload: SummaryEventPayload{
+			IsPreview:       false,
+			MaybeCorrupt:    maybeCorrupt,
+			Duration:        duration,
+			ResourceChanges: resourceChanges,
 		},
 	}
 }
