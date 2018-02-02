@@ -184,7 +184,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 
 		// Also show outputs here, since there might be some from the initial registration.
 		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
-			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/, acts.Opts.Debug)
+			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, acts.Opts.Debug)
 		}
 	}
 
@@ -199,7 +199,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/, acts.Opts.Debug)
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 

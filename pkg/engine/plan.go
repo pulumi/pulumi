@@ -406,8 +406,7 @@ func printObject(
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
-	planning bool, indent int, debug bool) {
+	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, planning bool, debug bool) {
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New()
 	if new == nil || new.Outputs == nil {
@@ -416,8 +415,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 	op := considerSameIfNotCreateOrDelete(step.Op())
 
 	// Now compute the indentation level, in part based on the parents.
-	indent++ // indent for the resource.
-	indent = stepParentIndent(b, step, seen, shown, false, indent, false, debug)
+	indent := stepParentIndent(b, step, seen, shown, false, 0, false, debug)
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs
