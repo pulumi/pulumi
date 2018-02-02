@@ -221,32 +221,21 @@ export class Dependency<T> {
      *
      */
     // tslint:disable:max-line-length
-    public static all<T1, T2>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined): Dependency<[T1, T2]>;
-    public static all<T1, T2, T3>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined): Dependency<[T1, T2, T3]>;
-    public static all<T1, T2, T3, T4>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined): Dependency<[T1, T2, T3, T4]>;
-    public static all<T1, T2, T3, T4, T5>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined): Dependency<[T1, T2, T3, T4, T5]>;
-    public static all<T1, T2, T3, T4, T5, T6>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined, d6: ComputedValue<T6> | undefined): Dependency<[T1, T2, T3, T4, T5, T6]>;
-    public static all<T1, T2, T3, T4, T5, T6, T7>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined, d6: ComputedValue<T6> | undefined, d7: ComputedValue<T7> | undefined): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
-    public static all<T1, T2, T3, T4, T5, T6, T7, T8>(d1: ComputedValue<T1> | undefined, d2: ComputedValue<T2> | undefined, d3: ComputedValue<T3> | undefined, d4: ComputedValue<T4> | undefined, d5: ComputedValue<T5> | undefined, d6: ComputedValue<T6> | undefined, d7: ComputedValue<T7> | undefined, d8: ComputedValue<T8> | undefined): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+    public static all<T1, T2>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined]): Dependency<[T1, T2]>;
+    public static all<T1, T2, T3>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined, ComputedValue<T3> | undefined]): Dependency<[T1, T2, T3]>;
+    public static all<T1, T2, T3, T4>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined, ComputedValue<T3> | undefined, ComputedValue<T4> | undefined]): Dependency<[T1, T2, T3, T4]>;
+    public static all<T1, T2, T3, T4, T5>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined, ComputedValue<T3> | undefined, ComputedValue<T4> | undefined, ComputedValue<T5> | undefined]): Dependency<[T1, T2, T3, T4, T5]>;
+    public static all<T1, T2, T3, T4, T5, T6>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined, ComputedValue<T3> | undefined, ComputedValue<T4> | undefined, ComputedValue<T5> | undefined, ComputedValue<T6> | undefined]): Dependency<[T1, T2, T3, T4, T5, T6]>;
+    public static all<T1, T2, T3, T4, T5, T6, T7>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined, ComputedValue<T3> | undefined, ComputedValue<T4> | undefined, ComputedValue<T5> | undefined, ComputedValue<T6> | undefined, ComputedValue<T7> | undefined]): Dependency<[T1, T2, T3, T4, T5, T6, T7]>;
+    public static all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [ComputedValue<T1> | undefined, ComputedValue<T2> | undefined, ComputedValue<T3> | undefined, ComputedValue<T4> | undefined, ComputedValue<T5> | undefined, ComputedValue<T6> | undefined, ComputedValue<T7> | undefined, ComputedValue<T8> | undefined]): Dependency<[T1, T2, T3, T4, T5, T6, T7, T8]>;
     public static all<T>(ds: (ComputedValue<T> | undefined)[]): Dependency<T[]>;
-    public static all<T>(...ds: (ComputedValue<T> | undefined)[]): Dependency<T[]>;
-    public static all(): Dependency<{}[]> {
-        let argArray: ComputedValue<{}>[];
-        if (arguments.length === 1 && arguments[0] instanceof Array) {
-            argArray = arguments[0];
-        } else {
-            argArray = new Array(arguments.length);
-            for (let i = 0, n = arguments.length; i < n; i++) {
-                argArray[i] = arguments[i];
-            }
-        }
-
-        const allDeps = argArray.map(a => Dependency.from(a));
+    public static all<T>(ds: any[]): Dependency<any[]> {
+        const allDeps = ds.map(a => Dependency.from(a));
 
         const resources = allDeps.reduce<Resource[]>((arr, dep) => (arr.push(...dep.resources()), arr), []);
         const promises = allDeps.map(d => d.promise());
 
-        return new Dependency<{}[]>(new Set<Resource>(resources), Promise.all(promises));
+        return new Dependency<T[]>(new Set<Resource>(resources), Promise.all(promises));
     }
 
     public static unwrap<T>(val: { [key: string]: ComputedValue<T> }): Dependency<{ [key: string]: T }>;

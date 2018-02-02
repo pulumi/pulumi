@@ -42,8 +42,8 @@ export interface EnvironmentEntry {
     // a reference to a requirable module name.
     module?: string;
 
-     // A Resource Dependency<T> property.  It will be serialized over as a get() method that
-     // returns the raw underlying value.
+    // a Dependency<T> property.  It will be serialized over as a get() method that
+    // returns the raw underlying value.
     dep?: EnvironmentEntry;
 }
 
