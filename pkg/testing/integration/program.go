@@ -399,7 +399,9 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
-	keepTestDir = false
+	// Ran to completion. Delete the test directory if the test passed.
+	keepTestDir = pt.t.Failed()
+
 	return nil
 }
 
