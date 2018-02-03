@@ -204,10 +204,13 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 	return changes, nil
 }
 
+func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
+	_, has := seen[step.URN()]
+	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())
+}
+
 // shouldShow returns true if a step should show in the output.
 func shouldShow(seen map[resource.URN]deploy.Step, step deploy.Step, opts deployOptions) bool {
-	// Ensure we've marked this step as observed.
-	seen[step.URN()] = step
 
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op() == deploy.OpSame {

@@ -138,6 +138,9 @@ func newDeployActions(update Update, opts deployOptions) *deployActions {
 }
 
 func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+	// Ensure we've marked this step as observed.
+	acts.Seen[step.URN()] = step
+
 	// Report the beginning of the step if appropriate.
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
@@ -151,6 +154,8 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
+	assertSeen(acts.Seen, step)
+
 	var b bytes.Buffer
 
 	// Report the result of the step.
@@ -196,6 +201,8 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
+	assertSeen(acts.Seen, step)
+
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer

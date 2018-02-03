@@ -81,6 +81,8 @@ func newPreviewActions(opts deployOptions) *previewActions {
 }
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+	acts.Seen[step.URN()] = step
+
 	// Print this step information (resource and all its properties).
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
@@ -93,6 +95,8 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 
 func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
+	assertSeen(acts.Seen, step)
+
 	// We let `printPlan` handle error reporting for now.
 	if err == nil {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -109,6 +113,8 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
+	assertSeen(acts.Seen, step)
+
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
