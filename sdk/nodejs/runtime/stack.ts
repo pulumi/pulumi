@@ -2,7 +2,7 @@
 
 import * as log from "../log";
 import { getProject, getStack } from "../metadata";
-import { ComponentResource, ComputedValues, Resource } from "../resource";
+import { ComponentResource, Inputs, Resource } from "../resource";
 import { getRootResource, setRootResource } from "./settings";
 
 /**
@@ -21,13 +21,13 @@ export function runInPulumiStack(init: () => any): void {
 }
 
 class Stack extends ComponentResource {
-    constructor(init: () => ComputedValues) {
+    constructor(init: () => Inputs) {
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`);
 
         if (getRootResource()) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
-        let outputs: ComputedValues | undefined;
+        let outputs: Inputs | undefined;
         try {
             setRootResource(this);      // install ourselves as the current root.
             outputs = init();           // run the init code.

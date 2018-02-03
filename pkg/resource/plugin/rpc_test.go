@@ -56,7 +56,7 @@ func TestComputedSerialize(t *testing.T) {
 		cpropU, err := UnmarshalPropertyValue(cprop, opts)
 		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
-		assert.True(t, cpropU.ComputedValue().Element.IsString())
+		assert.True(t, cpropU.Input().Element.IsString())
 	}
 	{
 		cprop, err := MarshalPropertyValue(
@@ -66,7 +66,7 @@ func TestComputedSerialize(t *testing.T) {
 		cpropU, err := UnmarshalPropertyValue(cprop, opts)
 		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
-		assert.True(t, cpropU.ComputedValue().Element.IsNumber())
+		assert.True(t, cpropU.Input().Element.IsNumber())
 	}
 }
 

@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { Computed, ComputedValue, ComputedValues, Dependency,
-         ID, Resource, ResourceOptions, URN } from "../resource";
+import { Computed, ID, Input, Inputs,
+         Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { deserializeProperties, resolveProperties, serializeProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
@@ -16,7 +16,7 @@ const resproto = require("../proto/resource_pb.js");
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 inputProps: ComputedValues, opts: ResourceOptions): void {
+                                 inputProps: Inputs, opts: ResourceOptions): void {
 
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
@@ -24,7 +24,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
     // Simply initialize the URN property and get prepared to resolve it later on.
     let resolveURN: (urn: URN) => void;
-    (res as any).urn = Dependency.create(
+    (res as any).urn = Output.create(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
@@ -33,7 +33,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID) => void) | undefined;
     if (custom) {
-        (res as any).id = Dependency.create(
+        (res as any).id = Output.create(
             res,
             debuggablePromise(
                 new Promise<ID>(resolve => resolveID = resolve),
@@ -132,7 +132,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 // output for it, we want resource B to expose depProp as a DependencyProp
                 // pointing to B and not A.
                 const inputProp = inputProps[key];
-                if (inputProp instanceof Dependency) {
+                if (inputProp instanceof Output) {
                     allProps[key] = await inputProp.promise();
                 } else {
                     allProps[key] = inputProp;
@@ -147,7 +147,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 /**
  * registerResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
  */
-export function registerResourceOutputs(res: Resource, outputs: ComputedValues) {
+export function registerResourceOutputs(res: Resource, outputs: Inputs) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can

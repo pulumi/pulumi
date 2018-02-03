@@ -227,7 +227,7 @@ async function serializeCapturedObjectAsync(
     } else if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
         entry.closure = await serializeClosureAsync(obj, entryCache);
-    } else if (obj instanceof resource.Dependency) {
+    } else if (obj instanceof resource.Output) {
         entry.dep = await serializeCapturedObject(await obj.promise(), entryCache);
     } else {
         // For all other objects, serialize all of their properties.

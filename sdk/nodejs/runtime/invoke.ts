@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { ComputedValues } from "../resource";
+import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
@@ -14,7 +14,7 @@ const resproto = require("../proto/resource_pb.js");
  * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
-export async function invoke(tok: string, props: ComputedValues): Promise<any> {
+export async function invoke(tok: string, props: Inputs): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 

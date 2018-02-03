@@ -5,7 +5,7 @@
 import * as assert from "assert";
 import { runtime } from "../../index";
 import * as resource from "../../resource";
-import { Dependency } from "../../resource";
+import { Output, output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
 
 interface ClosureCase {
@@ -975,9 +975,9 @@ return (function () { () => { console.log(this + arguments); }; })
     });
 
     {
-        const v = { d: Dependency.from(4) };
+        const v = { d: output(4) };
         cases.push({
-            title: "Dependency capture",
+            title: "Output capture",
             // tslint:disable-next-line
             func: function () { console.log(v); },
             expect: {
@@ -1006,13 +1006,13 @@ return (function () { console.log(v); })
 
     {
         const v = {
-            d1: Dependency.from(4),
-            d2: Dependency.from("str"),
-            d3: Dependency.from(undefined),
-            d4: Dependency.from({ a: 1, b: true }),
+            d1: output(4),
+            d2: output("str"),
+            d3: output(undefined),
+            d4: output({ a: 1, b: true }),
         };
         cases.push({
-            title: "Multiple dependency capture",
+            title: "Multiple output capture",
             // tslint:disable-next-line
             func: function () { console.log(v); },
             expect: {

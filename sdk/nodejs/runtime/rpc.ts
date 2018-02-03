@@ -3,7 +3,7 @@
 import * as assert from "assert";
 import * as asset from "../asset";
 import * as log from "../log";
-import { ComputedValue, ComputedValues, CustomResource, Dependency, Resource } from "../resource";
+import { CustomResource, Input, Inputs, Output, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, options } from "./settings";
 
@@ -22,7 +22,7 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * 'onto'.
  */
 export function transferProperties(
-        onto: Resource, label: string, props: ComputedValues): Record<string, (v: any) => void> {
+        onto: Resource, label: string, props: Inputs): Record<string, (v: any) => void> {
 
     const resolvers: Record<string, (v: any) => void> = {};
     for (const k of Object.keys(props)) {
@@ -35,7 +35,7 @@ export function transferProperties(
         if (onto.hasOwnProperty(k)) {
             throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
-        (<any>onto)[k] = Dependency.create(
+        (<any>onto)[k] = Output.create(
             onto,
             debuggablePromise(
                 new Promise<any>(resolve => resolvers[k] = resolve),
@@ -50,7 +50,7 @@ export function transferProperties(
  * creating a reaosnable POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
-        label: string, props: ComputedValues, dependentResources: Resource[] = []): Promise<Record<string, any>> {
+        label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (k !== "id" && k !== "urn" && props[k] !== undefined) {
@@ -96,7 +96,7 @@ export function resolveProperties(
             // are still made available on the object.  This isn't ideal, because any code running
             // prior to the actual resource CRUD operation can't hang computations off of it, but
             // it's better than tossing it.
-            (res as any)[k] = Dependency.create(
+            (res as any)[k] = Output.create(
                 res,
                 debuggablePromise(new Promise<any>(r => resolve = r)));
         }
@@ -151,7 +151,7 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependentResources: Resource[]): Promise<any> {
+async function serializeProperty(prop: Input<any>, ctx: string, dependentResources: Resource[]): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: undefined`);
@@ -204,7 +204,7 @@ async function serializeProperty(prop: ComputedValue<any>, ctx: string, dependen
         return serializeProperty(
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx, dependentResources);
     }
-    else if (prop instanceof Dependency) {
+    else if (prop instanceof Output) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Dependency<T>`);
         }

@@ -324,8 +324,8 @@ func (v PropertyValue) ArchiveValue() *Archive { return v.V.(*Archive) }
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
 
-// ComputedValue fetches the underlying computed value (panicking if it isn't a computed).
-func (v PropertyValue) ComputedValue() Computed { return v.V.(Computed) }
+// Input fetches the underlying computed value (panicking if it isn't a computed).
+func (v PropertyValue) Input() Computed { return v.V.(Computed) }
 
 // OutputValue fetches the underlying output value (panicking if it isn't a output).
 func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
@@ -408,7 +408,7 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsObject() {
 		return "object"
 	} else if v.IsComputed() {
-		return "computed<" + v.ComputedValue().Element.TypeString() + ">"
+		return "computed<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
 		return "output<" + v.OutputValue().Element.TypeString() + ">"
 	}
@@ -449,7 +449,7 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 	} else if v.IsArchive() {
 		return v.ArchiveValue()
 	} else if v.IsComputed() {
-		return v.ComputedValue()
+		return v.Input()
 	} else if v.IsOutput() {
 		return v.OutputValue()
 	}
