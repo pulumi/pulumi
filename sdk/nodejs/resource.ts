@@ -151,6 +151,34 @@ export class Output<T> {
     /* @internal */ public readonly resources: () => Set<Resource>;
 
     /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Output values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow Output values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
+     public readonly get: () => T;
+
+    // Statics
+    /* @internal */ public static create<T>(resource: Resource, promise: Promise<T>): Output<T> {
+        return new Output<T>(new Set<Resource>([resource]), promise);
+    }
+
+    /* @internal */ public constructor(resources: Set<Resource>, promise: Promise<T>) {
+        // Always create a copy so that no one accidentally modifies our Resource list.
+        this.resources = () => new Set<Resource>(resources);
+
+        this.promise = () => promise;
+
+        this.get = () => {
+            throw new Error(`Cannot call during deployment or preview.
+To manipulate the value of this dependency, use 'apply' instead.`);
+        };
+    }
+
+    /**
      * Transforms the data of the output with the provided func.  The result remains a
      * Output so that dependent resources can be properly tracked.
      *
@@ -176,56 +204,31 @@ export class Output<T> {
      * available for functions that end up executing in the cloud during runtime.  To get the value
      * of the Output during cloud runtime executure, use `get()`.
      */
-    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
+    public apply<U>(func: (t: T) => Promise<U>): never;
+    public apply<U>(func: (t: T) => U | Output<U>): Output<U>;
+    public apply<U>(func: (t: T) => U | Output<U>): Output<U> {
+        if (runtime.options.dryRun) {
+            // During previews we never actually apply the func.
+            return new Output<U>(this.resources(), Promise.resolve(<U><any>undefined));
+        }
 
-    /**
-     * Retrieves the underlying value of this dependency.
-     *
-     * This function is only callable in code that runs in the cloud post-deployment.  At this
-     * point all Output values will be known and can be safely retrieved. During pulumi deployment
-     * or preview execution this must not be called (and will throw).  This is because doing so
-     * would allow Output values to flow into Resources while losing the data that would allow
-     * the dependency graph to be changed.
-     */
-     public readonly get: () => T;
-
-    // Statics
-    /* @internal */ public static create<T>(resource: Resource, promise: Promise<T>): Output<T> {
-        return new Output<T>(new Set<Resource>([resource]), promise);
-    }
-
-    /* @internal */ public constructor(resources: Set<Resource>, promise: Promise<T>) {
-        // Always create a copy so that no one accidentally modifies our Resource list.
-        this.resources = () => new Set<Resource>(resources);
-
-        this.promise = () => promise;
-
-        this.apply = <U>(func: (t: T) => Input<U>) => {
-            if (runtime.options.dryRun) {
-                // During previews we never actually apply the func.
-                return new Output<U>(resources, Promise.resolve(<U><any>undefined));
+        return new Output<U>(this.resources(), this.promise().then(v => {
+            const transformed = func(v);
+            if (transformed instanceof Promise) {
+                throw new Error("'apply' funcs should not be asynchronous.");
             }
 
-            return new Output<U>(resources, promise.then(async v => {
-                const transformed = await func(v);
-                if (transformed instanceof Output) {
-                    // Note: if the func returned a Output, we unwrap that to get the inner value
-                    // returned by that Output.  Note that we are *not* capturing the Resources of
-                    // this inner Output.  That's intentional.  As the Output returned is only
-                    // supposed to be related this *this* Output object, those resources should
-                    // already be in our transitively reachable resource graph.
-                    return await transformed.promise();
-                } else {
-                    return transformed;
-                }
-            }));
-        };
-
-
-        this.get = () => {
-            throw new Error(`Cannot call during deployment or preview.
-To manipulate the value of this dependency, use 'apply' instead.`);
-        };
+            if (transformed instanceof Output) {
+                // Note: if the func returned a Output, we unwrap that to get the inner value
+                // returned by that Output.  Note that we are *not* capturing the Resources of
+                // this inner Output.  That's intentional.  As the Output returned is only
+                // supposed to be related this *this* Output object, those resources should
+                // already be in our transitively reachable resource graph.
+                return transformed.promise();
+            } else {
+                return transformed;
+            }
+        }));
     }
 }
 
