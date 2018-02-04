@@ -84,8 +84,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	// Print this step information (resource and all its properties).
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
-		printStep(&b, step,
-			acts.Seen, acts.Opts.Summary, true, 0 /*indent*/, acts.Opts.Debug)
+		printStep(&b, step, acts.Seen, acts.Opts.Summary, true, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil, nil

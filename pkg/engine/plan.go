@@ -250,7 +250,7 @@ func stepParentIndent(b *bytes.Buffer, step deploy.Step,
 }
 
 func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.Step,
-	summary bool, planning bool, indent int, debug bool) {
+	summary bool, planning bool, debug bool) {
 	op := step.Op()
 
 	// First, indent to the same level as this resource has parents, and toggle the level of detail accordingly.
@@ -258,7 +258,7 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	//     their parents, so this often does the right thing, but not always.  For instance, we can have interleaved
 	//     infrastructure that gets emitted in the middle of the flow, making things look like they are parented
 	//     incorrectly.  The real solution here is to have a more first class way of structuring the output.
-	indent = stepParentIndent(b, step, seen, planning, indent, true, debug)
+	indent := stepParentIndent(b, step, seen, planning, 0, true, debug)
 
 	// Print the indentation.
 	b.WriteString(getIndentationString(indent, op, false))
