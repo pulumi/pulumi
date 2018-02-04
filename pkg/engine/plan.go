@@ -245,10 +245,8 @@ func stepParentIndent(b *bytes.Buffer, step deploy.Step,
 			//     least, it would be ideal to preserve the indentation.
 			break
 		}
-		if print && !shown[p] {
-			// If the parent isn't yet shown, print it now as a summary.
-			printStep(b, par, seen, shown, true, planning, indent, debug)
-		}
+
+		contract.Assert(shown[p])
 		indent++
 		p = par.Res().Parent
 	}
