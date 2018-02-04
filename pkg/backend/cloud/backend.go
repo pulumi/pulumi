@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -41,6 +42,7 @@ import (
 type Backend interface {
 	backend.Backend
 	CloudURL() string
+	DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
 }
 
 type cloudBackend struct {
@@ -55,6 +57,51 @@ func New(d diag.Sink, cloudURL string) Backend {
 
 func (b *cloudBackend) Name() string     { return b.cloudURL }
 func (b *cloudBackend) CloudURL() string { return b.cloudURL }
+
+// DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
+// that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
+// is true, the download will display a progress bar using stdout.
+func (b *cloudBackend) DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error) {
+	// Figure out the OS/ARCH pair for the download URL.
+	var os string
+	switch runtime.GOOS {
+	case "darwin", "linux", "windows":
+		os = runtime.GOOS
+	default:
+		return nil, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
+	}
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = "x64"
+	default:
+		return nil, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
+	}
+
+	// Now make the GET request.
+	endpoint := fmt.Sprintf("/releases/plugins/%s-%s.%s.tar.gz", info.String(), os, arch)
+	_, resp, err := pulumiAPICall(b.cloudURL, "GET", endpoint, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to download plugin")
+	}
+
+	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
+	result := resp.Body
+	if progress && resp.ContentLength != -1 {
+		bar := pb.New(int(resp.ContentLength))
+		result = bar.NewProxyReader(result)
+		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading plugin: "))
+		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.SetMaxWidth(80)
+		bar.SetUnits(pb.U_BYTES)
+		bar.Start()
+		defer func() {
+			bar.Finish()
+		}()
+	}
+
+	return result, nil
+}
 
 func (b *cloudBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
 	// IDEA: query the stack directly instead of listing them.
@@ -746,7 +793,7 @@ func isValidAccessToken(cloud, accessToken string) (bool, error) {
 	respObj := struct {
 		Name string `json:"name"`
 	}{}
-	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, &respObj, accessToken); err != nil {
+	if err := pulumiRESTCall(cloud, "GET", "/user", nil, nil, &respObj); err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
 		}

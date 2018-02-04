@@ -32,8 +32,8 @@ func newUpdateCmd() *cobra.Command {
 		Use:        "update",
 		Aliases:    []string{"up"},
 		SuggestFor: []string{"deploy", "push"},
-		Short:      "Update the resources in an stack",
-		Long: "Update the resources in an stack\n" +
+		Short:      "Update the resources in a stack",
+		Long: "Update the resources in a stack\n" +
 			"\n" +
 			"This command updates an existing stack whose state is represented by the existing checkpoint\n" +
 			"file. The new desired state is computed by running a Pulumi program, and extracting all resource\n" +
@@ -79,7 +79,7 @@ func newUpdateCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Choose a stack other than the currently selected one")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

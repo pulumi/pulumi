@@ -28,8 +28,8 @@ func newPreviewCmd() *cobra.Command {
 		Use:        "preview",
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
-		Short:      "Show a preview of updates to an stack's resources",
-		Long: "Show a preview of updates an stack's resources\n" +
+		Short:      "Show a preview of updates to a stack's resources",
+		Long: "Show a preview of updates a stack's resources\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
 			"represented by an existing snapshot file. The new desired state is computed by running\n" +
@@ -71,7 +71,7 @@ func newPreviewCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Choose a stack other than the currently selected one")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().VarP(

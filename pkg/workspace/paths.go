@@ -13,16 +13,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
-const ProjectFile = "Pulumi"           // the base name of a project file.
-const GitDir = ".git"                  // the name of the folder git uses to store information.
-const BookkeepingDir = ".pulumi"       // the name of our bookeeping folder, we store state here (like .git for git).
-const StackDir = "stacks"              // the name of the directory that holds stack information for projects.
-const HistoryDir = "history"           // the name of the directory that holds historical information for projects.
-const WorkspaceDir = "workspaces"      // the name of the directory that holds workspace information for projects.
-const RepoFile = "settings.json"       // the name of the file that holds information specific to the entire repository.
-const ConfigDir = "config"             // the name of the folder that holds local configuration information.
-const WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
-const IgnoreFile = ".pulumiignore"     // the name of the file that we use to control what to upload to the service.
+const (
+	BookkeepingDir = ".pulumi"    // the name of our bookeeping folder, we store state here (like .git for git).
+	ConfigDir      = "config"     // the name of the folder that holds local configuration information.
+	GitDir         = ".git"       // the name of the folder git uses to store information.
+	HistoryDir     = "history"    // the name of the directory that holds historical information for projects.
+	PluginDir      = "plugins"    // the name of the directory containing plugins.
+	StackDir       = "stacks"     // the name of the directory that holds stack information for projects.
+	WorkspaceDir   = "workspaces" // the name of the directory that holds workspace information for projects.
+
+	IgnoreFile    = ".pulumiignore"  // the name of the file that we use to control what to upload to the service.
+	ProjectFile   = "Pulumi"         // the base name of a project file.
+	RepoFile      = "settings.json"  // the name of the file that holds information specific to the entire repository.
+	WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
+)
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
 func DetectProjectPath() (string, error) {
