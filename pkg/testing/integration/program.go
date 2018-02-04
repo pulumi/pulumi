@@ -3,15 +3,18 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -357,7 +361,26 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 	if err != nil {
 		return err
 	}
-	return pt.runCommand(name, cmd, wd)
+
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok {
+				// yarn failed, let's try again, assuming we haven't failed a few times.
+				if try > 3 {
+					return false, nil, errors.Errorf("%v did not complete after %v tries", cmd, try)
+				}
+
+				return false, nil, nil
+			}
+
+			// someother error, fail
+			return false, nil, runerr
+		},
+	})
+	return err
 }
 
 func (pt *programTester) testLifeCycleInitAndDestroy() error {
