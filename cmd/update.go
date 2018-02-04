@@ -61,16 +61,16 @@ func newUpdateCmd() *cobra.Command {
 			}
 
 			return s.Update(proj, root, debug, m, engine.UpdateOptions{
-				Analyzers:            analyzers,
-				DryRun:               preview,
-				Parallel:             parallel,
+				Analyzers: analyzers,
+				DryRun:    preview,
+				Parallel:  parallel,
+				Debug:     debug,
+			}, backend.DisplayOptions{
+				Color:                color.Colorization(),
+				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-				Debug:                debug,
-			}, backend.DisplayOptions{
-				Color:      color.Colorization(),
-				ShowConfig: showConfig,
 			})
 		}),
 	}

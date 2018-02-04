@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -46,6 +47,13 @@ func displayEvents(action string,
 				displayPreludeEvent(os.Stdout, event.Payload.(engine.PreludeEventPayload), opts)
 			case engine.SummaryEvent:
 				displaySummaryEvent(os.Stdout, event.Payload.(engine.SummaryEventPayload), opts)
+			case engine.ResourceOperationFailed:
+				displayResourceOperationFailedEvent(os.Stdout,
+					event.Payload.(engine.ResourceOperationFailedPayload), opts)
+			case engine.ResourceOutputsEvent:
+				displayResourceOutputsEvent(os.Stdout, event.Payload.(engine.ResourceOutputsEventPayload), opts)
+			case engine.ResourcePreEvent:
+				displayResourcePreEvent(os.Stdout, event.Payload.(engine.ResourcePreEventPayload), opts)
 			case engine.StdoutColorEvent:
 				payload := event.Payload.(engine.StdoutEventPayload)
 				out = os.Stdout
@@ -161,6 +169,67 @@ func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts b
 	}
 
 	fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
+}
+
+//nolint: gas
+func displayResourceOperationFailedEvent(out io.Writer,
+	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) {
+
+	fmt.Fprintf(out, "Step #%v failed [%v]: ", event.Steps+1, event.Metadata.Op)
+	switch event.Status {
+	case resource.StatusOK:
+		fmt.Fprint(out, opts.Color.Colorize(
+			fmt.Sprintf("%vprovider successfully recovered from this failure%v", colors.SpecNote, colors.Reset)))
+	case resource.StatusUnknown:
+		fmt.Fprint(out, opts.Color.Colorize(
+			fmt.Sprintf("%vthis failure was catastrophic and the provider cannot guarantee recovery%v",
+				colors.SpecAttention, colors.Reset)))
+	default:
+		contract.Failf("Unrecognized resource state: %v", event.Status)
+	}
+	fmt.Fprint(out, "\n")
+}
+
+// nolint: gas
+func displayResourcePreEvent(out io.Writer, event engine.ResourcePreEventPayload, opts backend.DisplayOptions) {
+	if shouldShow(event.Metadata, opts) || isRootStack(event.Metadata) {
+		fmt.Fprint(out, opts.Color.Colorize(event.Summary))
+
+		if !opts.Summary {
+			fmt.Fprint(out, event.Details)
+		}
+
+		fmt.Fprint(out, opts.Color.Colorize(colors.Reset))
+	}
+}
+
+// nolint: gas
+func displayResourceOutputsEvent(out io.Writer, event engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) {
+	if (shouldShow(event.Metadata, opts) || isRootStack(event.Metadata)) && !opts.Summary {
+		fmt.Fprint(out, opts.Color.Colorize(event.Text))
+	}
+}
+
+// isRootStack returns true if the step pertains to the rootmost stack component.
+func isRootStack(step engine.StepEventMetdata) bool {
+	return step.URN.Type() == resource.RootStackType
+}
+
+// shouldShow returns true if a step should show in the output.
+func shouldShow(step engine.StepEventMetdata, opts backend.DisplayOptions) bool {
+	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
+	if step.Op == deploy.OpSame {
+		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
+		if step.Old.Protect != step.New.Protect {
+			return true
+		}
+		return opts.ShowSames
+	} else if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced {
+		return opts.ShowReplacementSteps
+	} else if step.Op == deploy.OpReplace {
+		return !opts.ShowReplacementSteps
+	}
+	return true
 }
 
 func plural(s string, c int) string {

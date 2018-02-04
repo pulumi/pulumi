@@ -3,12 +3,14 @@
 package engine
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -23,11 +25,14 @@ type Event struct {
 type EventType string
 
 const (
-	CancelEvent      EventType = "cancel"
-	StdoutColorEvent EventType = "stdoutcolor"
-	DiagEvent        EventType = "diag"
-	PreludeEvent     EventType = "prelude"
-	SummaryEvent     EventType = "summary"
+	CancelEvent             EventType = "cancel"
+	StdoutColorEvent        EventType = "stdoutcolor"
+	DiagEvent               EventType = "diag"
+	PreludeEvent            EventType = "prelude"
+	SummaryEvent            EventType = "summary"
+	ResourcePreEvent        EventType = "resourcepre"
+	ResourceOutputsEvent    EventType = "resourceoutputs"
+	ResourceOperationFailed EventType = "resourceoperationfailed"
 )
 
 func cancelEvent() Event {
@@ -56,6 +61,107 @@ type SummaryEventPayload struct {
 	MaybeCorrupt    bool            // true if one or more resources may be corrupt
 	Duration        time.Duration   // the duration of the entire update operation (zero values for previews)
 	ResourceChanges ResourceChanges // count of changed resources, useful for reporting
+}
+
+type ResourceOperationFailedPayload struct {
+	Metadata StepEventMetdata
+	Status   resource.Status
+	Steps    int
+}
+
+type ResourceOutputsEventPayload struct {
+	Metadata StepEventMetdata
+	Indent   int
+	Text     string
+}
+
+type ResourcePreEventPayload struct {
+	Metadata StepEventMetdata
+	Indent   int
+	Summary  string
+	Details  string
+}
+
+type StepEventMetdata struct {
+	Op      deploy.StepOp           // the operation performed by this step.
+	URN     resource.URN            // the resource URN (for before and after).
+	Type    tokens.Type             // the type affected by this step.
+	Old     *StepEventStateMetadata // the state of the resource before performing this step.
+	New     *StepEventStateMetadata // the state of the resource after performing this step.
+	Res     *StepEventStateMetadata // the latest state for the resource that is known (worst case, old).
+	Logical bool                    // true if this step represents a logical operation in the program.
+}
+
+type StepEventStateMetadata struct {
+	Type    tokens.Type  // the resource's type.
+	URN     resource.URN // the resource's object urn, a human-friendly, unique name for the resource.
+	Custom  bool         // true if the resource is custom, managed by a plugin.
+	Delete  bool         // true if this resource is pending deletion due to a replacement.
+	ID      resource.ID  // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+	Parent  resource.URN // an optional parent URN that this resource belongs to.
+	Protect bool         // true to "protect" this resource (protected resources cannot be deleted).
+}
+
+func makeStepEventMetadata(step deploy.Step) StepEventMetdata {
+	return StepEventMetdata{
+		Op:      step.Op(),
+		URN:     step.URN(),
+		Type:    step.Type(),
+		Old:     makeStepEventStateMetadata(step.Old()),
+		New:     makeStepEventStateMetadata(step.New()),
+		Res:     makeStepEventStateMetadata(step.Res()),
+		Logical: step.Logical(),
+	}
+}
+
+func makeStepEventStateMetadata(state *resource.State) *StepEventStateMetadata {
+	if state == nil {
+		return nil
+	}
+
+	return &StepEventStateMetadata{
+		Type:    state.Type,
+		URN:     state.URN,
+		Custom:  state.Custom,
+		Delete:  state.Delete,
+		ID:      state.ID,
+		Parent:  state.Parent,
+		Protect: state.Protect,
+	}
+}
+
+func resourceOperationFailedEvent(step deploy.Step, status resource.Status, steps int) Event {
+	return Event{
+		Type: ResourceOperationFailed,
+		Payload: ResourceOperationFailedPayload{
+			Metadata: makeStepEventMetadata(step),
+			Status:   status,
+			Steps:    steps,
+		},
+	}
+}
+
+func resourceOutputsEvent(step deploy.Step, indent int, text string) Event {
+	return Event{
+		Type: ResourceOutputsEvent,
+		Payload: ResourceOutputsEventPayload{
+			Metadata: makeStepEventMetadata(step),
+			Indent:   indent,
+			Text:     text,
+		},
+	}
+}
+
+func resourcePreEvent(step deploy.Step, indent int, summary string, details string) Event {
+	return Event{
+		Type: ResourcePreEvent,
+		Payload: ResourcePreEventPayload{
+			Metadata: makeStepEventMetadata(step),
+			Indent:   indent,
+			Summary:  summary,
+			Details:  details,
+		},
+	}
 }
 
 func preludeEvent(isPreview bool, cfg config.Map) Event {
@@ -96,16 +202,6 @@ func updateSummaryEvent(maybeCorrupt bool, duration time.Duration, resourceChang
 			MaybeCorrupt:    maybeCorrupt,
 			Duration:        duration,
 			ResourceChanges: resourceChanges,
-		},
-	}
-}
-
-func stdOutEventWithColor(s fmt.Stringer) Event {
-	return Event{
-		Type: StdoutColorEvent,
-		Payload: StdoutEventPayload{
-			Message: s.String(),
-			Color:   colors.Raw,
 		},
 	}
 }

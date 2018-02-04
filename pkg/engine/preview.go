@@ -3,8 +3,6 @@
 package engine
 
 import (
-	"bytes"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -81,12 +79,11 @@ func newPreviewActions(opts deployOptions) *previewActions {
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	acts.Seen[step.URN()] = step
 
-	// Print this step information (resource and all its properties).
-	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
-		var b bytes.Buffer
-		printStep(&b, step, acts.Seen, acts.Opts.Summary, true, acts.Opts.Debug)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	}
+	indent := stepParentIndent(step, acts.Seen)
+	summary := getResourcePropertiesSummary(step, indent)
+	details := getResourcePropertiesDetails(step, indent, true, acts.Opts.Debug)
+	acts.Opts.Events <- resourcePreEvent(step, indent, summary, details)
+
 	return nil, nil
 }
 
@@ -101,10 +98,7 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 			acts.Ops[step.Op()]++
 		}
 
-		// Also show outputs here, since there might be some from the initial registration.
-		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
-			_ = acts.OnResourceOutputs(step)
-		}
+		_ = acts.OnResourceOutputs(step)
 	}
 	return nil
 }
@@ -112,11 +106,8 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	// Print this step's output properties.
-	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
-		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, true, acts.Opts.Debug)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	}
+	indent := stepParentIndent(step, acts.Seen)
+	text := getResourceOutputsPropertiesString(step, indent, true, acts.Opts.Debug)
+	acts.Opts.Events <- resourceOutputsEvent(step, indent, text)
 	return nil
 }

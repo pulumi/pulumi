@@ -590,8 +590,8 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 			DryRun:               opts.DryRun,
 			Parallel:             opts.Parallel,
 			ShowConfig:           false, // This is a legacy option now, the engine will always emit config information
-			ShowReplacementSteps: opts.ShowReplacementSteps,
-			ShowSames:            opts.ShowSames,
+			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
+			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
 		},
 		Metadata: apitype.UpdateMetadata{
 			Message:     m.Message,
