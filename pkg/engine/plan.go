@@ -209,8 +209,8 @@ func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())
 }
 
-// stepParentIndent computes a step's parent indentation.  If print is true, it also prints parents as it goes.
-func stepParentIndent(step deploy.Step, seen map[resource.URN]deploy.Step) int {
+// getIndent computes a step's parent indentation.
+func getIndent(step deploy.Step, seen map[resource.URN]deploy.Step) int {
 	indent := 0
 	for p := step.Res().Parent; p != ""; {
 		par := seen[p]

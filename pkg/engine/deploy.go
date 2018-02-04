@@ -133,7 +133,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Ensure we've marked this step as observed.
 	acts.Seen[step.URN()] = step
 
-	indent := stepParentIndent(step, acts.Seen)
+	indent := getIndent(step, acts.Seen)
 	summary := getResourcePropertiesSummary(step, indent)
 	details := getResourcePropertiesDetails(step, indent, false, acts.Opts.Debug)
 	acts.Opts.Events <- resourcePreEvent(step, indent, summary, details)
@@ -164,7 +164,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		indent := stepParentIndent(step, acts.Seen)
+		indent := getIndent(step, acts.Seen)
 		text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
 		acts.Opts.Events <- resourceOutputsEvent(step, indent, text)
 	}
@@ -177,7 +177,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	indent := stepParentIndent(step, acts.Seen)
+	indent := getIndent(step, acts.Seen)
 	text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
 	acts.Opts.Events <- resourceOutputsEvent(step, indent, text)
 
