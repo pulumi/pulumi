@@ -233,8 +233,8 @@ func isRootStack(step deploy.Step) bool {
 }
 
 // stepParentIndent computes a step's parent indentation.  If print is true, it also prints parents as it goes.
-func stepParentIndent(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, planning bool, indent int, print bool, debug bool) int {
+func stepParentIndent(step deploy.Step, seen map[resource.URN]deploy.Step) int {
+	indent := 0
 	for p := step.Res().Parent; p != ""; {
 		par := seen[p]
 		if par == nil {
@@ -258,7 +258,7 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	//     their parents, so this often does the right thing, but not always.  For instance, we can have interleaved
 	//     infrastructure that gets emitted in the middle of the flow, making things look like they are parented
 	//     incorrectly.  The real solution here is to have a more first class way of structuring the output.
-	indent := stepParentIndent(b, step, seen, planning, 0, true, debug)
+	indent := stepParentIndent(step, seen)
 
 	// Print the indentation.
 	b.WriteString(getIndentationString(indent, op, false))
@@ -411,7 +411,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 	op := considerSameIfNotCreateOrDelete(step.Op())
 
 	// Now compute the indentation level, in part based on the parents.
-	indent := stepParentIndent(b, step, seen, false, 0, false, debug)
+	indent := stepParentIndent(step, seen)
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs
