@@ -233,6 +233,8 @@ To manipulate the value of this dependency, use 'apply' instead.`);
 
         return new Output<U>(this.resources(), this.promise().then(v => {
             let transformed: U | Output<U>;
+
+            // Disallow resource creation while running the user func.
             try {
                 disableResourceCreation();
                 transformed = func(v);
