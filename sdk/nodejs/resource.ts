@@ -7,6 +7,21 @@ import { getRootResource } from "./runtime/settings";
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
+let disableResourceCreationCount = 0;
+
+/* @internal */
+export function disableResourceCreation() {
+    disableResourceCreationCount++;
+}
+
+/* @internal */
+export function enableResourceCreation() {
+    disableResourceCreationCount--;
+    if (disableResourceCreationCount < 0) {
+        throw new Error("enableResourceCreation called without matching disableResourceCreation");
+    }
+}
+
 /**
  * Resource represents a class whose CRUD operations are implemented by a provider plugin.
  */
@@ -30,6 +45,10 @@ export abstract class Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
+        if (disableResourceCreationCount > 0) {
+            throw new Error("Resource creation not allowed inside Output.apply");
+        }
+
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -213,7 +232,14 @@ To manipulate the value of this dependency, use 'apply' instead.`);
         }
 
         return new Output<U>(this.resources(), this.promise().then(v => {
-            const transformed = func(v);
+            let transformed: U | Output<U>;
+            try {
+                disableResourceCreation();
+                transformed = func(v);
+            } finally {
+                enableResourceCreation();
+            }
+
             if (transformed instanceof Promise) {
                 throw new Error("'apply' funcs should not be asynchronous.");
             }
