@@ -121,7 +121,6 @@ type deployActions struct {
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
-	Shown        map[resource.URN]bool
 	MaybeCorrupt bool
 	Update       Update
 	Opts         deployOptions
@@ -131,7 +130,6 @@ func newDeployActions(update Update, opts deployOptions) *deployActions {
 	return &deployActions{
 		Ops:    make(map[deploy.StepOp]int),
 		Seen:   make(map[resource.URN]deploy.Step),
-		Shown:  make(map[resource.URN]bool),
 		Update: update,
 		Opts:   opts,
 	}
@@ -144,7 +142,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Report the beginning of the step if appropriate.
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, false, 0 /*indent*/, acts.Opts.Debug)
+		printStep(&b, step, acts.Seen, acts.Opts.Summary, false, 0 /*indent*/, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
@@ -189,7 +187,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 
 		// Also show outputs here, since there might be some from the initial registration.
 		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
-			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, acts.Opts.Debug)
+			printResourceOutputProperties(&b, step, acts.Seen, false, acts.Opts.Debug)
 		}
 	}
 
@@ -206,7 +204,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, acts.Opts.Debug)
+		printResourceOutputProperties(&b, step, acts.Seen, false, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 

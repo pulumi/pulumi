@@ -234,9 +234,7 @@ func isRootStack(step deploy.Step) bool {
 
 // stepParentIndent computes a step's parent indentation.  If print is true, it also prints parents as it goes.
 func stepParentIndent(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
-	planning bool, indent int, print bool, debug bool) int {
-
+	seen map[resource.URN]deploy.Step, planning bool, indent int, print bool, debug bool) int {
 	for p := step.Res().Parent; p != ""; {
 		par := seen[p]
 		if par == nil {
@@ -245,15 +243,13 @@ func stepParentIndent(b *bytes.Buffer, step deploy.Step,
 			//     least, it would be ideal to preserve the indentation.
 			break
 		}
-
-		contract.Assert(shown[p])
 		indent++
 		p = par.Res().Parent
 	}
 	return indent
 }
 
-func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
+func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.Step,
 	summary bool, planning bool, indent int, debug bool) {
 	op := step.Op()
 
@@ -262,7 +258,7 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	//     their parents, so this often does the right thing, but not always.  For instance, we can have interleaved
 	//     infrastructure that gets emitted in the middle of the flow, making things look like they are parented
 	//     incorrectly.  The real solution here is to have a more first class way of structuring the output.
-	indent = stepParentIndent(b, step, seen, shown, planning, indent, true, debug)
+	indent = stepParentIndent(b, step, seen, planning, indent, true, debug)
 
 	// Print the indentation.
 	b.WriteString(getIndentationString(indent, op, false))
@@ -282,9 +278,8 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	}
 	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces, summary, planning, indent, op, debug)
 
-	// Reset the color and mark this as shown -- we're done.
+	// Reset the color -- we're done.
 	b.WriteString(colors.Reset)
-	shown[step.URN()] = true
 }
 
 func printStepHeader(b *bytes.Buffer, step deploy.Step) {
@@ -407,7 +402,7 @@ func printObject(
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, planning bool, debug bool) {
+	seen map[resource.URN]deploy.Step, planning bool, debug bool) {
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New()
 	if new == nil || new.Outputs == nil {
@@ -416,7 +411,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 	op := considerSameIfNotCreateOrDelete(step.Op())
 
 	// Now compute the indentation level, in part based on the parents.
-	indent := stepParentIndent(b, step, seen, shown, false, 0, false, debug)
+	indent := stepParentIndent(b, step, seen, false, 0, false, debug)
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs

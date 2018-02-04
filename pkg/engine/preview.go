@@ -65,18 +65,16 @@ func previewLatest(info *planContext, opts deployOptions) error {
 }
 
 type previewActions struct {
-	Ops   map[deploy.StepOp]int
-	Opts  deployOptions
-	Seen  map[resource.URN]deploy.Step
-	Shown map[resource.URN]bool
+	Ops  map[deploy.StepOp]int
+	Opts deployOptions
+	Seen map[resource.URN]deploy.Step
 }
 
 func newPreviewActions(opts deployOptions) *previewActions {
 	return &previewActions{
-		Ops:   make(map[deploy.StepOp]int),
-		Opts:  opts,
-		Seen:  make(map[resource.URN]deploy.Step),
-		Shown: make(map[resource.URN]bool),
+		Ops:  make(map[deploy.StepOp]int),
+		Opts: opts,
+		Seen: make(map[resource.URN]deploy.Step),
 	}
 }
 
@@ -87,7 +85,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
 		printStep(&b, step,
-			acts.Seen, acts.Shown, acts.Opts.Summary, true, 0 /*indent*/, acts.Opts.Debug)
+			acts.Seen, acts.Opts.Summary, true, 0 /*indent*/, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil, nil
@@ -118,7 +116,7 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, true, acts.Opts.Debug)
+		printResourceOutputProperties(&b, step, acts.Seen, true, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 	return nil
