@@ -29,7 +29,7 @@ class DivProvider extends OperatorProvider {
 }
 
 class Add extends dynamic.Resource {
-    public readonly sum: pulumi.Computed<number>;
+    public readonly sum: pulumi.Output<number>;
 
     private static provider = new OperatorProvider((left: number, right: number) => <any>{ sum: left + right });
 
@@ -39,7 +39,7 @@ class Add extends dynamic.Resource {
 }
 
 class Mul extends dynamic.Resource {
-    public readonly product: pulumi.Computed<number>;
+    public readonly product: pulumi.Output<number>;
 
     private static provider = new OperatorProvider((left: number, right: number) => <any>{ product: left * right });
 
@@ -49,7 +49,7 @@ class Mul extends dynamic.Resource {
 }
 
 class Sub extends dynamic.Resource {
-    public readonly difference: pulumi.Computed<number>;
+    public readonly difference: pulumi.Output<number>;
 
     private static provider = new OperatorProvider((left: number, right: number) => <any>{ difference: left - right });
 
@@ -59,8 +59,8 @@ class Sub extends dynamic.Resource {
 }
 
 class Div extends dynamic.Resource {
-    public readonly quotient: pulumi.Computed<number>;
-    public readonly remainder: pulumi.Computed<number>;
+    public readonly quotient: pulumi.Output<number>;
+    public readonly remainder: pulumi.Output<number>;
 
     private static provider = new DivProvider();
 
