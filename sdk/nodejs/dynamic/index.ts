@@ -143,7 +143,7 @@ export abstract class Resource extends resource.CustomResource {
      *              property "__provider".
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(provider: ResourceProvider, name: string, props: resource.ComputedValues,
+    constructor(provider: ResourceProvider, name: string, props: resource.Inputs,
                 opts?: resource.ResourceOptions) {
         const providerKey: string = "__provider";
         if (props[providerKey]) {

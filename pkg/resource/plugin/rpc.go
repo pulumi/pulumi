@@ -118,7 +118,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		if opts.RejectUnknowns {
 			return nil, errors.New("unexpected unknown property value")
 		} else if opts.KeepUnknowns {
-			return marshalUnknownProperty(v.ComputedValue().Element, opts), nil
+			return marshalUnknownProperty(v.Input().Element, opts), nil
 		}
 		return nil, nil // return nil and the caller will ignore it.
 	} else if v.IsOutput() {
@@ -155,7 +155,7 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 
 	// If for some reason we end up with a recursive computed/output, just keep digging.
 	if elem.IsComputed() {
-		return marshalUnknownProperty(elem.ComputedValue().Element, opts)
+		return marshalUnknownProperty(elem.Input().Element, opts)
 	} else if elem.IsOutput() {
 		return marshalUnknownProperty(elem.OutputValue().Element, opts)
 	}

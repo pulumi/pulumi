@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { ComputedValues } from "../resource";
+import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
@@ -14,7 +14,7 @@ const resproto = require("../proto/resource_pb.js");
  * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
-export async function invoke(tok: string, props: ComputedValues): Promise<any> {
+export async function invoke(tok: string, props: Inputs): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
@@ -31,7 +31,7 @@ export async function invoke(tok: string, props: ComputedValues): Promise<any> {
         const req = new resproto.InvokeRequest();
         req.setTok(tok);
         req.setArgs(obj);
-        const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) => {
+        const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
             monitor.invoke(req, (err: Error, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
@@ -40,8 +40,7 @@ export async function invoke(tok: string, props: ComputedValues): Promise<any> {
                 else {
                     innerResolve(innerResponse);
                 }
-            });
-        }));
+            })));
 
         // If there were failures, propagate them.
         const failures: any = resp.getFailuresList();
