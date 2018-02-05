@@ -255,6 +255,7 @@ export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
  *
  */
 // tslint:disable:max-line-length
+export function all<T>(val: { [key: string]: Input<T> }): Output<{ [key: string]: T }>;
 export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7, T8]>;
 export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7]>;
 export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[T1, T2, T3, T4, T5, T6]>;
@@ -263,31 +264,28 @@ export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | 
 export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
 export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
 export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
-export function all<T>(ds: any[]): Output<any[]> {
-    const allDeps = ds.map(output);
+export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<any> {
+    if (val instanceof Array) {
+        const allDeps = val.map(output);
 
-    const resources = allDeps.reduce<Resource[]>((arr, dep) => (arr.push(...dep.resources()), arr), []);
-    const promises = allDeps.map(d => d.promise());
+        const resources = allDeps.reduce<Resource[]>((arr, dep) => (arr.push(...dep.resources()), arr), []);
+        const promises = allDeps.map(d => d.promise());
 
-    return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises));
+        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises));
+    } else {
+        const array = Object.keys(val).map(k =>
+            output<T>(val[k]).apply(v => ({ key: k, value: v})));
+
+        return all(array).apply(keysAndValues => {
+            const result: { [key: string]: T } = {};
+            for (const kvp of keysAndValues) {
+                result[kvp.key] = kvp.value;
+            }
+
+            return result;
+        });
+    }
 }
-
-export function unwrap<T>(val: { [key: string]: Input<T> }): Output<{ [key: string]: T }>;
-export function unwrap<T, U>(val: { [key: string]: T }, func: (t: T) => Input<U>): Output<{ [key: string]: U }>;
-export function unwrap<T, U>(val: any, func?: any): Output<{ [key: string]: U }> {
-    const array = Object.keys(val).map(k =>
-        output<U>(func ? func(val[k]) : val[k]).apply(v => ({ key: k, value: v})));
-
-    return all(array).apply(keysAndValues => {
-        const result: { [key: string]: U } = {};
-        for (const kvp of keysAndValues) {
-            result[kvp.key] = kvp.value;
-        }
-
-        return result;
-    });
-}
-
 
 /**
  * Computed is a property output for a resource.  It is just a promise that also permits undefined
