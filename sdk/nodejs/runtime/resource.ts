@@ -1,8 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { Computed, ID, Input, Inputs,
-         Output, Resource, ResourceOptions, URN } from "../resource";
+import { ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
 import { deserializeProperties, resolveProperties, serializeProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";

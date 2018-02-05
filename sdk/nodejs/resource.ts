@@ -15,7 +15,7 @@ export abstract class Resource {
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
      */
-    public readonly urn: Computed<URN>;
+    public readonly urn: Output<URN>;
 
     /**
      * Creates and registers a new resource object.  t is the fully qualified type token and name is
@@ -79,7 +79,7 @@ export abstract class CustomResource extends Resource {
      * id is the provider-assigned unique ID for this managed resource.  It is set during
      * deployments and may be missing (undefined) during planning phases.
      */
-    public readonly id: Computed<ID>;
+    public readonly id: Output<ID>;
 
     /**
      * Creates and registers a new managed resource.  t is the fully qualified type token and name
@@ -288,22 +288,13 @@ export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<an
 }
 
 /**
- * Computed is a property output for a resource.  It is just a promise that also permits undefined
- * values.  The undefined values are used during planning, when the actual final value of a resource
- * may not yet be known.
- */
-export type Computed<T> = Output<T>;
-
-/**
  * Input is a property input for a resource.  It may be a promptly available T or a promise
  * for one.
  */
-export type ComputedValue<T> = T | Promise<T> | Output<T>;
 export type Input<T> = T | Promise<T> | Output<T>;
 
 /**
  * Inputs is a map of property name to optional property input, one for each resource
  * property value.
  */
-export type ComputedValues = { [key: string]: Input<any> };
-export type Inputs = { [key: string]: Input<any> };
+export type Inputs = Record<string, Input<any>>;
