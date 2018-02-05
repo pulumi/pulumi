@@ -9,5 +9,5 @@ let a = new Resource("a", { state: 1, replace: 1 });
 // * Elide b (Delete(b2)).
 // * Create 2 resources, c3 and e3, equivalent to Step 2 (Same(c2, c3), Same(e2, e3)).
 let c = new Resource("c", { state: 1, resource: a });
-let e = new Resource("e", { state: 1 });
+let e = new Resource("e", { state: 1, resource: c });
 // Checkpoint: a3, c3, e3

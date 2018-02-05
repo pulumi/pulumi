@@ -15,12 +15,12 @@ class NullProvider implements dynamic.ResourceProvider {
 }
 
 class NullResource extends dynamic.Resource {
-    constructor(name: string, input: pulumi.ComputedValue<string>) {
+    constructor(name: string, input: any) {
         super(new NullProvider(), name, {input: input}, undefined);
     }
 }
 
-async function getInput(): pulumi.Computed<string> {
+async function getInput(): Promise<pulumi.Output<string>> {
     await sleep(1000);
 
     return (new NullResource("a", "")).urn;

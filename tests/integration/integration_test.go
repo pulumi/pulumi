@@ -117,35 +117,26 @@ func TestStackParenting(t *testing.T) {
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
-				a := stackInfo.Checkpoint.Latest.Resources[1]
-				assert.NotNil(t, a)
-				assert.Equal(t, "a", string(a.URN.Name()))
-				assert.NotEqual(t, "", a.Parent)
-				assert.Equal(t, stackRes.URN, a.Parent)
-				b := stackInfo.Checkpoint.Latest.Resources[2]
-				assert.NotNil(t, b)
-				assert.Equal(t, "b", string(b.URN.Name()))
-				assert.Equal(t, a.URN, b.Parent)
-				c := stackInfo.Checkpoint.Latest.Resources[3]
-				assert.NotNil(t, c)
-				assert.Equal(t, "c", string(c.URN.Name()))
-				assert.Equal(t, a.URN, c.Parent)
-				d := stackInfo.Checkpoint.Latest.Resources[4]
-				assert.NotNil(t, d)
-				assert.Equal(t, "d", string(d.URN.Name()))
-				assert.Equal(t, c.URN, d.Parent)
-				e := stackInfo.Checkpoint.Latest.Resources[5]
-				assert.NotNil(t, e)
-				assert.Equal(t, "e", string(e.URN.Name()))
-				assert.Equal(t, c.URN, e.Parent)
-				f := stackInfo.Checkpoint.Latest.Resources[6]
-				assert.NotNil(t, f)
-				assert.Equal(t, "f", string(f.URN.Name()))
-				assert.Equal(t, stackRes.URN, f.Parent)
-				g := stackInfo.Checkpoint.Latest.Resources[7]
-				assert.NotNil(t, g)
-				assert.Equal(t, "g", string(g.URN.Name()))
-				assert.Equal(t, f.URN, g.Parent)
+
+				urns := make(map[string]resource.URN)
+				for _, res := range stackInfo.Checkpoint.Latest.Resources[1:] {
+					assert.NotNil(t, res)
+
+					urns[string(res.URN.Name())] = res.URN
+					switch res.URN.Name() {
+					case "a", "f":
+						assert.NotEqual(t, "", res.Parent)
+						assert.Equal(t, stackRes.URN, res.Parent)
+					case "b", "c":
+						assert.Equal(t, urns["a"], res.Parent)
+					case "d", "e":
+						assert.Equal(t, urns["c"], res.Parent)
+					case "g":
+						assert.Equal(t, urns["f"], res.Parent)
+					default:
+						t.Fatalf("unexpected name %s", res.URN.Name())
+					}
+				}
 			}
 		},
 	})
