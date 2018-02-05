@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/golang/glog"
@@ -18,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -85,6 +87,11 @@ func pulumiAPICall(apiEndpoint, method, path string, body []byte, accessToken st
 		return "", nil, fmt.Errorf("creating new HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+
+	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
+	// backwards compatibility.
+	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	req.Header.Set("User-Agent", userAgent)
 
 	// Apply credentials if provided.
 	if accessToken != "" {
