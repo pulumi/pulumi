@@ -33,7 +33,7 @@ class Add extends dynamic.Resource {
 
     private static provider = new OperatorProvider((left: number, right: number) => <any>{ sum: left + right });
 
-    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+    constructor(name: string, left: pulumi.Input<number>, right: pulumi.Input<number>) {
         super(Add.provider, name, {left: left, right: right, sum: undefined}, undefined);
     }
 }
@@ -43,7 +43,7 @@ class Mul extends dynamic.Resource {
 
     private static provider = new OperatorProvider((left: number, right: number) => <any>{ product: left * right });
 
-    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+    constructor(name: string, left: pulumi.Input<number>, right: pulumi.Input<number>) {
         super(Mul.provider, name, {left: left, right: right, product: undefined}, undefined);
     }
 }
@@ -53,7 +53,7 @@ class Sub extends dynamic.Resource {
 
     private static provider = new OperatorProvider((left: number, right: number) => <any>{ difference: left - right });
 
-    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+    constructor(name: string, left: pulumi.Input<number>, right: pulumi.Input<number>) {
         super(Sub.provider, name, {left: left, right: right, difference: undefined}, undefined);
     }
 }
@@ -64,7 +64,7 @@ class Div extends dynamic.Resource {
 
     private static provider = new DivProvider();
 
-    constructor(name: string, left: pulumi.ComputedValue<number>, right: pulumi.ComputedValue<number>) {
+    constructor(name: string, left: pulumi.Input<number>, right: pulumi.Input<number>) {
         super(Div.provider, name, {left: left, right: right, quotient: undefined, remainder: undefined}, undefined);
     }
 }

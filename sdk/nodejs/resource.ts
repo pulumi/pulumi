@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as runtime from "./runtime";
 import { registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
@@ -14,7 +15,7 @@ export abstract class Resource {
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
      */
-    public readonly urn: Promise<URN>;
+    public readonly urn: Computed<URN>;
 
     /**
      * Creates and registers a new resource object.  t is the fully qualified type token and name is
@@ -28,7 +29,7 @@ export abstract class Resource {
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, custom: boolean, props: ComputedValues = {}, opts: ResourceOptions = {}) {
+    constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -93,7 +94,7 @@ export abstract class CustomResource extends Resource {
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: ComputedValues, opts?: ResourceOptions) {
+    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
         super(t, name, true, props, opts);
     }
 }
@@ -117,16 +118,172 @@ export class ComponentResource extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      * @param protect True to ensure this resource cannot be deleted.
      */
-    constructor(t: string, name: string, props?: ComputedValues, opts?: ResourceOptions) {
+    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
         super(t, name, false, props, opts);
     }
 
     // registerOutputs registers synthetic outputs that a component has initialized, usually by allocating
     // other child sub-resources and propagating their resulting property values.
-    protected registerOutputs(outputs: ComputedValues | undefined): void {
+    protected registerOutputs(outputs: Inputs | undefined): void {
         if (outputs) {
             registerResourceOutputs(this, outputs);
         }
+    }
+}
+
+/**
+ * Output helps encode the relationship between Resources in a Pulumi application. Specifically
+ * an Output holds onto a piece of Data and the Resource it was generated from. An Output
+ * value can then be provided when constructing new Resources, allowing that new Resource to know
+ * both the value as well as the Resource the value came from.  This allows for a precise 'Resource
+ * dependency graph' to be crated, which properly tracks the relationship between resources.
+ */
+export class Output<T> {
+    // Method that actually produces the concrete value of this output, as well as the total
+    // deployment-time set of resources this output depends on.
+    //
+    // Only callable on the outside.
+    /* @internal */ public readonly promise: () => Promise<T>;
+
+    // The list of resource that this output value depends on.
+    //
+    // Only callable on the outside.
+    /* @internal */ public readonly resources: () => Set<Resource>;
+
+    /**
+     * Transforms the data of the output with the provided func.  The result remains a
+     * Output so that dependent resources can be properly tracked.
+     *
+     * 'func' is not allowed to make resources.
+     *
+     * 'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
+     * and you want to get a transitive dependency of it.  i.e.
+     *
+     * ```ts
+     * var d1: Output<SomeVal>;
+     * var d2 = d1.apply(v => v.x.y.OtherOutput); // getting an output off of 'v'.
+     * ```
+     *
+     * In this example, taking a dependency on d2 means a resource will depend on all the resources
+     * of d1.  It will *not* depend on the resources of v.x.y.OtherDep.
+     *
+     * Importantly, the Resources that d2 feels like it will depend on are the same resources as d1.
+     * If you need have multiple Outputs and a single Output is needed that combines both
+     * set of resources, then 'pulumi.all' should be used instead.
+     *
+     * This function will only be called execution of a 'pulumi update' request.  It will not run
+     * during 'pulumi preview' (as the values of resources are of course not known then). It is not
+     * available for functions that end up executing in the cloud during runtime.  To get the value
+     * of the Output during cloud runtime executure, use `get()`.
+     */
+    public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
+
+    /**
+     * Retrieves the underlying value of this dependency.
+     *
+     * This function is only callable in code that runs in the cloud post-deployment.  At this
+     * point all Output values will be known and can be safely retrieved. During pulumi deployment
+     * or preview execution this must not be called (and will throw).  This is because doing so
+     * would allow Output values to flow into Resources while losing the data that would allow
+     * the dependency graph to be changed.
+     */
+     public readonly get: () => T;
+
+    // Statics
+    /* @internal */ public static create<T>(resource: Resource, promise: Promise<T>): Output<T> {
+        return new Output<T>(new Set<Resource>([resource]), promise);
+    }
+
+    /* @internal */ public constructor(resources: Set<Resource>, promise: Promise<T>) {
+        // Always create a copy so that no one accidentally modifies our Resource list.
+        this.resources = () => new Set<Resource>(resources);
+
+        this.promise = () => promise;
+
+        this.apply = <U>(func: (t: T) => Input<U>) => {
+            if (runtime.options.dryRun) {
+                // During previews we never actually apply the func.
+                return new Output<U>(resources, Promise.resolve(<U><any>undefined));
+            }
+
+            return new Output<U>(resources, promise.then(async v => {
+                const transformed = await func(v);
+                if (transformed instanceof Output) {
+                    // Note: if the func returned a Output, we unwrap that to get the inner value
+                    // returned by that Output.  Note that we are *not* capturing the Resources of
+                    // this inner Output.  That's intentional.  As the Output returned is only
+                    // supposed to be related this *this* Output object, those resources should
+                    // already be in our transitively reachable resource graph.
+                    return await transformed.promise();
+                } else {
+                    return transformed;
+                }
+            }));
+        };
+
+
+        this.get = () => {
+            throw new Error(`Cannot call during deployment or preview.
+To manipulate the value of this dependency, use 'apply' instead.`);
+        };
+    }
+}
+
+export function output<T>(cv: Input<T>): Output<T>;
+export function output<T>(cv: Input<T> | undefined): Output<T | undefined>;
+export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
+    return cv instanceof Output
+        ? cv
+        : new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv));
+}
+
+/**
+ * Allows for multiple Output objects to be combined into a single Output object.  The single Output
+ * will depend on the union of Resources that the individual dependencies depend on.
+ *
+ * This can be used in the following manner:
+ *
+ * ```ts
+ * var d1: Output<string>;
+ * var d2: Output<number>;
+ *
+ * var d3: Output<ResultType> = Output.all([d1, d2]).apply(([s, n]) => ...);
+ * ```
+ *
+ * In this example, taking a dependency on d3 means a resource will depend on all the resources of
+ * d1 and d2.
+ *
+ */
+// tslint:disable:max-line-length
+export function all<T>(val: { [key: string]: Input<T> }): Output<{ [key: string]: T }>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[T1, T2, T3, T4, T5, T6, T7]>;
+export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[T1, T2, T3, T4, T5, T6]>;
+export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[T1, T2, T3, T4, T5]>;
+export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[T1, T2, T3, T4]>;
+export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[T1, T2, T3]>;
+export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[T1, T2]>;
+export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
+export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<any> {
+    if (val instanceof Array) {
+        const allDeps = val.map(output);
+
+        const resources = allDeps.reduce<Resource[]>((arr, dep) => (arr.push(...dep.resources()), arr), []);
+        const promises = allDeps.map(d => d.promise());
+
+        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises));
+    } else {
+        const array = Object.keys(val).map(k =>
+            output<T>(val[k]).apply(v => ({ key: k, value: v})));
+
+        return all(array).apply(keysAndValues => {
+            const result: { [key: string]: T } = {};
+            for (const kvp of keysAndValues) {
+                result[kvp.key] = kvp.value;
+            }
+
+            return result;
+        });
     }
 }
 
@@ -135,16 +292,18 @@ export class ComponentResource extends Resource {
  * values.  The undefined values are used during planning, when the actual final value of a resource
  * may not yet be known.
  */
-export type Computed<T> = Promise<T | undefined>;
+export type Computed<T> = Output<T>;
 
 /**
- * ComputedValue is a property input for a resource.  It may be a promptly available T or a promise
+ * Input is a property input for a resource.  It may be a promptly available T or a promise
  * for one.
  */
-export type ComputedValue<T> = T | undefined | Promise<T | undefined>;
+export type ComputedValue<T> = T | Promise<T> | Output<T>;
+export type Input<T> = T | Promise<T> | Output<T>;
 
 /**
- * ComputedValues is a map of property name to optional property input, one for each resource
+ * Inputs is a map of property name to optional property input, one for each resource
  * property value.
  */
-export type ComputedValues = { [key: string]: ComputedValue<any> };
+export type ComputedValues = { [key: string]: Input<any> };
+export type Inputs = { [key: string]: Input<any> };

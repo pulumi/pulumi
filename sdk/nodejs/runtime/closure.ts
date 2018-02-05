@@ -4,6 +4,7 @@ import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
 import * as ts from "typescript";
 import * as log from "../log";
+import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 const nativeruntime = require("./native/build/Release/nativeruntime.node");
@@ -26,11 +27,24 @@ export type Environment = {[key: string]: EnvironmentEntry};
  * EnvironmentEntry is the environment slot for a named lexically captured variable.
  */
 export interface EnvironmentEntry {
-    json?: any;               // a value which can be safely json serialized.
-    closure?: Closure;        // a closure we are dependent on.
-    obj?: Environment;        // an object which may contain nested closures.
-    arr?: EnvironmentEntry[]; // an array which may contain nested closures.
-    module?: string;          // a reference to a requirable module name.
+    // a value which can be safely json serialized.
+    json?: any;
+
+    // a closure we are dependent on.
+    closure?: Closure;
+
+    // an object which may contain nested closures.
+    obj?: Environment;
+
+    // an array which may contain nested closures.
+    arr?: EnvironmentEntry[];
+
+    // a reference to a requirable module name.
+    module?: string;
+
+    // a Dependency<T> property.  It will be serialized over as a get() method that
+    // returns the raw underlying value.
+    dep?: EnvironmentEntry;
 }
 
 /**
@@ -100,6 +114,9 @@ async function flattenEnvironmentEntry(
     else if (e.obj) {
         result.obj = await flattenEnvironment(e.obj, flatCache);
     }
+    else if (e.dep) {
+        result.dep = await flattenEnvironmentEntry(e.dep, flatCache);
+    }
     else if (e.arr) {
         const arr: EnvironmentEntry[] = [];
         for (const elem of e.arr) {
@@ -108,7 +125,7 @@ async function flattenEnvironmentEntry(
         result.arr = arr;
     }
     else {
-        throw new Error(`Malformed flattened environment entry: ${e}`);
+        throw new Error(`Malformed flattened environment entry: ${e}, ${Object.keys(e).join()}`);
     }
     return result;
 }
@@ -136,6 +153,7 @@ export interface AsyncEnvironmentEntry {
     obj?: AsyncEnvironment;                 // an object which may contain nested closures.
     arr?: AsyncEnvironmentEntry[]; // an array which may contain nested closures.
     module?: string;                        // a reference to a requirable module name.
+    dep?: AsyncEnvironmentEntry;
 }
 
 /**
@@ -178,7 +196,7 @@ async function serializeCapturedObjectAsync(
 
     if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
-        return await serializeCapturedObjectAsync(await obj, entryCache);
+        return await serializeCapturedObject(await obj, entryCache);
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
@@ -209,6 +227,8 @@ async function serializeCapturedObjectAsync(
     } else if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
         entry.closure = await serializeClosureAsync(obj, entryCache);
+    } else if (obj instanceof resource.Output) {
+        entry.dep = await serializeCapturedObject(await obj.promise(), entryCache);
     } else {
         // For all other objects, serialize all of their properties.
         entry.obj = {};
@@ -785,7 +805,7 @@ class FuncsForClosure {
             return undefined;
         }
 
-        return [
+        const array = [
             entry.json,
             this.convertClosureToNormalizedObject(seenClosures, entry.closure),
             this.convertEnvironmentToNormalizedObject(seenClosures, entry.obj),
@@ -794,6 +814,12 @@ class FuncsForClosure {
                 : undefined,
             entry.module,
         ];
+
+        if (entry.dep) {
+            array.push(this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep));
+        }
+
+        return array;
     }
 
     private envFromEnvObj(env: Environment): {[key: string]: string} {
@@ -831,6 +857,17 @@ class FuncsForClosure {
         }
         else if (envEntry.module !== undefined) {
             return `require("${envEntry.module}")`;
+        }
+        else if (envEntry.dep !== undefined) {
+            // get: () => { ... }
+            // parses as a lambda with a block body, not as a lambda returning an object
+            // initializer.  If we have a block body, wrap it with parens.
+            let value = this.envEntryToString(envEntry.dep);
+            if (value && value.charAt(0) === "{") {
+                value = `(${value})`;
+            }
+
+            return `{ get: () => ${value} }`;
         }
         else {
             return undefined;

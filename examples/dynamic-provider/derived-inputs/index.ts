@@ -18,7 +18,7 @@ class InputProvider implements dynamic.ResourceProvider {
 }
 
 class InputResource extends dynamic.Resource {
-    constructor(name: string, input: pulumi.ComputedValue<string>) {
+    constructor(name: string, input: pulumi.Input<string>) {
         super(new InputProvider(), name, { input: input }, undefined);
     }
 }

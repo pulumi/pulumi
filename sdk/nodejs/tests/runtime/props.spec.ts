@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as assert from "assert";
-import { ComputedValues, runtime } from "../../index";
+import { Inputs, runtime } from "../../index";
 import { asyncTest } from "../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -9,7 +9,7 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 describe("runtime", () => {
     describe("transferProperties", () => {
         it("marshals basic properties correctly", asyncTest(async () => {
-            const inputs: ComputedValues = {
+            const inputs: Inputs = {
                 "aNum": 42,
                 "bStr": "a string",
                 "cUnd": undefined,

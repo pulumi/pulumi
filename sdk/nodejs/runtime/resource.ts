@@ -1,9 +1,10 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { Computed, ComputedValue, ComputedValues, ID, Resource, ResourceOptions, URN } from "../resource";
+import { Computed, ID, Input, Inputs,
+         Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { resolveProperties, serializeProperties, transferProperties } from "./rpc";
+import { deserializeProperties, resolveProperties, serializeProperties, transferProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -15,49 +16,60 @@ const resproto = require("../proto/resource_pb.js");
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: ComputedValues, opts: ResourceOptions): void {
+                                 inputProps: Inputs, opts: ResourceOptions): void {
 
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
-        (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+        (excessiveDebugOutput ? `, inputProps=...` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
-    let resolveURN: (urn: URN | undefined) => void;
-    (res as any).urn = debuggablePromise(
-        new Promise<URN | undefined>(resolve => resolveURN = resolve),
-        `resolveURN(${label})`);
+    let resolveURN: (urn: URN) => void;
+    (res as any).urn = Output.create(
+        res,
+        debuggablePromise(
+            new Promise<URN>(resolve => resolveURN = resolve),
+            `resolveURN(${label})`));
 
     // If a custom resource, make room for the ID property.
-    let resolveID: ((v: ID | undefined) => void) | undefined;
+    let resolveID: ((v: ID) => void) | undefined;
     if (custom) {
-        (res as any).id = debuggablePromise(
-            new Promise<ID | undefined>(resolve => resolveID = resolve),
-            `resolveID(${label})`);
+        (res as any).id = Output.create(
+            res,
+            debuggablePromise(
+                new Promise<ID>(resolve => resolveID = resolve),
+                `resolveID(${label})`));
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
     // this resource will look like it has all its output properties to anyone it is
     // passed to.  However, those promises won't actually resolve until the registerResource
     // RPC returns
-    const resolvers = transferProperties(res, label, props);
+    const resolvers = transferProperties(res, label, inputProps);
 
     // Now run the operation, serializing the invocation if necessary.
     const opLabel = `monitor.registerResource(${label})`;
     runAsyncResourceOp(opLabel, async () => {
         // Before we can proceed, all our dependencies must be finished.
-        const dependsOn = opts.dependsOn || [];
-        await debuggablePromise(Promise.all(dependsOn.map(d => d.urn)), `dependsOn(${label})`);
+        if (opts.dependsOn) {
+            await debuggablePromise(Promise.all(opts.dependsOn.map(d => d.urn)), `dependsOn(${label})`);
+        }
 
-        const obj = gstruct.Struct.fromJavaScript(await serializeProperties(label, props));
+        // Serialize out all our props to their final values.  In doing so, we'll also collect all
+        // the Resources pointed to by any Dependency objects we encounter, adding them to
+        // 'propertyDependencies'
+        const implicitResourceDependencies: Resource[] = [];
+        const flattenedInputProps = await serializeProperties(
+            label, inputProps, implicitResourceDependencies);
+
         log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
-            (excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``));
+            (excessiveDebugOutput ? `, obj=${JSON.stringify(flattenedInputProps)}` : ``));
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
 
         let parentURN: URN | undefined;
         if (opts.parent) {
-            parentURN = await opts.parent.urn;
+            parentURN = await opts.parent.urn.promise();
         }
 
         const req = new resproto.RegisterResourceRequest();
@@ -65,7 +77,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setName(name);
         req.setParent(parentURN);
         req.setCustom(custom);
-        req.setObject(obj);
+        req.setObject(gstruct.Struct.fromJavaScript(flattenedInputProps));
         req.setProtect(opts.protect);
 
         const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
@@ -83,7 +95,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
         const urn = resp.getUrn();
         const id = resp.getId();
-        const propsStruct = resp.getObject();
+        const outputProps = resp.getObject();
         const stable = resp.getStable();
 
         const stablesList: string[] | undefined = resp.getStablesList();
@@ -104,24 +116,48 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             resolveID(id || undefined);
         }
 
-        // Propagate any other properties that were given to us as outputs.
-        resolveProperties(res, resolvers, t, name, props, propsStruct, stable, stables);
+        // Produce a combined set of property states, starting with inputs and then applying
+        // outputs.  If the same property exists in the inputs and outputs states, the output wins.
+        const allProps: Record<string, any> = {};
+        if (outputProps) {
+            Object.assign(allProps, deserializeProperties(outputProps));
+        }
+
+        for (const key of Object.keys(inputProps)) {
+            if (!allProps.hasOwnProperty(key)) {
+                // input prop the engine didn't give us a final value for.  Just use the
+                // value passed into the resource.  Note: unwrap dependencies so that we
+                // can reparent the value against ourself.  i.e. if resource B is passed
+                // resources A.depProp as an input, and the engine doesn't produce an
+                // output for it, we want resource B to expose depProp as a DependencyProp
+                // pointing to B and not A.
+                const inputProp = inputProps[key];
+                if (inputProp instanceof Output) {
+                    allProps[key] = await inputProp.promise();
+                } else {
+                    allProps[key] = inputProp;
+                }
+            }
+        }
+
+        resolveProperties(res, resolvers, t, name, allProps, stable, stables);
     });
 }
 
 /**
  * registerResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
  */
-export function registerResourceOutputs(res: Resource, outputs: ComputedValues) {
+export function registerResourceOutputs(res: Resource, outputs: Inputs) {
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
     // never resolve.
     const opLabel = `monitor.registerResourceOutputs(...)`;
     runAsyncResourceOp(opLabel, async () => {
-        // The registration could very well still be taking place, so we will need to wait for its URN.  Additionally,
-        // the output properties might have come from other resources, so we must await those too.
-        const urn: URN = await res.urn;
+        // The registration could very well still be taking place, so we will need to wait for its
+        // URN.  Additionally, the output properties might have come from other resources, so we
+        // must await those too.
+        const urn = await res.urn.promise();
         const outputsObj = gstruct.Struct.fromJavaScript(
             await serializeProperties(`completeResource`, outputs));
         log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
