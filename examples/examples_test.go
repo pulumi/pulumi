@@ -76,6 +76,11 @@ func TestExamples(t *testing.T) {
 			Stdout: &formattableStdout,
 			Stderr: &formattableStderr,
 		},
+		{
+			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns-2"),
+			Dependencies: []string{"pulumi"},
+		},
+
 	}
 
 	for _, ex := range examples {
