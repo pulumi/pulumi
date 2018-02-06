@@ -10,6 +10,7 @@ git:
 branches:
   only:
     - master
+    - /release\/.*/
 cache:
     yarn: true
 before_install:
