@@ -43,7 +43,6 @@
         "runtime/stack.ts",
 
         "cmd/dynamic-provider/index.ts",
-        "cmd/langhost/index.ts",
         "cmd/run/index.ts",
 
         "tests/config.spec.ts",
