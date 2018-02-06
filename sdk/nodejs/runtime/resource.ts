@@ -46,14 +46,14 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // RPC returns
     const resolvers = transferProperties(res, label, inputProps);
 
-    // Now run the operation, serializing the invocation if necessary.
-    const opLabel = `monitor.registerResource(${label})`;
-    runAsyncResourceOp(opLabel, async () => {
-        // Before we can proceed, all our dependencies must be finished.
-        if (opts.dependsOn) {
-            await debuggablePromise(Promise.all(opts.dependsOn.map(d => d.urn)), `dependsOn(${label})`);
-        }
+    let dependsOnResolved = Promise.resolve();
+    // Before we can proceed, all our dependencies must be finished.
+    if (opts.dependsOn) {
+        dependsOnResolved =
+            <any>(debuggablePromise(Promise.all(opts.dependsOn.map(d => d.urn)), `dependsOn(${label})`));
+    }
 
+    debuggablePromise(dependsOnResolved.then(async () => {
         // Serialize out all our props to their final values.  In doing so, we'll also collect all
         // the Resources pointed to by any Dependency objects we encounter, adding them to
         // 'propertyDependencies'
@@ -80,68 +80,72 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setObject(gstruct.Struct.fromJavaScript(flattenedInputProps));
         req.setProtect(opts.protect);
 
-        const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
-            monitor.registerResource(req, (err: Error, innerResponse: any) => {
-                log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
-                    `err: ${err}, resp: ${innerResponse}`);
-                if (err) {
-                    log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
-                    reject(err);
-                }
-                else {
-                    resolve(innerResponse);
-                }
-            })), opLabel);
+        // Now run the operation, serializing the invocation if necessary.
+        const opLabel = `monitor.registerResource(${label})`;
+        runAsyncResourceOp(opLabel, async () => {
+            const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
+                monitor.registerResource(req, (err: Error, innerResponse: any) => {
+                    log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
+                        `err: ${err}, resp: ${innerResponse}`);
+                    if (err) {
+                        log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
+                        reject(err);
+                    }
+                    else {
+                        resolve(innerResponse);
+                    }
+                })), opLabel);
 
-        const urn = resp.getUrn();
-        const id = resp.getId();
-        const outputProps = resp.getObject();
-        const stable = resp.getStable();
+            const urn = resp.getUrn();
+            const id = resp.getId();
+            const outputProps = resp.getObject();
+            const stable = resp.getStable();
 
-        const stablesList: string[] | undefined = resp.getStablesList();
-        const stables = new Set<string>(stablesList);
+            const stablesList: string[] | undefined = resp.getStablesList();
+            const stables = new Set<string>(stablesList);
 
-        // Always make sure to resolve the URN property, even if it is undefined due to a
-        // missing monitor.
-        resolveURN(urn);
+            // Always make sure to resolve the URN property, even if it is undefined due to a
+            // missing monitor.
+            resolveURN(urn);
 
-        // If an ID is present, then it's safe to say it's final, because the resource planner
-        // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
-        // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
-        // it to undefined (indicating it isn't known).
-        //
-        // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
-        // undefined so that later parts of our system don't have to deal with values like 'null'.
-        if (resolveID) {
-            resolveID(id || undefined);
-        }
+            // If an ID is present, then it's safe to say it's final, because the resource planner
+            // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
+            // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
+            // it to undefined (indicating it isn't known).
+            //
+            // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
+            // undefined so that later parts of our system don't have to deal with values like 'null'.
+            if (resolveID) {
+                resolveID(id || undefined);
+            }
 
-        // Produce a combined set of property states, starting with inputs and then applying
-        // outputs.  If the same property exists in the inputs and outputs states, the output wins.
-        const allProps: Record<string, any> = {};
-        if (outputProps) {
-            Object.assign(allProps, deserializeProperties(outputProps));
-        }
+            // Produce a combined set of property states, starting with inputs and then applying
+            // outputs.  If the same property exists in the inputs and outputs states, the output wins.
+            const allProps: Record<string, any> = {};
+            if (outputProps) {
+                Object.assign(allProps, deserializeProperties(outputProps));
+            }
 
-        for (const key of Object.keys(inputProps)) {
-            if (!allProps.hasOwnProperty(key)) {
-                // input prop the engine didn't give us a final value for.  Just use the
-                // value passed into the resource.  Note: unwrap dependencies so that we
-                // can reparent the value against ourself.  i.e. if resource B is passed
-                // resources A.depProp as an input, and the engine doesn't produce an
-                // output for it, we want resource B to expose depProp as a DependencyProp
-                // pointing to B and not A.
-                const inputProp = inputProps[key];
-                if (inputProp instanceof Output) {
-                    allProps[key] = await inputProp.promise();
-                } else {
-                    allProps[key] = inputProp;
+            for (const key of Object.keys(inputProps)) {
+                if (!allProps.hasOwnProperty(key)) {
+                    // input prop the engine didn't give us a final value for.  Just use the
+                    // value passed into the resource.  Note: unwrap dependencies so that we
+                    // can reparent the value against ourself.  i.e. if resource B is passed
+                    // resources A.depProp as an input, and the engine doesn't produce an
+                    // output for it, we want resource B to expose depProp as a DependencyProp
+                    // pointing to B and not A.
+                    const inputProp = inputProps[key];
+                    if (inputProp instanceof Output) {
+                        allProps[key] = await inputProp.promise();
+                    } else {
+                        allProps[key] = inputProp;
+                    }
                 }
             }
-        }
 
-        resolveProperties(res, resolvers, t, name, allProps, stable, stables);
-    });
+            resolveProperties(res, resolvers, t, name, allProps, stable, stables);
+        });
+    }));
 }
 
 /**

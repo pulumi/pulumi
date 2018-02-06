@@ -10,5 +10,5 @@ let a = new Resource("a", { state: 1, replace: 2 });
 // BUGBUG[pulumi/pulumi#663]: reenable after landing the bugfix and rearranging the test to tolerate expected failure.
 // Provider.instance.injectFault(new Error("intentional update failure during step 4"));
 let c = new Resource("c", { state: 1, resource: a });
-let e = new Resource("e", { state: 1 });
+let e = new Resource("e", { state: 1, resource: c });
 // Checkpoint: a4, c3, e3; pending delete: a3

@@ -8,8 +8,32 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
+
+func validateResources(t *testing.T, resources []stack.Resource, expectedNames ...string) {
+	// Build the lookup table of expected resource names.
+	expectedNamesTable := make(map[string]struct{})
+	for _, n := range expectedNames {
+		expectedNamesTable[n] = struct{}{}
+	}
+
+	// Ensure that the resource count is correct.
+	assert.Equal(t, len(resources), len(expectedNames) + 1)
+
+	// Pull out the stack resource, which must be the first resource in the checkpoint.
+	stackRes := resources[0]
+	assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+
+	// Ensure that exactly the provided resources are in the array.
+	for _, res := range resources[1:] {
+		name := string(res.URN.Name())
+		_, ok := expectedNamesTable[name]
+		assert.True(t, ok)
+		delete(expectedNamesTable, name)
+	}
+}
 
 // TestSteps tests many combinations of creates, updates, deletes, replacements, and so on.
 func TestSteps(t *testing.T) {
@@ -19,17 +43,7 @@ func TestSteps(t *testing.T) {
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			assert.Equal(t, 5, len(stackInfo.Checkpoint.Latest.Resources))
-			stackRes := stackInfo.Checkpoint.Latest.Resources[0]
-			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-			a := stackInfo.Checkpoint.Latest.Resources[1]
-			assert.Equal(t, "a", string(a.URN.Name()))
-			b := stackInfo.Checkpoint.Latest.Resources[2]
-			assert.Equal(t, "b", string(b.URN.Name()))
-			c := stackInfo.Checkpoint.Latest.Resources[3]
-			assert.Equal(t, "c", string(c.URN.Name()))
-			d := stackInfo.Checkpoint.Latest.Resources[4]
-			assert.Equal(t, "d", string(d.URN.Name()))
+			validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "b", "c", "d")
 		},
 		EditDirs: []integration.EditDir{
 			{
@@ -37,17 +51,7 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 5, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
-					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Checkpoint.Latest.Resources[1]
-					assert.Equal(t, "a", string(a.URN.Name()))
-					b := stackInfo.Checkpoint.Latest.Resources[2]
-					assert.Equal(t, "b", string(b.URN.Name()))
-					c := stackInfo.Checkpoint.Latest.Resources[3]
-					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stackInfo.Checkpoint.Latest.Resources[4]
-					assert.Equal(t, "e", string(e.URN.Name()))
+					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "b", "c", "e")
 				},
 			},
 			{
@@ -55,15 +59,7 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 4, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
-					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Checkpoint.Latest.Resources[1]
-					assert.Equal(t, "a", string(a.URN.Name()))
-					c := stackInfo.Checkpoint.Latest.Resources[2]
-					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stackInfo.Checkpoint.Latest.Resources[3]
-					assert.Equal(t, "e", string(e.URN.Name()))
+					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "c", "e")
 				},
 			},
 			{
@@ -71,15 +67,7 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 4, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
-					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Checkpoint.Latest.Resources[1]
-					assert.Equal(t, "a", string(a.URN.Name()))
-					c := stackInfo.Checkpoint.Latest.Resources[2]
-					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stackInfo.Checkpoint.Latest.Resources[3]
-					assert.Equal(t, "e", string(e.URN.Name()))
+					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "c", "e")
 				},
 			},
 			{
@@ -87,19 +75,7 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					// assert.Equal(t, 5, len(checkpoint.Latest.Resources))
-					assert.Equal(t, 4, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
-					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Checkpoint.Latest.Resources[1]
-					assert.Equal(t, "a", string(a.URN.Name()))
-					c := stackInfo.Checkpoint.Latest.Resources[2]
-					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stackInfo.Checkpoint.Latest.Resources[3]
-					assert.Equal(t, "e", string(e.URN.Name()))
-					// aPendingDelete := checkpoint.Latest.Resources[4]
-					// assert.Equal(t, "a", string(aPendingDelete.URN.Name()))
-					// assert.True(t, aPendingDelete.Delete)
+					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "c", "e")
 				},
 			},
 			{
@@ -107,9 +83,7 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 1, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
-					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+					validateResources(t, stackInfo.Checkpoint.Latest.Resources)
 				},
 			},
 		},
