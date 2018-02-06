@@ -26,18 +26,18 @@ import (
 
 // PluginInfo provides basic information about a plugin.
 type PluginInfo struct {
-	Path         string         // the path to the plugin.
-	Name         string         // the simple name of the plugin.
-	Kind         PluginKind     // the kind of the plugin (language, resource, etc).
-	Version      semver.Version // the plugin's semantic version.
-	Size         int64          // the size of the plugin, in bytes.
-	InstallTime  time.Time      // the time the plugin was installed.
-	LastUsedTime time.Time      // the last time the plugin was used.
+	Path         string          // the path to the plugin.
+	Name         string          // the simple name of the plugin.
+	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
+	Version      *semver.Version // the plugin's semantic version, if present.
+	Size         int64           // the size of the plugin, in bytes.
+	InstallTime  time.Time       // the time the plugin was installed.
+	LastUsedTime time.Time       // the last time the plugin was used.
 }
 
 // FilePrefix gets the expected default file prefix for the plugin.
 func (info PluginInfo) FilePrefix() string {
-	return filePrefix(info.Kind, info.Name, &info.Version)
+	return filePrefix(info.Kind, info.Name, info.Version)
 }
 
 // filePrefix gets the expected default file prefix for the plugin.
@@ -104,7 +104,11 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 }
 
 func (info PluginInfo) String() string {
-	return fmt.Sprintf("%s-%s", info.Name, info.Version.String())
+	var version string
+	if v := info.Version; v != nil {
+		version = fmt.Sprintf("-%s", v)
+	}
+	return info.Name + version
 }
 
 // PluginKind represents a kind of a plugin that may be dynamically loaded and used by Pulumi.
@@ -163,7 +167,7 @@ func GetPlugins() ([]PluginInfo, error) {
 				Path:         filepath.Join(dir, file.Name()),
 				Name:         name,
 				Kind:         kind,
-				Version:      version,
+				Version:      &version,
 				Size:         file.Size(),
 				InstallTime:  tinfo.BirthTime(),
 				LastUsedTime: tinfo.AccessTime(),
@@ -202,10 +206,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 			if version == nil {
 				// If no version filter was specified, pick the most recent version.  But we must also keep going
 				// because we could later on find a version that is even more recent and should take precedence.
-				if match == nil || (*match).Version.LT(plugin.Version) {
+				if match == nil || match.Version == nil ||
+					(plugin.Version != nil && (*match).Version.LT(*plugin.Version)) {
 					match = &plugin
 				}
-			} else if (*version).EQ(plugin.Version) {
+			} else if plugin.Version != nil && (*version).EQ(*plugin.Version) {
 				// If there's a specific version being sought, and we found it, we're done.
 				match = &plugin
 				break

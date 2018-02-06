@@ -48,7 +48,7 @@ func newPluginInstallCmd() *cobra.Command {
 				installs = append(installs, workspace.PluginInfo{
 					Kind:    workspace.PluginKind(args[0]),
 					Name:    args[1],
-					Version: version,
+					Version: &version,
 				})
 			}
 

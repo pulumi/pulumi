@@ -62,7 +62,7 @@ func newPluginPruneCmd() *cobra.Command {
 			for _, plugin := range plugins {
 				if (kind == "" || plugin.Kind == kind) &&
 					(name == "" || plugin.Name == name) &&
-					(version == nil || (*version)(plugin.Version)) {
+					(version == nil || (plugin.Version != nil && (*version)(*plugin.Version))) {
 					deletes = append(deletes, plugin)
 				}
 			}

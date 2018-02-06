@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -34,7 +34,10 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, errors.Errorf("no plugin for analyzer %s found in the workspace or on your $PATH", name)
+		return nil, NewPluginMissingError(workspace.PluginInfo{
+			Kind: workspace.AnalyzerPlugin,
+			Name: string(name),
+		})
 	}
 
 	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (analyzer)", name), []string{host.ServerAddr()})
@@ -88,18 +91,28 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 }
 
 // GetPluginInfo returns this plugin's information.
-func (a *analyzer) GetPluginInfo() (Info, error) {
+func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
 	glog.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		glog.V(7).Infof("%s failed: err=%v", a.label(), err)
-		return Info{}, err
+		return workspace.PluginInfo{}, err
 	}
-	return Info{
+
+	var version *semver.Version
+	if v := resp.Version; v != "" {
+		sv, err := semver.ParseTolerant(v)
+		if err != nil {
+			return workspace.PluginInfo{}, err
+		}
+		version = &sv
+	}
+
+	return workspace.PluginInfo{
 		Name:    a.plug.Bin,
-		Type:    AnalyzerType,
-		Version: resp.Version,
+		Kind:    workspace.AnalyzerPlugin,
+		Version: version,
 	}, nil
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Options controls the planning and deployment process.
@@ -84,7 +85,7 @@ func (p *Plan) configure() error {
 			continue
 		}
 		pkgt := tokens.Package(pkg)
-		prov, err := p.Provider(pkgt)
+		prov, err := p.TryProvider(pkgt)
 		if err != nil {
 			return goerr.Wrapf(err, "failed to get pkg '%v' resource provider", pkg)
 		} else if prov != nil {
@@ -578,7 +579,7 @@ func (iter *PlanIterator) Snap() *Snapshot {
 // "merge" with old version information.  So, if a checkpoint doesn't end up loading all of the possible plugins
 // it could ever load -- e.g., due to a failure -- there will be some resources in the checkpoint snapshot that
 // were loaded by plugins that never got loaded this time around.  In other words, this list is not stable.
-func (iter *PlanIterator) SnapVersions() (string, []plugin.Info) {
+func (iter *PlanIterator) SnapVersions() (string, []workspace.PluginInfo) {
 	return version.Version, iter.p.ctx.Host.ListPlugins()
 }
 
@@ -601,7 +602,7 @@ func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
 // provider could not be found, or an error occurred while creating it, a non-nil error is returned.
 func (iter *PlanIterator) Provider(t tokens.Type) (plugin.Provider, error) {
 	pkg := t.Package()
-	prov, err := iter.p.ctx.Host.Provider(pkg)
+	prov, err := iter.p.Provider(pkg)
 	if err != nil {
 		return nil, err
 	} else if prov == nil {

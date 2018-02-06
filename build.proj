@@ -33,7 +33,7 @@
     <ItemGroup>
       <NodeSdkProtos Include="$(SdkDirectory)\proto\nodejs\**\*" />
     </ItemGroup>
-    
+
     <Copy SourceFiles="@(NodeSdkProtos)"
           DestinationFolder="$(NodeJSSdkDirectory)\proto" />
   </Target>
@@ -139,12 +139,12 @@
   </Target>
 
   <Target Name="IntegrationTest">
-    <Exec Command="where pulumi-langhost-nodejs-exec.cmd"
+    <Exec Command="where pulumi-language-nodejs-exec.cmd"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExecExitCode" />
     </Exec>
 
-    <Exec Command="where pulumi-langhost-nodejs"
+    <Exec Command="where pulumi-language-nodejs"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>

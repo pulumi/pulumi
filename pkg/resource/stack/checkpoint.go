@@ -8,10 +8,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -68,10 +69,18 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Snapshot, error) {
 			Version: latest.Manifest.Version,
 		}
 		for _, plug := range latest.Manifest.Plugins {
-			manifest.Plugins = append(manifest.Plugins, plugin.Info{
+			var version *semver.Version
+			if v := plug.Version; v != "" {
+				sv, err := semver.ParseTolerant(v)
+				if err != nil {
+					return nil, err
+				}
+				version = &sv
+			}
+			manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
 				Name:    plug.Name,
-				Type:    plug.Type,
-				Version: plug.Version,
+				Kind:    plug.Type,
+				Version: version,
 			})
 		}
 

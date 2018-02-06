@@ -47,6 +47,16 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 		return nil, err
 	}
 
+	// Now ensure that we have loaded up any plugins that the program will need in advance.
+	err = ctx.Host.EnsurePlugins(plugin.ProgInfo{
+		Pkg:     pkginfo.Pkg,
+		Pwd:     pwd,
+		Program: main,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
@@ -170,7 +180,7 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
-		return nil, errors.Errorf("An error occurred while advancing the preview: %v", err)
+		return nil, errors.Wrapf(err, "An error occurred while advancing the preview")
 	}
 
 	if !result.Options.Diag.Success() {

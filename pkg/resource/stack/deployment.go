@@ -8,9 +8,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Deployment is a serializable, flattened LumiGL graph structure, representing a deploy.   It is similar
@@ -31,9 +31,9 @@ type Manifest struct {
 
 // PluginInfo captures the version and information about a plugin.
 type PluginInfo struct {
-	Name    string      `json:"name" yaml:"name"`
-	Type    plugin.Type `json:"type" yaml:"type"`
-	Version string      `json:"version" yaml:"version"`
+	Name    string               `json:"name" yaml:"name"`
+	Type    workspace.PluginKind `json:"type" yaml:"type"`
+	Version string               `json:"version" yaml:"version"`
 }
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
@@ -60,10 +60,14 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 		Version: snap.Manifest.Version,
 	}
 	for _, plug := range snap.Manifest.Plugins {
+		var version string
+		if plug.Version != nil {
+			version = plug.Version.String()
+		}
 		manifest.Plugins = append(manifest.Plugins, PluginInfo{
 			Name:    plug.Name,
-			Type:    plug.Type,
-			Version: plug.Version,
+			Type:    plug.Kind,
+			Version: version,
 		})
 	}
 

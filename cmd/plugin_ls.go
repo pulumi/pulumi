@@ -42,8 +42,8 @@ func newPluginLsCmd() *cobra.Command {
 				pi, pj := plugins[i], plugins[j]
 				if pi.Name < pj.Name {
 					return true
-				} else if pi.Name == pj.Name &&
-					pi.Kind == pj.Kind && pi.Version.GT(pj.Version) {
+				} else if pi.Name == pj.Name && pi.Kind == pj.Kind &&
+					(pi.Version == nil || (pj.Version != nil && pi.Version.GT(*pj.Version))) {
 					return true
 				}
 				return false

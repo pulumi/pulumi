@@ -10,9 +10,22 @@ package pulumirpc;
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
 service LanguageRuntime {
+    // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+    rpc GetRequiredPlugins(GetRequiredPluginsRequest) returns (GetRequiredPluginsResponse) {}
+    // Run executes a program and returns its result.
     rpc Run(RunRequest) returns (RunResponse) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+}
+
+message GetRequiredPluginsRequest {
+    string project = 1; // the project name.
+    string pwd = 2;     // the program's working directory.
+    string program = 3; // the path to the program.
+}
+
+message GetRequiredPluginsResponse {
+    repeated PluginDependency plugins = 1; // a list of plugins required by this program.
 }
 
 // RunRequest asks the interpreter to execute a program.
@@ -25,6 +38,7 @@ message RunRequest {
     map<string, string> config = 6; // the configuration variables to apply before running.
     bool dryRun = 7;                // true if we're only doing a dryrun (preview).
     int32 parallel = 8;             // the degree of parallelism for resource operations (<=1 for serial).
+    string monitor_address = 9;     // the address for communicating back to the resource monitor.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.

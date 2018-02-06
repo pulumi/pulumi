@@ -381,7 +381,7 @@ describe("rpc", () => {
                 );
 
                 // Next, go ahead and spawn a new language host that connects to said monitor.
-                const langHost = serveLanguageHostProcess(monitor.addr);
+                const langHost = serveLanguageHostProcess();
                 const langHostAddr: string = await langHost.addr;
 
                 // Fake up a client RPC connection to the language host so that we can invoke run.
@@ -390,7 +390,7 @@ describe("rpc", () => {
 
                 // Invoke our little test program; it will allocate a few resources, which we will record.  It will
                 // throw an error if anything doesn't look right, which gets reflected back in the run results.
-                const runError: string | undefined = await mockRun(langHostClient, opts, dryrun);
+                const runError: string | undefined = await mockRun(langHostClient, monitor.addr, opts, dryrun);
 
                 // Validate that everything looks right.
                 let expectError: string | undefined = opts.expectError;
@@ -427,10 +427,11 @@ describe("rpc", () => {
     }
 });
 
-function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<string | undefined> {
+function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: boolean): Promise<string | undefined> {
     return new Promise<string | undefined>(
         (resolve, reject) => {
             const runReq = new langproto.RunRequest();
+            runReq.setMonitorAddress(monitor);
             if (opts.project) {
                 runReq.setProject(opts.project);
             }
@@ -480,7 +481,7 @@ function createMockResourceMonitor(
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
-function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
+function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, pulumi-langhost-nodejs probes the path in order to
@@ -508,7 +509,6 @@ function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.Chi
     const proc = childProcess.spawn("pulumi-langhost-nodejs", [
         "--use-executor",
         path.join(__filename, "..", "..", "..", "..", "..", "pulumi-langhost-nodejs-exec-test"),
-        monitorAddr,
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.
