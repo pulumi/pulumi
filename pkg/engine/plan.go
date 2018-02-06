@@ -565,7 +565,9 @@ func printPropertyValue(
 		write(b, op, "%q", v.StringValue())
 	} else if v.IsArray() {
 		arr := v.ArrayValue()
-		if len(arr) == 0 {
+		if len(arr) == 1 {
+			printPropertyValue(b, arr[0], planning, indent, op, false)
+		} else if len(arr) == 0 {
 			writeVerbatim(b, op, "[]")
 		} else {
 			writeVerbatim(b, op, "[\n")
@@ -727,10 +729,18 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 	contract.Assert(indent > 0)
 
 	if diff.Array != nil {
+		a := diff.Array
+
+		if a.Len() == 1 {
+			if update, isupdate := a.Updates[0]; isupdate {
+				printPropertyValueDiff(b, titleFunc, update, detailed, causedReplace, planning, indent)
+				return
+			}
+		}
+
 		titleFunc(op, true)
 		writeVerbatim(b, op, "[\n")
 
-		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			elemTitleFunc := func(eop deploy.StepOp, eprefix bool) {
 				writeWithIndent(b, indent+1, eop, eprefix, "[%d]: ", i)
