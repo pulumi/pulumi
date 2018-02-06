@@ -288,13 +288,13 @@ export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<an
 }
 
 /**
- * Input is a property input for a resource.  It may be a promptly available T or a promise
- * for one.
+ * Input is a property input for a resource.  It may be a promptly available T, a promise
+ * for one, or the output from a existing Resource.
  */
 export type Input<T> = T | Promise<T> | Output<T>;
 
 /**
- * Inputs is a map of property name to optional property input, one for each resource
+ * Inputs is a map of property name to property input, one for each resource
  * property value.
  */
 export type Inputs = Record<string, Input<any>>;
