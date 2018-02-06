@@ -290,8 +290,10 @@ function computeFreeVariables(funcstr: string): string[] {
         throw new Error(`Cannot serialize native code function: "${funcstr}"`);
     }
 
+    // Wrap the serialized function text in ()s so that it's a legal top-level script/module element.
+    const wrapped = "(" + funcstr + ")";
     const file = ts.createSourceFile(
-        "", funcstr, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+        "", wrapped, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
     if (diagnostics.length) {
         throw new Error(`Could not parse function: ${diagnostics[0].messageText}\n${funcstr}`);
@@ -683,12 +685,11 @@ export function serializeJavaScriptText(c: Closure): string {
         text +=
             "function " + name + "() {\n" +
             "  return (function() {\n" +
-            "    with(" + envObjToString(environment) + ") {\n\n" +
-            "return " + funcs[name].code + "\n\n" +
+            "    with(" + envObjToString(environment) + ") {\n" +
+            "      return (/*<user-code>*/" + funcs[name].code + "/*</user-code>*/);\n" +
             "    }\n" +
             "  }).apply(" + thisCapture + ", " + argumentsCapture + ").apply(this, arguments);\n" +
-            "}\n" +
-            "\n";
+            "}\n";
     }
     return text;
 }

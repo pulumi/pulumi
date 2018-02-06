@@ -14,6 +14,7 @@ interface ClosureCase {
     func: Function;           // the function whose body and closure to serialize.
     expect?: runtime.Closure; // if undefined, error expected; otherwise, the serialized shape.
     expectText?: string;      // optionally also validate the serialization to JavaScript text.
+    ignoreHash?: boolean;     // if hashes should be ignored when comparing results.
     closureHash?: string;     // hash of the closure.
     afters?: ClosureCase[];   // an optional list of test cases to run afterwards.
 }
@@ -187,23 +188,20 @@ describe("closure", () => {
         // tslint:disable-next-line
         func: function () { },
         expect: {
-            code: "(function () { })",
+            code: "function () { }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6",
-        expectText: `exports.handler = __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (function () { })
-
+      return (/*<user-code>*/function () { }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -212,23 +210,20 @@ return (function () { })
         // tslint:disable-next-line
         func: function () { console.log(this); },
         expect: {
-            code: "(function () { console.log(this); })",
+            code: "function () { console.log(this); }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e",
-        expectText: `exports.handler = __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (function () { console.log(this); })
-
+      return (/*<user-code>*/function () { console.log(this); }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -237,23 +232,20 @@ return (function () { console.log(this); })
         // tslint:disable-next-line
         func: function () { console.log(this + arguments); },
         expect: {
-            code: "(function () { console.log(this + arguments); })",
+            code: "function () { console.log(this + arguments); }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__05437ec790248221e1167f1da8e9a9ffbfe11ebf",
-        expectText: `exports.handler = __05437ec790248221e1167f1da8e9a9ffbfe11ebf;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __05437ec790248221e1167f1da8e9a9ffbfe11ebf() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (function () { console.log(this + arguments); })
-
+      return (/*<user-code>*/function () { console.log(this + arguments); }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -262,23 +254,20 @@ return (function () { console.log(this + arguments); })
         // tslint:disable-next-line
         func: () => { },
         expect: {
-            code: "(() => { })",
+            code: "() => { }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__b135b11756da3f7aecaaa23a36898c0d6d2845ab",
-        expectText: `exports.handler = __b135b11756da3f7aecaaa23a36898c0d6d2845ab;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __b135b11756da3f7aecaaa23a36898c0d6d2845ab() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (() => { })
-
+      return (/*<user-code>*/() => { }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -287,49 +276,43 @@ return (() => { })
         // tslint:disable-next-line
         func: () => { console.log(this); },
         expect: {
-            code: "(() => { console.log(this); })",
+            code: "() => { console.log(this); }",
             environment: { "this": { "module": "./bin/tests/runtime/closure.spec.js" } },
             runtime: "nodejs",
         },
-        closureHash: "__7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8",
-        expectText: `exports.handler = __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (() => { console.log(this); })
-
+      return (/*<user-code>*/() => { console.log(this); }/*</user-code>*/);
     }
   }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
 }
-
 `,
     });
 
     const awaiterClosure = {
         closure: {
-            code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
+            code: "function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n}",
             environment: {},
             runtime: "nodejs",
         },
     };
 
     const awaiterCode =
-`
-function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
+`function __shaHash() {
   return (function() {
     with({  }) {
-
-return (function (thisArg, _arguments, P, generator) {
+      return (/*<user-code>*/function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
         function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
-})
-
+}/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
@@ -340,24 +323,21 @@ return (function (thisArg, _arguments, P, generator) {
         // tslint:disable-next-line
         func: async () => { },
         expect: {
-            code: "(() => __awaiter(this, void 0, void 0, function* () { }))",
+            code: "() => __awaiter(this, void 0, void 0, function* () { })",
             environment: { "__awaiter": awaiterClosure },
             runtime: "nodejs",
         },
-        closureHash: "__2a83dcc4e3c79da00ade608e1401449fd97f37fe",
-        expectText: `exports.handler = __2a83dcc4e3c79da00ade608e1401449fd97f37fe;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __2a83dcc4e3c79da00ade608e1401449fd97f37fe() {
+function __shaHash() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
-
-return (() => __awaiter(this, void 0, void 0, function* () { }))
-
+    with({ __awaiter: __shaHash }) {
+      return (/*<user-code>*/() => __awaiter(this, void 0, void 0, function* () { })/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-${awaiterCode}
-`,
+${awaiterCode}`,
     });
 
     cases.push({
@@ -365,27 +345,24 @@ ${awaiterCode}
         // tslint:disable-next-line
         func: async () => { console.log(this); },
         expect: {
-            code: "(() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))",
+            code: "() => __awaiter(this, void 0, void 0, function* () { console.log(this); })",
             environment: {
                 "__awaiter": awaiterClosure,
                 "this": { "module": "./bin/tests/runtime/closure.spec.js" },
             },
             runtime: "nodejs",
         },
-        closureHash: "__f7cb93fabbd2f283f184e4cbfd6166ee13ff4969",
-        expectText: `exports.handler = __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969() {
+function __shaHash() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
-
-return (() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))
-
+    with({ __awaiter: __shaHash }) {
+      return (/*<user-code>*/() => __awaiter(this, void 0, void 0, function* () { console.log(this); })/*</user-code>*/);
     }
   }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
 }
-${awaiterCode}
-`,
+${awaiterCode}`,
     });
 
     cases.push({
@@ -393,26 +370,23 @@ ${awaiterCode}
         // tslint:disable-next-line
         func: async function() { },
         expect: {
-            code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { });\n        })",
+            code: "function () {\n            return __awaiter(this, void 0, void 0, function* () { });\n        }",
             environment: { "__awaiter": awaiterClosure },
             runtime: "nodejs",
         },
-        closureHash: "__777fc5424c69bbec55be2ab6c25c4f5aac7b80e6",
-        expectText: `exports.handler = __777fc5424c69bbec55be2ab6c25c4f5aac7b80e6;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __777fc5424c69bbec55be2ab6c25c4f5aac7b80e6() {
+function __shaHash() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
-
-return (function () {
+    with({ __awaiter: __shaHash }) {
+      return (/*<user-code>*/function () {
             return __awaiter(this, void 0, void 0, function* () { });
-        })
-
+        }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-${awaiterCode}
-`,
+${awaiterCode}`,
     });
 
     cases.push({
@@ -420,26 +394,23 @@ ${awaiterCode}
         // tslint:disable-next-line
         func: async function () { console.log(this); },
         expect: {
-            code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { console.log(this); });\n        })",
+            code: "function () {\n            return __awaiter(this, void 0, void 0, function* () { console.log(this); });\n        }",
             environment: { "__awaiter": awaiterClosure },
             runtime: "nodejs",
         },
-        closureHash: "__7bddcde28730579e85ca0d9e450a65cad476232c",
-        expectText: `exports.handler = __7bddcde28730579e85ca0d9e450a65cad476232c;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __7bddcde28730579e85ca0d9e450a65cad476232c() {
+function __shaHash() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
-
-return (function () {
+    with({ __awaiter: __shaHash }) {
+      return (/*<user-code>*/function () {
             return __awaiter(this, void 0, void 0, function* () { console.log(this); });
-        })
-
+        }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-${awaiterCode}
-`,
+${awaiterCode}`,
     });
 
     cases.push({
@@ -447,26 +418,23 @@ ${awaiterCode}
         // tslint:disable-next-line
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expect: {
-            code: "(() => { console.log(this + arguments); })",
+            code: "() => { console.log(this + arguments); }",
             environment: {
                 this: { module: "./bin/tests/runtime/closure.spec.js" },
                 arguments: { arr: [{ json: 0 }, { json: 1 }] },
             },
             runtime: "nodejs",
         },
-        closureHash: "__20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a",
-        expectText: `exports.handler = __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (() => { console.log(this + arguments); })
-
+      return (/*<user-code>*/() => { console.log(this + arguments); }/*</user-code>*/);
     }
   }).apply(require("./bin/tests/runtime/closure.spec.js"), [ 0, 1 ]).apply(this, arguments);
 }
-
 `,
     });
 
@@ -475,23 +443,20 @@ return (() => { console.log(this + arguments); })
         // tslint:disable-next-line
         func: function () { () => { console.log(this); } },
         expect: {
-            code: "(function () { () => { console.log(this); }; })",
+            code: "function () { () => { console.log(this); }; }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__6668edd6db8c98baacaf1a227150aa18ce2ae872",
-        expectText: `exports.handler = __6668edd6db8c98baacaf1a227150aa18ce2ae872;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __6668edd6db8c98baacaf1a227150aa18ce2ae872() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (function () { () => { console.log(this); }; })
-
+      return (/*<user-code>*/function () { () => { console.log(this); }; }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -500,23 +465,20 @@ return (function () { () => { console.log(this); }; })
         // tslint:disable-next-line
         func: function () { () => { console.log(this + arguments); } },
         expect: {
-            code: "(function () { () => { console.log(this + arguments); }; })",
+            code: "function () { () => { console.log(this + arguments); }; }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__de8ce937834140441c7413a7e97b67bda12d7205",
-        expectText: `exports.handler = __de8ce937834140441c7413a7e97b67bda12d7205;
+        ignoreHash: true,
+        expectText: `exports.handler = __shaHash;
 
-function __de8ce937834140441c7413a7e97b67bda12d7205() {
+function __shaHash() {
   return (function() {
     with({  }) {
-
-return (function () { () => { console.log(this + arguments); }; })
-
+      return (/*<user-code>*/function () { () => { console.log(this + arguments); }; }/*</user-code>*/);
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -525,11 +487,11 @@ return (function () { () => { console.log(this + arguments); }; })
         // tslint:disable-next-line
         func: function (x: any, y: any, z: any) { },
         expect: {
-            code: "(function (x, y, z) { })",
+            code: "function (x, y, z) { }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__e680605f156fcaa89016e23c51d3e2328602ebad",
+        closureHash: "__9384cc259e35918caeec847fa45296ee2874df24",
     });
 
     cases.push({
@@ -537,11 +499,11 @@ return (function () { () => { console.log(this + arguments); }; })
         // tslint:disable-next-line
         func: (x: any, y: any, z: any) => { },
         expect: {
-            code: "((x, y, z) => { })",
+            code: "(x, y, z) => { }",
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__dd08d1034bd5f0e06f1269cb79974a636ef9cb13",
+        closureHash: "__1437d72874b6fcaa5499df8b5c81ccbfd2e430ab",
     });
 
     // Serialize captures.
@@ -549,11 +511,11 @@ return (function () { () => { console.log(this + arguments); }; })
         title: "Doesn't serialize global captures",
         func: () => { console.log("Just a global object reference"); },
         expect: {
-            code: `(() => { console.log("Just a global object reference"); })`,
+            code: `() => { console.log("Just a global object reference"); }`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__47ac0033692c3101b014a1a3c17a4318cf7d4330",
+        closureHash: "__5dd8f7cd0bbeb697618809452273579658362777",
     });
     {
         const wcap = "foo";
@@ -569,7 +531,7 @@ return (function () { () => { console.log(this + arguments); }; })
             // tslint:disable-next-line
             func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); },
             expect: {
-                code: "(() => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); })",
+                code: "() => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); }",
                 environment: {
                     wcap: {
                         json: "foo",
@@ -594,7 +556,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__a07cae0afeaeddbb97b9f7a372b75aafd3b29d0e",
+            closureHash: "__4084c64fe93bf10279b32b41c71b066b4f2d7c3a",
         });
     }
     {
@@ -607,7 +569,7 @@ return (function () { () => { console.log(this + arguments); }; })
         // tslint:disable-next-line
         let cap8 = 800;
 
-        const functext = `((nocap1, nocap2) => {
+        const functext = `(nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
     let yy = nocap3; // not a capture: var later on
     if (zz) {
@@ -642,7 +604,7 @@ return (function () { () => { console.log(this + arguments); }; })
             cap8
         }
     }
-})`;
+}`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",
             // tslint:disable-next-line
@@ -661,7 +623,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__f919744848c6471a841a1de62afe7d3d7f7f208a",
+            closureHash: "__e5d35647927d115f910962f109cdca8daf4f3784",
         });
     }
     {
@@ -680,19 +642,19 @@ return (function () { () => { console.log(this + arguments); }; })
                 console.log(nocap1);
             },
             expect: {
-                code: `(() => {
+                code: `() => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
                 // tslint:disable-next-line
                 let [nocap1 = cap1] = [];
                 console.log(nocap1);
-            })`,
+            }`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__ef48a2e2962bd53acef1b2cda244ae8c72972c05",
+            closureHash: "__1d04ab67a5f91f7bf6704a01ff5eeaeead5fe1e7",
         });
     }
     {
@@ -711,19 +673,19 @@ return (function () { () => { console.log(this + arguments); }; })
     console.log(nocap1);
 },
             expect: {
-                code: `(() => {
+                code: `() => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
                 // tslint:disable-next-line
                 let { nocap1 = cap1 } = {};
                 console.log(nocap1);
-            })`,
+            }`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__b409f3bd837d513df07525bef43e57597154625e",
+            closureHash: "__9046e9c2b90fc20b45a5aa3f0af3c5417f93944d",
         });
     }
     {
@@ -742,19 +704,19 @@ return (function () { () => { console.log(this + arguments); }; })
     console.log(nocap1);
 },
             expect: {
-                code: `(() => {
+                code: `() => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
                 // tslint:disable-next-line
                 let { x: nocap1 = cap1 } = {};
                 console.log(nocap1);
-            })`,
+            }`,
                 environment: {
                     cap1: { json: 100 },
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__5fa215795194604118a7543ce20b8e273837ae79",
+            closureHash: "__08a2fdc6059f41d90800a41d9ebcfccb659cd37d",
         });
     }
 
@@ -763,11 +725,11 @@ return (function () { () => { console.log(this + arguments); }; })
         // tslint:disable-next-line
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
         expect: {
-            code: `(() => { let x = eval("undefined + null + NaN + Infinity + __filename"); require("os"); })`,
+            code: `() => { let x = eval("undefined + null + NaN + Infinity + __filename"); require("os"); }`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__fa1c10acee8dd79b39d0f8109d2bc3252b19619a",
+        closureHash: "__4506a072e05b10a02fb44f539e774583b29a6b00",
     });
 
     {
@@ -776,7 +738,7 @@ return (function () { () => { console.log(this + arguments); }; })
             title: "Capture built-in modules as stable references, not serialized values",
             func: () => os,
             expect: {
-                code: `(() => os)`,
+                code: `() => os`,
                 environment: {
                     os: {
                         module: "os",
@@ -784,7 +746,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__3fa97b166e39ae989158bb37acfa12c7abc25b53",
+            closureHash: "__44456d9439502b912741dfe1365e842bc18f4fe4",
         });
     }
 
@@ -794,7 +756,7 @@ return (function () { () => { console.log(this + arguments); }; })
             title: "Capture user-defined modules as stable references, not serialized values",
             func: () => util,
             expect: {
-                code: `(() => util)`,
+                code: `() => util`,
                 environment: {
                     util: {
                         module: "./bin/tests/util.js",
@@ -802,7 +764,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__cd171f28483c78d2a63bdda674a8f577dd4b41db",
+            closureHash: "__5980c5e8823024941cca18e35cd1832fb1296f62",
         });
     }
 
@@ -812,14 +774,14 @@ return (function () { () => { console.log(this + arguments); }; })
         func: () => { try { } catch (err) { console.log(err); } },
         expect: {
             code:
-`(() => { try { }
+`() => { try { }
         catch (err) {
             console.log(err);
-        } })`,
+        } }`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__040426f0dc90fa8f115c1a7ed52793515564fa98",
+        closureHash: "__acde9340a4e7ee0cfba6a21dd4b0f8ac01e7658b",
     });
 
     // Recursive function serialization.
@@ -844,24 +806,24 @@ return (function () { () => { console.log(this + arguments); }; })
             // tslint:disable-next-line
             func: func,
             expect: {
-                code: `(() => {
+                code: `() => {
             xcap.fff();
             xcap.ggg();
             xcap.zzz.a[0]("x", "y");
-        })`,
+        }`,
                 environment: {
                     xcap: {
                         obj: {
                             fff: {
                                 closure: {
-                                    code: "(function () { console.log(fff); })",
+                                    code: "function () { console.log(fff); }",
                                     environment: { fff: { json: "fff!" } },
                                     runtime: "nodejs",
                                 },
                             },
                             ggg: {
                                 closure: {
-                                    code: "(() => { console.log(ggg); })",
+                                    code: "() => { console.log(ggg); }",
                                     environment: { ggg: { json: "ggg!" } },
                                     runtime: "nodejs",
                                 },
@@ -872,7 +834,7 @@ return (function () { () => { console.log(this + arguments); }; })
                                         arr: [
                                             {
                                                 closure: {
-                                                    code: "((a1, a2) => { console.log(a1 + a2); })",
+                                                    code: "(a1, a2) => { console.log(a1 + a2); }",
                                                     environment: {},
                                                     runtime: "nodejs",
                                                 },
@@ -886,7 +848,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__1b6ae6abb4d8b2676bccb50507a0276f5be90371",
+            closureHash: "__6753e0a4e4d2966ce4953a123268e3bdff260471",
         });
     }
 
@@ -904,7 +866,7 @@ return (function () { () => { console.log(this + arguments); }; })
         env["this"].obj = {
             f: {
                 closure: {
-                    code: "(() => { console.log(this.x); })",
+                    code: "() => { console.log(this.x); }",
                     environment: {
                         "this": env["this"],
                     },
@@ -920,11 +882,11 @@ return (function () { () => { console.log(this + arguments); }; })
             title: "Serializes `this` capturing arrow functions",
             func: cap.f,
             expect: {
-                code: "(() => { console.log(this.x); })",
+                code: "() => { console.log(this.x); }",
                 environment: env,
                 runtime: "nodejs",
             },
-            closureHash: "__8d564176f3cd517bfe3c6e9d6b4da488a1198c0d",
+            closureHash: "__eb5a24be2a79b30be759e50960640ca84476039b",
         });
     }
 
@@ -932,11 +894,11 @@ return (function () { () => { console.log(this + arguments); }; })
         title: "Don't serialize `this` in function expressions",
         func: function() { return this; },
         expect: {
-            code: `(function () { return this; })`,
+            code: `function () { return this; }`,
             environment: {},
             runtime: "nodejs",
         },
-        closureHash: "__05dabc231611ca558334d59d661ebfb242b31b5d",
+        closureHash: "__84add4af6a910e8aea236c946f7ec750ebe524e5",
     });
 
     const mutable: any = {};
@@ -944,7 +906,7 @@ return (function () { () => { console.log(this + arguments); }; })
         title: "Serialize mutable objects by value at the time of capture (pre-mutation)",
         func: function() { return mutable; },
         expect: {
-            code: `(function () { return mutable; })`,
+            code: `function () { return mutable; }`,
             environment: {
                 "mutable": {
                     obj: {},
@@ -952,13 +914,13 @@ return (function () { () => { console.log(this + arguments); }; })
             },
             runtime: "nodejs",
         },
-        closureHash: "__e4a4f2f9ad40ef73c250aa10f0277247adfae473",
+        closureHash: "__4aefe580cfb45e0c3e24306ef1e33826d0e84b94",
         afters: [{
             pre: () => { mutable.timesTheyAreAChangin = true; },
             title: "Serialize mutable objects by value at the time of capture (post-mutation)",
             func: function() { return mutable; },
             expect: {
-                code: `(function () { return mutable; })`,
+                code: `function () { return mutable; }`,
                 environment: {
                     "mutable": {
                         obj: {
@@ -970,7 +932,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__18d08ca03253fe3dda134c1e5e5889f514cb3841",
+            closureHash: "__d8183142416f706793912f70c05852c54dc31c68",
         }],
     });
 
@@ -1065,12 +1027,19 @@ return (function () { console.log(v); })
                 const closure: runtime.Closure = await runtime.serializeClosure(test.func);
                 assert.deepEqual(closure, test.expect);
                 if (test.expectText) {
-                    const text = runtime.serializeJavaScriptText(closure);
+                    let text = runtime.serializeJavaScriptText(closure);
+
+                    if (test.ignoreHash) {
+                        text = text.replace(/__[a-zA-Z0-9]{40}/g, "__shaHash");
+                    }
+
                     assert.equal(text, test.expectText);
                 }
 
-                const closureHash = runtime.getClosureHash_forTestingPurposes(closure);
-                assert.equal(closureHash, test.closureHash);
+                if (test.closureHash) {
+                    const closureHash = runtime.getClosureHash_forTestingPurposes(closure);
+                    assert.equal(closureHash, test.closureHash);
+                }
             } else {
                 await assertAsyncThrows(async () => {
                     await runtime.serializeClosure(test.func);
