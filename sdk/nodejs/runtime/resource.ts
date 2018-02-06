@@ -45,12 +45,10 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     // RPC returns
     const resolvers = transferProperties(res, label, inputProps);
 
-    let dependsOnResolved = Promise.resolve();
     // Before we can proceed, all our dependencies must be finished.
-    if (opts.dependsOn) {
-        dependsOnResolved =
-            <any>(debuggablePromise(Promise.all(opts.dependsOn.map(d => d.urn)), `dependsOn(${label})`));
-    }
+    const dependsOn = opts.dependsOn || [];
+    const dependsOnResolved = debuggablePromise(
+        Promise.all(dependsOn.map(d => d.urn.promise())), `dependsOn(${label})`);
 
     debuggablePromise(dependsOnResolved.then(async () => {
         // Serialize out all our props to their final values.  In doing so, we'll also collect all
