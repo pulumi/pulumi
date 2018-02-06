@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Computed, Input } from "../resource";
+import { Input } from "../resource";
 
 /**
  * Asset represents a single blob of text or data that is managed as a first class entity.
