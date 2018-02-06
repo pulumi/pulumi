@@ -13,10 +13,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
-
-const ProviderPluginPrefix = "pulumi-provider-"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
@@ -29,14 +28,20 @@ type provider struct {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
-	// Go ahead and attempt to load the plugin from the PATH.
-	srvexe := ProviderPluginPrefix + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("%v (resource)", pkg), []string{host.ServerAddr()})
+	// Load the plugin's path by using the standard workspace logic.
+	path, err := workspace.GetPluginPath(
+		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if plug == nil {
-		return nil, nil
+	} else if path == "" {
+		return nil, errors.Errorf("no resource plugin for package %s found in the workspace or on your $PATH", pkg)
 	}
+
+	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (resource)", pkg), []string{host.ServerAddr()})
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	return &provider{
 		ctx:    ctx,

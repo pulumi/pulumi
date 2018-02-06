@@ -56,12 +56,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	// Try to execute the binary.
 	plug, err := execPlugin(bin, args, ctx.Pwd)
 	if err != nil {
-		// If we failed simply because we couldn't load the binary, return nil rather than an error.
-		if execerr, isexecerr := err.(*exec.Error); isexecerr && execerr.Err == exec.ErrNotFound {
-			return nil, nil
-		}
-
-		return nil, errors.Wrapf(err, "plugin [%v] failed to load", bin)
+		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
 	contract.Assert(plug != nil)
 

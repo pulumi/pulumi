@@ -7,12 +7,13 @@ import (
 
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
-
-const LanguagePluginPrefix = "pulumi-langhost-"
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
 type langhost struct {
@@ -25,14 +26,20 @@ type langhost struct {
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
-	// Go ahead and attempt to load the plugin from the PATH.
-	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, runtime, []string{monitorAddr, host.ServerAddr()})
+	// Load the plugin's path by using the standard workspace logic.
+	path, err := workspace.GetPluginPath(
+		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if plug == nil {
-		return nil, nil
+	} else if path == "" {
+		return nil, errors.Errorf("no plugin for language %s found in the workspace or on your $PATH", runtime)
 	}
+
+	plug, err := newPlugin(ctx, path, runtime, []string{monitorAddr, host.ServerAddr()})
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
 
 	return &langhost{
 		ctx:     ctx,

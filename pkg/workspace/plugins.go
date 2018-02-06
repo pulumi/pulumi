@@ -9,18 +9,19 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/pulumi/pulumi/pkg/util/contract"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
 	"github.com/golang/glog"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // PluginInfo provides basic information about a plugin.
@@ -36,7 +37,16 @@ type PluginInfo struct {
 
 // FilePrefix gets the expected default file prefix for the plugin.
 func (info PluginInfo) FilePrefix() string {
-	return fmt.Sprintf("pulumi-%s-%s-v%s", info.Kind, info.Name, info.Version.String())
+	return filePrefix(info.Kind, info.Name, &info.Version)
+}
+
+// filePrefix gets the expected default file prefix for the plugin.
+func filePrefix(kind PluginKind, name string, version *semver.Version) string {
+	prefix := fmt.Sprintf("pulumi-%s-%s", kind, name)
+	if version != nil {
+		prefix = fmt.Sprintf("%s-v%s", prefix, (*version).String())
+	}
+	return prefix
 }
 
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
@@ -147,7 +157,7 @@ func GetPlugins() ([]PluginInfo, error) {
 	var plugins []PluginInfo
 	for _, file := range files {
 		// Skip anything that doesn't look like a plugin.
-		if ok, kind, name, version := isPlugin(file); ok {
+		if kind, name, version, ok := isPlugin(file); ok {
 			tinfo := times.Get(file)
 			plugins = append(plugins, PluginInfo{
 				Path:         filepath.Join(dir, file.Name()),
@@ -163,6 +173,54 @@ func GetPlugins() ([]PluginInfo, error) {
 	return plugins, nil
 }
 
+// GetPluginPath finds a plugin's path by its kind, name, and optional version.  If no version is supplied, the latest
+// plugin for that given kind/name pair is loaded, using standard semver sorting rules.
+func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, error) {
+	// First look on the path; first, for a version-specific plugin, and then for a version-agnostic one.  This
+	// supports development scenarios where we want to make it easy to override the central location.
+	if version != nil {
+		filename := filePrefix(kind, name, version)
+		if path, err := exec.LookPath(filename); err == nil {
+			glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s w/ version", kind, name, version, path)
+			return path, nil
+		}
+	}
+	filename := filePrefix(kind, name, nil)
+	if path, err := exec.LookPath(filename); err == nil {
+		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s w/out version", kind, name, version, path)
+		return path, nil
+	}
+
+	// If nothing was found on the path, fall back to the plugin cache.
+	plugins, err := GetPlugins()
+	if err != nil {
+		return "", errors.Wrapf(err, "loading plugin list")
+	}
+	var match *PluginInfo
+	for _, plugin := range plugins {
+		if plugin.Kind == kind && plugin.Name == name {
+			if version == nil {
+				// If no version filter was specified, pick the most recent version.  But we must also keep going
+				// because we could later on find a version that is even more recent and should take precedence.
+				if match == nil || (*match).Version.LT(plugin.Version) {
+					match = &plugin
+				}
+			} else if (*version).EQ(plugin.Version) {
+				// If there's a specific version being sought, and we found it, we're done.
+				match = &plugin
+				break
+			}
+		}
+	}
+
+	if match == nil {
+		return "", nil
+	}
+
+	glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, (*match).Path)
+	return (*match).Path, nil
+}
+
 // pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
 var pluginRegexp = regexp.MustCompile(
 	"^pulumi-" + // pulumi prefix
@@ -172,11 +230,11 @@ var pluginRegexp = regexp.MustCompile(
 		"(\\.exe)?$") // optional .exe extension on Windows
 
 // isPlugin returns true if a file is a plugin, and extracts information about it.
-func isPlugin(file os.FileInfo) (bool, PluginKind, string, semver.Version) {
+func isPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 	// Only files are plugins.
 	if file.IsDir() {
 		glog.V(11).Infof("skipping plugin as a directory: %s", file.Name())
-		return false, "", "", semver.Version{}
+		return "", "", semver.Version{}, false
 	}
 
 	// Filenames must match the plugin regexp.
@@ -184,7 +242,7 @@ func isPlugin(file os.FileInfo) (bool, PluginKind, string, semver.Version) {
 	if len(match) != len(pluginRegexp.SubexpNames()) {
 		glog.V(11).Infof("skipping plugin %s with missing capture groups: expect=%d, actual=%d",
 			file.Name(), len(pluginRegexp.SubexpNames()), len(match))
-		return false, "", "", semver.Version{}
+		return "", "", semver.Version{}, false
 	}
 	var kind PluginKind
 	var name string
@@ -216,8 +274,8 @@ func isPlugin(file os.FileInfo) (bool, PluginKind, string, semver.Version) {
 	if kind == "" || name == "" || version == nil {
 		glog.V(11).Infof("skipping plugin with missing information: kind=%s, name=%s, version=%v",
 			kind, name, version)
-		return false, "", "", semver.Version{}
+		return "", "", semver.Version{}, false
 	}
 
-	return true, kind, name, *version
+	return kind, name, *version, true
 }

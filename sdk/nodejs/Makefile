@@ -2,7 +2,7 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(shell git describe --tags --dirty 2>/dev/null)
 
-LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs
+LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs
 
 GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
@@ -20,7 +20,7 @@ ensure::
 	cd runtime/native && ./ensure_node_v8.sh
 
 lint::
-	$(GOMETALINTER) cmd/pulumi-langhost-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
 	tslint -c tslint.json -p tsconfig.json
 
 build::
@@ -38,8 +38,8 @@ build::
 
 install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	cp pulumi-langhost-nodejs-exec "$(PULUMI_BIN)"
-	cp pulumi-provider-pulumi-nodejs "$(PULUMI_BIN)"
+	cp pulumi-language-nodejs-exec "$(PULUMI_BIN)"
+	cp pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/$(shell node --version)"
 	cp runtime/native/build/Release/nativeruntime.node "$(PULUMI_BIN)/$(shell node --version)/nativeruntime.node"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
