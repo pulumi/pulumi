@@ -482,8 +482,7 @@ function createMockResourceMonitor(
 
 function serveLanguageHostProcess(monitorAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // Spawn the language host in a separate process so that each test case gets an isolated heap, globals, etc.
-    const proc = childProcess.spawn(process.argv[0], [
-        path.join(__filename, "..", "..", "..", "..", "cmd", "langhost", "index.js"),
+    const proc = childProcess.spawn("pulumi-langhost-nodejs", [
         monitorAddr,
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and

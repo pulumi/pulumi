@@ -1,5 +1,18 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+// pulumi-langhost-nodejs serves as the "language host" for Pulumi
+// programs written in NodeJS. It is ultimately responsible for spawning the
+// language runtime that executes the program.
+//
+// The program being executed is executed by a shim script called
+// `pulumi-langhost-nodejs-exec`. This script is written in the hosted
+// language (in this case, node) and is responsible for initiating RPC
+// links to the resource monitor and engine.
+//
+// It's therefore the responsibility of this program to implement
+// the LanguageHostServer endpoint by spawning instances of
+// `pulumi-langhost-nodejs-exec` and forwarding the RPC request arguments
+// to the command-line.
 package main
 
 import (
@@ -23,10 +36,18 @@ import (
 )
 
 const (
+	// By convention, the executor is the name of the current program
+	// (pulumi-langhost-nodejs) plus this suffix.
 	nodeExecSuffix = "-exec" // the exec shim for Pulumi to run Node programs.
+
+	// The runtime expects the config object to be saved to this environment variable.
+	pulumiConfigVar = "PULUMI_CONFIG"
 )
 
-func RunLanguageHost() error {
+// Launches the language host RPC endpoint, which in turn fires
+// up an RPC server implementing the LanguageRuntimeServer RPC
+// endpoint.
+func runLanguageHost() error {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
@@ -48,7 +69,6 @@ func RunLanguageHost() error {
 	}
 
 	monitorAddress := args[0]
-
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
 	if len(args) > 1 {
@@ -63,13 +83,13 @@ func RunLanguageHost() error {
 			return nil
 		},
 	})
+
 	if err != nil {
 		return errors.Wrapf(err, "could not start language host RPC server")
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
 	fmt.Printf("%d\n", port)
-
 	// And finally wait for the server to stop serving.
 	if err := <-done; err != nil {
 		return errors.Wrapf(err, "language host RPC stopped serving")
@@ -78,6 +98,8 @@ func RunLanguageHost() error {
 	return nil
 }
 
+// nodeLanguageHost implements the LanguageRuntimeServer interface
+// for use as an API endpoint.
 type nodeLanguageHost struct {
 	exec           string
 	monitorAddress string
@@ -94,25 +116,11 @@ func newLanguageHost(exec, monitorAddress, engineAddress, tracing string) pulumi
 	}
 }
 
-func serializeConfig(req *pulumirpc.RunRequest) (string, error) {
-	configMap := req.GetConfig()
-	if len(configMap) == 0 {
-		return "{}", nil
-	}
-
-	configJSON, err := json.Marshal(configMap)
-	if err != nil {
-		return "", err
-	}
-
-	return string(configJSON), nil
-}
-
-func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	// First, build up the arguments to pass to our launcher.
+// constructArguments constructs a command-line for `pulumi-langhost-nodejs`
+// by enumerating all of the optional and non-optional arguments present
+// in a RunRequest.
+func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []string {
 	var args []string
-
-	// Append optional settings.
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
 			args = append(args, "--"+k)
@@ -128,38 +136,57 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	maybeAppendArg("dry-run", strconv.FormatBool(req.GetDryRun()))
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
-
-	glog.V(3).Info("config from rpc: %v", req.GetConfig())
-	configJSON, err := serializeConfig(req)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to serialize config as json")
-	}
-
 	args = append(args, req.GetProgram())
 	args = append(args, req.GetArgs()...)
+	return args
+}
+
+// constructConfig json-serializes the configuration data given as part of
+// a RunRequest.
+func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, error) {
+	configMap := req.GetConfig()
+	if configMap == nil {
+		return "{}", nil
+	}
+
+	configJSON, err := json.Marshal(configMap)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configJSON), nil
+}
+
+func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	args := host.constructArguments(req)
+	config, err := host.constructConfig(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize configuration")
+		return nil, err
+	}
 
 	glog.V(3).Infof("command: %v", host.exec)
 	glog.V(3).Infof("arguments: %v", args)
-	glog.V(3).Infof("config: %v", string(configJSON))
-	// Now simply spawn a Python process to execute the requested program, wiring up stdout/stderr directly.
+	glog.V(3).Infof("config: %v", string(config))
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
 	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), "PULUMI_CONFIG="+string(configJSON))
+	cmd.Env = append(os.Environ(), pulumiConfigVar+"="+string(config))
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				err = errors.Errorf("program exited with error code %d", status.ExitStatus())
+				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
 			} else {
 				err = errors.Wrapf(exiterr, "program exited unexpectedly")
 			}
 		} else {
 			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-			// a bug or system condition that prevented us from running the language host.  Issue a scarier error.
-			err = errors.Wrapf(err, "problem executing program (could not run Node language host)")
+			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+			err = errors.Wrapf(err, "problem executing program (could not run language executor)")
 		}
 
 		errResult = err.Error()
@@ -175,7 +202,7 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 }
 
 func main() {
-	err := RunLanguageHost()
+	err := runLanguageHost()
 	if err != nil {
 		cmdutil.Exit(err)
 	}
