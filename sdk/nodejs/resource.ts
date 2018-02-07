@@ -24,7 +24,7 @@ export abstract class Resource {
      * the order in which we perform resource operations.
      *
      * @param t The type of the resource.
-     * @param name The _unqiue_ name of the resource.
+     * @param name The _unique_ name of the resource.
      * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
@@ -90,7 +90,7 @@ export abstract class CustomResource extends Resource {
      * upon the diffing of the new goal state compared to the current known resource state.
      *
      * @param t The type of the resource.
-     * @param name The _unqiue_ name of the resource.
+     * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
@@ -113,7 +113,7 @@ export class ComponentResource extends Resource {
      * operations.
      *
      * @param t The type of the resource.
-     * @param name The _unqiue_ name of the resource.
+     * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      * @param protect True to ensure this resource cannot be deleted.
@@ -136,7 +136,7 @@ export class ComponentResource extends Resource {
  * an Output holds onto a piece of Data and the Resource it was generated from. An Output
  * value can then be provided when constructing new Resources, allowing that new Resource to know
  * both the value as well as the Resource the value came from.  This allows for a precise 'Resource
- * dependency graph' to be crated, which properly tracks the relationship between resources.
+ * dependency graph' to be created, which properly tracks the relationship between resources.
  */
 export class Output<T> {
     // Method that actually produces the concrete value of this output, as well as the total
@@ -174,7 +174,7 @@ export class Output<T> {
      * This function will only be called execution of a 'pulumi update' request.  It will not run
      * during 'pulumi preview' (as the values of resources are of course not known then). It is not
      * available for functions that end up executing in the cloud during runtime.  To get the value
-     * of the Output during cloud runtime executure, use `get()`.
+     * of the Output during cloud runtime execution, use `get()`.
      */
     public readonly apply: <U>(func: (t: T) => Input<U>) => Output<U>;
 
