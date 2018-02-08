@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"syscall"
 
 	"github.com/golang/glog"
@@ -49,19 +48,33 @@ const (
 // endpoint.
 func runLanguageHost() error {
 	var tracing string
+	var givenExecutor string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
+
+	// You can use the below flag to request that the language host load
+	// a specific executor instead of probing the PATH. This is used specifically
+	// in run.spec.ts to work around some unfortunate Node module loading behavior.
+	flag.StringVar(&givenExecutor, "use-executor", "",
+		"Use the given program as the executor instead of looking for one on PATH")
 
 	flag.Parse()
 	args := flag.Args()
 	cmdutil.InitLogging(false, 0, false)
 	cmdutil.InitTracing(os.Args[0], tracing)
-	glog.V(3).Info("firing up the language host (for real)!")
+	var nodeExec string
+	if givenExecutor == "" {
+		pathExec, err := exec.LookPath(os.Args[0] + nodeExecSuffix)
+		if err != nil {
+			err = errors.Wrapf(err, "could not find `node` on the $PATH")
+			cmdutil.Exit(err)
+		}
 
-	nodeExec, err := exec.LookPath(os.Args[0] + nodeExecSuffix)
-	if err != nil {
-		err = errors.Wrapf(err, "could not find `node` on the $PATH")
-		cmdutil.Exit(err)
+		glog.V(3).Infof("language host identified executor from path: `%s`", pathExec)
+		nodeExec = pathExec
+	} else {
+		glog.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		nodeExec = givenExecutor
 	}
 
 	if len(args) == 0 {
@@ -133,10 +146,20 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []st
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())
-	maybeAppendArg("dry-run", strconv.FormatBool(req.GetDryRun()))
+	if req.GetDryRun() {
+		args = append(args, "--dry-run")
+	}
+
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
-	args = append(args, req.GetProgram())
+	if req.GetProgram() == "" {
+		// If the program path is empty, just use "."; this will cause Node to try to load the default module
+		// file, by default ./index.js, but possibly overridden in the "main" element inside of package.json.
+		args = append(args, ".")
+	} else {
+		args = append(args, req.GetProgram())
+	}
+
 	args = append(args, req.GetArgs()...)
 	return args
 }
@@ -157,6 +180,7 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 	return string(configJSON), nil
 }
 
+// RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	args := host.constructArguments(req)
 	config, err := host.constructConfig(req)
@@ -165,9 +189,6 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		return nil, err
 	}
 
-	glog.V(3).Infof("command: %v", host.exec)
-	glog.V(3).Infof("arguments: %v", args)
-	glog.V(3).Infof("config: %v", string(config))
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
 	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
@@ -181,12 +202,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
 				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
 			} else {
-				err = errors.Wrapf(exiterr, "program exited unexpectedly")
+				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
 			}
 		} else {
 			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
 			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-			err = errors.Wrapf(err, "problem executing program (could not run language executor)")
+			err = errors.Wrapf(err, "Problem executing program (could not run language executor)")
 		}
 
 		errResult = err.Error()
