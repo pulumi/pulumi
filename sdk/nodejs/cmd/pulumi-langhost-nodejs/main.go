@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/golang/glog"
@@ -185,8 +186,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	args := host.constructArguments(req)
 	config, err := host.constructConfig(req)
 	if err != nil {
-		err = errors.Wrap(err, "failed to serialize configuration")
+		err = errors.Wrap(err, "Failed to serialize configuration")
 		return nil, err
+	}
+
+	if glog.V(5) {
+		commandStr := strings.Join(args, " ")
+		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.

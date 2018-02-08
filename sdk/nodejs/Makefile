@@ -7,6 +7,10 @@ LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-node
 GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 
+PROJECT_PKGS    := $(shell go list ./cmd...)
+TESTPARALLELISM := 10
+TEST_FAST_TIMEOUT := 2m
+
 include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
@@ -44,3 +48,4 @@ test_fast::
 	istanbul cover --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
+	go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
