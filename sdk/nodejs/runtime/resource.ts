@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as crypto from "crypto";
 import * as log from "../log";
 import { ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
@@ -60,8 +61,13 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const flattenedInputProps = await serializeProperties(
             label, inputProps, implicitResourceDependencies);
 
+        const inputPropsJson = JSON.stringify(flattenedInputProps);
+        if (opts.structural) {
+            name = `${name}_${sha1hash(inputPropsJson)}`;
+        }
+
         log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
-            (excessiveDebugOutput ? `, obj=${JSON.stringify(flattenedInputProps)}` : ``));
+            (excessiveDebugOutput ? `, obj=${inputPropsJson}` : ``));
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
@@ -141,6 +147,15 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
         resolveProperties(res, resolvers, t, name, allProps, stable, stables);
     });
+}
+
+// sha1hash returns a partial SHA1 hash of the input string.
+function sha1hash(s: string): string {
+    const shasum: crypto.Hash = crypto.createHash("sha1");
+    shasum.update(s);
+    // TODO[pulumi/pulumi#377] Workaround for issue with long names not generating per-deplioyment randomness, leading
+    //     to collisions.  For now, limit the size of hashes to ensure we generate shorter/ resource names.
+    return shasum.digest("hex").substring(0, 8);
 }
 
 /**

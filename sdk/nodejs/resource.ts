@@ -66,6 +66,11 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
+    /**
+     * Resource is a structural type whose identity is considered the same only if
+     * its name *and* structure match.
+     */
+    structural?: boolean;
 }
 
 /**
