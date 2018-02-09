@@ -1046,22 +1046,22 @@ return (function () { console.log(v); })
                 code: "(function () { console.log(obj); })",
                 environment: {
                     "obj": {
-                    "obj": {
-                        "method1": {
-                        "closure": {
-                            "code": "(function method1() { return; })",
-                            "environment": {},
-                            "runtime": "nodejs",
+                        "obj": {
+                            "method1": {
+                                "closure": {
+                                    "code": "(function method1() { return; })",
+                                    "environment": {},
+                                    "runtime": "nodejs",
+                                },
+                            },
+                            "method2": {
+                                "closure": {
+                                    "code": "(() => { return; })",
+                                    "environment": {},
+                                    "runtime": "nodejs",
+                                },
+                            },
                         },
-                        },
-                        "method2": {
-                        "closure": {
-                            "code": "(() => { return; })",
-                            "environment": {},
-                            "runtime": "nodejs",
-                        },
-                        },
-                    },
                     },
                 },
                 runtime: "nodejs",
@@ -1094,6 +1094,34 @@ function __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48() {
     with({  }) {
 
 return (() => { return; })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+    {
+        class C {
+            public m() { return 0; }
+        }
+        cases.push({
+            title: "Serialize class method",
+            func: new C().m,
+            expect: {
+                code: "(function m() { return 0; })",
+                environment: { },
+                runtime: "nodejs",
+            },
+            closureHash: "__fd194c141ced771dea5a434a84333301be2cbc02",
+            expectText: `exports.handler = __fd194c141ced771dea5a434a84333301be2cbc02;
+
+function __fd194c141ced771dea5a434a84333301be2cbc02() {
+  return (function() {
+    with({  }) {
+
+return (function m() { return 0; })
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
