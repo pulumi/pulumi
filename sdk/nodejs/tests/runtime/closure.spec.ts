@@ -1036,7 +1036,7 @@ return (function () { console.log(v); })
     }
 
     {
-        const obj = { method1() { return; }, method2: () => { return; } };
+        const obj = { method1() { return this.method2(); }, method2: () => { return; } };
 
         cases.push({
             title: "Capture object with methods",
@@ -1104,7 +1104,6 @@ return (() => { return; })
     }
 
     {
-        // Note: this behavior is very broken.  "this" is not properly handled.
         class C {
             public m() { return this.n(); }
             public n() { return 0; }
@@ -1135,7 +1134,6 @@ return (function m() { return this.n(); })
     }
 
     {
-        // Note: this behavior is very broken.  "this" is not properly handled.
         class C {
             public static m() { return this.n(); }
             public static n() { return 0; }
@@ -1166,7 +1164,6 @@ return (function m() { return this.n(); })
     }
 
     {
-        // Note: this behavior is very broken.  "this" is not properly handled.
         const D = (function () {
             // tslint:disable-next-line:no-shadowed-variable
             function D() {
