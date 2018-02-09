@@ -6,6 +6,7 @@ clone_folder: '%USERPROFILE%\go\src\github.com\pulumi\pulumi'
 branches:
     only:
         - master
+        - /release\/.*/
 init:
 - ps: Install-Product node 6.10.2 x64
 environment:
