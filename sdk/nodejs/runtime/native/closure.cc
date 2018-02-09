@@ -77,21 +77,15 @@ Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context
     return Local<Value>();
 }
 
-// MSVC 2015 (which we build with on Windows) does not treat strlen of a literal as a constexpr,
-// so we can't use it to intialize our buffer size. So instead, we use sizeof() to compute the
-// length, so we need a literal string instead of just a const char*.
-#define BAD_PREFIX "[Function:"
-#define STRLEN_LITERAL_ONLY(S) (sizeof((S))/sizeof(char) - 1)
-
 Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
     // Serialize the code simply by calling toString on the Function.
     auto toString = Local<Function>::Cast(func->Get(String::NewFromUtf8(isolate, "toString")));
     auto v8CodeString = Local<String>::Cast(toString->Call(func, 0, nullptr));
 
     v8::String::Utf8Value utf8CodeString(v8CodeString->ToString());
-    auto code{std::string{*utf8CodeString}};
+    std::string code = std::string(*utf8CodeString);
 
-    auto badPrefix(std::string{"[Function:"});
+    std::string badPrefix("[Function:");
     if (code.compare(0, badPrefix.length(), badPrefix) == 0) {
         isolate->ThrowException(Exception::TypeError(
             String::NewFromUtf8(isolate,
@@ -100,8 +94,8 @@ Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
 
     // Ensure that the code is a function expression (including arrows), and not a definition, etc.
 
-    auto openParen{std::string{"("}};
-    auto funcString{std::string{"function"}};
+    std::string openParen("(");
+    std::string funcString("function");
 
     if (code.compare(0, openParen.length(), openParen) == 0 ||
         code.compare(0, funcString.length(), funcString) == 0) {
@@ -118,8 +112,6 @@ Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
 
     return String::NewFromUtf8(isolate, code.c_str());
 }
-#undef BAD_PREFIX
-#undef STRLEN_LITERAL_ONLY
 
 // SerializeFunction serializes a JavaScript function expression and its associated closure environment.
 Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
