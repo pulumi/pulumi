@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -575,8 +574,6 @@ type displayEvent struct {
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
 func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	events, done := make(chan displayEvent), make(chan bool)
 	defer func() {
 		events <- displayEvent{Kind: ShutdownEvent, Payload: nil}
@@ -614,16 +611,6 @@ func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOpt
 		case apitype.StatusSucceeded:
 			return updateResults.Status, nil
 		}
-
-		// Wait a bit before looping again. The amount of time we wait depends on whether or not there were events: if
-		// there were no events, we wait longer than if there were events under the assumption that no new events
-		// implies a long-running but silent process in the update. In both cases, we incorporate some jitter in the
-		// wait time in order to avoid request convoys.
-		sleepTime := time.Duration(1.0+r.Float64()*4.0) * time.Second
-		if len(updateResults.Events) == 0 {
-			sleepTime += 10 * time.Second
-		}
-		time.Sleep(sleepTime)
 	}
 }
 
