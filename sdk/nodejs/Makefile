@@ -18,9 +18,8 @@ export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 ensure::
 	cd runtime/native && ./ensure_node_v8.sh
 
-LINT_SUPPRESS="or be unexported"
 lint::
-	$(GOMETALINTER) cmd/pulumi-langhost-nodejs/main.go | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) cmd/pulumi-langhost-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
 	tslint -c tslint.json -p tsconfig.json
 
 build::

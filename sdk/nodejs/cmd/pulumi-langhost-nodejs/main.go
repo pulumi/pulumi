@@ -47,7 +47,7 @@ const (
 // Launches the language host RPC endpoint, which in turn fires
 // up an RPC server implementing the LanguageRuntimeServer RPC
 // endpoint.
-func runLanguageHost() error {
+func main() {
 	var tracing string
 	var givenExecutor string
 	flag.StringVar(&tracing, "tracing", "",
@@ -67,7 +67,7 @@ func runLanguageHost() error {
 	if givenExecutor == "" {
 		pathExec, err := exec.LookPath(os.Args[0] + nodeExecSuffix)
 		if err != nil {
-			err = errors.Wrapf(err, "could not find `node` on the $PATH")
+			err = errors.Wrapf(err, "could not find `%s` on the $PATH", os.Args[0]+nodeExecSuffix)
 			cmdutil.Exit(err)
 		}
 
@@ -79,7 +79,7 @@ func runLanguageHost() error {
 	}
 
 	if len(args) == 0 {
-		return errors.New("missing host engine RPC address as first argument")
+		cmdutil.Exit(errors.New("missing host engine RPC address as first argument"))
 	}
 
 	monitorAddress := args[0]
@@ -99,17 +99,15 @@ func runLanguageHost() error {
 	})
 
 	if err != nil {
-		return errors.Wrapf(err, "could not start language host RPC server")
+		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
 	fmt.Printf("%d\n", port)
 	// And finally wait for the server to stop serving.
 	if err := <-done; err != nil {
-		return errors.Wrapf(err, "language host RPC stopped serving")
+		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
 	}
-
-	return nil
 }
 
 // nodeLanguageHost implements the LanguageRuntimeServer interface
@@ -137,8 +135,7 @@ func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []st
 	var args []string
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
-			args = append(args, "--"+k)
-			args = append(args, v)
+			args = append(args, "--"+k, v)
 		}
 	}
 
@@ -226,11 +223,4 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
-}
-
-func main() {
-	err := runLanguageHost()
-	if err != nil {
-		cmdutil.Exit(err)
-	}
 }
