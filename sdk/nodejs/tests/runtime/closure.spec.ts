@@ -168,18 +168,6 @@ describe("closure", () => {
     });
 
     const cases: ClosureCase[] = [];
-    {
-        // Ensure we reject function declarations.
-        class C {
-            // tslint:disable-next-line
-            public m(): void { }
-        }
-        cases.push({
-            title: "Reject non-expression function objects",
-            func: new C().m,
-            closureHash: "",
-        });
-    }
 
     // A few simple positive cases for functions/arrows (no captures).
     cases.push({
@@ -1038,6 +1026,74 @@ function __010ddd8e314a6fdc60244562536298871169f9fb() {
     with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined }, d4: { get: () => ({ a: 1, b: true }) } } }) {
 
 return (function () { console.log(v); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const obj = { method1() { return; }, method2: () => { return; } };
+
+        cases.push({
+            title: "Capture object with methods",
+            // tslint:disable-next-line
+            func: function () { console.log(obj); },
+            expect: {
+                code: "(function () { console.log(obj); })",
+                environment: {
+                    "obj": {
+                    "obj": {
+                        "method1": {
+                        "closure": {
+                            "code": "(function method1() { return; })",
+                            "environment": {},
+                            "runtime": "nodejs",
+                        },
+                        },
+                        "method2": {
+                        "closure": {
+                            "code": "(() => { return; })",
+                            "environment": {},
+                            "runtime": "nodejs",
+                        },
+                        },
+                    },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__8c231108f642b68a23d43c0f7c8671e0c89cd351",
+            expectText: `exports.handler = __8c231108f642b68a23d43c0f7c8671e0c89cd351;
+
+function __8c231108f642b68a23d43c0f7c8671e0c89cd351() {
+  return (function() {
+    with({ obj: { method1: __c897c6f56b04faac47ca50985e95e15ae830f831, method2: __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48 } }) {
+
+return (function () { console.log(obj); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __c897c6f56b04faac47ca50985e95e15ae830f831() {
+  return (function() {
+    with({  }) {
+
+return (function method1() { return; })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48() {
+  return (function() {
+    with({  }) {
+
+return (() => { return; })
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

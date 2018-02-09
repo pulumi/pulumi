@@ -1,6 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import * as acorn from "acorn";
 import * as crypto from "crypto";
+import * as estree from "estree";
 import { relative as pathRelative } from "path";
 import * as ts from "typescript";
 import * as log from "../log";
@@ -294,6 +296,22 @@ function computeFreeVariables(funcstr: string): string[] {
         "", funcstr, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
     if (diagnostics.length) {
+        console.log("Could not parse function: \n" + funcstr);
+
+        const opts: acorn.Options = {
+            ecmaVersion: 8,
+            sourceType: "script",
+        };
+        const parser = new acorn.Parser(opts, funcstr);
+        let program: estree.Program;
+        try {
+            program = parser.parse();
+            console.log("acorn parsed fine.");
+        }
+        catch (err) {
+            console.log("acorn failed to parse." + err);
+        }
+
         throw new Error(`Could not parse function: ${diagnostics[0].messageText}\n${funcstr}`);
     }
 
