@@ -1049,7 +1049,7 @@ return (function () { console.log(v); })
                         "obj": {
                             "method1": {
                                 "closure": {
-                                    "code": "(function method1() { return; })",
+                                    "code": "(function method1() { return this.method2(); })",
                                     "environment": {},
                                     "runtime": "nodejs",
                                 },
@@ -1066,12 +1066,12 @@ return (function () { console.log(v); })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__8c231108f642b68a23d43c0f7c8671e0c89cd351",
-            expectText: `exports.handler = __8c231108f642b68a23d43c0f7c8671e0c89cd351;
+            closureHash: "__f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4",
+            expectText: `exports.handler = __f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4;
 
-function __8c231108f642b68a23d43c0f7c8671e0c89cd351() {
+function __f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4() {
   return (function() {
-    with({ obj: { method1: __c897c6f56b04faac47ca50985e95e15ae830f831, method2: __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48 } }) {
+    with({ obj: { method1: __f6abbd7cb31cb232a3250be3014cee3b74db4cfa, method2: __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48 } }) {
 
 return (function () { console.log(obj); })
 
@@ -1079,11 +1079,11 @@ return (function () { console.log(obj); })
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __c897c6f56b04faac47ca50985e95e15ae830f831() {
+function __f6abbd7cb31cb232a3250be3014cee3b74db4cfa() {
   return (function() {
     with({  }) {
 
-return (function method1() { return; })
+return (function method1() { return this.method2(); })
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
