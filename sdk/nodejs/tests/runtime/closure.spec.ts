@@ -1102,26 +1102,97 @@ return (() => { return; })
 `,
         });
     }
+
     {
+        // Note: this behavior is very broken.  "this" is not properly handled.
         class C {
-            public m() { return 0; }
+            public m() { return this.n(); }
+            public n() { return 0; }
         }
         cases.push({
-            title: "Serialize class method",
+            title: "Serialize instance class methods",
             func: new C().m,
             expect: {
-                code: "(function m() { return 0; })",
+                code: "(function m() { return this.n(); })",
                 environment: { },
                 runtime: "nodejs",
             },
-            closureHash: "__fd194c141ced771dea5a434a84333301be2cbc02",
-            expectText: `exports.handler = __fd194c141ced771dea5a434a84333301be2cbc02;
+            closureHash: "__a5583812bfd698420d9f1872a30b68e59b01ac00",
+            expectText: `exports.handler = __a5583812bfd698420d9f1872a30b68e59b01ac00;
 
-function __fd194c141ced771dea5a434a84333301be2cbc02() {
+function __a5583812bfd698420d9f1872a30b68e59b01ac00() {
   return (function() {
     with({  }) {
 
-return (function m() { return 0; })
+return (function m() { return this.n(); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        // Note: this behavior is very broken.  "this" is not properly handled.
+        class C {
+            public static m() { return this.n(); }
+            public static n() { return 0; }
+        }
+        cases.push({
+            title: "Serialize static class methods",
+            func: C.m,
+            expect: {
+                code: "(function m() { return this.n(); })",
+                environment: { },
+                runtime: "nodejs",
+            },
+            closureHash: "__a5583812bfd698420d9f1872a30b68e59b01ac00",
+            expectText: `exports.handler = __a5583812bfd698420d9f1872a30b68e59b01ac00;
+
+function __a5583812bfd698420d9f1872a30b68e59b01ac00() {
+  return (function() {
+    with({  }) {
+
+return (function m() { return this.n(); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        // Note: this behavior is very broken.  "this" is not properly handled.
+        const D = (function () {
+            // tslint:disable-next-line:no-shadowed-variable
+            function D() {
+                // tslint:disable-next-line:semicolon
+                ;
+            }
+            (<any>D).m = function () { return this.n(); };
+            (<any>D).n = function () { return 0; };
+            return D;
+        }());
+        cases.push({
+            title: "Serialize static class methods (es5 class style)",
+            func: (<any>D).m,
+            expect: {
+                code: "(function () { return this.n(); })",
+                environment: { },
+                runtime: "nodejs",
+            },
+            closureHash: "__4388dd82f50083d1b18aa1eb2cebd11363fedeb4",
+            expectText: `exports.handler = __4388dd82f50083d1b18aa1eb2cebd11363fedeb4;
+
+function __4388dd82f50083d1b18aa1eb2cebd11363fedeb4() {
+  return (function() {
+    with({  }) {
+
+return (function () { return this.n(); })
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
