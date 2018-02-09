@@ -183,7 +183,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	args := host.constructArguments(req)
 	config, err := host.constructConfig(req)
 	if err != nil {
-		err = errors.Wrap(err, "Failed to serialize configuration")
+		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
 	}
 
