@@ -168,18 +168,6 @@ describe("closure", () => {
     });
 
     const cases: ClosureCase[] = [];
-    {
-        // Ensure we reject function declarations.
-        class C {
-            // tslint:disable-next-line
-            public m(): void { }
-        }
-        cases.push({
-            title: "Reject non-expression function objects",
-            func: new C().m,
-            closureHash: "",
-        });
-    }
 
     // A few simple positive cases for functions/arrows (no captures).
     cases.push({
@@ -1038,6 +1026,170 @@ function __010ddd8e314a6fdc60244562536298871169f9fb() {
     with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined }, d4: { get: () => ({ a: 1, b: true }) } } }) {
 
 return (function () { console.log(v); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const obj = { method1() { return this.method2(); }, method2: () => { return; } };
+
+        cases.push({
+            title: "Capture object with methods",
+            // tslint:disable-next-line
+            func: function () { console.log(obj); },
+            expect: {
+                code: "(function () { console.log(obj); })",
+                environment: {
+                    "obj": {
+                        "obj": {
+                            "method1": {
+                                "closure": {
+                                    "code": "(function method1() { return this.method2(); })",
+                                    "environment": {},
+                                    "runtime": "nodejs",
+                                },
+                            },
+                            "method2": {
+                                "closure": {
+                                    "code": "(() => { return; })",
+                                    "environment": {},
+                                    "runtime": "nodejs",
+                                },
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4",
+            expectText: `exports.handler = __f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4;
+
+function __f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4() {
+  return (function() {
+    with({ obj: { method1: __f6abbd7cb31cb232a3250be3014cee3b74db4cfa, method2: __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48 } }) {
+
+return (function () { console.log(obj); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6abbd7cb31cb232a3250be3014cee3b74db4cfa() {
+  return (function() {
+    with({  }) {
+
+return (function method1() { return this.method2(); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48() {
+  return (function() {
+    with({  }) {
+
+return (() => { return; })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        class C {
+            public m() { return this.n(); }
+            public n() { return 0; }
+        }
+        cases.push({
+            title: "Serialize instance class methods",
+            func: new C().m,
+            expect: {
+                code: "(function m() { return this.n(); })",
+                environment: { },
+                runtime: "nodejs",
+            },
+            closureHash: "__a5583812bfd698420d9f1872a30b68e59b01ac00",
+            expectText: `exports.handler = __a5583812bfd698420d9f1872a30b68e59b01ac00;
+
+function __a5583812bfd698420d9f1872a30b68e59b01ac00() {
+  return (function() {
+    with({  }) {
+
+return (function m() { return this.n(); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        class C {
+            public static m() { return this.n(); }
+            public static n() { return 0; }
+        }
+        cases.push({
+            title: "Serialize static class methods",
+            func: C.m,
+            expect: {
+                code: "(function m() { return this.n(); })",
+                environment: { },
+                runtime: "nodejs",
+            },
+            closureHash: "__a5583812bfd698420d9f1872a30b68e59b01ac00",
+            expectText: `exports.handler = __a5583812bfd698420d9f1872a30b68e59b01ac00;
+
+function __a5583812bfd698420d9f1872a30b68e59b01ac00() {
+  return (function() {
+    with({  }) {
+
+return (function m() { return this.n(); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const D = (function () {
+            // tslint:disable-next-line:no-shadowed-variable
+            function D() {
+                // tslint:disable-next-line:semicolon
+                ;
+            }
+            (<any>D).m = function () { return this.n(); };
+            (<any>D).n = function () { return 0; };
+            return D;
+        }());
+        cases.push({
+            title: "Serialize static class methods (es5 class style)",
+            func: (<any>D).m,
+            expect: {
+                code: "(function () { return this.n(); })",
+                environment: { },
+                runtime: "nodejs",
+            },
+            closureHash: "__4388dd82f50083d1b18aa1eb2cebd11363fedeb4",
+            expectText: `exports.handler = __4388dd82f50083d1b18aa1eb2cebd11363fedeb4;
+
+function __4388dd82f50083d1b18aa1eb2cebd11363fedeb4() {
+  return (function() {
+    with({  }) {
+
+return (function () { return this.n(); })
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

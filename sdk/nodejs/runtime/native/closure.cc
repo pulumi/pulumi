@@ -77,37 +77,41 @@ Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context
     return Local<Value>();
 }
 
-// MSVC 2015 (which we build with on Windows) does not treat strlen of a literal as a constexpr,
-// so we can't use it to intialize our buffer size. So instead, we use sizeof() to compute the
-// length, so we need a literal string instead of just a const char*.
-#define BAD_PREFIX "[Function:"
-#define STRLEN_LITERAL_ONLY(S) (sizeof((S))/sizeof(char) - 1)
-
 Local<String> SerializeFunctionCode(Isolate *isolate, Local<Function> func) {
     // Serialize the code simply by calling toString on the Function.
-    Local<Function> toString = Local<Function>::Cast(
-            func->Get(String::NewFromUtf8(isolate, "toString")));
-    Local<String> code = Local<String>::Cast(toString->Call(func, 0, nullptr));
+    auto toString = Local<Function>::Cast(func->Get(String::NewFromUtf8(isolate, "toString")));
+    auto v8CodeString = Local<String>::Cast(toString->Call(func, 0, nullptr));
 
-    // Ensure that the code is a function expression (including arrows), and not a definition, etc.
-    constexpr size_t badprefixLength = STRLEN_LITERAL_ONLY(BAD_PREFIX);
-    if (code->Length() >= (int)badprefixLength) {
-        char buf[badprefixLength];
-        code->WriteUtf8(buf, badprefixLength);
-        if (!strncmp(BAD_PREFIX, buf, badprefixLength)) {
-            isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate,
-                    "Cannot serialize non-expression functions (such as definitions and generators)")));
-        }
+    v8::String::Utf8Value utf8CodeString(v8CodeString->ToString());
+    std::string code = std::string(*utf8CodeString);
+
+    std::string badPrefix("[Function:");
+    if (code.compare(0, badPrefix.length(), badPrefix) == 0) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate,
+                "Cannot serialize non-expression functions (such as definitions and generators)")));
     }
 
-    // Wrap the serialized function text in ()s so that it's a legal top-level script/module element.
-    return String::Concat(
-        String::Concat(String::NewFromUtf8(isolate, "("), code),
-            String::NewFromUtf8(isolate, ")"));
+    // Ensure that the code is a function expression (including arrows), and not a definition, etc.
+
+    std::string openParen("(");
+    std::string funcString("function");
+
+    if (code.compare(0, openParen.length(), openParen) == 0 ||
+        code.compare(0, funcString.length(), funcString) == 0) {
+
+        // lambda or simple function expression.  i.e. '() => { ... }' or 'function () { }'
+        // wrap with parens to make into an expression that can be parsed at the top level
+        // of a JS file.
+        code = "(" + code + ")";
+    } else {
+        // We got a method here.  Which v8 represents like 'foo() { }'.  So we wrap as
+        // '(functoin foo() { })' so it can be parsed at the top level of a JS file.
+        code = "(function " + code + ")";
+    }
+
+    return String::NewFromUtf8(isolate, code.c_str());
 }
-#undef BAD_PREFIX
-#undef STRLEN_LITERAL_ONLY
 
 // SerializeFunction serializes a JavaScript function expression and its associated closure environment.
 Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
