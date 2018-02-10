@@ -58,6 +58,18 @@
           WorkingDirectory="$(NodeJSSdkDirectory)" />
   </Target>
 
+  <Target Name="GoCompileNodeSdk">
+    <ItemGroup>
+      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs" />
+    </ItemGroup>
+
+    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
+
+    <Exec Command="go install -ldflags &quot;-X main.version=$(Version)&quot; %(GoPackagesToBuild.Identity)" />
+  </Target>
+
   <Target Name="BinplaceNodeSdkProtos">
     <ItemGroup>
       <NodeSdkProtosForBinplace Include="$(NodeSdkDirectory)\proto\nodejs\**\*" />
@@ -99,7 +111,7 @@
   </Target>
 
     <Target Name="BuildNodeSdk"
-          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;BinPlaceNodeSdk">
+          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
   </Target>
 
   <Target Name="BuildGoCmds">
@@ -119,13 +131,18 @@
   </Target>
 
   <Target Name="IntegrationTest">
-    <Exec Command="where pulumi-langhost-nodejs.cmd"
+    <Exec Command="where pulumi-langhost-nodejs-exec.cmd"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExecExitCode" />
+    </Exec>
+
+    <Exec Command="where pulumi-langhost-nodejs"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>
 
     <Error Text="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
-           Condition="$(WhereLangHostExitCode) != 0"/>
+           Condition="$(WhereLangHostExitCode) != 0 Or $(WhereLangHostExecExitCode) != 0"/>
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
          fails. Otherwise, the AppVeyor job would hang until it reached the timeout -->
