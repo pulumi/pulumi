@@ -22,7 +22,9 @@ type Projinfo struct {
 func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
 	pwd := projinfo.Root
 	main := projinfo.Proj.Main
-	if main != "" {
+	if main == "" {
+		main = "."
+	} else {
 		// The path must be relative from the package root.
 		if filepath.IsAbs(main) {
 			return "", "", errors.New("project 'main' must be a relative path")
@@ -43,11 +45,23 @@ func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
 		}
 		if maininfo.IsDir() {
 			pwd = main
-			main = ""
+			main = "."
 		} else {
 			pwd = filepath.Dir(main)
 			main = filepath.Base(main)
 		}
 	}
+
+	// Now turn both pwd and main into absolute directories.
+	var err error
+	pwd, err = filepath.Abs(pwd)
+	if err != nil {
+		return "", "", err
+	}
+	main, err = filepath.Abs(main)
+	if err != nil {
+		return "", "", err
+	}
+
 	return pwd, main, nil
 }

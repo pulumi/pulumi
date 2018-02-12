@@ -1,6 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as childprocess from "child_process";
+import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as runtime from "../runtime";
@@ -49,10 +50,105 @@ export function serveLanguageHost(engine?: string, tracing?: string): { server: 
  * getRequiredPluginsRPC returns a list of plugins required by the given program.
  */
 function getRequiredPluginsRPC(call: any, callback: any): void {
-    // TODO: implement this.
-    const resp = new langproto.GetRequiredPluginsResponse();
-    resp.setPluginsList([]);
-    callback(undefined, resp);
+    // To get the plugins required by a program, find all node_modules/ packages that contain { "pulumi": true }
+    // inside of their packacge.json files.  We begin this search in the same directory that contains the project.
+    // It's possible that a developer would do a `require("../../elsewhere")` and that we'd miss this as a
+    // dependency, however the solution for that is simple: install the package in the project root.
+    getPluginsFromDir(call.request.getProgram()).then(
+        (plugins: any[]) => {
+            const resp = new langproto.GetRequiredPluginsResponse();
+            resp.setPluginsList(plugins);
+            callback(undefined, resp);
+        },
+        (err: any) => {
+            callback(err);
+        },
+    );
+}
+
+/**
+ * getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
+ */
+async function getPluginsFromDir(dir: string, pardir: string | undefined): Promise<any[]> {
+    const plugins: any[] = [];
+    const files = await new Promise<string[]>((resolve, reject) => {
+        fs.readdir(dir, (err, ret) => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                resolve(ret);
+            }
+        });
+    });
+    for (const file of files) {
+        const curr = path.join(dir, file);
+        const stats = await new Promise<fs.Stats>((resolve, reject) => {
+            fs.stat(curr, (err, ret) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(ret);
+                }
+            });
+        });
+        if (stats.isDirectory()) {
+            // if a directory, recurse.
+            plugins.push(...await getPluginsFromDir(curr, dir));
+        }
+        else if (pardir === "node_modules" && file === "package.json") {
+            // if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
+            const data = await new Promise<Buffer>((resolve, reject) => {
+                fs.readFile(curr, (err, ret) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    else {
+                        resolve(ret);
+                    }
+                });
+            });
+            const json = JSON.parse(data.toString());
+            if (json.pulumi && json.pulumi.resource) {
+                const dep = new langproto.PluginDependency();
+                dep.setName(getPluginName(curr, json));
+                dep.setKind("resource");
+                dep.setVersion(getPluginVersion(curr, json));
+                plugins.push(dep);
+            }
+        }
+
+    }
+    return plugins;
+}
+
+function getPluginName(file: string, packageJson: any): string {
+    const name = packageJson.name;
+    if (!name) {
+        throw new Error(`Missing expected "name" property in ${file}`);
+    }
+
+    // If the name has a @pulumi scope, we will just use its simple name.  Otherwise, we use the fullly scoped name.
+    // We do trim the leading @, however, since Pulumi resource providers do not use the same NPM convention.
+    if (name.indexOf("@pulumi/") === 0) {
+        return name.substring(name.indexOf("/")+1);
+    }
+    if (name.indexOf("@") === 0) {
+        return name.substring(1);
+    }
+    return name;
+}
+
+function getPluginVersion(file: string, packageJson: any): string {
+    const vers = packageJson.version;
+    if (!vers) {
+        throw new Error(`Missing expected "version" property in ${file}`);
+    }
+    if (vers.indexOf("v") !== 0) {
+        return `v${vers}`;
+    }
+    return vers;
 }
 
 /**
