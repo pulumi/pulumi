@@ -20,7 +20,7 @@ func TestProjectMain(t *testing.T) {
 	var test integration.ProgramTestOptions
 	test = integration.ProgramTestOptions{
 		Dir:          "project_main",
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			assert.Equal(t, test.GetStackName(), stackInfo.Checkpoint.Stack)
@@ -67,7 +67,7 @@ func TestProjectMain(t *testing.T) {
 func TestStackProjectName(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_project_name",
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 	})
 }
@@ -76,7 +76,7 @@ func TestStackProjectName(t *testing.T) {
 func TestStackOutputs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_outputs",
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
@@ -98,7 +98,7 @@ func TestStackOutputs(t *testing.T) {
 func TestStackParenting(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "stack_parenting",
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains resources parented correctly.  This should look like this:

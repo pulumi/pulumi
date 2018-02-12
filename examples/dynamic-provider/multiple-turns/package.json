@@ -13,5 +13,8 @@
     "dependencies": {
         "assert": "^1.4.1",
         "sleep-promise": "^2.0.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
     }
 }

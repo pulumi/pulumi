@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as pulumi from "pulumi";
-import * as dynamic from "pulumi/dynamic";
+import * as pulumi from "@pulumi/pulumi";
+import * as dynamic from "@pulumi/pulumi/dynamic";
 
 class OperatorProvider implements dynamic.ResourceProvider {
     private op: (l: number, r: number) => any;

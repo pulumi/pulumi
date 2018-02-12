@@ -1,5 +1,5 @@
 {
-    "name": "pulumi",
+    "name": "@pulumi/pulumi",
     "version": "${VERSION}",
     "description": "Pulumi's Node.js SDK",
     "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
