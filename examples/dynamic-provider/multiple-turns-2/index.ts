@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as pulumi from "pulumi";
-import * as dynamic from "pulumi/dynamic";
+import * as pulumi from "@pulumi/pulumi";
+import * as dynamic from "@pulumi/pulumi/dynamic";
 
 const sleep = require("sleep-promise");
 const assert = require("assert");
