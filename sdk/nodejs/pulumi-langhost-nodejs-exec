@@ -1,3 +1,2 @@
 #!/usr/bin/env node
-require("pulumi/cmd/run");
-
+require("@pulumi/pulumi/cmd/run");

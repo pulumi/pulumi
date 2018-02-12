@@ -51,7 +51,7 @@ cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs-exec ${PUBDIR}/bin/
 cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
 
 # Copy packages
-copy_package "${ROOT}/sdk/nodejs/bin/." "pulumi"
+copy_package "${ROOT}/sdk/nodejs/bin/." "@pulumi/pulumi"
 
 # Tar up the file and then print it out for use by the caller or script.
 tar -czf ${PUBFILE} -C ${PUBDIR} .
