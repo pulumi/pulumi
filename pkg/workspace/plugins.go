@@ -86,7 +86,7 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 			}
 
 			// If so, expand it into the plugin home directory.
-			dst, err := os.Open(filepath.Join(pluginDir, header.Name))
+			dst, err := os.Create(filepath.Join(pluginDir, header.Name))
 			if err != nil {
 				return err
 			}
