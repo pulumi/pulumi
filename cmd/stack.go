@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -150,7 +151,23 @@ func printStackOutputs(outputs map[string]interface{}) {
 		sort.Strings(outkeys)
 		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
 		for _, key := range outkeys {
-			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %v\n", key, outputs[key])
+			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
 		}
 	}
+}
+
+// stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case
+// of top level strings, where we just return the raw value.
+func stringifyOutput(v interface{}) string {
+	s, ok := v.(string)
+	if ok {
+		return s
+	}
+
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "error: could not format value"
+	}
+
+	return string(b)
 }
