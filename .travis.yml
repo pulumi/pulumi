@@ -1,4 +1,5 @@
-if: (branch = master) OR (branch =~ release/.*) OR (tag IS present)
+# It may be tempting to add parens around each individual clause in this expression, but Travis then builds pushes anyway
+if: branch = master OR branch =~ ^release/ OR tag IS present
 jobs:
   include:
     - os: linux
