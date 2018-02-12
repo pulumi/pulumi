@@ -484,8 +484,8 @@ function createMockResourceMonitor(
 function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // A quick note about this:
     //
-    // Normally, pulumi-langhost-nodejs probes the path in order to
-    // find the nodejs executor, pulumi-langhost-nodejs-exec. This works
+    // Normally, pulumi-language-nodejs probes the path in order to
+    // find the nodejs executor, pulumi-language-nodejs-exec. This works
     // great in all scenarios other than testing within this file. If the executor
     // that it founds resides in the Pulumi install dir (which it will, if these tests
     // are being executed by `make`), then Node will execute it by resolving our relative
@@ -506,9 +506,9 @@ function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Pr
     // In order to work around this problem, the langhost is explicitly instructed
     // (through --use-executor) to use a specific executor which will load modules from
     // the source directory and not the install directory.
-    const proc = childProcess.spawn("pulumi-langhost-nodejs", [
+    const proc = childProcess.spawn("pulumi-language-nodejs", [
         "--use-executor",
-        path.join(__filename, "..", "..", "..", "..", "..", "pulumi-langhost-nodejs-exec-test"),
+        path.join(__filename, "..", "..", "..", "..", "pulumi-language-nodejs-exec-test"),
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.

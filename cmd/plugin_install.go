@@ -56,10 +56,10 @@ func newPluginInstallCmd() *cobra.Command {
 				})
 			} else if file == "" {
 				return errors.New("--file (-f) is only valid if a specific package is being installed")
-			} else {
-				// If a specific plugin wasn't given, compute the set of plugins the current project needs.
-				// TODO[pulumi/home#11]: before calling this work item complete, we need to implement this.
 			}
+
+			// If a specific plugin wasn't given, compute the set of plugins the current project needs.
+			// TODO[pulumi/home#11]: before calling this work item complete, we need to implement this.
 
 			// Target the cloud URL for downloads.
 			var releases cloud.Backend

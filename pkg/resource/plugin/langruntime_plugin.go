@@ -33,7 +33,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string) (LanguageRuntim
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, NewPluginMissingError(workspace.PluginInfo{
+		return nil, NewMissingError(workspace.PluginInfo{
 			Kind: workspace.LanguagePlugin,
 			Name: runtime,
 		})
@@ -57,7 +57,7 @@ func (h *langhost) Runtime() string { return h.runtime }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
-	proj := string(info.Pkg.Name)
+	proj := string(info.Proj.Name)
 	glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
 	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{

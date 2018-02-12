@@ -1,6 +1,4 @@
-/bin/*
-!/bin/pulumi-language-nodejs.cmd
-!/bin/pulumi-resource-pulumi-nodejs.cmd
+/bin/
 /coverage/
 /node_modules/
 /proto/

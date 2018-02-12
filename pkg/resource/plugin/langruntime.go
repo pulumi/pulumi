@@ -5,7 +5,6 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -27,9 +26,9 @@ type LanguageRuntime interface {
 
 // ProgInfo contains minimal information about the program to be run.
 type ProgInfo struct {
-	Pkg     *pack.Package // the program project/package.
-	Pwd     string        // the program's working directory.
-	Program string        // the path to the program to execute.
+	Proj    *workspace.Project // the program project/package.
+	Pwd     string             // the program's working directory.
+	Program string             // the path to the program to execute.
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.

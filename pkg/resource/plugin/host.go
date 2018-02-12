@@ -239,19 +239,19 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginIn
 
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := host.LanguageRuntime(info.Pkg.Runtime)
+	lang, err := host.LanguageRuntime(info.Proj.Runtime)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Pkg.Runtime)
+		return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime)
 	}
 	plugins = append(plugins, workspace.PluginInfo{
-		Name: info.Pkg.Runtime,
+		Name: info.Proj.Runtime,
 		Kind: workspace.LanguagePlugin,
 	})
 
 	// Next, if there are analyzers listed in the project file, use them too.
 	// TODO: these are currently not versioned.  We probably need to let folks specify versions in Pulumi.yaml.
-	if info.Pkg.Analyzers != nil {
-		for _, analyzer := range *info.Pkg.Analyzers {
+	if info.Proj.Analyzers != nil {
+		for _, analyzer := range *info.Proj.Analyzers {
 			plugins = append(plugins, workspace.PluginInfo{
 				Name: string(analyzer),
 				Kind: workspace.AnalyzerPlugin,

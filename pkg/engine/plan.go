@@ -49,7 +49,7 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 
 	// Now ensure that we have loaded up any plugins that the program will need in advance.
 	err = ctx.Host.EnsurePlugins(plugin.ProgInfo{
-		Pkg:     pkginfo.Pkg,
+		Proj:    projinfo.Proj,
 		Pwd:     pwd,
 		Program: main,
 	})

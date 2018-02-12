@@ -92,7 +92,7 @@ func (p *Plan) TryProvider(pkg tokens.Package) (plugin.Provider, error) {
 	prov, err := p.ctx.Host.Provider(pkg, nil)
 	if err != nil {
 		// If a plugin missing error, just return nil.
-		if _, ok := err.(*plugin.PluginMissingError); ok {
+		if _, ok := err.(*plugin.MissingError); ok {
 			return nil, nil
 		}
 		// If an OS file not found error, also just return nil.

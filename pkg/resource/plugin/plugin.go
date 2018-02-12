@@ -27,20 +27,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// PluginMissingError is returned if a plugin is missing.
-type PluginMissingError struct {
+// MissingError is returned if a plugin is missing.
+type MissingError struct {
 	// Info contains information about the plugin that was not found.
 	Info workspace.PluginInfo
 }
 
-// NewPluginMissingError allocates a new error indicating the given plugin info was not found.
-func NewPluginMissingError(info workspace.PluginInfo) error {
-	return &PluginMissingError{
+// NewMissingError allocates a new error indicating the given plugin info was not found.
+func NewMissingError(info workspace.PluginInfo) error {
+	return &MissingError{
 		Info: info,
 	}
 }
 
-func (err *PluginMissingError) Error() string {
+func (err *MissingError) Error() string {
 	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
 		err.Info.Kind, err.Info.String())
 }
