@@ -3,6 +3,9 @@
 package cmd
 
 import (
+	"io"
+	"os"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -14,6 +17,7 @@ import (
 
 func newPluginInstallCmd() *cobra.Command {
 	var cloudURL string
+	var file string
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME VERSION]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -50,22 +54,37 @@ func newPluginInstallCmd() *cobra.Command {
 					Name:    args[1],
 					Version: &version,
 				})
+			} else if file == "" {
+				return errors.New("--file (-f) is only valid if a specific package is being installed")
+			} else {
+				// If a specific plugin wasn't given, compute the set of plugins the current project needs.
+				// TODO[pulumi/home#11]: before calling this work item complete, we need to implement this.
 			}
 
-			// If a specific plugin wasn't given, compute the set of plugins the current project needs.
-			// TODO[pulumi/home#11]: before calling this work item complete, we need to implement this functionality.
-
 			// Target the cloud URL for downloads.
-			releases := cloud.New(cmdutil.Diag(), cloud.ValueOrDefaultURL(cloudURL))
+			var releases cloud.Backend
+			if len(installs) > 0 && file != "" {
+				releases = cloud.New(cmdutil.Diag(), cloud.ValueOrDefaultURL(cloudURL))
+			}
 
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
-				tarball, err := releases.DownloadPlugin(install, true)
-				if err != nil {
-					return errors.Wrapf(err, "downloading %s", install.String())
+				var source string
+				var tarball io.ReadCloser
+				var err error
+				if file == "" {
+					source = releases.CloudURL()
+					if tarball, err = releases.DownloadPlugin(install, true); err != nil {
+						return errors.Wrapf(err, "downloading %s from %s", install.String(), source)
+					}
+				} else {
+					source = file
+					if tarball, err = os.Open(file); err != nil {
+						return errors.Wrapf(err, "opening file %s", source)
+					}
 				}
 				if err = install.Install(tarball); err != nil {
-					return errors.Wrapf(err, "installing %s", install.String())
+					return errors.Wrapf(err, "installing %s from %s", install.String(), source)
 				}
 			}
 
@@ -73,7 +92,10 @@ func newPluginInstallCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to download releases from")
+	cmd.PersistentFlags().StringVarP(&cloudURL,
+		"cloud-url", "c", "", "A cloud URL to download releases from")
+	cmd.PersistentFlags().StringVarP(&file,
+		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
 
 	return cmd
 }
