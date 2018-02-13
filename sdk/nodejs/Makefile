@@ -28,7 +28,7 @@ build::
 	cp -R ../proto/nodejs/. proto/
 	cd runtime/native/ && node-gyp build
 	tsc
-	cp package.json bin/
+	cp README.md ../../LICENSE package.json bin/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" bin/version.js bin/package.json && \
 		rm bin/version.js.bak bin/package.json.bak
 	cp -R proto/. bin/proto/
