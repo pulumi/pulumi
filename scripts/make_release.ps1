@@ -28,12 +28,12 @@ function CopyPackage($pathToModule, $moduleName) {
 }
 
 RunGoBuild "github.com/pulumi/pulumi"
+RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\dist\sdk\nodejs\pulumi-langhost-nodejs-exec.cmd" "$PublishDir\bin"
 New-Item -ItemType Directory -Force -Path "$PublishDir\bin\node" | Out-Null
 Copy-Item "$Root\sdk\nodejs\custom_node\node.exe" "$PublishDir\bin\node"
-
 
 Remove-Item "$PublishDir\node_modules\pulumi\pulumi-langhost-nodejs-exec.cmd"
 Remove-Item "$PublishDir\node_modules\pulumi\pulumi-provider-pulumi-nodejs.cmd"
