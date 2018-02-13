@@ -45,6 +45,7 @@ copy_package() {
 
 # Build binaries
 run_go_build "${ROOT}"
+run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-langhost-nodejs"
 
 # Copy over the langhost and dynamic provider
 cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs-exec ${PUBDIR}/bin/
