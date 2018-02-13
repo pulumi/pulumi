@@ -22,10 +22,8 @@
   </Target>
 
   <Target Name="EnsureCustomNode"
-          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node.exe')">
-    <MakeDir Directories="$(NodeJSSdkDirectory)\custom_node" />
-    <Exec Command="aws s3 cp --only-show-errors s3://eng.pulumi.com/node/node-$(NodeVersion)-win-$(NodeArch).zip &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;"/>
-    <Exec Command="7z x -o&quot;$(NodeJSSdkDirectory)\custom_node&quot; &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;" />
+          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node\node.exe')">
+    <Exec Command="powershell $(NodeJSSdkDirectory)\scripts\download_node.ps1" />
   </Target>
 
   <Target Name="CopyNodeSdkProtos">
