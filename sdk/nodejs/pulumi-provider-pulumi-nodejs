@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-require("pulumi/cmd/dynamic-provider");
+require("@pulumi/pulumi/cmd/dynamic-provider");

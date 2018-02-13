@@ -1,5 +1,5 @@
 PROJECT_NAME     := Pulumi Node.JS SDK
-NODE_MODULE_NAME := pulumi
+NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(shell git describe --tags --dirty 2>/dev/null)
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs
