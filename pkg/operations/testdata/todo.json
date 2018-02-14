@@ -1144,6 +1144,28 @@
                     ],
                     "url": "https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/"
                 }
+            },
+            {
+                "urn": "urn:pulumi:foo::todo::aws:apigateway/deployment:Deployment::todo_f569e86a",
+                "delete": true,
+                "custom": true,
+                "id": "abc123",
+                "type": "aws:apigateway/deployment:Deployment",
+                "parent": "urn:pulumi:foo::todo::cloud:http:HttpEndpoint::todo",
+                "inputs": {
+                    "description": "Deployment of version todo_f569e86a",
+                    "restApi": "eupwl7wu4i",
+                    "stageName": ""
+                },
+                "outputs": {
+                    "createdDate": "2017-11-08T19:59:03Z",
+                    "description": "Deployment of version todo_f569e86a",
+                    "executionArn": "arn:aws:execute-api:us-east-2:153052954103:eupwl7wu4i/",
+                    "id": "abc123",
+                    "invokeUrl": "https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/",
+                    "restApi": "eupwl7wu4i",
+                    "stageName": ""
+                }
             }
         ]
     }

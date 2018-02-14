@@ -22,10 +22,9 @@
   </Target>
 
   <Target Name="EnsureCustomNode"
-          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node.exe')">
-    <MakeDir Directories="$(NodeJSSdkDirectory)\custom_node" />
-    <Exec Command="aws s3 cp --only-show-errors s3://eng.pulumi.com/node/node-$(NodeVersion)-win-$(NodeArch).zip &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;"/>
-    <Exec Command="7z x -o&quot;$(NodeJSSdkDirectory)\custom_node&quot; &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;" />
+          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node\node.exe')">
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\scripts\download_node.cmd&quot;"
+          WorkingDirectory="$(NodeJSSdkDirectory)" />
   </Target>
 
   <Target Name="CopyNodeSdkProtos">
@@ -37,25 +36,21 @@
           DestinationFolder="$(NodeJSSdkDirectory)\proto" />
   </Target>
 
-  <Target Name="ConfigureNativeRuntimeModule"
-          DependsOnTargets="EnsureNodeDependencies">
-    <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
-          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
-          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node.lib"
-          DestinationFiles="$(NativeRuntimeModuleDirectory)\node_dev\$(NodeVersion)\$(NodeArch)\node.lib" />
-  </Target>
-
-  <Target Name="BuildNativeRuntimeModule"
-          DependsOnTargets="ConfigureNativeRuntimeModule">
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
-          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-  </Target>
-
   <Target Name="TypeScriptCompileNodeSdk">
     <Exec Command="yarn run tsc"
           WorkingDirectory="$(NodeJSSdkDirectory)" />
+  </Target>
+
+  <Target Name="GoCompileNodeSdk">
+    <ItemGroup>
+      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs" />
+    </ItemGroup>
+
+    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
+
+    <Exec Command="go install -ldflags &quot;-X main.version=$(Version)&quot; %(GoPackagesToBuild.Identity)" />
   </Target>
 
   <Target Name="BinplaceNodeSdkProtos">
@@ -65,17 +60,6 @@
 
     <Copy SourceFiles="@(NodeSdkProtos)"
           DestinationFolder="$(NodeJSSdkDirectory)\bin\proto" />
-  </Target>
-
-  <Target Name="BinPlaceNodeSdkNativeRuntimeModule"
-          DependsOnTargets="BuildNativeRuntimeModule">
-    <ItemGroup>
-      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.node" />
-      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.pdb" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(NodeSdkNativeRuntimeModuleFiles)"
-          DestinationFolder="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release" />
   </Target>
 
   <Target Name="BinPlaceNodeSdkTestData">
@@ -95,11 +79,11 @@
   </Target>
 
   <Target Name="BinPlaceNodeSdk"
-          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkNativeRuntimeModule;BinPlaceNodeSdkTestData;YarnLinkSdk">
+          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
   </Target>
 
     <Target Name="BuildNodeSdk"
-          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;BinPlaceNodeSdk">
+          DependsOnTargets="CopyNodeSdkProtos;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
   </Target>
 
   <Target Name="BuildGoCmds">
@@ -119,13 +103,18 @@
   </Target>
 
   <Target Name="IntegrationTest">
-    <Exec Command="where pulumi-langhost-nodejs.cmd"
+    <Exec Command="where pulumi-langhost-nodejs-exec.cmd"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExecExitCode" />
+    </Exec>
+
+    <Exec Command="where pulumi-langhost-nodejs"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>
 
     <Error Text="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
-           Condition="$(WhereLangHostExitCode) != 0"/>
+           Condition="$(WhereLangHostExitCode) != 0 Or $(WhereLangHostExecExitCode) != 0"/>
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
          fails. Otherwise, the AppVeyor job would hang until it reached the timeout -->

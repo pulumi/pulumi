@@ -20,7 +20,7 @@ func validateResources(t *testing.T, resources []stack.Resource, expectedNames .
 	}
 
 	// Ensure that the resource count is correct.
-	assert.Equal(t, len(resources), len(expectedNames) + 1)
+	assert.Equal(t, len(resources), len(expectedNames)+1)
 
 	// Pull out the stack resource, which must be the first resource in the checkpoint.
 	stackRes := resources[0]
@@ -39,7 +39,7 @@ func validateResources(t *testing.T, resources []stack.Resource, expectedNames .
 func TestSteps(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Checkpoint.Latest)

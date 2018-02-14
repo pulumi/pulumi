@@ -45,13 +45,17 @@ copy_package() {
 
 # Build binaries
 run_go_build "${ROOT}"
+run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-langhost-nodejs"
 
 # Copy over the langhost and dynamic provider
-cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs ${PUBDIR}/bin/
+cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs-exec ${PUBDIR}/bin/
 cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
 
+# Copy over our custom Node build
+cp ${ROOT}/sdk/nodejs/custom_node/node/node ${PUBDIR}/bin/pulumi-langhost-nodejs-node
+
 # Copy packages
-copy_package "${ROOT}/sdk/nodejs/bin/." "pulumi"
+copy_package "${ROOT}/sdk/nodejs/bin/." "@pulumi/pulumi"
 
 # Tar up the file and then print it out for use by the caller or script.
 tar -czf ${PUBFILE} -C ${PUBDIR} .

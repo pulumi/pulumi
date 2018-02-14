@@ -8,4 +8,4 @@ REM
 REM NOTE: we pass a dummy argument before the actual args because the
 REM langhost module expects to be invoked as `node path/to/langhost args`,
 REM but we are invoking it with `-e`.
-"%~dp0\..\custom_node\node.exe" -e "require('%REQUIRE_ROOT%./cmd/langhost');" dummy_argument %*
+"%~dp0..\custom_node\node\node.exe" -e "require('%REQUIRE_ROOT%./cmd/run');" dummy_argument %*

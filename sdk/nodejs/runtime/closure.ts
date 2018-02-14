@@ -7,7 +7,15 @@ import * as log from "../log";
 import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
 
-const nativeruntime = require("./native/build/Release/nativeruntime.node");
+// Our closure serialization code links against v8 internals. On Windows,
+// we can't dynamically link against v8 internals because their symbols are
+// unexported. In order to address this problem, Pulumi programs run on a
+// custom build of Node that has our closure serialization code as a built-in
+// module called "pulumi_closure".
+//
+// `process.binding` invokes the Node bootstrap module loader in order to
+// get to our builtin module.
+const nativeruntime = (<any>process).binding("pulumi_closure");
 
 /**
  * Closure represents the serialized form of a JavaScript serverless function.

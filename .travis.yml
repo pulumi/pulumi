@@ -1,4 +1,5 @@
-if: (branch = master) OR (branch =~ release/.*) OR (tag IS present)
+# It may be tempting to add parens around each individual clause in this expression, but Travis then builds pushes anyway
+if: branch = master OR branch =~ ^release/ OR tag IS present
 jobs:
   include:
     - os: linux
@@ -24,8 +25,10 @@ before_install:
     # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
     - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.2.1
     - export PATH=$HOME/.yarn/bin:$PATH
-    - export PIP=pip
+    # Ensure that we can access Pulumi's private NPM org.
+    - echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
     # On OSX, the place pip installs user commands to is not on the $PATH and also pip is called pip2.7
+    - export PIP=pip
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; export PIP=pip2.7; fi
     # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
     - $PIP install --upgrade --user awscli

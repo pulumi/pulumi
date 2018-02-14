@@ -44,12 +44,15 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 	for _, state := range source {
 		ns = state.URN.Namespace()
 		alloc = state.URN.Alloc()
-		contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
-		resources[state.URN] = &Resource{
-			NS:       ns,
-			Alloc:    alloc,
-			State:    state,
-			Children: make(map[resource.URN]*Resource),
+		if !state.Delete {
+			// Only include resources which are not marked as pending-deletion.
+			contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
+			resources[state.URN] = &Resource{
+				NS:       ns,
+				Alloc:    alloc,
+				State:    state,
+				Children: make(map[resource.URN]*Resource),
+			}
 		}
 	}
 

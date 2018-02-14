@@ -22,7 +22,7 @@ func TestDiffs(t *testing.T) {
 
 	opts := integration.ProgramTestOptions{
 		Dir:                    "step1",
-		Dependencies:           []string{"pulumi"},
+		Dependencies:           []string{"@pulumi/pulumi"},
 		Quick:                  true,
 		StackName:              "diffstack",
 		UpdateCommandlineFlags: []string{"--color=raw"},

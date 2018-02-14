@@ -23,7 +23,7 @@ func TestExamples(t *testing.T) {
 	var minimal integration.ProgramTestOptions
 	minimal = integration.ProgramTestOptions{
 		Dir:          path.Join(cwd, "minimal"),
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		Config: map[string]string{
 			"name": "Pulumi",
 		},
@@ -42,7 +42,7 @@ func TestExamples(t *testing.T) {
 		minimal,
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/simple"),
-			Dependencies: []string{"pulumi"},
+			Dependencies: []string{"@pulumi/pulumi"},
 			Config: map[string]string{
 				"simple:config:w": "1",
 				"simple:config:x": "1",
@@ -51,7 +51,7 @@ func TestExamples(t *testing.T) {
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
-			Dependencies: []string{"pulumi"},
+			Dependencies: []string{"@pulumi/pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				for _, res := range stackInfo.Snapshot.Resources {
 					if res.Parent == "" {
@@ -63,11 +63,11 @@ func TestExamples(t *testing.T) {
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/derived-inputs"),
-			Dependencies: []string{"pulumi"},
+			Dependencies: []string{"@pulumi/pulumi"},
 		},
 		{
 			Dir:          path.Join(cwd, "formattable"),
-			Dependencies: []string{"pulumi"},
+			Dependencies: []string{"@pulumi/pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
@@ -78,9 +78,8 @@ func TestExamples(t *testing.T) {
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns-2"),
-			Dependencies: []string{"pulumi"},
+			Dependencies: []string{"@pulumi/pulumi"},
 		},
-
 	}
 
 	for _, ex := range examples {

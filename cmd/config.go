@@ -4,12 +4,15 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
@@ -137,7 +140,10 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
 		Short: "Set configuration value",
-		Args:  cmdutil.RangeArgs(1, 2),
+		Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
+			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
+			"may be set by piping a file to standard in.",
+		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName := tokens.QName(*stack)
 			if all && stackName != "" {
@@ -159,16 +165,22 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			// Read the value from an arg or the console, disabling echoing if a secret.
 			var value string
-			if len(args) == 2 {
+			switch {
+			case len(args) == 2:
 				value = args[1]
-			} else if secret {
+			case !terminal.IsTerminal(int(os.Stdin.Fd())):
+				b, readerr := ioutil.ReadAll(os.Stdin)
+				if readerr != nil {
+					return readerr
+				}
+				value = cmdutil.RemoveTralingNewline(string(b))
+			case secret:
 				value, err = cmdutil.ReadConsoleNoEcho("value")
 				if err != nil {
 					return err
 				}
-			} else {
+			default:
 				value, err = cmdutil.ReadConsole("value")
 				if err != nil {
 					return err
