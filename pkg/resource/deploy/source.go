@@ -12,8 +12,8 @@ import (
 // A Source can generate a new set of resources that the planner will process accordingly.
 type Source interface {
 	io.Closer
-	// Pkg returns the package name of the Pulumi program we are obtaining resources from.
-	Pkg() tokens.PackageName
+	// Project returns the package name of the Pulumi project we are obtaining resources from.
+	Project() tokens.PackageName
 	// Info returns a serializable payload that can be used to stamp snapshots for future reconciliation.
 	Info() interface{}
 	// Iterate begins iterating the source.  Error is non-nil upon failure; otherwise, a valid iterator is returned.

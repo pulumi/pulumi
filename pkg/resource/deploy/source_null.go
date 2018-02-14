@@ -18,7 +18,7 @@ func (src *nullSource) Close() error {
 	return nil // nothing to do.
 }
 
-func (src *nullSource) Pkg() tokens.PackageName {
+func (src *nullSource) Project() tokens.PackageName {
 	return ""
 }
 

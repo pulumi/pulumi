@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -198,26 +197,26 @@ const (
 	destroy updateKind = "destroy"
 )
 
-func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) Preview(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	return b.updateStack(preview, stackName, pkg, root, debug, backend.UpdateMetadata{}, opts, displayOpts)
 }
 
-func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	return b.updateStack(update, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
-func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	return b.updateStack(destroy, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
@@ -495,12 +494,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 		return nil, err
 	}
 
-	path, err := workspace.DetectPackage()
-	if err != nil {
-		return nil, err
-	}
-
-	pkg, err := pack.Load(path)
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return nil, err
 	}
@@ -509,12 +503,12 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 	return &cloudProjectIdentifier{
 		Owner:      repo.Owner,
 		Repository: repo.Name,
-		Project:    pkg.Name,
+		Project:    proj.Name,
 	}, nil
 }
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
-func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, pkg *pack.Package, main string,
+func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *workspace.Project, main string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
@@ -534,12 +528,12 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, pkg *pac
 	}
 
 	description := ""
-	if pkg.Description != nil {
-		description = *pkg.Description
+	if proj.Description != nil {
+		description = *proj.Description
 	}
 	return apitype.UpdateProgramRequest{
-		Name:        string(pkg.Name),
-		Runtime:     pkg.Runtime,
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime,
 		Main:        main,
 		Description: description,
 		Config:      wireConfig,

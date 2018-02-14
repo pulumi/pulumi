@@ -30,13 +30,13 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.
-	pkg, target := info.Update.GetPackage(), info.Update.GetTarget()
-	contract.Assert(pkg != nil)
+	proj, target := info.Update.GetProject(), info.Update.GetTarget()
+	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 
 	// If the package contains an override for the main entrypoint, use it.
-	pkginfo := &Pkginfo{Pkg: pkg, Root: info.Update.GetRoot()}
-	pwd, main, err := pkginfo.GetPwdMain()
+	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
+	pwd, main, err := projinfo.GetPwdMain()
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
-		Pkg:     pkginfo.Pkg,
+		Proj:    projinfo.Proj,
 		Pwd:     pwd,
 		Program: main,
 		Target:  target,
@@ -58,7 +58,7 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 
 	// If there are any analyzers in the project file, add them.
 	var analyzers []tokens.QName
-	if as := pkginfo.Pkg.Analyzers; as != nil {
+	if as := projinfo.Proj.Analyzers; as != nil {
 		for _, a := range *as {
 			analyzers = append(analyzers, a)
 		}

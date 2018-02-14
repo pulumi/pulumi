@@ -23,7 +23,7 @@ func Configuration(d diag.Sink, stackName tokens.QName) (config.Map, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkg, err := workspace.GetPackage()
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func Configuration(d diag.Sink, stackName tokens.QName) (config.Map, error) {
 	var workspaceConfigKeys []string
 
 	// First, apply project-local stack-specific configuration.
-	if stack, has := pkg.Stacks[stackName]; has {
+	if stack, has := proj.Stacks[stackName]; has {
 		for key, value := range stack.Config {
 			result[key] = value
 		}
@@ -52,7 +52,7 @@ func Configuration(d diag.Sink, stackName tokens.QName) (config.Map, error) {
 	}
 
 	// Next, take anything from the global settings in our project file.
-	for key, value := range pkg.Config {
+	for key, value := range proj.Config {
 		if _, has := result[key]; !has {
 			result[key] = value
 		}

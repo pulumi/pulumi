@@ -19,7 +19,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -155,29 +154,31 @@ func trimGitRemoteURL(url string, prefix string, suffix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
-// readPackage attempts to detect and read the package for the current workspace. If an error occurs, it will be
-// printed to Stderr, and the returned value will be nil. If the package is successfully detected and read, it
-// is returned along with the path to its containing directory, which will be used as the root of the package's
+// readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
+// printed to Stderr, and the returned value will be nil. If the project is successfully detected and read, it
+// is returned along with the path to its containing directory, which will be used as the root of the project's
 // Pulumi program.
-func readPackage() (*pack.Package, string, error) {
+func readProject() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
 	}
 
 	// Now that we got here, we have a path, so we will try to load it.
-	pkgpath, err := workspace.DetectPackageFrom(pwd)
+	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", errors.Errorf("could not locate a package to load: %v", err)
-	} else if pkgpath == "" {
-		return nil, "", errors.Errorf("could not find Pulumi.yaml (searching upwards from %s)", pwd)
+		return nil, "", errors.Wrapf(err,
+			"could not locate Pulumi.yaml project file (searching upwards from %s)", pwd)
+	} else if path == "" {
+		return nil, "", errors.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s)", pwd)
 	}
-	pkg, err := pack.Load(pkgpath)
+	proj, err := workspace.LoadProject(path)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return pkg, filepath.Dir(pkgpath), nil
+	return proj, filepath.Dir(path), nil
 }
 
 type colorFlag struct {

@@ -32,26 +32,26 @@ func newPreviewCmd() *cobra.Command {
 		Long: "Show a preview of updates an stack's resources\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
-			"represented by an existing snapshot file. The new desired state is computed by compiling\n" +
-			"and evaluating an executable package, and extracting all resource allocations from its\n" +
-			"resulting object graph. These allocations are then compared against the existing state to\n" +
-			"determine what operations must take place to achieve the desired state. No changes to the\n" +
-			"stack will actually take place.\n" +
+			"represented by an existing snapshot file. The new desired state is computed by running\n" +
+			"a Pulumi program, and extracting all resource allocations from its resulting object graph.\n" +
+			"These allocations are then compared against the existing state to determine what\n" +
+			"operations must take place to achieve the desired state. No changes to the stack will\n" +
+			"actually take place.\n" +
 			"\n" +
-			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
-			"use a different directory.",
+			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
+			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			s, err := requireStack(tokens.QName(stack))
 			if err != nil {
 				return err
 			}
-			pkg, root, err := readPackage()
+			proj, root, err := readProject()
 			if err != nil {
 				return err
 			}
 
-			return s.Preview(pkg, root, debug, engine.UpdateOptions{
+			return s.Preview(proj, root, debug, engine.UpdateOptions{
 				Analyzers:            analyzers,
 				DryRun:               true,
 				Parallel:             parallel,

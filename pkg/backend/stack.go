@@ -7,10 +7,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a stack associated with a particular backend implementation.
@@ -21,13 +21,13 @@ type Stack interface {
 	Backend() Backend           // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(pkg *pack.Package, root string,
+	Preview(proj *workspace.Project, root string,
 		debug bool, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Update this stack.
-	Update(pkg *pack.Package, root string,
+	Update(proj *workspace.Project, root string,
 		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Destroy this stack's resources.
-	Destroy(pkg *pack.Package, root string,
+	Destroy(proj *workspace.Project, root string,
 		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
@@ -42,21 +42,21 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 }
 
 // PreviewStack initiates a preview of the current workspace's contents.
-func PreviewStack(s Stack, pkg *pack.Package, root string,
+func PreviewStack(s Stack, proj *workspace.Project, root string,
 	debug bool, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Preview(s.Name(), pkg, root, debug, opts, displayOpts)
+	return s.Backend().Preview(s.Name(), proj, root, debug, opts, displayOpts)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(s Stack, pkg *pack.Package, root string,
+func UpdateStack(s Stack, proj *workspace.Project, root string,
 	debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Update(s.Name(), pkg, root, debug, m, opts, displayOpts)
+	return s.Backend().Update(s.Name(), proj, root, debug, m, opts, displayOpts)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(s Stack, pkg *pack.Package, root string,
+func DestroyStack(s Stack, proj *workspace.Project, root string,
 	debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Destroy(s.Name(), pkg, root, debug, m, opts, displayOpts)
+	return s.Backend().Destroy(s.Name(), proj, root, debug, m, opts, displayOpts)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.

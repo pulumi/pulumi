@@ -10,18 +10,18 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-type Pkginfo struct {
-	Pkg  *pack.Package
+type Projinfo struct {
+	Proj *workspace.Project
 	Root string
 }
 
 // GetPwdMain returns the working directory and main entrypoint to use for this package.
-func (pkginfo *Pkginfo) GetPwdMain() (string, string, error) {
-	pwd := pkginfo.Root
-	main := pkginfo.Pkg.Main
+func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
+	pwd := projinfo.Root
+	main := projinfo.Proj.Main
 	if main != "" {
 		// The path must be relative from the package root.
 		if filepath.IsAbs(main) {
