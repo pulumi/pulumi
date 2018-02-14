@@ -14,6 +14,10 @@ func KillChildren(pid int) error {
 	// A subprocess that was launched after calling `RegisterProcessGroup` below will
 	// belong to a process group whose ID is the same as the PID. Passing the negation
 	// of our PID (same as the PGID) sends a SIGKILL to all processes in our group.
+	//
+	// Relevant documentation: https://linux.die.net/man/2/kill
+	// "If pid is less than -1, then sig is sent to every process in the
+	// process group whose ID is -pid. "
 	return syscall.Kill(-pid, syscall.SIGKILL)
 }
 
