@@ -109,9 +109,6 @@ func confirmPrompt(msg string, name string) bool {
 		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
 	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
 	reader := bufio.NewReader(os.Stdin)
-	if line, _ := reader.ReadString('\n'); strings.TrimSpace(line) != name {
-		fmt.Fprintf(os.Stderr, "Confirmation declined -- exiting without doing anything\n")
-		return false
-	}
-	return true
+	line, _ := reader.ReadString('\n')
+	return strings.TrimSpace(line) == name
 }

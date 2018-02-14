@@ -39,32 +39,28 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			if yes ||
-				confirmPrompt("This will permanently remove the '%v' stack!", string(s.Name())) {
-
-				hasResources, err := s.Remove(force)
-				if err != nil {
-					if hasResources {
-						return errors.Errorf(
-							"'%v' still has resources; removal rejected; pass --force to override", s.Name())
-					}
-					return err
-				}
-
-				err = deleteAllStackConfiguration(s.Name())
-				if err != nil {
-					return err
-				}
-
-				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
-				fmt.Println(colors.ColorizeText(msg))
-
-				if err = state.SetCurrentStack(""); err != nil {
-					return err
-				}
+			if !yes && !confirmPrompt("This will permanently remove the '%v' stack!", string(s.Name())) {
+				return errors.New("confirmation declined")
 			}
 
-			return nil
+			hasResources, err := s.Remove(force)
+			if err != nil {
+				if hasResources {
+					return errors.Errorf(
+						"'%v' still has resources; removal rejected; pass --force to override", s.Name())
+				}
+				return err
+			}
+
+			err = deleteAllStackConfiguration(s.Name())
+			if err != nil {
+				return err
+			}
+
+			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
+			fmt.Println(colors.ColorizeText(msg))
+
+			return state.SetCurrentStack("")
 		}),
 	}
 

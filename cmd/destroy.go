@@ -57,22 +57,22 @@ func newDestroyCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			if preview || yes ||
-				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
-				return s.Destroy(proj, root, debug, m, engine.UpdateOptions{
-					Analyzers:            analyzers,
-					DryRun:               preview,
-					Parallel:             parallel,
-					ShowConfig:           showConfig,
-					ShowReplacementSteps: showReplacementSteps,
-					ShowSames:            showSames,
-					Summary:              summary,
-				}, backend.DisplayOptions{
-					Color: color.Colorization(),
-				})
+			if !preview && !yes && !confirmPrompt("This will permanently destroy all resources in the '%v' stack!",
+				string(s.Name())) {
+				return errors.New("confirmation declined")
 			}
 
-			return nil
+			return s.Destroy(proj, root, debug, m, engine.UpdateOptions{
+				Analyzers:            analyzers,
+				DryRun:               preview,
+				Parallel:             parallel,
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSames:            showSames,
+				Summary:              summary,
+			}, backend.DisplayOptions{
+				Color: color.Colorization(),
+			})
 		}),
 	}
 
