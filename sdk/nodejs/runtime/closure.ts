@@ -39,9 +39,6 @@ export interface EnvironmentEntry {
     // an array which may contain nested closures.
     arr?: EnvironmentEntry[];
 
-    // a reference to a requirable module name.
-    module?: string;
-
     // a Dependency<T> property.  It will be serialized over as a get() method that
     // returns the raw underlying value.
     dep?: EnvironmentEntry;
@@ -105,9 +102,6 @@ async function flattenEnvironmentEntry(
     if (e.hasOwnProperty("json")) {
         result.json = e.json;
     }
-    else if (e.module) {
-        result.module = e.module;
-    }
     else if (e.closure) {
         result.closure = await flattenClosure(e.closure, flatCache);
     }
@@ -152,7 +146,6 @@ export interface AsyncEnvironmentEntry {
     closure?: AsyncClosure;                 // a closure we are dependent on.
     obj?: AsyncEnvironment;                 // an object which may contain nested closures.
     arr?: AsyncEnvironmentEntry[]; // an array which may contain nested closures.
-    module?: string;                        // a reference to a requirable module name.
     dep?: AsyncEnvironmentEntry;
 }
 
@@ -206,14 +199,16 @@ async function serializeCapturedObjectAsync(
     entryCache.set(obj, entry);
 
     const moduleName = findRequirableModuleName(obj);
+    if (moduleName !== undefined) {
+        throw new Error(
+`Deployment time module '${moduleName}' should not be captured in a cloud callback.
+Use 'await import("${moduleName}")' or 'require("${moduleName}")' inside the callback instead.`);
+    }
 
     if (obj === undefined || obj === null ||
         typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
         entry.json = obj;
-    } else if (moduleName) {
-        // Serialize any value which was found as a requirable module name as a reference to the module
-        entry.module = moduleName;
     } else if (obj instanceof Array ||
                Object.prototype.toString.call(obj) === "[object Arguments]") {
         // tslint:disable-next-line:max-line-length
@@ -812,12 +807,8 @@ class FuncsForClosure {
             entry.arr
                 ? entry.arr.map(child => this.convertEnvironmentEntryToNormalizedObject(seenClosures, child))
                 : undefined,
-            entry.module,
+            this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep),
         ];
-
-        if (entry.dep) {
-            array.push(this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep));
-        }
 
         return array;
     }
@@ -854,9 +845,6 @@ class FuncsForClosure {
         }
         else if (envEntry.arr !== undefined) {
             return envArrToString(this.envFromEnvArr(envEntry.arr));
-        }
-        else if (envEntry.module !== undefined) {
-            return `require("${envEntry.module}")`;
         }
         else if (envEntry.dep !== undefined) {
             // get: () => { ... }
