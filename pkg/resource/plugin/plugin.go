@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -203,6 +202,7 @@ func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 
 	// nolint: gas
 	cmd := exec.Command(bin, args...)
+	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()
@@ -229,13 +229,11 @@ func (p *plugin) Close() error {
 
 	var result error
 
-	// On windows, plugins are not loaded directly, instead a cmd script launches each plugin as a child process, so
+	// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 	// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 	// for the child processes to close.
-	if runtime.GOOS == "windows" {
-		if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
-			result = multierror.Append(result, err)
-		}
+	if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
+		result = multierror.Append(result, err)
 	}
 
 	// IDEA: consider a more graceful termination than just SIGKILL.

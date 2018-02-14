@@ -5,6 +5,7 @@ package cmdutil
 
 import (
 	"os"
+	"os/exec"
 
 	multierror "github.com/hashicorp/go-multierror"
 	ps "github.com/mitchellh/go-ps"
@@ -57,4 +58,9 @@ func processExistsWithParent(pid int, ppid int) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// RegisterProcessGroup does nothing on Windows.
+func RegisterProcessGroup(cmd *exec.Cmd) {
+	// nothing to do on Windows.
 }
