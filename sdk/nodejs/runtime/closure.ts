@@ -3,6 +3,7 @@
 import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
 import * as ts from "typescript";
+import { RunError } from "../errors";
 import * as log from "../log";
 import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
@@ -15,7 +16,14 @@ import { debuggablePromise } from "./debuggable";
 //
 // `process.binding` invokes the Node bootstrap module loader in order to
 // get to our builtin module.
-const nativeruntime = (<any>process).binding("pulumi_closure");
+let nativeruntime: any;
+try {
+    nativeruntime = (<any>process).binding("pulumi_closure");
+}
+catch (err) {
+    throw new RunError(
+        `Failed to load custom Pulumi SDK Node.js extension; are you running using the Pulumi CLI? (${err.message})`);
+}
 
 /**
  * Closure represents the serialized form of a JavaScript serverless function.
