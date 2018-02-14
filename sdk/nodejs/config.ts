@@ -169,4 +169,3 @@ class ConfigMissingError extends RunError {
         );
     }
 }
-
