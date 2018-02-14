@@ -11,7 +11,7 @@ if (Test-Path $NodeExe) {
     aws s3 cp --only-show-errors "s3://eng.pulumi.com/releases/pulumi-node/windows/$NodeVersion.zip" "$NodeBase\$NodeVersion.zip"
 
     $NodeZipPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-    7z x -o$NodeZipPath "$NodeBase\$NodeVersion.zip"
+    7z x -o"$NodeZipPath" "$NodeBase\$NodeVersion.zip"
     Copy-Item $NodeZipPath\Release\node.exe $NodeExe
 
     Remove-Item -Force -Recurse $NodeZipPath
