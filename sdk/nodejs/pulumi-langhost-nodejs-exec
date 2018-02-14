@@ -1,2 +1,4 @@
-#!/usr/bin/env node
-require("@pulumi/pulumi/cmd/run");
+#!/bin/sh
+SDK_DIR=`dirname $0`/../node_modules
+pulumi-langhost-nodejs-node $SDK_DIR/@pulumi/pulumi/cmd/run $@
+

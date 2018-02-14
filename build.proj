@@ -22,10 +22,9 @@
   </Target>
 
   <Target Name="EnsureCustomNode"
-          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node.exe')">
-    <MakeDir Directories="$(NodeJSSdkDirectory)\custom_node" />
-    <Exec Command="aws s3 cp --only-show-errors s3://eng.pulumi.com/node/node-$(NodeVersion)-win-$(NodeArch).zip &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;"/>
-    <Exec Command="7z x -o&quot;$(NodeJSSdkDirectory)\custom_node&quot; &quot;$(NodeJSSdkDirectory)\custom_node\node-$(NodeVersion)-win-$(NodeArch).zip&quot;" />
+          Condition="!Exists('$(NodeJSSdkDirectory)\custom_node\node\node.exe')">
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\scripts\download_node.cmd&quot;"
+          WorkingDirectory="$(NodeJSSdkDirectory)" />
   </Target>
 
   <Target Name="CopyNodeSdkProtos">
@@ -35,22 +34,6 @@
     
     <Copy SourceFiles="@(NodeSdkProtos)"
           DestinationFolder="$(NodeJSSdkDirectory)\proto" />
-  </Target>
-
-  <Target Name="ConfigureNativeRuntimeModule"
-          DependsOnTargets="EnsureNodeDependencies">
-    <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
-          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
-          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node.lib"
-          DestinationFiles="$(NativeRuntimeModuleDirectory)\node_dev\$(NodeVersion)\$(NodeArch)\node.lib" />
-  </Target>
-
-  <Target Name="BuildNativeRuntimeModule"
-          DependsOnTargets="ConfigureNativeRuntimeModule">
-    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
-          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
   </Target>
 
   <Target Name="TypeScriptCompileNodeSdk">
@@ -79,17 +62,6 @@
           DestinationFolder="$(NodeJSSdkDirectory)\bin\proto" />
   </Target>
 
-  <Target Name="BinPlaceNodeSdkNativeRuntimeModule"
-          DependsOnTargets="BuildNativeRuntimeModule">
-    <ItemGroup>
-      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.node" />
-      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.pdb" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(NodeSdkNativeRuntimeModuleFiles)"
-          DestinationFolder="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release" />
-  </Target>
-
   <Target Name="BinPlaceNodeSdkTestData">
     <ItemGroup>
       <NodeSdkTestDataFiles Include="$(NodeJSSdkDirectory)\tests\runtime\langhost\cases\**\*" />
@@ -107,11 +79,11 @@
   </Target>
 
   <Target Name="BinPlaceNodeSdk"
-          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkNativeRuntimeModule;BinPlaceNodeSdkTestData;YarnLinkSdk">
+          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
   </Target>
 
     <Target Name="BuildNodeSdk"
-          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
+          DependsOnTargets="CopyNodeSdkProtos;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
   </Target>
 
   <Target Name="BuildGoCmds">

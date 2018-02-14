@@ -3,6 +3,7 @@
 /.vscode/
 coverage.cov
 *.coverprofile
+custom_node/
 
 # Too much awesome to store in Git.
 .pulumi
