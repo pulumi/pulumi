@@ -1,3 +1,2 @@
-#!/bin/sh
-SDK_DIR=`dirname $0`/../node_modules
-pulumi-langhost-nodejs-node $SDK_DIR/@pulumi/pulumi/cmd/dynamic-provider $@
+#!/usr/bin/env pulumi-langhost-nodejs-node
+require("@pulumi/pulumi/cmd/dynamic-provider");
