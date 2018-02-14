@@ -11,7 +11,10 @@ For now, we only support developers building from source.  Eventually we will ha
 To build and install the SDK, you will first need a few things.
 
 First, install Node.js 6.10.2.  We recommend [nvm](https://github.com/creationix/nvm), since it makes it easier
-to switch between versions of Node.js.  Afterwards, run `nvm install 6.10.2`.
+to switch between versions of Node.js.  Afterwards, run `nvm install 6.10.2`. As part of the build, a custom build
+of Node.js 6.10.2 will be downloaded and installed alongside the SDK. This Node binary is identical to Node.js 6.10.2,
+except that it has one extra builtin module containing code that is used by the SDK to serialize JavaScript closures.
+The custom binary is built from [this repo](https://github.com/pulumi/node).
 
 Next, we suggest using [Yarn](https://yarnpkg.com/lang/en/docs/install/) for package management.  NPM works too, but
 Yarn is faster and therefore preferred.  Please follow the directions on Yarn's website.
