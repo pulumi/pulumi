@@ -21,7 +21,7 @@ func newStackSelectCmd() *cobra.Command {
 		Use:   "select [<stack-name>]",
 		Short: "Switch the current workspace to the given stack",
 		Long: "Switch the current workspace to the given stack.  This allows you to use\n" +
-			"other commands like `config`, `preview`, and `push` without needing to specify the\n" +
+			"other commands like `config`, `preview`, and `update` without needing to specify the\n" +
 			"stack name each and every time.\n" +
 			"\n" +
 			"If no <stack> argument is supplied, the current stack is printed.",
