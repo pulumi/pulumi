@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
+
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
 // recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
 // be used as a last resort when a command absolutely must be run.
@@ -199,6 +201,26 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), b, 0600); err != nil {
 			return "", errors.Wrap(err, "An IO error occurred during the current operation")
+		}
+	}
+
+	// Write a backup copy under ~/.pulumi/backups, unless disabled via an environment variable.
+	if !cmdutil.IsTruthy(os.Getenv(DisableCheckpointBackupsEnvVar)) {
+		// Get the backup file path (without file extension).
+		backupFilePathNoExt, err := w.BackupStackFilePathNoExt(name)
+		if err != nil {
+			return errors.Wrap(err, "An IO error occurred during the current operation")
+		}
+
+		// Ensure the backup directory exists.
+		if err = os.MkdirAll(filepath.Dir(backupFilePathNoExt), 0700); err != nil {
+			return errors.Wrap(err, "An IO error occurred during the current operation")
+		}
+
+		// Write out the new backup snapshot file.
+		backupFile := fmt.Sprintf("%v.%v%v", backupFilePathNoExt, time.Now().UnixNano(), filepath.Ext(file))
+		if err = ioutil.WriteFile(backupFile, b, 0600); err != nil {
+			return errors.Wrap(err, "An IO error occurred during the current operation")
 		}
 	}
 

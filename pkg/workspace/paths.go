@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	BackupDir      = "backups"    // the name of the folder where backup stack information is stored.
 	BookkeepingDir = ".pulumi"    // the name of our bookeeping folder, we store state here (like .git for git).
 	ConfigDir      = "config"     // the name of the folder that holds local configuration information.
 	GitDir         = ".git"       // the name of the folder git uses to store information.
