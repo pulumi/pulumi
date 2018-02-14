@@ -83,7 +83,7 @@ func (src *errorSource) Close() error {
 	return nil // nothing to do.
 }
 
-func (src *errorSource) Pkg() tokens.PackageName {
+func (src *errorSource) Project() tokens.PackageName {
 	return ""
 }
 

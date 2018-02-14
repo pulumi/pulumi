@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -21,7 +20,7 @@ type W interface {
 	Repository() *Repository                    // returns the repository this project belongs to.
 	StackPath(stack tokens.QName) string        // returns the path to store stack information.
 	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
-	GetPackage() (*pack.Package, error)         // returns a copy of the package associated with this workspace.
+	Project() (*Project, error)                 // returns a copy of the project associated with this workspace.
 	Save() error                                // saves any modifications to the workspace.
 }
 
@@ -49,22 +48,23 @@ func NewFrom(dir string) (W, error) {
 		return nil, err
 	}
 
-	project, err := DetectPackageFrom(dir)
+	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, err
-	} else if project == "" {
-		return nil, errors.New("no Pulumi project file found, are you missing a Pulumi.yaml file?")
+	} else if path == "" {
+		return nil, errors.New("no Pulumi.yaml project file found")
 	}
 
-	pkg, err := pack.Load(project)
+	proj, err := LoadProject(path)
 	if err != nil {
 		return nil, err
 	}
 
 	w := projectWorkspace{
-		name:    pkg.Name,
-		project: project,
-		repo:    repo}
+		name:    proj.Name,
+		project: path,
+		repo:    repo,
+	}
 
 	err = w.readSettings()
 	if err != nil {
@@ -86,8 +86,8 @@ func (pw *projectWorkspace) Repository() *Repository {
 	return pw.repo
 }
 
-func (pw *projectWorkspace) GetPackage() (*pack.Package, error) {
-	return pack.Load(pw.project)
+func (pw *projectWorkspace) Project() (*Project, error) {
+	return LoadProject(pw.project)
 }
 
 func (pw *projectWorkspace) Save() error {

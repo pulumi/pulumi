@@ -266,7 +266,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		parentType = res.Parent.QualifiedType()
 	}
 
-	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Pkg(), parentType, res.Type, res.Name)
+	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Project(), parentType, res.Type, res.Name)
 	if iter.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!

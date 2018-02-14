@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -803,12 +802,12 @@ func (pt *programTester) prepareProject(projectDir string) error {
 
 	// Load up the package so we can run Yarn in the correct location.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
-	pkg, err := pack.Load(projfile)
+	proj, err := workspace.LoadProject(projfile)
 	if err != nil {
 		return err
 	}
-	pkginfo := &engine.Pkginfo{Pkg: pkg, Root: projectDir}
-	cwd, _, err := pkginfo.GetPwdMain()
+	projinfo := &engine.Projinfo{Proj: proj, Root: projectDir}
+	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
 	}

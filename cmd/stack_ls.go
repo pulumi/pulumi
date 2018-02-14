@@ -28,7 +28,7 @@ func newStackLsCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Ensure we are in a project; if not, we will fail.
-			proj, err := workspace.DetectPackage()
+			proj, err := workspace.DetectProjectPath()
 			if err != nil {
 				return errors.Wrapf(err, "could not detect current project")
 			} else if proj == "" {

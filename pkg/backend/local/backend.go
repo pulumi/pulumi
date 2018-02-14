@@ -17,7 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -104,10 +103,10 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return symmetricCrypter(stackName)
 }
 
-func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
+func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, root string, debug bool,
 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, pkg, root)
+	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
@@ -127,10 +126,10 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 	return nil
 }
 
-func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, pkg, root)
+	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
@@ -176,10 +175,10 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 	return errors.Wrap(saveErr, "saving update info")
 }
 
-func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, pkg, root)
+	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}

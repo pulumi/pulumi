@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // getContextAndMain computes the root path of the archive as well as the relative path (from the archive root)
@@ -20,19 +20,19 @@ import (
 // 2. We need to change "main" which was relative to the project root to be relative to the archive root.
 //
 // Note that the relative paths in Pulumi.yaml for Context and Main are always unix style paths, but the returned
-// context is an absolute path, using file system specific seperators. We continue to use a unix style partial path
-// for Main,
-func getContextAndMain(pkg *pack.Package, projectRoot string) (string, string, error) {
+// context is an absolute path, using file system specific seperators.  We continue use a unix style partial path for
+// Main.
+func getContextAndMain(proj *workspace.Project, projectRoot string) (string, string, error) {
 	context, err := filepath.Abs(projectRoot)
 	if err != nil {
 		return "", "", err
 	}
 
-	main := pkg.Main
+	main := proj.Main
 
-	if pkg.Context != "" {
+	if proj.Context != "" {
 		context, err = filepath.Abs(filepath.Join(context,
-			strings.Replace(pkg.Context, "/", string(filepath.Separator), -1)))
+			strings.Replace(proj.Context, "/", string(filepath.Separator), -1)))
 		if err != nil {
 			return "", "", err
 		}

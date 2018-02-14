@@ -9,11 +9,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -79,19 +79,19 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *cloudStack) Preview(pkg *pack.Package, root string,
+func (s *cloudStack) Preview(proj *workspace.Project, root string,
 	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.PreviewStack(s, pkg, root, debug, opts, displayOpts)
+	return backend.PreviewStack(s, proj, root, debug, opts, displayOpts)
 }
 
-func (s *cloudStack) Update(pkg *pack.Package, root string,
+func (s *cloudStack) Update(proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.UpdateStack(s, pkg, root, debug, m, opts, displayOpts)
+	return backend.UpdateStack(s, proj, root, debug, m, opts, displayOpts)
 }
 
-func (s *cloudStack) Destroy(pkg *pack.Package, root string,
+func (s *cloudStack) Destroy(proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.DestroyStack(s, pkg, root, debug, m, opts, displayOpts)
+	return backend.DestroyStack(s, proj, root, debug, m, opts, displayOpts)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

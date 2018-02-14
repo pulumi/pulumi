@@ -19,7 +19,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -37,7 +36,7 @@ var DisableIntegrityChecking bool
 // update is an implementation of engine.Update backed by local state.
 type update struct {
 	root   string
-	pkg    *pack.Package
+	proj   *workspace.Project
 	target *deploy.Target
 }
 
@@ -45,8 +44,8 @@ func (u *update) GetRoot() string {
 	return u.root
 }
 
-func (u *update) GetPackage() *pack.Package {
-	return u.pkg
+func (u *update) GetProject() *workspace.Project {
+	return u.proj
 }
 
 func (u *update) GetTarget() *deploy.Target {
@@ -73,7 +72,7 @@ func (m *localStackMutation) End(snapshot *deploy.Snapshot) error {
 	return saveStack(stack, config, snapshot)
 }
 
-func (b *localBackend) newUpdate(stackName tokens.QName, pkg *pack.Package, root string) (*update, error) {
+func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
 	// Construct the deployment target.
@@ -85,7 +84,7 @@ func (b *localBackend) newUpdate(stackName tokens.QName, pkg *pack.Package, root
 	// Construct and return a new update.
 	return &update{
 		root:   root,
-		pkg:    pkg,
+		proj:   proj,
 		target: target,
 	}, nil
 }

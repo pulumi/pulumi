@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
@@ -25,57 +24,58 @@ const ConfigDir = "config"             // the name of the folder that holds loca
 const WorkspaceFile = "workspace.json" // the name of the file that holds workspace information.
 const IgnoreFile = ".pulumiignore"     // the name of the file that we use to control what to upload to the service.
 
-// DetectPackage locates the closest package from the current working directory, or an error if not found.
-func DetectPackage() (string, error) {
+// DetectProjectPath locates the closest project from the current working directory, or an error if not found.
+func DetectProjectPath() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
-	pkgPath, err := DetectPackageFrom(dir)
+	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return "", err
 	}
 
-	return pkgPath, nil
+	return path, nil
 }
 
-// DetectPackageFrom locates the closest package from the given path, searching "upwards" in the directory hierarchy.
-// If no Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
-func DetectPackageFrom(path string) (string, error) {
+// DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
+// hierarchy.  If no project is found, an empty path is returned.  If problems are detected, they are logged to
+// the diag.Sink.
+func DetectProjectPathFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool {
 		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
 	})
 }
 
-// GetPackage loads the closest package from the current working directory, or an error if not found.
-func GetPackage() (*pack.Package, error) {
-	pkg, _, err := GetPackagePath()
-	return pkg, err
+// DetectProject loads the closest project from the current working directory, or an error if not found.
+func DetectProject() (*Project, error) {
+	proj, _, err := DetectProjectAndPath()
+	return proj, err
 }
 
-// GetPackagePath loads the closest package from the current working directory, or an error if not found.  It
+// DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
 // also returns the path where the package was found.
-func GetPackagePath() (*pack.Package, string, error) {
-	pkgPath, err := DetectPackage()
+func DetectProjectAndPath() (*Project, string, error) {
+	path, err := DetectProjectPath()
 	if err != nil {
 		return nil, "", err
-	} else if pkgPath == "" {
+	} else if path == "" {
 		return nil, "", errors.Errorf("no Pulumi project found in the current working directory")
 	}
 
-	pkg, err := pack.Load(pkgPath)
-	return pkg, pkgPath, err
+	proj, err := LoadProject(path)
+	return proj, path, err
 }
 
-// SavePackage saves the package file on top of the existing one.
-func SavePackage(pkg *pack.Package) error {
-	pkgPath, err := DetectPackage()
+// SaveProject saves the project file on top of the existing one, using the standard location.
+func SaveProject(proj *Project) error {
+	path, err := DetectProjectPath()
 	if err != nil {
 		return err
 	}
 
-	return pack.Save(pkgPath, pkg)
+	return proj.Save(path)
 }
 
 func isGitFolder(path string) bool {
