@@ -230,7 +230,7 @@ Use 'await import("${moduleName}")' or 'require("${moduleName}")' inside the cal
         // For all other objects, serialize all of their properties.
         entry.obj = {};
         for (const key of Object.keys(obj)) {
-            if (props === undefined || props.indexOf(key) >= 0) {
+            if (props === undefined || props.length === 0 || props.indexOf(key) >= 0) {
                 entry.obj[key] = serializeCapturedObject(obj[key], undefined, entryCache);
             }
         }
@@ -312,14 +312,14 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
     "require": true,
 };
 
-// Information about the free variable that was captured.  the boolean 'true' if we should
-// capture the variable entirely.  or an array of strings representing the properties of
-// it that should be captured if we don't need to capture the entire value.
-type FreeInfo = boolean | (string[]);
-type FreeVarAndProps = [string, string[] | undefined];
+// Information about the free variable that was captured.  The first value of the tuple
+// is the variable to be captured.  The second variable says which properties of the
+// variable need to be captured.  If list of properties is empty, then all properties need
+// to be captured.
+type FreeVarAndProps = [string, string[]];
 
 class FreeVariableComputer {
-    private frees: {[key: string]: FreeInfo};   // the in-progress list of free variables.
+    private frees: {[key: string]: string[]};   // the in-progress list of free variables.
     private scope: {[key: string]: boolean}[]; // a chain of current scopes and variables.
     private functionVars: string[];            // list of function-scoped variables (vars).
 
@@ -384,17 +384,16 @@ class FreeVariableComputer {
 
         // Now just return all variables whose value is true.  Filter out any that are part of the built-in
         // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-        const freeVars: [string, string[] | undefined][] = [];
+        const freeVars: [string, string[]][] = [];
         for (const key of Object.keys(this.frees)) {
             if (this.frees[key] && !FreeVariableComputer.isBuiltIn(key)) {
                 const freeInfo = this.frees[key];
-                if (typeof freeInfo === "boolean") {
-                    freeVars.push([key, undefined]);
-                } else {
+                if (freeInfo) {
                     freeVars.push([key, freeInfo]);
                 }
             }
         }
+
         return freeVars;
     }
 
@@ -412,27 +411,40 @@ class FreeVariableComputer {
         }
 
         // local functions
-        function updateFreeInformation(freeInfo: FreeInfo): FreeInfo {
-            if (typeof freeInfo !== "boolean" &&
-                node.parent &&
-                ts.isPropertyAccessExpression(node.parent) &&
-                node.parent.expression === node &&
-                node.parent.parent &&
-                !isExpressionOfCallExpression(node.parent.parent)) {
+        function updateFreeInformation(freeInfo: string[]): string[] {
+            // console.log("Computing free info for: " + name);
 
-                const propName = node.parent.name.text;
-                // this variable is used to only access a non-invoked member. in that case, we don't
-                // actually need this full variable captured.  We only need to capture the
-                // properties of it that are captured.  That's because this property can't reference
-                // the variable itself, so it will not be able to observe that it isn't completely
-                // serialized.
-                return freeInfo ? freeInfo.concat(propName) : [propName];
+            if (freeInfo === undefined || freeInfo.length > 0) {
+                // console.log("keep checking for property access.");
+                // console.log(node.parent &&
+                //     ts.isPropertyAccessExpression(node.parent) &&
+                //     node.parent.expression === node &&
+                //     node.parent.parent !== undefined);
+
+                if (node.parent &&
+                    ts.isPropertyAccessExpression(node.parent) &&
+                    node.parent.expression === node &&
+                    node.parent &&
+                    !isExpressionOfCallExpression(node.parent)) {
+
+                    // console.log("only used for property access.");
+
+                    const propName = node.parent.name.text;
+                    // this variable is used to only access a non-invoked member. in that case, we don't
+                    // actually need this full variable captured.  We only need to capture the
+                    // properties of it that are captured.  That's because this property can't reference
+                    // the variable itself, so it will not be able to observe that it isn't completely
+                    // serialized.
+                    return freeInfo ? freeInfo.concat(propName) : [propName];
+                }
             }
+
+            // console.log("Need to capture fully.");
 
             // We're referencing the variable in isolation.  or we're invoking a member
             // off of it.  so we need to capture the variable entirely so that it is a
-            // legal valid object.
-            return true;
+            // legal valid object.  The empty array signifies that.
+            return [];
         }
 
         function isExpressionOfCallExpression(n: ts.Node) {
@@ -450,7 +462,7 @@ class FreeVariableComputer {
 
     private visitThisExpression(node: ts.PrimaryExpression): void {
         // Mark references to the built-in 'this' variable as free.
-        this.frees["this"] = true;
+        this.frees["this"] = [];
     }
 
     private visitBlockStatement(node: ts.Block, walk: walkCallback): void {
@@ -502,14 +514,14 @@ class FreeVariableComputer {
 
         // Remove any function-scoped variables that we encountered during the walk.
         for (const v of this.functionVars) {
-            this.frees[v] = false;
+            delete this.frees[v];
         }
 
         // If the function is not an arrow function, then its `this` and `arguments` are also
         // function-scoped variables and should be removed.
         if (!isArrowFunction) {
-            this.frees["this"] = false;
-            this.frees["arguments"] = false;
+            delete this.frees["this"];
+            delete this.frees["arguments"];
         }
 
         // Restore the prior context and merge our free list with the previous one.
