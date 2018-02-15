@@ -174,6 +174,20 @@ function serializeCapturedObject(
         obj: any, props: string[] | undefined,
         entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
+
+    if (props && props.length > 0) {
+        // syntactically we thought we needed to serialize only a subset of properties.
+        // However, this is only valid if these are not getter/setter properties as those
+        // are actually methods that can reference 'this' and thus need the entire object.
+        for (const propName of props) {
+            const descriptor = Object.getOwnPropertyDescriptor(obj, propName);
+            if (descriptor && (descriptor.get || descriptor.set)) {
+                props = undefined;
+                break;
+            }
+        }
+    }
+
     const result = entryCache.get(obj);
     if (result) {
         return Promise.resolve(result);
