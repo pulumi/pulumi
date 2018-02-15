@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/cheggaaa/pb"
@@ -197,6 +198,13 @@ const (
 	destroy updateKind = "destroy"
 )
 
+var actionLabels = map[string]string{
+	string(update):  "Updating",
+	string(preview): "Previewing",
+	string(destroy): "Destroying",
+	"import":        "Importing",
+}
+
 func (b *cloudBackend) Preview(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
@@ -220,17 +228,8 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
-	var actionLabel string
-	switch action {
-	case update:
-		actionLabel = "Updating"
-	case preview:
-		actionLabel = "Previewing"
-	case destroy:
-		actionLabel = "Destroying"
-	default:
-		contract.Failf("unsupported update kind: %v", action)
-	}
+	actionLabel, ok := actionLabels[string(action)]
+	contract.Assertf(ok, "unsupported update kind: %v", action)
 	fmt.Printf(
 		colors.ColorizeText(
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+" ☁️\n"),
@@ -282,7 +281,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	}
 
 	// Wait for the update to complete, which also polls and renders event output to STDOUT.
-	status, err := b.waitForUpdate(restURLWithUpdateID, displayOpts)
+	status, err := b.waitForUpdate(actionLabel, restURLWithUpdateID, displayOpts)
 	if err != nil {
 		return errors.Wrapf(err, "waiting for %s", action)
 	} else if status != apitype.StatusSucceeded {
@@ -461,7 +460,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment json.
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	importPath := fmt.Sprintf("%s/update/%s", stackPath, response.UpdateID)
-	status, err := b.waitForUpdate(importPath, backend.DisplayOptions{Color: colors.Always})
+	status, err := b.waitForUpdate(actionLabels["import"], importPath, backend.DisplayOptions{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")
 	} else if status != apitype.StatusSucceeded {
@@ -567,7 +566,8 @@ type displayEvent struct {
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
-func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
+func (b *cloudBackend) waitForUpdate(action string,
+	path string, displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
 	events, done := make(chan displayEvent), make(chan bool)
 	defer func() {
 		events <- displayEvent{Kind: ShutdownEvent, Payload: nil}
@@ -575,7 +575,7 @@ func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOpt
 		close(events)
 		close(done)
 	}()
-	go displayEvents(events, done, displayOpts)
+	go displayEvents(strings.ToLower(action), events, done, displayOpts)
 
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
 	eventIndex := "0"
@@ -608,10 +608,12 @@ func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOpt
 	}
 }
 
-func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
-	spinner, ticker := cmdutil.NewSpinnerAndTicker()
+func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
+	prefix := fmt.Sprintf("✨ %s...", action)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
 
 	defer func() {
+		spinner.Reset()
 		ticker.Stop()
 		done <- true
 	}()
@@ -621,7 +623,6 @@ func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.Di
 		case <-ticker.C:
 			spinner.Tick()
 		case event := <-events:
-			spinner.Reset()
 			if event.Kind == ShutdownEvent {
 				return
 			}
@@ -640,7 +641,10 @@ func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.Di
 						stream = os.Stdout
 					}
 
-					fmt.Fprint(stream, text)
+					if text != "" {
+						spinner.Reset()
+						fmt.Fprint(stream, text)
+					}
 				}
 			}
 		}
