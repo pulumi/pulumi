@@ -88,6 +88,7 @@ func TestHistoryCommand(t *testing.T) {
 
 		// Update the history-test stack.
 		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")
 		e.RunCommand("pulumi", "update", "-m", "updating stack...")
 
@@ -118,6 +119,7 @@ func TestHistoryCommand(t *testing.T) {
 
 		// Update the history-test stack.
 		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")
 		e.RunCommand("pulumi", "update", "-m", "first update (successful)")
 
@@ -193,6 +195,7 @@ func TestHistoryCommand(t *testing.T) {
 
 		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
 		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")
 
 		// Update 1, git repo that has no commits.
