@@ -31,11 +31,9 @@ RunGoBuild "github.com/pulumi/pulumi"
 RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
-Copy-Item "$Root\dist\sdk\nodejs\pulumi-langhost-nodejs-exec.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\pulumi-langhost-nodejs-exec.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\pulumi-provider-pulumi-nodejs.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\nodejs\custom_node\node\node.exe" "$PublishDir\bin\pulumi-langhost-nodejs-node.exe"
-
-Remove-Item "$PublishDir\node_modules\pulumi\pulumi-langhost-nodejs-exec.cmd"
-Remove-Item "$PublishDir\node_modules\pulumi\pulumi-provider-pulumi-nodejs.cmd"
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing
 # archive if it exists.
