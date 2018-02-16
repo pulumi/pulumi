@@ -30,7 +30,9 @@ install:
 
     set PATH=%PATH%;%GOPATH%\bin
 
-    set PATH=%USERPROFILE%\go\src\github.com\pulumi\pulumi\sdk\nodejs\bin;%PATH%
+    set PulumiRoot=C:\Pulumi
+
+    set PATH=%PulumiRoot%\bin;%PATH%
 
     go version
 
