@@ -51,8 +51,9 @@ run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-langhost-nodejs"
 cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs-exec ${PUBDIR}/bin/
 cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
 
-# Copy over our custom Node build
-cp ${ROOT}/sdk/nodejs/custom_node/node/node ${PUBDIR}/bin/pulumi-langhost-nodejs-node
+# Copy over our custom Node plugin
+mkdir -p ${PUBDIR}/bin/$(node --version)
+cp ${ROOT}/sdk/nodejs/runtime/native/build/Release/nativeruntime.node ${PUBDIR}/bin/$(node --version)/nativeruntime.node
 
 # Copy packages
 copy_package "${ROOT}/sdk/nodejs/bin/." "@pulumi/pulumi"
