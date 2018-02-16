@@ -29,7 +29,7 @@ func newHistoryCmd() *cobra.Command {
 			"This command lists data about previous updates for a stack.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack))
+			s, err := requireStack(tokens.QName(stack), false)
 			if err != nil {
 				return err
 			}

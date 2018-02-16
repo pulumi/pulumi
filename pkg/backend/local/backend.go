@@ -49,14 +49,23 @@ func (b *localBackend) Name() string {
 
 func (b *localBackend) local() {}
 
-func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
+func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (backend.Stack, error) {
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
-	if _, _, _, err := getStack(stackName); err == nil {
-		return errors.Errorf("stack '%v' already exists", stackName)
+	if stackName == "" {
+		return nil, errors.New("invalid empty stack name")
 	}
 
-	return saveStack(stackName, nil, nil)
+	if _, _, _, err := getStack(stackName); err == nil {
+		return nil, errors.Errorf("stack '%s' already exists", stackName)
+	}
+
+	file, err := saveStack(stackName, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return newStack(stackName, file, nil, nil, b), nil
 }
 
 func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
@@ -289,7 +298,8 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMess
 		return err
 	}
 
-	return saveStack(stackName, config, snap)
+	_, err = saveStack(stackName, config, snap)
+	return err
 }
 
 func getLocalStacks() ([]tokens.QName, error) {

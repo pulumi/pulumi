@@ -42,11 +42,12 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack))
+			proj, root, err := readProject()
 			if err != nil {
 				return err
 			}
-			proj, root, err := readProject()
+
+			s, err := requireStack(tokens.QName(stack), true)
 			if err != nil {
 				return err
 			}

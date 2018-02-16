@@ -22,7 +22,7 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(name tokens.QName) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(name tokens.QName, opts interface{}) error
+	CreateStack(name tokens.QName, opts interface{}) (Stack, error)
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.

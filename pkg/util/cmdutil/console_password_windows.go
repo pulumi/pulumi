@@ -7,12 +7,16 @@ import (
 	"fmt"
 
 	"github.com/bgentry/speakeasy"
+
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
 // ReadConsoleNoEcho reads from the console without echoing.  This is useful for reading passwords.
 func ReadConsoleNoEcho(prompt string) (string, error) {
 	if prompt != "" {
-		fmt.Printf("%s: ", prompt)
+		prompt = colors.ColorizeText(
+			fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+		fmt.Print(prompt)
 	}
 
 	s, err := speakeasy.Ask("")

@@ -36,7 +36,7 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stack, err := requireStack(tokens.QName(stack))
+			stack, err := requireStack(tokens.QName(stack), true)
 			if err != nil {
 				return err
 			}
@@ -65,7 +65,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(*stack))
+			s, err := requireStack(tokens.QName(*stack), true)
 			if err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(stackName)
+			s, err := requireStack(stackName, true)
 			if err != nil {
 				return err
 			}
@@ -154,7 +154,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(stackName)
+			s, err := requireStack(stackName, true)
 			if err != nil {
 				return err
 			}

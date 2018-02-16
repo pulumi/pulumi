@@ -33,7 +33,7 @@ func newStackRmCmd() *cobra.Command {
 			if len(args) > 0 {
 				stack = tokens.QName(args[0])
 			}
-			s, err := requireStack(stack)
+			s, err := requireStack(stack, false)
 			if err != nil {
 				return err
 			}

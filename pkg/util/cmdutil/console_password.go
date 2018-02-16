@@ -8,12 +8,16 @@ import (
 	"syscall"
 
 	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
 // ReadConsoleNoEcho reads from the console without echoing.  This is useful for reading passwords.
 func ReadConsoleNoEcho(prompt string) (string, error) {
 	if prompt != "" {
-		fmt.Printf("%s: ", prompt)
+		prompt = colors.ColorizeText(
+			fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+		fmt.Print(prompt)
 	}
 
 	b, err := terminal.ReadPassword(syscall.Stdin)

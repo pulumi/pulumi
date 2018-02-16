@@ -25,7 +25,7 @@ func newStackExportCmd() *cobra.Command {
 			"resources, etc.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Fetch the current stack and export its deployment
-			s, err := requireCurrentStack()
+			s, err := requireCurrentStack(false)
 			if err != nil {
 				return err
 			}
