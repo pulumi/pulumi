@@ -28,7 +28,7 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireCurrentStack()
+			s, err := requireCurrentStack(true)
 			if err != nil {
 				return err
 			}

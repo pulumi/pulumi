@@ -9,7 +9,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/local"
-	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -21,7 +20,7 @@ func newStackInitCmd() *cobra.Command {
 	var ppc string
 	cmd := &cobra.Command{
 		Use:   "init <stack-name>",
-		Args:  cmdutil.SpecificArgs([]string{"stack-name"}),
+		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
@@ -51,13 +50,23 @@ func newStackInitCmd() *cobra.Command {
 				opts = cloud.CreateStackOptions{CloudName: ppc}
 			}
 
-			stackName := tokens.QName(args[0])
-			err := b.CreateStack(stackName, opts)
-			if err != nil {
-				return errors.Wrapf(err, "could not create stack")
+			var stackName tokens.QName
+			if len(args) > 0 {
+				stackName = tokens.QName(args[0])
+			} else if cmdutil.Interactive() {
+				name, err := cmdutil.ReadConsole("Enter a stack name")
+				if err != nil {
+					return err
+				}
+				stackName = tokens.QName(name)
 			}
 
-			return state.SetCurrentStack(stackName)
+			if stackName == "" {
+				return errors.New("missing stack name")
+			}
+
+			_, err := createStack(b, stackName, opts)
+			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(

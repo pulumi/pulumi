@@ -63,7 +63,7 @@ func TestHistoryCommand(t *testing.T) {
 
 		out, err := e.RunCommandExpectError("pulumi", "history")
 		assert.Equal(t, "", out)
-		assert.Contains(t, err, "error: no current stack detected")
+		assert.NotEqual(t, err, "")
 	})
 
 	// We don't display any history for a stack that has never been updated.

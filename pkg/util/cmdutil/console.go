@@ -8,12 +8,23 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"golang.org/x/crypto/ssh/terminal"
+
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
+
+// Interactive returns true if we're in an interactive terminal session.
+func Interactive() bool {
+	return terminal.IsTerminal(int(os.Stdin.Fd()))
+}
 
 // ReadConsole reads the console with the given prompt text.
 func ReadConsole(prompt string) (string, error) {
 	if prompt != "" {
-		fmt.Printf("%s: ", prompt)
+		prompt = colors.ColorizeText(
+			fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+		fmt.Print(prompt)
 	}
 
 	reader := bufio.NewReader(os.Stdin)

@@ -33,7 +33,7 @@ func newLogsCmd() *cobra.Command {
 		Short: "Show aggregated logs for a project",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack))
+			s, err := requireStack(tokens.QName(stack), false)
 			if err != nil {
 				return err
 			}

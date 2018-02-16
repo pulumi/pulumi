@@ -76,10 +76,10 @@ type CreateStackOptions struct {
 	CloudName string
 }
 
-func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
+func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (backend.Stack, error) {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var cloudName string
@@ -87,24 +87,31 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) err
 		if cloudOpts, ok := opts.(CreateStackOptions); ok {
 			cloudName = cloudOpts.CloudName
 		} else {
-			return errors.New("expected a CloudStackOptions value for opts parameter")
+			return nil, errors.New("expected a CloudStackOptions value for opts parameter")
 		}
 	}
 
+	stack := apitype.Stack{
+		CloudName:   cloudName,
+		StackName:   stackName,
+		OrgName:     projID.Owner,
+		RepoName:    projID.Repository,
+		ProjectName: string(projID.Project),
+	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,
 		StackName: string(stackName),
 	}
 
 	var createStackResp apitype.CreateStackResponseByName
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
+	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", stack.OrgName, stack.RepoName, stack.ProjectName)
 	if err := pulumiRESTCall(b.cloudURL, "POST", path, nil, &createStackReq, &createStackResp); err != nil {
-		return err
+		return nil, err
 	}
 	fmt.Printf("Created stack '%s' hosted in Pulumi Cloud PPC %s\n",
 		stackName, createStackResp.CloudName)
 
-	return nil
+	return newStack(stack, b), nil
 }
 
 func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {

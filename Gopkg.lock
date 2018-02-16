@@ -9,7 +9,36 @@
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
-  packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/shareddefaults","private/protocol","private/protocol/json/jsonutil","private/protocol/jsonrpc","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/cloudwatchlogs","service/s3","service/sts"]
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/awsutil",
+    "aws/client",
+    "aws/client/metadata",
+    "aws/corehandlers",
+    "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/stscreds",
+    "aws/defaults",
+    "aws/ec2metadata",
+    "aws/endpoints",
+    "aws/request",
+    "aws/session",
+    "aws/signer/v4",
+    "internal/shareddefaults",
+    "private/protocol",
+    "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
+    "private/protocol/rest",
+    "private/protocol/restxml",
+    "private/protocol/xml/xmlutil",
+    "service/cloudwatchlogs",
+    "service/s3",
+    "service/sts"
+  ]
   revision = "e6c5e190452424b404ecdb81d6e3991d46b18e9d"
   version = "v1.12.26"
 
@@ -58,7 +87,16 @@
 [[projects]]
   branch = "master"
   name = "github.com/golang/protobuf"
-  packages = ["proto","protoc-gen-go/descriptor","ptypes","ptypes/any","ptypes/duration","ptypes/empty","ptypes/struct","ptypes/timestamp"]
+  packages = [
+    "proto",
+    "protoc-gen-go/descriptor",
+    "ptypes",
+    "ptypes/any",
+    "ptypes/duration",
+    "ptypes/empty",
+    "ptypes/struct",
+    "ptypes/timestamp"
+  ]
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
@@ -109,10 +147,28 @@
   version = "0.2"
 
 [[projects]]
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
+  version = "v0.0.3"
+
+[[projects]]
   name = "github.com/mattn/go-runewidth"
   packages = ["."]
   revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
   version = "v0.0.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mgutz/ansi"
+  packages = ["."]
+  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
 
 [[projects]]
   branch = "master"
@@ -134,7 +190,11 @@
 
 [[projects]]
   name = "github.com/opentracing/opentracing-go"
-  packages = [".","ext","log"]
+  packages = [
+    ".",
+    "ext",
+    "log"
+  ]
   revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
   version = "v1.0.2"
 
@@ -188,7 +248,12 @@
 
 [[projects]]
   name = "github.com/src-d/gcfg"
-  packages = [".","scanner","token","types"]
+  packages = [
+    ".",
+    "scanner",
+    "token",
+    "types"
+  ]
   revision = "f187355171c936ac84a82793659ebb4936bc1c23"
   version = "v1.3.0"
 
@@ -200,7 +265,17 @@
 
 [[projects]]
   name = "github.com/uber/jaeger-client-go"
-  packages = [".","internal/spanlog","log","thrift-gen/agent","thrift-gen/jaeger","thrift-gen/sampling","thrift-gen/zipkincore","transport/zipkin","utils"]
+  packages = [
+    ".",
+    "internal/spanlog",
+    "log",
+    "thrift-gen/agent",
+    "thrift-gen/jaeger",
+    "thrift-gen/sampling",
+    "thrift-gen/zipkincore",
+    "transport/zipkin",
+    "utils"
+  ]
   revision = "3e3870040def0ebdaf65a003863fa64f5cb26139"
   version = "v2.9.0"
 
@@ -219,25 +294,67 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["cast5","curve25519","ed25519","ed25519/internal/edwards25519","openpgp","openpgp/armor","openpgp/elgamal","openpgp/errors","openpgp/packet","openpgp/s2k","pbkdf2","ssh","ssh/agent","ssh/knownhosts","ssh/terminal"]
+  packages = [
+    "cast5",
+    "curve25519",
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "openpgp",
+    "openpgp/armor",
+    "openpgp/elgamal",
+    "openpgp/errors",
+    "openpgp/packet",
+    "openpgp/s2k",
+    "pbkdf2",
+    "ssh",
+    "ssh/agent",
+    "ssh/knownhosts",
+    "ssh/terminal"
+  ]
   revision = "6a293f2d4b14b8e6d3f0539e383f6d0d30fce3fd"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
+  packages = [
+    "context",
+    "http2",
+    "http2/hpack",
+    "idna",
+    "internal/timeseries",
+    "lex/httplex",
+    "trace"
+  ]
   revision = "a337091b0525af65de94df2eb7e98bd9962dcbe2"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "4b45465282a4624cf39876842a017334f13b8aff"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
-  packages = ["collate","collate/build","internal/colltab","internal/gen","internal/tag","internal/triegen","internal/ucd","language","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable"
+  ]
   revision = "88f656faf3f37f690df1a32515b479415e1a6769"
 
 [[projects]]
@@ -248,19 +365,96 @@
 
 [[projects]]
   name = "google.golang.org/grpc"
-  packages = [".","balancer","codes","connectivity","credentials","grpclb/grpc_lb_v1/messages","grpclog","internal","keepalive","metadata","naming","peer","reflection","reflection/grpc_reflection_v1alpha","resolver","stats","status","tap","transport"]
+  packages = [
+    ".",
+    "balancer",
+    "codes",
+    "connectivity",
+    "credentials",
+    "grpclb/grpc_lb_v1/messages",
+    "grpclog",
+    "internal",
+    "keepalive",
+    "metadata",
+    "naming",
+    "peer",
+    "reflection",
+    "reflection/grpc_reflection_v1alpha",
+    "resolver",
+    "stats",
+    "status",
+    "tap",
+    "transport"
+  ]
   revision = "5ffe3083946d5603a0578721101dc8165b1d5b5f"
   version = "v1.7.2"
 
 [[projects]]
+  name = "gopkg.in/AlecAivazis/survey.v1"
+  packages = [
+    ".",
+    "core",
+    "terminal"
+  ]
+  revision = "0aa8b6a162b391fe2d95648b7677d1d6ac2090a6"
+  version = "v1.4.1"
+
+[[projects]]
   name = "gopkg.in/src-d/go-billy.v4"
-  packages = [".","helper/chroot","helper/polyfill","osfs","util"]
+  packages = [
+    ".",
+    "helper/chroot",
+    "helper/polyfill",
+    "osfs",
+    "util"
+  ]
   revision = "e940f8b62a8e61adc71f69802c1cc8305b64ec96"
   version = "v4.0.2"
 
 [[projects]]
   name = "gopkg.in/src-d/go-git.v4"
-  packages = [".","config","internal/revision","plumbing","plumbing/cache","plumbing/filemode","plumbing/format/config","plumbing/format/diff","plumbing/format/gitignore","plumbing/format/idxfile","plumbing/format/index","plumbing/format/objfile","plumbing/format/packfile","plumbing/format/pktline","plumbing/object","plumbing/protocol/packp","plumbing/protocol/packp/capability","plumbing/protocol/packp/sideband","plumbing/revlist","plumbing/storer","plumbing/transport","plumbing/transport/client","plumbing/transport/file","plumbing/transport/git","plumbing/transport/http","plumbing/transport/internal/common","plumbing/transport/server","plumbing/transport/ssh","storage","storage/filesystem","storage/filesystem/internal/dotgit","storage/memory","utils/binary","utils/diff","utils/ioutil","utils/merkletrie","utils/merkletrie/filesystem","utils/merkletrie/index","utils/merkletrie/internal/frame","utils/merkletrie/noder"]
+  packages = [
+    ".",
+    "config",
+    "internal/revision",
+    "plumbing",
+    "plumbing/cache",
+    "plumbing/filemode",
+    "plumbing/format/config",
+    "plumbing/format/diff",
+    "plumbing/format/gitignore",
+    "plumbing/format/idxfile",
+    "plumbing/format/index",
+    "plumbing/format/objfile",
+    "plumbing/format/packfile",
+    "plumbing/format/pktline",
+    "plumbing/object",
+    "plumbing/protocol/packp",
+    "plumbing/protocol/packp/capability",
+    "plumbing/protocol/packp/sideband",
+    "plumbing/revlist",
+    "plumbing/storer",
+    "plumbing/transport",
+    "plumbing/transport/client",
+    "plumbing/transport/file",
+    "plumbing/transport/git",
+    "plumbing/transport/http",
+    "plumbing/transport/internal/common",
+    "plumbing/transport/server",
+    "plumbing/transport/ssh",
+    "storage",
+    "storage/filesystem",
+    "storage/filesystem/internal/dotgit",
+    "storage/memory",
+    "utils/binary",
+    "utils/diff",
+    "utils/ioutil",
+    "utils/merkletrie",
+    "utils/merkletrie/filesystem",
+    "utils/merkletrie/index",
+    "utils/merkletrie/internal/frame",
+    "utils/merkletrie/noder"
+  ]
   revision = "e9247ce9c5ce12126f646ca3ddf0066e4829bd14"
   version = "v4.1.0"
 
@@ -279,6 +473,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "406689f2111986438fab15c1c0e770b08c857bdbe8b16e72f89502b32c77cffe"
+  inputs-digest = "5c20f99999e8bede3229f96972decac288fd412bcf7d18ef42f5588117dad2a6"
   solver-name = "gps-cdcl"
   solver-version = 1

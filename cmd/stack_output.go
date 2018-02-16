@@ -23,7 +23,7 @@ func newStackOutputCmd() *cobra.Command {
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Fetch the current stack and its output properties.
-			s, err := requireCurrentStack()
+			s, err := requireCurrentStack(false)
 			if err != nil {
 				return err
 			}

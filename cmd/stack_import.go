@@ -26,7 +26,7 @@ func newStackImportCmd() *cobra.Command {
 			"The updated deployment will be read from standard in.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Fetch the current stack and import a deployment.
-			s, err := requireCurrentStack()
+			s, err := requireCurrentStack(false)
 			if err != nil {
 				return err
 			}
