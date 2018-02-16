@@ -1,3 +1,2 @@
 #!/bin/sh
-SDK_DIR=`dirname $0`/../node_modules
-pulumi-langhost-nodejs-node "$SDK_DIR/@pulumi/pulumi/cmd/dynamic-provider" $@
+pulumi-langhost-nodejs-node ./node_modules/@pulumi/pulumi/cmd/dynamic-provider $@

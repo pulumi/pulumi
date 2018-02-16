@@ -9,6 +9,8 @@
     <NodeArch>x64</NodeArch>
     <TestParallelism>10</TestParallelism>
     <MSVSVersion>2017</MSVSVersion>
+    <PulumiRoot Condition="'$(PulumiRoot)' == ''">C:\Pulumi\</PulumiRoot>
+    <PulumiBin>$(PulumiRoot)\bin</PulumiBin>
   </PropertyGroup>
  
   <Target Name="EnsureGoDependencies">
@@ -50,7 +52,8 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
 
-    <Exec Command="go install -ldflags &quot;-X main.version=$(Version)&quot; %(GoPackagesToBuild.Identity)" />
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(GoPackagesToBuild.Identity)"
+          EnvironmentVariables="GOBIN=$(PulumiBin)"/>
   </Target>
 
   <Target Name="BinplaceNodeSdkProtos">
@@ -80,9 +83,12 @@
 
   <Target Name="BinPlaceNodeSdk"
           DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node\node.exe" DestinationFiles="$(PulumiBin)\pulumi-langhost-nodejs-node.exe" />
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\pulumi-langhost-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\pulumi-provider-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
   </Target>
 
-    <Target Name="BuildNodeSdk"
+  <Target Name="BuildNodeSdk"
           DependsOnTargets="CopyNodeSdkProtos;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
   </Target>
 
@@ -95,7 +101,8 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
 
-    <Exec Command="go install -ldflags &quot;-X main.version=$(Version)&quot; %(GoCmdsToBuild.Identity)" />
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/version.Version=$(Version)&quot; %(GoCmdsToBuild.Identity)"
+          EnvironmentVariables="GOBIN=$(PulumiBin)"/>
   </Target>
 
   <Target Name="Build"
@@ -113,7 +120,7 @@
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>
 
-    <Error Text="Please add &quot;$(NodeJSSdkDirectory)\bin&quot; to your path before running integration tests."
+    <Error Text="Please add &quot;$(PulumiRoot)\bin&quot; to your path before running integration tests."
            Condition="$(WhereLangHostExitCode) != 0 Or $(WhereLangHostExecExitCode) != 0"/>
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
