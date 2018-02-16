@@ -11,14 +11,24 @@ import (
 )
 
 // NewSpinnerAndTicker returns a new Spinner and a ticker that will fire an event when the next call to Spinner.Tick()
-// should be called. NewSpinnerAndTicket takes into account if stdout is connected to a tty or not and returns either a
-// nice animated spinner that updates quickly or a simple spinner that just prints a dot on each tick and updates
-// slowly.
-func NewSpinnerAndTicker() (Spinner, *time.Ticker) {
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		return &ttySpinner{}, time.NewTicker(time.Second / 8)
+// should be called.  NewSpinnerAndTicket takes into account if stdout is connected to a tty or not and returns either
+// a nice animated spinner that updates quickly, using the specified ttyFrames, or a simple spinner that just prints a
+// dot on each tick and updates slowly.
+func NewSpinnerAndTicker(prefix string, ttyFrames []string) (Spinner, *time.Ticker) {
+	if ttyFrames == nil {
+		ttyFrames = DefaultSpinFrames
 	}
-	return &dotSpinner{}, time.NewTicker(time.Second * 20)
+
+	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+		return &ttySpinner{
+			prefix: prefix,
+			frames: ttyFrames,
+		}, time.NewTicker(time.Second / 8)
+	}
+
+	return &dotSpinner{
+		prefix: prefix,
+	}, time.NewTicker(time.Second * 20)
 }
 
 // Spinner represents a very simple progress reporter.
@@ -31,34 +41,51 @@ type Spinner interface {
 	Reset()
 }
 
-var spinFrames = []string{"|", "/", "-", "\\"}
+var (
+	// DefaultSpinFrames is the default set of symbols to show while spinning in a TTY setting.
+	DefaultSpinFrames = []string{"⠋", "⠙", "⠚", "⠒", "⠂", "⠂", "⠒", "⠲", "⠴", "⠦", "⠖", "⠒", "⠐", "⠐", "⠒", "⠓", "⠋"}
+)
 
 // ttySpinner is the spinner that can be used when standard out is a tty. When we are connected to a TTY we can erase
 // characters we've written and provide a nice quick progress spinner.
 type ttySpinner struct {
-	index int
+	prefix     string
+	frames     []string
+	index      int
+	hasWritten bool
 }
 
 func (spin *ttySpinner) Tick() {
-	fmt.Printf("\r \r")
-	fmt.Printf(spinFrames[spin.index])
-	spin.index = (spin.index + 1) % len(spinFrames)
+	if spin.hasWritten {
+		fmt.Print("\b")
+	} else {
+		fmt.Print(spin.prefix)
+		spin.hasWritten = true
+	}
+	fmt.Print(spin.frames[spin.index])
+	spin.index = (spin.index + 1) % len(spin.frames)
 }
 
 func (spin *ttySpinner) Reset() {
-	fmt.Printf("\r \r")
+	if spin.hasWritten {
+		for i := 0; i < len(spin.prefix)+1; i++ {
+			fmt.Print("\b")
+		}
+	}
 	spin.index = 0
+	spin.hasWritten = false
 }
 
 // dotSpinner is the spinner that can be used when standard out is not a tty. In this case, we just write a single
 // dot on each tick.
 type dotSpinner struct {
+	prefix     string
 	hasWritten bool
 }
 
 func (spin *dotSpinner) Tick() {
 	if !spin.hasWritten {
-		fmt.Printf("still working")
+		fmt.Print(spin.prefix)
 	}
 	fmt.Printf(".")
 	spin.hasWritten = true

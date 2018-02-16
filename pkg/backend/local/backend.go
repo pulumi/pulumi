@@ -114,7 +114,7 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug, displayOpts)
+	go displayEvents("previewing", events, done, debug, displayOpts)
 
 	if err = engine.Preview(update, events, opts); err != nil {
 		return err
@@ -137,7 +137,7 @@ func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, r
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug, displayOpts)
+	go displayEvents("updating", events, done, debug, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
@@ -186,7 +186,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug, displayOpts)
+	go displayEvents("destroying", events, done, debug, displayOpts)
 
 	// Perform the destroy
 	start := time.Now().Unix()
