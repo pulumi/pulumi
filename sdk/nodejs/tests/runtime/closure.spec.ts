@@ -57,24 +57,6 @@ describe("closure", () => {
             assert.notEqual(hash1, hash2);
         });
 
-        it("is affected by module.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { module: "m1" } },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { module: "m2" } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
         it("is affected by environment values.", () => {
             const closure1: runtime.Closure = {
                 code: "",
@@ -274,25 +256,6 @@ return (() => { })
         title: "Arrow closure with this capture",
         // tslint:disable-next-line
         func: () => { console.log(this); },
-        expect: {
-            code: "(() => { console.log(this); })",
-            environment: { "this": { "module": "./bin/tests/runtime/closure.spec.js" } },
-            runtime: "nodejs",
-        },
-        closureHash: "__7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8",
-        expectText: `exports.handler = __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8;
-
-function __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8() {
-  return (function() {
-    with({  }) {
-
-return (() => { console.log(this); })
-
-    }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
-}
-
-`,
     });
 
     const awaiterClosure = {
@@ -352,28 +315,6 @@ ${awaiterCode}
         title: "Async lambda that does capture this",
         // tslint:disable-next-line
         func: async () => { console.log(this); },
-        expect: {
-            code: "(() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))",
-            environment: {
-                "__awaiter": awaiterClosure,
-                "this": { "module": "./bin/tests/runtime/closure.spec.js" },
-            },
-            runtime: "nodejs",
-        },
-        closureHash: "__f7cb93fabbd2f283f184e4cbfd6166ee13ff4969",
-        expectText: `exports.handler = __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969;
-
-function __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969() {
-  return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
-
-return (() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))
-
-    }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
-}
-${awaiterCode}
-`,
     });
 
     cases.push({
@@ -434,28 +375,6 @@ ${awaiterCode}
         title: "Arrow closure with this and arguments capture",
         // tslint:disable-next-line
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
-        expect: {
-            code: "(() => { console.log(this + arguments); })",
-            environment: {
-                this: { module: "./bin/tests/runtime/closure.spec.js" },
-                arguments: { arr: [{ json: 0 }, { json: 1 }] },
-            },
-            runtime: "nodejs",
-        },
-        closureHash: "__20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a",
-        expectText: `exports.handler = __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a;
-
-function __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a() {
-  return (function() {
-    with({  }) {
-
-return (() => { console.log(this + arguments); })
-
-    }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), [ 0, 1 ]).apply(this, arguments);
-}
-
-`,
     });
 
     cases.push({
@@ -555,9 +474,9 @@ return (function () { () => { console.log(this + arguments); }; })
         cases.push({
             title: "Serializes basic captures",
             // tslint:disable-next-line
-            func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); },
+            func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); },
             expect: {
-                code: "(() => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); })",
+                code: "(() => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); })",
                 environment: {
                     wcap: {
                         json: "foo",
@@ -582,7 +501,7 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__a07cae0afeaeddbb97b9f7a372b75aafd3b29d0e",
+            closureHash: "__2b40784194096bd63df0a9de27efcd35f2fefbca",
         });
     }
     {
@@ -761,36 +680,68 @@ return (function () { () => { console.log(this + arguments); }; })
     {
         const os = require("os");
         cases.push({
-            title: "Capture built-in modules as stable references, not serialized values",
+            title: "Fail when capturing built-in modules.",
             func: () => os,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Allow 'require' of built-in module",
+            func: () => { const v = require("os"); },
             expect: {
-                code: `(() => os)`,
-                environment: {
-                    os: {
-                        module: "os",
-                    },
-                },
+                code: "(() => { const v = require(\"os\"); })",
+                environment: {},
                 runtime: "nodejs",
             },
-            closureHash: "__3fa97b166e39ae989158bb37acfa12c7abc25b53",
+            closureHash: "__462b48742cacdee6a332b9767a5dbb08fe2af386",
+            expectText: `exports.handler = __462b48742cacdee6a332b9767a5dbb08fe2af386;
+
+function __462b48742cacdee6a332b9767a5dbb08fe2af386() {
+  return (function() {
+    with({  }) {
+
+return (() => { const v = require(\"os\"); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Allow 'async import' of built-in module",
+            func: async () => { const v = await import("os"); },
+            expect: {
+                code: "(() => __awaiter(this, void 0, void 0, function* () { const v = yield Promise.resolve().then(() => require(\"os\")); }))",
+                environment: { "__awaiter": awaiterClosure },
+                runtime: "nodejs",
+            },
+            closureHash: "__ed2e0bd0fd941495843361acb848c827f83f4b37",
+            expectText: `exports.handler = __ed2e0bd0fd941495843361acb848c827f83f4b37;
+
+function __ed2e0bd0fd941495843361acb848c827f83f4b37() {
+  return (function() {
+    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+
+return (() => __awaiter(this, void 0, void 0, function* () { const v = yield Promise.resolve().then(() => require(\"os\")); }))
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+${awaiterCode}
+`,
         });
     }
 
     {
         const util = require("../util");
         cases.push({
-            title: "Capture user-defined modules as stable references, not serialized values",
+            title: "Fail when capturing user module.",
             func: () => util,
-            expect: {
-                code: `(() => util)`,
-                environment: {
-                    util: {
-                        module: "./bin/tests/util.js",
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__cd171f28483c78d2a63bdda674a8f577dd4b41db",
         });
     }
 
@@ -975,10 +926,10 @@ return (function () { () => { console.log(this + arguments); }; })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__48592975f6308867ccf82dc02acb984a2eb0d858",
-            expectText: `exports.handler = __48592975f6308867ccf82dc02acb984a2eb0d858;
+            closureHash: "__7e25d8245194b5762701b759324b82b2661d8df7",
+            expectText: `exports.handler = __7e25d8245194b5762701b759324b82b2661d8df7;
 
-function __48592975f6308867ccf82dc02acb984a2eb0d858() {
+function __7e25d8245194b5762701b759324b82b2661d8df7() {
   return (function() {
     with({ v: { d: { get: () => 4 } } }) {
 
@@ -1018,10 +969,10 @@ return (function () { console.log(v); })
                 },
                 runtime: "nodejs",
             },
-            closureHash: "__010ddd8e314a6fdc60244562536298871169f9fb",
-            expectText: `exports.handler = __010ddd8e314a6fdc60244562536298871169f9fb;
+            closureHash: "__21011f46c5fb3531018421f3247c3a31d97ae710",
+            expectText: `exports.handler = __21011f46c5fb3531018421f3247c3a31d97ae710;
 
-function __010ddd8e314a6fdc60244562536298871169f9fb() {
+function __21011f46c5fb3531018421f3247c3a31d97ae710() {
   return (function() {
     with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined }, d4: { get: () => ({ a: 1, b: true }) } } }) {
 
@@ -1190,6 +1141,238 @@ function __4388dd82f50083d1b18aa1eb2cebd11363fedeb4() {
     with({  }) {
 
 return (function () { return this.n(); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2 };
+
+        cases.push({
+            title: "Capture subset of properties #1",
+            // tslint:disable-next-line
+            func: function () { console.log(o.a); },
+            expect: {
+                code: "(function () { console.log(o.a); })",
+                environment: {
+                    "o": {
+                        "obj": {
+                            "a": {
+                                "json": 1,
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__ad5da959903654accaa0df52f98d49a7fae967fc",
+            expectText: `exports.handler = __ad5da959903654accaa0df52f98d49a7fae967fc;
+
+function __ad5da959903654accaa0df52f98d49a7fae967fc() {
+  return (function() {
+    with({ o: { a: 1 } }) {
+
+return (function () { console.log(o.a); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2, c: 3 };
+
+        cases.push({
+            title: "Capture subset of properties #2",
+            // tslint:disable-next-line
+            func: function () { console.log(o.b + o.c); },
+            expect: {
+                code: "(function () { console.log(o.b + o.c); })",
+                environment: {
+                    "o": {
+                        "obj": {
+                            "b": {
+                                "json": 2,
+                            },
+                            "c": {
+                                "json": 3,
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__7701460608958f498694bca1bd4ec53975f2bfe4",
+            expectText: `exports.handler = __7701460608958f498694bca1bd4ec53975f2bfe4;
+
+function __7701460608958f498694bca1bd4ec53975f2bfe4() {
+  return (function() {
+    with({ o: { b: 2, c: 3 } }) {
+
+return (function () { console.log(o.b + o.c); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2, c: 3 };
+
+        cases.push({
+            title: "Capture all if object is used as is.",
+            // tslint:disable-next-line
+            func: function () { console.log(o); },
+            expect: {
+                code: "(function () { console.log(o); })",
+                environment: {
+                    "o": {
+                        "obj": {
+                            "a": {
+                                "json": 1,
+                            },
+                            "b": {
+                                "json": 2,
+                            },
+                            "c": {
+                                "json": 3,
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__90bd8b65a06a7bef2baafb94583eaa375fe7d03a",
+            expectText: `exports.handler = __90bd8b65a06a7bef2baafb94583eaa375fe7d03a;
+
+function __90bd8b65a06a7bef2baafb94583eaa375fe7d03a() {
+  return (function() {
+    with({ o: { a: 1, b: 2, c: 3 } }) {
+
+return (function () { console.log(o); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2, c() { return this; } };
+
+        cases.push({
+            title: "Capture all if object property is invoked.",
+            // tslint:disable-next-line
+            func: function () { console.log(o.c()); },
+            expect: {
+                code: "(function () { console.log(o.c()); })",
+                "environment": {
+                    "o": {
+                        "obj": {
+                            "a": {
+                                "json": 1,
+                            },
+                            "b": {
+                                "json": 2,
+                            },
+                            "c": {
+                                "closure": {
+                                    "code": "(function c() { return this; })",
+                                    "environment": {},
+                                    "runtime": "nodejs",
+                                },
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__f6b8f811f6a389886339c140c7481f8d575c0d8c",
+            expectText: `exports.handler = __f6b8f811f6a389886339c140c7481f8d575c0d8c;
+
+function __f6b8f811f6a389886339c140c7481f8d575c0d8c() {
+  return (function() {
+    with({ o: { a: 1, b: 2, c: __69aafdcc0cf5a97c8eabd2cf1ef97ca6b36a331c } }) {
+
+return (function () { console.log(o.c()); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __69aafdcc0cf5a97c8eabd2cf1ef97ca6b36a331c() {
+  return (function() {
+    with({  }) {
+
+return (function c() { return this; })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c() { return this; } } };
+
+        cases.push({
+            title: "Capture subset if sub object property is invoked.",
+            // tslint:disable-next-line
+            func: function () { console.log(o.b.c()); },
+            expect: {
+                code: "(function () { console.log(o.b.c()); })",
+                "environment": {
+                    "o": {
+                        "obj": {
+                            "b": {
+                                "obj": {
+                                    "c": {
+                                        "closure": {
+                                            "code": "(function c() { return this; })",
+                                            "environment": {},
+                                            "runtime": "nodejs",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                runtime: "nodejs",
+            },
+            closureHash: "__6247ba094163bb6d9af3e536aa06a19bb8474933",
+            expectText: `exports.handler = __6247ba094163bb6d9af3e536aa06a19bb8474933;
+
+function __6247ba094163bb6d9af3e536aa06a19bb8474933() {
+  return (function() {
+    with({ o: { b: { c: __69aafdcc0cf5a97c8eabd2cf1ef97ca6b36a331c } } }) {
+
+return (function () { console.log(o.b.c()); })
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __69aafdcc0cf5a97c8eabd2cf1ef97ca6b36a331c() {
+  return (function() {
+    with({  }) {
+
+return (function c() { return this; })
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

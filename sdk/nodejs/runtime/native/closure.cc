@@ -140,31 +140,41 @@ Local<Value> SerializeFunction(Isolate *isolate, Local<Function> func,
     }
 
     // Now check all elements and produce a vector we can use below.
-    std::vector<Local<String>> freeVars;
-    Local<Array> freeVarsArray = Local<Array>::Cast(freeVarsRet);
-    for (uint32_t i = 0; i < freeVarsArray->Length(); i++) {
-        Local<Integer> index = Integer::New(isolate, i);
-        Local<Value> elem = freeVarsArray->Get(index);
-        if (elem.IsEmpty() || !elem->IsString()) {
-            isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate, "Free variable Array must contain only String elements")));
-            return Local<Value>();
-        }
-        freeVars.push_back(Local<String>::Cast(elem));
-    }
+    // std::vector<Local<String>> freeVars;
+    // Local<Array> freeVarsArray = Local<Array>::Cast(freeVarsRet);
+    // for (uint32_t i = 0; i < freeVarsArray->Length(); i++) {
+    //     Local<Integer> index = Integer::New(isolate, i);
+    //     Local<Value> elem = freeVarsArray->Get(index);
+    //     if (elem.IsEmpty() || !elem->IsString()) {
+    //         isolate->ThrowException(Exception::TypeError(
+    //             String::NewFromUtf8(isolate, "Free variable Array must contain only String elements")));
+    //         return Local<Value>();
+    //     }
+    //     freeVars.push_back(Local<String>::Cast(elem));
+    // }
+
+    auto zero = Integer::New(isolate, 0);
+    auto one = Integer::New(isolate, 1);
+
+    Local<Object> environment = Object::New(isolate);
 
     // Next, serialize all free variables as they exist in the function's original lexical environment.
-    Local<Object> environment = Object::New(isolate);
-    for (std::vector<Local<String>>::iterator it = freeVars.begin(); it != freeVars.end(); ++it) {
+    auto freeVarsArray = Local<Array>::Cast(freeVarsRet);
+    for (uint32_t i = 0; i < freeVarsArray->Length(); i++) {
+        Local<Integer> index = Integer::New(isolate, i);
+        Local<Array> elemAndProps = Local<Array>::Cast(freeVarsArray->Get(index));
+
+        Local<String> freevar = Local<String>::Cast(elemAndProps->Get(zero));
+        Local<Value> props = elemAndProps->Get(one);
+
         // Look up the variable in the lexical closure of the function and then serialize it.
-        Local<String> freevar = *it;
         Local<Value> v = Lookup(isolate, lexical, freevar);
         if (v.IsEmpty()) {
             // Only empty if an error was thrown; bail eagerly to propagate it.
             return Local<Value>();
         }
-        const unsigned envEntryArgc = 2;
-        Local<Value> envEntryArgv[envEntryArgc] = { v, envEntryCache };
+        const unsigned envEntryArgc = 3;
+        Local<Value> envEntryArgv[envEntryArgc] = { v, props, envEntryCache };
         Local<Value> envEntry = envEntryFunc->Call(Null(isolate), envEntryArgc, envEntryArgv);
         if (envEntry.IsEmpty()) {
             return Local<Value>();

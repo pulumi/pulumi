@@ -69,9 +69,6 @@ export interface EnvironmentEntry {
     // an array which may contain nested closures.
     arr?: EnvironmentEntry[];
 
-    // a reference to a requirable module name.
-    module?: string;
-
     // a Dependency<T> property.  It will be serialized over as a get() method that
     // returns the raw underlying value.
     dep?: EnvironmentEntry;
@@ -135,9 +132,6 @@ async function flattenEnvironmentEntry(
     if (e.hasOwnProperty("json")) {
         result.json = e.json;
     }
-    else if (e.module) {
-        result.module = e.module;
-    }
     else if (e.closure) {
         result.closure = await flattenClosure(e.closure, flatCache);
     }
@@ -182,7 +176,6 @@ export interface AsyncEnvironmentEntry {
     closure?: AsyncClosure;                 // a closure we are dependent on.
     obj?: AsyncEnvironment;                 // an object which may contain nested closures.
     arr?: AsyncEnvironmentEntry[]; // an array which may contain nested closures.
-    module?: string;                        // a reference to a requirable module name.
     dep?: AsyncEnvironmentEntry;
 }
 
@@ -208,25 +201,41 @@ function serializeClosureAsync(
  * serializeCapturedObject serializes an object, deeply, into something appropriate for an environment entry.
  */
 function serializeCapturedObject(
-        obj: any, entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
+        obj: any, props: string[] | undefined,
+        entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
+
+    if (props && props.length > 0) {
+        // syntactically we thought we needed to serialize only a subset of properties.
+        // However, this is only valid if these are not getter/setter properties as those
+        // are actually methods that can reference 'this' and thus need the entire object.
+        for (const propName of props) {
+            const descriptor = Object.getOwnPropertyDescriptor(obj, propName);
+            if (descriptor && (descriptor.get || descriptor.set)) {
+                props = undefined;
+                break;
+            }
+        }
+    }
+
     const result = entryCache.get(obj);
     if (result) {
         return Promise.resolve(result);
     }
 
-    return serializeCapturedObjectAsync(obj, entryCache);
+    return serializeCapturedObjectAsync(obj, props, entryCache);
 }
 
 /**
  * serializeCapturedObjectAsync is the work-horse that actually performs object serialization.
  */
 async function serializeCapturedObjectAsync(
-        obj: any, entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
+        obj: any, props: string[] | undefined,
+        entryCache: Map<Object, AsyncEnvironmentEntry>): Promise<AsyncEnvironmentEntry> {
 
     if (obj instanceof Promise) {
         // If this is a promise, we will await it and serialize the result instead.
-        return await serializeCapturedObject(await obj, entryCache);
+        return await serializeCapturedObject(await obj, undefined, entryCache);
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
@@ -236,14 +245,16 @@ async function serializeCapturedObjectAsync(
     entryCache.set(obj, entry);
 
     const moduleName = findRequirableModuleName(obj);
+    if (moduleName !== undefined) {
+        throw new Error(
+`Deployment time module '${moduleName}' should not be captured in a cloud callback.
+Use 'await import("${moduleName}")' or 'require("${moduleName}")' inside the callback instead.`);
+    }
 
     if (obj === undefined || obj === null ||
         typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
         // Serialize primitives as-is.
         entry.json = obj;
-    } else if (moduleName) {
-        // Serialize any value which was found as a requirable module name as a reference to the module
-        entry.module = moduleName;
     } else if (obj instanceof Array ||
                Object.prototype.toString.call(obj) === "[object Arguments]") {
         // tslint:disable-next-line:max-line-length
@@ -252,18 +263,20 @@ async function serializeCapturedObjectAsync(
         // Recursively serialize elements of an array.
         entry.arr = [];
         for (const elem of obj) {
-            entry.arr.push(await serializeCapturedObject(elem, entryCache));
+            entry.arr.push(await serializeCapturedObject(elem, undefined, entryCache));
         }
     } else if (obj instanceof Function) {
         // Serialize functions recursively, and store them in a closure property.
         entry.closure = await serializeClosureAsync(obj, entryCache);
     } else if (obj instanceof resource.Output) {
-        entry.dep = await serializeCapturedObject(await obj.promise(), entryCache);
+        entry.dep = await serializeCapturedObject(await obj.promise(), undefined, entryCache);
     } else {
         // For all other objects, serialize all of their properties.
         entry.obj = {};
         for (const key of Object.keys(obj)) {
-            entry.obj[key] = serializeCapturedObject(obj[key], entryCache);
+            if (props === undefined || props.length === 0 || props.indexOf(key) >= 0) {
+                entry.obj[key] = serializeCapturedObject(obj[key], undefined, entryCache);
+            }
         }
     }
     return entry;
@@ -313,7 +326,7 @@ function findRequirableModuleName(obj: any): string | undefined  {
  * computeFreeVariables computes the set of free variables in a given function string.  Note that this string is
  * expected to be the usual V8-serialized function expression text.
  */
-function computeFreeVariables(funcstr: string): string[] {
+function computeFreeVariables(funcstr: string): FreeVarAndProps[] {
     log.debug(`Computing free variables for function: ${funcstr}`);
 
     if (funcstr.indexOf("[native code]") !== -1) {
@@ -343,8 +356,14 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
     "require": true,
 };
 
+// Information about the free variable that was captured.  The first value of the tuple
+// is the variable to be captured.  The second variable says which properties of the
+// variable need to be captured.  If list of properties is empty, then all properties need
+// to be captured.
+type FreeVarAndProps = [string, string[]];
+
 class FreeVariableComputer {
-    private frees: {[key: string]: boolean};   // the in-progress list of free variables.
+    private frees: {[key: string]: string[]};   // the in-progress list of free variables.
     private scope: {[key: string]: boolean}[]; // a chain of current scopes and variables.
     private functionVars: string[];            // list of function-scoped variables (vars).
 
@@ -355,7 +374,7 @@ class FreeVariableComputer {
         return global.hasOwnProperty(ident) || nodeModuleGlobals[ident];
     }
 
-    public compute(program: ts.SourceFile): string[] {
+    public compute(program: ts.SourceFile): FreeVarAndProps[] {
         // Reset the state.
         this.frees = {};
         this.scope = [];
@@ -409,12 +428,16 @@ class FreeVariableComputer {
 
         // Now just return all variables whose value is true.  Filter out any that are part of the built-in
         // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-        const freeVars: string[] = [];
+        const freeVars: [string, string[]][] = [];
         for (const key of Object.keys(this.frees)) {
             if (this.frees[key] && !FreeVariableComputer.isBuiltIn(key)) {
-                freeVars.push(key);
+                const freeInfo = this.frees[key];
+                if (freeInfo) {
+                    freeVars.push([key, freeInfo]);
+                }
             }
         }
+
         return freeVars;
     }
 
@@ -427,14 +450,63 @@ class FreeVariableComputer {
                 break;
             } else if (i === 0) {
                 // We reached the top of the scope chain and this wasn't found; it's free.
-                this.frees[name] = true;
+                this.frees[name] = updateFreeInformation(this.frees[name]);
             }
+        }
+
+        // local functions
+        function updateFreeInformation(freeInfo: string[]): string[] {
+            // console.log("Computing free info for: " + name);
+
+            if (freeInfo === undefined || freeInfo.length > 0) {
+                // console.log("keep checking for property access.");
+                // console.log(node.parent &&
+                //     ts.isPropertyAccessExpression(node.parent) &&
+                //     node.parent.expression === node &&
+                //     node.parent.parent !== undefined);
+
+                if (node.parent &&
+                    ts.isPropertyAccessExpression(node.parent) &&
+                    node.parent.expression === node &&
+                    node.parent &&
+                    !isExpressionOfCallExpression(node.parent)) {
+
+                    // console.log("only used for property access.");
+
+                    const propName = node.parent.name.text;
+                    // this variable is used to only access a non-invoked member. in that case, we don't
+                    // actually need this full variable captured.  We only need to capture the
+                    // properties of it that are captured.  That's because this property can't reference
+                    // the variable itself, so it will not be able to observe that it isn't completely
+                    // serialized.
+                    return freeInfo ? freeInfo.concat(propName) : [propName];
+                }
+            }
+
+            // console.log("Need to capture fully.");
+
+            // We're referencing the variable in isolation.  or we're invoking a member
+            // off of it.  so we need to capture the variable entirely so that it is a
+            // legal valid object.  The empty array signifies that.
+            return [];
+        }
+
+        function isExpressionOfCallExpression(n: ts.Node) {
+            if (!n.parent) {
+                return false;
+            }
+
+            if (!ts.isCallExpression(n.parent)) {
+                return false;
+            }
+
+            return n.parent.expression === n;
         }
     }
 
     private visitThisExpression(node: ts.PrimaryExpression): void {
         // Mark references to the built-in 'this' variable as free.
-        this.frees["this"] = true;
+        this.frees["this"] = [];
     }
 
     private visitBlockStatement(node: ts.Block, walk: walkCallback): void {
@@ -463,7 +535,7 @@ class FreeVariableComputer {
             walk: walkCallback,
             isArrowFunction: boolean): void {
         // First, push new free vars list, scope, and function vars
-        const oldFrees: {[key: string]: boolean} = this.frees;
+        const oldFrees = this.frees;
         const oldFunctionVars: string[] = this.functionVars;
         this.frees = {};
         this.functionVars = [];
@@ -486,30 +558,28 @@ class FreeVariableComputer {
 
         // Remove any function-scoped variables that we encountered during the walk.
         for (const v of this.functionVars) {
-            this.frees[v] = false;
+            delete this.frees[v];
         }
 
         // If the function is not an arrow function, then its `this` and `arguments` are also
         // function-scoped variables and should be removed.
         if (!isArrowFunction) {
-            this.frees["this"] = false;
-            this.frees["arguments"] = false;
+            delete this.frees["this"];
+            delete this.frees["arguments"];
         }
 
         // Restore the prior context and merge our free list with the previous one.
         this.scope.pop();
         this.functionVars = oldFunctionVars;
         for (const free of Object.keys(this.frees)) {
-            if (this.frees[free]) {
-                oldFrees[free] = true;
-            }
+            oldFrees[free] = this.frees[free];
         }
         this.frees = oldFrees;
     }
 
     private visitCatchClause(node: ts.CatchClause, walk: walkCallback): void {
         // Add the catch pattern to the scope as a variable.
-        const oldFrees: {[key: string]: boolean} = this.frees;
+        const oldFrees = this.frees;
         this.frees = {};
         this.scope.push({});
         walk(node.variableDeclaration);
@@ -842,12 +912,8 @@ class FuncsForClosure {
             entry.arr
                 ? entry.arr.map(child => this.convertEnvironmentEntryToNormalizedObject(seenClosures, child))
                 : undefined,
-            entry.module,
+            this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep),
         ];
-
-        if (entry.dep) {
-            array.push(this.convertEnvironmentEntryToNormalizedObject(seenClosures, entry.dep));
-        }
 
         return array;
     }
@@ -884,9 +950,6 @@ class FuncsForClosure {
         }
         else if (envEntry.arr !== undefined) {
             return envArrToString(this.envFromEnvArr(envEntry.arr));
-        }
-        else if (envEntry.module !== undefined) {
-            return `require("${envEntry.module}")`;
         }
         else if (envEntry.dep !== undefined) {
             // get: () => { ... }
