@@ -14,10 +14,10 @@ TEST_FAST_TIMEOUT := 2m
 include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
-export PATH:=custom_node/node:$(PATH)
+export NODE_PATH:=$(NODE_PATH):./runtime/native/build/Release
 
 ensure::
-	./scripts/download_node.sh
+	cd runtime/native && ./ensure_node_v8.sh
 
 lint::
 	$(GOMETALINTER) cmd/pulumi-langhost-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
@@ -25,7 +25,9 @@ lint::
 
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cd runtime/native && node-gyp configure
 	cp -R ../proto/nodejs/. proto/
+	cd runtime/native && node-gyp build
 	tsc
 	cp README.md ../../LICENSE package.json bin/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" bin/version.js bin/package.json && \
@@ -38,7 +40,8 @@ install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp pulumi-langhost-nodejs-exec "$(PULUMI_BIN)"
 	cp pulumi-provider-pulumi-nodejs "$(PULUMI_BIN)"
-	cp custom_node/node/node "$(PULUMI_BIN)/pulumi-langhost-nodejs-node"
+	mkdir -p "$(PULUMI_BIN)/$(shell node --version)"
+	cp runtime/native/build/Release/nativeruntime.node "$(PULUMI_BIN)/$(shell node --version)/nativeruntime.node"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
 test_fast::
