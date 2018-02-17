@@ -18,6 +18,7 @@ import (
 func newPluginInstallCmd() *cobra.Command {
 	var cloudURL string
 	var file string
+	var reinstall bool
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME VERSION]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -63,19 +64,26 @@ func newPluginInstallCmd() *cobra.Command {
 
 			// Target the cloud URL for downloads.
 			var releases cloud.Backend
-			if len(installs) > 0 && file != "" {
+			if len(installs) > 0 && file == "" {
 				releases = cloud.New(cmdutil.Diag(), cloud.ValueOrDefaultURL(cloudURL))
 			}
 
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
+				// If the plugin already exists, don't download it unless --reinstall was passed.
+				if !reinstall && workspace.HasPlugin(install) {
+					continue
+				}
+
+				// If we got here, actually try to do the download.
 				var source string
 				var tarball io.ReadCloser
 				var err error
 				if file == "" {
 					source = releases.CloudURL()
 					if tarball, err = releases.DownloadPlugin(install, true); err != nil {
-						return errors.Wrapf(err, "downloading %s from %s", install.String(), source)
+						return errors.Wrapf(err,
+							"downloading %s plugin %s from %s", install.Kind, install.String(), source)
 					}
 				} else {
 					source = file
@@ -96,6 +104,8 @@ func newPluginInstallCmd() *cobra.Command {
 		"cloud-url", "c", "", "A cloud URL to download releases from")
 	cmd.PersistentFlags().StringVarP(&file,
 		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
+	cmd.PersistentFlags().BoolVar(&reinstall,
+		"reinstall", false, "Reinstall a plugin even if it already exists")
 
 	return cmd
 }

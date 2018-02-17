@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -35,9 +36,22 @@ type PluginInfo struct {
 	LastUsedTime time.Time       // the last time the plugin was used.
 }
 
+// File gets the expected filename for this plugin.
+func (info PluginInfo) File() string {
+	return info.FilePrefix() + info.FileSuffix()
+}
+
 // FilePrefix gets the expected default file prefix for the plugin.
 func (info PluginInfo) FilePrefix() string {
 	return filePrefix(info.Kind, info.Name, info.Version)
+}
+
+// FileSuffix returns the suffix for the plugin (if any).
+func (info PluginInfo) FileSuffix() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
+	}
+	return ""
 }
 
 // filePrefix gets the expected default file prefix for the plugin.
@@ -47,6 +61,15 @@ func filePrefix(kind PluginKind, name string, version *semver.Version) string {
 		prefix = fmt.Sprintf("%s-v%s", prefix, (*version).String())
 	}
 	return prefix
+}
+
+// DefaultPath returns the path where this plugin is normally installed to.
+func (info PluginInfo) DefaultPath() (string, error) {
+	dir, err := GetPluginDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, info.File()), nil
 }
 
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
@@ -131,6 +154,18 @@ func IsPluginKind(k string) bool {
 	default:
 		return false
 	}
+}
+
+// HasPlugin returns true if the given plugin exists.
+func HasPlugin(plug PluginInfo) bool {
+	path, err := plug.DefaultPath()
+	if err == nil {
+		_, err := os.Stat(path)
+		if err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // GetPluginDir returns the directory in which plugins on the current machine are managed.
