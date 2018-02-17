@@ -80,15 +80,18 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte) (string, *http.Re
 	accessToken, err := workspace.GetAccessToken(cloudAPI)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "getting stored credentials")
-	} else if accessToken == "" {
-		return "", nil, errors.Errorf("not yet authenticated with %s; please 'pulumi login' first", cloudAPI)
 	}
+	return pulumiAPICallToken(cloudAPI, method, path, body, accessToken)
+}
 
+// pulumiAPICallToken makes an HTTP request to the Pulumi API with an explicit access token.
+func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
+	accessToken string) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = strings.TrimPrefix(path, "/")
 
-	url := fmt.Sprintf("%s/api/%s", cloudAPI, path)
+	url := fmt.Sprintf("%s/%s", cloudAPI, path)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating new HTTP request")
@@ -145,12 +148,23 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte) (string, *http.Re
 	return url, resp, nil
 }
 
-// pulumiRESTCall calls the pulumi REST API marshalling reqObj to JSON and using that as
+// pulumiRESTCall calls the Pulumi REST API marshalling reqObj to JSON and using that as
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func pulumiRESTCall(cloudAPI, method, path string,
 	queryObj interface{}, reqObj interface{}, respObj interface{}) error {
+	accessToken, err := workspace.GetAccessToken(cloudAPI)
+	if err != nil {
+		return errors.Wrapf(err, "getting stored credentials")
+	}
+	return pulumiRESTCallToken(cloudAPI, method, path, queryObj, reqObj, respObj, accessToken)
+}
+
+// pulumiRESTCallToken calls the Pulumi REST API, just like pulumiRESTCall, only with
+// an explicit accessToken rather than reading it from the workspace.
+func pulumiRESTCallToken(cloudAPI, method, path string,
+	queryObj interface{}, reqObj interface{}, respObj interface{}, accessToken string) error {
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -175,7 +189,7 @@ func pulumiRESTCall(cloudAPI, method, path string,
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody)
+	url, resp, err := pulumiAPICallToken(cloudAPI, method, path+querystring, reqBody, accessToken)
 	if err != nil {
 		return errors.Wrapf(err, "calling API")
 	}
