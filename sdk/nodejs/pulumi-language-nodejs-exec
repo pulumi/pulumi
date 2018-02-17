@@ -1,5 +1,0 @@
-#!/bin/sh
-# we exploit the fact that the cwd when `pulumi-language-nodejs-exec` is
-# run is the root of the node program we want to run and use a relative
-# path here.
-pulumi-language-nodejs-node ./node_modules/@pulumi/pulumi/cmd/run $@

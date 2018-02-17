@@ -39,8 +39,8 @@ build::
 
 install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	cp pulumi-language-nodejs-exec "$(PULUMI_BIN)"
-	cp pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
+	cp dist/pulumi-language-nodejs-exec "$(PULUMI_BIN)"
+	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/$(shell node --version)"
 	cp runtime/native/build/Release/nativeruntime.node "$(PULUMI_BIN)/$(shell node --version)/nativeruntime.node"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"

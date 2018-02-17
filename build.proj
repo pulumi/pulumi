@@ -111,8 +111,8 @@
   <Target Name="BinPlaceNodeSdk"
           DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkNativeRuntimeModule;BinPlaceNodeSdkTestData;YarnLinkSdk">
      <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node\node.exe" DestinationFiles="$(PulumiBin)\pulumi-langhost-nodejs-node.exe" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\pulumi-langhost-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\pulumi-provider-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-language-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-resource-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
      <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime.node" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
      <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime.pdb" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
   </Target>

@@ -1,2 +1,2 @@
-#!/usr/bin/env node
-require("./cmd/run");
+#!/bin/sh
+node ./bin/cmd/run $@
