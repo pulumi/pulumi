@@ -52,16 +52,5 @@ func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
 		}
 	}
 
-	// Now turn both pwd and main into absolute directories.
-	var err error
-	pwd, err = filepath.Abs(pwd)
-	if err != nil {
-		return "", "", err
-	}
-	main, err = filepath.Abs(main)
-	if err != nil {
-		return "", "", err
-	}
-
 	return pwd, main, nil
 }
