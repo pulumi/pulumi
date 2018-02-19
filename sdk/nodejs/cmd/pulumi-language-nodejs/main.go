@@ -67,7 +67,13 @@ func main() {
 	cmdutil.InitTracing(os.Args[0], tracing)
 	var nodeExec string
 	if givenExecutor == "" {
-		bin := os.Args[0] + nodeExecSuffix
+		// The -exec binary is the same name as the current language host, except that we must trim off
+		// the file extension (if any) and then append -exec to it.
+		bin := os.Args[0]
+		if ext := filepath.Ext(bin); ext != "" {
+			bin = bin[:len(bin)-len(ext)]
+		}
+		bin += nodeExecSuffix
 		pathExec, err := exec.LookPath(bin)
 		if err != nil {
 			err = errors.Wrapf(err, "could not find `%s` on the $PATH", bin)
