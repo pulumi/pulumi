@@ -79,7 +79,8 @@ func (b *cloudBackend) DownloadPlugin(info workspace.PluginInfo, progress bool) 
 	}
 
 	// Now make the GET request.
-	endpoint := fmt.Sprintf("/releases/plugins/pulumi-%s-%s-%s-%s.tar.gz", info.Kind, info.String(), os, arch)
+	endpoint := fmt.Sprintf("/releases/plugins/pulumi-%s-%s-v%s-%s-%s.tar.gz",
+		info.Kind, info.Name, info.Version, os, arch)
 	_, resp, err := pulumiAPICall(b.cloudURL, "GET", endpoint, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to download plugin")

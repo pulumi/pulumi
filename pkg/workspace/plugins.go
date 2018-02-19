@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -25,15 +24,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// PluginInfo provides basic information about a plugin.
+// PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
+// location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
+// however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Path         string          // the path to the plugin.
 	Name         string          // the simple name of the plugin.
 	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
 	Version      *semver.Version // the plugin's semantic version, if present.
 	Size         int64           // the size of the plugin, in bytes.
 	InstallTime  time.Time       // the time the plugin was installed.
 	LastUsedTime time.Time       // the last time the plugin was used.
+}
+
+// Dir gets the expected plugin directory for this plugin.
+func (info PluginInfo) Dir() string {
+	dir := fmt.Sprintf("%s-%s", info.Kind, info.Name)
+	if info.Version != nil {
+		dir = fmt.Sprintf("%s-v%s", dir, info.Version.String())
+	}
+	return dir
 }
 
 // File gets the expected filename for this plugin.
@@ -43,7 +52,7 @@ func (info PluginInfo) File() string {
 
 // FilePrefix gets the expected default file prefix for the plugin.
 func (info PluginInfo) FilePrefix() string {
-	return filePrefix(info.Kind, info.Name, info.Version)
+	return fmt.Sprintf("pulumi-%s-%s", info.Kind, info.Name)
 }
 
 // FileSuffix returns the suffix for the plugin (if any).
@@ -54,18 +63,18 @@ func (info PluginInfo) FileSuffix() string {
 	return ""
 }
 
-// filePrefix gets the expected default file prefix for the plugin.
-func filePrefix(kind PluginKind, name string, version *semver.Version) string {
-	prefix := fmt.Sprintf("pulumi-%s-%s", kind, name)
-	if version != nil {
-		prefix = fmt.Sprintf("%s-v%s", prefix, (*version).String())
+// DirPath returns the directory where this plugin should be installed.
+func (info PluginInfo) DirPath() (string, error) {
+	dir, err := GetPluginDir()
+	if err != nil {
+		return "", err
 	}
-	return prefix
+	return filepath.Join(dir, info.Dir()), nil
 }
 
-// DefaultPath returns the path where this plugin is normally installed to.
-func (info PluginInfo) DefaultPath() (string, error) {
-	dir, err := GetPluginDir()
+// FilePath returns the full path where this plugin's primary executable should be installed.
+func (info PluginInfo) FilePath() (string, error) {
+	dir, err := info.DirPath()
 	if err != nil {
 		return "", err
 	}
@@ -75,15 +84,22 @@ func (info PluginInfo) DefaultPath() (string, error) {
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
 // any files that contain the same prefix as the plugin itself.
 func (info PluginInfo) Delete() error {
-	return os.Remove(info.Path)
+	dir, err := info.DirPath()
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(dir)
 }
 
 // Install installs a plugin's tarball into the cache.  It validates that plugin names are in the expected format.
 func (info PluginInfo) Install(tarball io.ReadCloser) error {
-	// Fetch the directory into which we will expand this tarball.
-	pluginDir, err := GetPluginDir()
+	// Fetch the directory into which we will expand this tarball, and create it.
+	pluginDir, err := info.DirPath()
 	if err != nil {
 		return err
+	}
+	if err = os.MkdirAll(pluginDir, 0700); err != nil {
+		return errors.Wrapf(err, "creating plugin directory %s", pluginDir)
 	}
 
 	// Unzip and untar the file as we go.
@@ -100,25 +116,27 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		} else if err != nil {
 			return errors.Wrapf(err, "untarring")
 		}
-		switch header.Typeflag {
-		case tar.TypeReg:
-			// Ensure the file has the anticipated prefix.
-			if !strings.HasPrefix(header.Name, info.FilePrefix()) {
-				return errors.Errorf(
-					"plugin file %s doesn't have the expected prefix %s", header.Name, info.FilePrefix())
-			}
 
-			// If so, expand it into the plugin home directory.
-			dst, err := os.Create(filepath.Join(pluginDir, header.Name))
+		path := filepath.Join(pluginDir, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			// Create any directories as needed.
+			if _, err := os.Stat(path); err != nil {
+				if err = os.MkdirAll(path, 0700); err != nil {
+					return errors.Wrapf(err, "untarring dir %s", path)
+				}
+			}
+		case tar.TypeReg:
+			// Expand files into the target directory.
+			dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "opening file %s for untar", path)
 			}
 			defer contract.IgnoreClose(dst)
 			if _, err = io.Copy(dst, r); err != nil {
-				return err
+				return errors.Wrapf(err, "untarring file %s", path)
 			}
-		case tar.TypeDir:
-			return errors.Errorf("unexpected plugin directory %s", header.Name)
 		default:
 			return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 		}
@@ -158,9 +176,9 @@ func IsPluginKind(k string) bool {
 
 // HasPlugin returns true if the given plugin exists.
 func HasPlugin(plug PluginInfo) bool {
-	path, err := plug.DefaultPath()
+	dir, err := plug.DirPath()
 	if err == nil {
-		_, err := os.Stat(path)
+		_, err := os.Stat(dir)
 		if err == nil {
 			return true
 		}
@@ -196,14 +214,17 @@ func GetPlugins() ([]PluginInfo, error) {
 	var plugins []PluginInfo
 	for _, file := range files {
 		// Skip anything that doesn't look like a plugin.
-		if kind, name, version, ok := isPlugin(file); ok {
+		if kind, name, version, ok := tryPlugin(file); ok {
 			tinfo := times.Get(file)
+			size, err := getPluginSize(filepath.Join(dir, file.Name()))
+			if err != nil {
+				return nil, err
+			}
 			plugins = append(plugins, PluginInfo{
-				Path:         filepath.Join(dir, file.Name()),
 				Name:         name,
 				Kind:         kind,
 				Version:      &version,
-				Size:         file.Size(),
+				Size:         size,
 				InstallTime:  tinfo.BirthTime(),
 				LastUsedTime: tinfo.AccessTime(),
 			})
@@ -218,13 +239,13 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// First look on the path; first, for a version-specific plugin, and then for a version-agnostic one.  This
 	// supports development scenarios where we want to make it easy to override the central location.
 	if version != nil {
-		filename := filePrefix(kind, name, version)
+		filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).File()
 		if path, err := exec.LookPath(filename); err == nil {
 			glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s w/ version", kind, name, version, path)
 			return path, nil
 		}
 	}
-	filename := filePrefix(kind, name, nil)
+	filename := (&PluginInfo{Kind: kind, Name: name}).File()
 	if path, err := exec.LookPath(filename); err == nil {
 		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s w/out version", kind, name, version, path)
 		return path, nil
@@ -257,23 +278,26 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return "", nil
 	}
 
-	glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, (*match).Path)
-	return (*match).Path, nil
+	matchPath, err := match.FilePath()
+	if err != nil {
+		return "", err
+	}
+
+	glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
+	return matchPath, nil
 }
 
 // pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
 var pluginRegexp = regexp.MustCompile(
-	"^pulumi-" + // pulumi prefix
-		"(?P<Kind>[a-z]+)-" + // KIND
+	"^(?P<Kind>[a-z]+)-" + // KIND
 		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
-		"v(?P<Version>[0-9]+.[0-9]+.[0-9]+(-[a-zA-Z0-9-_.]+)?)" + // VERSION
-		"(\\.exe)?$") // optional .exe extension on Windows
+		"v(?P<Version>[0-9]+.[0-9]+.[0-9]+(-[a-zA-Z0-9-_.]+)?)$") // VERSION
 
-// isPlugin returns true if a file is a plugin, and extracts information about it.
-func isPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
-	// Only files are plugins.
-	if file.IsDir() {
-		glog.V(11).Infof("skipping plugin as a directory: %s", file.Name())
+// tryPlugin returns true if a file is a plugin, and extracts information about it.
+func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
+	// Only directories contain plugins.
+	if !file.IsDir() {
+		glog.V(11).Infof("skipping file in plugin directory: %s", file.Name())
 		return "", "", semver.Version{}, false
 	}
 
@@ -318,4 +342,29 @@ func isPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 	}
 
 	return kind, name, *version, true
+}
+
+// getPluginSize recursively computes how much space is devoted to a given plugin.
+func getPluginSize(dir string) (int64, error) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	size := int64(0)
+	for _, file := range files {
+		if file.IsDir() {
+			sub, err := getPluginSize(filepath.Join(dir, file.Name()))
+			if err != nil {
+				return size, err
+			}
+			size += sub
+		} else {
+			size += file.Size()
+		}
+	}
+	return size, nil
 }
