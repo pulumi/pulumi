@@ -28,7 +28,7 @@ func newPluginCmd() *cobra.Command {
 
 	cmd.AddCommand(newPluginInstallCmd())
 	cmd.AddCommand(newPluginLsCmd())
-	cmd.AddCommand(newPluginPruneCmd())
+	cmd.AddCommand(newPluginRmCmd())
 
 	return cmd
 }

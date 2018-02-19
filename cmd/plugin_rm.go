@@ -10,27 +10,28 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func newPluginPruneCmd() *cobra.Command {
+func newPluginRmCmd() *cobra.Command {
 	var all bool
 	var yes bool
 	var cmd = &cobra.Command{
-		Use:   "prune [KIND [NAME [VERSION]]]",
+		Use:   "rm [KIND [NAME [VERSION]]]",
 		Args:  cmdutil.MaximumNArgs(3),
-		Short: "Prune one or more plugins from the download cache",
-		Long: "Prune one or more plugins from the download cache.\n" +
+		Short: "Remove one or more plugins from the download cache",
+		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
-			"Specify KIND, NAME, and/or VERSION to narrow down what will be pruned.\n" +
-			"If none are specified, the entire cache will be pruned.  If only KIND and\n" +
+			"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +
+			"If none are specified, the entire cache will be cleared.  If only KIND and\n" +
 			"NAME are specified, but not VERSION, all versions of the plugin with the\n" +
-			"given KIND and NAME will be pruned.  VERSION may be a range.\n" +
+			"given KIND and NAME will be removed.  VERSION may be a range.\n" +
 			"\n" +
-			"If a pruned plugin is subsequently required in order to execute a Pulumi\n" +
-			"program, it will be automatically re-downloaded.  Plugins may be explicitly\n" +
-			"downloaded and installed using the plugin install command.",
+			"This cannot be undone.  If a deleted plugin is subsequently required in order\n" +
+			"to execute a Pulumi program, it must be re-downloaded and installed using the\n" +
+			"`pulumi plugin install` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Parse the filters.
 			var kind workspace.PluginKind
@@ -41,6 +42,8 @@ func newPluginPruneCmd() *cobra.Command {
 					return errors.Errorf("unrecognized plugin kind: %s", kind)
 				}
 				kind = workspace.PluginKind(args[0])
+			} else if !all {
+				return errors.Errorf("please pass --all if you'd like to remove all plugins")
 			}
 			if len(args) > 1 {
 				name = args[1]
@@ -67,13 +70,23 @@ func newPluginPruneCmd() *cobra.Command {
 				}
 			}
 
+			if len(deletes) == 0 {
+				return errors.New("no plugins found")
+			}
+
 			// Confirm that the user wants to do this (unless --yes was passed), and do the deletes.
 			var suffix string
 			if len(deletes) != 1 {
 				suffix = "s"
 			}
-			prompt := fmt.Sprintf("This will remove %d plugin%s from the cache.", len(deletes), suffix)
-			if yes || confirmPrompt(prompt, "yes") {
+			fmt.Print(
+				colors.ColorizeText(
+					fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
+						colors.SpecAttention, len(deletes), suffix, colors.Reset)))
+			for _, del := range deletes {
+				fmt.Printf("    %s %s\n", del.Kind, del.String())
+			}
+			if yes || confirmPrompt("", "yes") {
 				var result error
 				for _, plugin := range deletes {
 					if err := plugin.Delete(); err != nil {

@@ -105,9 +105,17 @@ func NewPulumiCmd() *cobra.Command {
 }
 
 func confirmPrompt(prompt string, name string) bool {
+	if prompt != "" {
+		fmt.Print(
+			colors.ColorizeText(
+				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
+	}
+
 	fmt.Print(
-		colors.ColorizeText(fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
-	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
+		colors.ColorizeText(
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
+				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
+
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name
