@@ -25,16 +25,13 @@ func newPluginInstallCmd() *cobra.Command {
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"By default, Pulumi will download plugins as needed during program execution.\n" +
-			"If you prefer, you may use the install command to manually install plugins:\n" +
-			"either by running it with a specific KIND, NAME, and VERSION, or by omitting\n" +
-			"these and letting Pulumi compute the set of plugins that may be required by\n" +
-			"the current project.  VERSION cannot be a range: it must be a specific number.\n" +
+			"This command is used manually install plugins required by your program.  It may\n" +
+			"be run either with a specific KIND, NAME, and VERSION, or by omitting these and\n" +
+			"letting Pulumi compute the set of plugins that may be required by the current\n" +
+			"project.  VERSION cannot be a range: it must be a specific number.\n" +
 			"\n" +
-			"Note that in this latter mode, Pulumi is conservative and may download more\n" +
-			"than is strictly required.  To only download the precise list of what a project\n" +
-			"needs, simply run Pulumi in its default mode of downloading them on demand: it\n" +
-			"will download precisely what it needs.",
+			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
+			"downloading more plugins than is strictly necessary.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Parse the kind, name, and version, if specified.
 			var installs []workspace.PluginInfo
@@ -55,12 +52,24 @@ func newPluginInstallCmd() *cobra.Command {
 					Name:    args[1],
 					Version: &version,
 				})
-			} else if file == "" {
-				return errors.New("--file (-f) is only valid if a specific package is being installed")
-			}
+			} else {
+				if file != "" {
+					return errors.New("--file (-f) is only valid if a specific package is being installed")
+				}
 
-			// If a specific plugin wasn't given, compute the set of plugins the current project needs.
-			// TODO[pulumi/home#11]: before calling this work item complete, we need to implement this.
+				// If a specific plugin wasn't given, compute the set of plugins the current project needs.
+				plugins, err := getProjectPlugins()
+				if err != nil {
+					return err
+				}
+				for _, plugin := range plugins {
+					// Skip language plugins; by definition, we already have one installed.
+					// TODO[pulumi/pulumi#956]: eventually we will want to honor and install these in the usual way.
+					if plugin.Kind != workspace.LanguagePlugin {
+						installs = append(installs, plugin)
+					}
+				}
+			}
 
 			// Target the cloud URL for downloads.
 			var releases cloud.Backend

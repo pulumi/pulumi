@@ -91,6 +91,32 @@ func (info PluginInfo) Delete() error {
 	return os.RemoveAll(dir)
 }
 
+// SetFileMetadata adds extra metadata from the given file, representing this plugin's directory.
+func (info *PluginInfo) SetFileMetadata(dir, path string) error {
+	// Get the file info.
+	file, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	// Next, get the size from the directory (or, if there is none, just the file).
+	if dir == "" {
+		info.Size = file.Size()
+	} else {
+		size, err := getPluginSize(dir)
+		if err != nil {
+			return errors.Wrapf(err, "getting plugin dir %s size", dir)
+		}
+		info.Size = size
+	}
+
+	// Next get the access times from the plugin binary itself.
+	tinfo := times.Get(file)
+	info.InstallTime = tinfo.BirthTime()
+	info.LastUsedTime = tinfo.AccessTime()
+	return nil
+}
+
 // Install installs a plugin's tarball into the cache.  It validates that plugin names are in the expected format.
 func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	// Fetch the directory into which we will expand this tarball, and create it.
@@ -215,19 +241,15 @@ func GetPlugins() ([]PluginInfo, error) {
 	for _, file := range files {
 		// Skip anything that doesn't look like a plugin.
 		if kind, name, version, ok := tryPlugin(file); ok {
-			tinfo := times.Get(file)
-			size, err := getPluginSize(filepath.Join(dir, file.Name()))
-			if err != nil {
+			plugin := PluginInfo{
+				Name:    name,
+				Kind:    kind,
+				Version: &version,
+			}
+			if err = plugin.SetFileMetadata(dir, filepath.Join(dir, file.Name())); err != nil {
 				return nil, err
 			}
-			plugins = append(plugins, PluginInfo{
-				Name:         name,
-				Kind:         kind,
-				Version:      &version,
-				Size:         size,
-				InstallTime:  tinfo.BirthTime(),
-				LastUsedTime: tinfo.AccessTime(),
-			})
+			plugins = append(plugins, plugin)
 		}
 	}
 	return plugins, nil
@@ -235,26 +257,18 @@ func GetPlugins() ([]PluginInfo, error) {
 
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  If no version is supplied, the latest
 // plugin for that given kind/name pair is loaded, using standard semver sorting rules.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, error) {
-	// First look on the path; first, for a version-specific plugin, and then for a version-agnostic one.  This
-	// supports development scenarios where we want to make it easy to override the central location.
-	if version != nil {
-		filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).File()
-		if path, err := exec.LookPath(filename); err == nil {
-			glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s w/ version", kind, name, version, path)
-			return path, nil
-		}
-	}
-	filename := (&PluginInfo{Kind: kind, Name: name}).File()
+func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
+	// First look on the path.  This supports development scenarios where we want to make it easy to override.
+	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).File()
 	if path, err := exec.LookPath(filename); err == nil {
-		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s w/out version", kind, name, version, path)
-		return path, nil
+		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s", kind, name, version, path)
+		return "", path, nil
 	}
 
 	// If nothing was found on the path, fall back to the plugin cache.
 	plugins, err := GetPlugins()
 	if err != nil {
-		return "", errors.Wrapf(err, "loading plugin list")
+		return "", "", errors.Wrapf(err, "loading plugin list")
 	}
 	var match *PluginInfo
 	for _, plugin := range plugins {
@@ -275,16 +289,20 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	}
 
 	if match == nil {
-		return "", nil
+		return "", "", nil
 	}
 
+	matchDir, err := match.DirPath()
+	if err != nil {
+		return "", "", err
+	}
 	matchPath, err := match.FilePath()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
-	return matchPath, nil
+	return matchDir, matchPath, nil
 }
 
 // pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].

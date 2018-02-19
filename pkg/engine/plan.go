@@ -12,7 +12,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -23,33 +26,45 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
+// ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
+func ProjectInfoContext(projinfo *Projinfo, diag diag.Sink,
+	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
+	contract.Require(projinfo != nil, "projinfo")
+
+	// If the package contains an override for the main entrypoint, use it.
+	pwd, main, err := projinfo.GetPwdMain()
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	// Create a context for plugins.
+	ctx, err := plugin.NewContext(diag, nil, pwd, tracingSpan)
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	return pwd, main, ctx, nil
+}
+
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
 func plan(info *planContext, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Update != nil)
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
-	// and creating resources.
+	// and creating resources.  This includes fetching its pwd and main overrides.
 	proj, target := info.Update.GetProject(), info.Update.GetTarget()
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
-
-	// If the package contains an override for the main entrypoint, use it.
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, err := projinfo.GetPwdMain()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a context for plugins.
-	ctx, err := plugin.NewContext(opts.Diag, nil, pwd, info.TracingSpan)
+	pwd, main, ctx, err := ProjectInfoContext(projinfo, opts.Diag, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}
 
 	// Now ensure that we have loaded up any plugins that the program will need in advance.
 	err = ctx.Host.EnsurePlugins(plugin.ProgInfo{
-		Proj:    projinfo.Proj,
+		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
 	})
@@ -60,7 +75,7 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, &deploy.EvalRunInfo{
-		Proj:    projinfo.Proj,
+		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
 		Target:  target,

@@ -30,7 +30,7 @@ type provider struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(
+	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		return nil, err

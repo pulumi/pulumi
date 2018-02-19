@@ -23,9 +23,16 @@ func newPluginLsCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
-			plugins, err := workspace.GetPlugins()
-			if err != nil {
-				return errors.Wrapf(err, "loading plugins")
+			var plugins []workspace.PluginInfo
+			var err error
+			if projectOnly {
+				if plugins, err = getProjectPlugins(); err != nil {
+					return errors.Wrapf(err, "loading project plugins")
+				}
+			} else {
+				if plugins, err = workspace.GetPlugins(); err != nil {
+					return errors.Wrapf(err, "loading plugins")
+				}
 			}
 
 			// Devote 26 characters to the name width, unless there is a longer name.
@@ -54,14 +61,30 @@ func newPluginLsCmd() *cobra.Command {
 			fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-12s %-26s %-18s %-18s %-18s\n",
 				"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED")
 			for _, plugin := range plugins {
+				var version string
+				if plugin.Version != nil {
+					version = plugin.Version.String()
+				}
+				var bytes string
+				if plugin.Size == 0 {
+					bytes = "n/a"
+				} else {
+					bytes = humanize.Bytes(uint64(plugin.Size))
+				}
+				var installTime string
+				if plugin.InstallTime.IsZero() {
+					installTime = humanNeverTime
+				} else {
+					installTime = humanize.Time(plugin.InstallTime)
+				}
+				var lastUsedTime string
+				if plugin.LastUsedTime.IsZero() {
+					lastUsedTime = humanNeverTime
+				} else {
+					lastUsedTime = humanize.Time(plugin.LastUsedTime)
+				}
 				fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-12s %-26s %-18s %-18s %-18s\n",
-					plugin.Name,
-					plugin.Kind,
-					plugin.Version.String(),
-					humanize.Bytes(uint64(plugin.Size)),
-					humanize.Time(plugin.InstallTime),
-					humanize.Time(plugin.LastUsedTime),
-				)
+					plugin.Name, plugin.Kind, version, bytes, installTime, lastUsedTime)
 				totalSize += uint64(plugin.Size)
 			}
 
@@ -78,3 +101,5 @@ func newPluginLsCmd() *cobra.Command {
 
 	return cmd
 }
+
+const humanNeverTime = "never"

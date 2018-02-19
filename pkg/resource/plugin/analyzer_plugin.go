@@ -29,7 +29,7 @@ type analyzer struct {
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(
+	_, path, err := workspace.GetPluginPath(
 		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err

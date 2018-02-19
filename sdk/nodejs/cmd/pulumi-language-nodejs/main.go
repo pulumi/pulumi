@@ -130,7 +130,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// inside of their packacge.json files.  We begin this search in the same directory that contains the project.
 	// It's possible that a developer would do a `require("../../elsewhere")` and that we'd miss this as a
 	// dependency, however the solution for that is simple: install the package in the project root.
-	plugins, err := getPluginsFromDir(req.GetProgram(), "")
+	plugins, err := getPluginsFromDir(req.GetProgram(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 }
 
 // getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
-func getPluginsFromDir(dir, parent string) ([]*pulumirpc.PluginDependency, error) {
+func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading plugin dir %s", dir)
@@ -150,14 +150,20 @@ func getPluginsFromDir(dir, parent string) ([]*pulumirpc.PluginDependency, error
 	for _, file := range files {
 		name := file.Name()
 		curr := filepath.Join(dir, name)
+
+		// Re-stat the directory, in case it is a symlink.
+		file, err = os.Stat(curr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "re-statting file %s", curr)
+		}
 		if file.IsDir() {
 			// if a directory, recurse.
-			more, err := getPluginsFromDir(curr, dir)
+			more, err := getPluginsFromDir(curr, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				return nil, err
 			}
 			plugins = append(plugins, more...)
-		} else if filepath.Base(parent) == "node_modules" && name == "package.json" {
+		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
 			b, err := ioutil.ReadFile(curr)
 			if err != nil {
