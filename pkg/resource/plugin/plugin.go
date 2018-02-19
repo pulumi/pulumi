@@ -256,9 +256,13 @@ func (p *plugin) Close() error {
 		result = multierror.Append(result, err)
 	}
 
-	// Wait for stdout and stderr to drain
-	<-p.stdoutDone
-	<-p.stderrDone
+	// Wait for stdout and stderr to drain.
+	if p.stdoutDone != nil {
+		<-p.stdoutDone
+	}
+	if p.stderrDone != nil {
+		<-p.stderrDone
+	}
 
 	return result
 }

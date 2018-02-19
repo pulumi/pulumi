@@ -67,9 +67,10 @@ func main() {
 	cmdutil.InitTracing(os.Args[0], tracing)
 	var nodeExec string
 	if givenExecutor == "" {
-		pathExec, err := exec.LookPath(os.Args[0] + nodeExecSuffix)
+		bin := os.Args[0] + nodeExecSuffix
+		pathExec, err := exec.LookPath(bin)
 		if err != nil {
-			err = errors.Wrapf(err, "could not find `%s` on the $PATH", os.Args[0]+nodeExecSuffix)
+			err = errors.Wrapf(err, "could not find `%s` on the $PATH", bin)
 			cmdutil.Exit(err)
 		}
 
