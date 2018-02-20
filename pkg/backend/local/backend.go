@@ -173,15 +173,21 @@ func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, r
 		ResourceChanges: changes,
 	}
 	var saveErr error
+	var backupErr error
 	if !opts.DryRun {
 		saveErr = addToHistory(stackName, info)
+		backupErr = backupStack(stackName)
 	}
 
 	if updateErr != nil {
-		// We swallow saveErr as it is less important than the updateErr.
+		// We swallow saveErr and backupErr as they are less important than the updateErr.
 		return updateErr
 	}
-	return errors.Wrap(saveErr, "saving update info")
+	if saveErr != nil {
+		// We swallow backupErr as it is less important than the saveErr.
+		return errors.Wrap(saveErr, "saving update info")
+	}
+	return errors.Wrap(backupErr, "saving backup")
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
@@ -222,15 +228,21 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 		ResourceChanges: changes,
 	}
 	var saveErr error
+	var backupErr error
 	if !opts.DryRun {
 		saveErr = addToHistory(stackName, info)
+		backupErr = backupStack(stackName)
 	}
 
 	if updateErr != nil {
-		// We swallow saveErr as it is less important than the updateErr.
+		// We swallow saveErr and backupErr as they are less important than the updateErr.
 		return updateErr
 	}
-	return errors.Wrap(saveErr, "saving update info")
+	if saveErr != nil {
+		// We swallow backupErr as it is less important than the saveErr.
+		return errors.Wrap(saveErr, "saving update info")
+	}
+	return errors.Wrap(backupErr, "saving backup")
 }
 
 func (b *localBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {

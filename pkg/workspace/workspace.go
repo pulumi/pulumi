@@ -20,26 +20,13 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	// Settings returns a mutable pointer to the optional workspace settings info.
-	Settings() *Settings
-
-	// Repository returns the repository this project belongs to.
-	Repository() *Repository
-
-	// StackPath returns the path to store stack information.
-	StackPath(stack tokens.QName) string
-
-	// BackupStackFilePathNoExt returns the path of the backup stack file without the file extension.
-	BackupStackFilePathNoExt(stack tokens.QName) (string, error)
-
-	// HistoryDirectory returns the directory to store a stack's history information.
-	HistoryDirectory(stack tokens.QName) string
-
-	// Project returns a copy of the project associated with this workspace.
-	Project() (*Project, error)
-
-	// Save saves any modifications to the workspace.
-	Save() error
+	Settings() *Settings                        // returns a mutable pointer to the optional workspace settings info.
+	Repository() *Repository                    // returns the repository this project belongs to.
+	StackPath(stack tokens.QName) string        // returns the path to store stack information.
+	BackupDirectory() (string, error)           // returns the directory to store backup stack files.
+	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
+	Project() (*Project, error)                 // returns a copy of the project associated with this workspace.
+	Save() error                                // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
@@ -140,9 +127,7 @@ func (pw *projectWorkspace) StackPath(stack tokens.QName) string {
 	return path
 }
 
-func (pw *projectWorkspace) BackupStackFilePathNoExt(stack tokens.QName) (string, error) {
-	contract.Require(stack != "", "stack")
-
+func (pw *projectWorkspace) BackupDirectory() (string, error) {
 	user, err := user.Current()
 	if user == nil || err != nil {
 		return "", errors.New("failed to get current user")
@@ -151,7 +136,7 @@ func (pw *projectWorkspace) BackupStackFilePathNoExt(stack tokens.QName) (string
 	projectDir := filepath.Dir(pw.project)
 	projectBackupDirName := filepath.Base(projectDir) + "-" + sha1HexString(projectDir)
 
-	return filepath.Join(user.HomeDir, BookkeepingDir, BackupDir, projectBackupDirName, qnamePath(stack)), nil
+	return filepath.Join(user.HomeDir, BookkeepingDir, BackupDir, projectBackupDirName), nil
 }
 
 func (pw *projectWorkspace) HistoryDirectory(stack tokens.QName) string {
@@ -193,7 +178,7 @@ func (pw *projectWorkspace) settingsPath() string {
 func sha1HexString(value string) string {
 	h := sha1.New()
 	_, err := h.Write([]byte(value))
-	contract.Assert(err == nil)
+	contract.AssertNoError(err)
 	return hex.EncodeToString(h.Sum(nil))
 }
 

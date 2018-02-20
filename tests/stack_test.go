@@ -156,35 +156,23 @@ func TestStackBackups(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		// We're testing that the backup is created so ensure backups aren't disabled.
+		// We're testing that backups are created so ensure backups aren't disabled.
 		if env := os.Getenv(local.DisableCheckpointBackupsEnvVar); env != "" {
 			os.Unsetenv(local.DisableCheckpointBackupsEnvVar)
 			defer os.Setenv(local.DisableCheckpointBackupsEnvVar, env)
 		}
 
-		const stackName = "imulup"
-
-		// Create a stack, recording the time before and after.
-		before := time.Now().UnixNano()
-		e.RunCommand("pulumi", "stack", "init", "--local", stackName)
-		after := time.Now().UnixNano()
-
 		// On macOS, e.RootPath will be something like:
 		//     /var/folders/00/wttg611s0fl_91hpm8ff6g6c0000gn/T/test-env756909896
 		// However, `/var` is actually a symbolic link to `/private/var`.
 		// We evaluate the symbolic links to ensure the root path the test uses is
-		// the same path that `pulumi` operations see.
+		// the same path that `pulumi` commands see.
 		root, err := filepath.EvalSymlinks(e.RootPath)
 		assert.NoError(t, err, "evaluating symbolic links of e.RootPath")
 
 		// Get the path to the backup directory for this project.
 		backupDir, err := getStackProjectBackupDir(root)
 		assert.NoError(t, err, "getting stack project backup path")
-
-		// Verify the backup directory contains a backup.
-		files, err := ioutil.ReadDir(backupDir)
-		assert.NoError(t, err, "getting the files in backup path")
-		assert.Equal(t, 1, len(files))
 		defer func() {
 			if !t.Failed() {
 				// Cleanup the backup directory.
@@ -192,10 +180,9 @@ func TestStackBackups(t *testing.T) {
 			}
 		}()
 
-		fileName := files[0].Name()
-
-		// Verify the backup file.
-		assertBackupStackFile(t, stackName, files[0], before, after)
+		// Create a stack.
+		const stackName = "imulup"
+		e.RunCommand("pulumi", "stack", "init", "--local", stackName)
 
 		// Build the project.
 		e.RunCommand("yarn", "install")
@@ -203,16 +190,30 @@ func TestStackBackups(t *testing.T) {
 		e.RunCommand("yarn", "run", "build")
 
 		// Now run pulumi update.
-		before = time.Now().UnixNano()
+		before := time.Now().UnixNano()
 		e.RunCommand("pulumi", "update")
+		after := time.Now().UnixNano()
+
+		// Verify the backup directory contains a single backup.
+		files, err := ioutil.ReadDir(backupDir)
+		assert.NoError(t, err, "getting the files in backup directory")
+		assert.Equal(t, 1, len(files))
+		fileName := files[0].Name()
+
+		// Verify the backup file.
+		assertBackupStackFile(t, stackName, files[0], before, after)
+
+		// Now run pulumi destroy.
+		before = time.Now().UnixNano()
+		e.RunCommand("pulumi", "destroy", "--yes")
 		after = time.Now().UnixNano()
 
-		// Verify the backup directory has been updated with 1 (or more) additional backups.
+		// Verify the backup directory has been updated with 1 additional backups.
 		files, err = ioutil.ReadDir(backupDir)
-		assert.NoError(t, err, "getting the files in backup path")
-		assert.True(t, len(files) > 1)
+		assert.NoError(t, err, "getting the files in backup directory")
+		assert.Equal(t, 2, len(files))
 
-		// Verify the new backup files.
+		// Verify the new backup file.
 		for _, file := range files {
 			// Skip the file we previously verified.
 			if file.Name() == fileName {
@@ -225,6 +226,7 @@ func TestStackBackups(t *testing.T) {
 }
 
 func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
+	assert.False(t, file.IsDir())
 	assert.True(t, file.Size() > 0)
 	split := strings.Split(file.Name(), ".")
 	assert.Equal(t, 3, len(split))
