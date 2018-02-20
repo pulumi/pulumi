@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -18,7 +19,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
 	"github.com/golang/glog"
-	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -214,11 +214,11 @@ func HasPlugin(plug PluginInfo) bool {
 
 // GetPluginDir returns the directory in which plugins on the current machine are managed.
 func GetPluginDir() (string, error) {
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
+	u, err := user.Current()
+	if u == nil || err != nil {
+		return "", errors.Wrapf(err, "getting user home directory")
 	}
-	return filepath.Join(home, BookkeepingDir, PluginDir), nil
+	return filepath.Join(u.HomeDir, BookkeepingDir, PluginDir), nil
 }
 
 // GetPlugins returns a list of installed plugins.

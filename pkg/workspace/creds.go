@@ -4,11 +4,10 @@ package workspace
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -73,13 +72,13 @@ type Credentials struct {
 func getCredsFilePath() (string, error) {
 	user, err := user.Current()
 	if user == nil || err != nil {
-		return "", fmt.Errorf("getting creds file path: failed to get current user")
+		return "", errors.Wrapf(err, "getting creds file path: failed to get current user")
 	}
 
-	pulumiFolder := path.Join(user.HomeDir, BookkeepingDir)
+	pulumiFolder := filepath.Join(user.HomeDir, BookkeepingDir)
 	err = os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
-		return "", fmt.Errorf("failed to create '%s'", pulumiFolder)
+		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
 	}
 
 	// If we are running as part of unit tests, we want to save/restore a different set
@@ -89,7 +88,7 @@ func getCredsFilePath() (string, error) {
 		credentialsFile = "alt-credentials.json"
 	}
 
-	return path.Join(pulumiFolder, credentialsFile), nil
+	return filepath.Join(pulumiFolder, credentialsFile), nil
 }
 
 // GetStoredCredentials returns any credentials stored on the local machine.
@@ -104,12 +103,12 @@ func GetStoredCredentials() (Credentials, error) {
 		if os.IsNotExist(err) {
 			return Credentials{}, nil
 		}
-		return Credentials{}, errors.Wrapf(err, "reading '%s': %v", credsFile)
+		return Credentials{}, errors.Wrapf(err, "reading '%s'", credsFile)
 	}
 
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, fmt.Errorf("unmarshalling credentials file: %v", err)
+		return Credentials{}, errors.Wrapf(err, "unmarshalling credentials file")
 	}
 	return creds, nil
 }
@@ -132,7 +131,7 @@ func StoreCredentials(creds Credentials) error {
 
 	raw, err := json.MarshalIndent(creds, "", "    ")
 	if err != nil {
-		return fmt.Errorf("marshalling credentials object: %v", err)
+		return errors.Wrapf(err, "marshalling credentials object")
 	}
 	return ioutil.WriteFile(credsFile, raw, 0600)
 }
