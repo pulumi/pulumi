@@ -149,6 +149,11 @@
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>
 
+    <Exec Command="where pulumi-resource-pulumi-nodejs.cmd"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
+    </Exec>
+
     <Error Text="Please add &quot;$(PulumiRoot)\bin&quot; to your path before running integration tests."
            Condition="$(WhereLangHostExitCode) != 0 Or $(WhereLangHostExecExitCode) != 0"/>
 
