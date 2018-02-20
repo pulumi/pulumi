@@ -259,7 +259,7 @@ func GetPlugins() ([]PluginInfo, error) {
 // plugin for that given kind/name pair is loaded, using standard semver sorting rules.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
 	// First look on the path.  This supports development scenarios where we want to make it easy to override.
-	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).File()
+	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 	if path, err := exec.LookPath(filename); err == nil {
 		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s", kind, name, version, path)
 		return "", path, nil
