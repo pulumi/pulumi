@@ -29,10 +29,9 @@ build::
 	cp -R ../proto/nodejs/. proto/
 	cd runtime/native && node-gyp build
 	tsc
-	cp README.md ../../LICENSE package.json bin/
-	cp ./dist/* bin/
-	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" bin/version.js bin/package.json && \
-		rm bin/version.js.bak bin/package.json.bak
+	cp README.md ../../LICENSE package.json ./dist/* bin/
+	node ../../scripts/reversion.js bin/package.json ${VERSION}
+	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	cp -R proto/. bin/proto/
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;

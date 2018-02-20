@@ -55,8 +55,13 @@
 </Target>
 
   <Target Name="TypeScriptCompileNodeSdk">
-    <Exec Command="yarn run tsc"
-          WorkingDirectory="$(NodeJSSdkDirectory)" />
+    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
+    <Exec Command="yarn run tsc" WorkingDirectory="$(NodeJSSdkDirectory)" />
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json" DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
+    <Exec Command="node $(RepoRootDirectory)\scripts\reversion.js $(NodeJSSdkDirectory)\bin\package.json $(Version)" />
+    <Exec Command="node $(RepoRootDirectory)\scripts\reversion.js $(NodeJSSdkDirectory)\bin\version.js $(Version)" />
   </Target>
 
   <Target Name="GoCompileNodeSdk">
@@ -102,8 +107,6 @@
   </Target>
 
   <Target Name="YarnLinkSdk">
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json"
-          DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
     <Exec Command="yarn link"
           WorkingDirectory="$(NodeJSSdkDirectory)\bin" />
   </Target>
