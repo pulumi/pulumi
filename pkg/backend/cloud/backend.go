@@ -287,7 +287,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	contract.Assertf(ok, "unsupported update kind: %v", action)
 	fmt.Printf(
 		colors.ColorizeText(
-			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+" ☁️\n"),
+			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
 		actionLabel, stackName)
 
 	// First create the update object.
@@ -664,7 +664,7 @@ func (b *cloudBackend) waitForUpdate(action string,
 }
 
 func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
-	prefix := fmt.Sprintf("✨ %s...", action)
+	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
 
 	defer func() {

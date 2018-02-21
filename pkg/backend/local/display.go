@@ -19,7 +19,7 @@ import (
 // await all the events being written.
 func displayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
-	prefix := fmt.Sprintf("✨ %s...", action)
+	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
 
 	defer func() {

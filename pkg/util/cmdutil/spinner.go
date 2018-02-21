@@ -16,7 +16,12 @@ import (
 // dot on each tick and updates slowly.
 func NewSpinnerAndTicker(prefix string, ttyFrames []string) (Spinner, *time.Ticker) {
 	if ttyFrames == nil {
-		ttyFrames = DefaultSpinFrames
+		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
+		if Emoji {
+			ttyFrames = DefaultEmojiSpinFrames
+		} else {
+			ttyFrames = DefaultASCIISpinFrames
+		}
 	}
 
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
@@ -42,8 +47,14 @@ type Spinner interface {
 }
 
 var (
-	// DefaultSpinFrames is the default set of symbols to show while spinning in a TTY setting.
-	DefaultSpinFrames = []string{"⠋", "⠙", "⠚", "⠒", "⠂", "⠂", "⠒", "⠲", "⠴", "⠦", "⠖", "⠒", "⠐", "⠐", "⠒", "⠓", "⠋"}
+	// DefaultASCIISpinFrames is the default set of symbols to show while spinning in an ASCII TTY setting.
+	DefaultASCIISpinFrames = []string{
+		"|", "/", "-", "\\",
+	}
+	// DefaultEmojiSpinFrames is the default set of symbols to show while spinning in a Unicode-enabled TTY setting.
+	DefaultEmojiSpinFrames = []string{
+		"⠋", "⠙", "⠚", "⠒", "⠂", "⠂", "⠒", "⠲", "⠴", "⠦", "⠖", "⠒", "⠐", "⠐", "⠒", "⠓", "⠋",
+	}
 )
 
 // ttySpinner is the spinner that can be used when standard out is a tty. When we are connected to a TTY we can erase
