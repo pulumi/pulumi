@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
+
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
 // recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
 // be used as a last resort when a command absolutely must be run.
@@ -242,6 +244,46 @@ func backupTarget(file string) string {
 	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
+}
+
+// backupStack copies the current Checkpoint file to ~/.pulumi/backups.
+func backupStack(name tokens.QName) error {
+	contract.Require(name != "", "name")
+
+	// Exit early if backups are disabled.
+	if cmdutil.IsTruthy(os.Getenv(DisableCheckpointBackupsEnvVar)) {
+		return nil
+	}
+
+	w, err := workspace.New()
+	if err != nil {
+		return err
+	}
+
+	// Read the current checkpoint file. (Assuming it aleady exists.)
+	stackPath := w.StackPath(name)
+	b, err := ioutil.ReadFile(stackPath)
+	if err != nil {
+		return err
+	}
+
+	// Get the backup directory.
+	backupDir, err := w.BackupDirectory()
+	if err != nil {
+		return err
+	}
+
+	// Ensure the backup directory exists.
+	if err = os.MkdirAll(backupDir, 0700); err != nil {
+		return err
+	}
+
+	// Write out the new backup checkpoint file.
+	stackFile := filepath.Base(stackPath)
+	ext := filepath.Ext(stackFile)
+	base := strings.TrimSuffix(stackFile, ext)
+	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
+	return ioutil.WriteFile(filepath.Join(backupDir, backupFile), b, 0600)
 }
 
 // getHistory returns locally stored update history. The first element of the result will be

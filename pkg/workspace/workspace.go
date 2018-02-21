@@ -3,15 +3,19 @@
 package workspace
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // W offers functionality for interacting with Pulumi workspaces.
@@ -19,6 +23,7 @@ type W interface {
 	Settings() *Settings                        // returns a mutable pointer to the optional workspace settings info.
 	Repository() *Repository                    // returns the repository this project belongs to.
 	StackPath(stack tokens.QName) string        // returns the path to store stack information.
+	BackupDirectory() (string, error)           // returns the directory to store backup stack files.
 	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
 	Project() (*Project, error)                 // returns a copy of the project associated with this workspace.
 	Save() error                                // saves any modifications to the workspace.
@@ -122,6 +127,18 @@ func (pw *projectWorkspace) StackPath(stack tokens.QName) string {
 	return path
 }
 
+func (pw *projectWorkspace) BackupDirectory() (string, error) {
+	user, err := user.Current()
+	if user == nil || err != nil {
+		return "", errors.New("failed to get current user")
+	}
+
+	projectDir := filepath.Dir(pw.project)
+	projectBackupDirName := filepath.Base(projectDir) + "-" + sha1HexString(projectDir)
+
+	return filepath.Join(user.HomeDir, BookkeepingDir, BackupDir, projectBackupDirName), nil
+}
+
 func (pw *projectWorkspace) HistoryDirectory(stack tokens.QName) string {
 	path := filepath.Join(pw.Repository().Root, HistoryDir, pw.name.String())
 	if stack != "" {
@@ -155,6 +172,14 @@ func (pw *projectWorkspace) readSettings() error {
 
 func (pw *projectWorkspace) settingsPath() string {
 	return filepath.Join(pw.Repository().Root, WorkspaceDir, pw.name.String(), WorkspaceFile)
+}
+
+// sha1HexString returns a hex string of the sha1 hash of value.
+func sha1HexString(value string) string {
+	h := sha1.New()
+	_, err := h.Write([]byte(value))
+	contract.AssertNoError(err)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // qnamePath just cleans a name and makes sure it's appropriate to use as a path.

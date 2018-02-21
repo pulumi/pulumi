@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -274,6 +275,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
+	// backups of test stacks.
+	if err := os.Setenv(local.DisableCheckpointBackupsEnvVar, "1"); err != nil {
+		t.Errorf("error setting env var '%s': %v", local.DisableCheckpointBackupsEnvVar, err)
+	}
+
 	t.Parallel()
 
 	// If the test panics, recover and log instead of letting the panic escape the test. Even though *this* test will
