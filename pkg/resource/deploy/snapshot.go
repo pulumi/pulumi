@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
@@ -25,10 +25,10 @@ type Snapshot struct {
 
 // Manifest captures versions for all binaries used to construct this snapshot.
 type Manifest struct {
-	Time    time.Time     // the time this snapshot was taken.
-	Magic   string        // a magic cookie.
-	Version string        // the pulumi command version.
-	Plugins []plugin.Info // the plugin versions also loaded.
+	Time    time.Time              // the time this snapshot was taken.
+	Magic   string                 // a magic cookie.
+	Version string                 // the pulumi command version.
+	Plugins []workspace.PluginInfo // the plugin versions also loaded.
 }
 
 // NewMagic creates a magic cookie out of a manifest; this can be used to check for tampering.  This ignores

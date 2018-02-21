@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each
@@ -43,7 +44,7 @@ type Provider interface {
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (Info, error)
+	GetPluginInfo() (workspace.PluginInfo, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

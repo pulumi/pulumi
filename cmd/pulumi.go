@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/golang/glog"
@@ -54,7 +55,7 @@ func NewPulumiCmd() *cobra.Command {
 		contract.IgnoreError(logErr) // we want to make progress anyway.
 		if len(loggedInto) > 0 {
 			fmt.Printf("\n")
-			fmt.Printf("Currently logged into the Pulumi Cloud ☁️\n")
+			fmt.Printf("Currently logged into the Pulumi Cloud%s\n", cmdutil.EmojiOr(" ☁️", ""))
 			for _, be := range loggedInto {
 				var marker string
 				if be.Name() == current {
@@ -66,6 +67,8 @@ func NewPulumiCmd() *cobra.Command {
 	})
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
+	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e",
+		runtime.GOOS == "darwin", "Enable emojis in the output")
 	cmd.PersistentFlags().BoolVar(&local.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
@@ -76,13 +79,14 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newStackCmd())
-	cmd.AddCommand(newPreviewCmd())
-	cmd.AddCommand(newUpdateCmd())
-	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newLogsCmd())
-	cmd.AddCommand(newHistoryCmd())
+	cmd.AddCommand(newPluginCmd())
+	cmd.AddCommand(newPreviewCmd())
+	cmd.AddCommand(newStackCmd())
+	cmd.AddCommand(newUpdateCmd())
+	cmd.AddCommand(newVersionCmd())
 
 	// Commands specific to the Pulumi Cloud Management Console.
 	cmd.AddCommand(newLoginCmd())
@@ -103,15 +107,19 @@ func NewPulumiCmd() *cobra.Command {
 	return cmd
 }
 
-func confirmPrompt(msg string, name string) bool {
-	prompt := fmt.Sprintf(msg, name)
-	fmt.Print(
-		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
-	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
-	reader := bufio.NewReader(os.Stdin)
-	if line, _ := reader.ReadString('\n'); strings.TrimSpace(line) != name {
-		fmt.Fprintf(os.Stderr, "Confirmation declined -- exiting without doing anything\n")
-		return false
+func confirmPrompt(prompt string, name string) bool {
+	if prompt != "" {
+		fmt.Print(
+			colors.ColorizeText(
+				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
 	}
-	return true
+
+	fmt.Print(
+		colors.ColorizeText(
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
+				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
+
+	reader := bufio.NewReader(os.Stdin)
+	line, _ := reader.ReadString('\n')
+	return strings.TrimSpace(line) == name
 }

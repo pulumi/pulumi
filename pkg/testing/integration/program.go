@@ -19,8 +19,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -275,6 +275,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
+	// backups of test stacks.
+	if err := os.Setenv(local.DisableCheckpointBackupsEnvVar, "1"); err != nil {
+		t.Errorf("error setting env var '%s': %v", local.DisableCheckpointBackupsEnvVar, err)
+	}
+
 	t.Parallel()
 
 	// If the test panics, recover and log instead of letting the panic escape the test. Even though *this* test will
@@ -803,12 +809,12 @@ func (pt *programTester) prepareProject(projectDir string) error {
 
 	// Load up the package so we can run Yarn in the correct location.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
-	pkg, err := pack.Load(projfile)
+	proj, err := workspace.LoadProject(projfile)
 	if err != nil {
 		return err
 	}
-	pkginfo := &engine.Pkginfo{Pkg: pkg, Root: projectDir}
-	cwd, _, err := pkginfo.GetPwdMain()
+	projinfo := &engine.Projinfo{Proj: proj, Root: projectDir}
+	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
 		return err
 	}

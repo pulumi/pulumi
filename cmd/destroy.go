@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -39,15 +41,15 @@ func newDestroyCmd() *cobra.Command {
 			"loaded from the associated snapshot file in the workspace.  After running to completion,\n" +
 			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
-			"Warning: although old snapshots can be used to recreate an stack, this command\n" +
+			"Warning: although old snapshots can be used to recreate a stack, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack))
+			s, err := requireStack(tokens.QName(stack), false)
 			if err != nil {
 				return err
 			}
-			pkg, root, err := readPackage()
+			proj, root, err := readProject()
 			if err != nil {
 				return err
 			}
@@ -57,22 +59,22 @@ func newDestroyCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			if preview || yes ||
-				confirmPrompt("This will permanently destroy all resources in the '%v' stack!", string(s.Name())) {
-				return s.Destroy(pkg, root, debug, m, engine.UpdateOptions{
-					Analyzers:            analyzers,
-					DryRun:               preview,
-					Parallel:             parallel,
-					ShowConfig:           showConfig,
-					ShowReplacementSteps: showReplacementSteps,
-					ShowSames:            showSames,
-					Summary:              summary,
-				}, backend.DisplayOptions{
-					Color: color.Colorization(),
-				})
+			prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
+			if !preview && !yes && !confirmPrompt(prompt, string(s.Name())) {
+				return errors.New("confirmation declined")
 			}
 
-			return nil
+			return s.Destroy(proj, root, debug, m, engine.UpdateOptions{
+				Analyzers:            analyzers,
+				DryRun:               preview,
+				Parallel:             parallel,
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSames:            showSames,
+				Summary:              summary,
+			}, backend.DisplayOptions{
+				Color: color.Colorization(),
+			})
 		}),
 	}
 
@@ -81,7 +83,7 @@ func newDestroyCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Choose a stack other than the currently selected one")
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with the destruction anyway")

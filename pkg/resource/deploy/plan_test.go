@@ -5,6 +5,7 @@ package deploy
 import (
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // TestNullPlan creates a plan with no operations.
@@ -83,7 +85,7 @@ func (src *errorSource) Close() error {
 	return nil // nothing to do.
 }
 
-func (src *errorSource) Pkg() tokens.PackageName {
+func (src *errorSource) Project() tokens.PackageName {
 	return ""
 }
 
@@ -117,7 +119,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	// Create a context that the snapshots and plan will use.
 	pkg := tokens.Package("testcrud")
 	ctx, err := plugin.NewContext(cmdutil.Diag(), &testProviderHost{
-		provider: func(propkg tokens.Package) (plugin.Provider, error) {
+		provider: func(propkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 			if propkg != pkg {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
 			}
@@ -342,8 +344,8 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 
 type testProviderHost struct {
 	analyzer func(nm tokens.QName) (plugin.Analyzer, error)
-	provider func(pkg tokens.Package) (plugin.Provider, error)
-	langhost func(runtime string, monitorAddr string) (plugin.LanguageRuntime, error)
+	provider func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error)
+	langhost func(runtime string) (plugin.LanguageRuntime, error)
 }
 
 func (host *testProviderHost) Close() error {
@@ -365,14 +367,20 @@ func (host *testProviderHost) ReadLocations(tok tokens.Token) (resource.Property
 func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.analyzer(nm)
 }
-func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, error) {
-	return host.provider(pkg)
+func (host *testProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	return host.provider(pkg, version)
 }
-func (host *testProviderHost) LanguageRuntime(runtime string, monitorAddr string) (plugin.LanguageRuntime, error) {
-	return host.langhost(runtime, monitorAddr)
+func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+	return host.langhost(runtime)
 }
-func (host *testProviderHost) ListPlugins() []plugin.Info {
+func (host *testProviderHost) ListPlugins() []workspace.PluginInfo {
 	return nil
+}
+func (host *testProviderHost) EnsurePlugins(info plugin.ProgInfo) error {
+	return nil
+}
+func (host *testProviderHost) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
+	return nil, nil
 }
 
 type testProvider struct {
@@ -421,8 +429,8 @@ func (prov *testProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.invoke(tok, args)
 }
-func (prov *testProvider) GetPluginInfo() (plugin.Info, error) {
-	return plugin.Info{
+func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+	return workspace.PluginInfo{
 		Name: "testProvider",
 	}, nil
 }

@@ -19,7 +19,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -29,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
+
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
 // recommended, because it could mean proceeding even in the face of a corrupted checkpoint state file, but can
 // be used as a last resort when a command absolutely must be run.
@@ -37,7 +38,7 @@ var DisableIntegrityChecking bool
 // update is an implementation of engine.Update backed by local state.
 type update struct {
 	root   string
-	pkg    *pack.Package
+	proj   *workspace.Project
 	target *deploy.Target
 }
 
@@ -45,8 +46,8 @@ func (u *update) GetRoot() string {
 	return u.root
 }
 
-func (u *update) GetPackage() *pack.Package {
-	return u.pkg
+func (u *update) GetProject() *workspace.Project {
+	return u.proj
 }
 
 func (u *update) GetTarget() *deploy.Target {
@@ -70,10 +71,11 @@ func (m *localStackMutation) End(snapshot *deploy.Snapshot) error {
 		return err
 	}
 
-	return saveStack(stack, config, snapshot)
+	_, err = saveStack(stack, config, snapshot)
+	return err
 }
 
-func (b *localBackend) newUpdate(stackName tokens.QName, pkg *pack.Package, root string) (*update, error) {
+func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
 	// Construct the deployment target.
@@ -85,7 +87,7 @@ func (b *localBackend) newUpdate(stackName tokens.QName, pkg *pack.Package, root
 	// Construct and return a new update.
 	return &update{
 		root:   root,
-		pkg:    pkg,
+		proj:   proj,
 		target: target,
 	}, nil
 }
@@ -112,13 +114,15 @@ func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 }
 
 func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
+	if name == "" {
+		return nil, nil, "", errors.New("invalid empty stack name")
+	}
+
 	// Find a path to the stack file.
 	w, err := workspace.New()
 	if err != nil {
 		return nil, nil, "", err
 	}
-
-	contract.Require(name != "", "name")
 	file := w.StackPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
@@ -157,17 +161,17 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	return chk.Config, snapshot, file, nil
 }
 
-func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) error {
+func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) (string, error) {
 	w, err := workspace.New()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Make a serializable stack and then use the encoder to encode it.
 	file := w.StackPath(name)
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		return errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
+		return "", errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
@@ -175,7 +179,7 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 	chk := stack.SerializeCheckpoint(name, config, snap)
 	b, err := m.Marshal(chk)
 	if err != nil {
-		return errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
 	// Back up the existing file if it already exists.
@@ -183,12 +187,12 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		return errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = ioutil.WriteFile(file, b, 0600); err != nil {
-		return errors.Wrap(err, "An IO error occurred during the current operation")
+		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
 	glog.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)
@@ -196,7 +200,7 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), b, 0600); err != nil {
-			return errors.Wrap(err, "An IO error occurred during the current operation")
+			return "", errors.Wrap(err, "An IO error occurred during the current operation")
 		}
 	}
 
@@ -205,13 +209,13 @@ func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, s
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
 		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
-			return errors.Wrapf(verifyerr,
+			return "", errors.Wrapf(verifyerr,
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s)",
 				file, bck)
 		}
 	}
 
-	return nil
+	return file, nil
 }
 
 // removeStack removes information about a stack from the current workspace.
@@ -240,6 +244,46 @@ func backupTarget(file string) string {
 	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
+}
+
+// backupStack copies the current Checkpoint file to ~/.pulumi/backups.
+func backupStack(name tokens.QName) error {
+	contract.Require(name != "", "name")
+
+	// Exit early if backups are disabled.
+	if cmdutil.IsTruthy(os.Getenv(DisableCheckpointBackupsEnvVar)) {
+		return nil
+	}
+
+	w, err := workspace.New()
+	if err != nil {
+		return err
+	}
+
+	// Read the current checkpoint file. (Assuming it aleady exists.)
+	stackPath := w.StackPath(name)
+	b, err := ioutil.ReadFile(stackPath)
+	if err != nil {
+		return err
+	}
+
+	// Get the backup directory.
+	backupDir, err := w.BackupDirectory()
+	if err != nil {
+		return err
+	}
+
+	// Ensure the backup directory exists.
+	if err = os.MkdirAll(backupDir, 0700); err != nil {
+		return err
+	}
+
+	// Write out the new backup checkpoint file.
+	stackFile := filepath.Base(stackPath)
+	ext := filepath.Ext(stackFile)
+	base := strings.TrimSuffix(stackFile, ext)
+	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
+	return ioutil.WriteFile(filepath.Join(backupDir, backupFile), b, 0600)
 }
 
 // getHistory returns locally stored update history. The first element of the result will be

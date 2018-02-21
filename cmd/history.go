@@ -29,7 +29,7 @@ func newHistoryCmd() *cobra.Command {
 			"This command lists data about previous updates for a stack.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack))
+			s, err := requireStack(tokens.QName(stack), false)
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ func newHistoryCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Choose a stack other than the currently selected one")
 
 	// pulumi/issues/496 tracks adding a --format option across all commands. Rather than expose a partial solution
 	// for just `history`, we put the JSON flag behind an env var so we can use in tests w/o making public.

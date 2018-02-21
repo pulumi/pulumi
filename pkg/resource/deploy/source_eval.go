@@ -11,22 +11,22 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Pkg     *pack.Package `json:"pkg" yaml:"pkg"`                           // the package metadata.
-	Pwd     string        `json:"pwd" yaml:"pwd"`                           // the package's working directory.
-	Program string        `json:"program" yaml:"program"`                   // the path to the program we are executing.
-	Args    []string      `json:"args,omitempty" yaml:"args,omitempty"`     // any arguments to pass to the package.
-	Target  *Target       `json:"target,omitempty" yaml:"target,omitempty"` // the target being deployed into.
+	Proj    *workspace.Project `json:"proj" yaml:"proj"`                         // the package metadata.
+	Pwd     string             `json:"pwd" yaml:"pwd"`                           // the package's working directory.
+	Program string             `json:"program" yaml:"program"`                   // the path to the program.
+	Args    []string           `json:"args,omitempty" yaml:"args,omitempty"`     // any arguments to pass to the package.
+	Target  *Target            `json:"target,omitempty" yaml:"target,omitempty"` // the target being deployed into.
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -55,8 +55,8 @@ func (src *evalSource) Close() error {
 	return nil
 }
 
-func (src *evalSource) Pkg() tokens.PackageName {
-	return src.runinfo.Pkg.Name
+func (src *evalSource) Project() tokens.PackageName {
+	return src.runinfo.Proj.Name
 }
 
 func (src *evalSource) Info() interface{} {
@@ -151,13 +151,12 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 			// Next, launch the language plugin.
 			// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
 			run := func() error {
-				rt := iter.src.runinfo.Pkg.Runtime
-				langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt, iter.mon.Address())
+				rt := iter.src.runinfo.Proj.Runtime
+				langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
 				if err != nil {
-					return errors.Wrapf(err, "failed to launch language host for '%v'", rt)
-				} else if langhost == nil {
-					return errors.Errorf("could not load language plugin for '%v' from $PATH", rt)
+					return errors.Wrapf(err, "failed to launch language host %s", rt)
 				}
+				contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
 				// Make sure to clean up before exiting.
 				defer contract.IgnoreClose(langhost)
@@ -171,14 +170,15 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 				// Now run the actual program.
 				var progerr string
 				progerr, err = langhost.Run(plugin.RunInfo{
-					Stack:    string(iter.src.runinfo.Target.Name),
-					Project:  string(iter.src.runinfo.Pkg.Name),
-					Pwd:      iter.src.runinfo.Pwd,
-					Program:  iter.src.runinfo.Program,
-					Args:     iter.src.runinfo.Args,
-					Config:   config,
-					DryRun:   iter.src.dryRun,
-					Parallel: opts.Parallel,
+					MonitorAddress: iter.mon.Address(),
+					Stack:          string(iter.src.runinfo.Target.Name),
+					Project:        string(iter.src.runinfo.Proj.Name),
+					Pwd:            iter.src.runinfo.Pwd,
+					Program:        iter.src.runinfo.Program,
+					Args:           iter.src.runinfo.Args,
+					Config:         config,
+					DryRun:         iter.src.dryRun,
+					Parallel:       opts.Parallel,
 				})
 				if err == nil && progerr != "" {
 					// If the program had an unhandled error; propagate it to the caller.
@@ -246,8 +246,9 @@ func (rm *resmon) Cancel() error {
 // Invoke performs an invocation of a member located in a resource provider.
 func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider.
+	// TODO: we should be flowing version information about this request, but instead, we'll bind to the latest.
 	tok := tokens.ModuleMember(req.GetTok())
-	prov, err := rm.src.plugctx.Host.Provider(tok.Package())
+	prov, err := rm.src.plugctx.Host.Provider(tok.Package(), nil)
 	if err != nil {
 		return nil, err
 	} else if prov == nil {

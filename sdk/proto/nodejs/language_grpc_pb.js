@@ -20,6 +20,28 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetRequiredPluginsRequest(arg) {
+  if (!(arg instanceof language_pb.GetRequiredPluginsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetRequiredPluginsRequest(buffer_arg) {
+  return language_pb.GetRequiredPluginsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetRequiredPluginsResponse(arg) {
+  if (!(arg instanceof language_pb.GetRequiredPluginsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetRequiredPluginsResponse(buffer_arg) {
+  return language_pb.GetRequiredPluginsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -57,6 +79,19 @@ function deserialize_pulumirpc_RunResponse(buffer_arg) {
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
 var LanguageRuntimeService = exports.LanguageRuntimeService = {
+  // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+  getRequiredPlugins: {
+    path: '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
+    requestStream: false,
+    responseStream: false,
+    requestType: language_pb.GetRequiredPluginsRequest,
+    responseType: language_pb.GetRequiredPluginsResponse,
+    requestSerialize: serialize_pulumirpc_GetRequiredPluginsRequest,
+    requestDeserialize: deserialize_pulumirpc_GetRequiredPluginsRequest,
+    responseSerialize: serialize_pulumirpc_GetRequiredPluginsResponse,
+    responseDeserialize: deserialize_pulumirpc_GetRequiredPluginsResponse,
+  },
+  // Run executes a program and returns its result.
   run: {
     path: '/pulumirpc.LanguageRuntime/Run',
     requestStream: false,

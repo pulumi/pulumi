@@ -11,7 +11,13 @@ GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=Gometalinter.json
 
 TESTPARALLELISM := 10
+
+# Our travis workers are a little show and sometime the fast tests take a little longer
+ifeq ($(TRAVIS),true)
+TEST_FAST_TIMEOUT := 10m
+else
 TEST_FAST_TIMEOUT := 2m
+endif
 
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}

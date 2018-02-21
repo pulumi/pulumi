@@ -1,5 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
+import { RunError } from "../errors";
 import { Resource } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
@@ -30,11 +31,6 @@ export let options: Options = <any>{
 };
 
 /**
- * configured is set to true once configuration has been set.
- */
-let configured: boolean;
-
-/**
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
@@ -45,9 +41,10 @@ export function hasMonitor(): boolean {
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
 export function getMonitor(): Object {
-    if (!configured) {
-        configured = true;
-        console.warn("warning: Pulumi Fabric monitor is missing; no resources will be created");
+    if (!options.monitor) {
+        throw new RunError(
+            "Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?\n" +
+            "This can also happen if you've loaded the Pulumi SDK module multiple times into the same proces");
     }
     return options.monitor;
 }
@@ -65,6 +62,11 @@ export function getEngine(): Object | undefined {
 export function serialize(): boolean {
     return !options.parallel || options.parallel <= 1;
 }
+
+/**
+ * configured is set to true once configuration has been set.
+ */
+let configured: boolean;
 
 /**
  * configure initializes the current resource monitor and engine RPC connections, and whether we are performing a "dry

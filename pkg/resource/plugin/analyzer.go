@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or
@@ -20,7 +21,7 @@ type Analyzer interface {
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (Info, error)
+	GetPluginInfo() (workspace.PluginInfo, error)
 }
 
 // AnalyzeFailure indicates that resource analysis failed; it contains the property and reason for the failure.

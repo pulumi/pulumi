@@ -29,12 +29,12 @@ func newArchiveCommand() *cobra.Command {
 				return errors.New("can't specify --no-default-ignores and --default-ignores at the same time")
 			}
 
-			pkg, programPath, err := workspace.GetPackagePath()
+			proj, path, err := workspace.DetectProjectAndPath()
 			if err != nil {
 				return err
 			}
 
-			useDeafultIgnores := pkg.UseDefaultIgnores()
+			useDeafultIgnores := proj.UseDefaultIgnores()
 
 			if forceDefaultIgnores {
 				useDeafultIgnores = true
@@ -42,9 +42,9 @@ func newArchiveCommand() *cobra.Command {
 				useDeafultIgnores = false
 			}
 
-			// programPath is the path to the Pulumi.yaml file. Need its parent folder.
-			programFolder := filepath.Dir(programPath)
-			archiveContents, err := archive.Process(programFolder, useDeafultIgnores)
+			// path is the path to the Pulumi.yaml file.  Need its parent directory.
+			dir := filepath.Dir(path)
+			archiveContents, err := archive.Process(dir, useDeafultIgnores)
 			if err != nil {
 				return errors.Wrap(err, "creating archive")
 			}

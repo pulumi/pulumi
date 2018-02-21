@@ -2,6 +2,7 @@
 Set-StrictMode -Version 2.0
 $ErrorActionPreference="Stop"
 
+$NodeVersion = "v6.10.2"
 $Root=Join-Path $PSScriptRoot ".."
 $PublishDir=New-Item -ItemType Directory -Path "$env:TEMP\$([System.IO.Path]::GetRandomFileName())"
 $GitHash=$(git rev-parse HEAD)
@@ -28,12 +29,17 @@ function CopyPackage($pathToModule, $moduleName) {
 }
 
 RunGoBuild "github.com/pulumi/pulumi"
-RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs"
+RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
-Copy-Item "$Root\sdk\nodejs\pulumi-langhost-nodejs-exec.cmd" "$PublishDir\bin"
-Copy-Item "$Root\sdk\nodejs\pulumi-provider-pulumi-nodejs.cmd" "$PublishDir\bin"
-Copy-Item "$Root\sdk\nodejs\custom_node\node\node.exe" "$PublishDir\bin\pulumi-langhost-nodejs-node.exe"
+Copy-Item "$Root\sdk\nodejs\dist\pulumi-language-nodejs-exec.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\custom_node\node\node.exe" "$PublishDir\bin\pulumi-language-nodejs-node.exe"
+
+$NodeFolder = "$PublishDir\bin\$NodeVersion"
+New-Item -ItemType Directory -Force -Path $NodeFolder | Out-Null
+Copy-Item "$Root\sdk\nodejs\runtime\native\build\Release\nativeruntime.node" $NodeFolder
+Copy-Item "$Root\sdk\nodejs\runtime\native\build\Release\nativeruntime.pdb" $NodeFolder
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing
 # archive if it exists.

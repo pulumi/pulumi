@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -28,7 +29,7 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireCurrentStack()
+			s, err := requireCurrentStack(true)
 			if err != nil {
 				return err
 			}
@@ -64,12 +65,12 @@ func newStackCmd() *cobra.Command {
 				fmt.Printf("    Pulumi version %s\n", cliver)
 				for _, plugin := range snap.Manifest.Plugins {
 					var plugver string
-					if plugin.Version == "" {
+					if plugin.Version == nil {
 						plugver = "?"
 					} else {
-						plugver = plugin.Version
+						plugver = plugin.Version.String()
 					}
-					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Type, plugver)
+					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Kind, plugver)
 				}
 			} else {
 				fmt.Printf("    No updates yet; run 'pulumi update'\n")
@@ -150,7 +151,23 @@ func printStackOutputs(outputs map[string]interface{}) {
 		sort.Strings(outkeys)
 		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
 		for _, key := range outkeys {
-			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %v\n", key, outputs[key])
+			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
 		}
 	}
+}
+
+// stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case
+// of top level strings, where we just return the raw value.
+func stringifyOutput(v interface{}) string {
+	s, ok := v.(string)
+	if ok {
+		return s
+	}
+
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "error: could not format value"
+	}
+
+	return string(b)
 }

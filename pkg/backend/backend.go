@@ -8,9 +8,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
@@ -22,7 +22,7 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(name tokens.QName) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(name tokens.QName, opts interface{}) error
+	CreateStack(name tokens.QName, opts interface{}) (Stack, error)
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
@@ -34,13 +34,13 @@ type Backend interface {
 	GetStackCrypter(stack tokens.QName) (config.Crypter, error)
 
 	// Preview initiates a preview of the current workspace's contents.
-	Preview(stackName tokens.QName, pkg *pack.Package, root string,
+	Preview(stackName tokens.QName, proj *workspace.Project, root string,
 		debug bool, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(stackName tokens.QName, pkg *pack.Package, root string,
+	Update(stackName tokens.QName, proj *workspace.Project, root string,
 		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Destroy destroys all of this stack's resources.
-	Destroy(stackName tokens.QName, pkg *pack.Package, root string,
+	Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in

@@ -17,7 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -50,14 +49,23 @@ func (b *localBackend) Name() string {
 
 func (b *localBackend) local() {}
 
-func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
+func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (backend.Stack, error) {
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
-	if _, _, _, err := getStack(stackName); err == nil {
-		return errors.Errorf("stack '%v' already exists", stackName)
+	if stackName == "" {
+		return nil, errors.New("invalid empty stack name")
 	}
 
-	return saveStack(stackName, nil, nil)
+	if _, _, _, err := getStack(stackName); err == nil {
+		return nil, errors.Errorf("stack '%s' already exists", stackName)
+	}
+
+	file, err := saveStack(stackName, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return newStack(stackName, file, nil, nil, b), nil
 }
 
 func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
@@ -104,10 +112,10 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return symmetricCrypter(stackName)
 }
 
-func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string, debug bool,
+func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, root string, debug bool,
 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, pkg, root)
+	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
@@ -115,7 +123,7 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug, displayOpts)
+	go displayEvents("previewing", events, done, debug, displayOpts)
 
 	if err = engine.Preview(update, events, opts); err != nil {
 		return err
@@ -127,10 +135,10 @@ func (b *localBackend) Preview(stackName tokens.QName, pkg *pack.Package, root s
 	return nil
 }
 
-func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, pkg, root)
+	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
@@ -138,7 +146,7 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug, displayOpts)
+	go displayEvents("updating", events, done, debug, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
@@ -165,21 +173,27 @@ func (b *localBackend) Update(stackName tokens.QName, pkg *pack.Package, root st
 		ResourceChanges: changes,
 	}
 	var saveErr error
+	var backupErr error
 	if !opts.DryRun {
 		saveErr = addToHistory(stackName, info)
+		backupErr = backupStack(stackName)
 	}
 
 	if updateErr != nil {
-		// We swallow saveErr as it is less important than the updateErr.
+		// We swallow saveErr and backupErr as they are less important than the updateErr.
 		return updateErr
 	}
-	return errors.Wrap(saveErr, "saving update info")
+	if saveErr != nil {
+		// We swallow backupErr as it is less important than the saveErr.
+		return errors.Wrap(saveErr, "saving update info")
+	}
+	return errors.Wrap(backupErr, "saving backup")
 }
 
-func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, pkg, root)
+	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
@@ -187,7 +201,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents(events, done, debug, displayOpts)
+	go displayEvents("destroying", events, done, debug, displayOpts)
 
 	// Perform the destroy
 	start := time.Now().Unix()
@@ -214,15 +228,21 @@ func (b *localBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root s
 		ResourceChanges: changes,
 	}
 	var saveErr error
+	var backupErr error
 	if !opts.DryRun {
 		saveErr = addToHistory(stackName, info)
+		backupErr = backupStack(stackName)
 	}
 
 	if updateErr != nil {
-		// We swallow saveErr as it is less important than the updateErr.
+		// We swallow saveErr and backupErr as they are less important than the updateErr.
 		return updateErr
 	}
-	return errors.Wrap(saveErr, "saving update info")
+	if saveErr != nil {
+		// We swallow backupErr as it is less important than the saveErr.
+		return errors.Wrap(saveErr, "saving update info")
+	}
+	return errors.Wrap(backupErr, "saving backup")
 }
 
 func (b *localBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
@@ -290,7 +310,8 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMess
 		return err
 	}
 
-	return saveStack(stackName, config, snap)
+	_, err = saveStack(stackName, config, snap)
+	return err
 }
 
 func getLocalStacks() ([]tokens.QName, error) {

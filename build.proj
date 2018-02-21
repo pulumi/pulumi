@@ -33,19 +33,40 @@
     <ItemGroup>
       <NodeSdkProtos Include="$(SdkDirectory)\proto\nodejs\**\*" />
     </ItemGroup>
-    
+
     <Copy SourceFiles="@(NodeSdkProtos)"
           DestinationFolder="$(NodeJSSdkDirectory)\proto" />
   </Target>
 
+  <Target Name="ConfigureNativeRuntimeModule"
+          DependsOnTargets="EnsureNodeDependencies">
+    <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
+          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; configure --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node\node.lib"
+          DestinationFiles="$(NativeRuntimeModuleDirectory)\node_dev\$(NodeVersion)\$(NodeArch)\node.lib" />
+  </Target>
+
+  <Target Name="BuildNativeRuntimeModule"
+          DependsOnTargets="ConfigureNativeRuntimeModule">
+    <Exec Command="&quot;$(NodeJSSdkDirectory)\node_modules\.bin\node-gyp.cmd&quot; build --msvs_version $(MSVSVersion) --devdir &quot;$(NativeRuntimeModuleDirectory)\node_dev&quot;"
+          WorkingDirectory="$(NativeRuntimeModuleDirectory)" />
+</Target>
+
   <Target Name="TypeScriptCompileNodeSdk">
-    <Exec Command="yarn run tsc"
-          WorkingDirectory="$(NodeJSSdkDirectory)" />
+    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
+    <Exec Command="yarn run tsc" WorkingDirectory="$(NodeJSSdkDirectory)" />
+    <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json" DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
+    <Exec Command="node $(RepoRootDirectory)\scripts\reversion.js $(NodeJSSdkDirectory)\bin\package.json $(Version)" />
+    <Exec Command="node $(RepoRootDirectory)\scripts\reversion.js $(NodeJSSdkDirectory)\bin\version.js $(Version)" />
   </Target>
 
   <Target Name="GoCompileNodeSdk">
     <ItemGroup>
-      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs" />
+      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" />
     </ItemGroup>
 
     <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
@@ -65,6 +86,17 @@
           DestinationFolder="$(NodeJSSdkDirectory)\bin\proto" />
   </Target>
 
+  <Target Name="BinPlaceNodeSdkNativeRuntimeModule"
+          DependsOnTargets="BuildNativeRuntimeModule">
+    <ItemGroup>
+      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.node" />
+      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.pdb" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(NodeSdkNativeRuntimeModuleFiles)"
+          DestinationFolder="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release" />
+  </Target>
+
   <Target Name="BinPlaceNodeSdkTestData">
     <ItemGroup>
       <NodeSdkTestDataFiles Include="$(NodeJSSdkDirectory)\tests\runtime\langhost\cases\**\*" />
@@ -75,21 +107,21 @@
   </Target>
 
   <Target Name="YarnLinkSdk">
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json"
-          DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
     <Exec Command="yarn link"
           WorkingDirectory="$(NodeJSSdkDirectory)\bin" />
   </Target>
 
   <Target Name="BinPlaceNodeSdk"
-          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node\node.exe" DestinationFiles="$(PulumiBin)\pulumi-langhost-nodejs-node.exe" />
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\pulumi-langhost-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\pulumi-provider-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
+          DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkNativeRuntimeModule;BinPlaceNodeSdkTestData;YarnLinkSdk">
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node\node.exe" DestinationFiles="$(PulumiBin)\pulumi-language-nodejs-node.exe" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-language-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-resource-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime.node" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime.pdb" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
   </Target>
 
   <Target Name="BuildNodeSdk"
-          DependsOnTargets="CopyNodeSdkProtos;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
+          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
   </Target>
 
   <Target Name="BuildGoCmds">
@@ -110,12 +142,17 @@
   </Target>
 
   <Target Name="IntegrationTest">
-    <Exec Command="where pulumi-langhost-nodejs-exec.cmd"
+    <Exec Command="where pulumi-language-nodejs-exec.cmd"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExecExitCode" />
     </Exec>
 
-    <Exec Command="where pulumi-langhost-nodejs"
+    <Exec Command="where pulumi-language-nodejs"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
+    </Exec>
+
+    <Exec Command="where pulumi-resource-pulumi-nodejs.cmd"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
     </Exec>

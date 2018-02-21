@@ -8,11 +8,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // TestProjectMain tests out the ability to override the main entrypoint.
@@ -152,11 +152,11 @@ func TestConfigSave(t *testing.T) {
 	}()
 
 	// Initialize an empty stack.
-	pkgpath := filepath.Join(e.RootPath, "Pulumi.yaml")
-	err := pack.Save(pkgpath, &pack.Package{
+	path := filepath.Join(e.RootPath, "Pulumi.yaml")
+	err := (&workspace.Project{
 		Name:    "testing-config",
 		Runtime: "nodejs",
-	})
+	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("git", "init")
 	e.RunCommand("pulumi", "init")
@@ -206,33 +206,33 @@ func TestConfigSave(t *testing.T) {
 
 	// Finally, check that the project file contains what we expected.
 	cfgkey := func(k string) tokens.ModuleMember { return tokens.ModuleMember("testing-config:config:" + k) }
-	pkg, err := pack.Load(pkgpath)
+	proj, err := workspace.LoadProject(path)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(pkg.Config)) // --all
-	d, ok := pkg.Config[cfgkey("configD")]
+	assert.Equal(t, 2, len(proj.Config)) // --all
+	d, ok := proj.Config[cfgkey("configD")]
 	assert.True(t, ok)
 	dv, err := d.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value4", dv)
-	ee, ok := pkg.Config[cfgkey("configE")]
+	ee, ok := proj.Config[cfgkey("configE")]
 	assert.True(t, ok)
 	ev, err := ee.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value66", ev)
-	assert.Equal(t, 2, len(pkg.Stacks))
-	assert.Equal(t, 2, len(pkg.Stacks["testing-1"].Config))
-	b, ok := pkg.Stacks["testing-1"].Config[cfgkey("configB")]
+	assert.Equal(t, 2, len(proj.Stacks))
+	assert.Equal(t, 2, len(proj.Stacks["testing-1"].Config))
+	b, ok := proj.Stacks["testing-1"].Config[cfgkey("configB")]
 	assert.True(t, ok)
 	bv, err := b.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value2", bv)
-	e2, ok := pkg.Stacks["testing-1"].Config[cfgkey("configE")]
+	e2, ok := proj.Stacks["testing-1"].Config[cfgkey("configE")]
 	assert.True(t, ok)
 	e2v, err := e2.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value55", e2v)
-	assert.Equal(t, 1, len(pkg.Stacks["testing-2"].Config))
-	c, ok := pkg.Stacks["testing-2"].Config[cfgkey("configC")]
+	assert.Equal(t, 1, len(proj.Stacks["testing-2"].Config))
+	c, ok := proj.Stacks["testing-2"].Config[cfgkey("configC")]
 	assert.True(t, ok)
 	cv, err := c.Value(nil)
 	assert.NoError(t, err)

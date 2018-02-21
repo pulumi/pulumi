@@ -21,7 +21,7 @@ func (src *fixedSource) Close() error {
 	return nil // nothing to do.
 }
 
-func (src *fixedSource) Pkg() tokens.PackageName {
+func (src *fixedSource) Project() tokens.PackageName {
 	return src.ctx
 }
 

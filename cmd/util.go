@@ -8,9 +8,12 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
+	"gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
@@ -19,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -46,29 +48,157 @@ func allBackends() ([]backend.Backend, bool) {
 	return backends, len(cloudBackends) > 0
 }
 
-func requireStack(stackName tokens.QName) (backend.Stack, error) {
-	if stackName == "" {
-		return requireCurrentStack()
+// createStack creates a stack with the given name, and selects it as the current.
+func createStack(b backend.Backend, stackName tokens.QName, opts interface{}) (backend.Stack, error) {
+	stack, err := b.CreateStack(stackName, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not create stack")
 	}
+
+	if err = state.SetCurrentStack(stackName); err != nil {
+		return nil, err
+	}
+
+	return stack, nil
+}
+
+// requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
+// the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
+// and we are in an interactive terminal, the user will be prompted to create a new stack.
+func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) {
+	if stackName == "" {
+		return requireCurrentStack(offerNew)
+	}
+
+	// Search all known backends for this stack.
 	bes, _ := allBackends()
 	stack, err := state.Stack(stackName, bes)
 	if err != nil {
 		return nil, err
-	} else if stack == nil {
-		return nil, errors.Errorf("no stack named '%s' found; double check that you're logged in", stackName)
 	}
-	return stack, nil
+	if stack != nil {
+		return stack, err
+	}
+
+	// No stack was found.  If we're in a terminal, prompt to create one.
+	if cmdutil.Interactive() {
+		fmt.Printf("The stack '%s' does not exist.\n", stackName)
+		fmt.Printf("\n")
+		fmt.Printf("It is possible that you aren't logged into the correct cloud where this stack\n")
+		fmt.Printf("has been provisioned.  If that is the case, please press ^C and run `pulumi login`\n")
+		fmt.Printf("to log into the cloud, and then try this operation again.\n")
+		fmt.Printf("\n")
+		_, err = cmdutil.ReadConsole("If instead, you would like to create this stack now, please press <ENTER>")
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO[pulumi/pulumi#816]: right now, we assume that we're creating a local stack.  This is a little
+		//     inconsistent compared to where we are now, but it's closer to where we think we're going.  As
+		//     part of 816, we should tidy this up.
+		b := local.New(cmdutil.Diag())
+		return createStack(b, stackName, nil)
+	}
+
+	return nil, errors.Errorf("no stack named '%s' found; double check that you're logged in", stackName)
 }
 
-func requireCurrentStack() (backend.Stack, error) {
+func requireCurrentStack(offerNew bool) (backend.Stack, error) {
+	// Search for the current stack.
 	bes, _ := allBackends()
 	stack, err := state.CurrentStack(bes)
 	if err != nil {
 		return nil, err
-	} else if stack == nil {
-		return nil, errors.New("no current stack detected; please use `pulumi stack` to `init` or `select` one")
+	} else if stack != nil {
+		return stack, nil
 	}
-	return stack, nil
+
+	// If no current stack exists, and we are interactive, prompt to select or create one.
+	return chooseStack(bes, offerNew)
+}
+
+// chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
+// true, then the option to create an entirely new stack is provided and will create one as desired.
+func chooseStack(bes []backend.Backend, offerNew bool) (backend.Stack, error) {
+	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
+	var chooseStackErr string
+	if offerNew {
+		chooseStackErr = "no stack selected; please use `pulumi stack select` or `pulumi stack init` to choose one"
+	} else {
+		chooseStackErr = "no stack selected; please use `pulumi stack select` to choose one"
+	}
+	if !cmdutil.Interactive() {
+		return nil, errors.New(chooseStackErr)
+	}
+
+	// First create a list and map of stack names.
+	var options []string
+	stacks := make(map[string]backend.Stack)
+	for _, be := range bes {
+		allStacks, err := be.ListStacks()
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not query backend for stacks")
+		}
+		for _, stack := range allStacks {
+			name := string(stack.Name())
+			options = append(options, name)
+			stacks[name] = stack
+		}
+	}
+	sort.Strings(options)
+
+	// If we are offering to create a new stack, add that to the end of the list.
+	newOption := "<create a new stack>"
+	if offerNew {
+		options = append(options, newOption)
+	} else if len(options) == 0 {
+		// If no options are available, we can't offer a choice!
+		return nil, errors.New("this command requires a stack, but there are none; are you logged in?")
+	}
+
+	// If a stack is already selected, make that the default.
+	var current string
+	currStack, currErr := state.CurrentStack(bes)
+	contract.IgnoreError(currErr)
+	if currStack != nil {
+		current = string(currStack.Name())
+	}
+
+	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+	surveycore.QuestionIcon = ""
+	surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+	message := "\rPlease choose a stack"
+	if offerNew {
+		message += ", or create a new one:"
+	} else {
+		message += ":"
+	}
+	message = colors.ColorizeText(colors.BrightWhite + message + colors.Reset)
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message: message,
+		Options: options,
+		Default: current,
+	}, &option, nil); err != nil {
+		return nil, errors.New(chooseStackErr)
+	}
+
+	if option == newOption {
+		stackName, err := cmdutil.ReadConsole("Please enter your desired stack name")
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO[pulumi/pulumi#816]: right now, we assume that we're creating a local stack.  This is a little
+		//     inconsistent compared to where we are now, but it's closer to where we think we're going.  As
+		//     part of 816, we should tidy this up.
+		b := local.New(cmdutil.Diag())
+		return createStack(b, tokens.QName(stackName), nil)
+	}
+
+	return stacks[option], nil
 }
 
 func detectOwnerAndName(dir string) (string, string, error) {
@@ -155,29 +285,31 @@ func trimGitRemoteURL(url string, prefix string, suffix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
 }
 
-// readPackage attempts to detect and read the package for the current workspace. If an error occurs, it will be
-// printed to Stderr, and the returned value will be nil. If the package is successfully detected and read, it
-// is returned along with the path to its containing directory, which will be used as the root of the package's
+// readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
+// printed to Stderr, and the returned value will be nil. If the project is successfully detected and read, it
+// is returned along with the path to its containing directory, which will be used as the root of the project's
 // Pulumi program.
-func readPackage() (*pack.Package, string, error) {
+func readProject() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
 	}
 
 	// Now that we got here, we have a path, so we will try to load it.
-	pkgpath, err := workspace.DetectPackageFrom(pwd)
+	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", errors.Errorf("could not locate a package to load: %v", err)
-	} else if pkgpath == "" {
-		return nil, "", errors.Errorf("could not find Pulumi.yaml (searching upwards from %s)", pwd)
+		return nil, "", errors.Wrapf(err,
+			"could not locate Pulumi.yaml project file (searching upwards from %s)", pwd)
+	} else if path == "" {
+		return nil, "", errors.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s)", pwd)
 	}
-	pkg, err := pack.Load(pkgpath)
+	proj, err := workspace.LoadProject(path)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return pkg, filepath.Dir(pkgpath), nil
+	return proj, filepath.Dir(path), nil
 }
 
 type colorFlag struct {

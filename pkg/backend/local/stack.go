@@ -8,10 +8,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.
@@ -50,19 +50,19 @@ func (s *localStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *localStack) Preview(pkg *pack.Package, root string,
+func (s *localStack) Preview(proj *workspace.Project, root string,
 	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.PreviewStack(s, pkg, root, debug, opts, displayOpts)
+	return backend.PreviewStack(s, proj, root, debug, opts, displayOpts)
 }
 
-func (s *localStack) Update(pkg *pack.Package, root string,
+func (s *localStack) Update(proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.UpdateStack(s, pkg, root, debug, m, opts, displayOpts)
+	return backend.UpdateStack(s, proj, root, debug, m, opts, displayOpts)
 }
 
-func (s *localStack) Destroy(pkg *pack.Package, root string,
+func (s *localStack) Destroy(proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.DestroyStack(s, pkg, root, debug, m, opts, displayOpts)
+	return backend.DestroyStack(s, proj, root, debug, m, opts, displayOpts)
 }
 
 func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

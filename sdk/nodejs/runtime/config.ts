@@ -69,4 +69,3 @@ export function getConfigEnv(): {[key: string]: string} {
     }
     return {};
 }
-

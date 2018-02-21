@@ -17,6 +17,11 @@ class LanguageRuntimeStub(object):
     Args:
       channel: A grpc.Channel.
     """
+    self.GetRequiredPlugins = channel.unary_unary(
+        '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
+        request_serializer=language__pb2.GetRequiredPluginsRequest.SerializeToString,
+        response_deserializer=language__pb2.GetRequiredPluginsResponse.FromString,
+        )
     self.Run = channel.unary_unary(
         '/pulumirpc.LanguageRuntime/Run',
         request_serializer=language__pb2.RunRequest.SerializeToString,
@@ -34,9 +39,16 @@ class LanguageRuntimeServicer(object):
   for confguring and creating resource objects.
   """
 
+  def GetRequiredPlugins(self, request, context):
+    """GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def Run(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
+    """Run executes a program and returns its result.
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -51,6 +63,11 @@ class LanguageRuntimeServicer(object):
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
   rpc_method_handlers = {
+      'GetRequiredPlugins': grpc.unary_unary_rpc_method_handler(
+          servicer.GetRequiredPlugins,
+          request_deserializer=language__pb2.GetRequiredPluginsRequest.FromString,
+          response_serializer=language__pb2.GetRequiredPluginsResponse.SerializeToString,
+      ),
       'Run': grpc.unary_unary_rpc_method_handler(
           servicer.Run,
           request_deserializer=language__pb2.RunRequest.FromString,

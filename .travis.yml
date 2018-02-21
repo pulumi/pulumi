@@ -10,45 +10,14 @@ sudo: true # give us 7.5GB and >2 bursted cores.
 git:
   depth: false
 before_install:
-    - export PULUMI_ROOT=/opt/pulumi
-    # on OSX, /opt/ is not writeable by normal users, so we create /opt/pulumi as root and take ownership of it
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then sudo mkdir /opt/pulumi && sudo chown $USER /opt/pulumi; fi
-    # Dep for Go dependency management.
-    - go get -v github.com/golang/dep/cmd/dep
-    # Gometalinter for good Go linting/hygiene.
-    - go get -v github.com/alecthomas/gometalinter
-    - gometalinter --install
-    # gocovmerge for Go code coverage.
-    - go get -v github.com/wadey/gocovmerge
-    # Node.js 6.10.2 for all JavaScript code (to match AWS Lambda).
-    - nvm install v6.10.2
-    # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
-    - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.2.1
-    - export PATH=$HOME/.yarn/bin:$PATH
-    # Ensure that we can access Pulumi's private NPM org.
-    - echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
-    # On OSX, the place pip installs user commands to is not on the $PATH and also pip is called pip2.7
-    - export PIP=pip
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=$PATH:$HOME/Library/Python/2.7/bin; export PIP=pip2.7; fi
-    # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
-    - $PIP install --upgrade --user awscli
-    - export PULUMI_FAILED_TESTS_DIR=$(mktemp -d); echo "${PULUMI_FAILED_TESTS_DIR}"
+    - source ./build/travis/prepare-environment.sh
 install:
-    # Clone the Pulumi-wide repo so we can use its scripts.
-    - git clone git@github.com:pulumi/home ${GOPATH}/src/github.com/pulumi/home
-    - make ensure
+    - source ./build/travis/install-common-toolchain.sh
 before_script:
-    # Ensure the working tree is clean (make ensure may have updated lock files)
-    - ${GOPATH}/src/github.com/pulumi/home/scripts/check-worktree-is-clean.sh
-    # Set stdout back to blocking to avoid problems writing large outputs.
-    # The call to `nvm` above may have changed it.
-    # https://github.com/pulumi/pulumi-ppc/issues/176
-    - python -c 'import fcntl, os, sys; flags = fcntl.fcntl(sys.stdout, fcntl.F_GETFL); print("stdout was " + ("nonblocking" if flags & os.O_NONBLOCK else "blocking")); fcntl.fcntl(sys.stdout, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)'
+    - ./build/travis/ensure-dependencies
 script:
-    - make travis_${TRAVIS_EVENT_TYPE} TEST_FAST_TIMEOUT=10m
+    - make travis_${TRAVIS_EVENT_TYPE}
 after_failure:
-    # Copy any data from failed tests to S3.
-    - aws --region us-west-2 s3 cp --recursive "${PULUMI_FAILED_TESTS_DIR}" "s3://eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/failures"
-    - echo "one or more tests failed, to view detailed failure information, visit https://s3.console.aws.amazon.com/s3/buckets/eng.pulumi.com/travis-logs/${TRAVIS_REPO_SLUG}/${TRAVIS_JOB_NUMBER}/failures/"
+    - ./build/travis/upload-failure-logs
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis

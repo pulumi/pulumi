@@ -10,19 +10,21 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/pack"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-type Pkginfo struct {
-	Pkg  *pack.Package
+type Projinfo struct {
+	Proj *workspace.Project
 	Root string
 }
 
 // GetPwdMain returns the working directory and main entrypoint to use for this package.
-func (pkginfo *Pkginfo) GetPwdMain() (string, string, error) {
-	pwd := pkginfo.Root
-	main := pkginfo.Pkg.Main
-	if main != "" {
+func (projinfo *Projinfo) GetPwdMain() (string, string, error) {
+	pwd := projinfo.Root
+	main := projinfo.Proj.Main
+	if main == "" {
+		main = "."
+	} else {
 		// The path must be relative from the package root.
 		if filepath.IsAbs(main) {
 			return "", "", errors.New("project 'main' must be a relative path")
@@ -43,11 +45,12 @@ func (pkginfo *Pkginfo) GetPwdMain() (string, string, error) {
 		}
 		if maininfo.IsDir() {
 			pwd = main
-			main = ""
+			main = "."
 		} else {
 			pwd = filepath.Dir(main)
 			main = filepath.Base(main)
 		}
 	}
+
 	return pwd, main, nil
 }

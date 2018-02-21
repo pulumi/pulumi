@@ -3,6 +3,7 @@
 import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
 import * as ts from "typescript";
+import { RunError } from "../errors";
 import * as log from "../log";
 import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
@@ -10,12 +11,33 @@ import { debuggablePromise } from "./debuggable";
 // Our closure serialization code links against v8 internals. On Windows,
 // we can't dynamically link against v8 internals because their symbols are
 // unexported. In order to address this problem, Pulumi programs run on a
-// custom build of Node that has our closure serialization code as a built-in
-// module called "pulumi_closure".
+// custom build of Node.
 //
-// `process.binding` invokes the Node bootstrap module loader in order to
-// get to our builtin module.
-const nativeruntime = (<any>process).binding("pulumi_closure");
+// On Linux and OSX, we can dynamically link against v8 internals, so we can run
+// on stock Node. However, we only build nativeruntime.node against specific versions
+// of Node, users running Pulumi programs must explicitly use a supported version
+// of Node.
+const supportedNodeVersions = ["v6.10.2"];
+let nativeruntime: any;
+try {
+    nativeruntime = require("nativeruntime.node");
+}
+catch (err) {
+    // There are two reasons why this can happen:
+    //   1. We messed up when packaging Pulumi and failed to include nativeruntime.node,
+    //   2. A user is running their Pulumi program with a version of Node that we do not explicitly support.
+    const thisNodeVersion = process.version;
+    if (supportedNodeVersions.indexOf(thisNodeVersion) > -1) {
+        // This node version is explicitly supported, but the load still failed.
+        // This means that Pulumi messed up when installing itself.
+        throw new RunError(`Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
+    }
+
+    throw new RunError(
+        `Failed to load custom Pulumi SDK Node.js extension; The version of Node.js that you are
+         using (${thisNodeVersion}) is not explicitly supported, you must use one of these
+         supported versions of Node.js: ${supportedNodeVersions}`);
+}
 
 /**
  * Closure represents the serialized form of a JavaScript serverless function.

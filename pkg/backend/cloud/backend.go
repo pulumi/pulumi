@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/cheggaaa/pb"
@@ -26,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -41,6 +42,7 @@ import (
 type Backend interface {
 	backend.Backend
 	CloudURL() string
+	DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
 }
 
 type cloudBackend struct {
@@ -55,6 +57,52 @@ func New(d diag.Sink, cloudURL string) Backend {
 
 func (b *cloudBackend) Name() string     { return b.cloudURL }
 func (b *cloudBackend) CloudURL() string { return b.cloudURL }
+
+// DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
+// that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
+// is true, the download will display a progress bar using stdout.
+func (b *cloudBackend) DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error) {
+	// Figure out the OS/ARCH pair for the download URL.
+	var os string
+	switch runtime.GOOS {
+	case "darwin", "linux", "windows":
+		os = runtime.GOOS
+	default:
+		return nil, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
+	}
+	var arch string
+	switch runtime.GOARCH {
+	case "amd64":
+		arch = runtime.GOARCH
+	default:
+		return nil, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
+	}
+
+	// Now make the GET request.
+	endpoint := fmt.Sprintf("/releases/plugins/pulumi-%s-%s-v%s-%s-%s.tar.gz",
+		info.Kind, info.Name, info.Version, os, arch)
+	_, resp, err := pulumiAPICall(b.cloudURL, "GET", endpoint, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to download plugin")
+	}
+
+	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
+	result := resp.Body
+	if progress && resp.ContentLength != -1 {
+		bar := pb.New(int(resp.ContentLength))
+		result = bar.NewProxyReader(result)
+		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading plugin: "))
+		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.SetMaxWidth(80)
+		bar.SetUnits(pb.U_BYTES)
+		bar.Start()
+		defer func() {
+			bar.Finish()
+		}()
+	}
+
+	return result, nil
+}
 
 func (b *cloudBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
 	// IDEA: query the stack directly instead of listing them.
@@ -76,10 +124,10 @@ type CreateStackOptions struct {
 	CloudName string
 }
 
-func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) error {
+func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (backend.Stack, error) {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var cloudName string
@@ -87,24 +135,31 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) err
 		if cloudOpts, ok := opts.(CreateStackOptions); ok {
 			cloudName = cloudOpts.CloudName
 		} else {
-			return errors.New("expected a CloudStackOptions value for opts parameter")
+			return nil, errors.New("expected a CloudStackOptions value for opts parameter")
 		}
 	}
 
+	stack := apitype.Stack{
+		CloudName:   cloudName,
+		StackName:   stackName,
+		OrgName:     projID.Owner,
+		RepoName:    projID.Repository,
+		ProjectName: string(projID.Project),
+	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,
 		StackName: string(stackName),
 	}
 
 	var createStackResp apitype.CreateStackResponseByName
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks", stack.OrgName, stack.RepoName, stack.ProjectName)
 	if err := pulumiRESTCall(b.cloudURL, "POST", path, nil, &createStackReq, &createStackResp); err != nil {
-		return err
+		return nil, err
 	}
 	fmt.Printf("Created stack '%s' hosted in Pulumi Cloud PPC %s\n",
 		stackName, createStackResp.CloudName)
 
-	return nil
+	return newStack(stack, b), nil
 }
 
 func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
@@ -132,7 +187,7 @@ func (b *cloudBackend) RemoveStack(stackName tokens.QName, force bool) (bool, er
 	if force {
 		queryParam = "?force=true"
 	}
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s%s",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s%s",
 		projID.Owner, projID.Repository, projID.Project, string(stackName), queryParam)
 
 	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
@@ -152,7 +207,7 @@ func (c *cloudCrypter) EncryptValue(plaintext string) (string, error) {
 		return "", err
 	}
 
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/encrypt",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/encrypt",
 		projID.Owner, projID.Repository, projID.Project, c.stackName)
 
 	var resp apitype.EncryptValueResponse
@@ -174,7 +229,7 @@ func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
 		return "", err
 	}
 
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/decrypt",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/decrypt",
 		projID.Owner, projID.Repository, projID.Project, c.stackName)
 
 	var resp apitype.DecryptValueResponse
@@ -198,43 +253,41 @@ const (
 	destroy updateKind = "destroy"
 )
 
-func (b *cloudBackend) Preview(stackName tokens.QName, pkg *pack.Package, root string,
+var actionLabels = map[string]string{
+	string(update):  "Updating",
+	string(preview): "Previewing",
+	string(destroy): "Destroying",
+	"import":        "Importing",
+}
+
+func (b *cloudBackend) Preview(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	return b.updateStack(preview, stackName, pkg, root, debug, backend.UpdateMetadata{}, opts, displayOpts)
 }
 
-func (b *cloudBackend) Update(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	return b.updateStack(update, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
-func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	return b.updateStack(destroy, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *pack.Package, root string,
+func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pkg *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
-	var actionLabel string
-	switch action {
-	case update:
-		actionLabel = "Updating"
-	case preview:
-		actionLabel = "Previewing"
-	case destroy:
-		actionLabel = "Destroying"
-	default:
-		contract.Failf("unsupported update kind: %v", action)
-	}
+	actionLabel, ok := actionLabels[string(action)]
+	contract.Assertf(ok, "unsupported update kind: %v", action)
 	fmt.Printf(
 		colors.ColorizeText(
-			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+" ☁️\n"),
+			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
 		actionLabel, stackName)
 
 	// First create the update object.
@@ -254,7 +307,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 
 	// Generate the URL we'll use for all the REST calls.
 	restURLRoot := fmt.Sprintf(
-		"/orgs/%s/programs/%s/%s/stacks/%s/%s",
+		"/api/orgs/%s/programs/%s/%s/stacks/%s/%s",
 		projID.Owner, projID.Repository, projID.Project, string(stackName), action)
 
 	// Create the initial update object.
@@ -283,7 +336,7 @@ func (b *cloudBackend) updateStack(action updateKind, stackName tokens.QName, pk
 	}
 
 	// Wait for the update to complete, which also polls and renders event output to STDOUT.
-	status, err := b.waitForUpdate(restURLWithUpdateID, displayOpts)
+	status, err := b.waitForUpdate(actionLabel, restURLWithUpdateID, displayOpts)
 	if err != nil {
 		return errors.Wrapf(err, "waiting for %s", action)
 	} else if status != apitype.StatusSucceeded {
@@ -344,7 +397,7 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 	}
 
 	var response apitype.GetHistoryResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/history",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/updates",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
 	if err = pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &response); err != nil {
 		return nil, err
@@ -415,7 +468,7 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	}
 
 	var response apitype.LogsResult
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/logs",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/logs",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
 	if err = pulumiRESTCall(b.cloudURL, "GET", path, logQuery, nil, &response); err != nil {
 		return nil, err
@@ -436,7 +489,7 @@ func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage
 	}
 
 	var response apitype.ExportStackResponse
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s/export",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/export",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
 	if err := pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &response); err != nil {
 		return nil, err
@@ -451,7 +504,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment json.
 		return err
 	}
 
-	stackPath := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks/%s",
+	stackPath := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
 
 	request := apitype.ImportStackRequest{Deployment: deployment}
@@ -462,7 +515,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment json.
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	importPath := fmt.Sprintf("%s/update/%s", stackPath, response.UpdateID)
-	status, err := b.waitForUpdate(importPath, backend.DisplayOptions{Color: colors.Always})
+	status, err := b.waitForUpdate(actionLabels["import"], importPath, backend.DisplayOptions{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")
 	} else if status != apitype.StatusSucceeded {
@@ -480,7 +533,7 @@ func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
 
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
-	path := fmt.Sprintf("/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks", projID.Owner, projID.Repository, projID.Project)
 	if err := pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &stacks); err != nil {
 		return nil, err
 	}
@@ -495,12 +548,7 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 		return nil, err
 	}
 
-	path, err := workspace.DetectPackage()
-	if err != nil {
-		return nil, err
-	}
-
-	pkg, err := pack.Load(path)
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return nil, err
 	}
@@ -509,12 +557,12 @@ func getCloudProjectIdentifier() (*cloudProjectIdentifier, error) {
 	return &cloudProjectIdentifier{
 		Owner:      repo.Owner,
 		Repository: repo.Name,
-		Project:    pkg.Name,
+		Project:    proj.Name,
 	}, nil
 }
 
 // makeProgramUpdateRequest constructs the apitype.UpdateProgramRequest based on the local machine state.
-func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, pkg *pack.Package, main string,
+func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *workspace.Project, main string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
@@ -534,12 +582,12 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, pkg *pac
 	}
 
 	description := ""
-	if pkg.Description != nil {
-		description = *pkg.Description
+	if proj.Description != nil {
+		description = *proj.Description
 	}
 	return apitype.UpdateProgramRequest{
-		Name:        string(pkg.Name),
-		Runtime:     pkg.Runtime,
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime,
 		Main:        main,
 		Description: description,
 		Config:      wireConfig,
@@ -573,7 +621,8 @@ type displayEvent struct {
 
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
-func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
+func (b *cloudBackend) waitForUpdate(action string,
+	path string, displayOpts backend.DisplayOptions) (apitype.UpdateStatus, error) {
 	events, done := make(chan displayEvent), make(chan bool)
 	defer func() {
 		events <- displayEvent{Kind: ShutdownEvent, Payload: nil}
@@ -581,7 +630,7 @@ func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOpt
 		close(events)
 		close(done)
 	}()
-	go displayEvents(events, done, displayOpts)
+	go displayEvents(strings.ToLower(action), events, done, displayOpts)
 
 	// Events occur in sequence, filter out all the ones we have seen before in each request.
 	eventIndex := "0"
@@ -614,10 +663,12 @@ func (b *cloudBackend) waitForUpdate(path string, displayOpts backend.DisplayOpt
 	}
 }
 
-func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
-	spinner, ticker := cmdutil.NewSpinnerAndTicker()
+func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
+	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
 
 	defer func() {
+		spinner.Reset()
 		ticker.Stop()
 		done <- true
 	}()
@@ -627,7 +678,6 @@ func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.Di
 		case <-ticker.C:
 			spinner.Tick()
 		case event := <-events:
-			spinner.Reset()
 			if event.Kind == ShutdownEvent {
 				return
 			}
@@ -646,7 +696,10 @@ func displayEvents(events <-chan displayEvent, done chan<- bool, opts backend.Di
 						stream = os.Stdout
 					}
 
-					fmt.Fprint(stream, text)
+					if text != "" {
+						spinner.Reset()
+						fmt.Fprint(stream, text)
+					}
 				}
 			}
 		}
@@ -741,7 +794,7 @@ func isValidAccessToken(cloud, accessToken string) (bool, error) {
 	respObj := struct {
 		Name string `json:"name"`
 	}{}
-	if err := pulumiRESTCallWithAccessToken(cloud, "GET", "/user", nil, nil, &respObj, accessToken); err != nil {
+	if err := pulumiRESTCallToken(cloud, "GET", "/api/user", nil, nil, &respObj, accessToken); err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
 		}

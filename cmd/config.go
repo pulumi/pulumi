@@ -17,7 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/pack"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -37,7 +36,7 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stack, err := requireStack(tokens.QName(stack))
+			stack, err := requireStack(tokens.QName(stack), true)
 			if err != nil {
 				return err
 			}
@@ -66,7 +65,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(*stack))
+			s, err := requireStack(tokens.QName(*stack), true)
 			if err != nil {
 				return err
 			}
@@ -98,7 +97,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(stackName)
+			s, err := requireStack(stackName, true)
 			if err != nil {
 				return err
 			}
@@ -155,7 +154,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(stackName)
+			s, err := requireStack(stackName, true)
 			if err != nil {
 				return err
 			}
@@ -246,29 +245,29 @@ func parseConfigKey(key string) (tokens.ModuleMember, error) {
 	// As a convience, we'll treat any key with no delimiter as if:
 	// <program-name>:config:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		pkg, err := workspace.GetPackage()
+		proj, err := workspace.DetectProject()
 		if err != nil {
 			return "", err
 		}
 
-		return tokens.ParseModuleMember(fmt.Sprintf("%s:config:%s", pkg.Name, key))
+		return tokens.ParseModuleMember(fmt.Sprintf("%s:config:%s", proj.Name, key))
 	}
 
 	return tokens.ParseModuleMember(key)
 }
 
 func prettyKey(key string) string {
-	pkg, err := workspace.GetPackage()
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return key
 	}
 
-	return prettyKeyForPackage(key, pkg)
+	return prettyKeyForProject(key, proj)
 }
 
-func prettyKeyForPackage(key string, pkg *pack.Package) string {
+func prettyKeyForProject(key string, proj *workspace.Project) string {
 	s := key
-	defaultPrefix := fmt.Sprintf("%s:config:", pkg.Name)
+	defaultPrefix := fmt.Sprintf("%s:config:", proj.Name)
 
 	if strings.HasPrefix(s, defaultPrefix) {
 		return s[len(defaultPrefix):]
@@ -370,7 +369,7 @@ func deleteAllStackConfiguration(stackName tokens.QName) error {
 		return err
 	}
 
-	pkg, err := w.GetPackage()
+	proj, err := w.Project()
 	if err != nil {
 		return err
 	}
@@ -382,32 +381,32 @@ func deleteAllStackConfiguration(stackName tokens.QName) error {
 		return err
 	}
 
-	if info, has := pkg.Stacks[stackName]; has {
+	if info, has := proj.Stacks[stackName]; has {
 		info.Config = nil
 		info.EncryptionSalt = ""
-		pkg.Stacks[stackName] = info
+		proj.Stacks[stackName] = info
 	}
 
-	return workspace.SavePackage(pkg)
+	return workspace.SaveProject(proj)
 }
 
 func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
-	pkg, err := workspace.GetPackage()
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return err
 	}
 
 	if stackName == "" {
-		if pkg.Config != nil {
-			delete(pkg.Config, key)
+		if proj.Config != nil {
+			delete(proj.Config, key)
 		}
 	} else {
-		if pkg.Stacks[stackName].Config != nil {
-			delete(pkg.Stacks[stackName].Config, key)
+		if proj.Stacks[stackName].Config != nil {
+			delete(proj.Stacks[stackName].Config, key)
 		}
 	}
 
-	return workspace.SavePackage(pkg)
+	return workspace.SaveProject(proj)
 }
 
 func deleteWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
@@ -424,32 +423,32 @@ func deleteWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMembe
 }
 
 func setProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
-	pkg, err := workspace.GetPackage()
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return err
 	}
 
 	if stackName == "" {
-		if pkg.Config == nil {
-			pkg.Config = make(map[tokens.ModuleMember]config.Value)
+		if proj.Config == nil {
+			proj.Config = make(map[tokens.ModuleMember]config.Value)
 		}
 
-		pkg.Config[key] = value
+		proj.Config[key] = value
 	} else {
-		if pkg.Stacks == nil {
-			pkg.Stacks = make(map[tokens.QName]pack.StackInfo)
+		if proj.Stacks == nil {
+			proj.Stacks = make(map[tokens.QName]workspace.ProjectStack)
 		}
 
-		if pkg.Stacks[stackName].Config == nil {
-			si := pkg.Stacks[stackName]
+		if proj.Stacks[stackName].Config == nil {
+			si := proj.Stacks[stackName]
 			si.Config = make(map[tokens.ModuleMember]config.Value)
-			pkg.Stacks[stackName] = si
+			proj.Stacks[stackName] = si
 		}
 
-		pkg.Stacks[stackName].Config[key] = value
+		proj.Stacks[stackName].Config[key] = value
 	}
 
-	return workspace.SavePackage(pkg)
+	return workspace.SaveProject(proj)
 }
 
 func setWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {

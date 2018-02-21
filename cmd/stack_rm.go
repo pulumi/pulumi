@@ -20,10 +20,10 @@ func newStackRmCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Remove an stack and its configuration",
-		Long: "Remove an stack and its configuration\n" +
+		Short: "Remove a stack and its configuration",
+		Long: "Remove a stack and its configuration\n" +
 			"\n" +
-			"This command removes an stack and its configuration state.  Please refer to the\n" +
+			"This command removes a stack and its configuration state.  Please refer to the\n" +
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
@@ -33,38 +33,35 @@ func newStackRmCmd() *cobra.Command {
 			if len(args) > 0 {
 				stack = tokens.QName(args[0])
 			}
-			s, err := requireStack(stack)
+			s, err := requireStack(stack, false)
 			if err != nil {
 				return err
 			}
 
 			// Ensure the user really wants to do this.
-			if yes ||
-				confirmPrompt("This will permanently remove the '%v' stack!", string(s.Name())) {
-
-				hasResources, err := s.Remove(force)
-				if err != nil {
-					if hasResources {
-						return errors.Errorf(
-							"'%v' still has resources; removal rejected; pass --force to override", s.Name())
-					}
-					return err
-				}
-
-				err = deleteAllStackConfiguration(s.Name())
-				if err != nil {
-					return err
-				}
-
-				msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
-				fmt.Println(colors.ColorizeText(msg))
-
-				if err = state.SetCurrentStack(""); err != nil {
-					return err
-				}
+			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Name())
+			if !yes && !confirmPrompt(prompt, string(s.Name())) {
+				return errors.New("confirmation declined")
 			}
 
-			return nil
+			hasResources, err := s.Remove(force)
+			if err != nil {
+				if hasResources {
+					return errors.Errorf(
+						"'%v' still has resources; removal rejected; pass --force to override", s.Name())
+				}
+				return err
+			}
+
+			err = deleteAllStackConfiguration(s.Name())
+			if err != nil {
+				return err
+			}
+
+			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
+			fmt.Println(colors.ColorizeText(msg))
+
+			return state.SetCurrentStack("")
 		}),
 	}
 

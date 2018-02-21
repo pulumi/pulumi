@@ -5,14 +5,16 @@ package plugin
 import (
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
-
-const LanguagePluginPrefix = "pulumi-langhost-"
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
 type langhost struct {
@@ -24,15 +26,24 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr string) (LanguageRuntime, error) {
-	// Go ahead and attempt to load the plugin from the PATH.
-	srvexe := LanguagePluginPrefix + strings.Replace(runtime, tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, runtime, []string{monitorAddr, host.ServerAddr()})
+func NewLanguageRuntime(host Host, ctx *Context, runtime string) (LanguageRuntime, error) {
+	// Load the plugin's path by using the standard workspace logic.
+	_, path, err := workspace.GetPluginPath(
+		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if plug == nil {
-		return nil, nil
+	} else if path == "" {
+		return nil, NewMissingError(workspace.PluginInfo{
+			Kind: workspace.LanguagePlugin,
+			Name: runtime,
+		})
 	}
+
+	plug, err := newPlugin(ctx, path, runtime, []string{host.ServerAddr()})
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
 
 	return &langhost{
 		ctx:     ctx,
@@ -43,6 +54,48 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string, monitorAddr str
 }
 
 func (h *langhost) Runtime() string { return h.runtime }
+
+// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
+func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
+	proj := string(info.Proj.Name)
+	glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
+		h.runtime, proj, info.Pwd, info.Program)
+	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
+		Project: proj,
+		Pwd:     info.Pwd,
+		Program: info.Program,
+	})
+	if err != nil {
+		glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
+			h.runtime, proj, info.Pwd, info.Program, err)
+		return nil, err
+	}
+
+	var results []workspace.PluginInfo
+	for _, info := range resp.GetPlugins() {
+		var version *semver.Version
+		if v := info.GetVersion(); v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", info.GetName(), v)
+			}
+			version = &sv
+		}
+		if !workspace.IsPluginKind(info.GetKind()) {
+			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
+		}
+		results = append(results, workspace.PluginInfo{
+			Name:    info.GetName(),
+			Kind:    workspace.PluginKind(info.GetKind()),
+			Version: version,
+		})
+	}
+
+	glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
+		h.runtime, proj, info.Pwd, info.Program, len(results))
+	return results, nil
+
+}
 
 // Run executes a program in the language runtime for planning or deployment purposes.  If info.DryRun is true,
 // the code must not assume that side-effects or final values resulting from resource deployments are actually
@@ -55,14 +108,15 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		config[string(k)] = v
 	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		Pwd:      info.Pwd,
-		Program:  info.Program,
-		Args:     info.Args,
-		Project:  info.Project,
-		Stack:    info.Stack,
-		Config:   config,
-		DryRun:   info.DryRun,
-		Parallel: int32(info.Parallel),
+		MonitorAddress: info.MonitorAddress,
+		Pwd:            info.Pwd,
+		Program:        info.Program,
+		Args:           info.Args,
+		Project:        info.Project,
+		Stack:          info.Stack,
+		Config:         config,
+		DryRun:         info.DryRun,
+		Parallel:       int32(info.Parallel),
 	})
 	if err != nil {
 		glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
@@ -77,17 +131,27 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (h *langhost) GetPluginInfo() (Info, error) {
+func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	glog.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		glog.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, err)
-		return Info{}, err
+		return workspace.PluginInfo{}, err
 	}
-	return Info{
+
+	var version *semver.Version
+	if v := resp.Version; v != "" {
+		sv, err := semver.ParseTolerant(v)
+		if err != nil {
+			return workspace.PluginInfo{}, err
+		}
+		version = &sv
+	}
+
+	return workspace.PluginInfo{
 		Name:    h.plug.Bin,
-		Type:    LanguageType,
-		Version: resp.Version,
+		Kind:    workspace.LanguagePlugin,
+		Version: version,
 	}, nil
 }
 

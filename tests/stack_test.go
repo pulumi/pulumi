@@ -3,9 +3,21 @@
 package tests
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/user"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
@@ -130,4 +142,118 @@ func TestStackCommands(t *testing.T) {
 		// cloud:  Stack 'integration-test-59f645ba/pulumi-test/anor-londo' not found
 		assert.Contains(t, err, "anor-londo")
 	})
+}
+
+func TestStackBackups(t *testing.T) {
+	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/stack_outputs")
+
+		// We're testing that backups are created so ensure backups aren't disabled.
+		if env := os.Getenv(local.DisableCheckpointBackupsEnvVar); env != "" {
+			os.Unsetenv(local.DisableCheckpointBackupsEnvVar)
+			defer os.Setenv(local.DisableCheckpointBackupsEnvVar, env)
+		}
+
+		// On macOS, e.RootPath will be something like:
+		//     /var/folders/00/wttg611s0fl_91hpm8ff6g6c0000gn/T/test-env756909896
+		// However, `/var` is actually a symbolic link to `/private/var`.
+		// We evaluate the symbolic links to ensure the root path the test uses is
+		// the same path that `pulumi` commands see.
+		root, err := filepath.EvalSymlinks(e.RootPath)
+		assert.NoError(t, err, "evaluating symbolic links of e.RootPath")
+
+		// Get the path to the backup directory for this project.
+		backupDir, err := getStackProjectBackupDir(root)
+		assert.NoError(t, err, "getting stack project backup path")
+		defer func() {
+			if !t.Failed() {
+				// Cleanup the backup directory.
+				os.RemoveAll(backupDir)
+			}
+		}()
+
+		// Create a stack.
+		const stackName = "imulup"
+		e.RunCommand("pulumi", "stack", "init", "--local", stackName)
+
+		// Build the project.
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "run", "build")
+
+		// Now run pulumi update.
+		before := time.Now().UnixNano()
+		e.RunCommand("pulumi", "update")
+		after := time.Now().UnixNano()
+
+		// Verify the backup directory contains a single backup.
+		files, err := ioutil.ReadDir(backupDir)
+		assert.NoError(t, err, "getting the files in backup directory")
+		assert.Equal(t, 1, len(files))
+		fileName := files[0].Name()
+
+		// Verify the backup file.
+		assertBackupStackFile(t, stackName, files[0], before, after)
+
+		// Now run pulumi destroy.
+		before = time.Now().UnixNano()
+		e.RunCommand("pulumi", "destroy", "--yes")
+		after = time.Now().UnixNano()
+
+		// Verify the backup directory has been updated with 1 additional backups.
+		files, err = ioutil.ReadDir(backupDir)
+		assert.NoError(t, err, "getting the files in backup directory")
+		assert.Equal(t, 2, len(files))
+
+		// Verify the new backup file.
+		for _, file := range files {
+			// Skip the file we previously verified.
+			if file.Name() == fileName {
+				continue
+			}
+
+			assertBackupStackFile(t, stackName, file, before, after)
+		}
+	})
+}
+
+func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
+	assert.False(t, file.IsDir())
+	assert.True(t, file.Size() > 0)
+	split := strings.Split(file.Name(), ".")
+	assert.Equal(t, 3, len(split))
+	assert.Equal(t, stackName, split[0])
+	parsedTime, err := strconv.ParseInt(split[1], 10, 64)
+	assert.NoError(t, err, "parsing the time in the stack backup filename")
+	assert.True(t, parsedTime > before)
+	assert.True(t, parsedTime < after)
+}
+
+func getStackProjectBackupDir(projectDir string) (string, error) {
+	user, err := user.Current()
+	if user == nil || err != nil {
+		return "", fmt.Errorf("failed to get current user")
+	}
+
+	h := sha1.New()
+	_, err = h.Write([]byte(projectDir))
+	if err != nil {
+		return "", fmt.Errorf("failed generating sha1")
+	}
+	hash := hex.EncodeToString(h.Sum(nil))
+
+	return filepath.Join(
+		user.HomeDir,
+		workspace.BookkeepingDir,
+		workspace.BackupDir,
+		filepath.Base(projectDir)+"-"+hash,
+	), nil
 }

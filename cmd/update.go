@@ -32,25 +32,25 @@ func newUpdateCmd() *cobra.Command {
 		Use:        "update",
 		Aliases:    []string{"up"},
 		SuggestFor: []string{"deploy", "push"},
-		Short:      "Update the resources in an stack",
-		Long: "Update the resources in an stack\n" +
+		Short:      "Update the resources in a stack",
+		Long: "Update the resources in a stack\n" +
 			"\n" +
-			"This command updates an existing stack whose state is represented by the\n" +
-			"existing snapshot file. The new desired state is computed by compiling and evaluating an\n" +
-			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
-			"These allocations are then compared against the existing state to determine what operations\n" +
-			"must take place to achieve the desired state. This command results in a full snapshot of the\n" +
-			"stack's new resource state, so that it may be updated incrementally again later.\n" +
+			"This command updates an existing stack whose state is represented by the existing checkpoint\n" +
+			"file. The new desired state is computed by running a Pulumi program, and extracting all resource\n" +
+			"allocations from its resulting object graph. These allocations are then compared against the\n" +
+			"existing state to determine what operations must take place to achieve the desired state. This\n" +
+			"command results in a checkpoint containing a full snapshot of the stack's new resource state, so\n" +
+			"that it may be updated incrementally again later.\n" +
 			"\n" +
-			"The package to execute is loaded from the current directory. Use the `-C` or `--cwd` flag to\n" +
-			"use a different directory.",
+			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
+			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack))
+			s, err := requireStack(tokens.QName(stack), true)
 			if err != nil {
 				return err
 			}
-			pkg, root, err := readPackage()
+			proj, root, err := readProject()
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			return s.Update(pkg, root, debug, m, engine.UpdateOptions{
+			return s.Update(proj, root, debug, m, engine.UpdateOptions{
 				Analyzers:            analyzers,
 				DryRun:               preview,
 				Parallel:             parallel,
@@ -79,7 +79,7 @@ func newUpdateCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose an stack other than the currently selected one")
+		"Choose a stack other than the currently selected one")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
