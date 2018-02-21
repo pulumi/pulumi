@@ -24,23 +24,27 @@ func TestRequireLogin(t *testing.T) {
 
 	t.Run("SanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
-		defer e.DeleteEnvironment()
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
 
 		integration.CreateBasicPulumiRepo(e)
 
 		// logout and confirm auth error.
 		e.RunCommand("pulumi", "logout")
 
-		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "foo")
+		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--remote")
 		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "error: could not create stack: not yet authenticated with")
-		assert.Contains(t, err, "; please 'pulumi login' first")
+		assert.Contains(t, err, "error: you must be logged in to create stacks in the Pulumi Cloud.")
+		assert.Contains(t, err, "Run `pulumi login` to log in.")
 
 		// login and confirm things work.
 		os.Setenv(cloud.AccessTokenEnvVar, integration.TestAccountAccessToken)
 		e.RunCommand("pulumi", "login")
 
-		e.RunCommand("pulumi", "stack", "init", "foo")
+		e.RunCommand("pulumi", "stack", "init", "foo", "--remote")
 		e.RunCommand("pulumi", "stack", "rm", "foo", "--yes")
 	})
 }
