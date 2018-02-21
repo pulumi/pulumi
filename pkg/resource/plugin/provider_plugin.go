@@ -344,7 +344,8 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}
 
 	return workspace.PluginInfo{
-		Name:    p.plug.Bin,
+		Name:    string(p.pkg),
+		Path:    p.plug.Bin,
 		Kind:    workspace.ResourcePlugin,
 		Version: version,
 	}, nil

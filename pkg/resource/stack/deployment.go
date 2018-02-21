@@ -32,6 +32,7 @@ type Manifest struct {
 // PluginInfo captures the version and information about a plugin.
 type PluginInfo struct {
 	Name    string               `json:"name" yaml:"name"`
+	Path    string               `json:"path" yaml:"path"`
 	Type    workspace.PluginKind `json:"type" yaml:"type"`
 	Version string               `json:"version" yaml:"version"`
 }
@@ -66,6 +67,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 		}
 		manifest.Plugins = append(manifest.Plugins, PluginInfo{
 			Name:    plug.Name,
+			Path:    plug.Path,
 			Type:    plug.Kind,
 			Version: version,
 		})

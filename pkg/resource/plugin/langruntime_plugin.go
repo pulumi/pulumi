@@ -149,7 +149,8 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	}
 
 	return workspace.PluginInfo{
-		Name:    h.plug.Bin,
+		Name:    h.runtime,
+		Path:    h.plug.Bin,
 		Kind:    workspace.LanguagePlugin,
 		Version: version,
 	}, nil
