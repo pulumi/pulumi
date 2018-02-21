@@ -110,7 +110,8 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	}
 
 	return workspace.PluginInfo{
-		Name:    a.plug.Bin,
+		Name:    string(a.name),
+		Path:    a.plug.Bin,
 		Kind:    workspace.AnalyzerPlugin,
 		Version: version,
 	}, nil
