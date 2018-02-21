@@ -29,6 +29,7 @@ import (
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
 	Name         string          // the simple name of the plugin.
+	Path         string          // the path that a plugin was loaded from.
 	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
 	Version      *semver.Version // the plugin's semantic version, if present.
 	Size         int64           // the size of the plugin, in bytes.
