@@ -151,7 +151,7 @@ proto.pulumirpc.PluginInfo.prototype.getVersion = function() {
 
 /** @param {string} value */
 proto.pulumirpc.PluginInfo.prototype.setVersion = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -317,7 +317,7 @@ proto.pulumirpc.PluginDependency.prototype.getName = function() {
 
 /** @param {string} value */
 proto.pulumirpc.PluginDependency.prototype.setName = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -332,7 +332,7 @@ proto.pulumirpc.PluginDependency.prototype.getKind = function() {
 
 /** @param {string} value */
 proto.pulumirpc.PluginDependency.prototype.setKind = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -347,7 +347,7 @@ proto.pulumirpc.PluginDependency.prototype.getVersion = function() {
 
 /** @param {string} value */
 proto.pulumirpc.PluginDependency.prototype.setVersion = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

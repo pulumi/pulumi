@@ -323,7 +323,7 @@ proto.pulumirpc.InvokeRequest.prototype.getTok = function() {
 
 /** @param {string} value */
 proto.pulumirpc.InvokeRequest.prototype.setTok = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -735,7 +735,7 @@ proto.pulumirpc.CheckRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.CheckRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1161,7 +1161,7 @@ proto.pulumirpc.CheckFailure.prototype.getProperty = function() {
 
 /** @param {string} value */
 proto.pulumirpc.CheckFailure.prototype.setProperty = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1176,7 +1176,7 @@ proto.pulumirpc.CheckFailure.prototype.getReason = function() {
 
 /** @param {string} value */
 proto.pulumirpc.CheckFailure.prototype.setReason = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -1358,7 +1358,7 @@ proto.pulumirpc.DiffRequest.prototype.getId = function() {
 
 /** @param {string} value */
 proto.pulumirpc.DiffRequest.prototype.setId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1373,7 +1373,7 @@ proto.pulumirpc.DiffRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.DiffRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -1666,7 +1666,7 @@ proto.pulumirpc.DiffResponse.prototype.getDeletebeforereplace = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.DiffResponse.prototype.setDeletebeforereplace = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 
@@ -1822,7 +1822,7 @@ proto.pulumirpc.CreateRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.CreateRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -2008,7 +2008,7 @@ proto.pulumirpc.CreateResponse.prototype.getId = function() {
 
 /** @param {string} value */
 proto.pulumirpc.CreateResponse.prototype.setId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -2220,7 +2220,7 @@ proto.pulumirpc.UpdateRequest.prototype.getId = function() {
 
 /** @param {string} value */
 proto.pulumirpc.UpdateRequest.prototype.setId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -2235,7 +2235,7 @@ proto.pulumirpc.UpdateRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.UpdateRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -2622,7 +2622,7 @@ proto.pulumirpc.DeleteRequest.prototype.getId = function() {
 
 /** @param {string} value */
 proto.pulumirpc.DeleteRequest.prototype.setId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -2637,7 +2637,7 @@ proto.pulumirpc.DeleteRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.DeleteRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 

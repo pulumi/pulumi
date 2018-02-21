@@ -50,7 +50,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     const dependsOnResolved = debuggablePromise(
         Promise.all(dependsOn.map(d => d.urn.promise())), `dependsOn(${label})`);
 
-    debuggablePromise(dependsOnResolved.then(async () => {
+    debuggablePromise(dependsOnResolved.then(async (explicitURNDeps) => {
         // Serialize out all our props to their final values.  In doing so, we'll also collect all
         // the Resources pointed to by any Dependency objects we encounter, adding them to
         // 'propertyDependencies'
@@ -69,6 +69,12 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             parentURN = await opts.parent.urn.promise();
         }
 
+        const implicitDeps: Set<URN> = new Set<URN>(explicitURNDeps);
+        for (const implicitDep of implicitResourceDependencies) {
+            const depUrn = await implicitDep.urn.promise();
+            implicitDeps.add(depUrn);
+        }
+
         const req = new resproto.RegisterResourceRequest();
         req.setType(t);
         req.setName(name);
@@ -76,6 +82,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setCustom(custom);
         req.setObject(gstruct.Struct.fromJavaScript(flattenedInputProps));
         req.setProtect(opts.protect);
+        req.setDependenciesList(Array.from(implicitDeps));
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.registerResource(${label})`;

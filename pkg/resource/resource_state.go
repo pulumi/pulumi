@@ -11,33 +11,35 @@ import (
 // deserialized, or snapshotted from a live graph of resource objects.  The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
 type State struct {
-	Type    tokens.Type // the resource's type.
-	URN     URN         // the resource's object urn, a human-friendly, unique name for the resource.
-	Custom  bool        // true if the resource is custom, managed by a plugin.
-	Delete  bool        // true if this resource is pending deletion due to a replacement.
-	ID      ID          // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
-	Inputs  PropertyMap // the resource's input properties (as specified by the program).
-	Outputs PropertyMap // the resource's complete output state (as returned by the resource provider).
-	Parent  URN         // an optional parent URN that this resource belongs to.
-	Protect bool        // true to "protect" this resource (protected resources cannot be deleted).
+	Type         tokens.Type // the resource's type.
+	URN          URN         // the resource's object urn, a human-friendly, unique name for the resource.
+	Custom       bool        // true if the resource is custom, managed by a plugin.
+	Delete       bool        // true if this resource is pending deletion due to a replacement.
+	ID           ID          // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+	Inputs       PropertyMap // the resource's input properties (as specified by the program).
+	Outputs      PropertyMap // the resource's complete output state (as returned by the resource provider).
+	Parent       URN         // an optional parent URN that this resource belongs to.
+	Protect      bool        // true to "protect" this resource (protected resources cannot be deleted).
+	Dependencies []URN       // the resource's dependencies
 }
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool) *State {
+	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool, dependencies []URN) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
 	return &State{
-		Type:    t,
-		URN:     urn,
-		Custom:  custom,
-		Delete:  del,
-		ID:      id,
-		Inputs:  inputs,
-		Outputs: outputs,
-		Parent:  parent,
-		Protect: protect,
+		Type:         t,
+		URN:          urn,
+		Custom:       custom,
+		Delete:       del,
+		ID:           id,
+		Inputs:       inputs,
+		Outputs:      outputs,
+		Parent:       parent,
+		Protect:      protect,
+		Dependencies: dependencies,
 	}
 }
 

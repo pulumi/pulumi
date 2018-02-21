@@ -39,16 +39,17 @@ type PluginInfo struct {
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 // nolint: lll
 type Resource struct {
-	URN      resource.URN           `json:"urn" yaml:"urn"`                               // the URN for this resource.
-	Custom   bool                   `json:"custom" yaml:"custom"`                         // if this is a custom resource managed by a plugin.
-	Delete   bool                   `json:"delete,omitempty" yaml:"delete,omitempty"`     // if this should be deleted during the next update.
-	ID       resource.ID            `json:"id,omitempty" yaml:"id,omitempty"`             // the provider ID for this resource, if any.
-	Type     tokens.Type            `json:"type" yaml:"type"`                             // this resource's full type token.
-	Inputs   map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the provider (or the program for ressources with defaults).
-	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider (DEPRECATED, see #637).
-	Outputs  map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
-	Parent   resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
-	Protect  bool                   `json:"protect,omitempty" yaml:"protect,omitempty"`   // true if this resource is protected, and cannot be deleted.
+	URN          resource.URN           `json:"urn" yaml:"urn"`                               // the URN for this resource.
+	Custom       bool                   `json:"custom" yaml:"custom"`                         // if this is a custom resource managed by a plugin.
+	Delete       bool                   `json:"delete,omitempty" yaml:"delete,omitempty"`     // if this should be deleted during the next update.
+	ID           resource.ID            `json:"id,omitempty" yaml:"id,omitempty"`             // the provider ID for this resource, if any.
+	Type         tokens.Type            `json:"type" yaml:"type"`                             // this resource's full type token.
+	Inputs       map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the provider (or the program for ressources with defaults).
+	Defaults     map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider (DEPRECATED, see #637).
+	Outputs      map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
+	Parent       resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
+	Protect      bool                   `json:"protect,omitempty" yaml:"protect,omitempty"`   // true if this resource is protected, and cannot be deleted.
+	Dependencies []resource.URN         `json:"dependencies" yaml:"dependencies"`             // the dependency edges for this resource
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
@@ -99,15 +100,16 @@ func SerializeResource(res *resource.State) Resource {
 	}
 
 	return Resource{
-		URN:     res.URN,
-		Custom:  res.Custom,
-		Delete:  res.Delete,
-		ID:      res.ID,
-		Type:    res.Type,
-		Parent:  res.Parent,
-		Inputs:  inputs,
-		Outputs: outputs,
-		Protect: res.Protect,
+		URN:          res.URN,
+		Custom:       res.Custom,
+		Delete:       res.Delete,
+		ID:           res.ID,
+		Type:         res.Type,
+		Parent:       res.Parent,
+		Inputs:       inputs,
+		Outputs:      outputs,
+		Protect:      res.Protect,
+		Dependencies: res.Dependencies,
 	}
 }
 
@@ -180,7 +182,7 @@ func DeserializeResource(res Resource) (*resource.State, error) {
 	}
 
 	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs, res.Parent, res.Protect), nil
+		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs, res.Parent, res.Protect, res.Dependencies), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

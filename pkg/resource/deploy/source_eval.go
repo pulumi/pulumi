@@ -294,6 +294,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	custom := req.GetCustom()
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
+
+	dependencies := make([]resource.URN, 0)
+	for _, dependingURN := range req.GetDependencies() {
+		dependencies = append(dependencies, resource.URN(dependingURN))
+	}
+
 	props, err := plugin.UnmarshalProperties(
 		req.GetObject(), plugin.MarshalOptions{Label: label, KeepUnknowns: true, ComputeAssetHashes: true})
 	if err != nil {
@@ -301,12 +307,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	glog.V(5).Infof(
-		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v",
-		t, name, custom, len(props), parent, protect)
+		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, deps=%v",
+		t, name, custom, len(props), parent, protect, dependencies)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
-		goal: resource.NewGoal(t, name, custom, props, parent, protect),
+		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies),
 		done: make(chan *RegisterResult),
 	}
 	rm.regChan <- step

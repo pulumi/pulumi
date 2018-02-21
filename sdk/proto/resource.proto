@@ -23,6 +23,7 @@ message RegisterResourceRequest {
     bool custom = 4;                   // true if the resource is a custom, managed by a plugin's CRUD operations.
     google.protobuf.Struct object = 5; // an object produced by the interpreter/source.
     bool protect = 6;                  // true if the resource should be marked protected.
+    repeated string dependencies = 7;  // a list of URNs that this resource depends on, as observed by the language host.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

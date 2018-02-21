@@ -168,6 +168,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		"",
 		false,
+		nil,
 	)
 	oldResC := resource.NewState(typC, urnC, true, false, resource.ID("c-c-c"),
 		resource.PropertyMap{
@@ -180,6 +181,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		},
 		"",
 		false,
+		nil,
 	)
 	oldResD := resource.NewState(typD, urnD, true, false, resource.ID("d-d-d"),
 		resource.PropertyMap{
@@ -189,6 +191,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		"",
 		false,
+		nil,
 	)
 	oldsnap := NewSnapshot(ns, Manifest{}, []*resource.State{oldResB, oldResC, oldResD})
 
@@ -197,20 +200,20 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newResA := resource.NewGoal(typA, namA, true, resource.PropertyMap{
 		"af1": resource.NewStringProperty("a-value"),
 		"af2": resource.NewNumberProperty(42),
-	}, "", false)
+	}, "", false, nil)
 	newStateA := &testRegEvent{goal: newResA}
 	//     - B is updated:
 	newResB := resource.NewGoal(typB, namB, true, resource.PropertyMap{
 		"bf1": resource.NewStringProperty("b-value"),
 		// delete the bf2 field, and add bf3.
 		"bf3": resource.NewBoolProperty(true),
-	}, "", false)
+	}, "", false, nil)
 	newStateB := &testRegEvent{goal: newResB}
 	//     - C has no changes:
 	newResC := resource.NewGoal(typC, namC, true, resource.PropertyMap{
 		"cf1": resource.NewStringProperty("c-value"),
 		"cf2": resource.NewNumberProperty(83),
-	}, "", false)
+	}, "", false, nil)
 	newStateC := &testRegEvent{goal: newResC}
 	//     - No D; it is deleted.
 
