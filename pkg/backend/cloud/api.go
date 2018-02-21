@@ -76,15 +76,25 @@ type cloudProjectIdentifier struct {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(apiEndpoint, method, path string, body []byte, accessToken string) (string, *http.Response, error) {
+func pulumiAPICall(cloudAPI, method, path string, body []byte) (string, *http.Response, error) {
+	accessToken, err := workspace.GetAccessToken(cloudAPI)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "getting stored credentials")
+	}
+	return pulumiAPICallToken(cloudAPI, method, path, body, accessToken)
+}
+
+// pulumiAPICallToken makes an HTTP request to the Pulumi API with an explicit access token.
+func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
+	accessToken string) (string, *http.Response, error) {
 	// Normalize URL components
-	apiEndpoint = strings.TrimSuffix(apiEndpoint, "/")
+	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = strings.TrimPrefix(path, "/")
 
-	url := fmt.Sprintf("%s/api/%s", apiEndpoint, path)
+	url := fmt.Sprintf("%s/%s", cloudAPI, path)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
-		return "", nil, fmt.Errorf("creating new HTTP request: %v", err)
+		return "", nil, errors.Wrapf(err, "creating new HTTP request")
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -106,38 +116,61 @@ func pulumiAPICall(apiEndpoint, method, path string, body []byte, accessToken st
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", nil, fmt.Errorf("performing HTTP request: %v", err)
+		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
 	glog.V(7).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
+
+	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
+	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
+		defer contract.IgnoreClose(resp.Body)
+
+		// Provide a better error if using an authenticated call without having logged in first.
+		if resp.StatusCode == 401 && accessToken == "" {
+			return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
+		}
+
+		// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
+		// type, and if not just return the raw response text.
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", nil, errors.Wrapf(
+				err, "API call failed (%s), could not read response", resp.Status)
+		}
+
+		var errResp apitype.ErrorResponse
+		if err = json.Unmarshal(respBody, &errResp); err != nil {
+			errResp.Code = resp.StatusCode
+			errResp.Message = strings.TrimSpace(string(respBody))
+		}
+		return "", nil, &errResp
+	}
 
 	return url, resp, nil
 }
 
-// pulumiRESTCall calls the pulumi REST API marshalling reqObj to JSON and using that as
+// pulumiRESTCall calls the Pulumi REST API marshalling reqObj to JSON and using that as
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func pulumiRESTCall(cloudAPI, method, path string,
 	queryObj interface{}, reqObj interface{}, respObj interface{}) error {
-	token, err := workspace.GetAccessToken(cloudAPI)
+	accessToken, err := workspace.GetAccessToken(cloudAPI)
 	if err != nil {
-		return fmt.Errorf("getting stored credentials: %v", err)
-	} else if token == "" {
-		return fmt.Errorf("not yet authenticated with %s; please 'pulumi login' first", cloudAPI)
+		return errors.Wrapf(err, "getting stored credentials")
 	}
-	return pulumiRESTCallWithAccessToken(cloudAPI, method, path, queryObj, reqObj, respObj, token)
+	return pulumiRESTCallToken(cloudAPI, method, path, queryObj, reqObj, respObj, accessToken)
 }
 
-// pulumiRESTCallWithAccessToken requires you pass in the auth token rather than reading it from the machine's config.
-func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
-	queryObj interface{}, reqObj interface{}, respObj interface{}, token string) error {
-
+// pulumiRESTCallToken calls the Pulumi REST API, just like pulumiRESTCall, only with
+// an explicit accessToken rather than reading it from the workspace.
+func pulumiRESTCallToken(cloudAPI, method, path string,
+	queryObj interface{}, reqObj interface{}, respObj interface{}, accessToken string) error {
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
 		queryValues, err := query.Values(queryObj)
 		if err != nil {
-			return fmt.Errorf("marshalling query object as JSON: %v", err)
+			return errors.Wrapf(err, "marshalling query object as JSON")
 		}
 		query := queryValues.Encode()
 		if len(query) > 0 {
@@ -151,45 +184,29 @@ func pulumiRESTCallWithAccessToken(cloudAPI, method, path string,
 	if reqObj != nil {
 		reqBody, err = json.Marshal(reqObj)
 		if err != nil {
-			return fmt.Errorf("marshalling request object as JSON: %v", err)
+			return errors.Wrapf(err, "marshalling request object as JSON")
 		}
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, token)
+	url, resp, err := pulumiAPICallToken(cloudAPI, method, path+querystring, reqBody, accessToken)
 	if err != nil {
-		return fmt.Errorf("calling API: %v", err)
+		return errors.Wrapf(err, "calling API")
 	}
 	defer contract.IgnoreClose(resp.Body)
 
 	// Read API response
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("reading response from API: %v", err)
+		return errors.Wrapf(err, "reading response from API")
 	}
 	if glog.V(9) {
 		glog.V(7).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
 	}
 
-	// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
-	// type, and if not just return the raw response text.
-	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
-		// Provide a better error if using an authenticated call without having logged in first.
-		if resp.StatusCode == 401 && token == "" {
-			return errors.New("this command requires logging in; try running 'pulumi login' first")
-		}
-
-		var errResp apitype.ErrorResponse
-		if err = json.Unmarshal(respBody, &errResp); err != nil {
-			errResp.Code = resp.StatusCode
-			errResp.Message = strings.TrimSpace(string(respBody))
-		}
-		return &errResp
-	}
-
 	if respObj != nil {
 		if err = json.Unmarshal(respBody, respObj); err != nil {
-			return fmt.Errorf("unmarshalling response object: %v", err)
+			return errors.Wrapf(err, "unmarshalling response object")
 		}
 	}
 

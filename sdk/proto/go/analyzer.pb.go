@@ -18,9 +18,12 @@ It has these top-level messages:
 	AnalyzeResponse
 	AnalyzeFailure
 	LogRequest
+	GetRequiredPluginsRequest
+	GetRequiredPluginsResponse
 	RunRequest
 	RunResponse
 	PluginInfo
+	PluginDependency
 	ConfigureRequest
 	InvokeRequest
 	InvokeResponse

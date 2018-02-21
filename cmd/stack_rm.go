@@ -20,10 +20,10 @@ func newStackRmCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Remove an stack and its configuration",
-		Long: "Remove an stack and its configuration\n" +
+		Short: "Remove a stack and its configuration",
+		Long: "Remove a stack and its configuration\n" +
 			"\n" +
-			"This command removes an stack and its configuration state.  Please refer to the\n" +
+			"This command removes a stack and its configuration state.  Please refer to the\n" +
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
@@ -39,7 +39,8 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			if !yes && !confirmPrompt("This will permanently remove the '%v' stack!", string(s.Name())) {
+			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Name())
+			if !yes && !confirmPrompt(prompt, string(s.Name())) {
 				return errors.New("confirmation declined")
 			}
 

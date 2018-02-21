@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -13,10 +14,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
-
-const ProviderPluginPrefix = "pulumi-provider-"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
@@ -28,15 +28,24 @@ type provider struct {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
-	// Go ahead and attempt to load the plugin from the PATH.
-	srvexe := ProviderPluginPrefix + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
-	plug, err := newPlugin(ctx, srvexe, fmt.Sprintf("%v (resource)", pkg), []string{host.ServerAddr()})
+func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version) (Provider, error) {
+	// Load the plugin's path by using the standard workspace logic.
+	_, path, err := workspace.GetPluginPath(
+		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		return nil, err
-	} else if plug == nil {
-		return nil, nil
+	} else if path == "" {
+		return nil, NewMissingError(workspace.PluginInfo{
+			Kind: workspace.ResourcePlugin,
+			Name: string(pkg),
+		})
 	}
+
+	plug, err := newPlugin(ctx, path, fmt.Sprintf("%v (resource)", pkg), []string{host.ServerAddr()})
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	return &provider{
 		ctx:    ctx,
@@ -316,18 +325,28 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfo() (Info, error) {
+func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", p.label())
 	glog.V(7).Infof("%s executing", label)
 	resp, err := p.client.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		glog.V(7).Infof("%s failed: err=%v", label, err)
-		return Info{}, err
+		return workspace.PluginInfo{}, err
 	}
-	return Info{
+
+	var version *semver.Version
+	if v := resp.Version; v != "" {
+		sv, err := semver.ParseTolerant(v)
+		if err != nil {
+			return workspace.PluginInfo{}, err
+		}
+		version = &sv
+	}
+
+	return workspace.PluginInfo{
 		Name:    p.plug.Bin,
-		Type:    ResourceType,
-		Version: resp.Version,
+		Kind:    workspace.ResourcePlugin,
+		Version: version,
 	}, nil
 }
 

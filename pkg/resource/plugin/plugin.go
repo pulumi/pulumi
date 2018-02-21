@@ -4,6 +4,7 @@ package plugin
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -23,7 +24,26 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+// MissingError is returned if a plugin is missing.
+type MissingError struct {
+	// Info contains information about the plugin that was not found.
+	Info workspace.PluginInfo
+}
+
+// NewMissingError allocates a new error indicating the given plugin info was not found.
+func NewMissingError(info workspace.PluginInfo) error {
+	return &MissingError{
+		Info: info,
+	}
+}
+
+func (err *MissingError) Error() string {
+	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
+		err.Info.Kind, err.Info.String())
+}
 
 type plugin struct {
 	stdoutDone <-chan bool
@@ -56,12 +76,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	// Try to execute the binary.
 	plug, err := execPlugin(bin, args, ctx.Pwd)
 	if err != nil {
-		// If we failed simply because we couldn't load the binary, return nil rather than an error.
-		if execerr, isexecerr := err.(*exec.Error); isexecerr && execerr.Err == exec.ErrNotFound {
-			return nil, nil
-		}
-
-		return nil, errors.Wrapf(err, "plugin [%v] failed to load", bin)
+		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
 	contract.Assert(plug != nil)
 
@@ -241,9 +256,13 @@ func (p *plugin) Close() error {
 		result = multierror.Append(result, err)
 	}
 
-	// Wait for stdout and stderr to drain
-	<-p.stdoutDone
-	<-p.stderrDone
+	// Wait for stdout and stderr to drain.
+	if p.stdoutDone != nil {
+		<-p.stdoutDone
+	}
+	if p.stderrDone != nil {
+		<-p.stderrDone
+	}
 
 	return result
 }

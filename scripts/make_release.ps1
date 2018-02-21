@@ -29,12 +29,12 @@ function CopyPackage($pathToModule, $moduleName) {
 }
 
 RunGoBuild "github.com/pulumi/pulumi"
-RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-langhost-nodejs"
+RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
-Copy-Item "$Root\sdk\nodejs\pulumi-langhost-nodejs-exec.cmd" "$PublishDir\bin"
-Copy-Item "$Root\sdk\nodejs\pulumi-provider-pulumi-nodejs.cmd" "$PublishDir\bin"
-Copy-Item "$Root\sdk\nodejs\custom_node\node\node.exe" "$PublishDir\bin\pulumi-langhost-nodejs-node.exe"
+Copy-Item "$Root\sdk\nodejs\dist\pulumi-language-nodejs-exec.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
+Copy-Item "$Root\sdk\nodejs\custom_node\node\node.exe" "$PublishDir\bin\pulumi-language-nodejs-node.exe"
 
 $NodeFolder = "$PublishDir\bin\$NodeVersion"
 New-Item -ItemType Directory -Force -Path $NodeFolder | Out-Null

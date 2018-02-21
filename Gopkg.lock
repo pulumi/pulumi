@@ -49,6 +49,12 @@
   version = "v0.1.0"
 
 [[projects]]
+  name = "github.com/blang/semver"
+  packages = ["."]
+  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+  version = "v3.5.1"
+
+[[projects]]
   name = "github.com/cheggaaa/pb"
   packages = ["."]
   revision = "657164d0228d6bebe316fdf725c69f131a50fb10"
@@ -65,6 +71,12 @@
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/djherbis/times"
+  packages = ["."]
+  revision = "95292e44976d1217cf3611dc7c8d9466877d3ed5"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
@@ -473,6 +485,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5c20f99999e8bede3229f96972decac288fd412bcf7d18ef42f5588117dad2a6"
+  inputs-digest = "1de7bd262e1e77d3cc0d7d0bba2a51e124c40a6b7e18f0fcc0566121b364f068"
   solver-name = "gps-cdcl"
   solver-version = 1

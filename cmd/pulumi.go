@@ -76,13 +76,14 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newStackCmd())
-	cmd.AddCommand(newPreviewCmd())
-	cmd.AddCommand(newUpdateCmd())
-	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newLogsCmd())
-	cmd.AddCommand(newHistoryCmd())
+	cmd.AddCommand(newPluginCmd())
+	cmd.AddCommand(newPreviewCmd())
+	cmd.AddCommand(newStackCmd())
+	cmd.AddCommand(newUpdateCmd())
+	cmd.AddCommand(newVersionCmd())
 
 	// Commands specific to the Pulumi Cloud Management Console.
 	cmd.AddCommand(newLoginCmd())
@@ -103,11 +104,18 @@ func NewPulumiCmd() *cobra.Command {
 	return cmd
 }
 
-func confirmPrompt(msg string, name string) bool {
-	prompt := fmt.Sprintf(msg, name)
+func confirmPrompt(prompt string, name string) bool {
+	if prompt != "" {
+		fmt.Print(
+			colors.ColorizeText(
+				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
+	}
+
 	fmt.Print(
-		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
-	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
+		colors.ColorizeText(
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
+				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
+
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name

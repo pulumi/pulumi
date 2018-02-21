@@ -65,12 +65,12 @@ func newStackCmd() *cobra.Command {
 				fmt.Printf("    Pulumi version %s\n", cliver)
 				for _, plugin := range snap.Manifest.Plugins {
 					var plugver string
-					if plugin.Version == "" {
+					if plugin.Version == nil {
 						plugver = "?"
 					} else {
-						plugver = plugin.Version
+						plugver = plugin.Version.String()
 					}
-					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Type, plugver)
+					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Kind, plugver)
 				}
 			} else {
 				fmt.Printf("    No updates yet; run 'pulumi update'\n")

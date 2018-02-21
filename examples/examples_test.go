@@ -48,6 +48,9 @@ func TestExamples(t *testing.T) {
 				"simple:config:x": "1",
 				"simple:config:y": "1",
 			},
+			Verbose:       true,
+			DebugUpdates:  true,
+			DebugLogLevel: 12,
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),

@@ -45,11 +45,11 @@ copy_package() {
 
 # Build binaries
 run_go_build "${ROOT}"
-run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-langhost-nodejs"
+run_go_build "${ROOT}/sdk/nodejs/cmd/pulumi-language-nodejs"
 
-# Copy over the langhost and dynamic provider
-cp ${ROOT}/sdk/nodejs/pulumi-langhost-nodejs-exec ${PUBDIR}/bin/
-cp ${ROOT}/sdk/nodejs/pulumi-provider-pulumi-nodejs ${PUBDIR}/bin/
+# Copy over the language and dynamic resource provider
+cp ${ROOT}/sdk/nodejs/dist/pulumi-language-nodejs-exec ${PUBDIR}/bin/
+cp ${ROOT}/sdk/nodejs/dist/pulumi-resource-pulumi-nodejs ${PUBDIR}/bin/
 
 # Copy over our custom Node plugin
 mkdir -p ${PUBDIR}/bin/$(node --version)
