@@ -397,7 +397,7 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 	}
 
 	var response apitype.GetHistoryResponse
-	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/history",
+	path := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s/updates",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
 	if err = pulumiRESTCall(b.cloudURL, "GET", path, nil, nil, &response); err != nil {
 		return nil, err
