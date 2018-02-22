@@ -40,6 +40,8 @@ func newStackGraphCmd() *cobra.Command {
 				return err
 			}
 
+			cmd.Printf("%sWrote stack dependency graph to `%s`", cmdutil.EmojiOr("🔍 ", ""), args[0])
+			cmd.Println()
 			return file.Close()
 		}),
 	}
@@ -78,8 +80,10 @@ func (edge *dependencyEdge) From() graph.Vertex {
 // and to the resource state that it represents. Incoming and outgoing edges
 // are calculated on-demand using the combination of the graph and the state.
 type dependencyVertex struct {
-	graph    *dependencyGraph
-	resource *resource.State
+	graph         *dependencyGraph
+	resource      *resource.State
+	incomingEdges []graph.Edge
+	outgoingEdges []graph.Edge
 }
 
 func (vertex *dependencyVertex) Data() interface{} {
@@ -90,38 +94,15 @@ func (vertex *dependencyVertex) Label() string {
 	return string(vertex.resource.URN)
 }
 
-// Incoming edges are directly stored within the checkpoint file; they represent
-// resources on which this vertex immediately depends upon.
 func (vertex *dependencyVertex) Ins() []graph.Edge {
-	incomingEdges := make([]graph.Edge, 0)
-	for _, dep := range vertex.resource.Dependencies {
-		vertexWeDependOn := vertex.graph.vertices[dep]
-		incomingEdges = append(incomingEdges, &dependencyEdge{
-			to:   vertex,
-			from: vertexWeDependOn,
-		})
-	}
-
-	return incomingEdges
+	return vertex.incomingEdges
 }
 
 // Outgoing edges are indirectly calculated by traversing the entire graph looking
 // for edges that point to this vertex. This is slow, but our graphs aren't big enough
 // for this to matter too much.
 func (vertex *dependencyVertex) Outs() []graph.Edge {
-	outgoingEdges := make([]graph.Edge, 0)
-	for _, cursor := range vertex.graph.vertices {
-		for _, dependentUrn := range cursor.resource.Dependencies {
-			if dependentUrn == vertex.resource.URN {
-				outgoingEdges = append(outgoingEdges, &dependencyEdge{
-					to:   cursor,
-					from: vertex,
-				})
-			}
-		}
-	}
-
-	return outgoingEdges
+	return vertex.outgoingEdges
 }
 
 // A dependencyGraph is a thin wrapper around a map of URNs to vertices in
@@ -163,6 +144,23 @@ func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
 		}
 
 		dg.vertices[resource.URN] = vertex
+	}
+
+	for _, vertex := range dg.vertices {
+		// Incoming edges are directly stored within the checkpoint file; they represent
+		// resources on which this vertex immediately depends upon.
+		for _, dep := range vertex.resource.Dependencies {
+			vertexWeDependOn := vertex.graph.vertices[dep]
+			vertex.incomingEdges = append(vertex.incomingEdges, &dependencyEdge{
+				to:   vertex,
+				from: vertexWeDependOn,
+			})
+
+			vertexWeDependOn.outgoingEdges = append(vertexWeDependOn.outgoingEdges, &dependencyEdge{
+				to:   vertex,
+				from: vertexWeDependOn,
+			})
+		}
 	}
 
 	return dg
