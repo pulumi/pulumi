@@ -13,11 +13,6 @@ import (
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
-	dependencies := [...]resource.URN{
-		resource.URN("foo:bar:baz"),
-		resource.URN("foo:bar:boo"),
-	}
-
 	res := resource.NewState(
 		tokens.Type("Test"),
 		resource.NewURN(
@@ -61,7 +56,10 @@ func TestDeploymentSerialization(t *testing.T) {
 		}),
 		"",
 		false,
-		dependencies[:],
+		[]resource.URN{
+			resource.URN("foo:bar:baz"),
+			resource.URN("foo:bar:boo"),
+		},
 	)
 
 	dep := SerializeResource(res)

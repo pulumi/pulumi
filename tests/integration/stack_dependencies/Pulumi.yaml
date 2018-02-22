@@ -1,0 +1,5 @@
+name: stack_dependencies
+description: >
+    A program that has dependent resources that are saved in the
+    checkpoint file.
+runtime: nodejs

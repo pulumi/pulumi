@@ -71,8 +71,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
         const implicitDeps: Set<URN> = new Set<URN>(explicitURNDeps);
         for (const implicitDep of implicitResourceDependencies) {
-            const depUrn = await implicitDep.urn.promise();
-            implicitDeps.add(depUrn);
+            implicitDeps.add(await implicitDep.urn.promise());
         }
 
         const req = new resproto.RegisterResourceRequest();

@@ -295,7 +295,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
 
-	dependencies := make([]resource.URN, 0)
+	dependencies := []resource.URN{}
 	for _, dependingURN := range req.GetDependencies() {
 		dependencies = append(dependencies, resource.URN(dependingURN))
 	}

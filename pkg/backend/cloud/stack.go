@@ -40,8 +40,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// TODO[pulumi/pulumi-service#249]: add time, version, etc. info to the manifest.
 	stackName := apistack.StackName
 
-	// TODO(swgillespie) provide an actual list of dependencies
-	deps := [...]resource.URN{}
 	var resources []*resource.State
 	for _, res := range apistack.Resources {
 		resources = append(resources, resource.NewState(
@@ -54,7 +52,8 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			resource.NewPropertyMapFromMap(res.Outputs),
 			resource.URN(res.Parent),
 			res.Protect,
-			deps[:],
+			// TODO(swgillespie) provide an actual list of dependencies
+			[]resource.URN{},
 		))
 	}
 	snapshot := deploy.NewSnapshot(stackName, deploy.Manifest{}, resources)
