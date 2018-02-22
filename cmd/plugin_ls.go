@@ -67,13 +67,13 @@ func newPluginLsCmd() *cobra.Command {
 				}
 				var bytes string
 				if plugin.Size == 0 {
-					bytes = "n/a"
+					bytes = naString
 				} else {
 					bytes = humanize.Bytes(uint64(plugin.Size))
 				}
 				var installTime string
 				if plugin.InstallTime.IsZero() {
-					installTime = humanNeverTime
+					installTime = naString
 				} else {
 					installTime = humanize.Time(plugin.InstallTime)
 				}
@@ -103,3 +103,4 @@ func newPluginLsCmd() *cobra.Command {
 }
 
 const humanNeverTime = "never"
+const naString = "n/a"
