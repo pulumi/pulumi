@@ -9,6 +9,8 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -68,6 +70,13 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 	if err != nil {
 		glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
 			h.runtime, proj, info.Pwd, info.Program, err)
+
+		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPlugins
+		// method.  In such cases, we will silently error (with the above log left behind).
+		if staterr, ok := status.FromError(err); ok && staterr.Code() == codes.Unimplemented {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
