@@ -78,7 +78,7 @@ debug-level logging, greater than 5 is going to be quite verbose, and anything b
 
 For example, the command
 
-    $ pulumi eval --logtostderr -v=5
+    $ pulumi preview --logtostderr -v=5
 
 is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
