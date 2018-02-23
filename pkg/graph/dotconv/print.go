@@ -79,29 +79,28 @@ func Print(g graph.Graph, w io.Writer) error {
 		// Now print out all dependencies as "ID -> {A ... Z}".
 		outs := v.Outs()
 		if len(outs) > 0 {
-			if _, err := b.WriteString(fmt.Sprintf("%v%v -> {", indent, id)); err != nil {
-				return err
-			}
+			base := fmt.Sprintf("%v%v", indent, id)
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
-			for i, out := range outs {
+			for _, out := range outs {
 				to := out.To()
+				if _, err := b.WriteString(fmt.Sprintf("%s -> %s", base, getID(to))); err != nil {
+					return err
+				}
 
-				if i > 0 {
-					if _, err := b.WriteString(" "); err != nil {
+				if out.Color() != "" {
+					if _, err := b.WriteString(fmt.Sprintf(" [color=\"%s\"]", out.Color())); err != nil {
 						return err
 					}
 				}
-				if _, err := b.WriteString(getID(to)); err != nil {
+
+				if _, err := b.WriteString(";\n"); err != nil {
 					return err
 				}
+
 				if _, q := queued[to]; !q {
 					queued[to] = true
 					frontier = append(frontier, to)
 				}
-			}
-
-			if _, err := b.WriteString("}\n"); err != nil {
-				return err
 			}
 		}
 	}

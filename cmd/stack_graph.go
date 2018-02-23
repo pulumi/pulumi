@@ -13,8 +13,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Whether or not we should ignore parent edges when building up our graph.
+var ignoreParentEdges bool
+
+// Whether or not we should ignore dependency edges when building up our graph.
+var ignoreDependencyEdges bool
+
+// The color of dependency edges in the graph. Defaults to #246C60, a blush-green.
+var dependencyEdgeColor string
+
+// The color of parent edges in the graph. Defaults to #AA6639, an orange.
+var parentEdgeColor string
+
 func newStackGraphCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "graph",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Export a stack's dependency graph to a file",
@@ -45,6 +57,16 @@ func newStackGraphCmd() *cobra.Command {
 			return file.Close()
 		}),
 	}
+
+	cmd.Flags().BoolVar(&ignoreParentEdges, "ignore-parent-edges", false,
+		"Ignores edges introduced by parent/child resource relationships")
+	cmd.Flags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,
+		"Ignores edges introduced by dependency resource relationships")
+	cmd.Flags().StringVar(&dependencyEdgeColor, "dependency-edge-color", "#246C60",
+		"Sets the color of dependency edges in the graph")
+	cmd.Flags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
+		"Sets the color of parent edges in the graph")
+	return cmd
 }
 
 // All of the types and code within this file are to provide implementations of the interfaces
@@ -74,6 +96,39 @@ func (edge *dependencyEdge) To() graph.Vertex {
 
 func (edge *dependencyEdge) From() graph.Vertex {
 	return edge.from
+}
+
+func (edge *dependencyEdge) Color() string {
+	return dependencyEdgeColor
+}
+
+// parentEdges represent edges in the parent-child graph, which
+// exists alongside the dependency graph. An edge exists from node
+// A to node B if node B is considered to be a parent of node A.
+type parentEdge struct {
+	to   *dependencyVertex
+	from *dependencyVertex
+}
+
+func (edge *parentEdge) Data() interface{} {
+	return nil
+}
+
+// In this simple case, edges have no label.
+func (edge *parentEdge) Label() string {
+	return ""
+}
+
+func (edge *parentEdge) To() graph.Vertex {
+	return edge.to
+}
+
+func (edge *parentEdge) From() graph.Vertex {
+	return edge.from
+}
+
+func (edge *parentEdge) Color() string {
+	return parentEdgeColor
 }
 
 // A dependencyVertex contains a reference to the graph to which it belongs
@@ -112,19 +167,16 @@ type dependencyGraph struct {
 }
 
 // Roots are edges that point to the root set of our graph. In our case,
-// for simplicity, we define the root set of our dependency graph to be resources
-// that have no incoming edges.
+// for simplicity, we define the root set of our dependency graph to be everything.
 func (dg *dependencyGraph) Roots() []graph.Edge {
-	rootEdges := make([]graph.Edge, 0)
+	rootEdges := []graph.Edge{}
 	for _, vertex := range dg.vertices {
-		if len(vertex.Ins()) == 0 {
-			edge := &dependencyEdge{
-				to:   vertex,
-				from: nil,
-			}
-
-			rootEdges = append(rootEdges, edge)
+		edge := &dependencyEdge{
+			to:   vertex,
+			from: nil,
 		}
+
+		rootEdges = append(rootEdges, edge)
 	}
 
 	return rootEdges
@@ -147,19 +199,28 @@ func makeDependencyGraph(snapshot *deploy.Snapshot) *dependencyGraph {
 	}
 
 	for _, vertex := range dg.vertices {
-		// Incoming edges are directly stored within the checkpoint file; they represent
-		// resources on which this vertex immediately depends upon.
-		for _, dep := range vertex.resource.Dependencies {
-			vertexWeDependOn := vertex.graph.vertices[dep]
-			vertex.incomingEdges = append(vertex.incomingEdges, &dependencyEdge{
-				to:   vertex,
-				from: vertexWeDependOn,
-			})
+		if !ignoreDependencyEdges {
+			// Incoming edges are directly stored within the checkpoint file; they represent
+			// resources on which this vertex immediately depends upon.
+			for _, dep := range vertex.resource.Dependencies {
+				vertexWeDependOn := vertex.graph.vertices[dep]
+				edge := &dependencyEdge{to: vertex, from: vertexWeDependOn}
+				vertex.incomingEdges = append(vertex.incomingEdges, edge)
+				vertexWeDependOn.outgoingEdges = append(vertexWeDependOn.outgoingEdges, edge)
+			}
+		}
 
-			vertexWeDependOn.outgoingEdges = append(vertexWeDependOn.outgoingEdges, &dependencyEdge{
-				to:   vertex,
-				from: vertexWeDependOn,
-			})
+		// alongside the dependency graph sits the resource parentage graph, which
+		// is also displayed as part of this graph, although with different colored
+		// edges.
+		if !ignoreParentEdges {
+			if parent := vertex.resource.Parent; parent != resource.URN("") {
+				parentVertex := dg.vertices[parent]
+				vertex.outgoingEdges = append(vertex.outgoingEdges, &parentEdge{
+					to:   parentVertex,
+					from: vertex,
+				})
+			}
 		}
 	}
 
