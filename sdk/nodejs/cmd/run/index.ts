@@ -62,72 +62,73 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     // We are only interested in producing good diagnostics for top-level module loads,
     // since anything else are probably user code issues.
     const moduleName = moduleNameMatches[1];
-    if (moduleName === program) {
-        console.error(`We failed to locate the entrypoint for your program: ${program}`);
-
-        // From here on out, we're going to try to inspect the program we're being asked to run
-        // a little to see what sort of details we can glean from it, in the hopes of producing
-        // a better error message.
-        //
-        // The first step of this is trying to slurp up a package.json for this program, if
-        // one exists.
-        const stat = fs.lstatSync(program);
-        let projectRoot: string;
-        if (stat.isDirectory()) {
-            projectRoot = program;
-        } else {
-            projectRoot = path.dirname(program);
-        }
-
-        let packageObject: Record<string, any>;
-        try {
-            const packageJson = path.join(projectRoot, "package.json");
-            packageObject = require(packageJson);
-        } catch {
-            // This is all best-effort so if we can't load the package.json file, that's
-            // fine.
-            return process.exit(1);
-        }
-
-        console.error("Here's what we think went wrong:");
-
-        // The objective here is to emit the best diagnostic we can, starting from the
-        // most specific to the least specific.
-        const deps = packageObject["dependencies"] || {};
-        const devDeps = packageObject["devDependencies"] || {};
-        const scripts = packageObject["scripts"] || {};
-        const mainProperty  = packageObject["main"] || "index.js";
-
-        // Is there a build script associated with this program? It's a little confusing that the
-        // Pulumi CLI doesn't run build scripts before running the program so call that out
-        // explicitly.
-        if ("build" in scripts) {
-            const command = scripts["build"];
-            console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
-            console.error("Pulumi does not run build scripts before running your program. " +
-                          `Please run '${command}' or 'yarn build' and try again.`);
-            return process.exit(1);
-        }
-
-        // Not all typescript programs have build scripts. If we think it's a typescript program,
-        // tell the user to run tsc.
-        if ("typescript" in deps || "typescript" in devDeps) {
-            console.error("  * Your program looks like a TypeScript program. Have you run 'tsc'?");
-            return process.exit(1);
-        }
-
-        // Not all projects are typescript. If there's a main property, check that the file exists.
-        if (mainProperty !== undefined && typeof mainProperty === "string") {
-            const mainFile = path.join(projectRoot, mainProperty);
-            if (!fs.existsSync(mainFile)) {
-                console.error(`  * Your program's 'main' file (${mainFile}) does not exist.`);
-                return process.exit(1);
-            }
-        }
-
-        console.error(`  * We're not really sure! Here's the exception message we received: ${error.message}`);
+    if (moduleName !== program) {
+        throw error;
     }
 
+    console.error(`We failed to locate the entry point for your program: ${program}`);
+
+    // From here on out, we're going to try to inspect the program we're being asked to run
+    // a little to see what sort of details we can glean from it, in the hopes of producing
+    // a better error message.
+    //
+    // The first step of this is trying to slurp up a package.json for this program, if
+    // one exists.
+    const stat = fs.lstatSync(program);
+    let projectRoot: string;
+    if (stat.isDirectory()) {
+        projectRoot = program;
+    } else {
+        projectRoot = path.dirname(program);
+    }
+
+    let packageObject: Record<string, any>;
+    try {
+        const packageJson = path.join(projectRoot, "package.json");
+        packageObject = require(packageJson);
+    } catch {
+        // This is all best-effort so if we can't load the package.json file, that's
+        // fine.
+        return process.exit(1);
+    }
+
+    console.error("Here's what we think went wrong:");
+
+    // The objective here is to emit the best diagnostic we can, starting from the
+    // most specific to the least specific.
+    const deps = packageObject["dependencies"] || {};
+    const devDeps = packageObject["devDependencies"] || {};
+    const scripts = packageObject["scripts"] || {};
+    const mainProperty  = packageObject["main"] || "index.js";
+
+    // Is there a build script associated with this program? It's a little confusing that the
+    // Pulumi CLI doesn't run build scripts before running the program so call that out
+    // explicitly.
+    if ("build" in scripts) {
+        const command = scripts["build"];
+        console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
+        console.error("Pulumi does not run build scripts before running your program. " +
+                        `Please run '${command}', 'yarn build', or 'npm build' and try again.`);
+        return process.exit(1);
+    }
+
+    // Not all typescript programs have build scripts. If we think it's a typescript program,
+    // tell the user to run tsc.
+    if ("typescript" in deps || "typescript" in devDeps) {
+        console.error("  * Your program looks like a TypeScript program. Have you run 'tsc'?");
+        return process.exit(1);
+    }
+
+    // Not all projects are typescript. If there's a main property, check that the file exists.
+    if (mainProperty !== undefined && typeof mainProperty === "string") {
+        const mainFile = path.join(projectRoot, mainProperty);
+        if (!fs.existsSync(mainFile)) {
+            console.error(`  * Your program's 'main' file (${mainFile}) does not exist.`);
+            return process.exit(1);
+        }
+    }
+
+    console.error(`  * We're not really sure! Here's the exception message we received: ${error.message}`);
     return process.exit(1);
 }
 
