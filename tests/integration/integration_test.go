@@ -3,7 +3,9 @@
 package ints
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -138,6 +140,40 @@ func TestStackParenting(t *testing.T) {
 					}
 				}
 			}
+		},
+	})
+}
+
+// TestStackDependencyGraph tests that the dependency graph of a stack is saved
+// in the checkpoint file.
+func TestStackDependencyGraph(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "stack_dependencies",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Checkpoint.Latest)
+			latest := stackInfo.Checkpoint.Latest
+			assert.True(t, len(latest.Resources) >= 2)
+			fmt.Println(latest.Resources)
+			sawFirst := false
+			sawSecond := false
+			for _, res := range latest.Resources {
+				urn := string(res.URN)
+				if strings.Contains(urn, "dynamic:Resource::first") {
+					// The first resource doesn't depend on anything.
+					assert.Equal(t, 0, len(res.Dependencies))
+					sawFirst = true
+				} else if strings.Contains(urn, "dynamic:Resource::second") {
+					// The second resource uses an Output property of the first resource, so it
+					// depends directly on first.
+					assert.Equal(t, 1, len(res.Dependencies))
+					assert.True(t, strings.Contains(string(res.Dependencies[0]), "dynamic:Resource::first"))
+					sawSecond = true
+				}
+			}
+
+			assert.True(t, sawFirst && sawSecond)
 		},
 	})
 }

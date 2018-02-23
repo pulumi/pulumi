@@ -29,12 +29,19 @@ goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse', null, global);
  * @constructor
  */
 proto.pulumirpc.RegisterResourceRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.RegisterResourceRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.RegisterResourceRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   proto.pulumirpc.RegisterResourceRequest.displayName = 'proto.pulumirpc.RegisterResourceRequest';
 }
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -69,7 +76,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     parent: jspb.Message.getFieldWithDefault(msg, 3, ""),
     custom: jspb.Message.getFieldWithDefault(msg, 4, false),
     object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    protect: jspb.Message.getFieldWithDefault(msg, 6, false)
+    protect: jspb.Message.getFieldWithDefault(msg, 6, false),
+    dependenciesList: jspb.Message.getRepeatedField(msg, 7)
   };
 
   if (includeInstance) {
@@ -130,6 +138,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 6:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setProtect(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addDependencies(value);
       break;
     default:
       reader.skipField();
@@ -203,6 +215,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
+  f = message.getDependenciesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      7,
+      f
+    );
+  }
 };
 
 
@@ -217,7 +236,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getType = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setType = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -232,7 +251,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getName = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setName = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -247,7 +266,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getParent = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setParent = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -264,7 +283,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getCustom = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setCustom = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -311,7 +330,36 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getProtect = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setProtect = function(value) {
-  jspb.Message.setField(this, 6, value);
+  jspb.Message.setProto3BooleanField(this, 6, value);
+};
+
+
+/**
+ * repeated string dependencies = 7;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getDependenciesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 7));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.RegisterResourceRequest.prototype.setDependenciesList = function(value) {
+  jspb.Message.setField(this, 7, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addDependencies = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 7, value, opt_index);
+};
+
+
+proto.pulumirpc.RegisterResourceRequest.prototype.clearDependenciesList = function() {
+  this.setDependenciesList([]);
 };
 
 
@@ -510,7 +558,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -525,7 +573,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getId = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setId = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -572,7 +620,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getStable = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setStable = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -757,7 +805,7 @@ proto.pulumirpc.RegisterResourceOutputsRequest.prototype.getUrn = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RegisterResourceOutputsRequest.prototype.setUrn = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

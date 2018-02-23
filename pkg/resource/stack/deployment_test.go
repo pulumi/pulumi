@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// TestDeploymentSerialization creates a basic
+// TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
 	res := resource.NewState(
 		tokens.Type("Test"),
@@ -56,6 +56,10 @@ func TestDeploymentSerialization(t *testing.T) {
 		}),
 		"",
 		false,
+		[]resource.URN{
+			resource.URN("foo:bar:baz"),
+			resource.URN("foo:bar:boo"),
+		},
 	)
 
 	dep := SerializeResource(res)
@@ -65,6 +69,9 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.NotNil(t, dep.ID)
 	assert.Equal(t, resource.ID("test-resource-x"), dep.ID)
 	assert.Equal(t, tokens.Type("Test"), dep.Type)
+	assert.Equal(t, 2, len(dep.Dependencies))
+	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
+	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
 
 	// assert some things about the inputs:
 	assert.NotNil(t, dep.Inputs)

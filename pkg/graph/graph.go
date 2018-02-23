@@ -32,4 +32,5 @@ type Edge interface {
 	Label() string     // this edge's label.
 	To() Vertex        // the vertex this edge connects to.
 	From() Vertex      // the vertex this edge connects from.
+	Color() string     // an optional color for this edge, for when this graph is displayed.
 }

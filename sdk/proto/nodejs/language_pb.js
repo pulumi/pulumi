@@ -179,7 +179,7 @@ proto.pulumirpc.GetRequiredPluginsRequest.prototype.getProject = function() {
 
 /** @param {string} value */
 proto.pulumirpc.GetRequiredPluginsRequest.prototype.setProject = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -194,7 +194,7 @@ proto.pulumirpc.GetRequiredPluginsRequest.prototype.getPwd = function() {
 
 /** @param {string} value */
 proto.pulumirpc.GetRequiredPluginsRequest.prototype.setPwd = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -209,7 +209,7 @@ proto.pulumirpc.GetRequiredPluginsRequest.prototype.getProgram = function() {
 
 /** @param {string} value */
 proto.pulumirpc.GetRequiredPluginsRequest.prototype.setProgram = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -621,7 +621,7 @@ proto.pulumirpc.RunRequest.prototype.getProject = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setProject = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -636,7 +636,7 @@ proto.pulumirpc.RunRequest.prototype.getStack = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setStack = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -651,7 +651,7 @@ proto.pulumirpc.RunRequest.prototype.getPwd = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setPwd = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -666,7 +666,7 @@ proto.pulumirpc.RunRequest.prototype.getProgram = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setProgram = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -730,7 +730,7 @@ proto.pulumirpc.RunRequest.prototype.getDryrun = function() {
 
 /** @param {boolean} value */
 proto.pulumirpc.RunRequest.prototype.setDryrun = function(value) {
-  jspb.Message.setField(this, 7, value);
+  jspb.Message.setProto3BooleanField(this, 7, value);
 };
 
 
@@ -745,7 +745,7 @@ proto.pulumirpc.RunRequest.prototype.getParallel = function() {
 
 /** @param {number} value */
 proto.pulumirpc.RunRequest.prototype.setParallel = function(value) {
-  jspb.Message.setField(this, 8, value);
+  jspb.Message.setProto3IntField(this, 8, value);
 };
 
 
@@ -760,7 +760,7 @@ proto.pulumirpc.RunRequest.prototype.getMonitorAddress = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RunRequest.prototype.setMonitorAddress = function(value) {
-  jspb.Message.setField(this, 9, value);
+  jspb.Message.setProto3StringField(this, 9, value);
 };
 
 
@@ -902,7 +902,7 @@ proto.pulumirpc.RunResponse.prototype.getError = function() {
 
 /** @param {string} value */
 proto.pulumirpc.RunResponse.prototype.setError = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

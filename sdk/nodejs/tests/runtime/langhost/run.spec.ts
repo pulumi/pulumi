@@ -25,7 +25,7 @@ interface RunCase {
     expectError?: string;
     expectResourceCount?: number;
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
-    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[]) => {
         urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
@@ -171,7 +171,8 @@ describe("rpc", () => {
         "resource_thens": {
             program: path.join(base, "005.resource_thens"),
             expectResourceCount: 2,
-            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string,
+                               res: any, dependencies: string[]) => {
                 let id: ID | undefined;
                 let props: any | undefined;
                 switch (t) {
@@ -186,6 +187,7 @@ describe("rpc", () => {
                     }
                     case "test:index:ResourceB": {
                         assert.strictEqual(name, "resourceB");
+                        assert.deepEqual(dependencies, ["test:index:ResourceA::resourceA"]);
                         if (dryrun) {
                             // If this is a dry-run, we won't have the real values:
                             assert.deepEqual(res, {
@@ -353,7 +355,8 @@ describe("rpc", () => {
                                 const t = req.getType();
                                 const name = req.getName();
                                 const res: any = req.getObject().toJavaScript();
-                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res);
+                                const deps: string[] = req.getDependenciesList();
+                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));

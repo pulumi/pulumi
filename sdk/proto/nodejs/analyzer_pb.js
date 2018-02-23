@@ -169,7 +169,7 @@ proto.pulumirpc.AnalyzeRequest.prototype.getType = function() {
 
 /** @param {string} value */
 proto.pulumirpc.AnalyzeRequest.prototype.setType = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -521,7 +521,7 @@ proto.pulumirpc.AnalyzeFailure.prototype.getProperty = function() {
 
 /** @param {string} value */
 proto.pulumirpc.AnalyzeFailure.prototype.setProperty = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -536,7 +536,7 @@ proto.pulumirpc.AnalyzeFailure.prototype.getReason = function() {
 
 /** @param {string} value */
 proto.pulumirpc.AnalyzeFailure.prototype.setReason = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
