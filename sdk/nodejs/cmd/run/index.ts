@@ -2,6 +2,7 @@
 
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
 
+import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as pulumi from "../../";
@@ -34,6 +35,100 @@ function printErrorUsageAndExit(message: string): never {
     console.error(message);
     usage();
     return process.exit(-1);
+}
+
+/**
+ * Attempts to provide a detailed error message for module load failure if the
+ * module that failed to load is the top-level module.
+ * @param program The name of the program given to `run`, i.e. the top level module
+ * @param error The error that occured. Must be a module load error.
+ */
+function reportModuleLoadFailure(program: string, error: Error): never {
+    // error is guaranteed to be a Node module load error. Node emits a very
+    // specific string in its error message for module load errors, which includes
+    // the module it was trying to load.
+    const errorRegex = /Cannot find module '(.*)'/;
+
+    // If there's no match, who knows what this exception is; it's not something
+    // we can provide an intelligent diagnostic for.
+    const moduleNameMatches = errorRegex.exec(error.message);
+    if (moduleNameMatches === null) {
+        throw error;
+    }
+
+    // Is the module that failed to load exactly the one that this script considered to
+    // be the top-level module for this program?
+    //
+    // We are only interested in producing good diagnostics for top-level module loads,
+    // since anything else are probably user code issues.
+    const moduleName = moduleNameMatches[1];
+    if (moduleName === program) {
+        console.error(`We failed to locate the entrypoint for your program: ${program}`);
+
+        // From here on out, we're going to try to inspect the program we're being asked to run
+        // a little to see what sort of details we can glean from it, in the hopes of producing
+        // a better error message.
+        //
+        // The first step of this is trying to slurp up a package.json for this program, if
+        // one exists.
+        const stat = fs.lstatSync(program);
+        let projectRoot: string;
+        if (stat.isDirectory()) {
+            projectRoot = program;
+        } else {
+            projectRoot = path.dirname(program);
+        }
+
+        let packageObject: Record<string, any>;
+        try {
+            const packageJson = path.join(projectRoot, "package.json");
+            packageObject = require(packageJson);
+        } catch {
+            // This is all best-effort so if we can't load the package.json file, that's
+            // fine.
+            return process.exit(1);
+        }
+
+        console.error("Here's what we think went wrong:");
+
+        // The objective here is to emit the best diagnostic we can, starting from the
+        // most specific to the least specific.
+        const deps = packageObject["dependencies"] || {};
+        const devDeps = packageObject["devDependencies"] || {};
+        const scripts = packageObject["scripts"] || {};
+        const mainProperty  = packageObject["main"] || "index.js";
+
+        // Is there a build script associated with this program? It's a little confusing that the
+        // Pulumi CLI doesn't run build scripts before running the program so call that out
+        // explicitly.
+        if ("build" in scripts) {
+            const command = scripts["build"];
+            console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
+            console.error("Pulumi does not run build scripts before running your program. " +
+                          `Please run '${command}' or 'yarn build' and try again.`);
+            return process.exit(1);
+        }
+
+        // Not all typescript programs have build scripts. If we think it's a typescript program,
+        // tell the user to run tsc.
+        if ("typescript" in deps || "typescript" in devDeps) {
+            console.error("  * Your program looks like a TypeScript program. Have you run 'tsc'?");
+            return process.exit(1);
+        }
+
+        // Not all projects are typescript. If there's a main property, check that the file exists.
+        if (mainProperty !== undefined && typeof mainProperty === "string") {
+            const mainFile = path.join(projectRoot, mainProperty);
+            if (!fs.existsSync(mainFile)) {
+                console.error(`  * Your program's 'main' file (${mainFile}) does not exist.`);
+                return process.exit(1);
+            }
+        }
+
+        console.error(`  * We're not really sure! Here's the exception message we received: ${error.message}`);
+    }
+
+    return process.exit(1);
 }
 
 export function main(args: string[]): void {
@@ -157,7 +252,23 @@ export function main(args: string[]): void {
         //
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
-        return require(program);
+        try {
+            return require(program);
+        } catch (e) {
+            // User JavaScript can throw anything, so if it's not an Error it's definitely
+            // not something we want to catch up here.
+            if (!(e instanceof Error)) {
+                throw e;
+            }
+
+            // Give a better error message, if we can.
+            const errorCode = (<any>e).code;
+            if (errorCode === "MODULE_NOT_FOUND") {
+                reportModuleLoadFailure(program, e);
+            }
+
+            throw e;
+        }
     });
 }
 
