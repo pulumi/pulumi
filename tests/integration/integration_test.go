@@ -21,7 +21,7 @@ import (
 func TestEmptyNodeJS(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("empty", "nodejs"),
-		Dependencies: []string{"pulumi"},
+		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 	})
 }
