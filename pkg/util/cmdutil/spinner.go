@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -60,31 +61,34 @@ var (
 // ttySpinner is the spinner that can be used when standard out is a tty. When we are connected to a TTY we can erase
 // characters we've written and provide a nice quick progress spinner.
 type ttySpinner struct {
-	prefix     string
-	frames     []string
-	index      int
-	hasWritten bool
+	prefix      string
+	frames      []string
+	index       int
+	lastWritten int
 }
 
 func (spin *ttySpinner) Tick() {
-	if spin.hasWritten {
-		fmt.Print("\b")
+	if spin.lastWritten > 0 {
+		for i := 0; i < spin.lastWritten; i++ {
+			fmt.Print("\b \b")
+		}
 	} else {
 		fmt.Print(spin.prefix)
-		spin.hasWritten = true
 	}
-	fmt.Print(spin.frames[spin.index])
+	frame := spin.frames[spin.index]
+	fmt.Print(frame)
+	spin.lastWritten = utf8.RuneCountInString(frame)
 	spin.index = (spin.index + 1) % len(spin.frames)
 }
 
 func (spin *ttySpinner) Reset() {
-	if spin.hasWritten {
-		for i := 0; i < len(spin.prefix)+1; i++ {
-			fmt.Print("\b")
+	if spin.lastWritten > 0 {
+		for i := 0; i < len(spin.prefix)+spin.lastWritten; i++ {
+			fmt.Print("\b \b")
 		}
 	}
 	spin.index = 0
-	spin.hasWritten = false
+	spin.lastWritten = 0
 }
 
 // dotSpinner is the spinner that can be used when standard out is not a tty. In this case, we just write a single
