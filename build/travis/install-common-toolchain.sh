@@ -20,11 +20,9 @@ nvm install v6.10.2
         *) echo "error: unknown host os $(uname)" ; exit 1;;
     esac
 
-    PIP_CMD=pip
-
-    # On Travis, pip is called pip2.7
+    # On Travis, pip is called pip2.7, so alias it.
     if [ "${TRAVIS_OS_NAME:-}" = "osx" ]; then
-        PIP_CMD=pip2.7
+        sudo ln -s $(which pip2.7) /usr/local/bin/pip
     fi
 
     echo "installing yarn ${YARN_VERSION}"
@@ -33,7 +31,6 @@ nvm install v6.10.2
     echo "installing dep ${DEP_VERSION}"
     curl -L -o "$(go env GOPATH)/bin/dep" https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-${OS}-amd64
     chmod +x "$(go env GOPATH)/bin/dep"
-
 
     echo "installing Gometalinter ${GOMETALINTER_VERSION}"
     curl -L "https://github.com/alecthomas/gometalinter/releases/download/v${GOMETALINTER_VERSION}/gometalinter-v${GOMETALINTER_VERSION}-${OS}-amd64.tar.bz2" | tar -jxv --strip-components=1 -C "$(go env GOPATH)/bin"
@@ -53,7 +50,7 @@ nvm install v6.10.2
     go get -v github.com/wadey/gocovmerge
 
     echo "installing AWS cli ${AWSCLI_VERSION}"
-    ${PIP_CMD} install --user "awscli==${AWSCLI_VERSION}"
+    pip install --user "awscli==${AWSCLI_VERSION}"
 )
 
 # If the sub shell failed, bail out now.

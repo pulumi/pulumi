@@ -26,7 +26,6 @@ lint::
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cd runtime/native && node-gyp configure
-	cp -R ../proto/nodejs/. proto/
 	cd runtime/native && node-gyp build
 	tsc
 	cp README.md ../../LICENSE package.json ./dist/* bin/

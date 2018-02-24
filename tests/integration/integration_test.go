@@ -17,6 +17,23 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
+func TestEmptyNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("empty", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+// TestEmptyPython simply tests that we can run an empty Python project.
+func TestEmptyPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "python"),
+		Quick: true,
+	})
+}
+
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
 	var test integration.ProgramTestOptions
