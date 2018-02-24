@@ -149,15 +149,16 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			return nil, infoerr
 		}
 
-		// Ensure that the version reported by the plugin matches what we expected.
+		// Warn if the plugin version was not what we expected
 		if version != nil {
 			if info.Version == nil || !version.EQ(*info.Version) {
 				var v string
 				if info.Version != nil {
 					v = info.Version.String()
 				}
-				return nil,
-					errors.Errorf("resource plugin version %s mis-reported its own version: %s", version.String(), v)
+				host.ctx.Diag.Warningf(
+					diag.Message("resource plugin %s mis-reported its own version, expected %s got %s"),
+					info.Name, version.String(), v)
 			}
 		}
 

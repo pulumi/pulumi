@@ -263,51 +263,54 @@ func GetPlugins() ([]PluginInfo, error) {
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  If no version is supplied, the latest
 // plugin for that given kind/name pair is loaded, using standard semver sorting rules.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
-	// First look on the path.  This supports development scenarios where we want to make it easy to override.
+	// If we have a version, check the plugin cache first.
+	if version != nil {
+		plugins, err := GetPlugins()
+		if err != nil {
+			return "", "", errors.Wrapf(err, "loading plugin list")
+		}
+		var match *PluginInfo
+		for _, plugin := range plugins {
+			if plugin.Kind == kind && plugin.Name == name {
+				if version == nil {
+					// If no version filter was specified, pick the most recent version.  But we must also keep going
+					// because we could later on find a version that is even more recent and should take precedence.
+					if match == nil || match.Version == nil ||
+						(plugin.Version != nil && (*match).Version.LT(*plugin.Version)) {
+						match = &plugin
+					}
+				} else if plugin.Version != nil && (*version).EQ(*plugin.Version) {
+					// If there's a specific version being sought, and we found it, we're done.
+					match = &plugin
+					break
+				}
+			}
+		}
+
+		if match != nil {
+			matchDir, err := match.DirPath()
+			if err != nil {
+				return "", "", err
+			}
+			matchPath, err := match.FilePath()
+			if err != nil {
+				return "", "", err
+			}
+
+			glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
+			return matchDir, matchPath, nil
+		}
+	}
+
+	// If we don't have a version (or we do, but it wasn't in the cache), then fall back to the version on the $PATH.
+	// This supports development scenarios where we want to make it easy to override.
 	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 	if path, err := exec.LookPath(filename); err == nil {
 		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s", kind, name, version, path)
 		return "", path, nil
 	}
 
-	// If nothing was found on the path, fall back to the plugin cache.
-	plugins, err := GetPlugins()
-	if err != nil {
-		return "", "", errors.Wrapf(err, "loading plugin list")
-	}
-	var match *PluginInfo
-	for _, plugin := range plugins {
-		if plugin.Kind == kind && plugin.Name == name {
-			if version == nil {
-				// If no version filter was specified, pick the most recent version.  But we must also keep going
-				// because we could later on find a version that is even more recent and should take precedence.
-				if match == nil || match.Version == nil ||
-					(plugin.Version != nil && (*match).Version.LT(*plugin.Version)) {
-					match = &plugin
-				}
-			} else if plugin.Version != nil && (*version).EQ(*plugin.Version) {
-				// If there's a specific version being sought, and we found it, we're done.
-				match = &plugin
-				break
-			}
-		}
-	}
-
-	if match == nil {
-		return "", "", nil
-	}
-
-	matchDir, err := match.DirPath()
-	if err != nil {
-		return "", "", err
-	}
-	matchPath, err := match.FilePath()
-	if err != nil {
-		return "", "", err
-	}
-
-	glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
-	return matchDir, matchPath, nil
+	return "", "", nil
 }
 
 // pluginRegexp matches plugin filenames: pulumi-KIND-NAME-VERSION[.exe].
