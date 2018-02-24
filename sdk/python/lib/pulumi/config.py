@@ -5,7 +5,7 @@ The config module contains all configuration management functionality.
 """
 
 import errors
-import runtime
+from runtime.config import get_config
 
 class Config(object):
     """
@@ -27,7 +27,7 @@ class Config(object):
         """
         Returns an optional configuration value by its key, or None if it doesn't exist.
         """
-        return runtime.get_config(self.full_key(key))
+        return get_config(self.full_key(key))
 
     def get_bool(self, key):
         """

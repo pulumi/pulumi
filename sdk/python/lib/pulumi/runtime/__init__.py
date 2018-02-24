@@ -8,3 +8,4 @@ The runtime implementation of the Pulumi Python SDK.
 from config import *
 from resource import *
 from settings import *
+from stack import *

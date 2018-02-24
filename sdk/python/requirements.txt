@@ -1,1 +1,4 @@
-pylint==1.5.5
+google==2.0.1
+grpcio==1.9.1
+pylint==1.6.0
+six==1.11.0

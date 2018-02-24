@@ -10,4 +10,5 @@ __all__ = ['runtime']
 # Make all module members inside of this package available as package members.
 from config import *
 from errors import *
+from metadata import *
 from resource import *

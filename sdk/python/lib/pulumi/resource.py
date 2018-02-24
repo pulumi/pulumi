@@ -2,7 +2,8 @@
 
 """The Resource module, containing all resource-related definitions."""
 
-from pulumi import runtime
+from runtime.resource import register_resource, register_resource_outputs
+from runtime.settings import get_root_resource
 
 class Resource(object):
     """
@@ -32,12 +33,18 @@ class Resource(object):
 
         # Default the parent if there is none.
         if opts.parent is None:
-            opts.parent = runtime.get_root_resource() # pylint: disable=assignment-from-none
+            opts.parent = get_root_resource()
 
         # Now register the resource.  If we are actually performing a deployment, this resource's properties
         # will be resolved to real values.  If we are only doing a dry-run preview, on the other hand, they will
         # resolve to special Preview sentinel values to indicate the value isn't yet available.
-        runtime.register_resource(self, t, name, custom, props, opts)
+        register_resource(self, t, name, custom, props, opts)
+
+    def set_outputs(self, outputs):
+        """
+        Sets output properties after a registration has completed.
+        """
+        # By default, do nothing.  If subclasses wish to support provider outputs, they must override this.
 
 class ResourceOptions(object):
     """
@@ -65,8 +72,18 @@ class ComponentResource(Resource):
     def __init__(self, t, name, props=None, opts=None):
         Resource.__init__(self, t, name, False, props, opts)
 
+    def register_outputs(self, outputs):
+        """
+        Register synthetic outputs that a component has initialized, usually by allocating other child
+        sub-resources and propagating their resulting property values.
+        """
+        if outputs:
+            register_resource_outputs(self, outputs)
+
 def export(name, value):
     """
     Exports a named stack output.
     """
-    # TODO
+    stack = get_root_resource()
+    if stack is not None:
+        stack.export(name, value)

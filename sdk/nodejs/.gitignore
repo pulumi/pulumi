@@ -1,6 +1,5 @@
 /bin/
 /coverage/
 /node_modules/
-/proto/
 /custom_node/
 /runtime/native/node_dev/
