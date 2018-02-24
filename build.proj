@@ -29,15 +29,6 @@
           WorkingDirectory="$(NodeJSSdkDirectory)" />
   </Target>
 
-  <Target Name="CopyNodeSdkProtos">
-    <ItemGroup>
-      <NodeSdkProtos Include="$(SdkDirectory)\proto\nodejs\**\*" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(NodeSdkProtos)"
-          DestinationFolder="$(NodeJSSdkDirectory)\proto" />
-  </Target>
-
   <Target Name="ConfigureNativeRuntimeModule"
           DependsOnTargets="EnsureNodeDependencies">
     <Exec Command="&quot;$(NativeRuntimeModuleDirectory)\ensure_node_v8.cmd&quot;"
@@ -79,7 +70,7 @@
 
   <Target Name="BinplaceNodeSdkProtos">
     <ItemGroup>
-      <NodeSdkProtosForBinplace Include="$(NodeSdkDirectory)\proto\nodejs\**\*" />
+      <NodeSdkProtos Include="$(NodeJSSdkDirectory)\proto\*.js" />
     </ItemGroup>
 
     <Copy SourceFiles="@(NodeSdkProtos)"
@@ -121,7 +112,7 @@
   </Target>
 
   <Target Name="BuildNodeSdk"
-          DependsOnTargets="CopyNodeSdkProtos;BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
+          DependsOnTargets="BuildNativeRuntimeModule;TypeScriptCompileNodeSdk;GoCompileNodeSdk;BinPlaceNodeSdk">
   </Target>
 
   <Target Name="BuildGoCmds">
