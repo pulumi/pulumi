@@ -8,7 +8,7 @@ GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 include ../../build/common.mk
 
 ensure::
-	pip install -r requirements.txt
+	pip install --user -r requirements.txt
 
 lint::
 	pylint -E lib/pulumi/ --ignore-patterns '.*_pb2_.*.py'
