@@ -23,7 +23,7 @@ build::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install::
-	cd ./bin/ && python setup.py install --user --force
+	cd ./bin/ && python setup.py install --user --force --prefix=
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 	GOBIN=$(PULUMI_BIN) go install \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
