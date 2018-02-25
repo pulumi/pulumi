@@ -4,6 +4,7 @@
 
 import * as minimist from "minimist";
 import * as path from "path";
+import * as tsnode from "ts-node";
 import * as pulumi from "../../";
 import { RunError } from "../../errors";
 import * as log from "../../log";
@@ -146,6 +147,11 @@ export function main(args: string[]): void {
         if (code === 0 && uncaught) {
             process.exit(1);
         }
+    });
+
+    // Allow TypeScript files to be loaded directly.
+    tsnode.register({
+        typeCheck: true,
     });
 
     // Construct a `Stack` resource to represent the outputs of the program.

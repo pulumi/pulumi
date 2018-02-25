@@ -18,6 +18,7 @@
         "minimist": "^1.2.0",
         "require-from-string": "^2.0.1",
         "source-map-support": "^0.4.16",
+        "ts-node": "^5.0.0",
         "typescript": "^2.5.2"
     }
 }

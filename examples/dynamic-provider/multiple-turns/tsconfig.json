@@ -1,12 +1,9 @@
 {
     "compilerOptions": {
-        "outDir": "bin",
+        "noEmit": true,
         "target": "es6",
         "module": "commonjs",
         "moduleResolution": "node",
-        "declaration": true,
-        "sourceMap": true,
-        "stripInternal": true,
         "experimentalDecorators": true,
         "pretty": true,
         "noFallthroughCasesInSwitch": true,
