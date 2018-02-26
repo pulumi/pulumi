@@ -128,7 +128,8 @@ function reportModuleLoadFailure(program: string, error: Error): never {
         }
     }
 
-    console.error(`  * We're not really sure! Here's the exception message we received: ${error.message}`);
+    console.error("  * Yowzas, our sincere apologies, we haven't seen this before!");
+    console.error(`    Here is the raw exception message we received: ${error.message}`);
     return process.exit(1);
 }
 
