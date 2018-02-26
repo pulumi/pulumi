@@ -68,6 +68,42 @@ func TestStackCommands(t *testing.T) {
 		assert.Equal(t, 0, len(stacks))
 	})
 
+	t.Run("StackInit", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+
+		// Confirm passing both --local and --ppc fails.
+		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--local", "--ppc", "bar")
+		assert.Empty(t, out, "expected no stdout")
+		assert.Contains(t, err, "cannot pass both --local and --ppc; PPCs only available in cloud mode")
+
+		// Confirm passing both --local and --remote fails.
+		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--local", "--remote")
+		assert.Empty(t, out, "expected no stdout")
+		assert.Contains(t, err, "cannot pass both --local and --remote")
+
+		// Confirm passing --remote while logged out fails.
+		e.RunCommand("pulumi", "logout")
+		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--remote")
+		assert.Empty(t, out, "expected no stdout")
+		assert.Contains(t, err, "error: you must be logged in to create stacks in the Pulumi Cloud.")
+		assert.Contains(t, err, "Run `pulumi login` to log in.")
+
+		// Confirm stack init without --local works when logged out.
+		e.RunCommand("pulumi", "stack", "init", "foo")
+		stacks, current := integration.GetStacks(e)
+		assert.Equal(t, 1, len(stacks))
+		assert.NotNil(t, current)
+		assert.Equal(t, "foo", *current)
+		assert.Contains(t, stacks, "foo")
+	})
+
 	t.Run("StackSelect", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
