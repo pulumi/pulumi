@@ -28,6 +28,8 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			cloudURL = cloud.ValueOrDefaultURL(cloudURL)
+
 			var b backend.Backend
 			var opts interface{}
 			if localBackend {
@@ -81,11 +83,6 @@ func newStackInitCmd() *cobra.Command {
 }
 
 func isLoggedIn(cloudURL string) bool {
-	// If no cloud URL override was given, fall back to the default.
-	if cloudURL == "" {
-		cloudURL = cloud.DefaultURL()
-	}
-
 	creds, err := workspace.GetAccessToken(cloudURL)
 	return err == nil && creds != ""
 }
