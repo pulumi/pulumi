@@ -1,4 +1,3 @@
 name: minimal
-description: A minimal Lumi program.
 runtime: nodejs
-
+description: A minimal Lumi program.

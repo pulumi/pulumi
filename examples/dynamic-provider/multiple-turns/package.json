@@ -1,14 +1,8 @@
 {
     "name": "minimal",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
-    "scripts": {
-        "build": "tsc"
-    },
+    "main": "index.ts",
     "devDependencies": {
-        "@types/minimist": "^1.2.0",
-        "@types/node": "^8.0.25",
-        "typescript": "^2.5.3"
+        "@types/node": "^8.0.25"
     },
     "dependencies": {
         "assert": "^1.4.1",
