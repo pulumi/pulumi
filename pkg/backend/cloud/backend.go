@@ -565,7 +565,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 	m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
-	cfg, err := state.Configuration(b.d, stackName)
+	cfg, err := state.ConfigurationDeprecated(b.d, stackName)
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting configuration")
 	}

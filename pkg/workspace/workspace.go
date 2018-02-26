@@ -30,7 +30,7 @@ type W interface {
 }
 
 type projectWorkspace struct {
-	name     tokens.PackageName // the project this workspace is associated with.
+	name     tokens.PackageName // the package this workspace is associated with.
 	project  string             // the path to the Pulumi.[yaml|json] file for this project.
 	settings *Settings          // settings for this workspace.
 	repo     *Repository        // the repo this workspace is associated with.
@@ -76,8 +76,8 @@ func NewFrom(dir string) (W, error) {
 		return nil, err
 	}
 
-	if w.settings.Config == nil {
-		w.settings.Config = make(map[tokens.QName]config.Map)
+	if w.settings.ConfigDeprecated == nil {
+		w.settings.ConfigDeprecated = make(map[tokens.QName]config.Map)
 	}
 
 	return &w, nil
@@ -97,9 +97,9 @@ func (pw *projectWorkspace) Project() (*Project, error) {
 
 func (pw *projectWorkspace) Save() error {
 	// let's remove all the empty entries from the config array
-	for k, v := range pw.settings.Config {
+	for k, v := range pw.settings.ConfigDeprecated {
 		if len(v) == 0 {
-			delete(pw.settings.Config, k)
+			delete(pw.settings.ConfigDeprecated, k)
 		}
 	}
 

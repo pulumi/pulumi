@@ -94,7 +94,7 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 }
 
 func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
-	cfg, err := state.Configuration(b.d, stackName)
+	cfg, err := state.ConfigurationDeprecated(b.d, stackName)
 	if err != nil {
 		return nil, err
 	}

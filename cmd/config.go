@@ -285,7 +285,7 @@ func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value con
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	cfg, err := state.Configuration(cmdutil.Diag(), stack.Name())
+	cfg, err := state.ConfigurationDeprecated(cmdutil.Diag(), stack.Name())
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
-	cfg, err := state.Configuration(cmdutil.Diag(), stack.Name())
+	cfg, err := state.ConfigurationDeprecated(cmdutil.Diag(), stack.Name())
 	if err != nil {
 		return err
 	}
@@ -374,17 +374,17 @@ func deleteAllStackConfiguration(stackName tokens.QName) error {
 		return err
 	}
 
-	delete(w.Settings().Config, stackName)
+	delete(w.Settings().ConfigDeprecated, stackName)
 
 	err = w.Save()
 	if err != nil {
 		return err
 	}
 
-	if info, has := proj.Stacks[stackName]; has {
+	if info, has := proj.StacksDeprecated[stackName]; has {
 		info.Config = nil
 		info.EncryptionSalt = ""
-		proj.Stacks[stackName] = info
+		proj.StacksDeprecated[stackName] = info
 	}
 
 	return workspace.SaveProject(proj)
@@ -397,12 +397,12 @@ func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember)
 	}
 
 	if stackName == "" {
-		if proj.Config != nil {
-			delete(proj.Config, key)
+		if proj.ConfigDeprecated != nil {
+			delete(proj.ConfigDeprecated, key)
 		}
 	} else {
-		if proj.Stacks[stackName].Config != nil {
-			delete(proj.Stacks[stackName].Config, key)
+		if proj.StacksDeprecated[stackName].Config != nil {
+			delete(proj.StacksDeprecated[stackName].Config, key)
 		}
 	}
 
@@ -415,7 +415,7 @@ func deleteWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMembe
 		return err
 	}
 
-	if config, has := w.Settings().Config[stackName]; has {
+	if config, has := w.Settings().ConfigDeprecated[stackName]; has {
 		delete(config, key)
 	}
 
@@ -429,23 +429,23 @@ func setProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember, va
 	}
 
 	if stackName == "" {
-		if proj.Config == nil {
-			proj.Config = make(map[tokens.ModuleMember]config.Value)
+		if proj.ConfigDeprecated == nil {
+			proj.ConfigDeprecated = make(map[tokens.ModuleMember]config.Value)
 		}
 
-		proj.Config[key] = value
+		proj.ConfigDeprecated[key] = value
 	} else {
-		if proj.Stacks == nil {
-			proj.Stacks = make(map[tokens.QName]workspace.ProjectStack)
+		if proj.StacksDeprecated == nil {
+			proj.StacksDeprecated = make(map[tokens.QName]workspace.ProjectStack)
 		}
 
-		if proj.Stacks[stackName].Config == nil {
-			si := proj.Stacks[stackName]
+		if proj.StacksDeprecated[stackName].Config == nil {
+			si := proj.StacksDeprecated[stackName]
 			si.Config = make(map[tokens.ModuleMember]config.Value)
-			proj.Stacks[stackName] = si
+			proj.StacksDeprecated[stackName] = si
 		}
 
-		proj.Stacks[stackName].Config[key] = value
+		proj.StacksDeprecated[stackName].Config[key] = value
 	}
 
 	return workspace.SaveProject(proj)
@@ -457,11 +457,11 @@ func setWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember, 
 		return err
 	}
 
-	if _, has := w.Settings().Config[stackName]; !has {
-		w.Settings().Config[stackName] = make(map[tokens.ModuleMember]config.Value)
+	if _, has := w.Settings().ConfigDeprecated[stackName]; !has {
+		w.Settings().ConfigDeprecated[stackName] = make(map[tokens.ModuleMember]config.Value)
 	}
 
-	w.Settings().Config[stackName][key] = value
+	w.Settings().ConfigDeprecated[stackName][key] = value
 
 	return w.Save()
 }

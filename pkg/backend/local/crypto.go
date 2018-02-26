@@ -44,31 +44,31 @@ func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
 		return nil, err
 	}
 
-	if proj.Stacks == nil {
-		proj.Stacks = make(map[tokens.QName]workspace.ProjectStack)
+	if proj.StacksDeprecated == nil {
+		proj.StacksDeprecated = make(map[tokens.QName]workspace.ProjectStack)
 	}
 
 	// If we have a top level EncryptionSalt, we are reading an older version of Pulumi.yaml where local stacks shared
 	// a key. To migrate, we'll simply move this salt to any local stack that has encrypted config and then unset the
 	// package wide salt.
-	if proj.EncryptionSalt != "" {
+	if proj.EncryptionSaltDeprecated != "" {
 		localStacks, stacksErr := getLocalStacks()
 		if stacksErr != nil {
 			return nil, stacksErr
 		}
 
 		for _, localStack := range localStacks {
-			stackInfo := proj.Stacks[localStack]
+			stackInfo := proj.StacksDeprecated[localStack]
 			contract.Assertf(stackInfo.EncryptionSalt == "", "package and stack %v had an encryption salt", localStack)
 
 			if stackInfo.Config.HasSecureValue() {
-				stackInfo.EncryptionSalt = proj.EncryptionSalt
+				stackInfo.EncryptionSalt = proj.EncryptionSaltDeprecated
 			}
 
-			proj.Stacks[localStack] = stackInfo
+			proj.StacksDeprecated[localStack] = stackInfo
 		}
 
-		proj.EncryptionSalt = ""
+		proj.EncryptionSaltDeprecated = ""
 
 		// Now store the result on the package and save it.
 		if err = workspace.SaveProject(proj); err != nil {
@@ -77,7 +77,7 @@ func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
 	}
 
 	// If there's already a salt for the local stack, we can just use that.
-	if info, has := proj.Stacks[stackName]; has {
+	if info, has := proj.StacksDeprecated[stackName]; has {
 		if info.EncryptionSalt != "" {
 			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
 				"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
@@ -118,9 +118,9 @@ func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
 	contract.AssertNoError(err)
 
 	// Now store the result on the package and save it.
-	stackInfo := proj.Stacks[stackName]
+	stackInfo := proj.StacksDeprecated[stackName]
 	stackInfo.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
-	proj.Stacks[stackName] = stackInfo
+	proj.StacksDeprecated[stackName] = stackInfo
 	if err = workspace.SaveProject(proj); err != nil {
 		return nil, err
 	}

@@ -38,13 +38,13 @@ type Project struct {
 
 	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
 
-	EncryptionSalt   string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`     // base64 encoded encryption salt.
-	Context          string `json:"context,omitempty" yaml:"context,omitempty"`                   // an optional path (combined with the on disk location of Pulumi.yaml) to control the data uploaded to the service.
-	NoDefaultIgnores *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
+	EncryptionSaltDeprecated string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`     // base64 encoded encryption salt.
+	Context                  string `json:"context,omitempty" yaml:"context,omitempty"`                   // an optional path (combined with the on disk location of Pulumi.yaml) to control the data uploaded to the service.
+	NoDefaultIgnores         *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
 
-	Config map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
+	ConfigDeprecated map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
 
-	Stacks map[tokens.QName]ProjectStack `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
+	StacksDeprecated map[tokens.QName]ProjectStack `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
 }
 
 func (proj *Project) Validate() error {
@@ -71,9 +71,9 @@ func (proj *Project) Save(path string) error {
 	contract.Require(proj != nil, "proj")
 	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
 
-	for name, info := range proj.Stacks {
+	for name, info := range proj.StacksDeprecated {
 		if info.IsEmpty() {
-			delete(proj.Stacks, name)
+			delete(proj.StacksDeprecated, name)
 		}
 	}
 

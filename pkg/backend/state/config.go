@@ -12,10 +12,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Configuration reads the configuration for a given stack from the current workspace.  It applies a hierarchy of
-// configuration settings based on stack overrides and workspace-wide global settings.  If any of the workspace
+// ConfigurationDeprecated reads the configuration for a given stack from the current workspace.  It applies a hierarchy
+// of configuration settings based on stack overrides and workspace-wide global settings.  If any of the workspace
 // settings had an impact on the values returned, the second return value will be true.
-func Configuration(d diag.Sink, stackName tokens.QName) (config.Map, error) {
+func ConfigurationDeprecated(d diag.Sink, stackName tokens.QName) (config.Map, error) {
 	contract.Require(stackName != "", "stackName")
 
 	// Get the workspace and package and get ready to merge their views of the configuration.
@@ -35,14 +35,14 @@ func Configuration(d diag.Sink, stackName tokens.QName) (config.Map, error) {
 	var workspaceConfigKeys []string
 
 	// First, apply project-local stack-specific configuration.
-	if stack, has := proj.Stacks[stackName]; has {
+	if stack, has := proj.StacksDeprecated[stackName]; has {
 		for key, value := range stack.Config {
 			result[key] = value
 		}
 	}
 
 	// Now, apply workspace stack-specific configuration.
-	if wsStackConfig, has := ws.Settings().Config[stackName]; has {
+	if wsStackConfig, has := ws.Settings().ConfigDeprecated[stackName]; has {
 		for key, value := range wsStackConfig {
 			if _, has := result[key]; !has {
 				result[key] = value
@@ -52,14 +52,14 @@ func Configuration(d diag.Sink, stackName tokens.QName) (config.Map, error) {
 	}
 
 	// Next, take anything from the global settings in our project file.
-	for key, value := range proj.Config {
+	for key, value := range proj.ConfigDeprecated {
 		if _, has := result[key]; !has {
 			result[key] = value
 		}
 	}
 
 	// Finally, take anything left in the workspace's global configuration.
-	if wsGlobalConfig, has := ws.Settings().Config[""]; has {
+	if wsGlobalConfig, has := ws.Settings().ConfigDeprecated[""]; has {
 		for key, value := range wsGlobalConfig {
 			if _, has := result[key]; !has {
 				result[key] = value

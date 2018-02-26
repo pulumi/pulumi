@@ -261,31 +261,31 @@ func TestConfigSave(t *testing.T) {
 	cfgkey := func(k string) tokens.ModuleMember { return tokens.ModuleMember("testing-config:config:" + k) }
 	proj, err := workspace.LoadProject(path)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(proj.Config)) // --all
-	d, ok := proj.Config[cfgkey("configD")]
+	assert.Equal(t, 2, len(proj.ConfigDeprecated)) // --all
+	d, ok := proj.ConfigDeprecated[cfgkey("configD")]
 	assert.True(t, ok)
 	dv, err := d.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value4", dv)
-	ee, ok := proj.Config[cfgkey("configE")]
+	ee, ok := proj.ConfigDeprecated[cfgkey("configE")]
 	assert.True(t, ok)
 	ev, err := ee.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value66", ev)
-	assert.Equal(t, 2, len(proj.Stacks))
-	assert.Equal(t, 2, len(proj.Stacks["testing-1"].Config))
-	b, ok := proj.Stacks["testing-1"].Config[cfgkey("configB")]
+	assert.Equal(t, 2, len(proj.StacksDeprecated))
+	assert.Equal(t, 2, len(proj.StacksDeprecated["testing-1"].Config))
+	b, ok := proj.StacksDeprecated["testing-1"].Config[cfgkey("configB")]
 	assert.True(t, ok)
 	bv, err := b.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value2", bv)
-	e2, ok := proj.Stacks["testing-1"].Config[cfgkey("configE")]
+	e2, ok := proj.StacksDeprecated["testing-1"].Config[cfgkey("configE")]
 	assert.True(t, ok)
 	e2v, err := e2.Value(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "value55", e2v)
-	assert.Equal(t, 1, len(proj.Stacks["testing-2"].Config))
-	c, ok := proj.Stacks["testing-2"].Config[cfgkey("configC")]
+	assert.Equal(t, 1, len(proj.StacksDeprecated["testing-2"].Config))
+	c, ok := proj.StacksDeprecated["testing-2"].Config[cfgkey("configC")]
 	assert.True(t, ok)
 	cv, err := c.Value(nil)
 	assert.NoError(t, err)
