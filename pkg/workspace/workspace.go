@@ -25,7 +25,6 @@ type W interface {
 	StackPath(stack tokens.QName) string        // returns the path to store stack information.
 	BackupDirectory() (string, error)           // returns the directory to store backup stack files.
 	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
-	Project() (*Project, error)                 // returns a copy of the project associated with this workspace.
 	Save() error                                // saves any modifications to the workspace.
 }
 
@@ -89,10 +88,6 @@ func (pw *projectWorkspace) Settings() *Settings {
 
 func (pw *projectWorkspace) Repository() *Repository {
 	return pw.repo
-}
-
-func (pw *projectWorkspace) Project() (*Project, error) {
-	return LoadProject(pw.project)
 }
 
 func (pw *projectWorkspace) Save() error {

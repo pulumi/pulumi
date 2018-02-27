@@ -369,14 +369,14 @@ func deleteAllStackConfiguration(stackName tokens.QName) error {
 		return err
 	}
 
-	proj, err := w.Project()
+	delete(w.Settings().ConfigDeprecated, stackName)
+
+	err = w.Save()
 	if err != nil {
 		return err
 	}
 
-	delete(w.Settings().ConfigDeprecated, stackName)
-
-	err = w.Save()
+	proj, err := workspace.DetectProject()
 	if err != nil {
 		return err
 	}
