@@ -38,63 +38,30 @@ func defaultCrypter(stackName tokens.QName, cfg config.Map) (config.Crypter, err
 
 // symmetricCrypter gets the right value encrypter/decrypter for this project.
 func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
-	// First, read the package to see if we've got a key.
-	proj, err := workspace.DetectProject()
+	contract.Assertf(stackName != "", "stackName", "!= \"\"")
+
+	info, err := workspace.DetectProjectStack(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	if proj.StacksDeprecated == nil {
-		proj.StacksDeprecated = make(map[tokens.QName]workspace.ProjectStack)
+	// If we have a salt, we can just use it.
+	if info.EncryptionSalt != "" {
+		phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+			"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
+		if phraseErr != nil {
+			return nil, phraseErr
+		}
+
+		crypter, crypterErr := symmetricCrypterFromPhraseAndState(phrase, info.EncryptionSalt)
+		if crypterErr != nil {
+			return nil, crypterErr
+		}
+
+		return crypter, nil
 	}
 
-	// If we have a top level EncryptionSalt, we are reading an older version of Pulumi.yaml where local stacks shared
-	// a key. To migrate, we'll simply move this salt to any local stack that has encrypted config and then unset the
-	// package wide salt.
-	if proj.EncryptionSaltDeprecated != "" {
-		localStacks, stacksErr := getLocalStacks()
-		if stacksErr != nil {
-			return nil, stacksErr
-		}
-
-		for _, localStack := range localStacks {
-			stackInfo := proj.StacksDeprecated[localStack]
-			contract.Assertf(stackInfo.EncryptionSalt == "", "package and stack %v had an encryption salt", localStack)
-
-			if stackInfo.Config.HasSecureValue() {
-				stackInfo.EncryptionSalt = proj.EncryptionSaltDeprecated
-			}
-
-			proj.StacksDeprecated[localStack] = stackInfo
-		}
-
-		proj.EncryptionSaltDeprecated = ""
-
-		// Now store the result on the package and save it.
-		if err = workspace.SaveProject(proj); err != nil {
-			return nil, err
-		}
-	}
-
-	// If there's already a salt for the local stack, we can just use that.
-	if info, has := proj.StacksDeprecated[stackName]; has {
-		if info.EncryptionSalt != "" {
-			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
-				"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
-			if phraseErr != nil {
-				return nil, phraseErr
-			}
-
-			crypter, crypterErr := symmetricCrypterFromPhraseAndState(phrase, info.EncryptionSalt)
-			if crypterErr != nil {
-				return nil, crypterErr
-			}
-
-			return crypter, nil
-		}
-	}
-
-	// Read a passphrase and confirm it.
+	// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
 	phrase, err := readPassphrase("Enter your passphrase to protect config/secrets")
 	if err != nil {
 		return nil, err
@@ -117,11 +84,9 @@ func symmetricCrypter(stackName tokens.QName) (config.Crypter, error) {
 	msg, err := crypter.EncryptValue("pulumi")
 	contract.AssertNoError(err)
 
-	// Now store the result on the package and save it.
-	stackInfo := proj.StacksDeprecated[stackName]
-	stackInfo.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
-	proj.StacksDeprecated[stackName] = stackInfo
-	if err = workspace.SaveProject(proj); err != nil {
+	// Now store the result and save it.
+	info.EncryptionSalt = fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
+	if err = workspace.SaveProjectStack(stackName, info); err != nil {
 		return nil, err
 	}
 

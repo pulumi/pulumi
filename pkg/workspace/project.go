@@ -4,6 +4,7 @@ package workspace
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -65,14 +66,14 @@ func (proj *Project) UseDefaultIgnores() bool {
 	return !(*proj.NoDefaultIgnores)
 }
 
-// Save writes a project defitiniton to a file.
+// Save writes a project definition to a file.
 func (proj *Project) Save(path string) error {
 	contract.Require(path != "", "path")
 	contract.Require(proj != nil, "proj")
 	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
 
 	for name, info := range proj.StacksDeprecated {
-		if info.IsEmpty() {
+		if info.isEmpty() {
 			delete(proj.StacksDeprecated, name)
 		}
 	}
@@ -97,14 +98,32 @@ type ProjectStack struct {
 	Config         config.Map `json:"config,omitempty" yaml:"config,omitempty"`                 // optional config.
 }
 
-// IsEmpty returns True if this object contains no information (i.e. all members have their zero values)
-func (s *ProjectStack) IsEmpty() bool {
-	return len(s.Config) == 0 && s.EncryptionSalt == ""
+// isEmpty returns True if this object contains no information (i.e. all members have their zero values)
+func (ps *ProjectStack) isEmpty() bool {
+	return len(ps.Config) == 0 && ps.EncryptionSalt == ""
+}
+
+// Save writes a project definition to a file.
+func (ps *ProjectStack) Save(path string) error {
+	contract.Require(path != "", "path")
+	contract.Require(ps != nil, "ps")
+
+	m, err := marshallerForPath(path)
+	if err != nil {
+		return err
+	}
+
+	b, err := m.Marshal(ps)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(path, b, 0644)
 }
 
 // LoadProject reads a project definition from a file.
 func LoadProject(path string) (*Project, error) {
-	contract.Require(path != "", "proj")
+	contract.Require(path != "", "path")
 
 	m, err := marshallerForPath(path)
 	if err != nil {
@@ -128,6 +147,37 @@ func LoadProject(path string) (*Project, error) {
 	}
 
 	return &proj, err
+}
+
+// LoadProjectStack reads a stack definition from a file.
+func LoadProjectStack(path string) (*ProjectStack, error) {
+	contract.Require(path != "", "path")
+
+	m, err := marshallerForPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(path)
+	if os.IsNotExist(err) {
+		return &ProjectStack{
+			Config: make(config.Map),
+		}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	var ps ProjectStack
+	err = m.Unmarshal(b, &ps)
+	if err != nil {
+		return nil, err
+	}
+
+	if ps.Config == nil {
+		ps.Config = make(config.Map)
+	}
+
+	return &ps, err
 }
 
 func marshallerForPath(path string) (encoding.Marshaler, error) {

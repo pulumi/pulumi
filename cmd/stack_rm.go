@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -12,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackRmCmd() *cobra.Command {
@@ -53,8 +55,13 @@ func newStackRmCmd() *cobra.Command {
 				return err
 			}
 
-			err = deleteAllStackConfiguration(s.Name())
+			// Blow away stack specific settings if they exist
+			path, err := workspace.DetectProjectStackPath(s.Name())
 			if err != nil {
+				return err
+			}
+
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 				return err
 			}
 

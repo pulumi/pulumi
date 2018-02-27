@@ -177,6 +177,11 @@ func sha1HexString(value string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
+func qnameFileName(nm tokens.QName) string {
+	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
+}
+
 // qnamePath just cleans a name and makes sure it's appropriate to use as a path.
 func qnamePath(nm tokens.QName) string {
 	return stringNamePath(string(nm))

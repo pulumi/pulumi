@@ -15,12 +15,10 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -107,16 +105,16 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			var stackToSave tokens.QName
-			if !all {
-				stackToSave = s.Name()
+			ps, err := workspace.DetectProjectStack(s.Name())
+			if err != nil {
+				return err
 			}
 
-			if save {
-				return deleteProjectConfiguration(stackToSave, key)
+			if ps.Config != nil {
+				delete(ps.Config, key)
 			}
 
-			return deleteWorkspaceConfiguration(stackToSave, key)
+			return workspace.SaveProjectStack(s.Name(), ps)
 		}),
 	}
 
@@ -131,9 +129,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 }
 
 func newConfigSetCmd(stack *string) *cobra.Command {
-	var all bool
 	var plaintext bool
-	var save bool
 	var secret bool
 
 	setCmd := &cobra.Command{
@@ -145,13 +141,6 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			stackName := tokens.QName(*stack)
-			if all && stackName != "" {
-				return errors.New("if --all is specified, an explicit stack can not be provided")
-			}
-
-			if all && secret {
-				return errors.New("if --all is specified, the value may not be marked secret")
-			}
 
 			// Ensure the stack exists.
 			s, err := requireStack(stackName, true)
@@ -202,18 +191,20 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewValue(value)
 			}
 
-			// And now save it.
-			var stackToSave tokens.QName
-			if !all {
-				stackToSave = s.Name()
+			ps, err := workspace.DetectProjectStack(s.Name())
+			if err != nil {
+				return err
 			}
-			err = setConfiguration(stackToSave, key, v, save)
+
+			ps.Config[key] = v
+
+			err = workspace.SaveProjectStack(s.Name(), ps)
 			if err != nil {
 				return err
 			}
 
 			// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
-			if !secret && !plaintext && save {
+			if !secret && !plaintext {
 				cmdutil.Diag().Warningf(
 					diag.Message(
 						"saved config key '%s' value '%s' as plaintext; "+
@@ -226,14 +217,8 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	}
 
 	setCmd.PersistentFlags().BoolVar(
-		&all, "all", false,
-		"Set a configuration value for all stacks for this project")
-	setCmd.PersistentFlags().BoolVar(
 		&plaintext, "plaintext", false,
 		"Save the value as plaintext (unencrypted)")
-	setCmd.PersistentFlags().BoolVar(
-		&save, "save", true,
-		"Save the configuration value in the project file (if false, it is private to your workspace)")
 	setCmd.PersistentFlags().BoolVar(
 		&secret, "secret", false,
 		"Encrypt the value instead of storing it in plaintext")
@@ -276,19 +261,13 @@ func prettyKeyForProject(key string, proj *workspace.Project) string {
 	return s
 }
 
-func setConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value, save bool) error {
-	if save {
-		return setProjectConfiguration(stackName, key, value)
-	}
-
-	return setWorkspaceConfiguration(stackName, key, value)
-}
-
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	cfg, err := state.ConfigurationDeprecated(cmdutil.Diag(), stack.Name())
+	ps, err := workspace.DetectProjectStack(stack.Name())
 	if err != nil {
 		return err
 	}
+
+	cfg := ps.Config
 
 	// By default, we will use a blinding decrypter to show '******'.  If requested, display secrets in plaintext.
 	var decrypter config.Decrypter
@@ -301,167 +280,60 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 		decrypter = config.NewBlindingDecrypter()
 	}
 
-	if cfg != nil {
-		// Devote 48 characters to the config key, unless there's a key longer, in which case use that.
-		maxkey := 48
-		for key := range cfg {
-			if len(key) > maxkey {
-				maxkey = len(key)
-			}
+	// Devote 48 characters to the config key, unless there's a key longer, in which case use that.
+	maxkey := 48
+	for key := range cfg {
+		if len(key) > maxkey {
+			maxkey = len(key)
+		}
+	}
+
+	fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", "KEY", "VALUE")
+	var keys []string
+	for key := range cfg {
+		// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
+		// that all the config values for the current program are displayed next to one another in the output.
+		keys = append(keys, string(key))
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		decrypted, err := cfg[tokens.ModuleMember(key)].Value(decrypter)
+		if err != nil {
+			return errors.Wrap(err, "could not decrypt configuration value")
 		}
 
-		fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", "KEY", "VALUE")
-		var keys []string
-		for key := range cfg {
-			// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
-			// that all the config values for the current program are displayed next to one another in the output.
-			keys = append(keys, string(key))
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			decrypted, err := cfg[tokens.ModuleMember(key)].Value(decrypter)
-			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuration value")
-			}
-
-			fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", prettyKey(key), decrypted)
-		}
+		fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", prettyKey(key), decrypted)
 	}
 
 	return nil
 }
 
 func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
-	cfg, err := state.ConfigurationDeprecated(cmdutil.Diag(), stack.Name())
+	ps, err := workspace.DetectProjectStack(stack.Name())
 	if err != nil {
 		return err
 	}
 
-	if cfg != nil {
-		if v, ok := cfg[key]; ok {
-			var d config.Decrypter
-			if v.Secure() {
-				var err error
-				if d, err = backend.GetStackCrypter(stack); err != nil {
-					return errors.Wrap(err, "could not create a decrypter")
-				}
-			} else {
-				d = config.NewPanicCrypter()
+	cfg := ps.Config
+
+	if v, ok := cfg[key]; ok {
+		var d config.Decrypter
+		if v.Secure() {
+			var err error
+			if d, err = backend.GetStackCrypter(stack); err != nil {
+				return errors.Wrap(err, "could not create a decrypter")
 			}
-			raw, err := v.Value(d)
-			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuation value")
-			}
-			fmt.Printf("%v\n", raw)
-			return nil
+		} else {
+			d = config.NewPanicCrypter()
 		}
+		raw, err := v.Value(d)
+		if err != nil {
+			return errors.Wrap(err, "could not decrypt configuration value")
+		}
+		fmt.Printf("%v\n", raw)
+		return nil
 	}
 
 	return errors.Errorf(
 		"configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stack.Name())
-}
-
-func deleteAllStackConfiguration(stackName tokens.QName) error {
-	contract.Require(stackName != "", "stackName")
-
-	w, err := workspace.New()
-	if err != nil {
-		return err
-	}
-
-	delete(w.Settings().ConfigDeprecated, stackName)
-
-	err = w.Save()
-	if err != nil {
-		return err
-	}
-
-	proj, err := workspace.DetectProject()
-	if err != nil {
-		return err
-	}
-
-	if info, has := proj.StacksDeprecated[stackName]; has {
-		info.Config = nil
-		info.EncryptionSalt = ""
-		proj.StacksDeprecated[stackName] = info
-	}
-
-	return workspace.SaveProject(proj)
-}
-
-func deleteProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
-	proj, err := workspace.DetectProject()
-	if err != nil {
-		return err
-	}
-
-	if stackName == "" {
-		if proj.ConfigDeprecated != nil {
-			delete(proj.ConfigDeprecated, key)
-		}
-	} else {
-		if proj.StacksDeprecated[stackName].Config != nil {
-			delete(proj.StacksDeprecated[stackName].Config, key)
-		}
-	}
-
-	return workspace.SaveProject(proj)
-}
-
-func deleteWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember) error {
-	w, err := workspace.New()
-	if err != nil {
-		return err
-	}
-
-	if config, has := w.Settings().ConfigDeprecated[stackName]; has {
-		delete(config, key)
-	}
-
-	return w.Save()
-}
-
-func setProjectConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
-	proj, err := workspace.DetectProject()
-	if err != nil {
-		return err
-	}
-
-	if stackName == "" {
-		if proj.ConfigDeprecated == nil {
-			proj.ConfigDeprecated = make(map[tokens.ModuleMember]config.Value)
-		}
-
-		proj.ConfigDeprecated[key] = value
-	} else {
-		if proj.StacksDeprecated == nil {
-			proj.StacksDeprecated = make(map[tokens.QName]workspace.ProjectStack)
-		}
-
-		if proj.StacksDeprecated[stackName].Config == nil {
-			si := proj.StacksDeprecated[stackName]
-			si.Config = make(map[tokens.ModuleMember]config.Value)
-			proj.StacksDeprecated[stackName] = si
-		}
-
-		proj.StacksDeprecated[stackName].Config[key] = value
-	}
-
-	return workspace.SaveProject(proj)
-}
-
-func setWorkspaceConfiguration(stackName tokens.QName, key tokens.ModuleMember, value config.Value) error {
-	w, err := workspace.New()
-	if err != nil {
-		return err
-	}
-
-	if _, has := w.Settings().ConfigDeprecated[stackName]; !has {
-		w.Settings().ConfigDeprecated[stackName] = make(map[tokens.ModuleMember]config.Value)
-	}
-
-	w.Settings().ConfigDeprecated[stackName][key] = value
-
-	return w.Save()
 }

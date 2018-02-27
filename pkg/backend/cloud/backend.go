@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -565,12 +564,12 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 	m backend.UpdateMetadata, opts engine.UpdateOptions) (apitype.UpdateProgramRequest, error) {
 
 	// Convert the configuration into its wire form.
-	cfg, err := state.ConfigurationDeprecated(b.d, stackName)
+	stk, err := workspace.DetectProjectStack(stackName)
 	if err != nil {
 		return apitype.UpdateProgramRequest{}, errors.Wrap(err, "getting configuration")
 	}
 	wireConfig := make(map[string]apitype.ConfigValue)
-	for k, cv := range cfg {
+	for k, cv := range stk.Config {
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
