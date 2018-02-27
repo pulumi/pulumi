@@ -12,186 +12,65 @@ interface ClosureCase {
     pre?: () => void;         // an optional function to run before this case.
     title: string;            // a title banner for the test case.
     func: Function;           // the function whose body and closure to serialize.
-    expect?: runtime.Closure; // if undefined, error expected; otherwise, the serialized shape.
-    expectText?: string;      // optionally also validate the serialization to JavaScript text.
-    closureHash?: string;     // hash of the closure.
+    expectText: string;      // optionally also validate the serialization to JavaScript text.
     afters?: ClosureCase[];   // an optional list of test cases to run afterwards.
 }
 
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
-    describe("hash", () => {
-        it("is affected by code.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "1",
-                runtime: "",
-                environment: { },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
-        it("is affected by runtime.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "1",
-                environment: { },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
-        it("is affected by module.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { module: "m1" } },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { module: "m2" } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
-        it("is affected by environment values.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { json: 100 } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
-        it("is affected by environment names.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { json: 100 } },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap2: { json: 100 } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
-        it("is affected by dependency.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { json: 100 } },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { dep: { json: 100 } } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-
-        it("is not affected by environment order.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { json: 100 }, cap2: { json: 200 } },
-            };
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap2: { json: 200 }, cap1: { json: 100 } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.equal(hash1, hash2);
-        });
-
-        it("is different with cyclic and non-cyclic environments.", () => {
-            const closure1: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { json: 100 } },
-            };
-            closure1.environment.cap1.closure = closure1;
-
-            const closure2: runtime.Closure = {
-                code: "",
-                runtime: "",
-                environment: { cap1: { json: 100 } },
-            };
-
-            const hash1 = runtime.getClosureHash_forTestingPurposes(closure1);
-            const hash2 = runtime.getClosureHash_forTestingPurposes(closure2);
-            assert.notEqual(hash1, hash2);
-        });
-    });
-
     const cases: ClosureCase[] = [];
 
-    // A few simple positive cases for functions/arrows (no captures).
     cases.push({
         title: "Empty function closure",
         // tslint:disable-next-line
         func: function () { },
-        expect: {
-            code: "(function () { })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6",
-        expectText: `exports.handler = __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6;
+        expectText: `exports.handler = __f0;
 
-function __2b3ba3b4fb55b6fb500f9e8d7a4e132cec103fe6() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function () { })
+return function () { };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
+`,
+    });
 
+    cases.push({
+        title: "Empty named function",
+        // tslint:disable-next-line
+        func: function f() { },
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ f: __f0 }) {
+
+return function /*f*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+    });
+
+    cases.push({
+        title: "Named function with self-reference",
+        // tslint:disable-next-line
+        func: function f() { f(); },
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ f: __f0 }) {
+
+return function /*f*/() { f(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 `,
     });
 
@@ -199,24 +78,17 @@ return (function () { })
         title: "Function closure with this capture",
         // tslint:disable-next-line
         func: function () { console.log(this); },
-        expect: {
-            code: "(function () { console.log(this); })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e",
-        expectText: `exports.handler = __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e;
+        expectText: `exports.handler = __f0;
 
-function __cd737a7b5f0ddfaee797a6ff6c8b266051f1c30e() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function () { console.log(this); })
+return function () { console.log(this); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -224,24 +96,17 @@ return (function () { console.log(this); })
         title: "Function closure with this and arguments capture",
         // tslint:disable-next-line
         func: function () { console.log(this + arguments); },
-        expect: {
-            code: "(function () { console.log(this + arguments); })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__05437ec790248221e1167f1da8e9a9ffbfe11ebf",
-        expectText: `exports.handler = __05437ec790248221e1167f1da8e9a9ffbfe11ebf;
+        expectText: `exports.handler = __f0;
 
-function __05437ec790248221e1167f1da8e9a9ffbfe11ebf() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function () { console.log(this + arguments); })
+return function () { console.log(this + arguments); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -249,24 +114,17 @@ return (function () { console.log(this + arguments); })
         title: "Empty arrow closure",
         // tslint:disable-next-line
         func: () => { },
-        expect: {
-            code: "(() => { })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__b135b11756da3f7aecaaa23a36898c0d6d2845ab",
-        expectText: `exports.handler = __b135b11756da3f7aecaaa23a36898c0d6d2845ab;
+        expectText: `exports.handler = __f0;
 
-function __b135b11756da3f7aecaaa23a36898c0d6d2845ab() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (() => { })
+return () => { };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -274,49 +132,34 @@ return (() => { })
         title: "Arrow closure with this capture",
         // tslint:disable-next-line
         func: () => { console.log(this); },
-        expect: {
-            code: "(() => { console.log(this); })",
-            environment: { "this": { "module": "./bin/tests/runtime/closure.spec.js" } },
-            runtime: "nodejs",
-        },
-        closureHash: "__7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8",
-        expectText: `exports.handler = __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8;
+        expectText: `exports.handler = __f0;
 
-function __7909a569cc754ce6ee42e2eaf967c6a4a86d1dd8() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (() => { console.log(this); })
+return () => { console.log(this); };
 
     }
   }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
 }
-
 `,
     });
 
-    const awaiterClosure = {
-        closure: {
-            code: "(function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n})",
-            environment: {},
-            runtime: "nodejs",
-        },
-    };
-
     const awaiterCode =
 `
-function __492fe142c8be132f2ccfdc443ed720d77b1ef3a6() {
+function __f1() {
   return (function() {
     with({  }) {
 
-return (function (thisArg, _arguments, P, generator) {
+return function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
         function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
-})
+};
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -327,24 +170,17 @@ return (function (thisArg, _arguments, P, generator) {
         title: "Async lambda that does not capture this",
         // tslint:disable-next-line
         func: async () => { },
-        expect: {
-            code: "(() => __awaiter(this, void 0, void 0, function* () { }))",
-            environment: { "__awaiter": awaiterClosure },
-            runtime: "nodejs",
-        },
-        closureHash: "__2a83dcc4e3c79da00ade608e1401449fd97f37fe",
-        expectText: `exports.handler = __2a83dcc4e3c79da00ade608e1401449fd97f37fe;
-
-function __2a83dcc4e3c79da00ade608e1401449fd97f37fe() {
+        expectText: `exports.handler = __f0;
+${awaiterCode}
+function __f0() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+    with({ __awaiter: __f1 }) {
 
-return (() => __awaiter(this, void 0, void 0, function* () { }))
+return () => __awaiter(this, void 0, void 0, function* () { });
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-${awaiterCode}
 `,
     });
 
@@ -352,27 +188,17 @@ ${awaiterCode}
         title: "Async lambda that does capture this",
         // tslint:disable-next-line
         func: async () => { console.log(this); },
-        expect: {
-            code: "(() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))",
-            environment: {
-                "__awaiter": awaiterClosure,
-                "this": { "module": "./bin/tests/runtime/closure.spec.js" },
-            },
-            runtime: "nodejs",
-        },
-        closureHash: "__f7cb93fabbd2f283f184e4cbfd6166ee13ff4969",
-        expectText: `exports.handler = __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969;
-
-function __f7cb93fabbd2f283f184e4cbfd6166ee13ff4969() {
+        expectText: `exports.handler = __f0;
+${awaiterCode}
+function __f0() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+    with({ __awaiter: __f1 }) {
 
-return (() => __awaiter(this, void 0, void 0, function* () { console.log(this); }))
+return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
 
     }
   }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
 }
-${awaiterCode}
 `,
     });
 
@@ -380,26 +206,19 @@ ${awaiterCode}
         title: "Async function that does not capture this",
         // tslint:disable-next-line
         func: async function() { },
-        expect: {
-            code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { });\n        })",
-            environment: { "__awaiter": awaiterClosure },
-            runtime: "nodejs",
-        },
-        closureHash: "__777fc5424c69bbec55be2ab6c25c4f5aac7b80e6",
-        expectText: `exports.handler = __777fc5424c69bbec55be2ab6c25c4f5aac7b80e6;
-
-function __777fc5424c69bbec55be2ab6c25c4f5aac7b80e6() {
+        expectText: `exports.handler = __f0;
+${awaiterCode}
+function __f0() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+    with({ __awaiter: __f1 }) {
 
-return (function () {
+return function () {
             return __awaiter(this, void 0, void 0, function* () { });
-        })
+        };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-${awaiterCode}
 `,
     });
 
@@ -407,26 +226,19 @@ ${awaiterCode}
         title: "Async function that does capture this",
         // tslint:disable-next-line
         func: async function () { console.log(this); },
-        expect: {
-            code: "(function () {\n            return __awaiter(this, void 0, void 0, function* () { console.log(this); });\n        })",
-            environment: { "__awaiter": awaiterClosure },
-            runtime: "nodejs",
-        },
-        closureHash: "__7bddcde28730579e85ca0d9e450a65cad476232c",
-        expectText: `exports.handler = __7bddcde28730579e85ca0d9e450a65cad476232c;
-
-function __7bddcde28730579e85ca0d9e450a65cad476232c() {
+        expectText: `exports.handler = __f0;
+${awaiterCode}
+function __f0() {
   return (function() {
-    with({ __awaiter: __492fe142c8be132f2ccfdc443ed720d77b1ef3a6 }) {
+    with({ __awaiter: __f1 }) {
 
-return (function () {
+return function () {
             return __awaiter(this, void 0, void 0, function* () { console.log(this); });
-        })
+        };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-${awaiterCode}
 `,
     });
 
@@ -434,27 +246,19 @@ ${awaiterCode}
         title: "Arrow closure with this and arguments capture",
         // tslint:disable-next-line
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
-        expect: {
-            code: "(() => { console.log(this + arguments); })",
-            environment: {
-                this: { module: "./bin/tests/runtime/closure.spec.js" },
-                arguments: { arr: [{ json: 0 }, { json: 1 }] },
-            },
-            runtime: "nodejs",
-        },
-        closureHash: "__20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a",
-        expectText: `exports.handler = __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a;
+        expectText: `exports.handler = __f0;
 
-function __20d3571e4247f51f0a3abf93f4a7e4cfb8b2f26a() {
+var __e0_arguments = [0, 1];
+
+function __f0() {
   return (function() {
     with({  }) {
 
-return (() => { console.log(this + arguments); })
+return () => { console.log(this + arguments); };
 
     }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), [ 0, 1 ]).apply(this, arguments);
+  }).apply(require("./bin/tests/runtime/closure.spec.js"), __e0_arguments).apply(this, arguments);
 }
-
 `,
     });
 
@@ -462,24 +266,17 @@ return (() => { console.log(this + arguments); })
         title: "Arrow closure with this capture inside function closure",
         // tslint:disable-next-line
         func: function () { () => { console.log(this); } },
-        expect: {
-            code: "(function () { () => { console.log(this); }; })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__6668edd6db8c98baacaf1a227150aa18ce2ae872",
-        expectText: `exports.handler = __6668edd6db8c98baacaf1a227150aa18ce2ae872;
+        expectText: `exports.handler = __f0;
 
-function __6668edd6db8c98baacaf1a227150aa18ce2ae872() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function () { () => { console.log(this); }; })
+return function () { () => { console.log(this); }; };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -487,24 +284,17 @@ return (function () { () => { console.log(this); }; })
         title: "Arrow closure with this and arguments capture inside function closure",
         // tslint:disable-next-line
         func: function () { () => { console.log(this + arguments); } },
-        expect: {
-            code: "(function () { () => { console.log(this + arguments); }; })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__de8ce937834140441c7413a7e97b67bda12d7205",
-        expectText: `exports.handler = __de8ce937834140441c7413a7e97b67bda12d7205;
+        expectText: `exports.handler = __f0;
 
-function __de8ce937834140441c7413a7e97b67bda12d7205() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function () { () => { console.log(this + arguments); }; })
+return function () { () => { console.log(this + arguments); }; };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
     });
 
@@ -512,36 +302,54 @@ return (function () { () => { console.log(this + arguments); }; })
         title: "Empty function closure w/ args",
         // tslint:disable-next-line
         func: function (x: any, y: any, z: any) { },
-        expect: {
-            code: "(function (x, y, z) { })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__e680605f156fcaa89016e23c51d3e2328602ebad",
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function (x, y, z) { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
     });
 
     cases.push({
         title: "Empty arrow closure w/ args",
         // tslint:disable-next-line
         func: (x: any, y: any, z: any) => { },
-        expect: {
-            code: "((x, y, z) => { })",
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__dd08d1034bd5f0e06f1269cb79974a636ef9cb13",
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return (x, y, z) => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
     });
 
     // Serialize captures.
     cases.push({
         title: "Doesn't serialize global captures",
         func: () => { console.log("Just a global object reference"); },
-        expect: {
-            code: `(() => { console.log("Just a global object reference"); })`,
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__47ac0033692c3101b014a1a3c17a4318cf7d4330",
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => { console.log("Just a global object reference"); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
     });
     {
         const wcap = "foo";
@@ -556,33 +364,25 @@ return (function () { () => { console.log(this + arguments); }; })
             title: "Serializes basic captures",
             // tslint:disable-next-line
             func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); },
-            expect: {
-                code: "(() => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a)); })",
-                environment: {
-                    wcap: {
-                        json: "foo",
-                    },
-                    xcap: {
-                        json: 97,
-                    },
-                    ycap: {
-                        arr: [
-                            { json: true },
-                            { json: -1 },
-                            { json: "yup" },
-                        ],
-                    },
-                    zcap: {
-                        obj: {
-                            a: { json: "a" },
-                            b: { json: false },
-                            c: { arr: [ { json: 0 } ] },
-                        },
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__a07cae0afeaeddbb97b9f7a372b75aafd3b29d0e",
+            expectText: `exports.handler = __f0;
+
+var __e0_ycap = [true, -1, "yup"];
+var __e1_zcap = {};
+__e1_zcap.a = "a";
+__e1_zcap.b = false;
+var __e2_c = [0];
+__e1_zcap.c = __e2_c;
+
+function __f0() {
+  return (function() {
+    with({ wcap: "foo", xcap: 97, ycap: __e0_ycap, zcap: __e1_zcap }) {
+
+return () => { console.log(wcap + \`$\{xcap\}\` + ycap.length + eval(zcap.a)); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
     {
@@ -595,7 +395,7 @@ return (function () { () => { console.log(this + arguments); }; })
         // tslint:disable-next-line
         let cap8 = 800;
 
-        const functext = `((nocap1, nocap2) => {
+        const functext = `(nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
     let yy = nocap3; // not a capture: var later on
     if (zz) {
@@ -630,26 +430,58 @@ return (function () { () => { console.log(this + arguments); }; })
             cap8
         }
     }
-})`;
+}`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",
             // tslint:disable-next-line
             func: eval(functext),
-            expect: {
-                code: functext,
-                environment: {
-                    cap1: { json: 100 },
-                    cap2: { json: 200 },
-                    cap3: { json: 300 },
-                    cap4: { json: 400 },
-                    cap5: { json: 500 },
-                    cap6: { json: 600 },
-                    cap7: { json: 700 },
-                    cap8: { json: 800 },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__f919744848c6471a841a1de62afe7d3d7f7f208a",
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ cap1: 100, cap2: 200, cap3: 300, cap4: 400, cap5: 500, cap6: 600, cap7: 700, cap8: 800 }) {
+
+return (nocap1, nocap2) => {
+    let zz = nocap1 + nocap2; // not a capture: args
+    let yy = nocap3; // not a capture: var later on
+    if (zz) {
+        zz += cap1; // true capture
+        let cap1 = 9; // because let is properly scoped
+        zz += nocap4; // not a capture
+        var nocap4 = 7; // because var is function scoped
+        zz += cap2; // true capture
+        const cap2 = 33;
+        var nocap3 = 8; // block the above capture
+    }
+    let f1 = (nocap5) => {
+        yy += nocap5; // not a capture: args
+        cap3++; // capture
+    };
+    let f2 = (function (nocap6) {
+        zz += nocap6; // not a capture: args
+        if (cap4) { // capture
+            yy = 0;
+        }
+    });
+    let www = nocap7(); // not a capture; it is defined below
+    if (true) {
+        function nocap7() {
+        }
+    }
+    let [{t: [nocap8]},,nocap9 = "hello",...nocap10] = [{t: [true]},null,undefined,1,2];
+    let vvv = [nocap8, nocap9, nocap10]; // not a capture; declarations from destructuring
+    let aaa = { // captures in property and method declarations
+        [cap5]: cap6,
+        [cap7]() {
+            cap8
+        }
+    }
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
     {
@@ -667,20 +499,24 @@ return (function () { () => { console.log(this + arguments); }; })
                 let [nocap1 = cap1] = [];
                 console.log(nocap1);
             },
-            expect: {
-                code: `(() => {
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ cap1: 100 }) {
+
+return () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
                 // tslint:disable-next-line
                 let [nocap1 = cap1] = [];
                 console.log(nocap1);
-            })`,
-                environment: {
-                    cap1: { json: 100 },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__ef48a2e2962bd53acef1b2cda244ae8c72972c05",
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
     {
@@ -698,20 +534,24 @@ return (function () { () => { console.log(this + arguments); }; })
     let {nocap1 = cap1} = {};
     console.log(nocap1);
 },
-            expect: {
-                code: `(() => {
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ cap1: 100 }) {
+
+return () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
                 // tslint:disable-next-line
                 let { nocap1 = cap1 } = {};
                 console.log(nocap1);
-            })`,
-                environment: {
-                    cap1: { json: 100 },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__b409f3bd837d513df07525bef43e57597154625e",
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
     {
@@ -729,20 +569,24 @@ return (function () { () => { console.log(this + arguments); }; })
     let {x: nocap1 = cap1} = {};
     console.log(nocap1);
 },
-            expect: {
-                code: `(() => {
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ cap1: 100 }) {
+
+return () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
                 // tslint:disable-next-line
                 let { x: nocap1 = cap1 } = {};
                 console.log(nocap1);
-            })`,
-                environment: {
-                    cap1: { json: 100 },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__5fa215795194604118a7543ce20b8e273837ae79",
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -750,12 +594,18 @@ return (function () { () => { console.log(this + arguments); }; })
         title: "Don't capture built-ins",
         // tslint:disable-next-line
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
-        expect: {
-            code: `(() => { let x = eval("undefined + null + NaN + Infinity + __filename"); require("os"); })`,
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__fa1c10acee8dd79b39d0f8109d2bc3252b19619a",
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); require("os"); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
     });
 
     {
@@ -763,16 +613,18 @@ return (function () { () => { console.log(this + arguments); }; })
         cases.push({
             title: "Capture built-in modules as stable references, not serialized values",
             func: () => os,
-            expect: {
-                code: `(() => os)`,
-                environment: {
-                    os: {
-                        module: "os",
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__3fa97b166e39ae989158bb37acfa12c7abc25b53",
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ os: require("os") }) {
+
+return () => os;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -781,16 +633,18 @@ return (function () { () => { console.log(this + arguments); }; })
         cases.push({
             title: "Capture user-defined modules as stable references, not serialized values",
             func: () => util,
-            expect: {
-                code: `(() => util)`,
-                environment: {
-                    util: {
-                        module: "./bin/tests/util.js",
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__cd171f28483c78d2a63bdda674a8f577dd4b41db",
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ util: require("./bin/tests/util.js") }) {
+
+return () => util;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -798,16 +652,21 @@ return (function () { () => { console.log(this + arguments); }; })
         title: "Don't capture catch variables",
         // tslint:disable-next-line
         func: () => { try { } catch (err) { console.log(err); } },
-        expect: {
-            code:
-`(() => { try { }
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => { try { }
         catch (err) {
             console.log(err);
-        } })`,
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__040426f0dc90fa8f115c1a7ed52793515564fa98",
+        } };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
     });
 
     // Recursive function serialization.
@@ -831,50 +690,60 @@ return (function () { () => { console.log(this + arguments); }; })
             title: "Serializes recursive function captures",
             // tslint:disable-next-line
             func: func,
-            expect: {
-                code: `(() => {
+            expectText: `exports.handler = __f0;
+
+var __e0_xcap = {};
+__e0_xcap.fff = __f1;
+__e0_xcap.ggg = __f2;
+var __e1_zzz = {};
+var __e2_a = [__f3];
+__e1_zzz.a = __e2_a;
+__e0_xcap.zzz = __e1_zzz;
+
+function __f1() {
+  return (function() {
+    with({ fff: "fff!" }) {
+
+return function () { console.log(fff); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ ggg: "ggg!" }) {
+
+return () => { console.log(ggg); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return (a1, a2) => { console.log(a1 + a2); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ xcap: __e0_xcap }) {
+
+return () => {
             xcap.fff();
             xcap.ggg();
             xcap.zzz.a[0]("x", "y");
-        })`,
-                environment: {
-                    xcap: {
-                        obj: {
-                            fff: {
-                                closure: {
-                                    code: "(function () { console.log(fff); })",
-                                    environment: { fff: { json: "fff!" } },
-                                    runtime: "nodejs",
-                                },
-                            },
-                            ggg: {
-                                closure: {
-                                    code: "(() => { console.log(ggg); })",
-                                    environment: { ggg: { json: "ggg!" } },
-                                    runtime: "nodejs",
-                                },
-                            },
-                            zzz: {
-                                obj: {
-                                    a: {
-                                        arr: [
-                                            {
-                                                closure: {
-                                                    code: "((a1, a2) => { console.log(a1 + a2); })",
-                                                    environment: {},
-                                                    runtime: "nodejs",
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__1b6ae6abb4d8b2676bccb50507a0276f5be90371",
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -886,81 +755,102 @@ return (function () { () => { console.log(this + arguments); }; })
             }
         }
 
-        // Closing over 'this'.  This yields a circular closure.
         const cap: any = new CapCap();
-        const env: runtime.Environment = { "this": {} };
-        env["this"].obj = {
-            f: {
-                closure: {
-                    code: "(() => { console.log(this.x); })",
-                    environment: {
-                        "this": env["this"],
-                    },
-                    runtime: "nodejs",
-                },
-            },
-            x: {
-                json: 42,
-            },
-        };
 
         cases.push({
             title: "Serializes `this` capturing arrow functions",
             func: cap.f,
-            expect: {
-                code: "(() => { console.log(this.x); })",
-                environment: env,
-                runtime: "nodejs",
-            },
-            closureHash: "__8d564176f3cd517bfe3c6e9d6b4da488a1198c0d",
+            expectText: `exports.handler = __f0;
+
+var __e1_this_proto = {};
+Object.defineProperty(__e1_this_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+var __e0_this = Object.create(__e1_this_proto);
+__e0_this.x = 42;
+__e0_this.f = __f0;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.x = 42;
+                this.f = () => { console.log(this.x); };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => { console.log(this.x); };
+
+    }
+  }).apply(__e0_this, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
     cases.push({
         title: "Don't serialize `this` in function expressions",
         func: function() { return this; },
-        expect: {
-            code: `(function () { return this; })`,
-            environment: {},
-            runtime: "nodejs",
-        },
-        closureHash: "__05dabc231611ca558334d59d661ebfb242b31b5d",
+        expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function () { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
     });
 
-    const mutable: any = {};
-    cases.push({
-        title: "Serialize mutable objects by value at the time of capture (pre-mutation)",
-        func: function() { return mutable; },
-        expect: {
-            code: `(function () { return mutable; })`,
-            environment: {
-                "mutable": {
-                    obj: {},
-                },
-            },
-            runtime: "nodejs",
-        },
-        closureHash: "__e4a4f2f9ad40ef73c250aa10f0277247adfae473",
-        afters: [{
-            pre: () => { mutable.timesTheyAreAChangin = true; },
-            title: "Serialize mutable objects by value at the time of capture (post-mutation)",
+    {
+        const mutable: any = {};
+        cases.push({
+            title: "Serialize mutable objects by value at the time of capture (pre-mutation)",
             func: function() { return mutable; },
-            expect: {
-                code: `(function () { return mutable; })`,
-                environment: {
-                    "mutable": {
-                        obj: {
-                            "timesTheyAreAChangin": {
-                                json: true,
-                            },
-                        },
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__18d08ca03253fe3dda134c1e5e5889f514cb3841",
-        }],
-    });
+            expectText: `exports.handler = __f0;
+
+var __e0_mutable = {};
+
+function __f0() {
+  return (function() {
+    with({ mutable: __e0_mutable }) {
+
+return function () { return mutable; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+            afters: [{
+                pre: () => { mutable.timesTheyAreAChangin = true; },
+                title: "Serialize mutable objects by value at the time of capture (post-mutation)",
+                func: function() { return mutable; },
+                expectText: `exports.handler = __f0;
+
+var __e0_mutable = {timesTheyAreAChangin: true};
+
+function __f0() {
+  return (function() {
+    with({ mutable: __e0_mutable }) {
+
+return function () { return mutable; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+            }],
+        });
+    }
 
     {
         const v = { d: output(4) };
@@ -968,26 +858,19 @@ return (function () { () => { console.log(this + arguments); }; })
             title: "Output capture",
             // tslint:disable-next-line
             func: function () { console.log(v); },
-            expect: {
-                code: "(function () { console.log(v); })",
-                environment: {
-                    "v": { "obj": { "d": { "dep": { "json": 4 } } } },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__48592975f6308867ccf82dc02acb984a2eb0d858",
-            expectText: `exports.handler = __48592975f6308867ccf82dc02acb984a2eb0d858;
+            expectText: `exports.handler = __f0;
 
-function __48592975f6308867ccf82dc02acb984a2eb0d858() {
+var __e0_v = {d: { get: () => 4 }};
+
+function __f0() {
   return (function() {
-    with({ v: { d: { get: () => 4 } } }) {
+    with({ v: __e0_v }) {
 
-return (function () { console.log(v); })
+return function () { console.log(v); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
         });
     }
@@ -1003,34 +886,58 @@ return (function () { console.log(v); })
             title: "Multiple output capture",
             // tslint:disable-next-line
             func: function () { console.log(v); },
-            expect: {
-                code: "(function () { console.log(v); })",
-                environment: {
-                    "v": { "obj": {
-                        "d1": { "dep": { "json": 4 } },
-                        "d2": { "dep": { "json": "str" } },
-                        "d3": { "dep": { "json": undefined } },
-                        "d4": { "dep": { "obj": {
-                            "a": { "json": 1 },
-                            "b": { "json": true },
-                        } } },
-                    } },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__010ddd8e314a6fdc60244562536298871169f9fb",
-            expectText: `exports.handler = __010ddd8e314a6fdc60244562536298871169f9fb;
+            expectText: `exports.handler = __f0;
 
-function __010ddd8e314a6fdc60244562536298871169f9fb() {
+var __e0_v = {};
+__e0_v.d1 = { get: () => 4 };
+__e0_v.d2 = { get: () => "str" };
+__e0_v.d3 = { get: () => undefined };
+var __e1_d4 = {a: 1, b: true};
+__e0_v.d4 = { get: () => __e1_d4 };
+
+function __f0() {
   return (function() {
-    with({ v: { d1: { get: () => 4 }, d2: { get: () => "str" }, d3: { get: () => undefined }, d4: { get: () => ({ a: 1, b: true }) } } }) {
+    with({ v: __e0_v }) {
 
-return (function () { console.log(v); })
+return function () { console.log(v); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
+`,
+        });
+    }
 
+    {
+        const v = {
+            d1: output(4),
+            d2: <any>undefined,
+        };
+
+        v.d2 = output({ a: 1, b: v });
+
+        cases.push({
+            title: "Recursive output capture",
+            // tslint:disable-next-line
+            func: function () { console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __e0_v = {};
+__e0_v.d1 = { get: () => 4 };
+var __e1_d2 = {};
+__e1_d2.a = 1;
+__e1_d2.b = __e0_v;
+__e0_v.d2 = { get: () => __e1_d2 };
+
+function __f0() {
+  return (function() {
+    with({ v: __e0_v }) {
+
+return function () { console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 `,
         });
     }
@@ -1042,63 +949,355 @@ return (function () { console.log(v); })
             title: "Capture object with methods",
             // tslint:disable-next-line
             func: function () { console.log(obj); },
-            expect: {
-                code: "(function () { console.log(obj); })",
-                environment: {
-                    "obj": {
-                        "obj": {
-                            "method1": {
-                                "closure": {
-                                    "code": "(function method1() { return this.method2(); })",
-                                    "environment": {},
-                                    "runtime": "nodejs",
-                                },
-                            },
-                            "method2": {
-                                "closure": {
-                                    "code": "(() => { return; })",
-                                    "environment": {},
-                                    "runtime": "nodejs",
-                                },
-                            },
-                        },
-                    },
-                },
-                runtime: "nodejs",
-            },
-            closureHash: "__f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4",
-            expectText: `exports.handler = __f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4;
+            expectText: `exports.handler = __f0;
 
-function __f0b70e2ec196258725e4b2959cb5ec5b89d4c0e4() {
-  return (function() {
-    with({ obj: { method1: __f6abbd7cb31cb232a3250be3014cee3b74db4cfa, method2: __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48 } }) {
+var __e0_obj = {method1: __f1, method2: __f2};
 
-return (function () { console.log(obj); })
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __f6abbd7cb31cb232a3250be3014cee3b74db4cfa() {
+function __f1() {
   return (function() {
     with({  }) {
 
-return (function method1() { return this.method2(); })
+return function /*method1*/() { return this.method2(); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __d3e9cc89985f25c6465a39781af4eb9e1c3c7c48() {
+function __f2() {
   return (function() {
     with({  }) {
 
-return (() => { return; })
+return () => { return; };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
+function __f0() {
+  return (function() {
+    with({ obj: __e0_obj }) {
+
+return function () { console.log(obj); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const outer: any = { o: 1 };
+        const array = [outer];
+        outer.b = array;
+        const C = (function () {
+            // tslint:disable-next-line:no-empty no-shadowed-variable
+            function C() {}
+            C.prototype.m = function () { return this.n() + outer; };
+            C.prototype.n = function () { return array; };
+            (<any>C).m = function () { return this.n(); };
+            return C;
+        }());
+
+        cases.push({
+            title: "Serialize es5-style class",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __e1_outer = {};
+__e1_outer.o = 1;
+var __e2_b = [];
+__e2_b[0] = __e1_outer;
+__e1_outer.b = __e2_b;
+__e0_prototype.m = __f2;
+__e0_prototype.n = __f3;
+__f1.prototype = __e0_prototype;
+__f1.m = __f4;
+
+function __f1() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return function /*C*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ outer: __e1_outer }) {
+
+return function () { return this.n() + outer; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ array: __e2_b }) {
+
+return function () { return array; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function () { return this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const outer: any = { o: 1 };
+        const array = [outer];
+        outer.b = array;
+        class C {
+            public static s() { return array; }
+            public m() { return this.n(); }
+            public n() { return outer; }
+        }
+        cases.push({
+            title: "Serialize class",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e0_prototype, "m", { configurable: true, writable: true, value: __f2 });
+var __e1_outer = {};
+__e1_outer.o = 1;
+var __e2_b = [];
+__e2_b[0] = __e1_outer;
+__e1_outer.b = __e2_b;
+Object.defineProperty(__e0_prototype, "n", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __e0_prototype;
+__f1.s = __f4;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { return this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ outer: __e1_outer }) {
+
+return function /*n*/() { return outer; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ array: __e2_b }) {
+
+return function /*s*/() { return array; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            private x: number;
+            public static s() { return 0; }
+            constructor() {
+                this.x = 1;
+            }
+            public m() { return this.n(); }
+            public n() { return 1; }
+        }
+        cases.push({
+            title: "Serialize class with constructor and field",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e0_prototype, "m", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e0_prototype, "n", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __e0_prototype;
+__f1.s = __f4;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.x = 1;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { return this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*n*/() { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function /*s*/() { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            private x: number;
+            public static s() { return 0; }
+            constructor() {
+                this.x = 1;
+            }
+            public m() { return this.n(); }
+            public n() { return 1; }
+        }
+        cases.push({
+            title: "Serialize constructed class",
+            func: () => new C(),
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e0_prototype, "m", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e0_prototype, "n", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __e0_prototype;
+__f1.s = __f4;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.x = 1;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { return this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*n*/() { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function /*s*/() { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => new C();
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 `,
         });
     }
@@ -1111,24 +1310,17 @@ return (() => { return; })
         cases.push({
             title: "Serialize instance class methods",
             func: new C().m,
-            expect: {
-                code: "(function m() { return this.n(); })",
-                environment: { },
-                runtime: "nodejs",
-            },
-            closureHash: "__a5583812bfd698420d9f1872a30b68e59b01ac00",
-            expectText: `exports.handler = __a5583812bfd698420d9f1872a30b68e59b01ac00;
+            expectText: `exports.handler = __f0;
 
-function __a5583812bfd698420d9f1872a30b68e59b01ac00() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function m() { return this.n(); })
+return function /*m*/() { return this.n(); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
         });
     }
@@ -1141,24 +1333,17 @@ return (function m() { return this.n(); })
         cases.push({
             title: "Serialize static class methods",
             func: C.m,
-            expect: {
-                code: "(function m() { return this.n(); })",
-                environment: { },
-                runtime: "nodejs",
-            },
-            closureHash: "__a5583812bfd698420d9f1872a30b68e59b01ac00",
-            expectText: `exports.handler = __a5583812bfd698420d9f1872a30b68e59b01ac00;
+            expectText: `exports.handler = __f0;
 
-function __a5583812bfd698420d9f1872a30b68e59b01ac00() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function m() { return this.n(); })
+return function /*m*/() { return this.n(); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-
 `,
         });
     }
@@ -1177,26 +1362,1220 @@ return (function m() { return this.n(); })
         cases.push({
             title: "Serialize static class methods (es5 class style)",
             func: (<any>D).m,
-            expect: {
-                code: "(function () { return this.n(); })",
-                environment: { },
-                runtime: "nodejs",
-            },
-            closureHash: "__4388dd82f50083d1b18aa1eb2cebd11363fedeb4",
-            expectText: `exports.handler = __4388dd82f50083d1b18aa1eb2cebd11363fedeb4;
+            expectText: `exports.handler = __f0;
 
-function __4388dd82f50083d1b18aa1eb2cebd11363fedeb4() {
+function __f0() {
   return (function() {
     with({  }) {
 
-return (function () { return this.n(); })
+return function () { return this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const array: any[] = [1];
+        array.push(array);
+
+        cases.push({
+            title: "Cyclic object #1",
+            func: () => array,
+            expectText: `exports.handler = __f0;
+
+var __e0_array = [];
+__e0_array[0] = 1;
+__e0_array[1] = __e0_array;
+
+function __f0() {
+  return (function() {
+    with({ array: __e0_array }) {
+
+return () => array;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const obj: any = {a: 1};
+        obj.b = obj;
+
+        cases.push({
+            title: "Cyclic object #2",
+            func: () => obj,
+            expectText: `exports.handler = __f0;
+
+var __e0_obj = {};
+__e0_obj.a = 1;
+__e0_obj.b = __e0_obj;
+
+function __f0() {
+  return (function() {
+    with({ obj: __e0_obj }) {
+
+return () => obj;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const obj: any = {a: []};
+        obj.a.push(obj);
+        obj.b = obj.a;
+
+        cases.push({
+            title: "Cyclic object #3",
+            func: () => obj,
+            expectText: `exports.handler = __f0;
+
+var __e0_obj = {};
+var __e1_a = [];
+__e1_a[0] = __e0_obj;
+__e0_obj.a = __e1_a;
+__e0_obj.b = __e1_a;
+
+function __f0() {
+  return (function() {
+    with({ obj: __e0_obj }) {
+
+return () => obj;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const obj: any = {a: []};
+        obj.a.push(obj);
+        obj.b = obj.a;
+        const obj2 = [obj, obj];
+
+        cases.push({
+            title: "Cyclic object #4",
+            func: () => obj2,
+            expectText: `exports.handler = __f0;
+
+var __e0_obj2 = [];
+var __e1_obj2_0 = {};
+var __e2_a = [];
+__e2_a[0] = __e1_obj2_0;
+__e1_obj2_0.a = __e2_a;
+__e1_obj2_0.b = __e2_a;
+__e0_obj2[0] = __e1_obj2_0;
+__e0_obj2[1] = __e1_obj2_0;
+
+function __f0() {
+  return (function() {
+    with({ obj2: __e0_obj2 }) {
+
+return () => obj2;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const obj: any = {a: 1};
+
+        function f1() { return obj; }
+        function f2() { console.log(obj); }
+
+        cases.push({
+            title: "Object captured across multiple functions",
+            func: () => { f1(); obj.a = 2; f2(); },
+            expectText: `exports.handler = __f0;
+
+var __e0_obj = {a: 1};
+
+function __f1() {
+  return (function() {
+    with({ obj: __e0_obj, f1: __f1 }) {
+
+return function /*f1*/() { return obj; };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
+function __f2() {
+  return (function() {
+    with({ obj: __e0_obj, f2: __f2 }) {
+
+return function /*f2*/() { console.log(obj); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ f1: __f1, obj: __e0_obj, f2: __f2 }) {
+
+return () => { f1(); obj.a = 2; f2(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 `,
         });
+    }
+
+    {
+        const v = {};
+        Object.defineProperty(v, "key", {
+            configurable: true,
+            value: 1,
+        });
+        cases.push({
+            title: "Complex property descriptor #1",
+            func: () => v,
+            expectText: `exports.handler = __f0;
+
+var __e0_v = {};
+Object.defineProperty(__e0_v, "key", { configurable: true, value: 1 });
+
+function __f0() {
+  return (function() {
+    with({ v: __e0_v }) {
+
+return () => v;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const v = {};
+        Object.defineProperty(v, "key", {
+            writable: true,
+            enumerable: true,
+            value: 1,
+        });
+        cases.push({
+            title: "Complex property descriptor #2",
+            func: () => v,
+            expectText: `exports.handler = __f0;
+
+var __e0_v = {};
+Object.defineProperty(__e0_v, "key", { enumerable: true, writable: true, value: 1 });
+
+function __f0() {
+  return (function() {
+    with({ v: __e0_v }) {
+
+return () => v;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const v = [1, 2, 3];
+        delete v[1];
+
+        cases.push({
+            title: "Test array #1",
+            func: () => v,
+            expectText: `exports.handler = __f0;
+
+var __e0_v = [];
+__e0_v[0] = 1;
+__e0_v[2] = 3;
+
+function __f0() {
+  return (function() {
+    with({ v: __e0_v }) {
+
+return () => v;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const v = [1, 2, 3];
+        delete v[1];
+        (<any>v).foo = "";
+
+        cases.push({
+            title: "Test array #2",
+            func: () => v,
+            expectText: `exports.handler = __f0;
+
+var __e0_v = [];
+__e0_v[0] = 1;
+__e0_v[2] = 3;
+__e0_v.foo = "";
+
+function __f0() {
+  return (function() {
+    with({ v: __e0_v }) {
+
+return () => v;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const v = () => { return 1; };
+        (<any>v).foo = "bar";
+
+        cases.push({
+            title: "Test function with property",
+            func: v,
+            expectText: `exports.handler = __f0;
+
+__f0.foo = "bar";
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const x = Object.create(null);
+        const v = () => { return x; };
+
+        cases.push({
+            title: "Test null prototype",
+            func: v,
+            expectText: `exports.handler = __f0;
+
+var __e0_x = Object.create(null);
+
+function __f0() {
+  return (function() {
+    with({ x: __e0_x }) {
+
+return () => { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const x = Object.create(Number.prototype);
+        const v = () => { return x; };
+
+        cases.push({
+            title: "Test non-default object prototype",
+            func: v,
+            expectText: `exports.handler = __f0;
+
+var __e0_x = Object.create(global.Number.prototype);
+
+function __f0() {
+  return (function() {
+    with({ x: __e0_x }) {
+
+return () => { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const x = Object.create({ x() { return v; } });
+        const v = () => { return x; };
+
+        cases.push({
+            title: "Test recursive prototype object prototype",
+            func: v,
+            expectText: `exports.handler = __f0;
+
+var __e1_x_proto = {x: __f1};
+var __e0_x = Object.create(__e1_x_proto);
+
+function __f1() {
+  return (function() {
+    with({ v: __f0 }) {
+
+return function /*x*/() { return v; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ x: __e0_x }) {
+
+return () => { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const v = () => { return 0; };
+        Object.setPrototypeOf(v, () => { return 1; });
+
+        cases.push({
+            title: "Test non-default function prototype",
+            func: v,
+            expectText: `exports.handler = __f0;
+
+Object.setPrototypeOf(__f0, __f1);
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return () => { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        function *f() { yield 1; }
+
+        cases.push({
+            title: "Test generator func",
+            func: f,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
+__f0.prototype = __e0_prototype;
+Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
+
+function __f0() {
+  return (function() {
+    with({ f: __f0 }) {
+
+return function* /*f*/() { yield 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const gf = (function *() { yield 1; });
+
+        cases.push({
+            title: "Test anonymous generator func",
+            func: gf,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
+__f0.prototype = __e0_prototype;
+Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function* () { yield 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            private _x: number;
+
+            constructor() {
+                this._x = 0;
+            }
+
+            get foo() {
+                return this._x;
+            }
+
+            // tslint:disable-next-line:no-empty
+            set foo(v: number) {
+                this._x = v;
+            }
+        }
+
+        cases.push({
+            title: "Test getter/setter #1",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e0_prototype, "foo", { configurable: true, get: __f2, set: __f3 });
+__f1.prototype = __e0_prototype;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this._x = 0;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*foo*/() {
+                return this._x;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*foo*/(v) {
+                this._x = v;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const methodName = "method name";
+        class C {
+            [methodName](a: number) {
+                return a;
+            }
+        }
+
+        cases.push({
+            title: "Test computed method name.",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e0_prototype, "method name", { configurable: true, writable: true, value: __f2 });
+__f1.prototype = __e0_prototype;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function (a) {
+                return a;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const sym = Symbol("test_symbol");
+        class C {
+            [sym](a: number) {
+                return a;
+            }
+
+            getSym() { return sym; }
+        }
+
+        cases.push({
+            title: "Test symbols #1",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __e1_sym = Object.create(global.Symbol.prototype);
+Object.defineProperty(__e0_prototype, "getSym", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e0_prototype, __e1_sym, { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __e0_prototype;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ sym: __e1_sym }) {
+
+return function /*getSym*/() { return sym; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function (a) {
+                return a;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            [Symbol.iterator](a: number) {
+                return a;
+            }
+        }
+
+        cases.push({
+            title: "Test Symbol.iterator",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e0_prototype, Symbol.iterator, { configurable: true, writable: true, value: __f2 });
+__f1.prototype = __e0_prototype;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function (a) {
+                return a;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class D {
+            public n: number;
+            constructor(n: number) {
+                this.n = n;
+                console.log("DConstructor");
+            }
+            dMethod(x: number) { return x; }
+            dVirtual() { return 1; }
+        }
+        class C extends D {
+            constructor(n: number) {
+                super(n + 1);
+                console.log("CConstructor");
+            }
+            cMethod() {
+                return "" +
+                    super.dMethod + super["dMethod"] +
+                    super.dMethod(1) + super["dMethod"](2) +
+                    super.dMethod(super.dMethod(3));
+                }
+            dVirtual() { return 3; }
+        }
+
+        cases.push({
+            title: "Test class extension",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e0_prototype, "dMethod", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__e0_prototype, "dVirtual", { configurable: true, writable: true, value: __f4 });
+__f2.prototype = __e0_prototype;
+var __e1_prototype = Object.create(__e0_prototype);
+Object.defineProperty(__e1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e1_prototype, "cMethod", { configurable: true, writable: true, value: __f5 });
+Object.defineProperty(__e1_prototype, "dVirtual", { configurable: true, writable: true, value: __f6 });
+__f1.prototype = __e1_prototype;
+Object.setPrototypeOf(__f1, __f2);
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(n) {
+                this.n = n;
+                console.log("DConstructor");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*dMethod*/(x) { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function /*dVirtual*/() { return 1; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n + 1);
+    console.log("CConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f5() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*cMethod*/() {
+    return "" +
+        __super.prototype.dMethod + __super.prototype["dMethod"] +
+        __super.prototype.dMethod.call(this, 1) + __super.prototype["dMethod"].call(this, 2) +
+        __super.prototype.dMethod.call(this, __super.prototype.dMethod.call(this, 3));
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*dVirtual*/() { return 3; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class A {
+            public n: number;
+            constructor(n: number) {
+                this.n = n;
+                console.log("AConstruction");
+            }
+            method(x: number) { return x; }
+        }
+        class B extends A {
+            constructor(n: number) {
+                super(n + 1);
+                console.log("BConstructor");
+            }
+            method(n: number) { return 1 + super.method(n + 1); }
+        }
+        class C extends B {
+            constructor(n: number) {
+                super(n * 2);
+                console.log("CConstructor");
+            }
+            method(n: number) { return 2 * super.method(n * 2); }
+        }
+
+        cases.push({
+            title: "Three level inheritance",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__e0_prototype, "method", { configurable: true, writable: true, value: __f4 });
+__f3.prototype = __e0_prototype;
+var __e1_prototype = Object.create(__e0_prototype);
+Object.defineProperty(__e1_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e1_prototype, "method", { configurable: true, writable: true, value: __f5 });
+__f2.prototype = __e1_prototype;
+Object.setPrototypeOf(__f2, __f3);
+var __e2_prototype = Object.create(__e1_prototype);
+Object.defineProperty(__e2_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e2_prototype, "method", { configurable: true, writable: true, value: __f6 });
+__f1.prototype = __e2_prototype;
+Object.setPrototypeOf(__f1, __f2);
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(n) {
+                this.n = n;
+                console.log("AConstruction");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function /*method*/(x) { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __super: __f3 }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n + 1);
+    console.log("BConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f5() {
+  return (function() {
+    with({ __super: __f3 }) {
+
+return function /*method*/(n) { return 1 + __super.prototype.method.call(this, n + 1); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n * 2);
+    console.log("CConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*method*/(n) { return 2 * __super.prototype.method.call(this, n * 2); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`});
+    }
+
+    {
+        const sym = Symbol();
+
+        class A {
+            public n: number;
+            constructor(n: number) {
+                this.n = n;
+                console.log("AConstruction");
+            }
+            public [sym](x: number) { return x; }
+        }
+        class B extends A {
+            constructor(n: number) {
+                super(n + 1);
+                console.log("BConstructor");
+            }
+            // @ts-ignore
+            public [sym](n: number) { return 1 + super[sym](n + 1); }
+        }
+        class C extends B {
+            constructor(n: number) {
+                super(n * 2);
+                console.log("CConstructor");
+            }
+            // @ts-ignore
+            public [sym](n: number) { return 2 * super[sym](n * 2); }
+        }
+
+        cases.push({
+            title: "Three level inheritance with symbols",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+var __e0_prototype = {};
+Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
+var __e1_sym = Object.create(global.Symbol.prototype);
+Object.defineProperty(__e0_prototype, __e1_sym, { configurable: true, writable: true, value: __f4 });
+__f3.prototype = __e0_prototype;
+var __e2_prototype = Object.create(__e0_prototype);
+Object.defineProperty(__e2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e2_prototype, __e1_sym, { configurable: true, writable: true, value: __f5 });
+__f2.prototype = __e2_prototype;
+Object.setPrototypeOf(__f2, __f3);
+var __e3_prototype = Object.create(__e2_prototype);
+Object.defineProperty(__e3_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e3_prototype, __e1_sym, { configurable: true, writable: true, value: __f6 });
+__f1.prototype = __e3_prototype;
+Object.setPrototypeOf(__f1, __f2);
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(n) {
+                this.n = n;
+                console.log("AConstruction");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function (x) { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __super: __f3 }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n + 1);
+    console.log("BConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f5() {
+  return (function() {
+    with({ sym: __e1_sym, __super: __f3 }) {
+
+return function /*__computed*/(n) { return 1 + __super.prototype[sym].call(this, n + 1); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n * 2);
+    console.log("CConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6() {
+  return (function() {
+    with({ sym: __e1_sym, __super: __f2 }) {
+
+return function /*__computed*/(n) { return 2 * __super.prototype[sym].call(this, n * 2); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`});
+    }
+
+    {
+        const sym = Symbol();
+
+        class A {
+            public n: number;
+            static method(x: number) { return x; }
+            static [sym](x: number) { return x * x; }
+            constructor(n: number) {
+                this.n = n;
+                console.log("AConstruction");
+            }
+        }
+        class B extends A {
+            static method(n: number) { return 1 + super.method(n + 1); }
+            // @ts-ignore
+            static [sym](x: number) { return x * super[sym](x + 1); }
+            constructor(n: number) {
+                super(n + 1);
+                console.log("BConstructor");
+            }
+        }
+
+        cases.push({
+            title: "Two level static inheritance",
+            func: () => B,
+            expectText: `exports.handler = __f0;
+
+__f2.method = __f3;
+var __e0_sym = Object.create(global.Symbol.prototype);
+__f2[__e0_sym] = __f4;
+__f1.method = __f5;
+__f1[__e0_sym] = __f6;
+Object.setPrototypeOf(__f1, __f2);
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(n) {
+                this.n = n;
+                console.log("AConstruction");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*method*/(x) { return x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({  }) {
+
+return function (x) { return x * x; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*constructor*/(n) {
+    __super.call(this, n + 1);
+    console.log("BConstructor");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f5() {
+  return (function() {
+    with({ __super: __f2 }) {
+
+return function /*method*/(n) { return 1 + __super.method.call(this, n + 1); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f6() {
+  return (function() {
+    with({ sym: __e0_sym, __super: __f2 }) {
+
+return function /*__computed*/(x) { return x * __super[sym].call(this, x + 1); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ B: __f1 }) {
+
+return () => B;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`});
     }
 
     // Make a callback to keep running tests.
@@ -1206,6 +2585,11 @@ return (function () { return this.n(); })
         if (!test) {
             return;
         }
+
+        // if (test.title !== "Capture object with methods") {
+        //     continue;
+        // }
+
         it(test.title, asyncTest(async () => {
             // Run pre-actions.
             if (test.pre) {
@@ -1213,19 +2597,13 @@ return (function () { return this.n(); })
             }
 
             // Invoke the test case.
-            if (test.expect) {
-                const closure: runtime.Closure = await runtime.serializeClosure(test.func);
-                assert.deepEqual(closure, test.expect);
-                if (test.expectText) {
-                    const text = runtime.serializeJavaScriptText(closure);
-                    assert.equal(text, test.expectText);
-                }
-
-                const closureHash = runtime.getClosureHash_forTestingPurposes(closure);
-                assert.equal(closureHash, test.closureHash);
+            if (test.expectText) {
+                const closure = await runtime.serializeClosureAsync(test.func);
+                const text = await runtime.serializeJavaScriptTextAsync(closure);
+                assert.equal(text, test.expectText);
             } else {
                 await assertAsyncThrows(async () => {
-                    await runtime.serializeClosure(test.func);
+                    await runtime.serializeClosureAsync(test.func);
                 });
             }
         }));

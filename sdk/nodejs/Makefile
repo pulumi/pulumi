@@ -41,7 +41,7 @@ install::
 	cp dist/pulumi-language-nodejs-exec "$(PULUMI_BIN)"
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/$(shell node --version)"
-	cp runtime/native/build/Release/nativeruntime.node "$(PULUMI_BIN)/$(shell node --version)/nativeruntime.node"
+	cp runtime/native/build/Release/nativeruntime-v0.11.0.node "$(PULUMI_BIN)/$(shell node --version)/nativeruntime-v0.11.0.node"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
 test_fast::

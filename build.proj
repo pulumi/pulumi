@@ -12,7 +12,7 @@
     <PulumiRoot Condition="'$(PulumiRoot)' == ''">C:\Pulumi\</PulumiRoot>
     <PulumiBin>$(PulumiRoot)\bin</PulumiBin>
   </PropertyGroup>
- 
+
   <Target Name="EnsureGoDependencies">
     <Exec Command="dep ensure -v"
           WorkingDirectory="$(RepoRootDirectory)" />
@@ -89,8 +89,8 @@
   <Target Name="BinPlaceNodeSdkNativeRuntimeModule"
           DependsOnTargets="BuildNativeRuntimeModule">
     <ItemGroup>
-      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.node" />
-      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime.pdb" />
+      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime-v0.11.0.node" />
+      <NodeSdkNativeRuntimeModuleFiles Include="$(NativeRuntimeModuleDirectory)\build\Release\nativeruntime-v0.11.0.pdb" />
     </ItemGroup>
 
     <Copy SourceFiles="@(NodeSdkNativeRuntimeModuleFiles)"
@@ -116,8 +116,8 @@
      <Copy SourceFiles="$(NodeJSSdkDirectory)\custom_node\node\node.exe" DestinationFiles="$(PulumiBin)\pulumi-language-nodejs-node.exe" />
      <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-language-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
      <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-resource-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime.node" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime.pdb" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime-v0.11.0.node" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\bin\runtime\native\build\Release\nativeruntime-v0.11.0.pdb" DestinationFolder="$(PulumiBin)\v$(NodeVersion)" />
   </Target>
 
   <Target Name="BuildNodeSdk"

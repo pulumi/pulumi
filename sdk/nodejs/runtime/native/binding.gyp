@@ -1,7 +1,7 @@
 {
     "targets": [
         {
-            "target_name": "nativeruntime",
+            "target_name": "nativeruntime-v0.11.0",
             "sources": [
                 "closure.cc"
             ],
