@@ -267,3 +267,58 @@ func TestConfigSave(t *testing.T) {
 	validate("configB", "value2", testStack2.Config)
 	validate("configD", "value4", testStack2.Config)
 }
+
+// Tests that when `pulumi` is run, configuration is upgraded from the old format to the new format.
+func TestConfigUpgrade(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("config_upgrade")
+
+	// Run a pulumi command, which will upgrade everything.
+	e.RunCommand("pulumi", "config")
+
+	validate := func(k string, v string, cfg config.Map) {
+		key := tokens.ModuleMember("config_upgrade:config:" + k)
+		d, ok := cfg[key]
+		assert.True(t, ok, "config key %v should be set", k)
+		dv, err := d.Value(nil)
+		assert.NoError(t, err)
+		assert.Equal(t, v, dv)
+	}
+
+	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.local1.yaml"))
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(testStack1.Config))
+	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.local2.yaml"))
+	assert.NoError(t, err)
+	assert.Equal(t, 5, len(testStack2.Config))
+
+	validate("allKey", "allValue", testStack1.Config)
+	validate("allKeyOverride", "local1Overridden", testStack1.Config)
+	validate("allWorkspaceKey", "allWorkspaceValue", testStack1.Config)
+	validate("local1ProjectKey", "local1ProjectValue", testStack1.Config)
+
+	validate("allKey", "allValue", testStack2.Config)
+	validate("allKeyOverride", "local2Overridden", testStack2.Config)
+	validate("allWorkspaceKey", "allWorkspaceValue", testStack2.Config)
+	validate("local2WorkspaceKey", "local2WorkspaceValue", testStack2.Config)
+
+	// The stack local2 had an encrypted configuration value, ensure the EncryptionSalt was copied over
+	assert.NotEmpty(t, testStack2.EncryptionSalt)
+
+	// Ensure config has been removed from the old files:
+	w, err := workspace.NewFrom(e.CWD)
+	assert.NoError(t, err)
+
+	proj, err := workspace.LoadProject(filepath.Join(e.CWD, "Pulumi.yaml"))
+	assert.NoError(t, err)
+
+	assert.Empty(t, w.Settings().ConfigDeprecated)
+	assert.Empty(t, proj.ConfigDeprecated)
+	assert.Empty(t, proj.EncryptionSaltDeprecated)
+}

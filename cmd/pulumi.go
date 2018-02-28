@@ -31,10 +31,13 @@ func NewPulumiCmd() *cobra.Command {
 		Use: "pulumi",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if cwd != "" {
-				err := os.Chdir(cwd)
-				if err != nil {
+				if err := os.Chdir(cwd); err != nil {
 					cmdutil.ExitError(err.Error())
 				}
+			}
+
+			if err := upgradeConfigurationFiles(); err != nil {
+				cmdutil.ExitError(err.Error())
 			}
 
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
