@@ -610,7 +610,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
         }
 
         const funcName = v.substr(0, openParenIndex);
-        const commentedName = "/*" + funcName + "*/";
+        const commentedName = isLegalName(funcName) ? "/*" + funcName + "*/" : "";
         v = v.substr(openParenIndex).trimLeft();
 
         return {
