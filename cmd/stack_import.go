@@ -53,13 +53,13 @@ func newStackImportCmd() *cobra.Command {
 						cmdutil.Diag().Warningf(diag.Message(msg))
 					} else {
 						// Otherwise, gather up an error so that we can quit before doing damage.
-						msg += "; importing this could be dangerous, pass --force to proceed anyway"
 						result = multierror.Append(result, errors.New(msg))
 					}
 				}
 			}
 			if result != nil {
-				return result
+				return multierror.Append(result,
+					errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
 			}
 
 			// Now perform the deployment.

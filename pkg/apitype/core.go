@@ -1,5 +1,17 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+// Package apitype contains the full set of "exchange types" that are serialized and sent across separately versionable
+// boundaries, including service APIs, plugins, and file formats.  As a result, we must consider the versioning impacts
+// for each change we make to types within this package.  In general, this means the following:
+//
+//     1) DO NOT take anything away
+//     2) DO NOT change processing rules
+//     3) DO NOT make optional things required
+//     4) DO make anything new be optional
+//
+// In the event that this is not possible, a breaking change is implied.  The preferred approach is to never make
+// breaking changes.  If that isn't possible, the next best approach is to support both the old and new formats
+// side-by-side (for instance, by using a union type for the property in question).
 package apitype
 
 import (
