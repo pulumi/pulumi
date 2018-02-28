@@ -3,8 +3,6 @@
 package cloud
 
 import (
-	"encoding/json"
-
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -43,14 +41,14 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	var resources []*resource.State
 	for _, res := range apistack.Resources {
 		resources = append(resources, resource.NewState(
-			tokens.Type(res.Type),
-			resource.URN(res.URN),
+			res.Type,
+			res.URN,
 			res.Custom,
 			false,
-			resource.ID(res.ID),
+			res.ID,
 			resource.NewPropertyMapFromMap(res.Inputs),
 			resource.NewPropertyMapFromMap(res.Outputs),
-			resource.URN(res.Parent),
+			res.Parent,
 			res.Protect,
 			// TODO(swgillespie) provide an actual list of dependencies
 			[]resource.URN{},
@@ -101,10 +99,10 @@ func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, 
 	return backend.GetStackLogs(s, query)
 }
 
-func (s *cloudStack) ExportDeployment() (json.RawMessage, error) {
+func (s *cloudStack) ExportDeployment() (*apitype.Deployment, error) {
 	return backend.ExportStackDeployment(s)
 }
 
-func (s *cloudStack) ImportDeployment(deployment json.RawMessage) error {
+func (s *cloudStack) ImportDeployment(deployment *apitype.Deployment) error {
 	return backend.ImportStackDeployment(s, deployment)
 }

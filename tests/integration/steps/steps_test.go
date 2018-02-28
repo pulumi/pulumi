@@ -7,12 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-func validateResources(t *testing.T, resources []stack.Resource, expectedNames ...string) {
+func validateResources(t *testing.T, resources []apitype.Resource, expectedNames ...string) {
 	// Build the lookup table of expected resource names.
 	expectedNamesTable := make(map[string]struct{})
 	for _, n := range expectedNames {

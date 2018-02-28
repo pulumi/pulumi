@@ -10,11 +10,12 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
-	var checkpoint stack.Checkpoint
+	var checkpoint apitype.Checkpoint
 	byts, err := ioutil.ReadFile(path)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)

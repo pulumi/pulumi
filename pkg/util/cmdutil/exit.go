@@ -91,7 +91,7 @@ func errorMessage(err error) string {
 		}
 		msg := fmt.Sprintf("%d errors occurred:", len(wr))
 		for i, werr := range wr {
-			msg += fmt.Sprintf("\n\t%d) %s", i, errorMessage(werr))
+			msg += fmt.Sprintf("\n    %d) %s", i, errorMessage(werr))
 		}
 		return msg
 	}

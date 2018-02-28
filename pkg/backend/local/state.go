@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-
 	"github.com/pkg/errors"
+
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
@@ -139,7 +140,7 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
-	var chk stack.Checkpoint
+	var chk apitype.Checkpoint
 	if err = m.Unmarshal(b, &chk); err != nil {
 		return nil, nil, file, err
 	}

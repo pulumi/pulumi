@@ -3,7 +3,6 @@
 package local
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/encoding"
@@ -276,34 +276,24 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 	return *logs, err
 }
 
-func (b *localBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage, error) {
+func (b *localBackend) ExportDeployment(stackName tokens.QName) (*apitype.Deployment, error) {
 	_, snap, _, err := getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
-
-	data, err := json.Marshal(stack.SerializeDeployment(snap))
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(data), nil
+	return stack.SerializeDeployment(snap), nil
 }
 
-func (b *localBackend) ImportDeployment(stackName tokens.QName, src json.RawMessage) error {
+func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.Deployment) error {
 	config, _, _, err := getStack(stackName)
 	if err != nil {
 		return err
 	}
 
-	var deployment stack.Deployment
-	if err = json.Unmarshal(src, &deployment); err != nil {
-		return err
-	}
-
-	checkpoint := &stack.Checkpoint{
+	checkpoint := &apitype.Checkpoint{
 		Stack:  stackName,
 		Config: config,
-		Latest: &deployment,
+		Latest: deployment,
 	}
 	snap, err := stack.DeserializeCheckpoint(checkpoint)
 	if err != nil {
