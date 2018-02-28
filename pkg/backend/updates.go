@@ -3,8 +3,6 @@
 package backend
 
 import (
-	"sort"
-
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
@@ -76,28 +74,4 @@ type UpdateInfo struct {
 	EndTime int64        `json:"endTime"`
 
 	ResourceChanges engine.ResourceChanges `json:"resourceChanges"`
-}
-
-// updateSorter implements the sort.Interface interface.
-// Sorts by StartTime in *descending* order (more recent first).
-type updateSorter struct {
-	u []UpdateInfo
-}
-
-func (us *updateSorter) Len() int {
-	return len(us.u)
-}
-
-func (us *updateSorter) Swap(i, j int) {
-	us.u[i], us.u[j] = us.u[j], us.u[i]
-}
-
-func (us *updateSorter) Less(i, j int) bool {
-	return us.u[i].StartTime > us.u[j].StartTime
-}
-
-// Sort orders the UpdateInfo slice by StartTime descending.
-func Sort(updates []UpdateInfo) {
-	us := updateSorter{u: updates}
-	sort.Sort(&us)
 }

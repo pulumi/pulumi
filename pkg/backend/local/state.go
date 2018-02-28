@@ -307,7 +307,11 @@ func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 	}
 
 	var updates []backend.UpdateInfo
-	for _, file := range allFiles {
+
+	// os.ReadDir returns the array sorted by file name, but because of how we name files, older updates come before
+	// newer ones. Loop backwards so we added the newest updates to the array we will return first.
+	for i := len(allFiles) - 1; i >= 0; i-- {
+		file := allFiles[i]
 		filepath := path.Join(dir, file.Name())
 
 		// Open all of the history files, ignoring the checkpoints.
@@ -346,7 +350,7 @@ func addToHistory(name tokens.QName, update backend.UpdateInfo) error {
 	}
 
 	// Prefix for the update and checkpoint files.
-	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, update.StartTime))
+	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
 
 	// Save the history file.
 	b, err := json.MarshalIndent(&update, "", "    ")
