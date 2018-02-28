@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -31,12 +32,14 @@ func newStackImportCmd() *cobra.Command {
 				return err
 			}
 
-			var deployment json.RawMessage
+			// Read the checkpoint from stdin.
+			var deployment apitype.Deployment
 			if err = json.NewDecoder(os.Stdin).Decode(&deployment); err != nil {
 				return err
 			}
 
-			if err = s.ImportDeployment(deployment); err != nil {
+			// Now import the new deployment information.
+			if err = s.ImportDeployment(&deployment); err != nil {
 				return errors.Wrap(err, "could not import deployment")
 			}
 			fmt.Printf("Import successful.\n")

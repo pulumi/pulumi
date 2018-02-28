@@ -14,8 +14,8 @@ import (
 
 // Resource is a tree representation of a resource/component hierarchy
 type Resource struct {
-	NS       tokens.QName
-	Alloc    tokens.PackageName
+	Stack    tokens.QName
+	Project  tokens.PackageName
 	State    *resource.State
 	Parent   *Resource
 	Children map[resource.URN]*Resource
@@ -37,19 +37,19 @@ func NewResourceTree(source []*resource.State) *Resource {
 func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]*Resource) {
 	resources := make(map[resource.URN]*Resource)
 
-	var ns tokens.QName
-	var alloc tokens.PackageName
+	var stack tokens.QName
+	var proj tokens.PackageName
 
 	// First create a list of resource nodes, without parent/child relations hooked up.
 	for _, state := range source {
-		ns = state.URN.Namespace()
-		alloc = state.URN.Alloc()
+		stack = state.URN.Stack()
+		proj = state.URN.Project()
 		if !state.Delete {
 			// Only include resources which are not marked as pending-deletion.
 			contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
 			resources[state.URN] = &Resource{
-				NS:       ns,
-				Alloc:    alloc,
+				Stack:    stack,
+				Project:  proj,
 				State:    state,
 				Children: make(map[resource.URN]*Resource),
 			}
@@ -69,8 +69,8 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 
 	// Create a single root node which is the parent of all unparented nodes
 	root := &Resource{
-		NS:       ns,
-		Alloc:    alloc,
+		Stack:    stack,
+		Project:  proj,
 		State:    nil,
 		Parent:   nil,
 		Children: make(map[resource.URN]*Resource),
@@ -89,8 +89,8 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 // GetChild find a child with the given type and name or returns `nil`.
 func (r *Resource) GetChild(typ string, name string) *Resource {
 	for childURN, childResource := range r.Children {
-		if childURN.Namespace() == r.NS &&
-			childURN.Alloc() == r.Alloc &&
+		if childURN.Stack() == r.Stack &&
+			childURN.Project() == r.Project &&
 			childURN.Type() == tokens.Type(typ) &&
 			childURN.Name() == tokens.QName(name) {
 			return childResource

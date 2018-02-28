@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -33,7 +34,7 @@ import (
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
-	Checkpoint   stack.Checkpoint
+	Checkpoint   apitype.Checkpoint
 	Snapshot     deploy.Snapshot
 	RootResource resource.State
 	Outputs      map[string]interface{}

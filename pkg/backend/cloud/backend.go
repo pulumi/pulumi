@@ -5,7 +5,6 @@ package cloud
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -482,7 +481,7 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	return logs, nil
 }
 
-func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage, error) {
+func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.Deployment, error) {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return nil, err
@@ -498,7 +497,7 @@ func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (json.RawMessage
 	return response.Deployment, nil
 }
 
-func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment json.RawMessage) error {
+func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.Deployment) error {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return err

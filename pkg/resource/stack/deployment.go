@@ -4,59 +4,17 @@ package stack
 
 import (
 	"reflect"
-	"time"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Deployment is a serializable, flattened LumiGL graph structure, representing a deploy.   It is similar
-// to the actual Snapshot structure, except that it flattens and rearranges a few data structures for serializability.
-// Over time, we also expect this to gather more information about deploys themselves.
-type Deployment struct {
-	Manifest  Manifest   `json:"manifest" yaml:"manifest"`                       // the deployment's manifest.
-	Resources []Resource `json:"resources,omitempty" yaml:"resources,omitempty"` // an array of resources.
-}
-
-// Manifest captures meta-information about this checkpoint file, such as versions of binaries, etc.
-type Manifest struct {
-	Time    time.Time    `json:"time" yaml:"time"`                           // the time of the deploy.
-	Magic   string       `json:"magic" yaml:"magic"`                         // a magic cookie.
-	Version string       `json:"version" yaml:"version"`                     // the version of the Pulumi CLI.
-	Plugins []PluginInfo `json:"plugins,omitempty" yaml:"plugins,omitempty"` // the plugin binary versions.
-}
-
-// PluginInfo captures the version and information about a plugin.
-type PluginInfo struct {
-	Name    string               `json:"name" yaml:"name"`
-	Path    string               `json:"path" yaml:"path"`
-	Type    workspace.PluginKind `json:"type" yaml:"type"`
-	Version string               `json:"version" yaml:"version"`
-}
-
-// Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
-// nolint: lll
-type Resource struct {
-	URN          resource.URN           `json:"urn" yaml:"urn"`                               // the URN for this resource.
-	Custom       bool                   `json:"custom" yaml:"custom"`                         // if this is a custom resource managed by a plugin.
-	Delete       bool                   `json:"delete,omitempty" yaml:"delete,omitempty"`     // if this should be deleted during the next update.
-	ID           resource.ID            `json:"id,omitempty" yaml:"id,omitempty"`             // the provider ID for this resource, if any.
-	Type         tokens.Type            `json:"type" yaml:"type"`                             // this resource's full type token.
-	Inputs       map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`     // the input properties from the provider (or the program for ressources with defaults).
-	Defaults     map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"` // the default property values from the provider (DEPRECATED, see #637).
-	Outputs      map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`   // the output properties from the resource provider.
-	Parent       resource.URN           `json:"parent,omitempty" yaml:"parent,omitempty"`     // an optional parent URN if this is a child resource.
-	Protect      bool                   `json:"protect,omitempty" yaml:"protect,omitempty"`   // true if this resource is protected, and cannot be deleted.
-	Dependencies []resource.URN         `json:"dependencies" yaml:"dependencies"`             // the dependency edges for this resource
-}
-
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
+func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
 	// Capture the version information into a manifest.
-	manifest := Manifest{
+	manifest := apitype.Manifest{
 		Time:    snap.Manifest.Time,
 		Magic:   snap.Manifest.Magic,
 		Version: snap.Manifest.Version,
@@ -66,7 +24,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 		if plug.Version != nil {
 			version = plug.Version.String()
 		}
-		manifest.Plugins = append(manifest.Plugins, PluginInfo{
+		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfo{
 			Name:    plug.Name,
 			Path:    plug.Path,
 			Type:    plug.Kind,
@@ -75,19 +33,19 @@ func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resources []Resource
+	var resources []apitype.Resource
 	for _, res := range snap.Resources {
 		resources = append(resources, SerializeResource(res))
 	}
 
-	return &Deployment{
+	return &apitype.Deployment{
 		Manifest:  manifest,
 		Resources: resources,
 	}
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State) Resource {
+func SerializeResource(res *resource.State) apitype.Resource {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
@@ -101,7 +59,7 @@ func SerializeResource(res *resource.State) Resource {
 		outputs = SerializeProperties(outp)
 	}
 
-	return Resource{
+	return apitype.Resource{
 		URN:          res.URN,
 		Custom:       res.Custom,
 		Delete:       res.Delete,
@@ -161,7 +119,7 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res Resource) (*resource.State, error) {
+func DeserializeResource(res apitype.Resource) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs)
 	if err != nil {
@@ -178,7 +136,7 @@ func DeserializeResource(res Resource) (*resource.State, error) {
 
 	// If this is an old checkpoint that still had defaults, merge the inputs into the defaults.
 	//
-	// NOTE: we will remove support for defaults entirely in the future. See #637.
+	// TODO[pulumi/pulumi#637]: we will remove support for defaults entirely in the future.
 	if inputs != nil && defaults != nil {
 		inputs = defaults.Merge(inputs)
 	}

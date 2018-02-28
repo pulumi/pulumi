@@ -3,8 +3,7 @@
 package local
 
 import (
-	"encoding/json"
-
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -69,10 +68,10 @@ func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, 
 	return backend.GetStackLogs(s, query)
 }
 
-func (s *localStack) ExportDeployment() (json.RawMessage, error) {
+func (s *localStack) ExportDeployment() (*apitype.Deployment, error) {
 	return backend.ExportStackDeployment(s)
 }
 
-func (s *localStack) ImportDeployment(deployment json.RawMessage) error {
+func (s *localStack) ImportDeployment(deployment *apitype.Deployment) error {
 	return backend.ImportStackDeployment(s, deployment)
 }

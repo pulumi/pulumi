@@ -6,14 +6,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
-// ConfigValue describes a single (possibly secret) configuration value.
-type ConfigValue struct {
-	// String is either the plaintext value (for non-secrets) or the base64-encoded ciphertext (for secrets).
-	String string `json:"string"`
-	// Secret is true if this value is a secret and false otherwise.
-	Secret bool `json:"secret"`
-}
-
 // CreateUpdateConfig describes the configuration data for an request to `POST /updates`.
 type CreateUpdateConfig struct {
 	// Contents contains the configuration values for an update as a set of key-value pairs.

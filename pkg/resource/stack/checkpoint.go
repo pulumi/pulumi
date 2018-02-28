@@ -10,6 +10,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -18,22 +19,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Checkpoint is a serialized deployment target plus a record of the latest deployment.
-// nolint: lll
-type Checkpoint struct {
-	Stack  tokens.QName `json:"stack" yaml:"stack"`                       // the target stack name.
-	Config config.Map   `json:"config,omitempty" yaml:"config,omitempty"` // optional configuration key/values.
-	Latest *Deployment  `json:"latest,omitempty" yaml:"latest,omitempty"` // the latest/current deployment information.
-}
-
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func GetCheckpoint(w workspace.W, stack tokens.QName) (*Checkpoint, error) {
+func GetCheckpoint(w workspace.W, stack tokens.QName) (*apitype.Checkpoint, error) {
 	chkpath := w.StackPath(stack)
 	bytes, err := ioutil.ReadFile(chkpath)
 	if err != nil {
 		return nil, err
 	}
-	var checkpoint Checkpoint
+	var checkpoint apitype.Checkpoint
 	if err = json.Unmarshal(bytes, &checkpoint); err != nil {
 		return nil, err
 	}
@@ -41,14 +34,14 @@ func GetCheckpoint(w workspace.W, stack tokens.QName) (*Checkpoint, error) {
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *Checkpoint {
+func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.Checkpoint {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
-	var latest *Deployment
+	var latest *apitype.Deployment
 	if snap != nil {
 		latest = SerializeDeployment(snap)
 	}
 
-	return &Checkpoint{
+	return &apitype.Checkpoint{
 		Stack:  stack,
 		Config: config,
 		Latest: latest,
@@ -56,7 +49,7 @@ func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Sna
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Snapshot, error) {
+func DeserializeCheckpoint(chkpoint *apitype.Checkpoint) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 
 	var snap *deploy.Snapshot

@@ -3,8 +3,7 @@
 package backend
 
 import (
-	"encoding/json"
-
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -32,8 +31,8 @@ type Stack interface {
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
-	ExportDeployment() (json.RawMessage, error)                       // export this stack's deployment.
-	ImportDeployment(json.RawMessage) error                           // import the given deployment into this stack.
+	ExportDeployment() (*apitype.Deployment, error)                   // export this stack's deployment.
+	ImportDeployment(deployment *apitype.Deployment) error            // import the given deployment into this stack.
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
@@ -70,11 +69,11 @@ func GetStackLogs(s Stack, query operations.LogQuery) ([]operations.LogEntry, er
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
-func ExportStackDeployment(s Stack) (json.RawMessage, error) {
+func ExportStackDeployment(s Stack) (*apitype.Deployment, error) {
 	return s.Backend().ExportDeployment(s.Name())
 }
 
 // ImportStackDeployment imports the given deployment into the indicated stack.
-func ImportStackDeployment(s Stack, deployment json.RawMessage) error {
+func ImportStackDeployment(s Stack, deployment *apitype.Deployment) error {
 	return s.Backend().ImportDeployment(s.Name(), deployment)
 }

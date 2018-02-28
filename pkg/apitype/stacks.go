@@ -2,12 +2,6 @@
 
 package apitype
 
-import (
-	"encoding/json"
-
-	"github.com/pulumi/pulumi/pkg/tokens"
-)
-
 // StackSummary presents an overview of a particular stack without enumerating its current resource set.
 type StackSummary struct {
 	// ID is the unique identifier for a stack in the context of its PPC.
@@ -17,8 +11,7 @@ type StackSummary struct {
 	// been applied.
 	ActiveUpdate string `json:"activeUpdate"`
 
-	// ResourceCount is the number of resources associated with this stack. NOTE: this is currently
-	// unimplemented.
+	// ResourceCount is the number of resources associated with this stack. Note that this is currently unimplemented.
 	ResourceCount int `json:"resourceCount"`
 }
 
@@ -32,33 +25,6 @@ type ListStacksResponse struct {
 type CreateStackResponseByID struct {
 	// ID is the unique identifier for the newly-created stack.
 	ID string `json:"id"`
-}
-
-// Resource describes a Cloud resource constructed by Pulumi.
-type Resource struct {
-	Type    string                 `json:"type"`
-	URN     string                 `json:"urn"`
-	Custom  bool                   `json:"custom"`
-	ID      string                 `json:"id"`
-	Inputs  map[string]interface{} `json:"inputs"`
-	Outputs map[string]interface{} `json:"outputs"`
-	Parent  string                 `json:"parent"`
-	Protect bool                   `json:"protect"`
-}
-
-// Stack describes a Stack running on a Pulumi Cloud.
-type Stack struct {
-	CloudName string `json:"cloudName"`
-	OrgName   string `json:"orgName"`
-
-	RepoName    string       `json:"repoName"`
-	ProjectName string       `json:"projName"`
-	StackName   tokens.QName `json:"stackName"`
-
-	ActiveUpdate string     `json:"activeUpdate"`
-	Resources    []Resource `json:"resources,omitempty"`
-
-	Version int `json:"version"`
 }
 
 // CreateStackRequest defines the request body for creating a new Stack
@@ -93,30 +59,12 @@ type GetStackResponse struct {
 
 	// Resources provides the list of cloud resources managed by this stack.
 	Resources []Resource `json:"resources"`
+
 	// Manifest is the Manifest from the last rendered checkpoint.
 	Manifest Manifest `json:"manifest"`
 
 	// Deployment provides a view of the stack as an opaque Pulumi deployment.
-	Deployment json.RawMessage `json:"deployment,omitempty"`
-}
-
-// Manifest captures meta-information about this checkpoint file, such as versions of binaries, etc.
-type Manifest struct {
-	// Time of the update.
-	Time int64 `json:"time"`
-	// Magic number, used to identify integrity of the checkpoint.
-	Magic string `json:"magic"`
-	// Version of the Pulumi engine used to render the checkpoint.
-	Version string `json:"version"`
-	// Plugins contains the binary version info of plug-ins used.
-	Plugins []PluginInfo `json:"plugins,omitempty"`
-}
-
-// PluginInfo captures the version and information about a plugin.
-type PluginInfo struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
+	Deployment *Deployment `json:"deployment,omitempty"`
 }
 
 // EncryptValueRequest defines the request body for encrypting a value.
@@ -146,7 +94,7 @@ type DecryptValueResponse struct {
 // StackExport describes an exported stack.
 type StackExport struct {
 	// The opaque Pulumi deployment.
-	Deployment json.RawMessage `json:"deployment,omitempty"`
+	Deployment *Deployment `json:"deployment,omitempty"`
 }
 
 // ExportStackResponse defines the response body for exporting a Stack.

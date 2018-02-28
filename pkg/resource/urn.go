@@ -20,12 +20,12 @@ import (
 //
 // Each resource URN is of the form:
 //
-//     urn:lumi:<Namespace>::<PkgToken>::<Qualified$Type$Name>::<Name>
+//     urn:pulumi:<Stack>::<Project>::<Qualified$Type$Name>::<Name>
 //
 // wherein each element is the following:
 //
-//     <Namespace>             The namespace being deployed into
-//     <AllocPkg>              The package in which the object was allocated
+//     <Stack>                 The stack being deployed into
+//     <Project>               The project being evaluated
 //     <Qualified$Type$Name>   The object type's qualified type token (including the parent type)
 //     <Name>                  The human-friendly name identifier assigned by the developer or provider
 //
@@ -41,7 +41,7 @@ const (
 )
 
 // NewURN creates a unique resource URN for the given resource object.
-func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
+func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
 	typ := string(baseType)
 	if parentType != "" {
 		typ = string(parentType) + URNTypeDelimiter + typ
@@ -49,8 +49,8 @@ func NewURN(ns tokens.QName, alloc tokens.PackageName, parentType, baseType toke
 
 	return URN(
 		URNPrefix +
-			string(ns) +
-			URNNameDelimiter + string(alloc) +
+			string(stack) +
+			URNNameDelimiter + string(proj) +
 			URNNameDelimiter + typ +
 			URNNameDelimiter + string(name),
 	)
@@ -63,13 +63,13 @@ func (urn URN) URNName() string {
 	return s[len(URNPrefix):]
 }
 
-// Namespace returns the resource namespace part of a URN.
-func (urn URN) Namespace() tokens.QName {
+// Stack returns the resource stack part of a URN.
+func (urn URN) Stack() tokens.QName {
 	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[0])
 }
 
-// Alloc returns the resource allocation context part of a URN.
-func (urn URN) Alloc() tokens.PackageName {
+// Project returns the project name part of a URN.
+func (urn URN) Project() tokens.PackageName {
 	return tokens.PackageName(strings.Split(urn.URNName(), URNNameDelimiter)[1])
 }
 
