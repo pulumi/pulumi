@@ -415,12 +415,14 @@ async function serializeFunctionAsync(
                     firstFunctionDeclaration = false;
                     const funcDecl = ts.visitEachChild(node, visitor, context);
 
+                    const text = isLegalName(funcDecl.name!.text)
+                        ? "/*" + funcDecl.name!.text + "*/" : "";
                     return ts.updateFunctionDeclaration(
                         funcDecl,
                         funcDecl.decorators,
                         funcDecl.modifiers,
                         funcDecl.asteriskToken,
-                        ts.createIdentifier("/*" + funcDecl.name!.text + "*/"),
+                        ts.createIdentifier(text),
                         funcDecl.typeParameters,
                         funcDecl.parameters,
                         funcDecl.type,
