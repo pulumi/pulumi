@@ -34,14 +34,11 @@ func newHistoryCmd() *cobra.Command {
 				return err
 			}
 
-			b := s.Backend()
-			updates, err := b.GetHistory(s.Name())
+			// GetHistory returns an array with the newest update first
+			updates, err := s.Backend().GetHistory(s.Name())
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
-
-			// Sort the updates to ensure the most recent updates come first.
-			backend.Sort(updates)
 
 			if outputJSON {
 				b, err := json.MarshalIndent(updates, "", "    ")

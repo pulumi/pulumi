@@ -44,7 +44,7 @@ type Backend interface {
 		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
-	// descending order by Version.
+	// descending order (newest first).
 	GetHistory(stackName tokens.QName) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error)
