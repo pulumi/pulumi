@@ -1051,13 +1051,13 @@ func getTextChangeString(old string, new string) string {
 }
 
 var (
-	shaRegexp         = regexp.MustCompile("__[a-zA-Z0-9]{40}")
+	functionRegexp    = regexp.MustCompile(`function __f[0-9]*`)
 	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
 	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
 	preambleRegexp    = regexp.MustCompile(
-		`function __shaHash\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn \(`)
+		`function __f[0-9]*\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn `)
 	postambleRegexp = regexp.MustCompile(
-		`\)\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
+		`;\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
 )
 
 // massageText takes the text for a function and cleans it up a bit to make the user visible diffs
@@ -1076,7 +1076,7 @@ var (
 func massageText(text string) string {
 
 	// Only do this for strings that match our serialized function pattern.
-	if !shaRegexp.MatchString(text) ||
+	if !functionRegexp.MatchString(text) ||
 		!withRegexp.MatchString(text) ||
 		!environmentRegexp.MatchString(text) {
 
@@ -1096,7 +1096,9 @@ func massageText(text string) string {
 
 	replaceNewlines()
 
-	text = shaRegexp.ReplaceAllString(text, "__shaHash")
+	firstFunc := functionRegexp.FindStringIndex(text)
+	text = text[firstFunc[0]:]
+
 	text = withRegexp.ReplaceAllString(text, "    with (__closure) {")
 	text = environmentRegexp.ReplaceAllString(text, "  }).apply(__environment).apply(this, arguments);")
 
