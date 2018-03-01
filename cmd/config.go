@@ -226,7 +226,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	return setCmd
 }
 
-func parseConfigKey(key string) (tokens.ModuleMember, error) {
+func parseConfigKey(key string) (config.Key, error) {
 	// As a convience, we'll treat any key with no delimiter as if:
 	// <program-name>:config:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
@@ -235,10 +235,10 @@ func parseConfigKey(key string) (tokens.ModuleMember, error) {
 			return "", err
 		}
 
-		return tokens.ParseModuleMember(fmt.Sprintf("%s:config:%s", proj.Name, key))
+		return config.ParseKey(fmt.Sprintf("%s:config:%s", proj.Name, key))
 	}
 
-	return tokens.ParseModuleMember(key)
+	return config.ParseKey(key)
 }
 
 func prettyKey(key string) string {
@@ -297,7 +297,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		decrypted, err := cfg[tokens.ModuleMember(key)].Value(decrypter)
+		decrypted, err := cfg[config.Key(key)].Value(decrypter)
 		if err != nil {
 			return errors.Wrap(err, "could not decrypt configuration value")
 		}
@@ -308,7 +308,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 	return nil
 }
 
-func getConfig(stack backend.Stack, key tokens.ModuleMember) error {
+func getConfig(stack backend.Stack, key config.Key) error {
 	ps, err := workspace.DetectProjectStack(stack.Name())
 	if err != nil {
 		return err

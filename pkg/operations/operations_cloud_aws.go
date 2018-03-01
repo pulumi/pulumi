@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -18,7 +19,7 @@ import (
 
 // CloudOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/cloud-aws` implementation.
-func CloudOperationsProvider(config map[tokens.ModuleMember]string, component *Resource) (Provider, error) {
+func CloudOperationsProvider(config map[config.Key]string, component *Resource) (Provider, error) {
 	prov := &cloudOpsProvider{
 		config:    config,
 		component: component,
@@ -27,7 +28,7 @@ func CloudOperationsProvider(config map[tokens.ModuleMember]string, component *R
 }
 
 type cloudOpsProvider struct {
-	config    map[tokens.ModuleMember]string
+	config    map[config.Key]string
 	component *Resource
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -24,7 +25,7 @@ import (
 // AWSOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/aws` implementation.
 func AWSOperationsProvider(
-	config map[tokens.ModuleMember]string,
+	config map[config.Key]string,
 	component *Resource) (Provider, error) {
 
 	awsRegion, ok := config[regionKey]

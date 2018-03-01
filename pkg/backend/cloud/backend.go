@@ -444,7 +444,7 @@ func convertResourceChanges(changes map[apitype.OpType]int) engine.ResourceChang
 func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error) {
 	c := make(config.Map)
 	for k, v := range apiConfig {
-		mm, err := tokens.ParseModuleMember(k)
+		mm, err := config.ParseKey(k)
 		if err != nil {
 			return nil, err
 		}

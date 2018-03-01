@@ -253,7 +253,7 @@ func printConfig(b *bytes.Buffer, cfg config.Map) {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			v, err := cfg[tokens.ModuleMember(key)].Value(config.NewBlindingDecrypter())
+			v, err := cfg[config.Key(key)].Value(config.NewBlindingDecrypter())
 			contract.AssertNoError(err)
 			b.WriteString(fmt.Sprintf("    %v: %v\n", key, v))
 		}

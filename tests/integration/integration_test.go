@@ -14,7 +14,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -245,7 +244,7 @@ func TestConfigSave(t *testing.T) {
 
 	// Finally, check that the stack file contains what we expected.
 	validate := func(k string, v string, cfg config.Map) {
-		key := tokens.ModuleMember("testing-config:config:" + k)
+		key := config.Key("testing-config:config:" + k)
 		d, ok := cfg[key]
 		assert.True(t, ok, "config key %v should be set", k)
 		dv, err := d.Value(nil)
@@ -283,7 +282,7 @@ func TestConfigUpgrade(t *testing.T) {
 	e.RunCommand("pulumi", "config")
 
 	validate := func(k string, v string, cfg config.Map) {
-		key := tokens.ModuleMember("config_upgrade:config:" + k)
+		key := config.Key("config_upgrade:config:" + k)
 		d, ok := cfg[key]
 		assert.True(t, ok, "config key %v should be set", k)
 		dv, err := d.Value(nil)

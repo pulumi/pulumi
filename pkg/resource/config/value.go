@@ -9,12 +9,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
+type Key = tokens.ModuleMember
+
+func ParseKey(key string) (Key, error) {
+	return tokens.ParseModuleMember(key)
+}
+
 // Map is a bag of config stored in the settings file.
-type Map map[tokens.ModuleMember]Value
+type Map map[Key]Value
 
 // Decrypt returns the configuration as a map from module member to decrypted value.
-func (m Map) Decrypt(decrypter Decrypter) (map[tokens.ModuleMember]string, error) {
-	r := map[tokens.ModuleMember]string{}
+func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
+	r := map[Key]string{}
 	for k, c := range m {
 		v, err := c.Value(decrypter)
 		if err != nil {

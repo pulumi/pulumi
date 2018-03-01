@@ -161,7 +161,7 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	return chk.Config, snapshot, file, nil
 }
 
-func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) (string, error) {
+func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *deploy.Snapshot) (string, error) {
 	w, err := workspace.New()
 	if err != nil {
 		return "", err
