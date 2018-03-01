@@ -1546,13 +1546,14 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
     }
 }
 
-const regex = /[^0-9a-zA-Z_]/g;
+const makeLegalRegex = /[^0-9a-zA-Z_]/g;
 function makeLegalJSName(n: string) {
-    return n.replace(regex, x => "");
+    return n.replace(makeLegalRegex, x => "");
 }
 
+const legalNameRegex = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
 function isLegalName(n: string) {
-    return makeLegalJSName(n) === n;
+    return legalNameRegex.test(n);
 }
 
 function isSparse<T>(arr: Array<T>) {

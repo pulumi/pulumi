@@ -987,6 +987,36 @@ return function () { console.log(obj); };
     }
 
     {
+        const array: any[] = [];
+        const obj = { 80: "foo", arr: array };
+        array.push(obj);
+
+        cases.push({
+            title: "Capture numeric property",
+            // tslint:disable-next-line
+            func: function () { return array; },
+            expectText: `exports.handler = __f0;
+
+var __e0_array = [];
+var __e1_array_0 = {};
+__e1_array_0["80"] = "foo";
+__e1_array_0.arr = __e0_array;
+__e0_array[0] = __e1_array_0;
+
+function __f0() {
+  return (function() {
+    with({ array: __e0_array }) {
+
+return function () { return array; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const outer: any = { o: 1 };
         const array = [outer];
         outer.b = array;
