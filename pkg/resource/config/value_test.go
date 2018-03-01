@@ -17,7 +17,7 @@ func TestMarshallNormalValueYAML(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("value\n"), b)
 
-	newV, err := roundtripYAML(v)
+	newV, err := roundtripValueYAML(v)
 	assert.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
@@ -29,7 +29,7 @@ func TestMarshallSecureValueYAML(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("secure: value\n"), b)
 
-	newV, err := roundtripYAML(v)
+	newV, err := roundtripValueYAML(v)
 	assert.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
@@ -41,7 +41,7 @@ func TestMarshallNormalValueJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("\"value\""), b)
 
-	newV, err := roundtripJSON(v)
+	newV, err := roundtripValueJSON(v)
 	assert.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
@@ -53,20 +53,20 @@ func TestMarshallSecureValueJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("{\"secure\":\"value\"}"), b)
 
-	newV, err := roundtripJSON(v)
+	newV, err := roundtripValueJSON(v)
 	assert.NoError(t, err)
 	assert.Equal(t, v, newV)
 }
 
-func roundtripYAML(v Value) (Value, error) {
-	return roundtrip(v, yaml.Marshal, yaml.Unmarshal)
+func roundtripValueYAML(v Value) (Value, error) {
+	return roundtripValue(v, yaml.Marshal, yaml.Unmarshal)
 }
 
-func roundtripJSON(v Value) (Value, error) {
-	return roundtrip(v, json.Marshal, json.Unmarshal)
+func roundtripValueJSON(v Value) (Value, error) {
+	return roundtripValue(v, json.Marshal, json.Unmarshal)
 }
 
-func roundtrip(v Value, marshal func(v interface{}) ([]byte, error),
+func roundtripValue(v Value, marshal func(v interface{}) ([]byte, error),
 	unmarshal func([]byte, interface{}) error) (Value, error) {
 	b, err := marshal(v)
 	if err != nil {
