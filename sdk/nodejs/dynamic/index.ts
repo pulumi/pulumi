@@ -126,8 +126,8 @@ export interface ResourceProvider {
     delete?: (id: resource.ID, props: any) => Promise<void>;
 }
 
-async function serializeProvider(provider: ResourceProvider): Promise<string> {
-    return runtime.serializeJavaScriptText(await runtime.serializeClosure(() => provider));
+function serializeProvider(provider: ResourceProvider): Promise<string> {
+    return runtime.serializeFunctionAsync(() => provider);
 }
 
 /**

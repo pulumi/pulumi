@@ -5,7 +5,7 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
-        "sourceMap": true,
+        "sourceMap": false,
         "stripInternal": true,
         "experimentalDecorators": true,
         "pretty": true,
