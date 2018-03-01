@@ -12,6 +12,8 @@ nvm install v6.10.2
     DEP_VERSION="0.4.1"
     GOMETALINTER_VERSION="2.0.3"
     AWSCLI_VERSION="1.14.30"
+    WHEEL_VERSION="0.30.0"
+    TWINE_VERSION="1.9.1"
 
     OS=""
     case $(uname) in
@@ -51,6 +53,9 @@ nvm install v6.10.2
 
     echo "installing AWS cli ${AWSCLI_VERSION}"
     pip install --user "awscli==${AWSCLI_VERSION}"
+
+    echo "installing Wheel and Twine, so we can publish Python packages"
+    pip install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
 )
 
 # If the sub shell failed, bail out now.
@@ -62,6 +67,7 @@ nvm install v6.10.2
 # $PATH by default.
 if [[ "${TRAVIS_OS_NAME:-}" == "osx" ]]; then
     export PATH=$PATH:$HOME/Library/Python/2.7/bin
+    export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
 fi
 
 # Add yarn to the $PATH

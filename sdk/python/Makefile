@@ -19,7 +19,7 @@ build::
 	cd ./lib/ && python setup.py clean --all 2>/dev/null
 	rm -rf ./bin/ && cp -R ./lib/. ./bin/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" ./bin/setup.py && rm ./bin/setup.py.bak
-	cd ./bin/ && python setup.py build
+	cd ./bin/ && python setup.py build bdist_wheel --universal
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install::
