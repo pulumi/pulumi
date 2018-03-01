@@ -2598,12 +2598,11 @@ return () => B;
 
             // Invoke the test case.
             if (test.expectText) {
-                const closure = await runtime.serializeClosureAsync(test.func);
-                const text = await runtime.serializeJavaScriptTextAsync(closure);
+                const text = await runtime.serializeFunctionAsync(test.func);
                 assert.equal(text, test.expectText);
             } else {
                 await assertAsyncThrows(async () => {
-                    await runtime.serializeClosureAsync(test.func);
+                    await runtime.serializeFunctionAsync(test.func);
                 });
             }
         }));
