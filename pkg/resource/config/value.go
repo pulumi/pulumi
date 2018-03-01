@@ -5,42 +5,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
-
-	"github.com/pulumi/pulumi/pkg/tokens"
 )
-
-type Key = tokens.ModuleMember
-
-func ParseKey(key string) (Key, error) {
-	return tokens.ParseModuleMember(key)
-}
-
-// Map is a bag of config stored in the settings file.
-type Map map[Key]Value
-
-// Decrypt returns the configuration as a map from module member to decrypted value.
-func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
-	r := map[Key]string{}
-	for k, c := range m {
-		v, err := c.Value(decrypter)
-		if err != nil {
-			return nil, err
-		}
-		r[k] = v
-	}
-	return r, nil
-}
-
-// HasSecureValue returns true if the config map contains a secure (encrypted) value.
-func (m Map) HasSecureValue() bool {
-	for _, v := range m {
-		if v.Secure() {
-			return true
-		}
-	}
-
-	return false
-}
 
 // Value is a single config value.
 type Value struct {
