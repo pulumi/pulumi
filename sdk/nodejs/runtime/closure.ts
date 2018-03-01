@@ -282,14 +282,15 @@ async function serializeFunctionRecursiveAsync(
 
     const proto = Object.getPrototypeOf(func);
 
-    const isDerivedClassConstructor = func.toString().startsWith("class ") &&
-        proto !== Function.prototype;
+    const isDerivedClassConstructor =
+        func.toString().startsWith("class ") &&
+        proto !== Function.prototype(func);
 
     // Ensure that the prototype of this function is properly serialized as well. We only need to do
     // this for functions with a custom prototype (like a derived class constructor, or a functoin
     // that a user has explicit set the prototype for). Normal functions will pick up
     // Function.prototype by default, so we don't need to do anything for them.
-    if (proto !== Function.prototype) {
+    if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
         const protoEntry = await serializeObjectAsync(proto, entryCache, serialize, logSerialize);
         closure.obj.proto = protoEntry;
 
@@ -693,6 +694,11 @@ async function serializeObjectWorkerAsync(
         return entry;
     }
 
+    if (isResourceOrDerivedClassConstructor(obj)) {
+        entry.json = undefined;
+        return entry;
+    }
+
     const moduleName = findRequirableModuleName(obj);
 
     if (obj === undefined || obj === null ||
@@ -809,6 +815,16 @@ async function serializeObjectWorkerAsync(
 
         return entryDescriptor;
     }
+}
+
+function isResourceOrDerivedClassConstructor(func: Function) {
+    for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
+        if (current === resource.Resource) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // These modules are built-in to Node.js, and are available via `require(...)`
