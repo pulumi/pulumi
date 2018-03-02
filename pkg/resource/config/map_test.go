@@ -20,7 +20,7 @@ func TestMarshalMapJSON(t *testing.T) {
 	b, err := json.Marshal(m)
 	assert.NoError(t, err)
 	assert.Equal(t,
-		[]byte("{\"my:config:anotherTestKey\":\"anotherTestValue\",\"my:config:testKey\":\"testValue\"}"),
+		[]byte("{\"my:anotherTestKey\":\"anotherTestValue\",\"my:testKey\":\"testValue\"}"),
 		b)
 
 	newM, err := roundtripMapJSON(m)
@@ -40,7 +40,7 @@ func TestMarshalMapYAML(t *testing.T) {
 
 	s1 := string(b)
 	contract.Ignore(s1)
-	assert.Equal(t, []byte("my:config:anotherTestKey: anotherTestValue\nmy:config:testKey: testValue\n"), b)
+	assert.Equal(t, []byte("my:anotherTestKey: anotherTestValue\nmy:testKey: testValue\n"), b)
 
 	newM, err := roundtripMapYAML(m)
 	assert.NoError(t, err)

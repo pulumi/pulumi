@@ -38,7 +38,7 @@ func (m Map) HasSecureValue() bool {
 func (m Map) MarshalJSON() ([]byte, error) {
 	rawMap := make(map[string]Value, len(m))
 	for k, v := range m {
-		rawMap[k.AsModuleMember().String()] = v
+		rawMap[k.String()] = v
 	}
 
 	return json.Marshal(rawMap)
@@ -67,7 +67,7 @@ func (m *Map) UnmarshalJSON(b []byte) error {
 func (m Map) MarshalYAML() (interface{}, error) {
 	rawMap := make(map[string]Value, len(m))
 	for k, v := range m {
-		rawMap[k.AsModuleMember().String()] = v
+		rawMap[k.String()] = v
 	}
 
 	return rawMap, nil

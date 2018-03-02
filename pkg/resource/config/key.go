@@ -56,16 +56,16 @@ func (k Key) Name() string {
 }
 
 func (k Key) MarshalJSON() ([]byte, error) {
-	return json.Marshal(k.AsModuleMember())
+	return json.Marshal(k.String())
 }
 
 func (k *Key) UnmarshalJSON(b []byte) error {
-	var mm tokens.ModuleMember
-	if err := json.Unmarshal(b, &mm); err != nil {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
 		return errors.Wrap(err, "could not unmarshal key")
 	}
 
-	pk, err := fromModuleMember(mm)
+	pk, err := ParseKey(s)
 	if err != nil {
 		return err
 	}
@@ -76,16 +76,16 @@ func (k *Key) UnmarshalJSON(b []byte) error {
 }
 
 func (k Key) MarshalYAML() (interface{}, error) {
-	return k.AsModuleMember(), nil
+	return k.String(), nil
 }
 
 func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var mm tokens.ModuleMember
-	if err := unmarshal(&mm); err != nil {
+	var s string
+	if err := unmarshal(&s); err != nil {
 		return errors.Wrap(err, "could not unmarshal key")
 	}
 
-	pk, err := fromModuleMember(mm)
+	pk, err := ParseKey(s)
 	if err != nil {
 		return err
 	}

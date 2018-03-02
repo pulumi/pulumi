@@ -43,7 +43,7 @@ func TestMarshalKeyJSON(t *testing.T) {
 
 	b, err := json.Marshal(k)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte("\"test:config:key\""), b)
+	assert.Equal(t, []byte("\"test:key\""), b)
 
 	newK, err := roundtripKeyJSON(k)
 	assert.NoError(t, err)
@@ -55,7 +55,7 @@ func TestMarshalKeyYAML(t *testing.T) {
 
 	b, err := yaml.Marshal(k)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte("test:config:key\n"), b)
+	assert.Equal(t, []byte("test:key\n"), b)
 
 	newK, err := roundtripKeyYAML(k)
 	assert.NoError(t, err)
