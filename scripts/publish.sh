@@ -31,6 +31,6 @@ pushd ${ROOT}/sdk/nodejs/bin && \
 
 echo "Publishing Pip package to pulumi.com:"
 twine upload \
-    --repository-url https://${PULUMI_API_TOKEN}@pypi-dot-testing.moolumi.io \
+    --repository-url https://pypi-dot-testing.moolumi.io?token=${PULUMI_API_TOKEN} \
     -u pulumi -p pulumi \
     ${ROOT}/sdk/python/bin/dist/*.whl
