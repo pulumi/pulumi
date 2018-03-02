@@ -244,7 +244,8 @@ func TestConfigSave(t *testing.T) {
 
 	// Finally, check that the stack file contains what we expected.
 	validate := func(k string, v string, cfg config.Map) {
-		key := config.Key("testing-config:config:" + k)
+		key, err := config.ParseKey("testing-config:config:" + k)
+		assert.NoError(t, err)
 		d, ok := cfg[key]
 		assert.True(t, ok, "config key %v should be set", k)
 		dv, err := d.Value(nil)
@@ -282,7 +283,8 @@ func TestConfigUpgrade(t *testing.T) {
 	e.RunCommand("pulumi", "config")
 
 	validate := func(k string, v string, cfg config.Map) {
-		key := config.Key("config_upgrade:config:" + k)
+		key, err := config.ParseKey("config_upgrade:config:" + k)
+		assert.NoError(t, err)
 		d, ok := cfg[key]
 		assert.True(t, ok, "config key %v should be set", k)
 		dv, err := d.Value(nil)

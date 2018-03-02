@@ -232,7 +232,7 @@ func parseConfigKey(key string) (config.Key, error) {
 	if !strings.Contains(key, tokens.TokenDelimiter) {
 		proj, err := workspace.DetectProject()
 		if err != nil {
-			return "", err
+			return config.Key{}, err
 		}
 
 		return config.ParseKey(fmt.Sprintf("%s:config:%s", proj.Name, key))
@@ -241,24 +241,21 @@ func parseConfigKey(key string) (config.Key, error) {
 	return config.ParseKey(key)
 }
 
-func prettyKey(key string) string {
+func prettyKey(k config.Key) string {
 	proj, err := workspace.DetectProject()
 	if err != nil {
-		return key
+		return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
 	}
 
-	return prettyKeyForProject(key, proj)
+	return prettyKeyForProject(k, proj)
 }
 
-func prettyKeyForProject(key string, proj *workspace.Project) string {
-	s := key
-	defaultPrefix := fmt.Sprintf("%s:config:", proj.Name)
-
-	if strings.HasPrefix(s, defaultPrefix) {
-		return s[len(defaultPrefix):]
+func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
+	if k.Namespace() == string(proj.Name) {
+		return k.Name()
 	}
 
-	return s
+	return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
@@ -280,24 +277,28 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 		decrypter = config.NewBlindingDecrypter()
 	}
 
+	fullKey := func(k config.Key) string {
+		return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
+	}
+
 	// Devote 48 characters to the config key, unless there's a key longer, in which case use that.
 	maxkey := 48
 	for key := range cfg {
-		if len(key) > maxkey {
-			maxkey = len(key)
+		if len(fullKey(key)) > maxkey {
+			maxkey = len(fullKey(key))
 		}
 	}
 
 	fmt.Printf("%-"+strconv.Itoa(maxkey)+"s %-48s\n", "KEY", "VALUE")
-	var keys []string
+	var keys config.KeyArray
 	for key := range cfg {
 		// Note that we use the fully qualified module member here instead of a `prettyKey`, this lets us ensure
 		// that all the config values for the current program are displayed next to one another in the output.
-		keys = append(keys, string(key))
+		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	sort.Sort(keys)
 	for _, key := range keys {
-		decrypted, err := cfg[config.Key(key)].Value(decrypter)
+		decrypted, err := cfg[key].Value(decrypter)
 		if err != nil {
 			return errors.Wrap(err, "could not decrypt configuration value")
 		}
@@ -335,5 +336,5 @@ func getConfig(stack backend.Stack, key config.Key) error {
 	}
 
 	return errors.Errorf(
-		"configuration key '%v' not found for stack '%v'", prettyKey(key.String()), stack.Name())
+		"configuration key '%v' not found for stack '%v'", prettyKey(key), stack.Name())
 }

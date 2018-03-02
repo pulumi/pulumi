@@ -247,13 +247,13 @@ func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
 func printConfig(b *bytes.Buffer, cfg config.Map) {
 	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
 	if cfg != nil {
-		var keys []string
+		var keys config.KeyArray
 		for key := range cfg {
-			keys = append(keys, string(key))
+			keys = append(keys, key)
 		}
-		sort.Strings(keys)
+		sort.Sort(keys)
 		for _, key := range keys {
-			v, err := cfg[config.Key(key)].Value(config.NewBlindingDecrypter())
+			v, err := cfg[key].Value(config.NewBlindingDecrypter())
 			contract.AssertNoError(err)
 			b.WriteString(fmt.Sprintf("    %v: %v\n", key, v))
 		}

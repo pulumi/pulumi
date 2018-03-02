@@ -62,13 +62,15 @@ type awsOpsProvider struct {
 
 var _ Provider = (*awsOpsProvider)(nil)
 
-const (
+var (
 	// AWS config keys
-	regionKey = "aws:config:region"
-	accessKey = "aws:config:accessKey"
-	secretKey = "aws:config:secretKey" // nolint: gas
-	token     = "aws:config:token"
+	regionKey = config.MakeKey("aws", "region")
+	accessKey = config.MakeKey("aws", "accessKey")
+	secretKey = config.MakeKey("aws", "secretKey") // nolint: gas
+	token     = config.MakeKey("aws", "token")
+)
 
+const (
 	// AWS resource types
 	awsFunctionType = tokens.Type("aws:lambda/function:Function")
 	awsLogGroupType = tokens.Type("aws:cloudwatch/logGroup:LogGroup")

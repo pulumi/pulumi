@@ -166,11 +166,15 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 
 		// Configure the provider. If no configuration source is present, assume no configuration. We do this here
 		// because resource providers must be configured exactly once before any method besides Configure is called.
-		var providerConfig map[tokens.ModuleMember]string
+		providerConfig := make(map[tokens.ModuleMember]string)
 		if host.config != nil {
-			providerConfig, err = host.config.GetPackageConfig(pkg)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to fetch configuration for pkg '%v' resource provider", err)
+			packageConfig, packageConfigErr := host.config.GetPackageConfig(pkg)
+			if packageConfigErr != nil {
+				return nil, errors.Wrapf(packageConfigErr,
+					"failed to fetch configuration for pkg '%v' resource provider", pkg)
+			}
+			for k, v := range packageConfig {
+				providerConfig[k.AsModuleMember()] = v
 			}
 		}
 		if err = plug.Configure(providerConfig); err != nil {

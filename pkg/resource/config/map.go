@@ -2,6 +2,12 @@
 
 package config
 
+import (
+	"encoding/json"
+
+	"github.com/pkg/errors"
+)
+
 // Map is a bag of config stored in the settings file.
 type Map map[Key]Value
 
@@ -27,4 +33,62 @@ func (m Map) HasSecureValue() bool {
 	}
 
 	return false
+}
+
+func (m Map) MarshalJSON() ([]byte, error) {
+	rawMap := make(map[string]Value, len(m))
+	for k, v := range m {
+		rawMap[k.AsModuleMember().String()] = v
+	}
+
+	return json.Marshal(rawMap)
+}
+
+func (m *Map) UnmarshalJSON(b []byte) error {
+	rawMap := make(map[string]Value)
+	if err := json.Unmarshal(b, &rawMap); err != nil {
+		return errors.Wrap(err, "could not unmarshal map")
+	}
+
+	newMap := make(Map, len(rawMap))
+
+	for k, v := range rawMap {
+		pk, err := ParseKey(k)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal map")
+		}
+		newMap[pk] = v
+	}
+
+	*m = newMap
+	return nil
+}
+
+func (m Map) MarshalYAML() (interface{}, error) {
+	rawMap := make(map[string]Value, len(m))
+	for k, v := range m {
+		rawMap[k.AsModuleMember().String()] = v
+	}
+
+	return rawMap, nil
+}
+
+func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	rawMap := make(map[string]Value)
+	if err := unmarshal(&rawMap); err != nil {
+		return errors.Wrap(err, "could not unmarshal map")
+	}
+
+	newMap := make(Map, len(rawMap))
+
+	for k, v := range rawMap {
+		pk, err := ParseKey(k)
+		if err != nil {
+			return errors.Wrap(err, "could not unmarshal map")
+		}
+		newMap[pk] = v
+	}
+
+	*m = newMap
+	return nil
 }

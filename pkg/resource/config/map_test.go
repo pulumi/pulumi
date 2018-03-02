@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
 
 func TestMarshalMapJSON(t *testing.T) {
 	m := Map{
-		Key("my:config:testKey"):        NewValue("testValue"),
-		Key("my:config:anotherTestKey"): NewValue("anotherTestValue"),
+		Key{namespace: "my", name: "testKey"}:        NewValue("testValue"),
+		Key{namespace: "my", name: "anotherTestKey"}: NewValue("anotherTestValue"),
 	}
 
 	b, err := json.Marshal(m)
@@ -30,12 +31,15 @@ func TestMarshalMapJSON(t *testing.T) {
 
 func TestMarshalMapYAML(t *testing.T) {
 	m := Map{
-		Key("my:config:testKey"):        NewValue("testValue"),
-		Key("my:config:anotherTestKey"): NewValue("anotherTestValue"),
+		Key{namespace: "my", name: "testKey"}:        NewValue("testValue"),
+		Key{namespace: "my", name: "anotherTestKey"}: NewValue("anotherTestValue"),
 	}
 
 	b, err := yaml.Marshal(m)
 	assert.NoError(t, err)
+
+	s1 := string(b)
+	contract.Ignore(s1)
 	assert.Equal(t, []byte("my:config:anotherTestKey: anotherTestValue\nmy:config:testKey: testValue\n"), b)
 
 	newM, err := roundtripMapYAML(m)
