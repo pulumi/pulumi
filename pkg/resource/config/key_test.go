@@ -28,13 +28,13 @@ func TestParseKey(t *testing.T) {
 
 func TestFromModuleMember(t *testing.T) {
 	mm := tokens.ModuleMember("test:config:key")
-	k, err := FromModuleMember(mm)
+	k, err := fromModuleMember(mm)
 	assert.NoError(t, err)
 	assert.Equal(t, "test", k.namespace)
 	assert.Equal(t, "key", k.name)
 
 	mm = tokens.ModuleMember("test:data:key")
-	_, err = FromModuleMember(mm)
+	_, err = fromModuleMember(mm)
 	assert.Error(t, err)
 }
 

@@ -23,7 +23,7 @@ func MakeKey(namespace string, name string) Key {
 func ParseKey(s string) (Key, error) {
 	mm, err := tokens.ParseModuleMember(s)
 	if err == nil {
-		return FromModuleMember(mm)
+		return fromModuleMember(mm)
 	}
 	if idx := strings.Index(s, ":"); idx > -1 {
 		return Key{namespace: s[:idx], name: s[idx+1:]}, nil
@@ -32,7 +32,7 @@ func ParseKey(s string) (Key, error) {
 	return Key{}, errors.Errorf("could not parse %s as a configuration key", s)
 }
 
-func FromModuleMember(m tokens.ModuleMember) (Key, error) {
+func fromModuleMember(m tokens.ModuleMember) (Key, error) {
 	if m.Module().Name() != tokens.ModuleName("config") {
 		return Key{}, errors.Errorf("%s is not in config module", m)
 	}
@@ -65,7 +65,7 @@ func (k *Key) UnmarshalJSON(b []byte) error {
 		return errors.Wrap(err, "could not unmarshal key")
 	}
 
-	pk, err := FromModuleMember(mm)
+	pk, err := fromModuleMember(mm)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return errors.Wrap(err, "could not unmarshal key")
 	}
 
-	pk, err := FromModuleMember(mm)
+	pk, err := fromModuleMember(mm)
 	if err != nil {
 		return err
 	}
