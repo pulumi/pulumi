@@ -1,0 +1,15 @@
+name: config_upgrade
+runtime: nodejs
+description: A program with configuration using the old system, to upgrade
+config:
+  config_upgrade:config:allKey: allValue
+stacks:
+  local1:
+    config:
+      config_upgrade:config:allKeyOverride: local1Overridden
+      config_upgrade:config:local1ProjectKey: local1ProjectValue
+  local2:
+    encryptionsalt: v1:IgONFZwgKOc=:v1:r8xlbKZUVBmPec1V:tDMSu68h0nsCdMaIpSyqsmg9xju+gw==
+    config:
+      config_upgrade:config:savedSecret:
+        secure: v1:+xA1n2mraqtcyg4S:9FckqDz0MF8TyQCX+edpmldxZQ==

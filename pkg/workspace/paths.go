@@ -3,6 +3,7 @@
 package workspace
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
@@ -44,9 +46,20 @@ func DetectProjectPath() (string, error) {
 	return path, nil
 }
 
+// DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
+// specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
+func DetectProjectStackPath(stackName tokens.QName) (string, error) {
+	projPath, err := DetectProjectPath()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(filepath.Dir(projPath), fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
+		filepath.Ext(projPath))), nil
+}
+
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
-// hierarchy.  If no project is found, an empty path is returned.  If problems are detected, they are logged to
-// the diag.Sink.
+// hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool {
 		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
@@ -57,6 +70,15 @@ func DetectProjectPathFrom(path string) (string, error) {
 func DetectProject() (*Project, error) {
 	proj, _, err := DetectProjectAndPath()
 	return proj, err
+}
+
+func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
+	path, err := DetectProjectStackPath(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	return LoadProjectStack(path)
 }
 
 // DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
@@ -83,9 +105,18 @@ func SaveProject(proj *Project) error {
 	return proj.Save(path)
 }
 
+func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
+	path, err := DetectProjectStackPath(stackName)
+	if err != nil {
+		return err
+	}
+
+	return stack.Save(path)
+}
+
 func isGitFolder(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && info.IsDir() && info.Name() == ".git"
+	return err == nil && info.IsDir() && info.Name() == GitDir
 }
 
 func isRepositoryFolder(path string) bool {

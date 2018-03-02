@@ -17,7 +17,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -94,11 +93,11 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 }
 
 func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
-	cfg, err := state.Configuration(b.d, stackName)
+	stk, err := workspace.DetectProjectStack(stackName)
 	if err != nil {
 		return nil, err
 	}
-	decrypter, err := defaultCrypter(stackName, cfg)
+	decrypter, err := defaultCrypter(stackName, stk.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +107,7 @@ func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 	}
 	return &deploy.Target{
 		Name:      stackName,
-		Config:    cfg,
+		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,
 	}, nil

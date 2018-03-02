@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -217,80 +218,107 @@ func TestConfigSave(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "--local", "testing-1")
 
 	// Now configure and save a few different things:
-	//     1) do not save.
-	e.RunCommand("pulumi", "config", "set", "configA", "value1", "--save=false")
-	//     2) save to the project file, under the current stack.
-	e.RunCommand("pulumi", "config", "set", "configB", "value2")
-	//     3) save to the project file, underneath an entirely different stack.
-	e.RunCommand("pulumi", "config", "set", "configC", "value3", "--stack", "testing-2")
-	//     4) save to the project file, across all stacks.
-	e.RunCommand("pulumi", "config", "set", "configD", "value4", "--all")
-	//     5) save the same config key with a different value in the stack versus all stacks.
-	e.RunCommand("pulumi", "config", "set", "configE", "value55")
-	e.RunCommand("pulumi", "config", "set", "configE", "value66", "--all")
+	e.RunCommand("pulumi", "config", "set", "configA", "value1")
+	e.RunCommand("pulumi", "config", "set", "configB", "value2", "--stack", "testing-2")
+
+	e.RunCommand("pulumi", "stack", "select", "testing-2")
+
+	e.RunCommand("pulumi", "config", "set", "configD", "value4")
+	e.RunCommand("pulumi", "config", "set", "configC", "value3", "--stack", "testing-1")
 
 	// Now read back the config using the CLI:
-	{
-		stdout, _ := e.RunCommand("pulumi", "config", "get", "configA")
-		assert.Equal(t, "value1\n", stdout)
-	}
 	{
 		stdout, _ := e.RunCommand("pulumi", "config", "get", "configB")
 		assert.Equal(t, "value2\n", stdout)
 	}
 	{
-		// config is in a different stack, should yield a stderr:
-		stdout, stderr := e.RunCommandExpectError("pulumi", "config", "get", "configC")
+		// the config in a different stack, so this should error.
+		stdout, stderr := e.RunCommandExpectError("pulumi", "config", "get", "configA")
 		assert.Equal(t, "", stdout)
 		assert.NotEqual(t, "", stderr)
 	}
 	{
-		stdout, _ := e.RunCommand("pulumi", "config", "get", "configC", "--stack", "testing-2")
-		assert.Equal(t, "value3\n", stdout)
-	}
-	{
-		stdout, _ := e.RunCommand("pulumi", "config", "get", "configD")
-		assert.Equal(t, "value4\n", stdout)
-	}
-	{
-		stdout, _ := e.RunCommand("pulumi", "config", "get", "configE")
-		assert.Equal(t, "value55\n", stdout)
+		// but selecting the stack should let you see it
+		stdout, _ := e.RunCommand("pulumi", "config", "get", "configA", "--stack", "testing-1")
+		assert.Equal(t, "value1\n", stdout)
 	}
 
-	// Finally, check that the project file contains what we expected.
-	cfgkey := func(k string) tokens.ModuleMember { return tokens.ModuleMember("testing-config:config:" + k) }
-	proj, err := workspace.LoadProject(path)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(proj.Config)) // --all
-	d, ok := proj.Config[cfgkey("configD")]
-	assert.True(t, ok)
-	dv, err := d.Value(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "value4", dv)
-	ee, ok := proj.Config[cfgkey("configE")]
-	assert.True(t, ok)
-	ev, err := ee.Value(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "value66", ev)
-	assert.Equal(t, 2, len(proj.Stacks))
-	assert.Equal(t, 2, len(proj.Stacks["testing-1"].Config))
-	b, ok := proj.Stacks["testing-1"].Config[cfgkey("configB")]
-	assert.True(t, ok)
-	bv, err := b.Value(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "value2", bv)
-	e2, ok := proj.Stacks["testing-1"].Config[cfgkey("configE")]
-	assert.True(t, ok)
-	e2v, err := e2.Value(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "value55", e2v)
-	assert.Equal(t, 1, len(proj.Stacks["testing-2"].Config))
-	c, ok := proj.Stacks["testing-2"].Config[cfgkey("configC")]
-	assert.True(t, ok)
-	cv, err := c.Value(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "value3", cv)
+	// Finally, check that the stack file contains what we expected.
+	validate := func(k string, v string, cfg config.Map) {
+		key := tokens.ModuleMember("testing-config:config:" + k)
+		d, ok := cfg[key]
+		assert.True(t, ok, "config key %v should be set", k)
+		dv, err := d.Value(nil)
+		assert.NoError(t, err)
+		assert.Equal(t, v, dv)
+	}
 
-	// We do not allow storing secrets for all stacks, since the encryption key for the secret is tied to the stack
-	e.RunCommandExpectError("pulumi", "config", "set", "secretA", "valueA", "--all", "--secret")
+	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
+	assert.NoError(t, err)
+	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(testStack1.Config))
+	assert.Equal(t, 2, len(testStack2.Config))
+
+	validate("configA", "value1", testStack1.Config)
+	validate("configC", "value3", testStack1.Config)
+
+	validate("configB", "value2", testStack2.Config)
+	validate("configD", "value4", testStack2.Config)
+}
+
+// Tests that when `pulumi` is run, configuration is upgraded from the old format to the new format.
+func TestConfigUpgrade(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("config_upgrade")
+
+	// Run a pulumi command, which will upgrade everything.
+	e.RunCommand("pulumi", "config")
+
+	validate := func(k string, v string, cfg config.Map) {
+		key := tokens.ModuleMember("config_upgrade:config:" + k)
+		d, ok := cfg[key]
+		assert.True(t, ok, "config key %v should be set", k)
+		dv, err := d.Value(nil)
+		assert.NoError(t, err)
+		assert.Equal(t, v, dv)
+	}
+
+	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.local1.yaml"))
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(testStack1.Config))
+	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.local2.yaml"))
+	assert.NoError(t, err)
+	assert.Equal(t, 5, len(testStack2.Config))
+
+	validate("allKey", "allValue", testStack1.Config)
+	validate("allKeyOverride", "local1Overridden", testStack1.Config)
+	validate("allWorkspaceKey", "allWorkspaceValue", testStack1.Config)
+	validate("local1ProjectKey", "local1ProjectValue", testStack1.Config)
+
+	validate("allKey", "allValue", testStack2.Config)
+	validate("allKeyOverride", "local2Overridden", testStack2.Config)
+	validate("allWorkspaceKey", "allWorkspaceValue", testStack2.Config)
+	validate("local2WorkspaceKey", "local2WorkspaceValue", testStack2.Config)
+
+	// The stack local2 had an encrypted configuration value, ensure the EncryptionSalt was copied over
+	assert.NotEmpty(t, testStack2.EncryptionSalt)
+
+	// Ensure config has been removed from the old files:
+	w, err := workspace.NewFrom(e.CWD)
+	assert.NoError(t, err)
+
+	proj, err := workspace.LoadProject(filepath.Join(e.CWD, "Pulumi.yaml"))
+	assert.NoError(t, err)
+
+	assert.Empty(t, w.Settings().ConfigDeprecated)
+	assert.Empty(t, proj.ConfigDeprecated)
+	assert.Empty(t, proj.EncryptionSaltDeprecated)
 }

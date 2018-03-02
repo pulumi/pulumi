@@ -25,12 +25,11 @@ type W interface {
 	StackPath(stack tokens.QName) string        // returns the path to store stack information.
 	BackupDirectory() (string, error)           // returns the directory to store backup stack files.
 	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
-	Project() (*Project, error)                 // returns a copy of the project associated with this workspace.
 	Save() error                                // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
-	name     tokens.PackageName // the project this workspace is associated with.
+	name     tokens.PackageName // the package this workspace is associated with.
 	project  string             // the path to the Pulumi.[yaml|json] file for this project.
 	settings *Settings          // settings for this workspace.
 	repo     *Repository        // the repo this workspace is associated with.
@@ -76,8 +75,8 @@ func NewFrom(dir string) (W, error) {
 		return nil, err
 	}
 
-	if w.settings.Config == nil {
-		w.settings.Config = make(map[tokens.QName]config.Map)
+	if w.settings.ConfigDeprecated == nil {
+		w.settings.ConfigDeprecated = make(map[tokens.QName]config.Map)
 	}
 
 	return &w, nil
@@ -91,15 +90,11 @@ func (pw *projectWorkspace) Repository() *Repository {
 	return pw.repo
 }
 
-func (pw *projectWorkspace) Project() (*Project, error) {
-	return LoadProject(pw.project)
-}
-
 func (pw *projectWorkspace) Save() error {
 	// let's remove all the empty entries from the config array
-	for k, v := range pw.settings.Config {
+	for k, v := range pw.settings.ConfigDeprecated {
 		if len(v) == 0 {
-			delete(pw.settings.Config, k)
+			delete(pw.settings.ConfigDeprecated, k)
 		}
 	}
 
@@ -180,6 +175,11 @@ func sha1HexString(value string) string {
 	_, err := h.Write([]byte(value))
 	contract.AssertNoError(err)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
+func qnameFileName(nm tokens.QName) string {
+	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
 }
 
 // qnamePath just cleans a name and makes sure it's appropriate to use as a path.
