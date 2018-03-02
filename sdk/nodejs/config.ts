@@ -1,6 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import { RunError } from "./errors";
+import * as log from "./log";
 import * as runtime from "./runtime";
 
 /**
@@ -17,6 +18,16 @@ export class Config {
     public readonly name: string;
 
     constructor(name: string) {
+        // To ease migration of code that already does new Config("<package>:config"), treat this as if
+        // just new Config("<package>") was called.
+        if (name.endsWith(":config")) {
+            const newName = name.replace(/:config$/, "");
+            log.warn("`:config` is no longer required at the end of configuration " +
+                "bag names and support will be removed in a future version, please " +
+                "use new Config(\"%s\") instead.", newName);
+            name = newName;
+        }
+
         this.name = name;
     }
 

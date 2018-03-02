@@ -70,7 +70,7 @@ class Div extends dynamic.Resource {
 }
 
 let run = async () => {
-    let config = new pulumi.Config("simple:config");
+    let config = new pulumi.Config("simple");
 
     let w = Number(config.require("w")), x = Number(config.require("x")), y = Number(config.require("y"));
 
