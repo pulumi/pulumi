@@ -43,10 +43,6 @@ func fromModuleMember(m tokens.ModuleMember) (Key, error) {
 	}, nil
 }
 
-func (k Key) AsModuleMember() tokens.ModuleMember {
-	return tokens.ModuleMember(k.namespace + ":config:" + k.name)
-}
-
 func (k Key) Namespace() string {
 	return k.namespace
 }

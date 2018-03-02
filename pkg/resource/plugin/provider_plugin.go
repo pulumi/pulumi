@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -63,12 +64,14 @@ func (p *provider) label() string {
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
+func (p *provider) Configure(vars map[config.Key]string) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
 	glog.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
 	config := make(map[string]string)
 	for k, v := range vars {
-		config[string(k)] = v
+		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
+		// providers which are on the older plan.
+		config[k.Namespace()+":config:"+k.Name()] = v
 	}
 	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
 	if err != nil {

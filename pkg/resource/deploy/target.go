@@ -19,7 +19,7 @@ type Target struct {
 func (t *Target) GetPackageConfig(pkg tokens.Package) (map[config.Key]string, error) {
 	var result map[config.Key]string
 	for k, c := range t.Config {
-		if k.AsModuleMember().Package() != pkg {
+		if tokens.Package(k.Namespace()) != pkg {
 			continue
 		}
 		v, err := c.Value(t.Decrypter)

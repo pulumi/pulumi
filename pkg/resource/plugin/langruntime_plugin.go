@@ -114,7 +114,7 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string)
 	for k, v := range info.Config {
-		config[string(k.AsModuleMember())] = v
+		config[k.String()] = v
 	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
 		MonitorAddress: info.MonitorAddress,

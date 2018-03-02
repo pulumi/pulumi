@@ -573,7 +573,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
-		wireConfig[string(k.AsModuleMember())] = apitype.ConfigValue{
+		wireConfig[k.Namespace()+":config:"+k.Name()] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
 		}

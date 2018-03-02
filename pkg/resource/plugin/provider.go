@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -26,7 +27,7 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 	// Configure configures the resource provider with "globals" that control its behavior.
-	Configure(vars map[tokens.ModuleMember]string) error
+	Configure(vars map[config.Key]string) error
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
 	Check(urn resource.URN, olds, news resource.PropertyMap,
