@@ -99,10 +99,10 @@ func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, 
 	return backend.GetStackLogs(s, query)
 }
 
-func (s *cloudStack) ExportDeployment() (*apitype.Deployment, error) {
+func (s *cloudStack) ExportDeployment() (*apitype.UntypedDeployment, error) {
 	return backend.ExportStackDeployment(s)
 }
 
-func (s *cloudStack) ImportDeployment(deployment *apitype.Deployment) error {
+func (s *cloudStack) ImportDeployment(deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(s, deployment)
 }

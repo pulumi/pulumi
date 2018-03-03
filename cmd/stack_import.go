@@ -35,16 +35,22 @@ func newStackImportCmd() *cobra.Command {
 				return err
 			}
 
-			// Read the checkpoint from stdin.
-			var deployment apitype.Deployment
+			// Read the checkpoint from stdin.  We decode this into a json.RawMessage so as not to lose any fields
+			// sent by the server that the client CLI does not recognize (enabling round-tripping).
+			var deployment json.RawMessage
 			if err = json.NewDecoder(os.Stdin).Decode(&deployment); err != nil {
 				return err
 			}
 
-			// Check to see if the checkpoint contains resources with names other than the selected stack.  This can
-			// catch errors wherein someone imports the wrong stack's checkpoint (which can seriously hork things).
+			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
+			// we can check that the checkpoint doesn't contain resources from a stack other than the selected one. This
+			// catches errors wherein someone imports the wrong stack's checkpoint (which can seriously hork things).
+			var typed apitype.Deployment
+			if err = json.Unmarshal(deployment, &typed); err != nil {
+				return err
+			}
 			var result error
-			for _, res := range deployment.Resources {
+			for _, res := range typed.Resources {
 				if res.URN.Stack() != s.Name() {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
 						res.URN, res.URN.Stack(), s.Name())
@@ -63,7 +69,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			// Now perform the deployment.
-			if err = s.ImportDeployment(&deployment); err != nil {
+			if err = s.ImportDeployment(&apitype.UntypedDeployment{Deployment: deployment}); err != nil {
 				return errors.Wrap(err, "could not import deployment")
 			}
 			fmt.Printf("Import successful.\n")

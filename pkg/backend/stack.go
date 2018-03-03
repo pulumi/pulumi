@@ -31,8 +31,8 @@ type Stack interface {
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
-	ExportDeployment() (*apitype.Deployment, error)                   // export this stack's deployment.
-	ImportDeployment(deployment *apitype.Deployment) error            // import the given deployment into this stack.
+	ExportDeployment() (*apitype.UntypedDeployment, error)            // export this stack's deployment.
+	ImportDeployment(deployment *apitype.UntypedDeployment) error     // import the given deployment into this stack.
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
@@ -69,11 +69,11 @@ func GetStackLogs(s Stack, query operations.LogQuery) ([]operations.LogEntry, er
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
-func ExportStackDeployment(s Stack) (*apitype.Deployment, error) {
+func ExportStackDeployment(s Stack) (*apitype.UntypedDeployment, error) {
 	return s.Backend().ExportDeployment(s.Name())
 }
 
 // ImportStackDeployment imports the given deployment into the indicated stack.
-func ImportStackDeployment(s Stack, deployment *apitype.Deployment) error {
+func ImportStackDeployment(s Stack, deployment *apitype.UntypedDeployment) error {
 	return s.Backend().ImportDeployment(s.Name(), deployment)
 }
