@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// Package graph defines LumiGL graphs.  Each graph is directed and acyclic, and the nodes have been topologically
+// Package graph defines resource graphs.  Each graph is directed and acyclic, and the nodes have been topologically
 // sorted based on dependencies (edges) between them.  Each node in the graph has a type and a set of properties.
 //
 // There are two forms of graph: complete and incomplete.  A complete graph is one in which all nodes and their property
@@ -8,17 +8,17 @@
 // indicating that its presence or absence is dependent on a piece of information not yet available (like an output
 // property from a resource), and/or (2) a property may either be similarly conditional or computed as an output value.
 //
-// In general, LumiPacks may be evaluated to produce graphs.  These may then be compared to other graphs to produce
+// In general, programs may be evaluated to produce graphs.  These may then be compared to other graphs to produce
 // and/or carry out deployment plans.  This package therefore also exposes operations necessary for diffing graphs.
 package graph
 
-// Graph is an instance of a LumiGL digraph.  Each is associated with a single LumiPack as its input, along
+// Graph is an instance of a resource digraph.  Each is associated with a single program input, along
 // with a set of optional arguments used to evaluate it, along with the output DAG with node types and properties.
 type Graph interface {
 	Roots() []Edge // the root edges.
 }
 
-// Vertex is a single vertex within an overall LumiGL graph.
+// Vertex is a single vertex within an overall resource graph.
 type Vertex interface {
 	Data() interface{} // arbitrary data associated with this vertex.
 	Label() string     // the vertex's label.

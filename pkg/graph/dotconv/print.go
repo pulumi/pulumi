@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// Package dotconv converts a LumiGL graph into its DOT digraph equivalent.  This is useful for integration with
+// Package dotconv converts a resource graph into its DOT digraph equivalent.  This is useful for integration with
 // various visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough
 // specification of the DOT file format.
 package dotconv
@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// Print prints a LumiGL graph.
+// Print prints a resource graph.
 func Print(g graph.Graph, w io.Writer) error {
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.

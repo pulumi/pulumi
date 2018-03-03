@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	// Ensure a marshaler is available for every possible Lumifile extension
+	// Ensure a marshaler is available for every possible metadata extension.
 	Marshalers = make(map[string]Marshaler)
 	for _, ext := range Exts {
 		switch ext {
@@ -18,7 +18,7 @@ func init() {
 		case ".yaml":
 			Marshalers[ext] = YAML
 		default:
-			contract.Failf("No Marshaler available for LumifileExt %v", ext)
+			contract.Failf("No marshaler available for extension '%s'", ext)
 		}
 	}
 }
