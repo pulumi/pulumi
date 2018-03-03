@@ -480,7 +480,7 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName,
 	return logs, nil
 }
 
-func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.Deployment, error) {
+func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.UntypedDeployment, error) {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return nil, err
@@ -493,10 +493,10 @@ func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.Deploy
 		return nil, err
 	}
 
-	return response.Deployment, nil
+	return &apitype.UntypedDeployment{Deployment: response.Deployment}, nil
 }
 
-func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.Deployment) error {
+func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error {
 	projID, err := getCloudProjectIdentifier()
 	if err != nil {
 		return err
@@ -505,7 +505,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 	stackPath := fmt.Sprintf("/api/orgs/%s/programs/%s/%s/stacks/%s",
 		projID.Owner, projID.Repository, projID.Project, string(stackName))
 
-	request := apitype.ImportStackRequest{Deployment: deployment}
+	request := apitype.ImportStackRequest{Deployment: deployment.Deployment}
 	var response apitype.ImportStackResponse
 	if err = pulumiRESTCall(b.cloudURL, "POST", stackPath+"/import", nil, &request, &response); err != nil {
 		return err

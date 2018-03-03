@@ -68,10 +68,10 @@ func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, 
 	return backend.GetStackLogs(s, query)
 }
 
-func (s *localStack) ExportDeployment() (*apitype.Deployment, error) {
+func (s *localStack) ExportDeployment() (*apitype.UntypedDeployment, error) {
 	return backend.ExportStackDeployment(s)
 }
 
-func (s *localStack) ImportDeployment(deployment *apitype.Deployment) error {
+func (s *localStack) ImportDeployment(deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(s, deployment)
 }

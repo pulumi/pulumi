@@ -15,6 +15,7 @@
 package apitype
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -40,6 +41,14 @@ type Deployment struct {
 	Manifest Manifest `json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
 	Resources []Resource `json:"resources,omitempty" yaml:"resources,omitempty"`
+}
+
+// UntypedDeployment contains an inner, untyped deployment structure.
+type UntypedDeployment struct {
+	// The opaque Pulumi deployment.  This is conceptually of type `Deployment`, but we use `json.Message` to
+	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
+	// the contents, and then remarshaled them, we could end up losing important information.
+	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
 // Resource describes a Cloud resource constructed by Pulumi.

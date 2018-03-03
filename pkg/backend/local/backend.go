@@ -3,6 +3,7 @@
 package local
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -276,24 +277,35 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 	return *logs, err
 }
 
-func (b *localBackend) ExportDeployment(stackName tokens.QName) (*apitype.Deployment, error) {
+func (b *localBackend) ExportDeployment(stackName tokens.QName) (*apitype.UntypedDeployment, error) {
 	_, snap, _, err := getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return stack.SerializeDeployment(snap), nil
+
+	data, err := json.Marshal(stack.SerializeDeployment(snap))
+	if err != nil {
+		return nil, err
+	}
+
+	return &apitype.UntypedDeployment{Deployment: json.RawMessage(data)}, nil
 }
 
-func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.Deployment) error {
+func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error {
 	config, _, _, err := getStack(stackName)
 	if err != nil {
+		return err
+	}
+
+	var latest apitype.Deployment
+	if err = json.Unmarshal(deployment.Deployment, &latest); err != nil {
 		return err
 	}
 
 	checkpoint := &apitype.Checkpoint{
 		Stack:  stackName,
 		Config: config,
-		Latest: deployment,
+		Latest: &latest,
 	}
 	snap, err := stack.DeserializeCheckpoint(checkpoint)
 	if err != nil {

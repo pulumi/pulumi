@@ -91,17 +91,11 @@ type DecryptValueResponse struct {
 	Plaintext []byte `json:"plaintext"`
 }
 
-// StackExport describes an exported stack.
-type StackExport struct {
-	// The opaque Pulumi deployment.
-	Deployment *Deployment `json:"deployment,omitempty"`
-}
-
 // ExportStackResponse defines the response body for exporting a Stack.
-type ExportStackResponse StackExport
+type ExportStackResponse UntypedDeployment
 
 // ImportStackRequest defines the request body for importing a Stack.
-type ImportStackRequest StackExport
+type ImportStackRequest UntypedDeployment
 
 // ImportStackResponse defines the response body for importing a Stack.
 type ImportStackResponse struct {
