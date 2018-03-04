@@ -46,7 +46,7 @@ type Sink interface {
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
-	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Lumi.yaml:7:39: error goes here\n").
+	// Stringify stringifies a diagnostic so that it's appropriate for printing.
 	Stringify(sev Severity, diag *Diag, args ...interface{}) string
 }
 

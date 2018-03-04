@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// URN is a friendly, but unique, URN for a resource, most often auto-assigned by Lumi.  These are
+// URN is a friendly, but unique, URN for a resource, most often auto-assigned by Pulumi.  These are
 // used as unique IDs for objects, and help us to perform graph diffing and resolution of resource
 // objects.
 //

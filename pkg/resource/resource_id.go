@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Lumi.
+// ID is a unique resource identifier; it is managed by the provider and is mostly opaque.
 type ID string
 
 // String converts a resource ID into a string.

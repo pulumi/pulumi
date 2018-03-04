@@ -100,7 +100,7 @@ type ProgramTestOptions struct {
 	Dependencies []string
 	// Map of config keys and values to set (e.g. {"aws:config:region": "us-east-2"})
 	Config map[string]string
-	// Map of secure config keys and values to set on the Lumi stack (e.g. {"aws:config:region": "us-east-2"})
+	// Map of secure config keys and values to set on the stack (e.g. {"aws:config:region": "us-east-2"})
 	Secrets map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []EditDir
