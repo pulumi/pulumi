@@ -25,13 +25,15 @@ func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 	// should elide unknown input/output properties when interacting with the language and resource providers and we
 	// will produce unexpected results.
 	opts.DryRun = true
+	emitter := makeEventEmitter(events, update)
+
 	return previewLatest(info, deployOptions{
 		UpdateOptions: opts,
 
 		Destroy: false,
 
-		Events: events,
-		Diag:   newEventSink(events),
+		Events: emitter,
+		Diag:   newEventSink(emitter),
 	})
 }
 
@@ -82,7 +84,7 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 	indent := getIndent(step, acts.Seen)
 	summary := getResourcePropertiesSummary(step, indent)
 	details := getResourcePropertiesDetails(step, indent, true, acts.Opts.Debug)
-	acts.Opts.Events <- resourcePreEvent(step, indent, summary, details)
+	acts.Opts.Events.resourcePreEvent(step, indent, summary, details)
 
 	return nil, nil
 }
@@ -108,6 +110,7 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 
 	indent := getIndent(step, acts.Seen)
 	text := getResourceOutputsPropertiesString(step, indent, true, acts.Opts.Debug)
-	acts.Opts.Events <- resourceOutputsEvent(step, indent, text)
+	acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+
 	return nil
 }

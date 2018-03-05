@@ -33,15 +33,15 @@ type Crypter interface {
 }
 
 // A nopDecrypter simply returns the ciphertext as-is.
-type nopDecrypter int
+type nopDecrypter struct{}
 
-var NopDecrypter Decrypter = nopDecrypter(0)
+var NopDecrypter Decrypter = nopDecrypter{}
 
 func (nopDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
 }
 
-// NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "********", it can
+// NewBlindingDecrypter returns a Decrypter that instead of decrypting data, just returns "[secret]", it can
 // be used when you want to display configuration information to a user but don't want to prompt for a password
 // so secrets will not be decrypted.
 func NewBlindingDecrypter() Decrypter {
@@ -51,7 +51,7 @@ func NewBlindingDecrypter() Decrypter {
 type blindingDecrypter struct{}
 
 func (b blindingDecrypter) DecryptValue(ciphertext string) (string, error) {
-	return "********", nil
+	return "[secret]", nil
 }
 
 // NewPanicCrypter returns a new config crypter that will panic if used.

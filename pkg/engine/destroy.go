@@ -17,12 +17,12 @@ func Destroy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCh
 	}
 	defer info.Close()
 
+	emitter := makeEventEmitter(events, update)
+
 	return deployLatest(info, deployOptions{
 		UpdateOptions: opts,
-
-		Destroy: true,
-
-		Events: events,
-		Diag:   newEventSink(events),
+		Destroy:       true,
+		Events:        emitter,
+		Diag:          newEventSink(emitter),
 	})
 }

@@ -183,7 +183,8 @@ func (res *planResult) Close() error {
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
 func printPlan(result *planResult) (ResourceChanges, error) {
-	result.Options.Events <- preludeEvent(result.Options.DryRun, result.Info.Update.GetTarget().Config)
+	result.Options.Events.preludeEvent(result.Options.DryRun,
+		result.Info.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPreviewActions(result.Options)
@@ -200,7 +201,7 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	result.Options.Events <- previewSummaryEvent(changes)
+	result.Options.Events.previewSummaryEvent(changes)
 	return changes, nil
 }
 

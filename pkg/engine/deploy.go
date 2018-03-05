@@ -36,13 +36,15 @@ func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCha
 	}
 	defer info.Close()
 
+	emitter := makeEventEmitter(events, update)
+
 	return deployLatest(info, deployOptions{
 		UpdateOptions: opts,
 
 		Destroy: false,
 
-		Events: events,
-		Diag:   newEventSink(events),
+		Events: emitter,
+		Diag:   newEventSink(emitter),
 	})
 }
 
@@ -52,7 +54,7 @@ type deployOptions struct {
 	Destroy bool // true if we are destroying the stack.
 
 	DOT    bool         // true if we should print the DOT file for this plan.
-	Events chan<- Event // the channel to write events from the engine to.
+	Events eventEmitter // the channel to write events from the engine to.
 	Diag   diag.Sink    // the sink to use for diag'ing.
 }
 
@@ -81,7 +83,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
-			opts.Events <- preludeEvent(opts.DryRun, result.Info.Update.GetTarget().Config)
+			opts.Events.preludeEvent(opts.DryRun, result.Info.Update.GetTarget().Config)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
@@ -95,7 +97,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			resourceChanges = ResourceChanges(actions.Ops)
-			opts.Events <- updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
+			opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 
 			if err != nil {
 				return resourceChanges, err
@@ -136,7 +138,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	indent := getIndent(step, acts.Seen)
 	summary := getResourcePropertiesSummary(step, indent)
 	details := getResourcePropertiesDetails(step, indent, false, acts.Opts.Debug)
-	acts.Opts.Events <- resourcePreEvent(step, indent, summary, details)
+	acts.Opts.Events.resourcePreEvent(step, indent, summary, details)
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Update.BeginMutation()
@@ -155,7 +157,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.ErrorPlanApplyFailed, err)
-		acts.Opts.Events <- resourceOperationFailedEvent(step, status, acts.Steps)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps)
 	} else {
 		if step.Logical() {
 			// Increment the counters.
@@ -166,7 +168,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		// Also show outputs here, since there might be some from the initial registration.
 		indent := getIndent(step, acts.Seen)
 		text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-		acts.Opts.Events <- resourceOutputsEvent(step, indent, text)
+		acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -179,7 +181,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 
 	indent := getIndent(step, acts.Seen)
 	text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-	acts.Opts.Events <- resourceOutputsEvent(step, indent, text)
+	acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.

@@ -3,6 +3,8 @@
 package engine
 
 import (
+	"bytes"
+	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -102,6 +104,42 @@ type StepEventStateMetadata struct {
 	Protect bool         // true to "protect" this resource (protected resources cannot be deleted).
 }
 
+func makeEventEmitter(events chan<- Event, update Update) eventEmitter {
+	var f filter = &nopFilter{}
+
+	target := update.GetTarget()
+
+	if target.Config.HasSecureValue() {
+		var b bytes.Buffer
+		for _, v := range target.Config {
+			if !v.Secure() {
+				continue
+			}
+
+			if b.Len() > 0 {
+				b.WriteRune('|')
+			}
+
+			secret, err := v.Value(target.Decrypter)
+			contract.AssertNoError(err)
+
+			b.WriteString(regexp.QuoteMeta(secret))
+		}
+
+		f = &regexFilter{re: regexp.MustCompile(b.String())}
+	}
+
+	return eventEmitter{
+		Chan:   events,
+		Filter: f,
+	}
+}
+
+type eventEmitter struct {
+	Chan   chan<- Event
+	Filter filter
+}
+
 func makeStepEventMetadata(step deploy.Step) StepEventMetdata {
 	return StepEventMetdata{
 		Op:      step.Op(),
@@ -130,8 +168,29 @@ func makeStepEventStateMetadata(state *resource.State) *StepEventStateMetadata {
 	}
 }
 
-func resourceOperationFailedEvent(step deploy.Step, status resource.Status, steps int) Event {
-	return Event{
+type filter interface {
+	Filter(s string) string
+}
+
+type nopFilter struct {
+}
+
+func (f *nopFilter) Filter(s string) string {
+	return s
+}
+
+type regexFilter struct {
+	re *regexp.Regexp
+}
+
+func (f *regexFilter) Filter(s string) string {
+	return f.re.ReplaceAllLiteralString(s, "[secret]")
+}
+
+func (e *eventEmitter) resourceOperationFailedEvent(step deploy.Step, status resource.Status, steps int) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: ResourceOperationFailed,
 		Payload: ResourceOperationFailedPayload{
 			Metadata: makeStepEventMetadata(step),
@@ -141,30 +200,36 @@ func resourceOperationFailedEvent(step deploy.Step, status resource.Status, step
 	}
 }
 
-func resourceOutputsEvent(step deploy.Step, indent int, text string) Event {
-	return Event{
+func (e *eventEmitter) resourceOutputsEvent(step deploy.Step, indent int, text string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: ResourceOutputsEvent,
 		Payload: ResourceOutputsEventPayload{
 			Metadata: makeStepEventMetadata(step),
 			Indent:   indent,
-			Text:     text,
+			Text:     e.Filter.Filter(text),
 		},
 	}
 }
 
-func resourcePreEvent(step deploy.Step, indent int, summary string, details string) Event {
-	return Event{
+func (e *eventEmitter) resourcePreEvent(step deploy.Step, indent int, summary string, details string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
 			Metadata: makeStepEventMetadata(step),
 			Indent:   indent,
-			Summary:  summary,
-			Details:  details,
+			Summary:  e.Filter.Filter(summary),
+			Details:  e.Filter.Filter(details),
 		},
 	}
 }
 
-func preludeEvent(isPreview bool, cfg config.Map) Event {
+func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
 	configStringMap := make(map[string]string, len(cfg))
 	for k, v := range cfg {
 		keyString := k.String()
@@ -173,7 +238,7 @@ func preludeEvent(isPreview bool, cfg config.Map) Event {
 		configStringMap[keyString] = valueString
 	}
 
-	return Event{
+	e.Chan <- Event{
 		Type: PreludeEvent,
 		Payload: PreludeEventPayload{
 			IsPreview: isPreview,
@@ -182,8 +247,10 @@ func preludeEvent(isPreview bool, cfg config.Map) Event {
 	}
 }
 
-func previewSummaryEvent(resourceChanges ResourceChanges) Event {
-	return Event{
+func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: SummaryEvent,
 		Payload: SummaryEventPayload{
 			IsPreview:       true,
@@ -194,8 +261,11 @@ func previewSummaryEvent(resourceChanges ResourceChanges) Event {
 	}
 }
 
-func updateSummaryEvent(maybeCorrupt bool, duration time.Duration, resourceChanges ResourceChanges) Event {
-	return Event{
+func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
+	duration time.Duration, resourceChanges ResourceChanges) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: SummaryEvent,
 		Payload: SummaryEventPayload{
 			IsPreview:       false,
@@ -206,55 +276,65 @@ func updateSummaryEvent(maybeCorrupt bool, duration time.Duration, resourceChang
 	}
 }
 
-func diagDebugEvent(msg string) Event {
-	return Event{
+func (e *eventEmitter) diagDebugEvent(msg string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			Message:  msg,
+			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
 			Severity: diag.Debug,
 		},
 	}
 }
 
-func diagInfoEvent(msg string) Event {
-	return Event{
+func (e *eventEmitter) diagInfoEvent(msg string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			Message:  msg,
+			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
 			Severity: diag.Info,
 		},
 	}
 }
 
-func diagInfoerrEvent(msg string) Event {
-	return Event{
+func (e *eventEmitter) diagInfoerrEvent(msg string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			Message:  msg,
+			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
 			Severity: diag.Infoerr,
 		},
 	}
 }
 
-func diagErrorEvent(msg string) Event {
-	return Event{
+func (e *eventEmitter) diagErrorEvent(msg string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			Message:  msg,
+			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
 			Severity: diag.Error,
 		},
 	}
 }
 
-func diagWarningEvent(msg string) Event {
-	return Event{
+func (e *eventEmitter) diagWarningEvent(msg string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			Message:  msg,
+			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
 			Severity: diag.Warning,
 		},

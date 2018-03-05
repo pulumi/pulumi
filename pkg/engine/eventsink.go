@@ -13,9 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func newEventSink(events chan<- Event) diag.Sink {
-	contract.Require(events != nil, "events")
-
+func newEventSink(events eventEmitter) diag.Sink {
 	return &eventSink{
 		events: events,
 		counts: make(map[diag.Severity]int),
@@ -26,7 +24,7 @@ const eventSinkIDPrefix = "PU"
 
 // eventSink is a sink which writes all events to a channel
 type eventSink struct {
-	events chan<- Event          // the channel to emit events into.
+	events eventEmitter          // the channel to emit events into.
 	counts map[diag.Severity]int // the number of messages that have been issued per severity.
 	mutex  sync.RWMutex          // a mutex for guarding updates to the counts map
 }
@@ -63,7 +61,7 @@ func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	if glog.V(9) {
 		glog.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagDebugEvent(msg)
+	s.events.diagDebugEvent(msg)
 	s.incrementCount(diag.Debug)
 }
 
@@ -72,7 +70,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoEvent(msg)
+	s.events.diagInfoEvent(msg)
 	s.incrementCount(diag.Info)
 }
 
@@ -81,7 +79,7 @@ func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagInfoerrEvent(msg)
+	s.events.diagInfoerrEvent(msg)
 	s.incrementCount(diag.Infoerr)
 }
 
@@ -90,7 +88,7 @@ func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagErrorEvent(msg)
+	s.events.diagErrorEvent(msg)
 	s.incrementCount(diag.Error)
 }
 
@@ -99,7 +97,7 @@ func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	s.events <- diagWarningEvent(msg)
+	s.events.diagWarningEvent(msg)
 	s.incrementCount(diag.Warning)
 }
 
