@@ -7,7 +7,6 @@ import { RunError } from "../errors";
 import * as log from "../log";
 import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
-import { excessiveDebugOutput } from "./index";
 
 // Our closure serialization code links against v8 internals. On Windows,
 // we can't dynamically link against v8 internals because their symbols are
