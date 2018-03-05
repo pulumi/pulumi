@@ -7,6 +7,7 @@ import { RunError } from "../errors";
 import * as log from "../log";
 import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
+import { excessiveDebugOutput } from "./index";
 
 // Our closure serialization code links against v8 internals. On Windows,
 // we can't dynamically link against v8 internals because their symbols are
@@ -47,6 +48,9 @@ interface Closure {
     runtime: string;          // the language runtime required to execute the serialized code.
     environment: Environment; // the captured lexical environment of variables to values, if any.
     obj: ObjectEntry;         // The object-side of the function.  i.e. it's proto, properties, symbols (if any)
+
+    // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
+    usesNonLexicalThis: boolean;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an EnvironmentEntry in the case where it is not
@@ -262,7 +266,7 @@ async function serializeFunctionRecursiveAsync(
     const funcExprWithName = serializedFunction.funcExprWithName;
     const functionDeclarationName = serializedFunction.functionDeclarationName;
 
-    const freeVariableNames = computeCapturedVariableNames(funcExprWithName || funcExprWithoutName);
+    const freeVariableNames = computeCapturedVariableNames(serializedFunction);
 
     if (logSerialize) {
         console.log("freeVariableNames: " + JSON.stringify(freeVariableNames));
@@ -277,6 +281,7 @@ async function serializeFunctionRecursiveAsync(
         runtime: "nodejs",
         environment: environment,
         obj: { env: new Map() },
+        usesNonLexicalThis: freeVariableNames.usesNonLexicalThis,
     };
 
     const proto = Object.getPrototypeOf(func);
@@ -534,6 +539,9 @@ interface SerializedFunction {
     // the actual function we generate for it.  This is needed so that nested recursive calls
     // to the function see the function we're generating.
     functionDeclarationName?: string;
+
+    // Whether or not this was an arrow function.
+    isArrowFunction: boolean;
 }
 
 // Gets the text of the provided function (using .toString()) and massages it so that it is a legal
@@ -557,7 +565,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
         const arrowIndex = funcString.indexOf("=>");
         if (arrowIndex >= 0) {
             // (...) => expr
-            return { funcExprWithoutName: funcString };
+            return { funcExprWithoutName: funcString, isArrowFunction: true };
         }
 
         throw new Error(`Could not understand function:\n${funcString}`);
@@ -566,7 +574,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
     const signature = funcString.substr(0, openCurlyIndex);
     if (signature.indexOf("=>") >= 0) {
         // (...) => { ... }
-        return { funcExprWithoutName: funcString };
+        return { funcExprWithoutName: funcString, isArrowFunction: true };
     }
 
     if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
@@ -632,6 +640,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
                 funcExprWithoutName: prefix + v,
                 funcExprWithName: prefix + "__computed" + v,
                 functionDeclarationName: undefined,
+                isArrowFunction: false,
             };
         }
 
@@ -643,6 +652,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
             funcExprWithoutName: prefix + commentedName + v,
             funcExprWithName: prefix + funcName + v,
             functionDeclarationName: isFunctionDeclaration ? funcName : undefined,
+            isArrowFunction: false,
         };
     }
 }
@@ -828,9 +838,9 @@ async function serializeAnyAsync(
                     // We were filtering down to a specific set of properties.  If it turns
                     // out that this property ends up using this/super, then we actually have
                     // to serialize out this object entirely.
-                    if (capturesThisOrSuper(valEntry) ||
-                        capturesThisOrSuper(descriptor ? descriptor.get : undefined) ||
-                        capturesThisOrSuper(descriptor ? descriptor.set : undefined)) {
+                    if (usesNonLexicalThis(valEntry) ||
+                        usesNonLexicalThis(descriptor ? descriptor.get : undefined) ||
+                        usesNonLexicalThis(descriptor ? descriptor.set : undefined)) {
 
                         return true;
                     }
@@ -857,17 +867,8 @@ async function serializeAnyAsync(
         return false;
     }
 
-    function capturesThisOrSuper(entry: EnvironmentEntry | undefined) {
-        if (entry && entry.closure) {
-            for (const envEntry of entry.closure.environment.keys()) {
-                if (typeof envEntry.json === "string" &&
-                    (envEntry.json === "this" || envEntry.json === "__super")) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+    function usesNonLexicalThis(entry: EnvironmentEntry | undefined) {
+        return entry && entry.closure && entry.closure.usesNonLexicalThis;
     }
 }
 
@@ -929,13 +930,25 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
     "require": true,
 };
 
-type CapturedVariables = { required: Record<string, string[]>, optional: Record<string, string[]> };
+// The set of variables the function attempts to capture.  There is a required set an an optional
+// set. The optional set will not block closure-serialization if we cannot find them, while the
+// required set will.  For each variable that is captured we also specify the list of properties of
+// that variable we need to serialize.  An empty-list means 'serialize all properties'.
+type CapturedVariables = {
+    required: Record<string, string[]>,
+    optional: Record<string, string[]>,
+
+    // Wether or not this function actually uses
+    usesNonLexicalThis: boolean,
+ };
 
 /**
  * computeCapturedVariableNames computes the set of free variables in a given function string.  Note that this string is
  * expected to be the usual V8-serialized function expression text.
  */
-function computeCapturedVariableNames(funcstr: string): CapturedVariables {
+function computeCapturedVariableNames(serializedFunction: SerializedFunction): CapturedVariables {
+    const funcstr = serializedFunction.funcExprWithName || serializedFunction.funcExprWithoutName;
+
     log.debug(`Computing free variables for function: ${funcstr}`);
 
     // Wrap with parens to make into something parseable.  This is necessary as many
@@ -953,10 +966,12 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
 
     // Now that we've parsed the file, compute the free variables, and return them.
 
-    let required: {[key: string]: boolean} = {};
-    let optional: {[key: string]: boolean} = {};
+    let inTopmostFunction: boolean | undefined;
+    let required: Record<string, string[]> = {};
+    let optional: Record<string, string[]> = {};
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
+    let usesNonLexicalThis = false;
 
     // Recurse through the tree.  We use typescript's AST here and generally walk the entire
     // tree. One subtlety to be aware of is that we generally assume that when we hit an
@@ -970,17 +985,18 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const result: CapturedVariables = { required: {}, optional: {} };
+    const result: CapturedVariables = { required: {}, optional: {}, usesNonLexicalThis };
 
     for (const key of Object.keys(required)) {
         if (required[key] && !isBuiltIn(key)) {
-            result.required[key] = [];
+            result.required[key] = required[key].concat(
+                optional.hasOwnProperty(key) ? optional[key] : []);
         }
     }
 
     for (const key of Object.keys(optional)) {
         if (optional[key] && !isBuiltIn(key) && !required[key]) {
-            result.optional[key] = [];
+            result.optional[key] = optional[key];
         }
     }
 
@@ -1009,13 +1025,14 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
         }
 
         // We reached the top of the scope chain and this wasn't found; it's captured.
+        const capturedProperty = determineCapturedProperty(node);
         if (node.parent!.kind === ts.SyntaxKind.TypeOfExpression) {
             // "typeof undeclared_id" is legal in JS (and is actually used in libraries). So keep
             // track that we would like to capture this variable, but mark that capture as optional
             // so we will not throw if we aren't able to find it in scope.
-            optional[name] = true;
+            optional[name] = combine(optional[name], capturedProperty);
         } else {
-            required[name] = true;
+            required[name] = combine(required[name], capturedProperty);
         }
     }
 
@@ -1028,7 +1045,9 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
             case ts.SyntaxKind.Identifier:
                 return visitIdentifier(<ts.Identifier>node);
             case ts.SyntaxKind.ThisKeyword:
-                return visitThisExpression(<ts.PrimaryExpression>node);
+                return visitThisExpression(<ts.ThisExpression>node);
+            case ts.SyntaxKind.SuperKeyword:
+                return visitThisOrSuperExpression(<ts.ThisExpression | ts.SuperExpression>node);
             case ts.SyntaxKind.Block:
                 return visitBlockStatement(<ts.Block>node);
             case ts.SyntaxKind.CallExpression:
@@ -1055,9 +1074,52 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
         ts.forEachChild(node, walk);
     }
 
-    function visitThisExpression(node: ts.PrimaryExpression): void {
-        // Mark references to the built-in 'this' variable as free.
-        required["this"] = true;
+    function visitThisExpression(node: ts.ThisExpression): void {
+        required["this"] = combine(required["this"], determineCapturedProperty(node));
+
+        visitThisOrSuperExpression(node);
+    }
+
+    function visitThisOrSuperExpression(node: ts.ThisExpression | ts.SuperExpression) {
+        if (!serializedFunction.isArrowFunction && inTopmostFunction) {
+            // if we're at the topmost function scope, and we're not inside an arrow
+            // function, mark that this function needs the value for 'this' serialized
+            // out as well in order to work properly.
+            usesNonLexicalThis = true;
+        }
+    }
+
+    function combine(existing: string[] | undefined, current: string | undefined) {
+        if (existing && existing.length === 0) {
+            // We already want to capture everything.  Keep things that way.
+            return existing;
+        }
+
+        if (current === undefined) {
+            // We want to capture everything.  So ignore any properties we've filtered down
+            // to and just capture them all.
+            return [];
+        }
+
+        // We want to capture a specific set of properties.  Add this set of properties
+        // into the existing set.
+        const combined = existing || [];
+        combined.push(current);
+        return combined;
+    }
+
+    function determineCapturedProperty(node: ts.Node): string | undefined {
+        if (node.parent &&
+            ts.isPropertyAccessExpression(node.parent) &&
+            node.parent.expression === node) {
+
+            // We were just using this value to capture a property off of it.  Just
+            // capture that property.
+            return node.parent.name.text;
+        }
+
+        // For all other cases, capture everything.
+        return undefined;
     }
 
     function visitBlockStatement(node: ts.Block): void {
@@ -1087,6 +1149,13 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
         const savedRequired = required;
         const savedOptional = optional;
         const savedFunctionVars = functionVars;
+        const savedInTopmostFunction = inTopmostFunction;
+
+        if (inTopmostFunction === undefined) {
+            inTopmostFunction = true;
+        } else {
+            inTopmostFunction = false;
+        }
 
         required = {};
         optional = {};
@@ -1124,6 +1193,7 @@ function computeCapturedVariableNames(funcstr: string): CapturedVariables {
         Object.assign(savedRequired, required);
         Object.assign(savedOptional, optional);
 
+        inTopmostFunction = savedInTopmostFunction;
         functionVars = savedFunctionVars;
         required = savedRequired;
         optional = savedOptional;
