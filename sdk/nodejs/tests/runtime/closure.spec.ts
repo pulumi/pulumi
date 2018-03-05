@@ -987,6 +987,47 @@ return function () { console.log(obj); };
     }
 
     {
+        cases.push({
+            title: "Undeclared variable in typeof",
+            // @ts-ignore
+            func: function () { const x = typeof a; },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ a: undefined }) {
+
+return function () { const x = typeof a; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const a = 0;
+        cases.push({
+            title: "Declared variable in typeof",
+            // @ts-ignore
+            func: function () { const x = typeof a; },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ a: 0 }) {
+
+return function () { const x = typeof a; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const array: any[] = [];
         const obj = { 80: "foo", arr: array };
         array.push(obj);
@@ -2616,7 +2657,7 @@ return () => B;
             return;
         }
 
-        // if (test.title !== "Capture object with methods") {
+        // if (test.title !== "Undeclared variable in typeof") {
         //     continue;
         // }
 

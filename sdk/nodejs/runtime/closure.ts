@@ -263,20 +263,19 @@ async function serializeFunctionRecursiveAsync(
     const functionDeclarationName = serializedFunction.functionDeclarationName;
 
     const freeVariableNames = computeCapturedVariableNames(funcExprWithName || funcExprWithoutName);
-    const freeVariableValues: any[] = [];
 
     if (logSerialize) {
         console.log("freeVariableNames: " + JSON.stringify(freeVariableNames));
     }
 
-    for (const name of freeVariableNames) {
-        freeVariableValues.push(nativeruntime.lookupCapturedVariableValue(func, name));
-    }
+    const environment: Environment = new Map();
+    await populateEnviromentAsync(freeVariableNames.required,  /*throwOnFailure:*/ true);
+    await populateEnviromentAsync(freeVariableNames.optional,  /*throwOnFailure:*/ false);
 
     const closure: Closure = {
         code: funcExprWithoutName,
         runtime: "nodejs",
-        environment: await convertFreeVariablesAsync(),
+        environment: environment,
         obj: { env: new Map() },
     };
 
@@ -359,12 +358,9 @@ async function serializeFunctionRecursiveAsync(
 
     return closure;
 
-    async function convertFreeVariablesAsync(): Promise<Environment> {
-        const env: Environment = new Map();
-
-        for (let i = 0, n = freeVariableNames.length; i < n; i++) {
-            const name = freeVariableNames[i];
-            const value = freeVariableValues[i];
+    async function populateEnviromentAsync(names: string[], throwOnFailure: boolean): Promise<void> {
+        for (const name of names) {
+            const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
 
             if (logSerialize) {
                 console.log("Serializing object: " + name);
@@ -373,10 +369,8 @@ async function serializeFunctionRecursiveAsync(
             const serializedName = await serializeObjectAsync(name, entryCache, serialize, logSerialize);
             const serializedValue = await serializeObjectAsync(value, entryCache, serialize, logSerialize);
 
-            env.set(serializedName, { entry: serializedValue });
+            environment.set(serializedName, { entry: serializedValue });
         }
-
-        return env;
     }
 
     function processDerivedClassConstructor(protoEntry: EnvironmentEntry) {
@@ -875,11 +869,13 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
     "require": true,
 };
 
+type CapturedVariables = { required: string[], optional: string[] };
+
 /**
  * computeCapturedVariableNames computes the set of free variables in a given function string.  Note that this string is
  * expected to be the usual V8-serialized function expression text.
  */
-function computeCapturedVariableNames(funcstr: string): string[] {
+function computeCapturedVariableNames(funcstr: string): CapturedVariables {
     log.debug(`Computing free variables for function: ${funcstr}`);
 
     // Wrap with parens to make into something parseable.  This is necessary as many
@@ -897,7 +893,8 @@ function computeCapturedVariableNames(funcstr: string): string[] {
 
     // Now that we've parsed the file, compute the free variables, and return them.
 
-    let captures: {[key: string]: boolean} = {};
+    let required: {[key: string]: boolean} = {};
+    let optional: {[key: string]: boolean} = {};
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
 
@@ -913,15 +910,22 @@ function computeCapturedVariableNames(funcstr: string): string[] {
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const freeVars: string[] = [];
-    for (const key of Object.keys(captures)) {
-        if (captures[key] && !isBuiltIn(key)) {
-            freeVars.push(key);
+    const result: CapturedVariables = { required: [], optional: [] };
+
+    for (const key of Object.keys(required)) {
+        if (required[key] && !isBuiltIn(key)) {
+            result.required.push(key);
         }
     }
 
-    log.debug(`Found free variables: ${freeVars}`);
-    return freeVars;
+    for (const key of Object.keys(optional)) {
+        if (optional[key] && !isBuiltIn(key) && !required[key]) {
+            result.optional.push(key);
+        }
+    }
+
+    log.debug(`Found free variables: ${JSON.stringify(result)}`);
+    return result;
 
     function isBuiltIn(ident: string): boolean {
         // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
@@ -944,8 +948,15 @@ function computeCapturedVariableNames(funcstr: string): string[] {
             }
         }
 
-        // We reached the top of the scope chain and this wasn't found; it's free.
-        captures[name] = true;
+        // We reached the top of the scope chain and this wasn't found; it's captured.
+        if (node.parent!.kind === ts.SyntaxKind.TypeOfExpression) {
+            // "typeof undeclared_id" is legal in JS (and is actually used in libraries). So keep
+            // track that we would like to capture this variable, but mark that capture as optional
+            // so we will not throw if we aren't able to find it in scope.
+            optional[name] = true;
+        } else {
+            required[name] = true;
+        }
     }
 
     function walk(node: ts.Node | undefined) {
@@ -986,7 +997,7 @@ function computeCapturedVariableNames(funcstr: string): string[] {
 
     function visitThisExpression(node: ts.PrimaryExpression): void {
         // Mark references to the built-in 'this' variable as free.
-        captures["this"] = true;
+        required["this"] = true;
     }
 
     function visitBlockStatement(node: ts.Block): void {
@@ -1013,9 +1024,12 @@ function computeCapturedVariableNames(funcstr: string): string[] {
             isArrowFunction: boolean,
             functionName: ts.Identifier | undefined): void {
         // First, push new free vars list, scope, and function vars
-        const savedCaptures = captures;
+        const savedRequired = required;
+        const savedOptional = optional;
         const savedFunctionVars = functionVars;
-        captures = {};
+
+        required = {};
+        optional = {};
         functionVars = new Set();
         scopes.push(new Set());
 
@@ -1040,19 +1054,19 @@ function computeCapturedVariableNames(funcstr: string): string[] {
 
         // Remove any function-scoped variables that we encountered during the walk.
         for (const v of functionVars) {
-            delete captures[v];
+            delete required[v];
+            delete optional[v];
         }
 
         // Restore the prior context and merge our free list with the previous one.
         scopes.pop();
 
+        Object.assign(savedRequired, required);
+        Object.assign(savedOptional, optional);
+
         functionVars = savedFunctionVars;
-        for (const free of Object.keys(captures)) {
-            if (captures[free]) {
-                savedCaptures[free] = true;
-            }
-        }
-        captures = savedCaptures;
+        required = savedRequired;
+        optional = savedOptional;
     }
 
     function visitCatchClause(node: ts.CatchClause): void {

@@ -14,6 +14,7 @@
 namespace nativeruntime {
 
 using v8::Array;
+using v8::Boolean;
 using v8::Context;
 using v8::Exception;
 using v8::Function;
@@ -29,7 +30,9 @@ using v8::String;
 using v8::Value;
 
 // Lookup restores a context and looks up a variable name inside of it.
-Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context> context, Local<String> name) {
+Local<Value> Lookup(
+        Isolate* isolate, v8::internal::Handle<v8::internal::Context> context,
+        Local<String> name, bool throwOnFailure) {
     // First perform the lookup in the current chain.  This unfortunately requires accessing internal
     // V8 APIs so that we can inspect the chain with the necessary flags and resulting objects.
     int index;
@@ -57,14 +60,18 @@ Local<Value> Lookup(Isolate* isolate, v8::internal::Handle<v8::internal::Context
         }
     }
 
-    // If we fell through, either the lookup is null, or the object wasn't of the expected type.  In either case,
-    // this is an error (possibly a bug), and we will throw and return undefined so we can keep going.
-    char namestr[255];
-    name->WriteUtf8(namestr, 255);
-    Local<String> errormsg = String::Concat(
-        String::NewFromUtf8(isolate, "Unexpected missing variable in closure environment: "),
-            String::NewFromUtf8(isolate, namestr));
-    isolate->ThrowException(Exception::Error(errormsg));
+    if (throwOnFailure) {
+        // If we fell through, either the lookup is null, or the object wasn't of the expected type.
+        // In either case, this is an error (possibly a bug), and we will throw and return undefined
+        // so we can keep going.
+        char namestr[255];
+        name->WriteUtf8(namestr, 255);
+        Local<String> errormsg = String::Concat(
+            String::NewFromUtf8(isolate, "Unexpected missing variable in closure environment: "),
+                String::NewFromUtf8(isolate, namestr));
+        isolate->ThrowException(Exception::Error(errormsg));
+    }
+
     return Local<Value>();
 }
 
@@ -95,8 +102,19 @@ void LookupCapturedVariableValue(const FunctionCallbackInfo<Value>& args) {
         return;
     }
 
-    Local<Function> func = Local<Function>::Cast(args[0]);
-    Local<String> freeVariable = Local<String>::Cast(args[1]);
+    if (args.Length() < 3 || args[2]->IsUndefined()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "Missing required bool argument (arg-2)")));
+        return;
+    } else if (!args[2]->IsBoolean()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "Function code argument (arg-2) must be boolean")));
+        return;
+    }
+
+    auto func = Local<Function>::Cast(args[0]);
+    auto freeVariable = Local<String>::Cast(args[1]);
+    auto throwOnFailure = Local<Boolean>::Cast(args[2]);
 
     // Get at the innards of the function.  Unfortunately, we need to use internal V8 APIs to do this,
     // as the closest public function, CreationContext, intentionally returns the non-closure Context for
@@ -105,7 +123,7 @@ void LookupCapturedVariableValue(const FunctionCallbackInfo<Value>& args) {
             reinterpret_cast<v8::internal::JSFunction**>(const_cast<Function*>(*func)));
     v8::internal::Handle<v8::internal::Context> lexical(hackfunc->context());
 
-    Local<Value> v = Lookup(isolate, lexical, freeVariable);
+    Local<Value> v = Lookup(isolate, lexical, freeVariable, throwOnFailure->Value());
 
     args.GetReturnValue().Set(v);
 }
