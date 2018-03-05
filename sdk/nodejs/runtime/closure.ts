@@ -937,7 +937,7 @@ type CapturedVariables = {
     required: Record<string, string[]>,
     optional: Record<string, string[]>,
 
-    // Wether or not this function actually uses
+    // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
     usesNonLexicalThis: boolean,
  };
 
