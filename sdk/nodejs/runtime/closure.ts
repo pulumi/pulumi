@@ -43,10 +43,17 @@ catch (err) {
  * Closure represents the serialized form of a JavaScript serverless function.
  */
 interface Closure {
-    code: string;             // a serialization of the function's source code as text.
-    runtime: string;          // the language runtime required to execute the serialized code.
-    environment: Environment; // the captured lexical environment of variables to values, if any.
-    obj: ObjectEntry;         // The object-side of the function.  i.e. it's proto, properties, symbols (if any)
+    // a serialization of the function's source code as text.
+    code: string;
+
+    // the language runtime required to execute the serialized code.
+    runtime: string;
+
+    // the captured lexical environment of names to values, if any.
+    environment: Environment;
+
+    // The object-side of the function.  i.e. it's proto, properties, symbols (if any)
+    obj: ObjectEntry;
 
     // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
     usesNonLexicalThis: boolean;
