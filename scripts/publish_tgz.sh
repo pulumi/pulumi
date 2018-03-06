@@ -1,5 +1,5 @@
 #!/bin/bash
-# publish.sh builds and publishes a release.
+# publish.sh builds and publishes the tarballs that our other repositories consume.
 set -o nounset -o errexit -o pipefail
 
 ROOT=$(dirname $0)/..
@@ -22,17 +22,3 @@ do
     RELEASE_INFO=($($(dirname $0)/make_release.sh))
     ${PUBLISH} ${RELEASE_INFO[0]} "${PUBLISH_PROJECT}/${OS}/${ARCH}" ${RELEASE_INFO[@]:1}
 done
-
-if [[ "${TRAVIS_OS_NAME:-}" == "linux" ]]; then
-    echo "Publishing NPM package to NPMjs.com:"
-    pushd ${ROOT}/sdk/nodejs/bin && \
-        npm publish && \
-        npm info 2>/dev/null || true && \
-        popd
-
-    echo "Publishing Pip package to pulumi.com:"
-    twine upload \
-        --repository-url https://pypi-dot-testing.moolumi.io?token=${PULUMI_API_TOKEN} \
-        -u pulumi -p pulumi \
-        ${ROOT}/sdk/python/bin/dist/*.whl
-fi
