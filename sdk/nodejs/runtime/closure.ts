@@ -276,7 +276,7 @@ async function serializeFunctionRecursiveAsync(
         runtime: "nodejs",
         environment: environment,
         obj: { env: new Map() },
-        usesNonLexicalThis: freeVariableNames.usesNonLexicalThis,
+        usesNonLexicalThis: computeUsedNonLexialThis(serializedFunction),
     };
 
     const proto = Object.getPrototypeOf(func);
@@ -354,7 +354,7 @@ async function serializeFunctionRecursiveAsync(
 
     return closure;
 
-    async function populateEnviromentAsync(names: Record<string, string[]>, throwOnFailure: boolean): Promise<void> {
+    async function populateEnviromentAsync(names: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
         for (const name of Object.keys(names)) {
             const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
 
@@ -685,7 +685,7 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 async function serializeAsync(
-        obj: any, propNames: string[] | undefined,
+        obj: any, capturedObjectProperties: CapturedPropertyInfo[] | undefined,
         entryCache: Map<Object, EnvironmentEntry>,
         serialize: (o: any) => boolean): Promise<EnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
@@ -695,7 +695,7 @@ async function serializeAsync(
         // that we serialized out a different set of properties than the current set
         // we're being asked to serialize.  So we have to make sure that all these props
         // are actually serialized.
-        if (propNames) {
+        if (capturedObjectProperties) {
             const unwrapped = await result;
             if (unwrapped.obj) {
                 await serializeObjectAsync(unwrapped);
@@ -810,22 +810,24 @@ async function serializeAsync(
     async function serializeObjectAsync(entry: EnvironmentEntry) {
         // Serialize the set of property names asked for.  If we discover that any of them
         // use this/super, then go and reserialize all the properties.
-        const serializeAll = await serializeObjectWorkerAsync(entry, propNames || []);
+        const serializeAll = await serializeObjectWorkerAsync(entry, capturedObjectProperties || []);
         if (serializeAll) {
             await serializeObjectWorkerAsync(entry, []);
         }
     }
 
-    async function serializeObjectWorkerAsync(entry: EnvironmentEntry, localPropNames: string[]) {
+    // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
+    // property filtering.
+    async function serializeObjectWorkerAsync(
+            entry: EnvironmentEntry, localObjectProperties: CapturedPropertyInfo[]): Promise<boolean> {
         const objectEntry: ObjectEntry = entry.obj || { env: new Map() };
         entry.obj = objectEntry;
         const environment = entry.obj.env;
 
         for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(obj)) {
-            if (localPropNames.length > 0 &&
-                typeof keyOrSymbol === "string" &&
-                localPropNames.indexOf(keyOrSymbol) < 0) {
+            const capturedPropInfo = localObjectProperties.find(p => p.name === keyOrSymbol);
 
+            if (localObjectProperties.length > 0 && !capturedPropInfo) {
                 // If we're filtering down to a specific set of properties, then don't
                 // serialize this property unless it's in that set.
                 continue;
@@ -840,16 +842,22 @@ async function serializeAsync(
 
                 environment.set(keyEntry, { descriptor: descriptor, entry: valEntry });
 
-                if (localPropNames.length > 0) {
-                    // We were filtering down to a specific set of properties.  If it turns
-                    // out that this property ends up using this/super, then we actually have
-                    // to serialize out this object entirely.
-                    if (usesNonLexicalThis(valEntry) ||
-                        usesNonLexicalThis(descriptor ? descriptor.get : undefined) ||
-                        usesNonLexicalThis(descriptor ? descriptor.set : undefined)) {
-
+                if (capturedPropInfo && capturedPropInfo.invoked) {
+                    // If this was a captured property and the property was invoked, then we have to
+                    // check if that property ends up using this/super.  if so, then we actually
+                    // have to serialize out this object entirely.
+                    if (usesNonLexicalThis(valEntry)) {
                         return true;
                     }
+                }
+
+                // if we're accessing a getter/setter, and that getter/setter uses
+                // 'this', then we need to serialize out this object entirely.
+
+                if (usesNonLexicalThis(descriptor ? descriptor.get : undefined) ||
+                    usesNonLexicalThis(descriptor ? descriptor.set : undefined)) {
+
+                    return true;
                 }
             }
         }
@@ -859,7 +867,7 @@ async function serializeAsync(
         // up properly.
         //
         // We don't need to capture the prototype if the user is not capturing 'this' either.
-        if (!entry.obj.proto && localPropNames.length === 0) {
+        if (!entry.obj.proto && localObjectProperties.length === 0) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
                 entry.obj.proto = await serializeAsync(proto, undefined, entryCache, serialize);
@@ -932,26 +940,26 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
     "require": true,
 };
 
+// Information about a captured property.  Both the name and whether or not the property was
+// invoked.
+type CapturedPropertyInfo = {
+    name: string,
+    invoked: boolean,
+};
+
+type CapturedVariableMap = Record<string, CapturedPropertyInfo[]>;
+
 // The set of variables the function attempts to capture.  There is a required set an an optional
 // set. The optional set will not block closure-serialization if we cannot find them, while the
 // required set will.  For each variable that is captured we also specify the list of properties of
 // that variable we need to serialize.  An empty-list means 'serialize all properties'.
 type CapturedVariables = {
-    required: Record<string, string[]>,
-    optional: Record<string, string[]>,
+    required: CapturedVariableMap,
+    optional: CapturedVariableMap,
+};
 
-    // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
-    usesNonLexicalThis: boolean,
- };
-
-/**
- * computeCapturedVariableNames computes the set of free variables in a given function string.  Note that this string is
- * expected to be the usual V8-serialized function expression text.
- */
-function computeCapturedVariableNames(serializedFunction: SerializedFunction): CapturedVariables {
+function parseFunction(serializedFunction: SerializedFunction): ts.SourceFile {
     const funcstr = serializedFunction.funcExprWithName || serializedFunction.funcExprWithoutName;
-
-    log.debug(`Computing free variables for function: ${funcstr}`);
 
     // Wrap with parens to make into something parseable.  This is necessary as many
     // types of functions are valid function expressions, but not valid function
@@ -966,14 +974,79 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         throw new Error(`Could not parse function: ${diagnostics[0].messageText}\n${toParse}`);
     }
 
-    // Now that we've parsed the file, compute the free variables, and return them.
+    return file;
+}
+
+function computeUsedNonLexialThis(serializedFunction: SerializedFunction): boolean {
+    const file = parseFunction(serializedFunction);
 
     let inTopmostFunction: boolean | undefined;
-    let required: Record<string, string[]> = {};
-    let optional: Record<string, string[]> = {};
+    let usesNonLexicalThis = false;
+
+    ts.forEachChild(file, walk);
+
+    return usesNonLexicalThis;
+
+    function walk(node: ts.Node | undefined) {
+        if (!node) {
+            return;
+        }
+
+        switch (node.kind) {
+            case ts.SyntaxKind.SuperKeyword:
+            case ts.SyntaxKind.ThisKeyword:
+                return visitThisOrSuperExpression(<ts.ThisExpression | ts.SuperExpression>node);
+            case ts.SyntaxKind.MethodDeclaration:
+            case ts.SyntaxKind.FunctionDeclaration:
+            case ts.SyntaxKind.FunctionExpression:
+            case ts.SyntaxKind.ArrowFunction:
+                return visitBaseFunction(<ts.ArrowFunction>node);
+            default:
+                break;
+        }
+
+        ts.forEachChild(node, walk);
+    }
+
+    function visitThisOrSuperExpression(node: ts.ThisExpression | ts.SuperExpression) {
+        if (!serializedFunction.isArrowFunction && inTopmostFunction) {
+            // if we're at the topmost function scope, and we're not inside an arrow
+            // function, mark that this function needs the value for 'this' serialized
+            // out as well in order to work properly.
+            usesNonLexicalThis = true;
+        }
+    }
+
+    function visitBaseFunction(node: ts.FunctionLikeDeclarationBase): void {
+
+        const savedInTopmostFunction = inTopmostFunction;
+
+        if (inTopmostFunction === undefined) {
+            inTopmostFunction = true;
+        } else {
+            inTopmostFunction = false;
+        }
+
+        // Next, visit the body underneath this new context.
+        walk(node.body);
+
+        inTopmostFunction = savedInTopmostFunction;
+    }
+}
+
+/**
+ * computeCapturedVariableNames computes the set of free variables in a given function string.  Note that this string is
+ * expected to be the usual V8-serialized function expression text.
+ */
+function computeCapturedVariableNames(serializedFunction: SerializedFunction): CapturedVariables {
+    const file = parseFunction(serializedFunction);
+
+    // Now that we've parsed the file, compute the free variables, and return them.
+
+    let required: CapturedVariableMap = {};
+    let optional: CapturedVariableMap = {};
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
-    let usesNonLexicalThis = false;
 
     // Recurse through the tree.  We use typescript's AST here and generally walk the entire
     // tree. One subtlety to be aware of is that we generally assume that when we hit an
@@ -987,7 +1060,7 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const result: CapturedVariables = { required: {}, optional: {}, usesNonLexicalThis };
+    const result: CapturedVariables = { required: {}, optional: {} };
 
     for (const key of Object.keys(required)) {
         if (required[key] && !isBuiltIn(key)) {
@@ -1027,14 +1100,14 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         }
 
         // We reached the top of the scope chain and this wasn't found; it's captured.
-        const capturedProperty = determineCapturedProperty(node);
+        const capturedProperty = determineCapturedPropertyInfo(node);
         if (node.parent!.kind === ts.SyntaxKind.TypeOfExpression) {
             // "typeof undeclared_id" is legal in JS (and is actually used in libraries). So keep
             // track that we would like to capture this variable, but mark that capture as optional
             // so we will not throw if we aren't able to find it in scope.
-            optional[name] = combine(optional[name], capturedProperty);
+            optional[name] = combineProperties(optional[name], capturedProperty);
         } else {
-            required[name] = combine(required[name], capturedProperty);
+            required[name] = combineProperties(required[name], capturedProperty);
         }
     }
 
@@ -1048,8 +1121,6 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
                 return visitIdentifier(<ts.Identifier>node);
             case ts.SyntaxKind.ThisKeyword:
                 return visitThisExpression(<ts.ThisExpression>node);
-            case ts.SyntaxKind.SuperKeyword:
-                return visitThisOrSuperExpression(<ts.SuperExpression>node);
             case ts.SyntaxKind.Block:
                 return visitBlockStatement(<ts.Block>node);
             case ts.SyntaxKind.CallExpression:
@@ -1077,21 +1148,11 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
     }
 
     function visitThisExpression(node: ts.ThisExpression): void {
-        required["this"] = combine(required["this"], determineCapturedProperty(node));
-
-        visitThisOrSuperExpression(node);
+        required["this"] = combineProperties(required["this"], determineCapturedPropertyInfo(node));
     }
 
-    function visitThisOrSuperExpression(node: ts.ThisExpression | ts.SuperExpression) {
-        if (!serializedFunction.isArrowFunction && inTopmostFunction) {
-            // if we're at the topmost function scope, and we're not inside an arrow
-            // function, mark that this function needs the value for 'this' serialized
-            // out as well in order to work properly.
-            usesNonLexicalThis = true;
-        }
-    }
-
-    function combine(existing: string[] | undefined, current: string | undefined) {
+    function combineProperties(existing: CapturedPropertyInfo[] | undefined,
+                               current: CapturedPropertyInfo | undefined) {
         if (existing && existing.length === 0) {
             // We already want to capture everything.  Keep things that way.
             return existing;
@@ -1106,18 +1167,32 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         // We want to capture a specific set of properties.  Add this set of properties
         // into the existing set.
         const combined = existing || [];
+
+        // See if we've already marked this property as captured.  If so, make sure we still record
+        // if this property was invoked or not.
+        for (const existingProp of combined) {
+            if (existingProp.name === current.name) {
+                existingProp.invoked = existingProp.invoked || current.invoked;
+                return combined;
+            }
+        }
+
+        // Haven't seen this property.  Record that we're capturing it.
         combined.push(current);
         return combined;
     }
 
-    function determineCapturedProperty(node: ts.Node): string | undefined {
+    function determineCapturedPropertyInfo(node: ts.Node): CapturedPropertyInfo | undefined {
         if (node.parent &&
             ts.isPropertyAccessExpression(node.parent) &&
             node.parent.expression === node) {
 
-            // We were just using this value to capture a property off of it.  Just
-            // capture that property.
-            return node.parent.name.text;
+            const propertyAccess = <ts.PropertyAccessExpression>node.parent;
+            if (propertyAccess.parent) {
+                const invoked = ts.isCallExpression(propertyAccess.parent) &&
+                                propertyAccess.parent.expression === propertyAccess;
+                return { name: node.parent.name.text, invoked };
+            }
         }
 
         // For all other cases, capture everything.
@@ -1151,13 +1226,6 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         const savedRequired = required;
         const savedOptional = optional;
         const savedFunctionVars = functionVars;
-        const savedInTopmostFunction = inTopmostFunction;
-
-        if (inTopmostFunction === undefined) {
-            inTopmostFunction = true;
-        } else {
-            inTopmostFunction = false;
-        }
 
         required = {};
         optional = {};
@@ -1195,7 +1263,6 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         Object.assign(savedRequired, required);
         Object.assign(savedOptional, optional);
 
-        inTopmostFunction = savedInTopmostFunction;
         functionVars = savedFunctionVars;
         required = savedRequired;
         optional = savedOptional;
