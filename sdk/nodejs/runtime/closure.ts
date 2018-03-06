@@ -301,7 +301,7 @@ async function serializeFunctionRecursiveAsync(
     // that a user has explicit set the prototype for). Normal functions will pick up
     // Function.prototype by default, so we don't need to do anything for them.
     if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
-        const protoEntry = await serializeAnyAsync(proto, undefined, entryCache, serialize, logSerialize);
+        const protoEntry = await serializeAsync(proto, undefined, entryCache, serialize, logSerialize);
         closure.obj.proto = protoEntry;
 
         if (isDerivedClassConstructor) {
@@ -330,8 +330,8 @@ async function serializeFunctionRecursiveAsync(
         }
 
         closure.obj.env.set(
-            await serializeAnyAsync(keyOrSymbol, undefined, entryCache, serialize, logSerialize),
-            { entry: await serializeAnyAsync(funcProp, undefined, entryCache, serialize, logSerialize) });
+            await serializeAsync(keyOrSymbol, undefined, entryCache, serialize, logSerialize),
+            { entry: await serializeAsync(funcProp, undefined, entryCache, serialize, logSerialize) });
     }
 
     const superEntry = classInstanceMemberToSuperEntry.get(func) || classStaticMemberToSuperEntry.get(func);
@@ -339,7 +339,7 @@ async function serializeFunctionRecursiveAsync(
         // this was a class constructor or method.  We need to put a special __super
         // entry into scope, and then rewrite any calls to super() to refer to it.
         closure.environment.set(
-            await serializeAnyAsync("__super", undefined, entryCache, serialize, logSerialize),
+            await serializeAsync("__super", undefined, entryCache, serialize, logSerialize),
             superEntry);
 
         closure.code = rewriteSuperReferences(
@@ -359,7 +359,7 @@ async function serializeFunctionRecursiveAsync(
     // itself.
     if (functionDeclarationName !== undefined) {
         closure.environment.set(
-            await serializeAnyAsync(functionDeclarationName, undefined, entryCache, serialize, logSerialize),
+            await serializeAsync(functionDeclarationName, undefined, entryCache, serialize, logSerialize),
             { entry: funcEntry });
     }
 
@@ -378,10 +378,10 @@ async function serializeFunctionRecursiveAsync(
             }
 
             const properties = names[name];
-            const serializedName = await serializeAnyAsync(name, undefined, entryCache, serialize, logSerialize);
+            const serializedName = await serializeAsync(name, undefined, entryCache, serialize, logSerialize);
 
             // try to only serialize out the properties that were used by the user's code.
-            const serializedValue = await serializeAnyAsync(value, properties, entryCache, serialize, logSerialize);
+            const serializedValue = await serializeAsync(value, properties, entryCache, serialize, logSerialize);
 
             environment.set(serializedName, { entry: serializedValue });
         }
@@ -699,11 +699,11 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
 }
 
 /**
- * serializeAnyAsync serializes an object, deeply, into something appropriate for an environment
+ * serializeAsync serializes an object, deeply, into something appropriate for an environment
  * entry.  If propNames is provided, and is non-empty, then only attempt to serialize out those
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
-async function serializeAnyAsync(
+async function serializeAsync(
         obj: any, propNames: string[] | undefined, entryCache: Map<Object, EnvironmentEntry>,
         serialize: (o: any) => boolean, logSerialize: boolean): Promise<EnvironmentEntry> {
     // See if we have a cache hit.  If yes, use the object as-is.
@@ -758,14 +758,14 @@ async function serializeAnyAsync(
             entry.closure = await serializeFunctionRecursiveAsync(obj, entryCache, serialize, logSerialize);
         }
         else if (obj instanceof resource.Output) {
-            entry.dep = await serializeAnyAsync(await obj.promise(), undefined, entryCache, serialize, logSerialize);
+            entry.dep = await serializeAsync(await obj.promise(), undefined, entryCache, serialize, logSerialize);
         }
         else if (obj instanceof Promise) {
             console.log("Serializing promise.  Awaiting it.");
             const val = await obj;
             console.log("Done awaiting promise.");
             // If this is a promise, we will await it and serialize the result instead.
-            entry.promise = await serializeAnyAsync(val, undefined, entryCache, serialize, logSerialize);
+            entry.promise = await serializeAsync(val, undefined, entryCache, serialize, logSerialize);
         }
         else if (obj instanceof Array) {
             // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the array
@@ -773,7 +773,7 @@ async function serializeAnyAsync(
             entry.arr = [];
             for (const key of Object.getOwnPropertyNames(obj)) {
                 if (key !== "length" && obj.hasOwnProperty(key)) {
-                    entry.arr[<any>key] = await serializeAnyAsync(
+                    entry.arr[<any>key] = await serializeAsync(
                         obj[<any>key], undefined, entryCache, serialize, logSerialize);
                 }
             }
@@ -783,7 +783,7 @@ async function serializeAnyAsync(
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.arr = [];
             for (const elem of obj) {
-                entry.arr.push(await serializeAnyAsync(elem, undefined, entryCache, serialize, logSerialize));
+                entry.arr.push(await serializeAsync(elem, undefined, entryCache, serialize, logSerialize));
             }
         }
         else {
@@ -813,11 +813,11 @@ async function serializeAnyAsync(
                     entryDescriptor.writable = desc.writable;
                 }
                 if (desc.get) {
-                    entryDescriptor.get = await serializeAnyAsync(
+                    entryDescriptor.get = await serializeAsync(
                         desc.get, undefined, entryCache, serialize, logSerialize);
                 }
                 if (desc.set) {
-                    entryDescriptor.set = await serializeAnyAsync(
+                    entryDescriptor.set = await serializeAsync(
                         desc.set, undefined, entryCache, serialize, logSerialize);
                 }
             }
@@ -857,9 +857,9 @@ async function serializeAnyAsync(
 
             const descriptor = await getEntryDescriptorAsync(keyOrSymbol);
 
-            const keyEntry = await serializeAnyAsync(keyOrSymbol, undefined, entryCache, serialize, logSerialize);
+            const keyEntry = await serializeAsync(keyOrSymbol, undefined, entryCache, serialize, logSerialize);
             if (!environment.has(keyEntry)) {
-                const valEntry = await serializeAnyAsync(
+                const valEntry = await serializeAsync(
                     obj[keyOrSymbol], undefined, entryCache, serialize, logSerialize);
 
                 environment.set(keyEntry, { descriptor: descriptor, entry: valEntry });
@@ -890,7 +890,7 @@ async function serializeAnyAsync(
         if (!entry.obj.proto && localPropNames.length === 0) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
-                entry.obj.proto = await serializeAnyAsync(proto, undefined, entryCache, serialize, logSerialize);
+                entry.obj.proto = await serializeAsync(proto, undefined, entryCache, serialize, logSerialize);
             }
         }
 
