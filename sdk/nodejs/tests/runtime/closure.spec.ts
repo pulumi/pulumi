@@ -2739,6 +2739,40 @@ return function () { console.log(o.c()); };
     }
 
     {
+        const o = { a: 1, b: 2, c() { return this; } };
+
+        cases.push({
+            title: "Capture one if object property is captured, uses this, but is not invoked",
+            // tslint:disable-next-line
+            func: function () { console.log(o.c); },
+            expectText: `exports.handler = __f0;
+
+var __e0_o = {c: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __e0_o }) {
+
+return function () { console.log(o.c); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const o = { a: 1, b: 2, c() { return 0; } };
 
         cases.push({
