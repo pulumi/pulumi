@@ -1822,17 +1822,5 @@ function deepContainsObjOrArray(env: EnvironmentEntry): boolean {
  * @param envObj The environment object to convert to a string.
  */
 function envObjToString(envObj: Record<string, string>): string {
-    let result = "";
-    let first = true;
-    for (const key of Object.keys(envObj)) {
-        const val = envObj[key];
-
-        if (!first) {
-            result += ", ";
-        }
-
-        result += key + ": " + val;
-        first = false;
-    }
-    return "{ " + result + " }";
+    return `{ ${Object.keys(envObj).map(k => `${k}: ${envObj[k]}`).join(", ")} }`;
 }
