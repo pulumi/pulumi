@@ -761,9 +761,16 @@ async function serializeAsync(
             entry.dep = await serializeAsync(await obj.promise(), undefined, entryCache, serialize, logSerialize);
         }
         else if (obj instanceof Promise) {
-            console.log("Serializing promise.  Awaiting it.");
+            if (logSerialize) {
+                console.log("Serializing promise.  Awaiting it.");
+            }
+
             const val = await obj;
-            console.log("Done awaiting promise.");
+
+            if (logSerialize) {
+                console.log("Done awaiting promise.");
+            }
+
             // If this is a promise, we will await it and serialize the result instead.
             entry.promise = await serializeAsync(val, undefined, entryCache, serialize, logSerialize);
         }
