@@ -1000,7 +1000,7 @@ function computeUsedNonLexialThis(serializedFunction: SerializedFunction): boole
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
             case ts.SyntaxKind.ArrowFunction:
-                return visitBaseFunction(<ts.ArrowFunction>node);
+                return visitBaseFunction(<ts.FunctionLikeDeclarationBase>node);
             default:
                 break;
         }
@@ -1018,7 +1018,6 @@ function computeUsedNonLexialThis(serializedFunction: SerializedFunction): boole
     }
 
     function visitBaseFunction(node: ts.FunctionLikeDeclarationBase): void {
-
         const savedInTopmostFunction = inTopmostFunction;
 
         if (inTopmostFunction === undefined) {
