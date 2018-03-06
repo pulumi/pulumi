@@ -1049,7 +1049,7 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
             case ts.SyntaxKind.ThisKeyword:
                 return visitThisExpression(<ts.ThisExpression>node);
             case ts.SyntaxKind.SuperKeyword:
-                return visitThisOrSuperExpression(<ts.ThisExpression | ts.SuperExpression>node);
+                return visitThisOrSuperExpression(<ts.SuperExpression>node);
             case ts.SyntaxKind.Block:
                 return visitBlockStatement(<ts.Block>node);
             case ts.SyntaxKind.CallExpression:
