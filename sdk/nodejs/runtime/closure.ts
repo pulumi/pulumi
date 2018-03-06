@@ -558,6 +558,30 @@ function serializeFunctionCode(func: Function): SerializedFunction {
         throw new Error(`Cannot serialize native code function:\n${funcString}`);
     }
 
+    // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
+    // This will make it so that we can correctly handle 'this' properly depending on if that should
+    // be treated as the lexical capture of 'this' or hte non-lexical 'this'.
+    //
+    // It might seem like we could just look at the first character of the string to see if it is a
+    // '('.  However, that's insufficient due to how v8 generates strings for some functions.
+    // Specifically we have to consider the following cases.
+    //
+    //      (...) { }       // i.e. a function with a *computed* property name.
+    //      (...) => { }    // lambda with a block body
+    //      (...) => expr   // lambda with an expression body.
+    //
+    // First we check if we have a open curly or not.  If we don't, then we're in the last case. We
+    // confirm that we have a => (throwing if we don't).
+    //
+    // If we do have an open curly, then we're in one of the top two cases.  To determine which we
+    // trim things up to the open curly, leaving us with either:
+    //
+    //      (...) {
+    //      (...) => {
+    //
+    // We then see if we have an => or not.  if we do, it's a lambda.  If we don't, it's a function
+    // with a computed name.
+
     const openCurlyIndex = funcString.indexOf("{");
     if (openCurlyIndex < 0) {
         // No block body.  Can happen if this is an arrow function with an expression body.
