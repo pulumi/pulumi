@@ -7,6 +7,7 @@ import { RunError } from "../errors";
 import * as log from "../log";
 import * as resource from "../resource";
 import { debuggablePromise } from "./debuggable";
+import { ucs2 } from "punycode";
 
 // Our closure serialization code links against v8 internals. On Windows,
 // we can't dynamically link against v8 internals because their symbols are
@@ -276,7 +277,7 @@ async function serializeFunctionRecursiveAsync(
         runtime: "nodejs",
         environment: environment,
         obj: { env: new Map() },
-        usesNonLexicalThis: computeUsedNonLexialThis(serializedFunction),
+        usesNonLexicalThis: computeUsesNonLexialThis(serializedFunction),
     };
 
     const proto = Object.getPrototypeOf(func);
@@ -977,10 +978,16 @@ function parseFunction(serializedFunction: SerializedFunction): ts.SourceFile {
     return file;
 }
 
-function computeUsedNonLexialThis(serializedFunction: SerializedFunction): boolean {
+function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boolean {
+    if (serializedFunction.isArrowFunction) {
+        // if we're looking at an arrow function, the it is always using lexical 'this's
+        // so we don't have to bother even examining it.
+        return false;
+    }
+
     const file = parseFunction(serializedFunction);
 
-    let inTopmostFunction: boolean | undefined;
+    let inTopmostFunction = false;
     let usesNonLexicalThis = false;
 
     ts.forEachChild(file, walk);
@@ -995,12 +1002,19 @@ function computeUsedNonLexialThis(serializedFunction: SerializedFunction): boole
         switch (node.kind) {
             case ts.SyntaxKind.SuperKeyword:
             case ts.SyntaxKind.ThisKeyword:
-                return visitThisOrSuperExpression(<ts.ThisExpression | ts.SuperExpression>node);
+                usesNonLexicalThis = true;
+                break;
             case ts.SyntaxKind.MethodDeclaration:
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
-            case ts.SyntaxKind.ArrowFunction:
                 return visitBaseFunction(<ts.FunctionLikeDeclarationBase>node);
+
+            // Note: it is intentional that we ignore ArrowFunction.  If we use 'this' inside of it,
+            // then that should be considered a use of the non-lexical-this from an outer function.
+            // i.e.
+            //          function f() { var v = () => console.log(this) }
+            //
+            // case ts.SyntaxKind.ArrowFunction:
             default:
                 break;
         }
@@ -1008,28 +1022,20 @@ function computeUsedNonLexialThis(serializedFunction: SerializedFunction): boole
         ts.forEachChild(node, walk);
     }
 
-    function visitThisOrSuperExpression(node: ts.ThisExpression | ts.SuperExpression) {
-        if (!serializedFunction.isArrowFunction && inTopmostFunction) {
-            // if we're at the topmost function scope, and we're not inside an arrow
-            // function, mark that this function needs the value for 'this' serialized
-            // out as well in order to work properly.
-            usesNonLexicalThis = true;
-        }
-    }
-
     function visitBaseFunction(node: ts.FunctionLikeDeclarationBase): void {
-        const savedInTopmostFunction = inTopmostFunction;
-
-        if (inTopmostFunction === undefined) {
-            inTopmostFunction = true;
-        } else {
-            inTopmostFunction = false;
+        if (inTopmostFunction) {
+            // we're already in the topmost function.  No need to descend into any
+            // further functions.
+            return;
         }
 
-        // Next, visit the body underneath this new context.
+        // Entering the topmost function.
+        inTopmostFunction = true;
+
+        // Now, visit its body to see if we use 'this/super'.
         walk(node.body);
 
-        inTopmostFunction = savedInTopmostFunction;
+        inTopmostFunction = false;
     }
 }
 

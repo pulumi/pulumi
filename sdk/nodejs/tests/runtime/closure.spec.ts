@@ -2739,6 +2739,74 @@ return function () { console.log(o.c()); };
     }
 
     {
+        const o = { a: 1, b: 2, c() { const v = () => this; } };
+
+        cases.push({
+            title: "Capture all if object property is invoked, and it uses this in nested arrow function.",
+            // tslint:disable-next-line
+            func: function () { console.log(o.c()); },
+            expectText: `exports.handler = __f0;
+
+var __e0_o = {c: __f1, a: 1, b: 2};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { const v = () => this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __e0_o }) {
+
+return function () { console.log(o.c()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: 2, c() { const v = function () { return this; }; } };
+
+        cases.push({
+            title: "Capture one if object property is invoked, but it uses this in nested function.",
+            // tslint:disable-next-line
+            func: function () { console.log(o.c()); },
+            expectText: `exports.handler = __f0;
+
+var __e0_o = {c: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*c*/() { const v = function () { return this; }; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __e0_o }) {
+
+return function () { console.log(o.c()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const o = { a: 1, b: 2, c() { return this; } };
 
         cases.push({
