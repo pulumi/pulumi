@@ -156,11 +156,7 @@ func removeOldConfiguration(stackName tokens.QName) error {
 		return err
 	}
 
-	if err := workspace.SaveProject(proj); err != nil {
-		return err
-	}
-
-	return nil
+	return workspace.SaveProject(proj)
 }
 
 // removeOldProjectConfiguration deletes all project level configuration information from both the workspace and the
@@ -183,9 +179,5 @@ func removeOldProjectConfiguration() error {
 		return err
 	}
 
-	if err := workspace.SaveProject(proj); err != nil {
-		return err
-	}
-
-	return nil
+	return workspace.SaveProject(proj)
 }
