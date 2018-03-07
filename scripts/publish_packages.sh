@@ -1,6 +1,7 @@
 #!/bin/bash
 # publish_packages.sh uploads our packages to package repositories like npm
 set -o nounset -o errexit -o pipefail
+ROOT=$(dirname $0)/..
 
 if [[ "${TRAVIS_OS_NAME:-}" == "linux" ]]; then
     echo "Publishing NPM package to NPMjs.com:"
