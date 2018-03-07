@@ -3,8 +3,6 @@
 package deploy
 
 import (
-	"os"
-
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -83,25 +81,4 @@ func (p *Plan) Provider(pkg tokens.Package) (plugin.Provider, error) {
 	// TODO: ideally we would flow versions on specific requests along to the underlying host function.  Absent that,
 	//     we will just pass nil, which returns us the most recent version available to us.
 	return p.ctx.Host.Provider(pkg, nil)
-}
-
-// TryProvider attempts to load a provider for the given package.  If it is missing, nil is returned.
-func (p *Plan) TryProvider(pkg tokens.Package) (plugin.Provider, error) {
-	// TODO: ideally we would flow versions on specific requests along to the underlying host function.  Absent that,
-	//     we will just pass nil, which returns us the most recent version available to us.
-	prov, err := p.ctx.Host.Provider(pkg, nil)
-	if err != nil {
-		// If a plugin missing error, just return nil.
-		if _, ok := err.(*plugin.MissingError); ok {
-			return nil, nil
-		}
-		// If an OS file not found error, also just return nil.
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		// Otherwise propagate the error.
-		return nil, err
-	}
-
-	return prov, nil
 }

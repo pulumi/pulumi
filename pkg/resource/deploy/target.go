@@ -14,3 +14,22 @@ type Target struct {
 	Decrypter config.Decrypter // decrypter for secret configuration values.
 	Snapshot  *Snapshot        // the last snapshot deployed to the target.
 }
+
+// GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
+func (t *Target) GetPackageConfig(pkg tokens.Package) (map[tokens.ModuleMember]string, error) {
+	var result map[tokens.ModuleMember]string
+	for k, c := range t.Config {
+		if k.Package() != pkg {
+			continue
+		}
+		v, err := c.Value(t.Decrypter)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			result = make(map[tokens.ModuleMember]string)
+		}
+		result[k] = v
+	}
+	return result, nil
+}
