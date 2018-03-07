@@ -58,9 +58,6 @@ nvm install v6.10.2
     pip install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
 )
 
-# If the sub shell failed, bail out now.
-[ "$?" -eq 0 ] || exit 1
-
 # By default some tools are not on the PATH, let's fix that
 
 # On OSX, the user folder that `pip` installs tools to is not on the
@@ -72,3 +69,6 @@ fi
 
 # Add yarn to the $PATH
 export PATH=$HOME/.yarn/bin:$PATH
+
+# If the sub shell failed, bail out now.
+[ "$?" -eq 0 ] || exit 1
