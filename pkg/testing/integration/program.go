@@ -46,7 +46,7 @@ type EditDir struct {
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 
 	// Additive is true if Dir should be copied *on top* of the test directory.
-	// Otherwise Dir *replaces* the test directory, except we keep .pulumi/ and Pulumi.yaml.
+	// Otherwise Dir *replaces* the test directory, except we keep .pulumi/ and Pulumi.yaml and Pulumi.<stack>.yaml.
 	Additive bool
 
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
@@ -621,28 +621,36 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 			contract.IgnoreError(os.RemoveAll(dirToDelete))
 		}()
 
-		// Copy everything except Pulumi.yaml and .pulumi from source into new directory
+		// Copy everything except Pulumi.yaml, Pulumi.<stack-name>.yaml, and .pulumi from source into new directory
 		exclusions := make(map[string]bool)
 		projectYaml := workspace.ProjectFile + ".yaml"
+		configYaml := workspace.ProjectFile + "." + pt.opts.StackName + ".yaml"
 		exclusions[workspace.BookkeepingDir] = true
 		exclusions[projectYaml] = true
+		exclusions[configYaml] = true
 
 		if err := fsutil.CopyFile(newDir, edit.Dir, exclusions); err != nil {
 			return errors.Wrapf(err, "Couldn't copy %v into %v", edit.Dir, newDir)
 		}
 
-		// Copy Pulumi.yaml and .pulumi from old directory to new directory
+		// Copy Pulumi.yaml, Pulumi.<stack-name>.yaml, and .pulumi from old directory to new directory
 		oldProjectYaml := filepath.Join(dir, projectYaml)
 		newProjectYaml := filepath.Join(newDir, projectYaml)
+
+		oldConfigYaml := filepath.Join(dir, configYaml)
+		newConfigYaml := filepath.Join(newDir, configYaml)
 
 		oldProjectDir := filepath.Join(dir, workspace.BookkeepingDir)
 		newProjectDir := filepath.Join(newDir, workspace.BookkeepingDir)
 
 		if err := fsutil.CopyFile(newProjectYaml, oldProjectYaml, nil); err != nil {
-			return errors.Wrapf(err, "Couldn't copy Pulumi.yaml")
+			return errors.Wrap(err, "Couldn't copy Pulumi.yaml")
+		}
+		if err := fsutil.CopyFile(newConfigYaml, oldConfigYaml, nil); err != nil {
+			return errors.Wrapf(err, "Couldn't copy Pulumi.%s.yaml", pt.opts.StackName)
 		}
 		if err := fsutil.CopyFile(newProjectDir, oldProjectDir, nil); err != nil {
-			return errors.Wrapf(err, "Couldn't copy .pulumi")
+			return errors.Wrap(err, "Couldn't copy .pulumi")
 		}
 
 		// Finally, replace our current temp directory with the new one.

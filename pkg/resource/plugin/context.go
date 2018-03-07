@@ -23,7 +23,7 @@ type Context struct {
 
 // NewContext allocates a new context with a given sink and host.  Note that the host is "owned" by this context from
 // here forwards, such that when the context's resources are reclaimed, so too are the host's.
-func NewContext(d diag.Sink, host Host, pwd string, parentSpan opentracing.Span) (*Context, error) {
+func NewContext(d diag.Sink, host Host, cfg ConfigSource, pwd string, parentSpan opentracing.Span) (*Context, error) {
 	ctx := &Context{
 		Diag:        d,
 		Host:        host,
@@ -31,7 +31,7 @@ func NewContext(d diag.Sink, host Host, pwd string, parentSpan opentracing.Span)
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx)
+		h, err := NewDefaultHost(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}

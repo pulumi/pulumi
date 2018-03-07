@@ -4,7 +4,6 @@ package deploy
 
 import (
 	"reflect"
-	"sort"
 	"time"
 
 	"github.com/golang/glog"
@@ -34,12 +33,7 @@ type Events interface {
 
 // Start initializes and returns an iterator that can be used to step through a plan's individual steps.
 func (p *Plan) Start(opts Options) (*PlanIterator, error) {
-	// First, configure all providers based on the target configuration map.
-	if err := p.configure(); err != nil {
-		return nil, err
-	}
-
-	// Next, ask the source for its iterator.
+	// Ask the source for its iterator.
 	src, err := p.source.Iterate(opts)
 	if err != nil {
 		return nil, err
@@ -59,45 +53,6 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 		pendingNews: make(map[resource.URN]Step),
 		dones:       make(map[*resource.State]bool),
 	}, nil
-}
-
-func (p *Plan) configure() error {
-	var pkgs []string
-	pkgconfigs := make(map[tokens.Package]map[tokens.ModuleMember]string)
-	for k, c := range p.target.Config {
-		pkg := k.Package()
-		pkgs = append(pkgs, string(pkg))
-		pkgconfig, has := pkgconfigs[pkg]
-		if !has {
-			pkgconfig = make(map[tokens.ModuleMember]string)
-			pkgconfigs[pkg] = pkgconfig
-		}
-		v, err := c.Value(p.target.Decrypter)
-		if err != nil {
-			return err
-		}
-		pkgconfig[k] = v
-	}
-	sort.Strings(pkgs)
-	initialized := make(map[string]bool)
-	for _, pkg := range pkgs {
-		if _, ready := initialized[pkg]; ready {
-			continue
-		}
-		pkgt := tokens.Package(pkg)
-		prov, err := p.TryProvider(pkgt)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get pkg '%v' resource provider", pkg)
-		} else if prov != nil {
-			// Note that it's legal for a provider to be missing for this package.  This simply indicates that
-			// the configuration variable affects the program/package, and not a Go provider.
-			if err = prov.Configure(pkgconfigs[pkgt]); err != nil {
-				return errors.Wrapf(err, "failed to configure pkg '%v' resource provider", pkg)
-			}
-		}
-		initialized[pkg] = true
-	}
-	return nil
 }
 
 // PlanSummary is an interface for summarizing the progress of a plan.
