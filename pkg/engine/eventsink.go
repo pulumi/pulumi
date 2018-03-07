@@ -3,7 +3,6 @@ package engine
 import (
 	"bytes"
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -19,8 +18,6 @@ func newEventSink(events eventEmitter) diag.Sink {
 		counts: make(map[diag.Severity]int),
 	}
 }
-
-const eventSinkIDPrefix = "PU"
 
 // eventSink is a sink which writes all events to a channel
 type eventSink struct {
@@ -131,13 +128,6 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	}
 
 	buffer.WriteString(string(sev))
-
-	if d.ID > 0 {
-		buffer.WriteString(" ")
-		buffer.WriteString(eventSinkIDPrefix)
-		buffer.WriteString(strconv.Itoa(int(d.ID)))
-	}
-
 	buffer.WriteString(": ")
 	buffer.WriteString(colors.Reset)
 

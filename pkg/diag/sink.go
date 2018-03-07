@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strconv"
 	"sync"
 
 	"github.com/golang/glog"
@@ -212,13 +211,6 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	}
 
 	buffer.WriteString(string(sev))
-
-	if diag.ID > 0 {
-		buffer.WriteString(" ")
-		buffer.WriteString(DefaultSinkIDPrefix)
-		buffer.WriteString(strconv.Itoa(int(diag.ID)))
-	}
-
 	buffer.WriteString(": ")
 	buffer.WriteString(colors.Reset)
 

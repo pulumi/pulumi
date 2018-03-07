@@ -190,7 +190,7 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "An error occurred while advancing the preview")
+		return nil, errors.New("An error occurred while advancing the preview")
 	}
 
 	if !result.Options.Diag.Success() {
