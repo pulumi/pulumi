@@ -45,9 +45,10 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource) (Host, error) {
 	host := &defaultHost{
 		ctx:             ctx,
+		config:          config,
 		analyzerPlugins: make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins: make(map[string]*languagePlugin),
 		resourcePlugins: make(map[tokens.Package]*resourcePlugin),
@@ -66,6 +67,7 @@ func NewDefaultHost(ctx *Context) (Host, error) {
 
 type defaultHost struct {
 	ctx             *Context                           // the shared context for this host.
+	config          ConfigSource                       // the source for provider configuration parameters.
 	analyzerPlugins map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
 	languagePlugins map[string]*languagePlugin         // a cache of language plugins and their processes.
 	resourcePlugins map[tokens.Package]*resourcePlugin // a cache of resource plugins and their processes.
@@ -160,6 +162,19 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 					diag.Message("resource plugin %s mis-reported its own version, expected %s got %s"),
 					info.Name, version.String(), v)
 			}
+		}
+
+		// Configure the provider. If no configuration source is present, assume no configuration. We do this here
+		// because resource providers must be configured exactly once before any method besides Configure is called.
+		var providerConfig map[tokens.ModuleMember]string
+		if host.config != nil {
+			providerConfig, err = host.config.GetPackageConfig(pkg)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to fetch configuration for pkg '%v' resource provider", err)
+			}
+		}
+		if err = plug.Configure(providerConfig); err != nil {
+			return nil, errors.Wrapf(err, "failed to configure pkg '%v' resource provider", pkg)
 		}
 
 		// Memoize the result.

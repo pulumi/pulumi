@@ -27,7 +27,7 @@ import (
 )
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, diag diag.Sink,
+func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, diag diag.Sink,
 	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 	contract.Require(projinfo != nil, "projinfo")
 
@@ -38,7 +38,7 @@ func ProjectInfoContext(projinfo *Projinfo, diag diag.Sink,
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(diag, nil, pwd, tracingSpan)
+	ctx, err := plugin.NewContext(diag, nil, config, pwd, tracingSpan)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -57,7 +57,7 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, ctx, err := ProjectInfoContext(projinfo, opts.Diag, info.TracingSpan)
+	pwd, main, ctx, err := ProjectInfoContext(projinfo, target, opts.Diag, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}
