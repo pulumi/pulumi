@@ -10,23 +10,7 @@ include ../../build/common.mk
 ensure::
 	$(PIP) install --user --upgrade -r requirements.txt
 
-# Ensure Pylint is present and has the right version.
-PYLINT := $(shell command -v pylint 2>/dev/null)
-ifeq ($(PYLINT),)
-ensure::
-	$(error "missing pylint from your $$PATH; \
-		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
-else
-PYLINT_VERSION := $(shell command $(PYLINT) --version 2>&1)
-ifeq (,$(findstring Python 2.7,$(PYLINT_VERSION)))
-ensure::
-	$(error "$(PYLINT) did not report a 2.7 version number ($(PYLINT_VERSION)); \
-		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
-endif
-endif
-
 lint::
-	$(PYLINT) -E lib/pulumi/ --ignore-patterns '.*_pb2_.*.py'
 	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
 	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
 

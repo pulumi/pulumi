@@ -5,7 +5,7 @@ nvm install v6.10.2
 # they would be set in the outer shell as well, so do as much logic as
 # we can in a subshell.
 (
-    set -o nounset -o errexit -o pipefail -x
+    set -o nounset -o errexit -o pipefail
     [ -e "$(go env GOPATH)/bin" ] || mkdir -p "$(go env GOPATH)/bin"
 
     YARN_VERSION="1.3.2"
