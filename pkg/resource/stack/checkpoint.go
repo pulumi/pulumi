@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -20,36 +21,67 @@ import (
 )
 
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func GetCheckpoint(w workspace.W, stack tokens.QName) (*apitype.Checkpoint, error) {
+func GetCheckpoint(w workspace.W, stack tokens.QName) (*apitype.CheckpointV1, error) {
 	chkpath := w.StackPath(stack)
 	bytes, err := ioutil.ReadFile(chkpath)
 	if err != nil {
 		return nil, err
 	}
-	var checkpoint apitype.Checkpoint
-	if err = json.Unmarshal(bytes, &checkpoint); err != nil {
+
+	return unmarshalVersionedCheckpointToLatestCheckpoint(bytes)
+}
+
+func unmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV1, error) {
+	var versionedCheckpoint apitype.VersionedCheckpoint
+	if err := json.Unmarshal(bytes, &versionedCheckpoint); err != nil {
 		return nil, err
 	}
-	return &checkpoint, nil
+
+	switch versionedCheckpoint.Version {
+	case 0:
+		// The happens when we are loading a checkpoint file from before we started to version things. Go's
+		// json package did not support strict marshalling before 1.10, and we use 1.9 in our toolchain today.
+		// After we upgrade, we could consider rewriting this code to use DisallowUnknownFields() on the decoder
+		// to have the old checkpoint not even deserialize as an apitype.VersionedCheckpoint.
+		var checkpoint apitype.CheckpointV1
+		if err := json.Unmarshal(bytes, &checkpoint); err != nil {
+			return nil, err
+		}
+		return &checkpoint, nil
+	case 1:
+		var checkpoint apitype.CheckpointV1
+		if err := json.Unmarshal(versionedCheckpoint.Checkpoint, &checkpoint); err != nil {
+			return nil, err
+		}
+		return &checkpoint, nil
+	default:
+		return nil, errors.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
+	}
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.Checkpoint {
+func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Snapshot) *apitype.VersionedCheckpoint {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *apitype.Deployment
 	if snap != nil {
 		latest = SerializeDeployment(snap)
 	}
 
-	return &apitype.Checkpoint{
+	b, err := json.Marshal(apitype.CheckpointV1{
 		Stack:  stack,
 		Config: config,
 		Latest: latest,
+	})
+	contract.AssertNoError(err)
+
+	return &apitype.VersionedCheckpoint{
+		Version:    1,
+		Checkpoint: json.RawMessage(b),
 	}
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(chkpoint *apitype.Checkpoint) (*deploy.Snapshot, error) {
+func DeserializeCheckpoint(chkpoint *apitype.CheckpointV1) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 
 	var snap *deploy.Snapshot

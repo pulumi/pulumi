@@ -34,7 +34,7 @@ import (
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
-	Checkpoint   apitype.Checkpoint
+	Checkpoint   apitype.CheckpointV1
 	Snapshot     deploy.Snapshot
 	RootResource resource.State
 	Outputs      map[string]interface{}

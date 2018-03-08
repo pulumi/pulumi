@@ -302,7 +302,7 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 		return err
 	}
 
-	checkpoint := &apitype.Checkpoint{
+	checkpoint := &apitype.CheckpointV1{
 		Stack:  stackName,
 		Config: config,
 		Latest: &latest,
