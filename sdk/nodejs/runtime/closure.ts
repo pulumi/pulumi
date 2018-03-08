@@ -110,9 +110,6 @@ interface EnvironmentEntry {
     // an array which may contain nested closures.
     arr?: EnvironmentEntry[];
 
-    // a reference to a requirable module name.
-    module?: string;
-
     // a Dependency<T> property.  It will be serialized over as a get() method that
     // returns the raw underlying value.
     dep?: EnvironmentEntry;
@@ -723,16 +720,10 @@ async function serializeAsync(
             return entry;
         }
 
-        const moduleName = findRequirableModuleName(obj);
-
         if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
-        }
-        else if (moduleName) {
-            // Serialize any value which was found as a requirable module name as a reference to the module
-            entry.module = moduleName;
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
@@ -904,31 +895,6 @@ const builtInModuleNames = [
 const builtInModules = new Map<any, string>();
 for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
-}
-
-// findRequirableModuleName attempts to find a global name bound to the object, which can
-// be used as a stable reference across serialization.
-function findRequirableModuleName(obj: any): string | undefined  {
-    // First, check the built-in modules
-    const key = builtInModules.get(obj);
-    if (key) {
-        return key;
-    }
-    // Next, check the Node module require cache, which will store cached values
-    // of all non-built-in Node modules loaded by the program so far. _Note_: We
-    // don't pre-compute this because the require cache will get populated
-    // dynamically during execution.
-    for (const path of Object.keys(require.cache)) {
-        if (require.cache[path].exports === obj) {
-            // Rewrite the path to be a local module reference relative to the
-            // current working directory
-            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
-            return "./" + modPath;
-        }
-    }
-
-    // Else, return that no global name is available for this object.
-    return undefined;
 }
 
 const nodeModuleGlobals: {[key: string]: boolean} = {
@@ -1608,9 +1574,6 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         else if (envEntry.closure !== undefined) {
             const closureName = await emitClosureAndGetNameAsync(envEntry.closure);
             return closureName;
-        }
-        else if (envEntry.module !== undefined) {
-            return `require("${envEntry.module}")`;
         }
         else if (envEntry.dep !== undefined) {
             // get: () => { ... }
