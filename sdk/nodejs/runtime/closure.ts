@@ -145,7 +145,6 @@ interface Context {
 
 interface FunctionLocation {
     func: Function;
-    inferredName: string;
     file: string;
     line: number;
     column: number;
@@ -213,15 +212,7 @@ async function serializeClosureAsync(func: Function, serialize: (o: any) => bool
     const entry: EnvironmentEntry = {};
     context.cache.set(func, entry);
 
-    // try {
     entry.closure = await serializeFunctionRecursiveAsync(func, context, serialize);
-    // } catch (error: Error) {
-    //     error.me
-
-    //     const location = nativeruntime.getFunctionLocation(func);
-    //     console.log("Location: " + JSON.stringify(location));
-    //     console.log("Function: " + serializedFunction.funcExprWithoutName);
-    // }
 
     return entry.closure;
 
@@ -284,8 +275,7 @@ async function serializeFunctionRecursiveAsync(
     const line: number = nativeruntime.getFunctionLine(func);
     const column: number = nativeruntime.getFunctionColumn(func);
 
-    // @ts-ignore
-    context.frames.push({ functionLocation: { func: func, file: file, line: line, column: column } });
+    context.frames.push({ functionLocation: { func, file, line, column } });
     const result = await serializeWorkerAsync();
     context.frames.pop();
 
@@ -611,12 +601,12 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
     const funcString = func.toString();
     if (funcString.startsWith("[Function:")) {
         throwSerializationError(context,
-            `Cannot serialize non-expression functions (such as definitions and generators):\n${funcString}`);
+            `it was not a form that was understood:`);
     }
 
     if (funcString.indexOf("[native code]") !== -1) {
         throwSerializationError(context,
-            `Cannot serialize native code function:\n${funcString}`);
+            `it was a native code function:`);
     }
 
     // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
@@ -653,7 +643,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
         }
 
         throwSerializationError(context,
-            `Could not understand function:\n${funcString}`);
+            `it was not a function that was understood:`);
     }
 
     const signature = funcString.substr(0, openCurlyIndex);
@@ -680,13 +670,13 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
         const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
         if (diagnostics.length) {
             throwSerializationError(context,
-                `Could not parse class: ${diagnostics[0].messageText}\n${funcString}`);
+                `of a failure parsing the class: ${diagnostics[0].messageText}:`);
         }
 
         const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
             throwSerializationError(context,
-                `Could not understand class:\n${funcString}`);
+                `it was not a class that was understood:\n${funcString}`);
         }
 
         const constructor = <ts.ConstructorDeclaration>classDecl.members.find(m => ts.isConstructorDeclaration(m));
@@ -719,7 +709,8 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
 
         const openParenIndex = v.indexOf("(");
         if (openParenIndex < 0) {
-            throw new Error(`Could not understand function:\n${funcString}`);
+            throwSerializationError(context,
+                `it was not a form that was understood:`);
         }
 
         if (openParenIndex === 0) {
@@ -742,75 +733,82 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
             isArrowFunction: false,
         };
     }
-}
 
-function throwSerializationError(context: Context, info: string): never {
-    let message = "";
+    function throwSerializationError(context: Context, info: string): never {
+        let message = "";
 
-    const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
-    message += `Error serializing ${initialFuncLocation}\n\n`;
+        const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
+        message += `Error serializing ${initialFuncLocation}\n\n`;
 
-    let i = 0;
-    const n = context.frames.length;
-    for (; i < n; i++) {
-        const frame = context.frames[i];
+        let i = 0;
+        const n = context.frames.length;
+        for (; i < n; i++) {
+            const frame = context.frames[i];
 
-        const indentString = "  ".repeat(i);
-        message += indentString;
+            const indentString = "  ".repeat(i);
+            message += indentString;
 
-        if (frame.functionLocation) {
-            const funcLocation = getFunctionLocation(frame.functionLocation);
-            const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
+            if (frame.functionLocation) {
+                const funcLocation = getFunctionLocation(frame.functionLocation);
+                const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
 
-            if (nextFrameIsFunction) {
-                if (i === 0) {
-                    message += `function ${funcLocation}: referenced\n`;
+                if (nextFrameIsFunction) {
+                    if (i === 0) {
+                        message += `function ${funcLocation}: referenced\n`;
+                    }
+                    else {
+                        message += `function ${funcLocation}: which referenced\n`;
+                    }
                 }
                 else {
-                    message += `function ${funcLocation}: which referenced\n`;
+                    if (i === n - 1) {
+                        message += `function ${funcLocation}: which could not be serialized because\n`;
+                    }
+                    else if (i === 0) {
+                        message += `function ${funcLocation}: captured\n`;
+                    }
+                    else {
+                        message += `function ${funcLocation}: which captured\n`;
+                    }
                 }
             }
-            else {
-                if (i === n - 1) {
-                    message += `function ${funcLocation}: which caused\n`;
-                }
-                else if (i === 0) {
-                    message += `function ${funcLocation}: captured\n`;
-                }
-                else {
-                    message += `function ${funcLocation}: which captured\n`;
-                }
+            else if (frame.capturedModuleName) {
+                message += `module '${frame.capturedModuleName}' which indirectly referenced:\n`;
+            }
+            else if (frame.capturedVariableName) {
+                message += `variable '${frame.capturedVariableName}' which indirectly referenced:\n`;
             }
         }
-        else if (frame.capturedModuleName) {
-            message += `module '${frame.capturedModuleName}' which indirectly referenced:\n`;
+
+        message += "  ".repeat(i) + info + "\n\n";
+        message += "Function code:\n";
+
+        // include up to the first 5 lines of the function to help show what is wrong with it.
+        let split = funcString.split(/\r?\n/);
+        if (split.length > 5) {
+            split = split.slice(0, 5);
+            split.push("...");
         }
-        else if (frame.capturedVariableName) {
-            message += `variable '${frame.capturedVariableName}' which indirectly referenced:\n`;
+        for (const line of split) {
+            message += "  " + line + "\n";
         }
+
+        const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+        if (moduleIndex >= 0) {
+            const moduleName = context.frames[moduleIndex].capturedModuleName;
+            message += "\n";
+
+            const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
+            message += `Capturing modules can sometimes cause problems.
+Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}`;
+        }
+
+        throw new RunError(message);
     }
-
-//     message += "  ".repeat(i);
-    const split = info.split(/\r?\n/);
-    for (const line of split) {
-        message += "  ".repeat(i) + line + "\n";
-    }
-
-    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
-    if (moduleIndex >= 0) {
-        const moduleName = context.frames[moduleIndex].capturedModuleName;
-        message += "\n";
-
-        const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
-        message += `Capturing modules can sometimes cause problems.
-Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}.`;
-    }
-
-    throw new RunError(message);
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
-    let name = "'" + (loc.func.name || loc.inferredName || "<anonymous>") + "'";
+    let name = "'" + (loc.func.name || "<anonymous>") + "'";
     if (loc.file) {
         name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
