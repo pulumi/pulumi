@@ -3,6 +3,8 @@
 package engine
 
 import (
+	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -191,4 +193,26 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	}
 
 	return mutation.End(step.Iterator().Snap())
+}
+
+func prettyFormatError(err error) string {
+	contract.Assertf(err != nil, "err != nil")
+
+	var buffer bytes.Buffer
+	indent := 0
+	cursor := err
+	for cursor != nil {
+		buffer.WriteString(strings.Repeat(" ", indent))
+		buffer.WriteString(cursor.Error())
+		nextCursor := errors.Cause(cursor)
+		if cursor == nextCursor {
+			cursor = nil
+		} else {
+			cursor = nextCursor
+		}
+
+		indent += 2
+	}
+
+	return buffer.String()
 }
