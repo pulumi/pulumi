@@ -1075,6 +1075,8 @@ var (
 //      resource that cuts out a lot of cruft.  We could then just diff that content here.
 func massageText(text string) string {
 
+	return text
+
 	// Only do this for strings that match our serialized function pattern.
 	if !functionRegexp.MatchString(text) ||
 		!withRegexp.MatchString(text) ||
