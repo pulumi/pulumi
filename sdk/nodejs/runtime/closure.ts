@@ -1078,8 +1078,8 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         }
     }
 
-    console.log("Free variables for:\n" + serializedFunction.funcExprWithName  +
-        "\n" + JSON.stringify(result));
+    // console.log("Free variables for:\n" + serializedFunction.funcExprWithName  +
+    //     "\n" + JSON.stringify(result));
     log.debug(`Found free variables: ${JSON.stringify(result)}`);
     return result;
 
@@ -1265,12 +1265,34 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         // Restore the prior context and merge our free list with the previous one.
         scopes.pop();
 
-        Object.assign(savedRequired, required);
-        Object.assign(savedOptional, optional);
+        mergeMaps(savedRequired, required);
+        mergeMaps(savedOptional, optional);
 
         functionVars = savedFunctionVars;
         required = savedRequired;
         optional = savedOptional;
+    }
+
+    // Record<string, CapturedPropertyInfo[]>
+    function mergeMaps(target: CapturedVariableMap, source: CapturedVariableMap) {
+        for (const key of Object.keys(source)) {
+            const sourcePropInfos = source[key];
+            let targetPropInfos = target[key];
+
+            if (sourcePropInfos.length === 0) {
+                // we want to capture everything.  Make sure that's reflected in the target.
+                targetPropInfos = [];
+            }
+            else {
+                // we want to capture a subet of properties.  merge that subset into whatever
+                // subset we've recorded so far.
+                for (const sourceInfo of sourcePropInfos) {
+                    targetPropInfos = combineProperties(targetPropInfos, sourceInfo);
+                }
+            }
+
+            target[key] = targetPropInfos;
+        }
     }
 
     function visitCatchClause(node: ts.CatchClause): void {

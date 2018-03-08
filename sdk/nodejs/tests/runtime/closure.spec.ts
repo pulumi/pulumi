@@ -3122,6 +3122,99 @@ return function /*f1*/() {
 });
     }
 
+    {
+        // tslint:disable-next-line:no-empty
+        const table1: any = { primaryKey: 1, insert: () => { }, scan: () => { } };
+
+        async function testScanReturnsAllValues() {
+            await table1.insert({[table1.primaryKey.get()]: "val1", value1: 1, value2: "1"});
+            await table1.insert({[table1.primaryKey.get()]: "val2", value1: 2, value2: "2"});
+
+            const values = await table1.scan();
+            assert.equal(values.length, 2);
+
+            // @ts-ignore
+            const value1 = values.find(v => v[table1.primaryKey.get()] === "val1");
+            // @ts-ignore
+            const value2 = values.find(v => v[table1.primaryKey.get()] === "val2");
+
+            assert.notEqual(value1, value2);
+            assert.equal(value1.value1, 1);
+            assert.equal(value2.value1, 2);
+        }
+
+        cases.push({
+            title: "Cloud table function",
+            // tslint:disable-next-line
+            func: testScanReturnsAllValues,
+            expectText: `exports.handler = __f0;
+
+var __e0_table1 = {primaryKey: 1, insert: __f2, scan: __f3};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return () => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return () => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, table1: __e0_table1, assert: require("assert"), testScanReturnsAllValues: __f0 }) {
+
+return function /*testScanReturnsAllValues*/() {
+            return __awaiter(this, void 0, void 0, function* () {
+                yield table1.insert({ [table1.primaryKey.get()]: "val1", value1: 1, value2: "1" });
+                yield table1.insert({ [table1.primaryKey.get()]: "val2", value1: 2, value2: "2" });
+                const values = yield table1.scan();
+                assert.equal(values.length, 2);
+                // @ts-ignore
+                const value1 = values.find(v => v[table1.primaryKey.get()] === "val1");
+                // @ts-ignore
+                const value2 = values.find(v => v[table1.primaryKey.get()] === "val2");
+                assert.notEqual(value1, value2);
+                assert.equal(value1.value1, 1);
+                assert.equal(value2.value1, 2);
+            });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
     // Make a callback to keep running tests.
     let remaining = cases;
     while (true) {
@@ -3130,7 +3223,7 @@ return function /*f1*/() {
             return;
         }
 
-        // if (test.title !== "Capture all if object property is invoked, and it uses this.") {
+        // if (test.title !== "Cloud table function") {
         //     continue;
         // }
 
