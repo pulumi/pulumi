@@ -811,24 +811,11 @@ Consider using import('${moduleName}') or require('${moduleName}') inside functi
 function getFunctionLocation(loc: FunctionLocation): string {
     let name = "'" + (loc.func.name || loc.inferredName || "<anonymous>") + "'";
     if (loc.file) {
-        name += `: ${basename(loc.file)}(${loc.line || 0},${loc.column || 0})`;
+        name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
     return name;
 }
-
-// function getFunctionLocation(func: Function): FunctionLocation {
-//     // const result = { file: "foo.js", inferredName: "func", line: 0, column: 0 };
-//     return nativeruntime.getFunctionLocation(func);
-//     // const result = nativeruntime.getFunctionLocation(func);
-//     // const file = basename(result.file);
-//     // const name = "'" + (func.name || result.inferredName || "<anonymous>") + "'";
-//     // // convert line to being 1-indexed, not 0 indexed.
-//     // const line = result.line + 1;
-//     // const column = result.column;
-
-//     // return `${name}: ${file}(${line},${column})`;
-// }
 
 function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
     // The initial value of prototype on any newly-created Function instance is a new instance of
