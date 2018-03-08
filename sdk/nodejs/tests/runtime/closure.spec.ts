@@ -629,7 +629,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
 function 'func': closure.spec.js(0,0): captured
   module 'os' which indirectly referenced:
     function 'getHostname': which could not be serialized because
-      it was a native code function:
+      it was a native code function.
 
 Function code:
   function getHostname() { [native code] }
@@ -660,7 +660,7 @@ function 'func': closure.spec.js(0,0): captured
                   function 'formatValue': util.js(0,0): which captured
                     variable 'binding' which indirectly referenced:
                       function 'isArrayBuffer': which could not be serialized because
-                        it was a native code function:
+                        it was a native code function.
 
 Function code:
   function isArrayBuffer() { [native code] }

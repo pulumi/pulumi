@@ -124,12 +124,14 @@ interface EnvironmentEntry {
 }
 
 interface Context {
-    initialFunction: Function;
-
     // The cache stores a map of objects to the entries we've created for them.  It's used so that
     // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
     // object multiple times while walking the memory graph, we only emit it once.
     cache: Map<Object, EnvironmentEntry>;
+
+    // The 'frames' we push/pop as we're walking the object graph serializing things.
+    // These frames allow us to present a useful error message to the user in the context
+    // of their code as opposed the async callstack we have while serializing.
     frames: ContextFrame[];
 
     // A mapping from a class method/constructor to the environment entry corresponding to the
@@ -171,7 +173,6 @@ export async function serializeFunctionAsync(
  */
 async function serializeClosureAsync(func: Function, serialize: (o: any) => boolean): Promise<Closure> {
     const context: Context = {
-        initialFunction: func,
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
         classStaticMemberToSuperEntry: new Map(),
@@ -600,13 +601,11 @@ interface SerializedFunction {
 function serializeFunctionCode(func: Function, context: Context): SerializedFunction {
     const funcString = func.toString();
     if (funcString.startsWith("[Function:")) {
-        throwSerializationError(context,
-            `it was not a form that was understood:`);
+        throwSerializationError(`the function form was not understood.`);
     }
 
     if (funcString.indexOf("[native code]") !== -1) {
-        throwSerializationError(context,
-            `it was a native code function:`);
+        throwSerializationError(`it was a native code function.`);
     }
 
     // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
@@ -642,8 +641,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
             return { funcExprWithoutName: funcString, isArrowFunction: true };
         }
 
-        throwSerializationError(context,
-            `it was not a function that was understood:`);
+        throwSerializationError(`the function form was not understood.`);
     }
 
     const signature = funcString.substr(0, openCurlyIndex);
@@ -669,14 +667,12 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
         const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
         const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
         if (diagnostics.length) {
-            throwSerializationError(context,
-                `of a failure parsing the class: ${diagnostics[0].messageText}:`);
+            throwSerializationError(`the class could not be parsed: ${diagnostics[0].messageText}`);
         }
 
         const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
-            throwSerializationError(context,
-                `it was not a class that was understood:\n${funcString}`);
+            throwSerializationError(`the class form was not understood:\n${funcString}`);
         }
 
         const constructor = <ts.ConstructorDeclaration>classDecl.members.find(m => ts.isConstructorDeclaration(m));
@@ -709,8 +705,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
 
         const openParenIndex = v.indexOf("(");
         if (openParenIndex < 0) {
-            throwSerializationError(context,
-                `it was not a form that was understood:`);
+            throwSerializationError(`the function form was not understood.`);
         }
 
         if (openParenIndex === 0) {
@@ -734,7 +729,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
         };
     }
 
-    function throwSerializationError(context: Context, info: string): never {
+    function throwSerializationError(info: string): never {
         let message = "";
 
         const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
