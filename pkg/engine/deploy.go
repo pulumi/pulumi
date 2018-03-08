@@ -160,7 +160,8 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Report the beginning of the step if appropriate.
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/, acts.Opts.Debug)
+		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary,
+			acts.Opts.Detailed, false, 0 /*indent*/, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 

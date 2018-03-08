@@ -373,7 +373,8 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	} else if step.Op() == deploy.OpReplace {
 		replaces = step.(*deploy.ReplaceStep).Keys()
 	}
-	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces, summary, detailed, planning, indent, op, debug)
+	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces,
+		summary, detailed, planning, indent, op, debug)
 
 	// Reset the color and mark this as shown -- we're done.
 	b.WriteString(colors.Reset)
