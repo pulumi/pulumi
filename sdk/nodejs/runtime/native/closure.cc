@@ -24,6 +24,7 @@ using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Null;
+using v8::Number;
 using v8::Object;
 using v8::Script;
 using v8::String;
@@ -128,8 +129,36 @@ void LookupCapturedVariableValue(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(v);
 }
 
+void GetFunctionLocation(const FunctionCallbackInfo<Value>& args) {
+    Isolate* isolate = args.GetIsolate();
+
+    // Ensure the first argument is a proper function expression object.
+    if (args.Length() < 1 || args[0]->IsUndefined()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "Missing required function argument (arg-0)")));
+        return;
+    } else if (!args[0]->IsFunction()) {
+        isolate->ThrowException(Exception::TypeError(
+            String::NewFromUtf8(isolate, "User function (arg-0) must be a Function object")));
+        return;
+    }
+
+    auto func = Local<Function>::Cast(args[0]);
+    auto origin = func->GetScriptOrigin();
+
+    auto result = Object::New(isolate);
+
+    result->Set(String::NewFromUtf8(isolate, "inferredName"), func->GetInferredName());
+    result->Set(String::NewFromUtf8(isolate, "file"), origin.ResourceName());
+    result->Set(String::NewFromUtf8(isolate, "line"), Number::New(isolate, func->GetScriptLineNumber()));
+    result->Set(String::NewFromUtf8(isolate, "column"), Number::New(isolate, func->GetScriptColumnNumber()));
+
+    args.GetReturnValue().Set(result);
+}
+
 void init(Local<Object> exports) {
     NODE_SET_METHOD(exports, "lookupCapturedVariableValue", LookupCapturedVariableValue);
+    NODE_SET_METHOD(exports, "getFunctionLocation", GetFunctionLocation);
 }
 
 NODE_MODULE(nativeruntime, init)
