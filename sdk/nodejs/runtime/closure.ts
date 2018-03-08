@@ -143,8 +143,16 @@ interface Context {
     classStaticMemberToSuperEntry: Map<Function, EnvironmentEntry>;
  }
 
+interface FunctionLocation {
+    func: Function;
+    inferredName: string;
+    file: string;
+    line: number;
+    column: number;
+}
+
 interface ContextFrame {
-    func?: Function;
+    functionLocation?: FunctionLocation;
     capturedVariableName?: string;
     capturedModuleName?: string;
 }
@@ -272,15 +280,15 @@ async function serializeFunctionRecursiveAsync(
         func: Function, context: Context,
         serialize: (o: any) => boolean): Promise<Closure> {
 
-    try {
-        context.frames.push({ func: func });
-        return await serializeWorkerAsync();
-    }
-    finally {
-        context.frames.pop();
-    }
+    const file: string =  nativeruntime.getFunctionFile(func);
+    const line: number = nativeruntime.getFunctionLine(func);
 
-    // nested functions.
+    // @ts-ignore
+    context.frames.push({ functionLocation: { func: func, file: file, line: line } });
+    const result = await serializeWorkerAsync();
+    context.frames.pop();
+
+    return result;
 
     async function serializeWorkerAsync() {
         const funcEntry = context.cache.get(func);
@@ -466,15 +474,15 @@ async function serializeFunctionRecursiveAsync(
     }
 
     function rewriteSuperReferences(code: string, isStatic: boolean): string {
-        const file = ts.createSourceFile(
+        const sourceFile = ts.createSourceFile(
             "", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
         // Transform any usages of "super(...)" into "__super.call(this, ...)", any
         // instance usages of "super.xxx" into "__super.prototype.xxx" and any static
         // usages of "super.xxx" into "__super.xxx"
-        const transformed = ts.transform(file, [rewriteSuperCallsWorker]);
+        const transformed = ts.transform(sourceFile, [rewriteSuperCallsWorker]);
         const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-        const output = printer.printNode(ts.EmitHint.Unspecified, transformed.transformed[0], file).trim();
+        const output = printer.printNode(ts.EmitHint.Unspecified, transformed.transformed[0], sourceFile).trim();
 
         return output;
 
@@ -738,7 +746,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
 function throwSerializationError(context: Context, info: string): never {
     let message = "";
 
-    const initialFuncLocation = getFunctionLocation(context.initialFunction);
+    const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
     message += `Error serializing ${initialFuncLocation}\n\n`;
 
     let i = 0;
@@ -749,9 +757,9 @@ function throwSerializationError(context: Context, info: string): never {
         const indentString = "  ".repeat(i);
         message += indentString;
 
-        if (frame.func) {
-            const funcLocation = getFunctionLocation(frame.func);
-            const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].func !== undefined;
+        if (frame.functionLocation) {
+            const funcLocation = getFunctionLocation(frame.functionLocation);
+            const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
 
             if (nextFrameIsFunction) {
                 if (i === 0) {
@@ -792,7 +800,7 @@ function throwSerializationError(context: Context, info: string): never {
         const moduleName = context.frames[moduleIndex].capturedModuleName;
         message += "\n";
 
-        const location = getFunctionLocation(context.frames[moduleIndex - 1].func!);
+        const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
         message += `Capturing modules can sometimes cause problems.
 Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}.`;
     }
@@ -800,17 +808,23 @@ Consider using import('${moduleName}') or require('${moduleName}') inside functi
     throw new RunError(message);
 }
 
-function getFunctionLocation(func: Function): string {
-    const result = { file: "foo.js", inferredName: "func", line: 0, column: 0 };
-    // nativeruntime.getFunctionLocation(func);
-    const file = basename(result.file);
-    const name = "'" + (func.name || result.inferredName || "<anonymous>") + "'";
-    // convert line to being 1-indexed, not 0 indexed.
-    const line = result.line + 1;
-    const column = result.column;
-
-    return `${name}: ${file}(${line},${column})`;
+function getFunctionLocation(loc: FunctionLocation): string {
+    const name = "'" + (loc.func.name || loc.inferredName || "<anonymous>") + "'";
+    return `${name}: ${basename(loc.file || "")}(${loc.line || 0},${loc.column || 0})`;
 }
+
+// function getFunctionLocation(func: Function): FunctionLocation {
+//     // const result = { file: "foo.js", inferredName: "func", line: 0, column: 0 };
+//     return nativeruntime.getFunctionLocation(func);
+//     // const result = nativeruntime.getFunctionLocation(func);
+//     // const file = basename(result.file);
+//     // const name = "'" + (func.name || result.inferredName || "<anonymous>") + "'";
+//     // // convert line to being 1-indexed, not 0 indexed.
+//     // const line = result.line + 1;
+//     // const column = result.column;
+
+//     // return `${name}: ${file}(${line},${column})`;
+// }
 
 function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
     // The initial value of prototype on any newly-created Function instance is a new instance of

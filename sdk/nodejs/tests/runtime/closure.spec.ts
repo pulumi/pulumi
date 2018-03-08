@@ -3175,9 +3175,9 @@ return function /*testScanReturnsAllValues*/() {
             return;
         }
 
-        if (test.title !== "Fail to capture user-defined modules due to native functions") {
-            continue;
-        }
+        // if (test.title !== "Fail to capture user-defined modules due to native functions") {
+        //     continue;
+        // }
 
         it(test.title, asyncTest(async () => {
             // Run pre-actions.
