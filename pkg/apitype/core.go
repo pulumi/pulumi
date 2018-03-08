@@ -24,8 +24,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Checkpoint is a serialized deployment target plus a record of the latest deployment.
-type Checkpoint struct {
+// VersionedCheckpoint is a version number plus a json document. The version number describes what
+// version of the Checkpoint structure the Checkpoint member's json document can decode into.
+type VersionedCheckpoint struct {
+	Version    int             `json:"version"`
+	Checkpoint json.RawMessage `json:"checkpoint"`
+}
+
+// CheckpointV1 is a serialized deployment target plus a record of the latest deployment.
+type CheckpointV1 struct {
 	// Stack is the stack to update.
 	Stack tokens.QName `json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
