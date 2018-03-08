@@ -790,10 +790,10 @@ function throwSerializationError(context: Context, info: string): never {
     const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
     if (moduleIndex >= 0) {
         const moduleName = context.frames[moduleIndex].capturedModuleName;
-        message += "\n\n";
+        message += "\n";
 
         const location = getFunctionLocation(context.frames[moduleIndex - 1].func!);
-        message += `Capturing can sometimes cause problems.
+        message += `Capturing modules can sometimes cause problems.
 Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}.`;
     }
 
