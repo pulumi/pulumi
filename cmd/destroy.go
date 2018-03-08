@@ -72,6 +72,7 @@ func newDestroyCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
+				Debug:                debug,
 			}, backend.DisplayOptions{
 				Color: color.Colorization(),
 			})

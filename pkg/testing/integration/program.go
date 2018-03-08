@@ -396,12 +396,10 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "copying test to temp dir")
 	}
 
-	// Keep the temporary test directory around for debugging unless
-	// the test completes successfully.
-	keepTestDir := true
+	testFinished := false
 	defer func() {
-		if keepTestDir {
-			// Maybe copy to "failed tests" directory.
+		if !testFinished || pt.t.Failed() {
+			// Test aborted or failed. Maybe copy to "failed tests" directory.
 			failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
 			if failedTestsDir != "" {
 				dest := filepath.Join(failedTestsDir, pt.t.Name()+uniqueSuffix())
@@ -429,9 +427,7 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
-	// Ran to completion. Delete the test directory if the test passed.
-	keepTestDir = pt.t.Failed()
-
+	testFinished = true
 	return nil
 }
 
