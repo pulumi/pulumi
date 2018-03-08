@@ -1737,8 +1737,8 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             if (desc.hasValue) {
                 copy.value = entryValue;
             }
-            environmentText += `Object.defineProperty(${envVar}, ${propName}, ` +
-                `${ envObjToString(copy) });\n`;
+            const line = `Object.defineProperty(${envVar}, ${propName}, ${ envObjToString(copy) });\n`;
+            environmentText += line;
         }
     }
 
