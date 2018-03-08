@@ -138,62 +138,30 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 
 func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-
-	update, err := b.newUpdate(stackName, proj, root)
-	if err != nil {
-		return err
-	}
-
-	events := make(chan engine.Event)
-	done := make(chan bool)
-
-	go displayEvents("updating", events, done, debug, displayOpts)
-
-	// Perform the update
-	start := time.Now().Unix()
-	changes, updateErr := engine.Deploy(update, events, opts)
-	end := time.Now().Unix()
-
-	<-done
-	close(events)
-	close(done)
-
-	// Save update results.
-	result := backend.SucceededResult
-	if updateErr != nil {
-		result = backend.FailedResult
-	}
-	info := backend.UpdateInfo{
-		Kind:            backend.DeployUpdate,
-		StartTime:       start,
-		Message:         m.Message,
-		Environment:     m.Environment,
-		Config:          update.GetTarget().Config,
-		Result:          result,
-		EndTime:         end,
-		ResourceChanges: changes,
-	}
-	var saveErr error
-	var backupErr error
-	if !opts.DryRun {
-		saveErr = addToHistory(stackName, info)
-		backupErr = backupStack(stackName)
-	}
-
-	if updateErr != nil {
-		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return updateErr
-	}
-	if saveErr != nil {
-		// We swallow backupErr as it is less important than the saveErr.
-		return errors.Wrap(saveErr, "saving update info")
-	}
-	return errors.Wrap(backupErr, "saving backup")
+	return b.updateOrDestroy(
+		"updating", backend.DeployUpdate,
+		stackName, proj, root, debug, m, opts, displayOpts,
+		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
+			return engine.Deploy(update, events, opts)
+		},
+	)
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return b.updateOrDestroy(
+		"destroying", backend.DestroyUpdate,
+		stackName, proj, root, debug, m, opts, displayOpts,
+		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
+			return engine.Destroy(update, events, opts)
+		},
+	)
+}
 
+func (b *localBackend) updateOrDestroy(op string, kind backend.UpdateKind,
+	stackName tokens.QName, proj *workspace.Project, root string,
+	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	performEngineOp func(*update, chan engine.Event) (engine.ResourceChanges, error)) error {
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
@@ -202,11 +170,11 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go displayEvents("destroying", events, done, debug, displayOpts)
+	go displayEvents(op, events, done, debug, displayOpts)
 
-	// Perform the destroy
+	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := engine.Destroy(update, events, opts)
+	changes, updateErr := performEngineOp(update, events)
 	end := time.Now().Unix()
 
 	<-done
@@ -219,13 +187,16 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 		result = backend.FailedResult
 	}
 	info := backend.UpdateInfo{
-		Kind:            backend.DestroyUpdate,
-		StartTime:       start,
-		Message:         m.Message,
-		Environment:     m.Environment,
-		Config:          update.GetTarget().Config,
-		Result:          result,
-		EndTime:         end,
+		Kind:        kind,
+		StartTime:   start,
+		Message:     m.Message,
+		Environment: m.Environment,
+		Config:      update.GetTarget().Config,
+		Result:      result,
+		EndTime:     end,
+		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doens't need to
+		//     rudely assume it knows where the checkpoint file is on disk as it makes a copy of it.  This isn't
+		//     trivial to achieve today given the event driven nature of plan-walking, however.
 		ResourceChanges: changes,
 	}
 	var saveErr error
