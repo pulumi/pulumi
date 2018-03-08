@@ -1193,11 +1193,11 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
             node.parent.expression === node) {
 
             const propertyAccess = <ts.PropertyAccessExpression>node.parent;
-            if (propertyAccess.parent) {
-                const invoked = ts.isCallExpression(propertyAccess.parent) &&
-                                propertyAccess.parent.expression === propertyAccess;
-                return { name: node.parent.name.text, invoked };
-            }
+            const invoked = propertyAccess.parent !== undefined &&
+                            ts.isCallExpression(propertyAccess.parent) &&
+                            propertyAccess.parent.expression === propertyAccess;
+
+            return { name: node.parent.name.text, invoked };
         }
 
         // For all other cases, capture everything.
