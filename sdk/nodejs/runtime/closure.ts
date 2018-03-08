@@ -2,11 +2,11 @@
 
 import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
+import { basename } from "path";
 import * as ts from "typescript";
 import { RunError } from "../errors";
 import * as log from "../log";
 import * as resource from "../resource";
-import { prototype } from "events";
 
 // Our closure serialization code links against v8 internals. On Windows,
 // we can't dynamically link against v8 internals because their symbols are
@@ -124,6 +124,8 @@ interface EnvironmentEntry {
 }
 
 interface Context {
+    initialFunction: Function;
+
     // The cache stores a map of objects to the entries we've created for them.  It's used so that
     // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
     // object multiple times while walking the memory graph, we only emit it once.
@@ -143,7 +145,8 @@ interface Context {
 
 interface ContextFrame {
     func?: Function;
-    capturedVariable?: string;
+    capturedVariableName?: string;
+    capturedModuleName?: string;
 }
 
 export async function serializeFunctionAsync(
@@ -161,6 +164,7 @@ export async function serializeFunctionAsync(
  */
 async function serializeClosureAsync(func: Function, serialize: (o: any) => boolean): Promise<Closure> {
     const context: Context = {
+        initialFunction: func,
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
         classStaticMemberToSuperEntry: new Map(),
@@ -289,7 +293,7 @@ async function serializeFunctionRecursiveAsync(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const serializedFunction = serializeFunctionCode(func);
+        const serializedFunction = serializeFunctionCode(func, context);
 
         const funcExprWithoutName = serializedFunction.funcExprWithoutName;
         const funcExprWithName = serializedFunction.funcExprWithName;
@@ -389,19 +393,32 @@ async function serializeFunctionRecursiveAsync(
                 capturedVariables: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
 
             for (const name of Object.keys(capturedVariables)) {
-                try {
-                    context.frames.push({ capturedVariable: name });
-                    await processCapturedVariable(capturedVariables, name, throwOnFailure)
-                }
-                finally {
+                const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+
+                const moduleName = findModuleName(value);
+                if (moduleName) {
+                    context.frames.push({ capturedModuleName: moduleName });
+                    await processCapturedVariable(capturedVariables, name, value);
                     context.frames.pop();
+                    continue;
                 }
+
+                if (value instanceof Function) {
+                    // If we had a function directly reference another function, then we don't need
+                    // to push a contxt frame saying through which captured variable we were walking
+                    // through.
+                    await processCapturedVariable(capturedVariables, name, value);
+                    continue;
+                }
+
+                context.frames.push({ capturedVariableName: name });
+                await processCapturedVariable(capturedVariables, name, value);
+                context.frames.pop();
             }
         }
 
         async function processCapturedVariable(
-            capturedVariables: CapturedVariableMap, name: string, throwOnFailure: boolean) {
-            const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+            capturedVariables: CapturedVariableMap, name: string, value: any) {
 
             const properties = capturedVariables[name];
             const serializedName = await serializeAsync(name, undefined, context, serialize);
@@ -461,7 +478,7 @@ async function serializeFunctionRecursiveAsync(
 
         return output;
 
-        function rewriteSuperCallsWorker(context: ts.TransformationContext) {
+        function rewriteSuperCallsWorker(transformationContext: ts.TransformationContext) {
             const newNodes = new Set<ts.Node>();
             let firstFunctionDeclaration = true;
 
@@ -477,7 +494,7 @@ async function serializeFunctionRecursiveAsync(
                 // This means the inner call properly binds to the *outer* function we create.
                 if (firstFunctionDeclaration && ts.isFunctionDeclaration(node)) {
                     firstFunctionDeclaration = false;
-                    const funcDecl = ts.visitEachChild(node, visitor, context);
+                    const funcDecl = ts.visitEachChild(node, visitor, transformationContext);
 
                     const text = isLegalName(funcDecl.name!.text)
                         ? "/*" + funcDecl.name!.text + "*/" : "";
@@ -524,7 +541,7 @@ async function serializeFunctionRecursiveAsync(
 
                 // for all other nodes, recurse first (so we update any usages of 'super')
                 // below them
-                const rewritten = ts.visitEachChild(node, visitor, context);
+                const rewritten = ts.visitEachChild(node, visitor, transformationContext);
 
                 if (ts.isCallExpression(rewritten) &&
                     newNodes.has(rewritten.expression)) {
@@ -581,15 +598,16 @@ interface SerializedFunction {
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
 // are represented.  If these change, this will likely break us.zs
-function serializeFunctionCode(func: Function): SerializedFunction {
+function serializeFunctionCode(func: Function, context: Context): SerializedFunction {
     const funcString = func.toString();
     if (funcString.startsWith("[Function:")) {
-        throw new Error(
+        throwSerializationError(context,
             `Cannot serialize non-expression functions (such as definitions and generators):\n${funcString}`);
     }
 
     if (funcString.indexOf("[native code]") !== -1) {
-        throw new Error(`Cannot serialize native code function:\n${funcString}`);
+        throwSerializationError(context,
+            `Cannot serialize native code function:\n${funcString}`);
     }
 
     // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
@@ -625,7 +643,8 @@ function serializeFunctionCode(func: Function): SerializedFunction {
             return { funcExprWithoutName: funcString, isArrowFunction: true };
         }
 
-        throw new Error(`Could not understand function:\n${funcString}`);
+        throwSerializationError(context,
+            `Could not understand function:\n${funcString}`);
     }
 
     const signature = funcString.substr(0, openCurlyIndex);
@@ -651,12 +670,14 @@ function serializeFunctionCode(func: Function): SerializedFunction {
         const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
         const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
         if (diagnostics.length) {
-            throw new Error(`Could not parse class: ${diagnostics[0].messageText}\n${funcString}`);
+            throwSerializationError(context,
+                `Could not parse class: ${diagnostics[0].messageText}\n${funcString}`);
         }
 
         const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
-            throw new Error(`Could not understand class:\n${funcString}`);
+            throwSerializationError(context,
+                `Could not understand class:\n${funcString}`);
         }
 
         const constructor = <ts.ConstructorDeclaration>classDecl.members.find(m => ts.isConstructorDeclaration(m));
@@ -712,6 +733,83 @@ function serializeFunctionCode(func: Function): SerializedFunction {
             isArrowFunction: false,
         };
     }
+}
+
+function throwSerializationError(context: Context, info: string): never {
+    let message = "";
+
+    const initialFuncLocation = getFunctionLocation(context.initialFunction);
+    message += `Error serializing ${initialFuncLocation}\n\n`;
+
+    let i = 0;
+    const n = context.frames.length;
+    for (; i < n; i++) {
+        const frame = context.frames[i];
+
+        const indentString = "  ".repeat(i);
+        message += indentString;
+
+        if (frame.func) {
+            const funcLocation = getFunctionLocation(frame.func);
+            const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].func !== undefined;
+
+            if (nextFrameIsFunction) {
+                if (i === 0) {
+                    message += `function ${funcLocation}: referenced\n`;
+                }
+                else {
+                    message += `function ${funcLocation}: which referenced\n`;
+                }
+            }
+            else {
+                if (i === n - 1) {
+                    message += `function ${funcLocation}: which caused\n`;
+                }
+                else if (i === 0) {
+                    message += `function ${funcLocation}: captured\n`;
+                }
+                else {
+                    message += `function ${funcLocation}: which captured\n`;
+                }
+            }
+        }
+        else if (frame.capturedModuleName) {
+            message += `module '${frame.capturedModuleName}' which indirectly referenced:\n`;
+        }
+        else if (frame.capturedVariableName) {
+            message += `variable '${frame.capturedVariableName}' which indirectly referenced:\n`;
+        }
+    }
+
+//     message += "  ".repeat(i);
+    const split = info.split(/\r?\n/);
+    for (const line of split) {
+        message += "  ".repeat(i) + line + "\n";
+    }
+
+    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+    if (moduleIndex >= 0) {
+        const moduleName = context.frames[moduleIndex].capturedModuleName;
+        message += "\n\n";
+
+        const location = getFunctionLocation(context.frames[moduleIndex - 1].func!);
+        message += `Capturing can sometimes cause problems.
+Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}.`;
+    }
+
+    throw new RunError(message);
+}
+
+function getFunctionLocation(func: Function): string {
+    const result = { file: "foo.js", inferredName: "func", line: 0, column: 0 };
+    // nativeruntime.getFunctionLocation(func);
+    const file = basename(result.file);
+    const name = "'" + (func.name || result.inferredName || "<anonymous>") + "'";
+    // convert line to being 1-indexed, not 0 indexed.
+    const line = result.line + 1;
+    const column = result.column;
+
+    return `${name}: ${file}(${line},${column})`;
 }
 
 function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
@@ -945,6 +1043,32 @@ const builtInModuleNames = [
 const builtInModules = new Map<any, string>();
 for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
+}
+
+// findRequirableModuleName attempts to find a global name bound to the object, which can
+// be used as a stable reference across serialization.
+function findModuleName(obj: any): string | undefined  {
+    // First, check the built-in modules
+    const key = builtInModules.get(obj);
+    if (key) {
+        return key;
+    }
+
+    // Next, check the Node module require cache, which will store cached values
+    // of all non-built-in Node modules loaded by the program so far. _Note_: We
+    // don't pre-compute this because the require cache will get populated
+    // dynamically during execution.
+    for (const path of Object.keys(require.cache)) {
+        if (require.cache[path].exports === obj) {
+            // Rewrite the path to be a local module reference relative to the
+            // current working directory
+            const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
+            return "./" + modPath;
+        }
+    }
+
+    // Else, return that no global name is available for this object.
+    return undefined;
 }
 
 const nodeModuleGlobals: {[key: string]: boolean} = {

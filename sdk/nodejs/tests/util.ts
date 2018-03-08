@@ -25,13 +25,17 @@ export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void 
 }
 
 // A helper function for asynchronous tests that throw.
-export async function assertAsyncThrows(test: () => Promise<void>): Promise<void> {
+export async function assertAsyncThrows(test: () => Promise<void>, message?: string): Promise<void> {
     let thrown: boolean = false;
     try {
         await test();
     }
     catch (err) {
         thrown = true;
+
+        if (message !== undefined) {
+            assert.equal(err.message, message);
+        }
     }
     assert(thrown, "Function was expected to throw, but didn't");
 }

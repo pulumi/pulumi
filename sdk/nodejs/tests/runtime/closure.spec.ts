@@ -13,6 +13,7 @@ interface ClosureCase {
     title: string;                  // a title banner for the test case.
     func: Function;                 // the function whose body and closure to serialize.
     expectText: string | undefined; // optionally also validate the serialization to JavaScript text.
+    error?: string;
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
 
@@ -622,6 +623,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             title: "Fail to capture built-in modules due to native functions",
             func: () => os,
             expectText: undefined,
+            error: "",
         });
     }
 
@@ -631,6 +633,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             title: "Fail to capture user-defined modules due to native functions",
             func: () => util,
             expectText: undefined,
+            error: "",
         });
     }
 
@@ -3172,9 +3175,9 @@ return function /*testScanReturnsAllValues*/() {
             return;
         }
 
-        // if (test.title !== "Cloud table function") {
-        //     continue;
-        // }
+        if (test.title !== "Fail to capture user-defined modules due to native functions") {
+            continue;
+        }
 
         it(test.title, asyncTest(async () => {
             // Run pre-actions.
@@ -3189,7 +3192,7 @@ return function /*testScanReturnsAllValues*/() {
             } else {
                 await assertAsyncThrows(async () => {
                     await runtime.serializeFunctionAsync(test.func);
-                });
+                }, test.error);
             }
         }));
 
