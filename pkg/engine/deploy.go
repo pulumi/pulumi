@@ -25,6 +25,7 @@ type UpdateOptions struct {
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated in addition to updates.
 	Summary              bool     // true if we should only summarize resources and operations.
+	Debug                bool     // true if debugging output it enabled
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
@@ -159,7 +160,8 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Report the beginning of the step if appropriate.
 	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
 		var b bytes.Buffer
-		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, false, 0 /*indent*/)
+		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary,
+			acts.Opts.Detailed, false, 0 /*indent*/, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 
@@ -202,7 +204,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 
 		// Also show outputs here, since there might be some from the initial registration.
 		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
-			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/)
+			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/, acts.Opts.Debug)
 		}
 	}
 
@@ -217,7 +219,7 @@ func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	// Print this step's output properties.
 	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
 		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/)
+		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/, acts.Opts.Debug)
 		acts.Opts.Events <- stdOutEventWithColor(&b)
 	}
 

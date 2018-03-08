@@ -41,6 +41,7 @@ type UpdateOptions struct {
 	ShowReplacementSteps bool                `json:"showReplacementSteps"`
 	ShowSames            bool                `json:"showNames"`
 	Summary              bool                `json:"summary"`
+	Debug                bool                `json:"debug"`
 }
 
 // UpdateMetadata describes optional metadata about an update.
