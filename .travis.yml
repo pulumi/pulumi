@@ -11,6 +11,7 @@ git:
   depth: false
 before_install:
     - source ./build/travis/prepare-environment.sh
+    - . "${PULUMI_HOME}/scripts/keep-failed-tests.sh"
 install:
     - source ./build/travis/install-common-toolchain.sh
 before_script:
@@ -18,6 +19,6 @@ before_script:
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
 after_failure:
-    - ./build/travis/upload-failure-logs
+    - "${PULUMI_HOME}/scripts/upload-failed-tests"
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
