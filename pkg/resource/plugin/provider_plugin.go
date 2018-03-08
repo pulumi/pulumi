@@ -204,7 +204,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, rpcErr := interpretRPCError(err)
+		resourceStatus, rpcErr := resourceStateAndError(err)
 		glog.V(7).Infof("%s failed: err=%v", label, rpcErr)
 		return "", nil, resourceStatus, rpcErr
 	}
@@ -255,7 +255,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	resp, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
-		resourceStatus, rpcErr := interpretRPCError(err)
+		resourceStatus, rpcErr := resourceStateAndError(err)
 		glog.V(7).Infof("%s failed: %v", label, rpcErr)
 		return nil, resourceStatus, rpcErr
 	}
@@ -290,7 +290,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
-		resourceStatus, rpcErr := interpretRPCError(err)
+		resourceStatus, rpcErr := resourceStateAndError(err)
 		glog.V(7).Infof("%s failed: %v", label, rpcErr)
 		return resourceStatus, rpcErr
 	}
@@ -368,7 +368,7 @@ func (p *provider) Close() error {
 	return p.plug.Close()
 }
 
-// interpretRPCError interprets an error obtained from a gRPC endpoint.
+// resourceStateAndError interprets an error obtained from a gRPC endpoint.
 //
 // gRPC gives us a `status.Status` structure as an `error` whenever our
 // gRPC servers serve up an error. Each `status.Status` contains a code
@@ -378,7 +378,7 @@ func (p *provider) Close() error {
 // In general, our resource state is only really unknown if the server
 // had an internal error, in which case it will serve one of `codes.Internal`,
 // `codes.DataLoss`, or `codes.Unknown` to us.
-func interpretRPCError(err error) (resource.Status, error) {
+func resourceStateAndError(err error) (resource.Status, error) {
 	rpcStatus, _ := status.FromError(err)
 	glog.V(8).Infof("provider received rpc error `%s`: `%s`", rpcStatus.Code(), rpcStatus.Message())
 	switch rpcStatus.Code() {
