@@ -809,8 +809,12 @@ Consider using import('${moduleName}') or require('${moduleName}') inside functi
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
-    const name = "'" + (loc.func.name || loc.inferredName || "<anonymous>") + "'";
-    return `${name}: ${basename(loc.file || "")}(${loc.line || 0},${loc.column || 0})`;
+    let name = "'" + (loc.func.name || loc.inferredName || "<anonymous>") + "'";
+    if (loc.file) {
+        name += `: ${basename(loc.file)}(${loc.line || 0},${loc.column || 0})`;
+    }
+
+    return name;
 }
 
 // function getFunctionLocation(func: Function): FunctionLocation {
