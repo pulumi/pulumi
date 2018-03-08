@@ -142,6 +142,8 @@ interface Context {
  }
 
 interface ContextFrame {
+    func?: Function;
+    capturedVariable?: string;
 }
 
 export async function serializeFunctionAsync(
@@ -266,117 +268,142 @@ async function serializeFunctionRecursiveAsync(
         func: Function, context: Context,
         serialize: (o: any) => boolean): Promise<Closure> {
 
-    const funcEntry = context.cache.get(func);
-    if (!funcEntry) {
-        throw new Error("EnvironmentEntry for this this function was not created by caller");
+    try {
+        context.frames.push({ func: func });
+        return await serializeWorkerAsync();
+    }
+    finally {
+        context.frames.pop();
     }
 
-    // First, convert the js func object to a reasonable stringified version that we can operate on.
-    // Importantly, this function helps massage all the different forms that V8 can produce to
-    // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
-    // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
-    // process down the pipeline.
-    const serializedFunction = serializeFunctionCode(func);
+    // nested functions.
 
-    const funcExprWithoutName = serializedFunction.funcExprWithoutName;
-    const funcExprWithName = serializedFunction.funcExprWithName;
-    const functionDeclarationName = serializedFunction.functionDeclarationName;
-
-    const freeVariableNames = computeCapturedVariableNames(serializedFunction);
-
-    const environment: Environment = new Map();
-    await populateEnviromentAsync(freeVariableNames.required,  /*throwOnFailure:*/ true);
-    await populateEnviromentAsync(freeVariableNames.optional,  /*throwOnFailure:*/ false);
-
-    const closure: Closure = {
-        code: funcExprWithoutName,
-        runtime: "nodejs",
-        environment: environment,
-        obj: { env: new Map() },
-        usesNonLexicalThis: computeUsesNonLexialThis(serializedFunction),
-    };
-
-    const proto = Object.getPrototypeOf(func);
-
-    const isDerivedClassConstructor =
-        func.toString().startsWith("class ") &&
-        proto !== Function.prototype(func);
-
-    // Ensure that the prototype of this function is properly serialized as well. We only need to do
-    // this for functions with a custom prototype (like a derived class constructor, or a functoin
-    // that a user has explicit set the prototype for). Normal functions will pick up
-    // Function.prototype by default, so we don't need to do anything for them.
-    if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
-        const protoEntry = await serializeAsync(proto, undefined, context, serialize);
-        closure.obj.proto = protoEntry;
-
-        if (isDerivedClassConstructor) {
-            processDerivedClassConstructor(protoEntry);
-            closure.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
-        }
-    }
-
-    // capture any properties placed on the function itself.  Don't bother with
-    // "length/name" as those are not things we can actually change.
-    for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func)) {
-        if (keyOrSymbol === "length" || keyOrSymbol === "name") {
-            continue;
+    async function serializeWorkerAsync() {
+        const funcEntry = context.cache.get(func);
+        if (!funcEntry) {
+            throw new Error("EnvironmentEntry for this this function was not created by caller");
         }
 
-        const funcProp = (<any>func)[keyOrSymbol];
+        // First, convert the js func object to a reasonable stringified version that we can operate on.
+        // Importantly, this function helps massage all the different forms that V8 can produce to
+        // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
+        // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
+        // process down the pipeline.
+        const serializedFunction = serializeFunctionCode(func);
 
-        // We don't need to emit code to serialize this function's .prototype object
-        // unless that .prototype object was actually changed.
+        const funcExprWithoutName = serializedFunction.funcExprWithoutName;
+        const funcExprWithName = serializedFunction.funcExprWithName;
+        const functionDeclarationName = serializedFunction.functionDeclarationName;
+
+        const freeVariableNames = computeCapturedVariableNames(serializedFunction);
+
+        const environment: Environment = new Map();
+        await processCapturedVariablesAsync(freeVariableNames.required, /*throwOnFailure:*/ true);
+        await processCapturedVariablesAsync(freeVariableNames.optional, /*throwOnFailure:*/ false);
+
+        const closure: Closure = {
+            code: funcExprWithoutName,
+            runtime: "nodejs",
+            environment: environment,
+            obj: { env: new Map() },
+            usesNonLexicalThis: computeUsesNonLexialThis(serializedFunction),
+        };
+
+        const proto = Object.getPrototypeOf(func);
+
+        const isDerivedClassConstructor =
+            func.toString().startsWith("class ") &&
+            proto !== Function.prototype(func);
+
+        // Ensure that the prototype of this function is properly serialized as well. We only need to do
+        // this for functions with a custom prototype (like a derived class constructor, or a functoin
+        // that a user has explicit set the prototype for). Normal functions will pick up
+        // Function.prototype by default, so we don't need to do anything for them.
+        if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
+            const protoEntry = await serializeAsync(proto, undefined, context, serialize);
+            closure.obj.proto = protoEntry;
+
+            if (isDerivedClassConstructor) {
+                processDerivedClassConstructor(protoEntry);
+                closure.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
+            }
+        }
+
+        // capture any properties placed on the function itself.  Don't bother with
+        // "length/name" as those are not things we can actually change.
+        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func)) {
+            if (keyOrSymbol === "length" || keyOrSymbol === "name") {
+                continue;
+            }
+
+            const funcProp = (<any>func)[keyOrSymbol];
+
+            // We don't need to emit code to serialize this function's .prototype object
+            // unless that .prototype object was actually changed.
+            //
+            // In other words, in general, we will not emit the prototype for a normal
+            // 'function foo() {}' declaration.  but we will emit the prototype for the
+            // constructor function of a class.
+            if (keyOrSymbol === "prototype" && isDefaultFunctionPrototype(func, funcProp)) {
+                continue;
+            }
+
+            closure.obj.env.set(
+                await serializeAsync(keyOrSymbol, undefined, context, serialize),
+                { entry: await serializeAsync(funcProp, undefined, context, serialize) });
+        }
+
+        const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
+                           context.classStaticMemberToSuperEntry.get(func);
+        if (superEntry) {
+            // this was a class constructor or method.  We need to put a special __super
+            // entry into scope, and then rewrite any calls to super() to refer to it.
+            closure.environment.set(
+                await serializeAsync("__super", undefined, context, serialize),
+                { entry: superEntry });
+
+            closure.code = rewriteSuperReferences(
+                funcExprWithName!, context.classStaticMemberToSuperEntry.has(func));
+        }
+
+        // If this was a named function (literally, only a named function-expr or function-decl), then
+        // place an entry in the environment that maps from this function name to the serialized
+        // function we're creating.  This ensures that recursive functions will call the right method.
+        // i.e if we have "function f() { f(); }" this will get rewritten to:
         //
-        // In other words, in general, we will not emit the prototype for a normal
-        // 'function foo() {}' declaration.  but we will emit the prototype for the
-        // constructor function of a class.
-        if (keyOrSymbol === "prototype" && isDefaultFunctionPrototype(func, funcProp)) {
-            continue;
+        //      function __f() {
+        //          with ({ f: __f }) {
+        //              return function () { f(); }
+        //
+        // i.e. the inner call to "f();" will actually call the *outer* __f function, and not
+        // itself.
+        if (functionDeclarationName !== undefined) {
+            closure.environment.set(
+                await serializeAsync(functionDeclarationName, undefined, context, serialize),
+                { entry: funcEntry });
         }
 
-        closure.obj.env.set(
-            await serializeAsync(keyOrSymbol, undefined, context, serialize),
-            { entry: await serializeAsync(funcProp, undefined, context, serialize) });
-    }
+        return closure;
 
-    const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
-                       context.classStaticMemberToSuperEntry.get(func);
-    if (superEntry) {
-        // this was a class constructor or method.  We need to put a special __super
-        // entry into scope, and then rewrite any calls to super() to refer to it.
-        closure.environment.set(
-            await serializeAsync("__super", undefined, context, serialize),
-            { entry: superEntry });
+        async function processCapturedVariablesAsync(
+                capturedVariables: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
 
-        closure.code = rewriteSuperReferences(
-            funcExprWithName!, context.classStaticMemberToSuperEntry.has(func));
-    }
+            for (const name of Object.keys(capturedVariables)) {
+                try {
+                    context.frames.push({ capturedVariable: name });
+                    await processCapturedVariable(capturedVariables, name, throwOnFailure)
+                }
+                finally {
+                    context.frames.pop();
+                }
+            }
+        }
 
-    // If this was a named function (literally, only a named function-expr or function-decl), then
-    // place an entry in the environment that maps from this function name to the serialized
-    // function we're creating.  This ensures that recursive functions will call the right method.
-    // i.e if we have "function f() { f(); }" this will get rewritten to:
-    //
-    //      function __f() {
-    //          with ({ f: __f }) {
-    //              return function () { f(); }
-    //
-    // i.e. the inner call to "f();" will actually call the *outer* __f function, and not
-    // itself.
-    if (functionDeclarationName !== undefined) {
-        closure.environment.set(
-            await serializeAsync(functionDeclarationName, undefined, context, serialize),
-            { entry: funcEntry });
-    }
-
-    return closure;
-
-    async function populateEnviromentAsync(names: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
-        for (const name of Object.keys(names)) {
+        async function processCapturedVariable(
+            capturedVariables: CapturedVariableMap, name: string, throwOnFailure: boolean) {
             const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
 
-            const properties = names[name];
+            const properties = capturedVariables[name];
             const serializedName = await serializeAsync(name, undefined, context, serialize);
 
             // try to only serialize out the properties that were used by the user's code.
