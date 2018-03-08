@@ -63,7 +63,6 @@ const (
 // flexibility in case there is a breaking change in the backend-type.
 type UpdateInfo struct {
 	// Information known before an update is started.
-
 	Kind        UpdateKind             `json:"kind"`
 	StartTime   int64                  `json:"startTime"`
 	Message     string                 `json:"message"`
@@ -71,10 +70,10 @@ type UpdateInfo struct {
 	Config      map[string]ConfigValue `json:"config"`
 
 	// Information obtained from an update completing.
-
 	Result          UpdateResult   `json:"result"`
 	EndTime         int64          `json:"endTime"`
-	ResourceChanges map[OpType]int `json:"resourceChanges"`
+	Deployment      *Deployment    `json:"deployment,omitempty"`
+	ResourceChanges map[OpType]int `json:"resourceChanges,omitempty"`
 }
 
 // GetHistoryResponse is the response from the Pulumi Service when requesting

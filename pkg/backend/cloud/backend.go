@@ -409,23 +409,18 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 		if err != nil {
 			return nil, errors.Wrap(err, "converting configuration")
 		}
-		changes := convertResourceChanges(update.ResourceChanges)
 
-		beUpdate := backend.UpdateInfo{
-			Kind:      backend.UpdateKind(update.Kind),
-			StartTime: update.StartTime,
-
-			Message:     update.Message,
-			Environment: update.Environment,
-
-			Config: cfg,
-
-			Result:  backend.UpdateResult(update.Result),
-			EndTime: update.EndTime,
-
-			ResourceChanges: changes,
-		}
-		beUpdates = append(beUpdates, beUpdate)
+		beUpdates = append(beUpdates, backend.UpdateInfo{
+			Kind:            backend.UpdateKind(update.Kind),
+			Message:         update.Message,
+			Environment:     update.Environment,
+			Config:          cfg,
+			Result:          backend.UpdateResult(update.Result),
+			StartTime:       update.StartTime,
+			EndTime:         update.EndTime,
+			Deployment:      update.Deployment,
+			ResourceChanges: convertResourceChanges(update.ResourceChanges),
+		})
 	}
 
 	return beUpdates, nil

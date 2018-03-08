@@ -3,6 +3,7 @@
 package backend
 
 import (
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
@@ -56,11 +57,12 @@ const (
 // UpdateInfo describes a previous update.
 type UpdateInfo struct {
 	// Information known before an update is started.
-
 	Kind      UpdateKind `json:"kind"`
 	StartTime int64      `json:"startTime"`
+
 	// Message is an optional message associated with the update.
 	Message string `json:"message"`
+
 	// Environment contains optional data from the deploying environment. e.g. the current
 	// source code control commit information.
 	Environment map[string]string `json:"environment"`
@@ -69,9 +71,8 @@ type UpdateInfo struct {
 	Config config.Map `json:"config"`
 
 	// Information obtained from an update completing.
-
-	Result  UpdateResult `json:"result"`
-	EndTime int64        `json:"endTime"`
-
-	ResourceChanges engine.ResourceChanges `json:"resourceChanges"`
+	Result          UpdateResult           `json:"result"`
+	EndTime         int64                  `json:"endTime"`
+	Deployment      *apitype.Deployment    `json:"deployment,omitempty"`
+	ResourceChanges engine.ResourceChanges `json:"resourceChanges,omitempty"`
 }
