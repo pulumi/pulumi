@@ -143,10 +143,18 @@ void GetFunctionLine(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(Integer::New(isolate, func->GetScriptLineNumber()));
 }
 
+void GetFunctionColumn(const FunctionCallbackInfo<Value>& args) {
+    Isolate* isolate = args.GetIsolate();
+
+    auto func = Local<Function>::Cast(args[0]);
+    args.GetReturnValue().Set(Integer::New(isolate, func->GetScriptColumnNumber()));
+}
+
 void init(Local<Object> exports) {
     NODE_SET_METHOD(exports, "lookupCapturedVariableValue", LookupCapturedVariableValue);
     NODE_SET_METHOD(exports, "getFunctionFile", GetFunctionFile);
     NODE_SET_METHOD(exports, "getFunctionLine", GetFunctionLine);
+    NODE_SET_METHOD(exports, "getFunctionColumn", GetFunctionColumn);
 }
 
 NODE_MODULE(nativeruntime, init)

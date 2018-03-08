@@ -282,9 +282,10 @@ async function serializeFunctionRecursiveAsync(
 
     const file: string =  nativeruntime.getFunctionFile(func);
     const line: number = nativeruntime.getFunctionLine(func);
+    const column: number = nativeruntime.getFunctionColumn(func);
 
     // @ts-ignore
-    context.frames.push({ functionLocation: { func: func, file: file, line: line } });
+    context.frames.push({ functionLocation: { func: func, file: file, line: line, column: column } });
     const result = await serializeWorkerAsync();
     context.frames.pop();
 
