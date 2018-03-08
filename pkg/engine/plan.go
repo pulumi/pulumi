@@ -325,7 +325,9 @@ func plural(s string, c int) string {
 
 // stepParentIndent computes a step's parent indentation.  If print is true, it also prints parents as it goes.
 func stepParentIndent(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, planning bool, indent int, print bool) int {
+	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
+	planning bool, indent int, print bool, debug bool) int {
+
 	for p := step.Res().Parent; p != ""; {
 		par := seen[p]
 		if par == nil {
@@ -336,7 +338,7 @@ func stepParentIndent(b *bytes.Buffer, step deploy.Step,
 		}
 		if print && !shown[p] {
 			// If the parent isn't yet shown, print it now as a summary.
-			printStep(b, par, seen, shown, true, false, planning, indent)
+			printStep(b, par, seen, shown, true, false, planning, indent, debug)
 		}
 		indent++
 		p = par.Res().Parent
@@ -345,7 +347,7 @@ func stepParentIndent(b *bytes.Buffer, step deploy.Step,
 }
 
 func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
-	summary bool, detailed bool, planning bool, indent int) {
+	summary bool, detailed bool, planning bool, indent int, debug bool) {
 	op := step.Op()
 
 	// First, indent to the same level as this resource has parents, and toggle the level of detail accordingly.
@@ -353,7 +355,7 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	//     their parents, so this often does the right thing, but not always.  For instance, we can have interleaved
 	//     infrastructure that gets emitted in the middle of the flow, making things look like they are parented
 	//     incorrectly.  The real solution here is to have a more first class way of structuring the output.
-	indent = stepParentIndent(b, step, seen, shown, planning, indent, true)
+	indent = stepParentIndent(b, step, seen, shown, planning, indent, true, debug)
 
 	// Print the indentation.
 	b.WriteString(getIndentationString(indent, op, false))
@@ -371,7 +373,7 @@ func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.S
 	} else if step.Op() == deploy.OpReplace {
 		replaces = step.(*deploy.ReplaceStep).Keys()
 	}
-	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces, summary, detailed, planning, indent, op)
+	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces, summary, detailed, planning, indent, op, debug)
 
 	// Reset the color and mark this as shown -- we're done.
 	b.WriteString(colors.Reset)
@@ -435,7 +437,8 @@ func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
 
 func printResourceProperties(
 	b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.State,
-	replaces []resource.PropertyKey, summary bool, detailed bool, planning bool, indent int, op deploy.StepOp) {
+	replaces []resource.PropertyKey, summary bool, detailed bool,
+	planning bool, indent int, op deploy.StepOp, debug bool) {
 
 	indent++
 
@@ -459,11 +462,11 @@ func printResourceProperties(
 	// If not summarizing, print all of the properties associated with this resource.
 	if !summary {
 		if old == nil && new != nil {
-			printObject(b, new.Inputs, planning, indent, op, false)
+			printObject(b, new.Inputs, planning, indent, op, false, debug)
 		} else if new == nil && old != nil {
-			printObject(b, old.Inputs, planning, indent, op, false)
+			printObject(b, old.Inputs, planning, indent, op, false, debug)
 		} else {
-			printOldNewDiffs(b, old.Inputs, new.Inputs, replaces, detailed, planning, indent, op)
+			printOldNewDiffs(b, old.Inputs, new.Inputs, replaces, detailed, planning, indent, op, debug)
 		}
 	}
 }
@@ -480,7 +483,7 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func printObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op deploy.StepOp, prefix bool) {
+	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
 	// Compute the maximum with of property keys so we can justify everything.
 	keys := props.StableKeys()
@@ -490,7 +493,7 @@ func printObject(
 	for _, k := range keys {
 		if v := props[k]; shouldPrintPropertyValue(v, planning) {
 			printPropertyTitle(b, string(k), maxkey, indent, op, prefix)
-			printPropertyValue(b, v, planning, indent, op, prefix)
+			printPropertyValue(b, v, planning, indent, op, prefix, debug)
 		}
 	}
 }
@@ -498,7 +501,8 @@ func printObject(
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool, planning bool, indent int) {
+	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
+	planning bool, indent int, debug bool) {
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New()
 	if new == nil || new.Outputs == nil {
@@ -508,7 +512,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 
 	// Now compute the indentation level, in part based on the parents.
 	indent++ // indent for the resource.
-	indent = stepParentIndent(b, step, seen, shown, false, indent, false)
+	indent = stepParentIndent(b, step, seen, shown, false, indent, false, debug)
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs
@@ -535,7 +539,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 					firstout = false
 				}
 				printPropertyTitle(b, string(k), maxkey, indent, op, false)
-				printPropertyValue(b, out, planning, indent, op, false)
+				printPropertyValue(b, out, planning, indent, op, false, debug)
 			}
 		}
 	}
@@ -578,7 +582,7 @@ func printPropertyTitle(b *bytes.Buffer, name string, align int, indent int, op 
 
 func printPropertyValue(
 	b *bytes.Buffer, v resource.PropertyValue, planning bool,
-	indent int, op deploy.StepOp, prefix bool) {
+	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
 	if v.IsNull() {
 		writeVerbatim(b, op, "<null>")
@@ -596,7 +600,7 @@ func printPropertyValue(
 			writeVerbatim(b, op, "[\n")
 			for i, elem := range arr {
 				writeWithIndent(b, indent, op, prefix, "    [%d]: ", i)
-				printPropertyValue(b, elem, planning, indent+1, op, prefix)
+				printPropertyValue(b, elem, planning, indent+1, op, prefix, debug)
 			}
 			writeWithIndentNoPrefix(b, indent, op, "]")
 		}
@@ -605,7 +609,7 @@ func printPropertyValue(
 		if text, has := a.GetText(); has {
 			write(b, op, "asset(text:%s) {\n", shortHash(a.Hash))
 
-			massaged := massageText(text)
+			massaged := massageText(text, debug)
 
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(massaged, "\n")
@@ -629,7 +633,7 @@ func printPropertyValue(
 			}
 			sort.Strings(names)
 			for _, name := range names {
-				printAssetOrArchive(b, assets[name], name, planning, indent, op, prefix)
+				printAssetOrArchive(b, assets[name], name, planning, indent, op, prefix, debug)
 			}
 			writeWithIndentNoPrefix(b, indent, op, "}")
 		} else if path, has := a.GetPath(); has {
@@ -657,7 +661,7 @@ func printPropertyValue(
 			writeVerbatim(b, op, "{}")
 		} else {
 			writeVerbatim(b, op, "{\n")
-			printObject(b, obj, planning, indent+1, op, prefix)
+			printObject(b, obj, planning, indent+1, op, prefix, debug)
 			writeWithIndentNoPrefix(b, indent, op, "}")
 		}
 	}
@@ -666,9 +670,9 @@ func printPropertyValue(
 
 func printAssetOrArchive(
 	b *bytes.Buffer, v interface{}, name string, planning bool,
-	indent int, op deploy.StepOp, prefix bool) {
+	indent int, op deploy.StepOp, prefix bool, debug bool) {
 	writeWithIndent(b, indent, op, prefix, "    \"%v\": ", name)
-	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+1, op, prefix)
+	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+1, op, prefix, debug)
 }
 
 func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
@@ -692,18 +696,20 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
-	replaces []resource.PropertyKey, detailed bool, planning bool, indent int, op deploy.StepOp) {
+	replaces []resource.PropertyKey, detailed bool,
+	planning bool, indent int, op deploy.StepOp, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, detailed, replaces, false, planning, indent)
+		printObjectDiff(b, *diff, detailed, replaces, false, planning, indent, debug)
 	} else {
-		printObject(b, news, planning, indent, op, true)
+		printObject(b, news, planning, indent, op, true, debug)
 	}
 }
 
 func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, detailed bool,
-	replaces []resource.PropertyKey, causedReplace bool, planning bool, indent int) {
+	replaces []resource.PropertyKey, causedReplace bool,
+	planning bool, indent int, debug bool) {
 
 	contract.Assert(indent > 0)
 
@@ -727,26 +733,27 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, detailed bool,
 		}
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
-				printAdd(b, add, titleFunc, true, planning, indent)
+				printAdd(b, add, titleFunc, true, planning, indent, debug)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
-				printDelete(b, delete, titleFunc, true, planning, indent)
+				printDelete(b, delete, titleFunc, true, planning, indent, debug)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
 			if !causedReplace && replaceMap != nil {
 				causedReplace = replaceMap[k]
 			}
-			printPropertyValueDiff(b, titleFunc, update, detailed, causedReplace, planning, indent)
+			printPropertyValueDiff(b, titleFunc, update, detailed, causedReplace, planning, indent, debug)
 		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same, planning) {
 			titleFunc(deploy.OpSame, false)
-			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false)
+			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
 		}
 	}
 }
 
 func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	diff resource.ValueDiff, detailed bool, causedReplace bool, planning bool, indent int) {
+	diff resource.ValueDiff, detailed bool, causedReplace bool,
+	planning bool, indent int, debug bool) {
 
 	op := deploy.OpUpdate
 	contract.Assert(indent > 0)
@@ -761,21 +768,21 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 				writeWithIndent(b, indent+1, eop, eprefix, "[%d]: ", i)
 			}
 			if add, isadd := a.Adds[i]; isadd {
-				printAdd(b, add, elemTitleFunc, true, planning, indent+2)
+				printAdd(b, add, elemTitleFunc, true, planning, indent+2, debug)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				printDelete(b, delete, elemTitleFunc, true, planning, indent+2)
+				printDelete(b, delete, elemTitleFunc, true, planning, indent+2, debug)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(b, elemTitleFunc, update, detailed, causedReplace, planning, indent+2)
+				printPropertyValueDiff(b, elemTitleFunc, update, detailed, causedReplace, planning, indent+2, debug)
 			} else {
 				elemTitleFunc(deploy.OpSame, false)
-				printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false)
+				printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false, debug)
 			}
 		}
 		writeWithIndentNoPrefix(b, indent, op, "]\n")
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, detailed, nil, causedReplace, planning, indent+1)
+		printObjectDiff(b, *diff.Object, detailed, nil, causedReplace, planning, indent+1, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
@@ -786,41 +793,41 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 			!causedReplace &&
 			shouldPrintOld &&
 			shouldPrintNew {
-			printArchiveDiff(b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(), planning, indent)
+			printArchiveDiff(b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(), planning, indent, debug)
 			return
 		}
 
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintOld {
-			printDelete(b, diff.Old, titleFunc, causedReplace, planning, indent)
+			printDelete(b, diff.Old, titleFunc, causedReplace, planning, indent, debug)
 		}
 		if shouldPrintNew {
-			printAdd(b, diff.New, titleFunc, causedReplace, planning, indent)
+			printAdd(b, diff.New, titleFunc, causedReplace, planning, indent, debug)
 		}
 	}
 }
 
 func printDelete(
 	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp, bool),
-	causedReplace bool, planning bool, indent int) {
+	causedReplace bool, planning bool, indent int, debug bool) {
 	op := deploy.OpDelete
 	title(op, true)
-	printPropertyValue(b, v, planning, indent, op, true)
+	printPropertyValue(b, v, planning, indent, op, true, debug)
 }
 
 func printAdd(
 	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp, bool),
-	causedReplace bool, planning bool, indent int) {
+	causedReplace bool, planning bool, indent int, debug bool) {
 	op := deploy.OpCreate
 	title(op, true)
-	printPropertyValue(b, v, planning, indent, op, true)
+	printPropertyValue(b, v, planning, indent, op, true, debug)
 }
 
 func printArchiveDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
 	oldArchive *resource.Archive, newArchive *resource.Archive,
-	planning bool, indent int) {
+	planning bool, indent int, debug bool) {
 
 	// TODO: this could be called recursively from itself.  In the recursive case, we might have an
 	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
@@ -848,7 +855,7 @@ func printArchiveDiff(
 		if newAssets, has := newArchive.GetAssets(); has {
 			titleFunc(op, true)
 			write(b, op, "archive(assets:%s) {\n", hashChange)
-			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1)
+			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1, debug)
 			writeWithIndentNoPrefix(b, indent, deploy.OpUpdate, "}\n")
 			return
 		}
@@ -857,16 +864,16 @@ func printArchiveDiff(
 	// Type of archive changed, print this out as an remove and an add.
 	printDelete(
 		b, assetOrArchiveToPropertyValue(oldArchive),
-		titleFunc, false /*causedReplace*/, planning, indent)
+		titleFunc, false /*causedReplace*/, planning, indent, debug)
 	printAdd(
 		b, assetOrArchiveToPropertyValue(newArchive),
-		titleFunc, false /*causedReplace*/, planning, indent)
+		titleFunc, false /*causedReplace*/, planning, indent, debug)
 }
 
 func printAssetsDiff(
 	b *bytes.Buffer,
 	oldAssets map[string]interface{}, newAssets map[string]interface{},
-	planning bool, indent int) {
+	planning bool, indent int, debug bool) {
 
 	// Diffing assets proceeds by getting the sorted list of asset names from both the old and
 	// new assets, and then stepwise processing each.  For any asset in old that isn't in new,
@@ -918,9 +925,9 @@ func printAssetsDiff(
 
 				switch t := oldAsset.(type) {
 				case *resource.Archive:
-					printArchiveDiff(b, titleFunc, t, newAsset.(*resource.Archive), planning, indent)
+					printArchiveDiff(b, titleFunc, t, newAsset.(*resource.Archive), planning, indent, debug)
 				case *resource.Asset:
-					printAssetDiff(b, titleFunc, t, newAsset.(*resource.Asset), planning, indent)
+					printAssetDiff(b, titleFunc, t, newAsset.(*resource.Asset), planning, indent, debug)
 				}
 				i++
 				j++
@@ -944,7 +951,7 @@ func printAssetsDiff(
 			titleFunc := func(top deploy.StepOp, tprefix bool) {
 				printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, top, tprefix)
 			}
-			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), titleFunc, false, planning, newIndent)
+			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), titleFunc, false, planning, newIndent, debug)
 			i++
 			continue
 		} else {
@@ -953,7 +960,7 @@ func printAssetsDiff(
 			titleFunc := func(top deploy.StepOp, tprefix bool) {
 				printPropertyTitle(b, "\""+newName+"\"", maxkey, indent, top, tprefix)
 			}
-			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), titleFunc, false, planning, newIndent)
+			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), titleFunc, false, planning, newIndent, debug)
 			j++
 		}
 	}
@@ -980,7 +987,7 @@ func makeAssetHeader(asset *resource.Asset) string {
 func printAssetDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
 	oldAsset *resource.Asset, newAsset *resource.Asset,
-	planning bool, indent int) {
+	planning bool, indent int, debug bool) {
 
 	op := deploy.OpUpdate
 
@@ -1001,8 +1008,8 @@ func printAssetDiff(
 			titleFunc(deploy.OpUpdate, true)
 			write(b, op, "asset(text:%s) {\n", hashChange)
 
-			massagedOldText := massageText(oldText)
-			massagedNewText := massageText(newText)
+			massagedOldText := massageText(oldText, debug)
+			massagedNewText := massageText(newText, debug)
 
 			differ := diffmatchpatch.New()
 			differ.DiffTimeout = 0
@@ -1036,10 +1043,10 @@ func printAssetDiff(
 	// Type of asset changed, print this out as an remove and an add.
 	printDelete(
 		b, assetOrArchiveToPropertyValue(oldAsset),
-		titleFunc, false /*causedReplace*/, planning, indent)
+		titleFunc, false /*causedReplace*/, planning, indent, debug)
 	printAdd(
 		b, assetOrArchiveToPropertyValue(newAsset),
-		titleFunc, false /*causedReplace*/, planning, indent)
+		titleFunc, false /*causedReplace*/, planning, indent, debug)
 }
 
 func getTextChangeString(old string, new string) string {
@@ -1073,9 +1080,10 @@ var (
 //      emit those delimeters around code that should be ignored.
 //   2. Have our resource generation code supply not just the resource, but the "user presentable"
 //      resource that cuts out a lot of cruft.  We could then just diff that content here.
-func massageText(text string) string {
-
-	return text
+func massageText(text string, debug bool) string {
+	if debug {
+		return text
+	}
 
 	// Only do this for strings that match our serialized function pattern.
 	if !functionRegexp.MatchString(text) ||

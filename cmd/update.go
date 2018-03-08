@@ -68,6 +68,7 @@ func newUpdateCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
+				Debug:                debug,
 			}, backend.DisplayOptions{
 				Color: color.Colorization(),
 			})
