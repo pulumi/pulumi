@@ -1078,6 +1078,8 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         }
     }
 
+    console.log("Free variables for:\n" + serializedFunction.funcExprWithName  +
+        "\n" + JSON.stringify(result));
     log.debug(`Found free variables: ${JSON.stringify(result)}`);
     return result;
 
