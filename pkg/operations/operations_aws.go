@@ -64,10 +64,10 @@ var _ Provider = (*awsOpsProvider)(nil)
 
 var (
 	// AWS config keys
-	regionKey = config.MakeKey("aws", "region")
-	accessKey = config.MakeKey("aws", "accessKey")
-	secretKey = config.MakeKey("aws", "secretKey") // nolint: gas
-	token     = config.MakeKey("aws", "token")
+	regionKey = config.MustMakeKey("aws", "region")
+	accessKey = config.MustMakeKey("aws", "accessKey")
+	secretKey = config.MustMakeKey("aws", "secretKey") // nolint: gas
+	token     = config.MustMakeKey("aws", "token")
 )
 
 const (

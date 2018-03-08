@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type Key struct {
@@ -16,7 +17,9 @@ type Key struct {
 	name      string
 }
 
-func MakeKey(namespace string, name string) Key {
+// MustMakeKey constructs a config.Key for a given namespace and name. The namespace may not contain a `:`
+func MustMakeKey(namespace string, name string) Key {
+	contract.Requiref(!strings.Contains(":", namespace), "namespace", "may not contain a colon")
 	return Key{namespace: namespace, name: name}
 }
 
