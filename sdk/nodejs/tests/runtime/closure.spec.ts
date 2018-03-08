@@ -13,7 +13,7 @@ interface ClosureCase {
     title: string;                  // a title banner for the test case.
     func: Function;                 // the function whose body and closure to serialize.
     expectText: string | undefined; // optionally also validate the serialization to JavaScript text.
-    error?: string;
+    error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
 
@@ -3227,6 +3227,8 @@ return function /*testScanReturnsAllValues*/() {
                     await runtime.serializeFunctionAsync(test.func);
                 });
 
+                // replace real locations with (0,0) so that our test baselines do not need to
+                // updated any time this file changes.
                 const regex = /\([0-9]+,[0-9]+\)/g;
                 const withoutLocations = message.replace(regex, "(0,0)");
                 assert.equal(withoutLocations, test.error);
