@@ -1204,7 +1204,7 @@ function computeUsesNonLexicalThis(serializedFunction: SerializedFunction): bool
         walk(node.expression);
 
         if (isAwaiterCall(node)) {
-            const lastFunction = <ts.FunctionExpression>node.arguments[3]
+            const lastFunction = <ts.FunctionExpression>node.arguments[3];
             walk(lastFunction.body);
             return;
         }
