@@ -311,7 +311,7 @@ async function serializeFunctionRecursiveAsync(
             runtime: "nodejs",
             environment: environment,
             obj: { env: new Map() },
-            usesNonLexicalThis: computeUsesNonLexialThis(serializedFunction),
+            usesNonLexicalThis: computeUsesNonLexicalThis(serializedFunction),
         };
 
         const proto = Object.getPrototypeOf(func);
@@ -1129,7 +1129,7 @@ function parseFunction(serializedFunction: SerializedFunction): ts.SourceFile {
     return file;
 }
 
-function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boolean {
+function computeUsesNonLexicalThis(serializedFunction: SerializedFunction): boolean {
     if (serializedFunction.isArrowFunction) {
         // if we're looking at an arrow function, the it is always using lexical 'this's
         // so we don't have to bother even examining it.
@@ -1155,6 +1155,10 @@ function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boole
             case ts.SyntaxKind.ThisKeyword:
                 usesNonLexicalThis = true;
                 break;
+
+            case ts.SyntaxKind.CallExpression:
+                return visitCallExpression(<ts.CallExpression>node);
+
             case ts.SyntaxKind.MethodDeclaration:
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
@@ -1187,6 +1191,28 @@ function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boole
         walk(node.body);
 
         inTopmostFunction = false;
+    }
+
+    function visitCallExpression(node: ts.CallExpression) {
+        // Most call expressions are normal.  But we must special case one kind of function:
+        // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0,
+        // function* (){})`,
+
+        // The first 'this' argument is passed along in case the expression awaited uses 'this'.
+        // However, doing that can be very bad for us as in many cases the 'this' just refers to the
+        // surrounding module, and the awaited expression won't be using that 'this' at all.
+        walk(node.expression);
+
+        if (isAwaiterCall(node)) {
+            const lastFunction = <ts.FunctionExpression>node.arguments[3]
+            walk(lastFunction.body);
+            return;
+        }
+
+        // For normal calls, just walk all arguments normally.
+        for (const arg of node.arguments) {
+            walk(arg);
+        }
     }
 }
 
@@ -1480,14 +1506,7 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         // capture so that we pass 'this' along.
         walk(node.expression);
 
-        const isAwaiterCall =
-            ts.isIdentifier(node.expression) &&
-            node.expression.text === "__awaiter" &&
-            node.arguments.length === 4 &&
-            node.arguments[0].kind === ts.SyntaxKind.ThisKeyword &&
-            ts.isFunctionLike(node.arguments[3]);
-
-        if (isAwaiterCall) {
+        if (isAwaiterCall(node)) {
             return visitBaseFunction(
                 <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
                 /*isArrowFunction*/ true,
@@ -1624,6 +1643,17 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         // matched against.  Importantly, it does not define a new name put into scope,
         // nor does it reference a variable in scope.
     }
+}
+
+function isAwaiterCall(node: ts.CallExpression) {
+    const result =
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "__awaiter" &&
+        node.arguments.length === 4 &&
+        node.arguments[0].kind === ts.SyntaxKind.ThisKeyword &&
+        ts.isFunctionLike(node.arguments[3]);
+
+    return result;
 }
 
 /**

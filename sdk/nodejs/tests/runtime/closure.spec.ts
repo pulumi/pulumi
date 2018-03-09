@@ -307,6 +307,288 @@ return function () { () => { console.log(this + arguments); }; };
 `,
     });
 
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async function() { };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async function that does not capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e0_task = {run: __f2};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function () {
+                    return __awaiter(this, void 0, void 0, function* () { });
+                };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async function() { console.log(this); };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async function that does capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e1_task_proto = {};
+Object.defineProperty(__e1_task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __e0_task = Object.create(__e1_task_proto);
+__e0_task.run = __f3;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function /*constructor*/() {
+                // tslint:disable-next-line:no-empty
+                this.run = function () {
+                    return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function () {
+                    return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+                };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async () => { };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async lambda that does not capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e0_task = {run: __f2};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return () => __awaiter(this, void 0, void 0, function* () { });
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async () => { console.log(this); };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async lambda that capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e1_task_proto = {};
+Object.defineProperty(__e1_task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __e0_task = Object.create(__e1_task_proto);
+__e0_task.run = __f3;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function /*constructor*/() {
+                // tslint:disable-next-line:no-empty
+                this.run = () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
+
+    }
+  }).apply(__e0_task, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     cases.push({
         title: "Empty function closure w/ args",
         // tslint:disable-next-line
@@ -3268,7 +3550,7 @@ return function /*f1*/() {
             return;
         }
 
-        // if (test.title !== "Fail to capture user-defined modules due to native functions") {
+        // if (test.title !== "Invocation of async function that does not capture this.") {
         //     continue;
         // }
 
