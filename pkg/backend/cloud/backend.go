@@ -438,15 +438,15 @@ func convertResourceChanges(changes map[apitype.OpType]int) engine.ResourceChang
 // convertResourceChanges converts the apitype version of config.Map into the internal version.
 func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error) {
 	c := make(config.Map)
-	for k, v := range apiConfig {
-		mm, err := tokens.ParseModuleMember(k)
+	for rawK, rawV := range apiConfig {
+		k, err := config.ParseKey(rawK)
 		if err != nil {
 			return nil, err
 		}
-		if v.Secret {
-			c[mm] = config.NewSecureValue(v.String)
+		if rawV.Secret {
+			c[k] = config.NewSecureValue(rawV.String)
 		} else {
-			c[mm] = config.NewValue(v.String)
+			c[k] = config.NewValue(rawV.String)
 		}
 	}
 	return c, nil
@@ -568,7 +568,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
-		wireConfig[string(k)] = apitype.ConfigValue{
+		wireConfig[k.Namespace()+":config:"+k.Name()] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
 		}

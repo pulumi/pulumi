@@ -11,6 +11,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -388,7 +389,7 @@ func (host *testProviderHost) GetRequiredPlugins(info plugin.ProgInfo) ([]worksp
 
 type testProvider struct {
 	pkg    tokens.Package
-	config func(map[tokens.ModuleMember]string) error
+	config func(map[config.Key]string) error
 	check  func(resource.URN,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	create func(resource.URN, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
@@ -405,7 +406,7 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
-func (prov *testProvider) Configure(vars map[tokens.ModuleMember]string) error {
+func (prov *testProvider) Configure(vars map[config.Key]string) error {
 	return prov.config(vars)
 }
 func (prov *testProvider) Check(urn resource.URN,

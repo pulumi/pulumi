@@ -5,7 +5,7 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -33,13 +33,13 @@ type ProgInfo struct {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	MonitorAddress string                         // the RPC address to the host resource monitor.
-	Project        string                         // the project name housing the program being run.
-	Stack          string                         // the stack name being evaluated.
-	Pwd            string                         // the program's working directory.
-	Program        string                         // the path to the program to execute.
-	Args           []string                       // any arguments to pass to the program.
-	Config         map[tokens.ModuleMember]string // the configuration variables to apply before running.
-	DryRun         bool                           // true if we are performing a dry-run (preview).
-	Parallel       int                            // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress string                // the RPC address to the host resource monitor.
+	Project        string                // the project name housing the program being run.
+	Stack          string                // the stack name being evaluated.
+	Pwd            string                // the program's working directory.
+	Program        string                // the path to the program to execute.
+	Args           []string              // any arguments to pass to the program.
+	Config         map[config.Key]string // the configuration variables to apply before running.
+	DryRun         bool                  // true if we are performing a dry-run (preview).
+	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
 }

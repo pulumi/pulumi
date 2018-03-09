@@ -30,6 +30,7 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -334,6 +335,19 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 	configMap := req.GetConfig()
 	if configMap == nil {
 		return "{}", nil
+	}
+
+	// While we transition from the old format for config keys (<package>:config:<name> to <package>:<name>), we want
+	// to support the newest version of the langhost running older packages, so the config bag we present to them looks
+	// like the old world. Newer versions of the @pulumi/pulumi package handle both formats and when we stop supporting
+	// older versions, we can remove this code.
+	transformedConfig := make(map[string]string, len(configMap))
+	for k, v := range configMap {
+		pk, err := config.ParseKey(k)
+		if err != nil {
+			return "", err
+		}
+		transformedConfig[pk.Namespace()+":config:"+pk.Name()] = v
 	}
 
 	configJSON, err := json.Marshal(configMap)

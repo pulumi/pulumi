@@ -3,6 +3,7 @@
 package plugin
 
 import (
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -10,5 +11,5 @@ import (
 // package.
 type ConfigSource interface {
 	// GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
-	GetPackageConfig(pkg tokens.Package) (map[tokens.ModuleMember]string, error)
+	GetPackageConfig(pkg tokens.Package) (map[config.Key]string, error)
 }

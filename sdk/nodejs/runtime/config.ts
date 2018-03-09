@@ -1,10 +1,9 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 /**
- * configEnvKey is the environment variable key for configuration that we will check in the event that a
- * configuration variable is missing.  Explicit overrides take precedence.
+ * configEnvKey is the environment variable key that the language plugin uses to set configuration values.
  */
-export const configEnvKey = "PULUMI_CONFIG";
+const configEnvKey = "PULUMI_CONFIG";
 
 const config: {[key: string]: string} = {};
 
@@ -12,7 +11,7 @@ const config: {[key: string]: string} = {};
  * setConfig sets a configuration variable.
  */
 export function setConfig(k: string, v: string): void {
-    config[k] = v;
+    config[cleanKey(k)] = v;
 }
 
 /**
@@ -24,48 +23,35 @@ export function getConfig(k: string): string | undefined {
         return config[k];
     }
 
-    // If there is a specific PULUMI_CONFIG_<k> variable, use it.
-    const envKey: string = getConfigEnvKey(k);
-    if (process.env.hasOwnProperty(envKey)) {
-        return process.env[envKey];
-    }
-
-    // If the config hasn't been set, but there is a process-wide PULUMI_CONFIG envvar, use it.
-    const envObject: {[key: string]: string} = getConfigEnv();
-    if (envObject.hasOwnProperty(k)) {
-        return envObject[k];
-    }
-
     return undefined;
 }
 
 /**
- * getConfigEnvKey returns a scrubbed environment variable key, PULUMI_CONFIG_<k>, that can be used for
- * setting explicit varaibles.  This is unlike PULUMI_CONFIG which is just a JSON-serialized bag.
+ * loadConfig populates the runtime.config object based on configuration set in the environment.
  */
-export function getConfigEnvKey(key: string): string {
-    let envkey: string = "";
-    for (const c of key) {
-        if (c === "_" || (c >= "A" && c <= "Z") || (c >= "0" && c <= "9")) {
-            envkey += c;
-        }
-        else if (c >= "a" && c <= "z") {
-            envkey += c.toUpperCase();
-        }
-        else {
-            envkey += "_";
+export function loadConfig() {
+    const envConfig = process.env.PULUMI_CONFIG;
+    if (envConfig) {
+        const envObject: {[key: string]: string} = JSON.parse(envConfig);
+        for (const key of Object.keys(envObject)) {
+            setConfig(key, envObject[key]);
         }
     }
-    return `${configEnvKey}_${envkey}`;
 }
 
 /**
- * getConfigEnv returns the environment map that will be used for config checking when variables aren't set.
+ * cleanKey takes a configuration key, and if it is of the form "<string>:config:<string>" removes the ":config:"
+ * portion. Previously, our keys always had the string ":config:" in them, and we'd like to remove it. However, the
+ * language host needs to continue to set it so we can be compatable with older versions of our packages. Once we
+ * stop supporting older packages, we can change the language host to not add this :config: thing and remove this
+ * function.
  */
-export function getConfigEnv(): {[key: string]: string} {
-    const envConfig = process.env.PULUMI_CONFIG;
-    if (envConfig) {
-        return JSON.parse(envConfig);
+function cleanKey(key: string): string {
+    const idx = key.indexOf(":");
+
+    if (idx > 0 && key.startsWith("config:", idx + 1)) {
+        return key.substring(0, idx) + ":" + key.substring(idx + 1 + "config:".length);
     }
-    return {};
+
+    return key;
 }
