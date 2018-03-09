@@ -850,9 +850,8 @@ async function serializeAsync(
         // we're being asked to serialize.  So we have to make sure that all these props
         // are actually serialized.
         if (capturedObjectProperties) {
-            const unwrapped = await result;
-            if (unwrapped.obj) {
-                await serializeObjectAsync(unwrapped);
+            if (result.obj) {
+                return serializeObjectAsync(result).then(() => result);
             }
         }
 
@@ -984,10 +983,9 @@ async function serializeAsync(
                 continue;
             }
 
-            const descriptor = await getEntryDescriptorAsync(keyOrSymbol);
-
             const keyEntry = await serializeAsync(keyOrSymbol, undefined, context, serialize);
             if (!environment.has(keyEntry)) {
+                const descriptor = await getEntryDescriptorAsync(keyOrSymbol);
                 const valEntry = await serializeAsync(
                     obj[keyOrSymbol], undefined, context, serialize);
 
