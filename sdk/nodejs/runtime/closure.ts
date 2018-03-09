@@ -154,6 +154,7 @@ interface FunctionLocation {
 
 interface ContextFrame {
     functionLocation?: FunctionLocation;
+    capturedFunctionName?: string;
     capturedVariableName?: string;
     capturedModuleName?: string;
 }
@@ -396,24 +397,31 @@ async function serializeFunctionRecursiveAsync(
                 const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
 
                 const moduleName = findModuleName(value);
+                const frameLength = context.frames.length;
                 if (moduleName) {
                     context.frames.push({ capturedModuleName: moduleName });
-                    await processCapturedVariable(capturedVariables, name, value);
-                    context.frames.pop();
-                    continue;
+                }
+                else if (value instanceof Function) {
+                    // Only bother pushing on context frame if the name of the variable
+                    // we captured is different from the name of the function.  If the
+                    // names are the same, this is a direct reference, and we don't have
+                    // to list both the name of the capture and of the function.  if they
+                    // are different, it's an indirect reference, and the name should be
+                    // included for clarity.
+                    if (name !== value.name) {
+                        context.frames.push({ capturedFunctionName: name });
+                    }
+                }
+                else {
+                    context.frames.push({ capturedVariableName: name });
                 }
 
-                if (value instanceof Function) {
-                    // If we had a function directly reference another function, then we don't need
-                    // to push a contxt frame saying through which captured variable we were walking
-                    // through.
-                    await processCapturedVariable(capturedVariables, name, value);
-                    continue;
-                }
-
-                context.frames.push({ capturedVariableName: name });
                 await processCapturedVariable(capturedVariables, name, value);
-                context.frames.pop();
+
+                // Only if we pushed a frame on should we pop it off.
+                if (context.frames.length !== frameLength) {
+                    context.frames.pop();
+                }
             }
         }
 
@@ -767,11 +775,14 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
                     }
                 }
             }
+            else if (frame.capturedFunctionName) {
+                message += `'${frame.capturedFunctionName}', a function defined at\n`;
+            }
             else if (frame.capturedModuleName) {
-                message += `module '${frame.capturedModuleName}' which indirectly referenced:\n`;
+                message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
             }
             else if (frame.capturedVariableName) {
-                message += `variable '${frame.capturedVariableName}' which indirectly referenced:\n`;
+                message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
             }
         }
 

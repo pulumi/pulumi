@@ -619,6 +619,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
 
     {
         const os = require("os");
+
         cases.push({
             title: "Fail to capture built-in modules due to native functions",
             func: () => os,
@@ -627,7 +628,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
 `Error serializing 'func': closure.spec.js(0,0)
 
 function 'func': closure.spec.js(0,0): captured
-  module 'os' which indirectly referenced:
+  module 'os' which indirectly referenced
     function 'getHostname': which could not be serialized because
       it was a native code function.
 
@@ -636,6 +637,36 @@ Function code:
 
 Capturing modules can sometimes cause problems.
 Consider using import('os') or require('os') inside function 'func': closure.spec.js(0,0)`,
+        });
+    }
+
+    {
+        const os = require("os");
+        function wrap(handler: Function) {
+            return () => handler;
+        }
+
+        const func = wrap(() => os);
+
+        cases.push({
+            title: "Fail to capture module through indirect function references",
+            func: func,
+            expectText: undefined,
+            error:
+`Error serializing '<anonymous>': closure.spec.js(0,0)
+
+function '<anonymous>': closure.spec.js(0,0): captured
+  'handler', a function defined at
+    function '<anonymous>': closure.spec.js(0,0): which captured
+      module 'os' which indirectly referenced
+        function 'getHostname': which could not be serialized because
+          it was a native code function.
+
+Function code:
+  function getHostname() { [native code] }
+
+Capturing modules can sometimes cause problems.
+Consider using import('os') or require('os') inside function '<anonymous>': closure.spec.js(0,0)`,
         });
     }
 
@@ -649,16 +680,16 @@ Consider using import('os') or require('os') inside function 'func': closure.spe
 `Error serializing 'func': closure.spec.js(0,0)
 
 function 'func': closure.spec.js(0,0): captured
-  module './bin/tests/util.js' which indirectly referenced:
+  module './bin/tests/util.js' which indirectly referenced
     function 'assertAsyncThrows': util.js(0,0): which captured
-      module 'assert' which indirectly referenced:
+      module 'assert' which indirectly referenced
         function 'ok': assert.js(0,0): which referenced
           function 'AssertionError': assert.js(0,0): which referenced
             function 'getMessage': assert.js(0,0): which captured
-              module 'util' which indirectly referenced:
+              module 'util' which indirectly referenced
                 function 'inspect': util.js(0,0): which referenced
                   function 'formatValue': util.js(0,0): which captured
-                    variable 'binding' which indirectly referenced:
+                    variable 'binding' which indirectly referenced
                       function 'isArrayBuffer': which could not be serialized because
                         it was a native code function.
 
