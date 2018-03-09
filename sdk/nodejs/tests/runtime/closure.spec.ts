@@ -3231,6 +3231,35 @@ return function /*testScanReturnsAllValues*/() {
 });
     }
 
+    {
+        const o = { a: 1, b: { x: 1, doNotCapture: true }, c: 2 };
+        function f1() {
+            console.log(o);
+        }
+
+        cases.push({
+            title: "Do not capture #1",
+            // tslint:disable-next-line
+            func: f1,
+            expectText: `exports.handler = __f0;
+
+var __e0_o = {a: 1, b: undefined, c: 2};
+
+function __f0() {
+  return (function() {
+    with({ o: __e0_o, f1: __f0 }) {
+
+return function /*f1*/() {
+            console.log(o);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
     // Make a callback to keep running tests.
     let remaining = cases;
     while (true) {

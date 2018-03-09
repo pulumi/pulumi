@@ -883,6 +883,9 @@ async function serializeAsync(
             // Serialize primitives as-is.
             entry.json = obj;
         }
+        else if (obj && obj.doNotCapture) {
+            entry.json = undefined;
+        }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
             entry.closure = await serializeFunctionRecursiveAsync(obj, context, serialize);
