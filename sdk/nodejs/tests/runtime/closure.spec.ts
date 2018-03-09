@@ -9,11 +9,12 @@ import { Output, output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
 
 interface ClosureCase {
-    pre?: () => void;         // an optional function to run before this case.
-    title: string;            // a title banner for the test case.
-    func: Function;           // the function whose body and closure to serialize.
-    expectText: string;      // optionally also validate the serialization to JavaScript text.
-    afters?: ClosureCase[];   // an optional list of test cases to run afterwards.
+    pre?: () => void;               // an optional function to run before this case.
+    title: string;                  // a title banner for the test case.
+    func: Function;                 // the function whose body and closure to serialize.
+    expectText: string | undefined; // optionally also validate the serialization to JavaScript text.
+    error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
+    afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
 
 // This group of tests ensure that we serialize closures properly.
@@ -134,6 +135,9 @@ return () => { };
         func: () => { console.log(this); },
         expectText: `exports.handler = __f0;
 
+var __e0_this = {};
+Object.defineProperty(__e0_this, "__esModule", { value: true });
+
 function __f0() {
   return (function() {
     with({  }) {
@@ -141,7 +145,7 @@ function __f0() {
 return () => { console.log(this); };
 
     }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
+  }).apply(__e0_this, undefined).apply(this, arguments);
 }
 `,
     });
@@ -189,6 +193,9 @@ return () => __awaiter(this, void 0, void 0, function* () { });
         // tslint:disable-next-line
         func: async () => { console.log(this); },
         expectText: `exports.handler = __f0;
+
+var __e0_this = {};
+Object.defineProperty(__e0_this, "__esModule", { value: true });
 ${awaiterCode}
 function __f0() {
   return (function() {
@@ -197,7 +204,7 @@ function __f0() {
 return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
 
     }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), undefined).apply(this, arguments);
+  }).apply(__e0_this, undefined).apply(this, arguments);
 }
 `,
     });
@@ -248,7 +255,9 @@ return function () {
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: `exports.handler = __f0;
 
-var __e0_arguments = [0, 1];
+var __e0_this = {};
+Object.defineProperty(__e0_this, "__esModule", { value: true });
+var __e1_arguments = [0, 1];
 
 function __f0() {
   return (function() {
@@ -257,7 +266,7 @@ function __f0() {
 return () => { console.log(this + arguments); };
 
     }
-  }).apply(require("./bin/tests/runtime/closure.spec.js"), __e0_arguments).apply(this, arguments);
+  }).apply(__e0_this, __e1_arguments).apply(this, arguments);
 }
 `,
     });
@@ -297,6 +306,288 @@ return function () { () => { console.log(this + arguments); }; };
 }
 `,
     });
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async function() { };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async function that does not capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e0_task = {run: __f2};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function () {
+                    return __awaiter(this, void 0, void 0, function* () { });
+                };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async function() { console.log(this); };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async function that does capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e1_task_proto = {};
+Object.defineProperty(__e1_task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __e0_task = Object.create(__e1_task_proto);
+__e0_task.run = __f3;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function /*constructor*/() {
+                // tslint:disable-next-line:no-empty
+                this.run = function () {
+                    return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+                };
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function () {
+                    return __awaiter(this, void 0, void 0, function* () { console.log(this); });
+                };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async () => { };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async lambda that does not capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e0_task = {run: __f2};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return () => __awaiter(this, void 0, void 0, function* () { });
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class Task {
+            run: any;
+            constructor() {
+                // tslint:disable-next-line:no-empty
+                this.run = async () => { console.log(this); };
+            }
+        }
+
+        const task = new Task();
+
+        cases.push({
+            title: "Invocation of async lambda that capture this #1",
+            // tslint:disable-next-line
+            func: async function() { await task.run(); },
+            expectText: `exports.handler = __f0;
+
+var __e1_task_proto = {};
+Object.defineProperty(__e1_task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __e0_task = Object.create(__e1_task_proto);
+__e0_task.run = __f3;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return function /*constructor*/() {
+                // tslint:disable-next-line:no-empty
+                this.run = () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __awaiter: __f1 }) {
+
+return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
+
+    }
+  }).apply(__e0_task, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ __awaiter: __f1, task: __e0_task }) {
+
+return function () {
+                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
 
     cases.push({
         title: "Empty function closure w/ args",
@@ -610,41 +901,85 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
 
     {
         const os = require("os");
+
         cases.push({
-            title: "Capture built-in modules as stable references, not serialized values",
+            title: "Fail to capture built-in modules due to native functions",
             func: () => os,
-            expectText: `exports.handler = __f0;
+            expectText: undefined,
+            error:
+`Error serializing 'func': closure.spec.js(0,0)
 
-function __f0() {
-  return (function() {
-    with({ os: require("os") }) {
+function 'func': closure.spec.js(0,0): captured
+  module 'os' which indirectly referenced
+    function 'getHostname': which could not be serialized because
+      it was a native code function.
 
-return () => os;
+Function code:
+  function getHostname() { [native code] }
 
+Capturing modules can sometimes cause problems.
+Consider using import('os') or require('os') inside function 'func': closure.spec.js(0,0)`,
+        });
     }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-`,
+
+    {
+        const os = require("os");
+        function wrap(handler: Function) {
+            return () => handler;
+        }
+
+        const func = wrap(() => os);
+
+        cases.push({
+            title: "Fail to capture module through indirect function references",
+            func: func,
+            expectText: undefined,
+            error:
+`Error serializing '<anonymous>': closure.spec.js(0,0)
+
+function '<anonymous>': closure.spec.js(0,0): captured
+  'handler', a function defined at
+    function '<anonymous>': closure.spec.js(0,0): which captured
+      module 'os' which indirectly referenced
+        function 'getHostname': which could not be serialized because
+          it was a native code function.
+
+Function code:
+  function getHostname() { [native code] }
+
+Capturing modules can sometimes cause problems.
+Consider using import('os') or require('os') inside function '<anonymous>': closure.spec.js(0,0)`,
         });
     }
 
     {
         const util = require("../util");
         cases.push({
-            title: "Capture user-defined modules as stable references, not serialized values",
+            title: "Fail to capture user-defined modules due to native functions",
             func: () => util,
-            expectText: `exports.handler = __f0;
+            expectText: undefined,
+            error:
+`Error serializing 'func': closure.spec.js(0,0)
 
-function __f0() {
-  return (function() {
-    with({ util: require("./bin/tests/util.js") }) {
+function 'func': closure.spec.js(0,0): captured
+  module './bin/tests/util.js' which indirectly referenced
+    function 'assertAsyncThrows': util.js(0,0): which captured
+      module 'assert' which indirectly referenced
+        function 'ok': assert.js(0,0): which referenced
+          function 'AssertionError': assert.js(0,0): which referenced
+            function 'getMessage': assert.js(0,0): which captured
+              module 'util' which indirectly referenced
+                function 'inspect': util.js(0,0): which referenced
+                  function 'formatValue': util.js(0,0): which captured
+                    variable 'binding' which indirectly referenced
+                      function 'isArrayBuffer': which could not be serialized because
+                        it was a native code function.
 
-return () => util;
+Function code:
+  function isArrayBuffer() { [native code] }
 
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-`,
+Capturing modules can sometimes cause problems.
+Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside function 'func': closure.spec.js(0,0)`,
         });
     }
 
@@ -3130,17 +3465,11 @@ return function /*f1*/() {
             await table1.insert({[table1.primaryKey.get()]: "val1", value1: 1, value2: "1"});
             await table1.insert({[table1.primaryKey.get()]: "val2", value1: 2, value2: "2"});
 
-            const values = await table1.scan();
-            assert.equal(values.length, 2);
-
+            const values = null;
             // @ts-ignore
             const value1 = values.find(v => v[table1.primaryKey.get()] === "val1");
             // @ts-ignore
             const value2 = values.find(v => v[table1.primaryKey.get()] === "val2");
-
-            assert.notEqual(value1, value2);
-            assert.equal(value1.value1, 1);
-            assert.equal(value2.value1, 2);
         }
 
         cases.push({
@@ -3149,36 +3478,9 @@ return function /*f1*/() {
             func: testScanReturnsAllValues,
             expectText: `exports.handler = __f0;
 
-var __e0_table1 = {primaryKey: 1, insert: __f2, scan: __f3};
-
-function __f1() {
-  return (function() {
-    with({  }) {
-
-return function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
+var __e0_table1 = {primaryKey: 1, insert: __f2};
+${awaiterCode}
 function __f2() {
-  return (function() {
-    with({  }) {
-
-return () => { };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __f3() {
   return (function() {
     with({  }) {
 
@@ -3190,22 +3492,47 @@ return () => { };
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, table1: __e0_table1, assert: require("assert"), testScanReturnsAllValues: __f0 }) {
+    with({ __awaiter: __f1, table1: __e0_table1, testScanReturnsAllValues: __f0 }) {
 
 return function /*testScanReturnsAllValues*/() {
             return __awaiter(this, void 0, void 0, function* () {
                 yield table1.insert({ [table1.primaryKey.get()]: "val1", value1: 1, value2: "1" });
                 yield table1.insert({ [table1.primaryKey.get()]: "val2", value1: 2, value2: "2" });
-                const values = yield table1.scan();
-                assert.equal(values.length, 2);
+                const values = null;
                 // @ts-ignore
                 const value1 = values.find(v => v[table1.primaryKey.get()] === "val1");
                 // @ts-ignore
                 const value2 = values.find(v => v[table1.primaryKey.get()] === "val2");
-                assert.notEqual(value1, value2);
-                assert.equal(value1.value1, 1);
-                assert.equal(value2.value1, 2);
             });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const o = { a: 1, b: { x: 1, doNotCapture: true }, c: 2 };
+        function f1() {
+            console.log(o);
+        }
+
+        cases.push({
+            title: "Do not capture #1",
+            // tslint:disable-next-line
+            func: f1,
+            expectText: `exports.handler = __f0;
+
+var __e0_o = {a: 1, b: undefined, c: 2};
+
+function __f0() {
+  return (function() {
+    with({ o: __e0_o, f1: __f0 }) {
+
+return function /*f1*/() {
+            console.log(o);
         };
 
     }
@@ -3223,7 +3550,7 @@ return function /*testScanReturnsAllValues*/() {
             return;
         }
 
-        // if (test.title !== "Cloud table function") {
+        // if (test.title !== "Invocation of async function that does not capture this.") {
         //     continue;
         // }
 
@@ -3238,9 +3565,15 @@ return function /*testScanReturnsAllValues*/() {
                 const text = await runtime.serializeFunctionAsync(test.func);
                 assert.equal(text, test.expectText);
             } else {
-                await assertAsyncThrows(async () => {
+                const message = await assertAsyncThrows(async () => {
                     await runtime.serializeFunctionAsync(test.func);
                 });
+
+                // replace real locations with (0,0) so that our test baselines do not need to
+                // updated any time this file changes.
+                const regex = /\([0-9]+,[0-9]+\)/g;
+                const withoutLocations = message.replace(regex, "(0,0)");
+                assert.equal(withoutLocations, test.error);
             }
         }));
 

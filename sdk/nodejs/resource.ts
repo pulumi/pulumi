@@ -50,6 +50,8 @@ export abstract class Resource {
     }
 }
 
+(<any>Resource).doNotCapture = true;
+
 /**
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
@@ -99,6 +101,8 @@ export abstract class CustomResource extends Resource {
     }
 }
 
+(<any>CustomResource).doNotCapture = true;
+
 /**
  * ComponentResource is a resource that aggregates one or more other child resources into a higher
  * level abstraction. The component resource itself is a resource, but does not require custom CRUD
@@ -130,6 +134,9 @@ export class ComponentResource extends Resource {
         }
     }
 }
+
+(<any>ComponentResource).doNotCapture = true;
+(<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
 
 /**
  * Output helps encode the relationship between Resources in a Pulumi application. Specifically
