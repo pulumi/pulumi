@@ -150,10 +150,10 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 	// a more specific error message.
 	if err != nil {
 		if preview {
-			return status, errors.New("Preview failed")
+			return status, errors.New("preview failed")
 		}
 
-		return status, errors.New("Update failed")
+		return status, errors.New("update failed")
 	}
 
 	return status, nil
