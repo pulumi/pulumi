@@ -171,7 +171,7 @@ func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts b
 	fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
 }
 
-//nolint: gas
+// nolint: gas
 func displayResourceOperationFailedEvent(out io.Writer,
 	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) {
 

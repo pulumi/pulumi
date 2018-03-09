@@ -32,9 +32,9 @@ const (
 	DiagEvent               EventType = "diag"
 	PreludeEvent            EventType = "prelude"
 	SummaryEvent            EventType = "summary"
-	ResourcePreEvent        EventType = "resourcepre"
-	ResourceOutputsEvent    EventType = "resourceoutputs"
-	ResourceOperationFailed EventType = "resourceoperationfailed"
+	ResourcePreEvent        EventType = "resource-pre"
+	ResourceOutputsEvent    EventType = "resource-outputs"
+	ResourceOperationFailed EventType = "resource-operationfailed"
 )
 
 func cancelEvent() Event {
@@ -108,21 +108,18 @@ func makeEventEmitter(events chan<- Event, update Update) eventEmitter {
 	var f filter = &nopFilter{}
 
 	target := update.GetTarget()
-
 	if target.Config.HasSecureValue() {
 		var b bytes.Buffer
 		for _, v := range target.Config {
 			if !v.Secure() {
 				continue
 			}
-
 			if b.Len() > 0 {
 				b.WriteRune('|')
 			}
 
 			secret, err := v.Value(target.Decrypter)
 			contract.AssertNoError(err)
-
 			b.WriteString(regexp.QuoteMeta(secret))
 		}
 
