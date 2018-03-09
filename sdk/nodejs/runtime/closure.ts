@@ -228,7 +228,7 @@ async function serializeClosureAsync(func: Function, serialize: (o: any) => bool
 
         const proto1 = Object.getPrototypeOf(globalObj);
         if (proto1 && !context.cache.has(proto1)) {
-            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text}})`});
+            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})`});
         }
 
         const proto2 = globalObj.prototype;
