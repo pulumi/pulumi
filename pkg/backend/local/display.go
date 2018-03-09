@@ -40,6 +40,7 @@ func displayEvents(action string,
 		case event := <-events:
 			var out io.Writer
 			var msg string
+			spinner.Reset()
 			switch event.Type {
 			case engine.CancelEvent:
 				return
@@ -71,7 +72,6 @@ func displayEvents(action string,
 			}
 
 			if msg != "" && out != nil {
-				spinner.Reset()
 				_, err := fmt.Fprint(out, msg)
 				contract.IgnoreError(err)
 			}
@@ -196,7 +196,7 @@ func displayResourcePreEvent(out io.Writer, event engine.ResourcePreEventPayload
 		fmt.Fprint(out, opts.Color.Colorize(event.Summary))
 
 		if !opts.Summary {
-			fmt.Fprint(out, event.Details)
+			fmt.Fprint(out, opts.Color.Colorize(event.Details))
 		}
 
 		fmt.Fprint(out, opts.Color.Colorize(colors.Reset))
