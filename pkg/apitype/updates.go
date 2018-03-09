@@ -208,25 +208,6 @@ type UpdateApplyRequest struct {
 	Summary bool `json:"summary,omitempty"`
 }
 
-// GetUpdateResponse describes the data retuerned by a request to the `GET /updates/{updateID}` endpoint of the
-// PPC API.
-type GetUpdateResponse struct {
-	CreateUpdateResponse
-
-	// State indicates which state the update is in.
-	State string `json:"state"`
-
-	// StackAlias is the friendly name for the update's stack that will be exposed to the update's Pulumi
-	// program.
-	StackAlias string `json:"stackAlias,omitempty"`
-
-	// Config records the configuration values for an update.
-	Config map[string]string `json:"config"`
-
-	// Program records the program metadata for an update.
-	Program UpdateProgram `json:"program"`
-}
-
 // GetApplyUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/apply` endpoint of
 // the PPC API.
 type GetApplyUpdateResultsResponse UpdateResults
