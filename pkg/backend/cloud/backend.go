@@ -41,6 +41,8 @@ type Backend interface {
 	backend.Backend
 	CloudURL() string
 	DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
+	ListTemplates() ([]workspace.Template, error)
+	DownloadTemplate(name string, progress bool) (io.ReadCloser, error)
 }
 
 type cloudBackend struct {
@@ -90,6 +92,41 @@ func (b *cloudBackend) DownloadPlugin(info workspace.PluginInfo, progress bool) 
 		bar := pb.New(int(resp.ContentLength))
 		result = bar.NewProxyReader(result)
 		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading plugin: "))
+		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.SetMaxWidth(80)
+		bar.SetUnits(pb.U_BYTES)
+		bar.Start()
+		defer func() {
+			bar.Finish()
+		}()
+	}
+
+	return result, nil
+}
+
+func (b *cloudBackend) ListTemplates() ([]workspace.Template, error) {
+	// Query all templates.
+	var templates []workspace.Template
+	if err := pulumiRESTCall(b.cloudURL, "GET", "/releases/templates", nil, nil, &templates); err != nil {
+		return nil, err
+	}
+	return templates, nil
+}
+
+func (b *cloudBackend) DownloadTemplate(name string, progress bool) (io.ReadCloser, error) {
+	// Make the GET request to download the template.
+	endpoint := fmt.Sprintf("/releases/templates/%s.tar.gz", name)
+	_, resp, err := pulumiAPICall(b.cloudURL, "GET", endpoint, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to download template")
+	}
+
+	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
+	result := resp.Body
+	if progress && resp.ContentLength != -1 {
+		bar := pb.New(int(resp.ContentLength))
+		result = bar.NewProxyReader(result)
+		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading template: "))
 		bar.Postfix(colors.ColorizeText(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
