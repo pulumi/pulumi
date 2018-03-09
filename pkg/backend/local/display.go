@@ -139,12 +139,6 @@ func displaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts b
 			fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%vUpdate duration: %v%v\n",
 				colors.SpecUnimportant, event.Duration, colors.Reset)))
 		}
-
-		if event.MaybeCorrupt {
-			fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf(
-				"%vA catastrophic error occurred; resources states may be unknown%v\n",
-				colors.SpecAttention, colors.Reset)))
-		}
 	}
 }
 
@@ -175,19 +169,12 @@ func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts b
 func displayResourceOperationFailedEvent(out io.Writer,
 	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) {
 
-	fmt.Fprintf(out, "Step #%v failed [%v]: ", event.Steps+1, event.Metadata.Op)
-	switch event.Status {
-	case resource.StatusOK:
-		fmt.Fprint(out, opts.Color.Colorize(
-			fmt.Sprintf("%vprovider successfully recovered from this failure%v", colors.SpecNote, colors.Reset)))
-	case resource.StatusUnknown:
-		fmt.Fprint(out, opts.Color.Colorize(
-			fmt.Sprintf("%vthis failure was catastrophic and the provider cannot guarantee recovery%v",
-				colors.SpecAttention, colors.Reset)))
-	default:
-		contract.Failf("Unrecognized resource state: %v", event.Status)
-	}
-	fmt.Fprint(out, "\n")
+	// It's not actually useful or interesting to print out any details about
+	// the resource state here, because we always assume that the resource state
+	// is unknown if an error occurs.
+	//
+	// In the future, once we get more fine-grained error messages from providers,
+	// we can provide useful diagnostics here.
 }
 
 // nolint: gas
