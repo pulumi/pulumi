@@ -33,7 +33,7 @@ func TestPulumiNew(t *testing.T) {
 		e.CWD = subdir
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template)
+		e.RunCommand("pulumi", "new", template, "--offline")
 
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
 	})
@@ -62,11 +62,28 @@ func TestPulumiNew(t *testing.T) {
 		assert.NotEmpty(t, stderr)
 	})
 
-	t.Run("TemplateNotFound", func(t *testing.T) {
+	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 
-		// A template that will never exist on GitHub.
+		// A template that will never exist remotely.
+		template := "this-is-not-the-template-youre-looking-for"
+
+		// Confirm this fails.
+		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline")
+		assert.Equal(t, "", stdout)
+		assert.NotEmpty(t, stderr)
+
+		// Ensure the unknown template dir doesn't remain in the home directory.
+		_, err := os.Stat(getTemplateDir(t, template))
+		assert.Error(t, err, "dir shouldn't exist")
+	})
+
+	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+
+		// A template that will never exist remotely.
 		template := "this-is-not-the-template-youre-looking-for"
 
 		// Confirm this fails.
@@ -88,7 +105,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template, "--name", "bar", "--description", "A project.")
+		e.RunCommand("pulumi", "new", template, "--name", "bar", "--description", "A project.", "--offline")
 
 		assertSuccess(t, e.CWD, "bar", "A project.")
 	})
@@ -109,7 +126,7 @@ func TestPulumiNew(t *testing.T) {
 		e.CWD = subdir
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template)
+		e.RunCommand("pulumi", "new", template, "--offline")
 
 		// Assert the default name used is "foo" not "@foo".
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
@@ -134,7 +151,7 @@ func TestPulumiNew(t *testing.T) {
 		assert.NoError(t, err, "creating Pulumi.yaml")
 
 		// Confirm failure due to existing file.
-		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template)
+		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "Pulumi.yaml")
 
@@ -173,7 +190,7 @@ func TestPulumiNew(t *testing.T) {
 		assert.NoError(t, err, "creating test2.txt")
 
 		// Confirm failure due to existing files.
-		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template)
+		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "Pulumi.yaml")
 		assert.Contains(t, stderr, "test2.txt")
@@ -219,7 +236,7 @@ func TestPulumiNew(t *testing.T) {
 		assert.NoError(t, err, "creating test2.txt")
 
 		// Run pulumi new with --force.
-		e.RunCommand("pulumi", "new", template, "--force")
+		e.RunCommand("pulumi", "new", template, "--force", "--offline")
 
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
 	})
@@ -243,12 +260,8 @@ func assertSuccess(t *testing.T, dir string, expectedProjectName string, expecte
 	content = readFile(t, filepath.Join(dir, "sub", "blah.json"))
 	assert.Equal(t, "{}", content)
 
-	// Confirm the .git directory was skipped.
-	_, err := os.Stat(filepath.Join(dir, ".git"))
-	assert.Error(t, err)
-
-	// Confirm the .gitattributes file was skipped.
-	_, err = os.Stat(filepath.Join(dir, ".gitattributes"))
+	// Confirm the .pulumi.template.yaml file was skipped.
+	_, err := os.Stat(filepath.Join(dir, ".pulumi.template.yaml"))
 	assert.Error(t, err)
 }
 
@@ -282,14 +295,8 @@ func createTemporaryLocalTemplate(t *testing.T) string {
 	err = ioutil.WriteFile(filepath.Join(dir, "sub", "blah.json"), []byte("{}"), 0600)
 	assert.NoError(t, err, "creating sub/blah.json")
 
-	err = ioutil.WriteFile(filepath.Join(dir, ".gitattributes"), []byte{}, 0600)
-	assert.NoError(t, err, "creating .gitattributes")
-
-	err = os.MkdirAll(filepath.Join(dir, ".git"), os.ModePerm)
-	assert.NoError(t, err, "creating .git")
-
-	err = ioutil.WriteFile(filepath.Join(dir, ".git", "foo.txt"), []byte{}, 0600)
-	assert.NoError(t, err, "creating .git/foo.txt")
+	err = ioutil.WriteFile(filepath.Join(dir, ".pulumi.template.yaml"), []byte{}, 0600)
+	assert.NoError(t, err, "creating .pulumi.template.yaml")
 
 	return name
 }

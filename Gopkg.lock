@@ -112,12 +112,6 @@
   revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
-  name = "github.com/google/go-github"
-  packages = ["github"]
-  revision = "e48060a28fac52d0f1cb758bc8b87c07bac4a87d"
-  version = "v15.0.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/google/go-querystring"
   packages = ["query"]
@@ -336,7 +330,6 @@
   name = "golang.org/x/net"
   packages = [
     "context",
-    "context/ctxhttp",
     "http2",
     "http2/hpack",
     "idna",
@@ -345,15 +338,6 @@
     "trace"
   ]
   revision = "a337091b0525af65de94df2eb7e98bd9962dcbe2"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/oauth2"
-  packages = [
-    ".",
-    "internal"
-  ]
-  revision = "543e37812f10c46c622c9575afd7ad22f22a12ba"
 
 [[projects]]
   branch = "master"
@@ -384,20 +368,6 @@
     "unicode/rangetable"
   ]
   revision = "88f656faf3f37f690df1a32515b479415e1a6769"
-
-[[projects]]
-  name = "google.golang.org/appengine"
-  packages = [
-    "internal",
-    "internal/base",
-    "internal/datastore",
-    "internal/log",
-    "internal/remote_api",
-    "internal/urlfetch",
-    "urlfetch"
-  ]
-  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
-  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -515,6 +485,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "520979024985e81e5d99f95655d9b4e102489403512705580baa50eacc1b3da7"
+  inputs-digest = "1de7bd262e1e77d3cc0d7d0bba2a51e124c40a6b7e18f0fcc0566121b364f068"
   solver-name = "gps-cdcl"
   solver-version = 1
