@@ -14,5 +14,5 @@ if [[ "${TRAVIS_OS_NAME:-}" == "linux" ]]; then
     twine upload \
         --repository-url https://pypi.pulumi.com?token=${PULUMI_API_TOKEN} \
         -u pulumi -p pulumi \
-        ${ROOT}/sdk/python/env/lib/dist/*.whl
+        ${ROOT}/sdk/python/env/src/dist/*.whl
 fi
