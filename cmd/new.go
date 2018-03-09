@@ -125,7 +125,7 @@ func newNewCmd() *cobra.Command {
 		"Forces content to be generated even if it would change existing files")
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
-		"Allows offline use of cached templates without making any network requests.")
+		"Allows offline use of cached templates without making any network requests")
 
 	return cmd
 }
