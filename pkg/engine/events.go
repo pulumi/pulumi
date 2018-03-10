@@ -114,16 +114,23 @@ func makeEventEmitter(events chan<- Event, update Update) eventEmitter {
 			if !v.Secure() {
 				continue
 			}
+			secret, err := v.Value(target.Decrypter)
+			contract.AssertNoError(err)
+
+			// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
+			// displaying `[secret]`. Travis does a similar thing, for example.
+			if len(secret) < 3 {
+				continue
+			}
 			if b.Len() > 0 {
 				b.WriteRune('|')
 			}
 
-			secret, err := v.Value(target.Decrypter)
-			contract.AssertNoError(err)
 			b.WriteString(regexp.QuoteMeta(secret))
 		}
-
-		f = &regexFilter{re: regexp.MustCompile(b.String())}
+		if b.Len() > 0 {
+			f = &regexFilter{re: regexp.MustCompile(b.String())}
+		}
 	}
 
 	return eventEmitter{
