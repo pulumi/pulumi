@@ -170,7 +170,7 @@ export async function serializeFunctionAsync(
         func: Function, serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
     const closure = await serializeClosureAsync(func, serialize);
-    return serializeJavaScriptTextAsync(func, closure);
+    return serializeJavaScriptText(func, closure);
 }
 
 /**
@@ -1686,7 +1686,7 @@ function isAwaiterCall(node: ts.CallExpression) {
  *
  * @param c The Closure to be serialized into a module string.
  */
-async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closure): Promise<string> {
+function serializeJavaScriptText(func: Function, outerClosure: Closure): string {
     // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
 
     // Ensure the closure is targeting a supported runtime.
@@ -1714,7 +1714,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
     let environmentText = "";
     let functionText = "";
 
-    const outerClosureName = await emitClosureAndGetNameAsync(outerClosure);
+    const outerClosureName = emitClosureAndGetName(outerClosure);
 
     if (environmentText) {
         environmentText = "\n" + environmentText;
@@ -1726,7 +1726,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
     // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
     return text;
 
-    async function emitClosureAndGetNameAsync(closure: Closure): Promise<string> {
+    function emitClosureAndGetName(closure: Closure): string {
         // If this is the first time seeing this closure, then actually emit the function code for
         // it.  Otherwise, just return the name of the emitted function for anyone that wants to
         // reference it from their own code.
@@ -1735,14 +1735,14 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             closureName = `__f${currentClosureIndex++}`;
             closureToEnvVar.set(closure, closureName);
 
-            await emitClosureWorkerAsync(closure, closureName);
+            emitClosureWorker(closure, closureName);
         }
 
         return closureName;
     }
 
-    async function emitClosureWorkerAsync(closure: Closure, varName: string) {
-        const environment = await envFromEnvObjAsync(closure.environment);
+    function emitClosureWorker(closure: Closure, varName: string) {
+        const environment = envFromEnvObj(closure.environment);
 
         const thisCapture = environment.this;
         const argumentsCapture = environment.arguments;
@@ -1762,17 +1762,16 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         // If this function is complex (i.e. non-default __proto__, or has properties, etc.)
         // then emit those as well.
         if (closure.obj !== undefined) {
-            await emitComplexObjectPropertiesAsync(varName, varName, closure.obj);
+            emitComplexObjectProperties(varName, varName, closure.obj);
 
             if (closure.obj.proto !== undefined) {
-                const protoVar = await envEntryToStringAsync(
-                    await closure.obj.proto, `${varName}_proto`);
+                const protoVar = envEntryToString(closure.obj.proto, `${varName}_proto`);
                 environmentText += `Object.setPrototypeOf(${varName}, ${protoVar});\n`;
             }
         }
     }
 
-    async function envFromEnvObjAsync(env: Environment): Promise<Record<string, string>> {
+    function envFromEnvObj(env: Environment): Record<string, string> {
         const envObj: Record<string, string> = {};
         for (const [keyEntry, { entry: valEntry }] of env) {
             if (typeof keyEntry.json !== "string") {
@@ -1780,15 +1779,13 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             }
 
             const key = keyEntry.json;
-            const val = await envEntryToStringAsync(valEntry, key);
+            const val = envEntryToString(valEntry, key);
             envObj[key] = val;
         }
         return envObj;
     }
 
-    async function envEntryToStringAsync(
-            envEntry: EnvironmentEntry, varName: string): Promise<string> {
-
+    function envEntryToString(envEntry: EnvironmentEntry, varName: string): string {
         const envVar = envEntryToEnvVar.get(envEntry);
         if (envVar !== undefined) {
             return envVar;
@@ -1802,25 +1799,25 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         }
         else {
             // Other values (like strings, bools, etc.) can just be emitted inline.
-            return await simpleEnvEntryToStringAsync(envEntry, varName);
+            return simpleEnvEntryToString(envEntry, varName);
         }
     }
 
-    async function simpleEnvEntryToStringAsync(
-            envEntry: EnvironmentEntry, varName: string): Promise<string> {
+    function simpleEnvEntryToString(
+            envEntry: EnvironmentEntry, varName: string): string {
 
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
         }
         else if (envEntry.closure !== undefined) {
-            const closureName = await emitClosureAndGetNameAsync(envEntry.closure);
+            const closureName = emitClosureAndGetName(envEntry.closure);
             return closureName;
         }
         else if (envEntry.output !== undefined) {
             // get: () => { ... }
             // parses as a lambda with a block body, not as a lambda returning an object
             // initializer.  If we have a block body, wrap it with parens.
-            let value = await envEntryToStringAsync(envEntry.output, varName);
+            let value = envEntryToString(envEntry.output, varName);
             if (value && value.charAt(0) === "{") {
                 value = `(${value})`;
             }
@@ -1833,15 +1830,15 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             return envEntry.expr;
         }
         else if (envEntry.promise) {
-            return `Promise.resolve(${await envEntryToStringAsync(envEntry.promise, varName)})`;
+            return `Promise.resolve(${envEntryToString(envEntry.promise, varName)})`;
         }
         else {
             throw new Error("Malformed: " + JSON.stringify(envEntry));
         }
     }
 
-    async function complexEnvEntryToString(
-            envEntry: EnvironmentEntry, varName: string): Promise<string> {
+    function complexEnvEntryToString(
+            envEntry: EnvironmentEntry, varName: string): string {
         const index = currentEnvIndex++;
 
         // Call all environment variables __e<num> to make them unique.  But suffix
@@ -1851,16 +1848,16 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         envEntryToEnvVar.set(envEntry, envVar);
 
         if (envEntry.obj) {
-            await emitObjectAsync(envVar, envEntry.obj, varName);
+            emitObject(envVar, envEntry.obj, varName);
         } else if (envEntry.arr) {
-            await emitArrayAsync(envVar, envEntry.arr, varName);
+            emitArray(envVar, envEntry.arr, varName);
         }
 
         return envVar;
     }
 
-    async function emitObjectAsync(envVar: string, obj: ObjectEntry, varName: string): Promise<void> {
-        const complex = await isComplex(obj);
+    function emitObject(envVar: string, obj: ObjectEntry, varName: string): void {
+        const complex = isComplex(obj);
 
         if (complex) {
             // we have a complex child.  Because of the possibility of recursion in
@@ -1869,14 +1866,14 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             // This way, if the child ends up referencing us, we'll have already emitted
             // the **initialized** variable for them to reference.
             if (obj.proto) {
-                const protoVar = await envEntryToStringAsync(await obj.proto, `${varName}_proto`);
+                const protoVar = envEntryToString(obj.proto, `${varName}_proto`);
                 environmentText += `var ${envVar} = Object.create(${protoVar});\n`;
             }
             else {
                 environmentText += `var ${envVar} = {};\n`;
             }
 
-            await emitComplexObjectPropertiesAsync(envVar, varName, obj);
+            emitComplexObjectProperties(envVar, varName, obj);
         }
         else {
             // All values inside this obj are simple.  We can just emit the object
@@ -1885,8 +1882,8 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
 
             for (const [keyEntry, { entry: valEntry }] of obj.env) {
                 const keyName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
-                const propName = await envEntryToStringAsync(keyEntry, keyName);
-                const propVal = await simpleEnvEntryToStringAsync(await valEntry, keyName);
+                const propName = envEntryToString(keyEntry, keyName);
+                const propVal = simpleEnvEntryToString(valEntry, keyName);
 
                 if (typeof keyEntry.json === "string" && isLegalName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
@@ -1901,7 +1898,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             environmentText += entryString;
         }
 
-        async function isComplex(o: ObjectEntry) {
+        function isComplex(o: ObjectEntry) {
             if (obj.proto !== undefined) {
                 return true;
             }
@@ -1920,13 +1917,13 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         }
     }
 
-    async function emitComplexObjectPropertiesAsync(
-            envVar: string, varName: string, objEntry: ObjectEntry): Promise<void> {
+    function emitComplexObjectProperties(
+            envVar: string, varName: string, objEntry: ObjectEntry): void {
 
         for (const [keyEntry, { descriptor, entry: valEntry }] of objEntry.env) {
             const subName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
-            const keyString = await envEntryToStringAsync(keyEntry, subName);
-            const valString = await envEntryToStringAsync(valEntry, subName);
+            const keyString = envEntryToString(keyEntry, subName);
+            const valString = envEntryToString(valEntry, subName);
 
             if (!descriptor) {
                 // normal property.  Just emit simply as a direct assignment.
@@ -1939,11 +1936,11 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             }
             else {
                 // complex property.  emit as Object.defineProperty
-                await emitDefinePropertyAsync(descriptor, valString, keyString);
+                emitDefineProperty(descriptor, valString, keyString);
             }
         }
 
-        async function emitDefinePropertyAsync(
+        function emitDefineProperty(
             desc: EntryDescriptor, entryValue: string, propName: string) {
 
             const copy: any = {};
@@ -1957,10 +1954,10 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
                 copy.writable = desc.writable;
             }
             if (desc.get) {
-                copy.get = await envEntryToStringAsync(desc.get, `${varName}_get`);
+                copy.get = envEntryToString(desc.get, `${varName}_get`);
             }
             if (desc.set) {
-                copy.set = await envEntryToStringAsync(desc.set, `${varName}_set`);
+                copy.set = envEntryToString(desc.set, `${varName}_set`);
             }
             if (desc.hasValue) {
                 copy.value = entryValue;
@@ -1970,8 +1967,8 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         }
     }
 
-    async function emitArrayAsync(
-            envVar: string, arr: EnvironmentEntry[], varName: string): Promise<void> {
+    function emitArray(
+            envVar: string, arr: EnvironmentEntry[], varName: string): void {
         if (arr.some(deepContainsObjOrArray) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can
@@ -1984,7 +1981,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             let length = 0;
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {
-                    const entryString = await envEntryToStringAsync(arr[<any>key], `${varName}_${key}`);
+                    const entryString = envEntryToString(arr[<any>key], `${varName}_${key}`);
                     environmentText += `${envVar}${
                         isNumeric(key) ? `[${key}]` : `.${key}`} = ${entryString};\n`;
                     length++;
@@ -1997,7 +1994,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             // having four individual statements to do the same.
             const strings: string[] = [];
             for (let i = 0, n = arr.length; i < n; i++) {
-                strings.push(await simpleEnvEntryToStringAsync(arr[i], `${varName}_${i}`));
+                strings.push(simpleEnvEntryToString(arr[i], `${varName}_${i}`));
             }
 
             const entryString = `var ${envVar} = [${strings.join(", ")}];\n`;
