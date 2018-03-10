@@ -415,7 +415,13 @@ function serializeFunctionRecursive(
                 capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
 
             for (const name of Object.keys(capturedVariables)) {
-                const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+                let value: any;
+                try {
+                    value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+                }
+                catch (err) {
+                    throwSerializationError(func, context, err.message);
+                }
 
                 const moduleName = findModuleName(value);
                 const frameLength = context.frames.length;
@@ -630,11 +636,11 @@ interface SerializedFunction {
 function serializeFunctionCode(func: Function, context: Context): SerializedFunction {
     const funcString = func.toString();
     if (funcString.startsWith("[Function:")) {
-        throwSerializationError(`the function form was not understood.`);
+        throwSerializationError(func, context, `the function form was not understood.`);
     }
 
     if (funcString.indexOf("[native code]") !== -1) {
-        throwSerializationError(`it was a native code function.`);
+        throwSerializationError(func, context, `it was a native code function.`);
     }
 
     // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
@@ -670,7 +676,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
             return { funcExprWithoutName: funcString, isArrowFunction: true };
         }
 
-        throwSerializationError(`the function form was not understood.`);
+        throwSerializationError(func, context, `the function form was not understood.`);
     }
 
     const signature = funcString.substr(0, openCurlyIndex);
@@ -696,12 +702,12 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
         const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
         const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
         if (diagnostics.length) {
-            throwSerializationError(`the class could not be parsed: ${diagnostics[0].messageText}`);
+            throwSerializationError(func, context, `the class could not be parsed: ${diagnostics[0].messageText}`);
         }
 
         const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
-            throwSerializationError(`the class form was not understood:\n${funcString}`);
+            throwSerializationError(func, context, `the class form was not understood:\n${funcString}`);
         }
 
         const constructor = <ts.ConstructorDeclaration>classDecl.members.find(m => ts.isConstructorDeclaration(m));
@@ -734,7 +740,7 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
 
         const openParenIndex = v.indexOf("(");
         if (openParenIndex < 0) {
-            throwSerializationError(`the function form was not understood.`);
+            throwSerializationError(func, context, `the function form was not understood.`);
         }
 
         if (openParenIndex === 0) {
@@ -757,81 +763,83 @@ function serializeFunctionCode(func: Function, context: Context): SerializedFunc
             isArrowFunction: false,
         };
     }
+}
 
-    function throwSerializationError(info: string): never {
-        let message = "";
+function throwSerializationError(func: Function, context: Context, info: string): never {
+    let message = "";
 
-        const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
-        message += `Error serializing ${initialFuncLocation}\n\n`;
+    const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
+    message += `Error serializing ${initialFuncLocation}\n\n`;
 
-        let i = 0;
-        const n = context.frames.length;
-        for (; i < n; i++) {
-            const frame = context.frames[i];
+    let i = 0;
+    const n = context.frames.length;
+    for (; i < n; i++) {
+        const frame = context.frames[i];
 
-            const indentString = "  ".repeat(i);
-            message += indentString;
+        const indentString = "  ".repeat(i);
+        message += indentString;
 
-            if (frame.functionLocation) {
-                const funcLocation = getFunctionLocation(frame.functionLocation);
-                const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
+        if (frame.functionLocation) {
+            const funcLocation = getFunctionLocation(frame.functionLocation);
+            const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
 
-                if (nextFrameIsFunction) {
-                    if (i === 0) {
-                        message += `function ${funcLocation}: referenced\n`;
-                    }
-                    else {
-                        message += `function ${funcLocation}: which referenced\n`;
-                    }
+            if (nextFrameIsFunction) {
+                if (i === 0) {
+                    message += `function ${funcLocation}: referenced\n`;
                 }
                 else {
-                    if (i === n - 1) {
-                        message += `function ${funcLocation}: which could not be serialized because\n`;
-                    }
-                    else if (i === 0) {
-                        message += `function ${funcLocation}: captured\n`;
-                    }
-                    else {
-                        message += `function ${funcLocation}: which captured\n`;
-                    }
+                    message += `function ${funcLocation}: which referenced\n`;
                 }
             }
-            else if (frame.capturedFunctionName) {
-                message += `'${frame.capturedFunctionName}', a function defined at\n`;
+            else {
+                if (i === n - 1) {
+                    message += `function ${funcLocation}: which could not be serialized because\n`;
+                }
+                else if (i === 0) {
+                    message += `function ${funcLocation}: captured\n`;
+                }
+                else {
+                    message += `function ${funcLocation}: which captured\n`;
+                }
             }
-            else if (frame.capturedModuleName) {
-                message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
-            }
-            else if (frame.capturedVariableName) {
-                message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
-            }
         }
-
-        message += "  ".repeat(i) + info + "\n\n";
-        message += "Function code:\n";
-
-        // include up to the first 5 lines of the function to help show what is wrong with it.
-        let split = funcString.split(/\r?\n/);
-        if (split.length > 5) {
-            split = split.slice(0, 5);
-            split.push("...");
+        else if (frame.capturedFunctionName) {
+            message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
-        for (const line of split) {
-            message += "  " + line + "\n";
+        else if (frame.capturedModuleName) {
+            message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
         }
-
-        const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
-        if (moduleIndex >= 0) {
-            const moduleName = context.frames[moduleIndex].capturedModuleName;
-            message += "\n";
-
-            const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
-            message += `Capturing modules can sometimes cause problems.
-Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}`;
+        else if (frame.capturedVariableName) {
+            message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
         }
-
-        throw new RunError(message);
     }
+
+    message += "  ".repeat(i) + info + "\n\n";
+    message += "Function code:\n";
+
+    const funcString = func.toString();
+
+    // include up to the first 5 lines of the function to help show what is wrong with it.
+    let split = funcString.split(/\r?\n/);
+    if (split.length > 5) {
+        split = split.slice(0, 5);
+        split.push("...");
+    }
+    for (const line of split) {
+        message += "  " + line + "\n";
+    }
+
+    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+    if (moduleIndex >= 0) {
+        const moduleName = context.frames[moduleIndex].capturedModuleName;
+        message += "\n";
+
+        const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
+        message += `Capturing modules can sometimes cause problems.
+Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}`;
+    }
+
+    throw new RunError(message);
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
@@ -906,19 +914,35 @@ function getOrCreateEntry(
             entry.closure = serializeFunctionRecursive(obj, context, serialize);
         }
         else if (obj instanceof resource.Output) {
+            // captures the frames up to this point. so we can give a good message if we
+            // fail when we resume serializing this promise.
+            const framesCopy = context.frames.slice();
+
             // Push handling this output to the async work queue.  It will be processed in batches
             // after we've walked as much of the graph synchronously as possible.
             context.asyncWorkQueue.push(async () => {
                 const val = await obj.promise();
+
+                const oldFrames = context.frames;
+                context.frames = framesCopy;
                 entry.output = getOrCreateEntry(val, undefined, context, serialize);
+                context.frames = oldFrames;
             });
         }
         else if (obj instanceof Promise) {
+            // captures the frames up to this point. so we can give a good message if we
+            // fail when we resume serializing this promise.
+            const framesCopy = context.frames.slice();
+
             // Push handling this promise to the async work queue.  It will be processed in batches
             // after we've walked as much of the graph synchronously as possible.
             context.asyncWorkQueue.push(async () => {
                 const val = await obj;
+
+                const oldFrames = context.frames;
+                context.frames = framesCopy;
                 entry.promise = getOrCreateEntry(val, undefined, context, serialize);
+                context.frames = oldFrames;
             });
         }
         else if (obj instanceof Array) {
@@ -1337,6 +1361,10 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
                 return visitCatchClause(<ts.CatchClause>node);
             case ts.SyntaxKind.MethodDeclaration:
                 return visitMethodDeclaration(<ts.MethodDeclaration>node);
+            case ts.SyntaxKind.MetaProperty:
+                // don't walk down an es6 metaproperty (i.e. "new.target").  It doesn't
+                // capture anything.
+                return;
             case ts.SyntaxKind.PropertyAssignment:
                 return visitPropertyAssignment(<ts.PropertyAssignment>node);
             case ts.SyntaxKind.PropertyAccessExpression:
