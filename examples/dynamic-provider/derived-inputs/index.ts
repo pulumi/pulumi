@@ -4,10 +4,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as dynamic from "@pulumi/pulumi/dynamic";
 
 const sleep = require("sleep-promise");
-const assert = require("assert");
 
 class InputProvider implements dynamic.ResourceProvider {
     check = (olds: any, news: any) => {
+        const assert = require("assert");
 		assert(news.input);
 		return Promise.resolve({ inputs: news });
 	};

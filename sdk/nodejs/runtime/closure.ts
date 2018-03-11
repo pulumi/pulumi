@@ -2,6 +2,7 @@
 
 import * as crypto from "crypto";
 import { relative as pathRelative } from "path";
+import { basename } from "path";
 import * as ts from "typescript";
 import { RunError } from "../errors";
 import * as log from "../log";
@@ -110,26 +111,66 @@ interface EnvironmentEntry {
     // an array which may contain nested closures.
     arr?: EnvironmentEntry[];
 
-    // a reference to a requirable module name.
-    module?: string;
-
-    // a Dependency<T> property.  It will be serialized over as a get() method that
-    // returns the raw underlying value.
-    dep?: EnvironmentEntry;
-
-    // a simple expression to use to represent this instance.  For example "global.Number";
-    expr?: string;
-
     // A promise value.  this will be serialized as the underlyign value the promise
     // points to.  And deserialized as Promise.resolve(<underlying_value>)
     promise?: EnvironmentEntry;
+
+    // an Output<T> property.  It will be serialized over as a get() method that
+    // returns the raw underlying value.
+    output?: EnvironmentEntry;
+
+    // a simple expression to use to represent this instance.  For example "global.Number";
+    expr?: string;
+}
+
+interface Context {
+    // The cache stores a map of objects to the entries we've created for them.  It's used so that
+    // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
+    // object multiple times while walking the memory graph, we only emit it once.
+    cache: Map<Object, EnvironmentEntry>;
+
+    // The 'frames' we push/pop as we're walking the object graph serializing things.
+    // These frames allow us to present a useful error message to the user in the context
+    // of their code as opposed the async callstack we have while serializing.
+    frames: ContextFrame[];
+
+    // A mapping from a class method/constructor to the environment entry corresponding to the
+    // __super value.  When we emit the code for any class member we will end up adding
+    //
+    //  with ( { __super: <...> })
+    //
+    // We will also rewrite usages of "super" in the methods to refer to __super.  This way we can
+    // accurately serialize out the class members, while preserving functionality.
+    classInstanceMemberToSuperEntry: Map<Function, EnvironmentEntry>;
+    classStaticMemberToSuperEntry: Map<Function, EnvironmentEntry>;
+
+    // The set of async jobs we have to complete after serializing the object graph. This happens
+    // when we encounter Promises/Outputs while walking the graph.  We'll add that work here and
+    // then process it at the end of the graph.  Note: as we hit those promises we may discover more
+    // work to be done.  So we'll just keep processing this this queue until there is nothing left
+    // in it.
+    asyncWorkQueue: (() => Promise<void>)[];
+ }
+
+interface FunctionLocation {
+    func: Function;
+    file: string;
+    line: number;
+    column: number;
+}
+
+interface ContextFrame {
+    functionLocation?: FunctionLocation;
+    capturedFunctionName?: string;
+    capturedVariableName?: string;
+    capturedModuleName?: string;
 }
 
 export async function serializeFunctionAsync(
         func: Function, serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
     const closure = await serializeClosureAsync(func, serialize);
-    return serializeJavaScriptTextAsync(func, closure);
+    return serializeJavaScriptText(func, closure);
 }
 
 /**
@@ -139,11 +180,13 @@ export async function serializeFunctionAsync(
  * about the captured environment.
  */
 async function serializeClosureAsync(func: Function, serialize: (o: any) => boolean): Promise<Closure> {
-    // entryCache stores a map of objects to the entries we've created for them.  It's
-    // used so that we only ever create a single environemnt entry for a single object.
-    // i.e. if we hit the same object multiple times while walking the memory graph,
-    // we only emit it once.
-    const entryCache = new Map<Object, EnvironmentEntry>();
+    const context: Context = {
+        cache: new Map(),
+        classInstanceMemberToSuperEntry: new Map(),
+        classStaticMemberToSuperEntry: new Map(),
+        frames: [],
+        asyncWorkQueue: [],
+     };
 
     // Add well-known javascript global variables into our cache.  This way, if there
     // is any code that references them, we can just emit that as simple expressions
@@ -173,13 +216,15 @@ async function serializeClosureAsync(func: Function, serialize: (o: any) => bool
 
     // Add information so that we can properly serialize over generators/iterators.
     addGeneratorEntries();
-    entryCache.set(Symbol.iterator, { expr: "Symbol.iterator" });
+    context.cache.set(Symbol.iterator, { expr: "Symbol.iterator" });
 
     // Make sure this func is in the cache itself as we may hit it again while recursing.
     const entry: EnvironmentEntry = {};
-    entryCache.set(func, entry);
+    context.cache.set(func, entry);
 
-    entry.closure = await serializeFunctionRecursiveAsync(func, entryCache, serialize);
+    entry.closure = serializeFunctionRecursive(func, context, serialize);
+
+    await processAsyncWorkQueue();
 
     return entry.closure;
 
@@ -187,18 +232,18 @@ async function serializeClosureAsync(func: Function, serialize: (o: any) => bool
         const globalObj = (<any>global)[key];
         const text = isLegalName(key) ? `global.${key}` :  `global["${key}"]`;
 
-        if (!entryCache.has(globalObj)) {
-            entryCache.set(globalObj, { expr: text });
+        if (!context.cache.has(globalObj)) {
+            context.cache.set(globalObj, { expr: text });
         }
 
         const proto1 = Object.getPrototypeOf(globalObj);
-        if (proto1 && !entryCache.has(proto1)) {
-            entryCache.set(proto1, { expr: `Object.getPrototypeOf(${text}})`});
+        if (proto1 && !context.cache.has(proto1)) {
+            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})`});
         }
 
         const proto2 = globalObj.prototype;
-        if (proto2 && !entryCache.has(proto2)) {
-            entryCache.set(proto2, { expr: `${text}.prototype`});
+        if (proto2 && !context.cache.has(proto2)) {
+            context.cache.set(proto2, { expr: `${text}.prototype`});
         }
     }
 
@@ -222,146 +267,199 @@ async function serializeClosureAsync(func: Function, serialize: (o: any) => bool
         // tslint:disable-next-line:no-empty
         const emptyGenerator = function*(): any {};
 
-        entryCache.set(Object.getPrototypeOf(emptyGenerator),
+        context.cache.set(Object.getPrototypeOf(emptyGenerator),
             { expr: "Object.getPrototypeOf(function*(){})" });
 
-        entryCache.set(Object.getPrototypeOf(emptyGenerator.prototype),
+        context.cache.set(Object.getPrototypeOf(emptyGenerator.prototype),
             { expr: "Object.getPrototypeOf((function*(){}).prototype)" });
     }
-}
 
-// A mapping from a class method/constructor to the environment entry corresponding to
-// the __super value.  When we emit the code for any class member we will end up adding
-//
-//  with ( { __super: <...> })
-//
-// We will also rewrite usages of "super" in the methods to refer to __super.  This way
-// we can accurately serialize out the class members, while preserving functionality.
-const classInstanceMemberToSuperEntry = new Map<Function, EnvironmentEntryAndDescriptor>();
-const classStaticMemberToSuperEntry = new Map<Function, EnvironmentEntryAndDescriptor>();
+    async function processAsyncWorkQueue() {
+        while (context.asyncWorkQueue.length > 0) {
+            const queue = context.asyncWorkQueue;
+            context.asyncWorkQueue = [];
+
+            for (const work of queue) {
+                await work();
+            }
+        }
+    }
+}
 
 /**
  * serializeClosureAsync does the work to create an asynchronous dataflow graph that resolves to a
  * final closure.
  */
-async function serializeFunctionRecursiveAsync(
-        func: Function, entryCache: Map<Object, EnvironmentEntry>,
-        serialize: (o: any) => boolean): Promise<Closure> {
+function serializeFunctionRecursive(
+        func: Function, context: Context,
+        serialize: (o: any) => boolean): Closure {
 
-    const funcEntry = entryCache.get(func);
-    if (!funcEntry) {
-        throw new Error("EnvironmentEntry for this this function was not created by caller");
-    }
+    const file: string =  nativeruntime.getFunctionFile(func);
+    const line: number = nativeruntime.getFunctionLine(func);
+    const column: number = nativeruntime.getFunctionColumn(func);
 
-    // First, convert the js func object to a reasonable stringified version that we can operate on.
-    // Importantly, this function helps massage all the different forms that V8 can produce to
-    // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
-    // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
-    // process down the pipeline.
-    const serializedFunction = serializeFunctionCode(func);
+    context.frames.push({ functionLocation: { func, file, line, column } });
+    const result = serializeWorker();
+    context.frames.pop();
 
-    const funcExprWithoutName = serializedFunction.funcExprWithoutName;
-    const funcExprWithName = serializedFunction.funcExprWithName;
-    const functionDeclarationName = serializedFunction.functionDeclarationName;
+    return result;
 
-    const freeVariableNames = computeCapturedVariableNames(serializedFunction);
-
-    const environment: Environment = new Map();
-    await populateEnviromentAsync(freeVariableNames.required,  /*throwOnFailure:*/ true);
-    await populateEnviromentAsync(freeVariableNames.optional,  /*throwOnFailure:*/ false);
-
-    const closure: Closure = {
-        code: funcExprWithoutName,
-        runtime: "nodejs",
-        environment: environment,
-        obj: { env: new Map() },
-        usesNonLexicalThis: computeUsesNonLexialThis(serializedFunction),
-    };
-
-    const proto = Object.getPrototypeOf(func);
-
-    const isDerivedClassConstructor =
-        func.toString().startsWith("class ") &&
-        proto !== Function.prototype(func);
-
-    // Ensure that the prototype of this function is properly serialized as well. We only need to do
-    // this for functions with a custom prototype (like a derived class constructor, or a functoin
-    // that a user has explicit set the prototype for). Normal functions will pick up
-    // Function.prototype by default, so we don't need to do anything for them.
-    if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
-        const protoEntry = await serializeAsync(proto, undefined, entryCache, serialize);
-        closure.obj.proto = protoEntry;
-
-        if (isDerivedClassConstructor) {
-            processDerivedClassConstructor(protoEntry);
-            closure.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
-        }
-    }
-
-    // capture any properties placed on the function itself.  Don't bother with
-    // "length/name" as those are not things we can actually change.
-    for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func)) {
-        if (keyOrSymbol === "length" || keyOrSymbol === "name") {
-            continue;
+    function serializeWorker() {
+        const funcEntry = context.cache.get(func);
+        if (!funcEntry) {
+            throw new Error("EnvironmentEntry for this this function was not created by caller");
         }
 
-        const funcProp = (<any>func)[keyOrSymbol];
+        // First, convert the js func object to a reasonable stringified version that we can operate on.
+        // Importantly, this function helps massage all the different forms that V8 can produce to
+        // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
+        // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
+        // process down the pipeline.
+        const serializedFunction = serializeFunctionCode(func, context);
 
-        // We don't need to emit code to serialize this function's .prototype object
-        // unless that .prototype object was actually changed.
+        const funcExprWithoutName = serializedFunction.funcExprWithoutName;
+        const funcExprWithName = serializedFunction.funcExprWithName;
+        const functionDeclarationName = serializedFunction.functionDeclarationName;
+
+        const freeVariableNames = computeCapturedVariableNames(serializedFunction);
+
+        const environment: Environment = new Map();
+        processCapturedVariables(freeVariableNames.required, /*throwOnFailure:*/ true);
+        processCapturedVariables(freeVariableNames.optional, /*throwOnFailure:*/ false);
+
+        const closure: Closure = {
+            code: funcExprWithoutName,
+            runtime: "nodejs",
+            environment: environment,
+            obj: { env: new Map() },
+            usesNonLexicalThis: computeUsesNonLexicalThis(serializedFunction),
+        };
+
+        const proto = Object.getPrototypeOf(func);
+
+        const isDerivedClassConstructor =
+            func.toString().startsWith("class ") &&
+            proto !== Function.prototype(func);
+
+        // Ensure that the prototype of this function is properly serialized as well. We only need to do
+        // this for functions with a custom prototype (like a derived class constructor, or a functoin
+        // that a user has explicit set the prototype for). Normal functions will pick up
+        // Function.prototype by default, so we don't need to do anything for them.
+        if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
+            const protoEntry = getOrCreateEntry(proto, undefined, context, serialize);
+            closure.obj.proto = protoEntry;
+
+            if (isDerivedClassConstructor) {
+                processDerivedClassConstructor(protoEntry);
+                closure.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
+            }
+        }
+
+        // capture any properties placed on the function itself.  Don't bother with
+        // "length/name" as those are not things we can actually change.
+        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(func)) {
+            if (keyOrSymbol === "length" || keyOrSymbol === "name") {
+                continue;
+            }
+
+            const funcProp = (<any>func)[keyOrSymbol];
+
+            // We don't need to emit code to serialize this function's .prototype object
+            // unless that .prototype object was actually changed.
+            //
+            // In other words, in general, we will not emit the prototype for a normal
+            // 'function foo() {}' declaration.  but we will emit the prototype for the
+            // constructor function of a class.
+            if (keyOrSymbol === "prototype" && isDefaultFunctionPrototype(func, funcProp)) {
+                continue;
+            }
+
+            closure.obj.env.set(
+                getOrCreateEntry(keyOrSymbol, undefined, context, serialize),
+                { entry: getOrCreateEntry(funcProp, undefined, context, serialize) });
+        }
+
+        const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
+                           context.classStaticMemberToSuperEntry.get(func);
+        if (superEntry) {
+            // this was a class constructor or method.  We need to put a special __super
+            // entry into scope, and then rewrite any calls to super() to refer to it.
+            closure.environment.set(
+                getOrCreateEntry("__super", undefined, context, serialize),
+                { entry: superEntry });
+
+            closure.code = rewriteSuperReferences(
+                funcExprWithName!, context.classStaticMemberToSuperEntry.has(func));
+        }
+
+        // If this was a named function (literally, only a named function-expr or function-decl), then
+        // place an entry in the environment that maps from this function name to the serialized
+        // function we're creating.  This ensures that recursive functions will call the right method.
+        // i.e if we have "function f() { f(); }" this will get rewritten to:
         //
-        // In other words, in general, we will not emit the prototype for a normal
-        // 'function foo() {}' declaration.  but we will emit the prototype for the
-        // constructor function of a class.
-        if (keyOrSymbol === "prototype" && isDefaultFunctionPrototype(func, funcProp)) {
-            continue;
+        //      function __f() {
+        //          with ({ f: __f }) {
+        //              return function () { f(); }
+        //
+        // i.e. the inner call to "f();" will actually call the *outer* __f function, and not
+        // itself.
+        if (functionDeclarationName !== undefined) {
+            closure.environment.set(
+                getOrCreateEntry(functionDeclarationName, undefined, context, serialize),
+                { entry: funcEntry });
         }
 
-        closure.obj.env.set(
-            await serializeAsync(keyOrSymbol, undefined, entryCache, serialize),
-            { entry: await serializeAsync(funcProp, undefined, entryCache, serialize) });
-    }
+        return closure;
 
-    const superEntry = classInstanceMemberToSuperEntry.get(func) || classStaticMemberToSuperEntry.get(func);
-    if (superEntry) {
-        // this was a class constructor or method.  We need to put a special __super
-        // entry into scope, and then rewrite any calls to super() to refer to it.
-        closure.environment.set(
-            await serializeAsync("__super", undefined, entryCache, serialize),
-            superEntry);
+        function processCapturedVariables(
+                capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
 
-        closure.code = rewriteSuperReferences(
-            funcExprWithName!, classStaticMemberToSuperEntry.has(func));
-    }
+            for (const name of Object.keys(capturedVariables)) {
+                let value: any;
+                try {
+                    value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+                }
+                catch (err) {
+                    throwSerializationError(func, context, err.message);
+                }
 
-    // If this was a named function (literally, only a named function-expr or function-decl), then
-    // place an entry in the environment that maps from this function name to the serialized
-    // function we're creating.  This ensures that recursive functions will call the right method.
-    // i.e if we have "function f() { f(); }" this will get rewritten to:
-    //
-    //      function __f() {
-    //          with ({ f: __f }) {
-    //              return function () { f(); }
-    //
-    // i.e. the inner call to "f();" will actually call the *outer* __f function, and not
-    // itself.
-    if (functionDeclarationName !== undefined) {
-        closure.environment.set(
-            await serializeAsync(functionDeclarationName, undefined, entryCache, serialize),
-            { entry: funcEntry });
-    }
+                const moduleName = findModuleName(value);
+                const frameLength = context.frames.length;
+                if (moduleName) {
+                    context.frames.push({ capturedModuleName: moduleName });
+                }
+                else if (value instanceof Function) {
+                    // Only bother pushing on context frame if the name of the variable
+                    // we captured is different from the name of the function.  If the
+                    // names are the same, this is a direct reference, and we don't have
+                    // to list both the name of the capture and of the function.  if they
+                    // are different, it's an indirect reference, and the name should be
+                    // included for clarity.
+                    if (name !== value.name) {
+                        context.frames.push({ capturedFunctionName: name });
+                    }
+                }
+                else {
+                    context.frames.push({ capturedVariableName: name });
+                }
 
-    return closure;
+                processCapturedVariable(capturedVariables, name, value);
 
-    async function populateEnviromentAsync(names: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
-        for (const name of Object.keys(names)) {
-            const value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+                // Only if we pushed a frame on should we pop it off.
+                if (context.frames.length !== frameLength) {
+                    context.frames.pop();
+                }
+            }
+        }
 
-            const properties = names[name];
-            const serializedName = await serializeAsync(name, undefined, entryCache, serialize);
+        function processCapturedVariable(
+            capturedVariables: CapturedVariableMap, name: string, value: any) {
+
+            const properties = capturedVariables[name];
+            const serializedName = getOrCreateEntry(name, undefined, context, serialize);
 
             // try to only serialize out the properties that were used by the user's code.
-            const serializedValue = await serializeAsync(value, properties, entryCache, serialize);
+            const serializedValue = getOrCreateEntry(value, properties, context, serialize);
 
             environment.set(serializedName, { entry: serializedValue });
         }
@@ -370,10 +468,9 @@ async function serializeFunctionRecursiveAsync(
     function processDerivedClassConstructor(protoEntry: EnvironmentEntry) {
         // A reference to the base constructor function.  Used so that the derived constructor and
         // class-methods can refer to the base class for "super" calls.
-        const superEntryAndDescriptor: EnvironmentEntryAndDescriptor = { entry: protoEntry };
 
         // constructor
-        classInstanceMemberToSuperEntry.set(func, superEntryAndDescriptor);
+        context.classInstanceMemberToSuperEntry.set(func, protoEntry);
 
         // Also, make sure our methods can also find this entry so they too can refer to
         // 'super'.
@@ -395,26 +492,28 @@ async function serializeFunctionRecursiveAsync(
 
         function addIfFunction(prop: any, isStatic: boolean) {
             if (prop instanceof Function) {
-                const set = isStatic ? classStaticMemberToSuperEntry : classInstanceMemberToSuperEntry;
-                set.set(prop, superEntryAndDescriptor);
+                const set = isStatic
+                    ? context.classStaticMemberToSuperEntry
+                    : context.classInstanceMemberToSuperEntry;
+                set.set(prop, protoEntry);
             }
         }
     }
 
     function rewriteSuperReferences(code: string, isStatic: boolean): string {
-        const file = ts.createSourceFile(
+        const sourceFile = ts.createSourceFile(
             "", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
         // Transform any usages of "super(...)" into "__super.call(this, ...)", any
         // instance usages of "super.xxx" into "__super.prototype.xxx" and any static
         // usages of "super.xxx" into "__super.xxx"
-        const transformed = ts.transform(file, [rewriteSuperCallsWorker]);
+        const transformed = ts.transform(sourceFile, [rewriteSuperCallsWorker]);
         const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-        const output = printer.printNode(ts.EmitHint.Unspecified, transformed.transformed[0], file).trim();
+        const output = printer.printNode(ts.EmitHint.Unspecified, transformed.transformed[0], sourceFile).trim();
 
         return output;
 
-        function rewriteSuperCallsWorker(context: ts.TransformationContext) {
+        function rewriteSuperCallsWorker(transformationContext: ts.TransformationContext) {
             const newNodes = new Set<ts.Node>();
             let firstFunctionDeclaration = true;
 
@@ -430,7 +529,7 @@ async function serializeFunctionRecursiveAsync(
                 // This means the inner call properly binds to the *outer* function we create.
                 if (firstFunctionDeclaration && ts.isFunctionDeclaration(node)) {
                     firstFunctionDeclaration = false;
-                    const funcDecl = ts.visitEachChild(node, visitor, context);
+                    const funcDecl = ts.visitEachChild(node, visitor, transformationContext);
 
                     const text = isLegalName(funcDecl.name!.text)
                         ? "/*" + funcDecl.name!.text + "*/" : "";
@@ -477,7 +576,7 @@ async function serializeFunctionRecursiveAsync(
 
                 // for all other nodes, recurse first (so we update any usages of 'super')
                 // below them
-                const rewritten = ts.visitEachChild(node, visitor, context);
+                const rewritten = ts.visitEachChild(node, visitor, transformationContext);
 
                 if (ts.isCallExpression(rewritten) &&
                     newNodes.has(rewritten.expression)) {
@@ -534,15 +633,14 @@ interface SerializedFunction {
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
 // are represented.  If these change, this will likely break us.zs
-function serializeFunctionCode(func: Function): SerializedFunction {
+function serializeFunctionCode(func: Function, context: Context): SerializedFunction {
     const funcString = func.toString();
     if (funcString.startsWith("[Function:")) {
-        throw new Error(
-            `Cannot serialize non-expression functions (such as definitions and generators):\n${funcString}`);
+        throwSerializationError(func, context, `the function form was not understood.`);
     }
 
     if (funcString.indexOf("[native code]") !== -1) {
-        throw new Error(`Cannot serialize native code function:\n${funcString}`);
+        throwSerializationError(func, context, `it was a native code function.`);
     }
 
     // We need to ensure that lambdas stay lambdas, and non-lambdas end up looking like functions.
@@ -578,7 +676,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
             return { funcExprWithoutName: funcString, isArrowFunction: true };
         }
 
-        throw new Error(`Could not understand function:\n${funcString}`);
+        throwSerializationError(func, context, `the function form was not understood.`);
     }
 
     const signature = funcString.substr(0, openCurlyIndex);
@@ -604,12 +702,12 @@ function serializeFunctionCode(func: Function): SerializedFunction {
         const file = ts.createSourceFile("", funcString, ts.ScriptTarget.Latest);
         const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
         if (diagnostics.length) {
-            throw new Error(`Could not parse class: ${diagnostics[0].messageText}\n${funcString}`);
+            throwSerializationError(func, context, `the class could not be parsed: ${diagnostics[0].messageText}`);
         }
 
         const classDecl = <ts.ClassDeclaration>file.statements.find(x => ts.isClassDeclaration(x));
         if (!classDecl) {
-            throw new Error(`Could not understand class:\n${funcString}`);
+            throwSerializationError(func, context, `the class form was not understood:\n${funcString}`);
         }
 
         const constructor = <ts.ConstructorDeclaration>classDecl.members.find(m => ts.isConstructorDeclaration(m));
@@ -642,7 +740,7 @@ function serializeFunctionCode(func: Function): SerializedFunction {
 
         const openParenIndex = v.indexOf("(");
         if (openParenIndex < 0) {
-            throw new Error(`Could not understand function:\n${funcString}`);
+            throwSerializationError(func, context, `the function form was not understood.`);
         }
 
         if (openParenIndex === 0) {
@@ -667,6 +765,92 @@ function serializeFunctionCode(func: Function): SerializedFunction {
     }
 }
 
+function throwSerializationError(func: Function, context: Context, info: string): never {
+    let message = "";
+
+    const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
+    message += `Error serializing ${initialFuncLocation}\n\n`;
+
+    let i = 0;
+    const n = context.frames.length;
+    for (; i < n; i++) {
+        const frame = context.frames[i];
+
+        const indentString = "  ".repeat(i);
+        message += indentString;
+
+        if (frame.functionLocation) {
+            const funcLocation = getFunctionLocation(frame.functionLocation);
+            const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
+
+            if (nextFrameIsFunction) {
+                if (i === 0) {
+                    message += `function ${funcLocation}: referenced\n`;
+                }
+                else {
+                    message += `function ${funcLocation}: which referenced\n`;
+                }
+            }
+            else {
+                if (i === n - 1) {
+                    message += `function ${funcLocation}: which could not be serialized because\n`;
+                }
+                else if (i === 0) {
+                    message += `function ${funcLocation}: captured\n`;
+                }
+                else {
+                    message += `function ${funcLocation}: which captured\n`;
+                }
+            }
+        }
+        else if (frame.capturedFunctionName) {
+            message += `'${frame.capturedFunctionName}', a function defined at\n`;
+        }
+        else if (frame.capturedModuleName) {
+            message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+        }
+        else if (frame.capturedVariableName) {
+            message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
+        }
+    }
+
+    message += "  ".repeat(i) + info + "\n\n";
+    message += "Function code:\n";
+
+    const funcString = func.toString();
+
+    // include up to the first 5 lines of the function to help show what is wrong with it.
+    let split = funcString.split(/\r?\n/);
+    if (split.length > 5) {
+        split = split.slice(0, 5);
+        split.push("...");
+    }
+    for (const line of split) {
+        message += "  " + line + "\n";
+    }
+
+    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+    if (moduleIndex >= 0) {
+        const moduleName = context.frames[moduleIndex].capturedModuleName;
+        message += "\n";
+
+        const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
+        message += `Capturing modules can sometimes cause problems.
+Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}`;
+    }
+
+    throw new RunError(message);
+}
+
+function getFunctionLocation(loc: FunctionLocation): string {
+    let name = "'" + (loc.func.name || "<anonymous>") + "'";
+    if (loc.file) {
+        name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
+    }
+
+    return name;
+}
+
 function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
     // The initial value of prototype on any newly-created Function instance is a new instance of
     // Object, but with the own-property 'constructor' set to point back to the new function.
@@ -683,69 +867,83 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
  * entry.  If propNames is provided, and is non-empty, then only attempt to serialize out those
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
-async function serializeAsync(
+function getOrCreateEntry(
         obj: any, capturedObjectProperties: CapturedPropertyInfo[] | undefined,
-        entryCache: Map<Object, EnvironmentEntry>,
-        serialize: (o: any) => boolean): Promise<EnvironmentEntry> {
+        context: Context,
+        serialize: (o: any) => boolean): EnvironmentEntry {
     // See if we have a cache hit.  If yes, use the object as-is.
-    const result = entryCache.get(obj);
-    if (result) {
+    let entry = context.cache.get(obj)!;
+    if (entry) {
         // Even though we've already serialized out this object, it might be the case
         // that we serialized out a different set of properties than the current set
         // we're being asked to serialize.  So we have to make sure that all these props
         // are actually serialized.
-        if (capturedObjectProperties) {
-            const unwrapped = await result;
-            if (unwrapped.obj) {
-                await serializeObjectAsync(unwrapped);
-            }
+        if (entry.obj) {
+            serializeObject();
         }
 
-        return Promise.resolve(result);
+        return entry;
     }
 
-    return await dispatchAnyAsync();
+    // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
+    // entry in the cache.  That way, if we encounter this obj again while recursing we can just
+    // return that placeholder.
+    entry = {};
+    context.cache.set(obj, entry);
+    dispatchAny();
+    return entry;
 
-    async function dispatchAnyAsync(): Promise<EnvironmentEntry> {
-        // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
-        // AsyncEnvironmentEntry in the cache.  That way, if we encounter this obj again while recursing
-        // we can just return that placeholder.
-        const entry: EnvironmentEntry = {};
-        entryCache.set(obj, entry);
+    function dispatchAny(): void {
 
         if (!serialize(obj)) {
             entry.json = undefined;
-            return entry;
         }
-
-        if (isResourceOrDerivedClassConstructor(obj)) {
+        else if (isResourceOrDerivedClassConstructor(obj)) {
             entry.json = undefined;
-            return entry;
         }
-
-        const moduleName = findRequirableModuleName(obj);
-
-        if (obj === undefined || obj === null ||
+        else if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
         }
-        else if (moduleName) {
-            // Serialize any value which was found as a requirable module name as a reference to the module
-            entry.module = moduleName;
+        else if (obj && obj.doNotCapture) {
+            entry.json = undefined;
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.closure = await serializeFunctionRecursiveAsync(obj, entryCache, serialize);
+            entry.closure = serializeFunctionRecursive(obj, context, serialize);
         }
         else if (obj instanceof resource.Output) {
-            entry.dep = await serializeAsync(await obj.promise(), undefined, entryCache, serialize);
+            // captures the frames up to this point. so we can give a good message if we
+            // fail when we resume serializing this promise.
+            const framesCopy = context.frames.slice();
+
+            // Push handling this output to the async work queue.  It will be processed in batches
+            // after we've walked as much of the graph synchronously as possible.
+            context.asyncWorkQueue.push(async () => {
+                const val = await obj.promise();
+
+                const oldFrames = context.frames;
+                context.frames = framesCopy;
+                entry.output = getOrCreateEntry(val, undefined, context, serialize);
+                context.frames = oldFrames;
+            });
         }
         else if (obj instanceof Promise) {
-            const val = await obj;
+            // captures the frames up to this point. so we can give a good message if we
+            // fail when we resume serializing this promise.
+            const framesCopy = context.frames.slice();
 
-            // If this is a promise, we will await it and serialize the result instead.
-            entry.promise = await serializeAsync(val, undefined, entryCache, serialize);
+            // Push handling this promise to the async work queue.  It will be processed in batches
+            // after we've walked as much of the graph synchronously as possible.
+            context.asyncWorkQueue.push(async () => {
+                const val = await obj;
+
+                const oldFrames = context.frames;
+                context.frames = framesCopy;
+                entry.promise = getOrCreateEntry(val, undefined, context, serialize);
+                context.frames = oldFrames;
+            });
         }
         else if (obj instanceof Array) {
             // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the array
@@ -753,8 +951,8 @@ async function serializeAsync(
             entry.arr = [];
             for (const key of Object.getOwnPropertyNames(obj)) {
                 if (key !== "length" && obj.hasOwnProperty(key)) {
-                    entry.arr[<any>key] = await serializeAsync(
-                        obj[<any>key], undefined, entryCache, serialize);
+                    entry.arr[<any>key] = getOrCreateEntry(
+                        obj[<any>key], undefined, context, serialize);
                 }
             }
         }
@@ -763,19 +961,17 @@ async function serializeAsync(
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.arr = [];
             for (const elem of obj) {
-                entry.arr.push(await serializeAsync(elem, undefined, entryCache, serialize));
+                entry.arr.push(getOrCreateEntry(elem, undefined, context, serialize));
             }
         }
         else {
             // For all other objects, serialize out the properties we've been asked to serialize
             // out.
-            await serializeObjectAsync(entry);
+            serializeObject();
         }
-
-        return entry;
     }
 
-    async function getEntryDescriptorAsync(key: PropertyKey) {
+    function getEntryDescriptor(key: PropertyKey) {
         const desc = Object.getOwnPropertyDescriptor(obj, key);
         let entryDescriptor: EntryDescriptor | undefined;
         if (desc) {
@@ -793,12 +989,12 @@ async function serializeAsync(
                     entryDescriptor.writable = desc.writable;
                 }
                 if (desc.get) {
-                    entryDescriptor.get = await serializeAsync(
-                        desc.get, undefined, entryCache, serialize);
+                    entryDescriptor.get = getOrCreateEntry(
+                        desc.get, undefined, context, serialize);
                 }
                 if (desc.set) {
-                    entryDescriptor.set = await serializeAsync(
-                        desc.set, undefined, entryCache, serialize);
+                    entryDescriptor.set = getOrCreateEntry(
+                        desc.set, undefined, context, serialize);
                 }
             }
         }
@@ -806,19 +1002,18 @@ async function serializeAsync(
         return entryDescriptor;
     }
 
-    async function serializeObjectAsync(entry: EnvironmentEntry) {
+    function serializeObject() {
         // Serialize the set of property names asked for.  If we discover that any of them
         // use this/super, then go and reserialize all the properties.
-        const serializeAll = await serializeObjectWorkerAsync(entry, capturedObjectProperties || []);
+        const serializeAll = serializeObjectWorker(capturedObjectProperties || []);
         if (serializeAll) {
-            await serializeObjectWorkerAsync(entry, []);
+            serializeObjectWorker([]);
         }
     }
 
     // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
     // property filtering.
-    async function serializeObjectWorkerAsync(
-            entry: EnvironmentEntry, localObjectProperties: CapturedPropertyInfo[]): Promise<boolean> {
+    function serializeObjectWorker(localObjectProperties: CapturedPropertyInfo[]): boolean {
         const objectEntry: ObjectEntry = entry.obj || { env: new Map() };
         entry.obj = objectEntry;
         const environment = entry.obj.env;
@@ -832,13 +1027,18 @@ async function serializeAsync(
                 continue;
             }
 
-            const descriptor = await getEntryDescriptorAsync(keyOrSymbol);
-
-            const keyEntry = await serializeAsync(keyOrSymbol, undefined, entryCache, serialize);
+            const keyEntry = getOrCreateEntry(keyOrSymbol, undefined, context, serialize);
             if (!environment.has(keyEntry)) {
-                const valEntry = await serializeAsync(
-                    obj[keyOrSymbol], undefined, entryCache, serialize);
+                // we're about to recurse inside this object.  In order to prever infinite
+                // loops, put a dummy entry in the environment map.  That way, if we hit
+                // this object again while recursing we won't try to generate this property.
+                environment.set(keyEntry, <any>undefined);
 
+                const descriptor = getEntryDescriptor(keyOrSymbol);
+                const valEntry = getOrCreateEntry(
+                    obj[keyOrSymbol], undefined, context, serialize);
+
+                // Now, replace the dummy entry with the actual one we want.
                 environment.set(keyEntry, { descriptor: descriptor, entry: valEntry });
 
                 if (capturedPropInfo && capturedPropInfo.invoked) {
@@ -869,15 +1069,15 @@ async function serializeAsync(
         if (!entry.obj.proto && localObjectProperties.length === 0) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
-                entry.obj.proto = await serializeAsync(proto, undefined, entryCache, serialize);
+                entry.obj.proto = getOrCreateEntry(proto, undefined, context, serialize);
             }
         }
 
         return false;
     }
 
-    function usesNonLexicalThis(entry: EnvironmentEntry | undefined) {
-        return entry && entry.closure && entry.closure.usesNonLexicalThis;
+    function usesNonLexicalThis(localEntry: EnvironmentEntry | undefined) {
+        return localEntry && localEntry.closure && localEntry.closure.usesNonLexicalThis;
     }
 }
 
@@ -908,12 +1108,13 @@ for (const name of builtInModuleNames) {
 
 // findRequirableModuleName attempts to find a global name bound to the object, which can
 // be used as a stable reference across serialization.
-function findRequirableModuleName(obj: any): string | undefined  {
+function findModuleName(obj: any): string | undefined  {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
         return key;
     }
+
     // Next, check the Node module require cache, which will store cached values
     // of all non-built-in Node modules loaded by the program so far. _Note_: We
     // don't pre-compute this because the require cache will get populated
@@ -976,7 +1177,7 @@ function parseFunction(serializedFunction: SerializedFunction): ts.SourceFile {
     return file;
 }
 
-function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boolean {
+function computeUsesNonLexicalThis(serializedFunction: SerializedFunction): boolean {
     if (serializedFunction.isArrowFunction) {
         // if we're looking at an arrow function, the it is always using lexical 'this's
         // so we don't have to bother even examining it.
@@ -1002,6 +1203,10 @@ function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boole
             case ts.SyntaxKind.ThisKeyword:
                 usesNonLexicalThis = true;
                 break;
+
+            case ts.SyntaxKind.CallExpression:
+                return visitCallExpression(<ts.CallExpression>node);
+
             case ts.SyntaxKind.MethodDeclaration:
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.FunctionExpression:
@@ -1034,6 +1239,28 @@ function computeUsesNonLexialThis(serializedFunction: SerializedFunction): boole
         walk(node.body);
 
         inTopmostFunction = false;
+    }
+
+    function visitCallExpression(node: ts.CallExpression) {
+        // Most call expressions are normal.  But we must special case one kind of function:
+        // TypeScript's __awaiter functions.  They are of the form `__awaiter(this, void 0, void 0,
+        // function* (){})`,
+
+        // The first 'this' argument is passed along in case the expression awaited uses 'this'.
+        // However, doing that can be very bad for us as in many cases the 'this' just refers to the
+        // surrounding module, and the awaited expression won't be using that 'this' at all.
+        walk(node.expression);
+
+        if (isAwaiterCall(node)) {
+            const lastFunction = <ts.FunctionExpression>node.arguments[3];
+            walk(lastFunction.body);
+            return;
+        }
+
+        // For normal calls, just walk all arguments normally.
+        for (const arg of node.arguments) {
+            walk(arg);
+        }
     }
 }
 
@@ -1134,6 +1361,10 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
                 return visitCatchClause(<ts.CatchClause>node);
             case ts.SyntaxKind.MethodDeclaration:
                 return visitMethodDeclaration(<ts.MethodDeclaration>node);
+            case ts.SyntaxKind.MetaProperty:
+                // don't walk down an es6 metaproperty (i.e. "new.target").  It doesn't
+                // capture anything.
+                return;
             case ts.SyntaxKind.PropertyAssignment:
                 return visitPropertyAssignment(<ts.PropertyAssignment>node);
             case ts.SyntaxKind.PropertyAccessExpression:
@@ -1327,14 +1558,7 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
         // capture so that we pass 'this' along.
         walk(node.expression);
 
-        const isAwaiterCall =
-            ts.isIdentifier(node.expression) &&
-            node.expression.text === "__awaiter" &&
-            node.arguments.length === 4 &&
-            node.arguments[0].kind === ts.SyntaxKind.ThisKeyword &&
-            ts.isFunctionLike(node.arguments[3]);
-
-        if (isAwaiterCall) {
+        if (isAwaiterCall(node)) {
             return visitBaseFunction(
                 <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
                 /*isArrowFunction*/ true,
@@ -1473,13 +1697,24 @@ function computeCapturedVariableNames(serializedFunction: SerializedFunction): C
     }
 }
 
+function isAwaiterCall(node: ts.CallExpression) {
+    const result =
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "__awaiter" &&
+        node.arguments.length === 4 &&
+        node.arguments[0].kind === ts.SyntaxKind.ThisKeyword &&
+        ts.isFunctionLike(node.arguments[3]);
+
+    return result;
+}
+
 /**
  * serializeJavaScriptText converts a Closure object into a string representation of a Node.js module body which
  * exposes a single function `exports.handler` representing the serialized function.
  *
  * @param c The Closure to be serialized into a module string.
  */
-async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closure): Promise<string> {
+function serializeJavaScriptText(func: Function, outerClosure: Closure): string {
     // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
 
     // Ensure the closure is targeting a supported runtime.
@@ -1507,7 +1742,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
     let environmentText = "";
     let functionText = "";
 
-    const outerClosureName = await emitClosureAndGetNameAsync(outerClosure);
+    const outerClosureName = emitClosureAndGetName(outerClosure);
 
     if (environmentText) {
         environmentText = "\n" + environmentText;
@@ -1519,7 +1754,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
     // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
     return text;
 
-    async function emitClosureAndGetNameAsync(closure: Closure): Promise<string> {
+    function emitClosureAndGetName(closure: Closure): string {
         // If this is the first time seeing this closure, then actually emit the function code for
         // it.  Otherwise, just return the name of the emitted function for anyone that wants to
         // reference it from their own code.
@@ -1528,14 +1763,14 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             closureName = `__f${currentClosureIndex++}`;
             closureToEnvVar.set(closure, closureName);
 
-            await emitClosureWorkerAsync(closure, closureName);
+            emitClosureWorker(closure, closureName);
         }
 
         return closureName;
     }
 
-    async function emitClosureWorkerAsync(closure: Closure, varName: string) {
-        const environment = await envFromEnvObjAsync(closure.environment);
+    function emitClosureWorker(closure: Closure, varName: string) {
+        const environment = envFromEnvObj(closure.environment);
 
         const thisCapture = environment.this;
         const argumentsCapture = environment.arguments;
@@ -1555,17 +1790,16 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         // If this function is complex (i.e. non-default __proto__, or has properties, etc.)
         // then emit those as well.
         if (closure.obj !== undefined) {
-            await emitComplexObjectPropertiesAsync(varName, varName, closure.obj);
+            emitComplexObjectProperties(varName, varName, closure.obj);
 
             if (closure.obj.proto !== undefined) {
-                const protoVar = await envEntryToStringAsync(
-                    await closure.obj.proto, `${varName}_proto`);
+                const protoVar = envEntryToString(closure.obj.proto, `${varName}_proto`);
                 environmentText += `Object.setPrototypeOf(${varName}, ${protoVar});\n`;
             }
         }
     }
 
-    async function envFromEnvObjAsync(env: Environment): Promise<Record<string, string>> {
+    function envFromEnvObj(env: Environment): Record<string, string> {
         const envObj: Record<string, string> = {};
         for (const [keyEntry, { entry: valEntry }] of env) {
             if (typeof keyEntry.json !== "string") {
@@ -1573,15 +1807,13 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             }
 
             const key = keyEntry.json;
-            const val = await envEntryToStringAsync(valEntry, key);
+            const val = envEntryToString(valEntry, key);
             envObj[key] = val;
         }
         return envObj;
     }
 
-    async function envEntryToStringAsync(
-            envEntry: EnvironmentEntry, varName: string): Promise<string> {
-
+    function envEntryToString(envEntry: EnvironmentEntry, varName: string): string {
         const envVar = envEntryToEnvVar.get(envEntry);
         if (envVar !== undefined) {
             return envVar;
@@ -1595,28 +1827,25 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         }
         else {
             // Other values (like strings, bools, etc.) can just be emitted inline.
-            return await simpleEnvEntryToStringAsync(envEntry, varName);
+            return simpleEnvEntryToString(envEntry, varName);
         }
     }
 
-    async function simpleEnvEntryToStringAsync(
-            envEntry: EnvironmentEntry, varName: string): Promise<string> {
+    function simpleEnvEntryToString(
+            envEntry: EnvironmentEntry, varName: string): string {
 
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
         }
         else if (envEntry.closure !== undefined) {
-            const closureName = await emitClosureAndGetNameAsync(envEntry.closure);
+            const closureName = emitClosureAndGetName(envEntry.closure);
             return closureName;
         }
-        else if (envEntry.module !== undefined) {
-            return `require("${envEntry.module}")`;
-        }
-        else if (envEntry.dep !== undefined) {
+        else if (envEntry.output !== undefined) {
             // get: () => { ... }
             // parses as a lambda with a block body, not as a lambda returning an object
             // initializer.  If we have a block body, wrap it with parens.
-            let value = await envEntryToStringAsync(envEntry.dep, varName);
+            let value = envEntryToString(envEntry.output, varName);
             if (value && value.charAt(0) === "{") {
                 value = `(${value})`;
             }
@@ -1629,15 +1858,15 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             return envEntry.expr;
         }
         else if (envEntry.promise) {
-            return `Promise.resolve(${await envEntryToStringAsync(envEntry.promise, varName)})`;
+            return `Promise.resolve(${envEntryToString(envEntry.promise, varName)})`;
         }
         else {
             throw new Error("Malformed: " + JSON.stringify(envEntry));
         }
     }
 
-    async function complexEnvEntryToString(
-            envEntry: EnvironmentEntry, varName: string): Promise<string> {
+    function complexEnvEntryToString(
+            envEntry: EnvironmentEntry, varName: string): string {
         const index = currentEnvIndex++;
 
         // Call all environment variables __e<num> to make them unique.  But suffix
@@ -1647,16 +1876,16 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         envEntryToEnvVar.set(envEntry, envVar);
 
         if (envEntry.obj) {
-            await emitObjectAsync(envVar, envEntry.obj, varName);
+            emitObject(envVar, envEntry.obj, varName);
         } else if (envEntry.arr) {
-            await emitArrayAsync(envVar, envEntry.arr, varName);
+            emitArray(envVar, envEntry.arr, varName);
         }
 
         return envVar;
     }
 
-    async function emitObjectAsync(envVar: string, obj: ObjectEntry, varName: string): Promise<void> {
-        const complex = await isComplex(obj);
+    function emitObject(envVar: string, obj: ObjectEntry, varName: string): void {
+        const complex = isComplex(obj);
 
         if (complex) {
             // we have a complex child.  Because of the possibility of recursion in
@@ -1665,14 +1894,14 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             // This way, if the child ends up referencing us, we'll have already emitted
             // the **initialized** variable for them to reference.
             if (obj.proto) {
-                const protoVar = await envEntryToStringAsync(await obj.proto, `${varName}_proto`);
+                const protoVar = envEntryToString(obj.proto, `${varName}_proto`);
                 environmentText += `var ${envVar} = Object.create(${protoVar});\n`;
             }
             else {
                 environmentText += `var ${envVar} = {};\n`;
             }
 
-            await emitComplexObjectPropertiesAsync(envVar, varName, obj);
+            emitComplexObjectProperties(envVar, varName, obj);
         }
         else {
             // All values inside this obj are simple.  We can just emit the object
@@ -1681,8 +1910,8 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
 
             for (const [keyEntry, { entry: valEntry }] of obj.env) {
                 const keyName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
-                const propName = await envEntryToStringAsync(keyEntry, keyName);
-                const propVal = await simpleEnvEntryToStringAsync(await valEntry, keyName);
+                const propName = envEntryToString(keyEntry, keyName);
+                const propVal = simpleEnvEntryToString(valEntry, keyName);
 
                 if (typeof keyEntry.json === "string" && isLegalName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
@@ -1697,7 +1926,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             environmentText += entryString;
         }
 
-        async function isComplex(o: ObjectEntry) {
+        function isComplex(o: ObjectEntry) {
             if (obj.proto !== undefined) {
                 return true;
             }
@@ -1716,13 +1945,13 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         }
     }
 
-    async function emitComplexObjectPropertiesAsync(
-            envVar: string, varName: string, objEntry: ObjectEntry): Promise<void> {
+    function emitComplexObjectProperties(
+            envVar: string, varName: string, objEntry: ObjectEntry): void {
 
         for (const [keyEntry, { descriptor, entry: valEntry }] of objEntry.env) {
             const subName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
-            const keyString = await envEntryToStringAsync(keyEntry, subName);
-            const valString = await envEntryToStringAsync(valEntry, subName);
+            const keyString = envEntryToString(keyEntry, subName);
+            const valString = envEntryToString(valEntry, subName);
 
             if (!descriptor) {
                 // normal property.  Just emit simply as a direct assignment.
@@ -1735,11 +1964,11 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             }
             else {
                 // complex property.  emit as Object.defineProperty
-                await emitDefinePropertyAsync(descriptor, valString, keyString);
+                emitDefineProperty(descriptor, valString, keyString);
             }
         }
 
-        async function emitDefinePropertyAsync(
+        function emitDefineProperty(
             desc: EntryDescriptor, entryValue: string, propName: string) {
 
             const copy: any = {};
@@ -1753,10 +1982,10 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
                 copy.writable = desc.writable;
             }
             if (desc.get) {
-                copy.get = await envEntryToStringAsync(desc.get, `${varName}_get`);
+                copy.get = envEntryToString(desc.get, `${varName}_get`);
             }
             if (desc.set) {
-                copy.set = await envEntryToStringAsync(desc.set, `${varName}_set`);
+                copy.set = envEntryToString(desc.set, `${varName}_set`);
             }
             if (desc.hasValue) {
                 copy.value = entryValue;
@@ -1766,8 +1995,8 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
         }
     }
 
-    async function emitArrayAsync(
-            envVar: string, arr: EnvironmentEntry[], varName: string): Promise<void> {
+    function emitArray(
+            envVar: string, arr: EnvironmentEntry[], varName: string): void {
         if (arr.some(deepContainsObjOrArray) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can
@@ -1780,7 +2009,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             let length = 0;
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {
-                    const entryString = await envEntryToStringAsync(arr[<any>key], `${varName}_${key}`);
+                    const entryString = envEntryToString(arr[<any>key], `${varName}_${key}`);
                     environmentText += `${envVar}${
                         isNumeric(key) ? `[${key}]` : `.${key}`} = ${entryString};\n`;
                     length++;
@@ -1793,7 +2022,7 @@ async function serializeJavaScriptTextAsync(func: Function, outerClosure: Closur
             // having four individual statements to do the same.
             const strings: string[] = [];
             for (let i = 0, n = arr.length; i < n; i++) {
-                strings.push(await simpleEnvEntryToStringAsync(arr[i], `${varName}_${i}`));
+                strings.push(simpleEnvEntryToString(arr[i], `${varName}_${i}`));
             }
 
             const entryString = `var ${envVar} = [${strings.join(", ")}];\n`;
@@ -1833,7 +2062,7 @@ function isObjOrArray(env: EnvironmentEntry): boolean {
 
 function deepContainsObjOrArray(env: EnvironmentEntry): boolean {
     return isObjOrArray(env) ||
-        (env.dep !== undefined && deepContainsObjOrArray(env.dep)) ||
+        (env.output !== undefined && deepContainsObjOrArray(env.output)) ||
         (env.promise !== undefined && deepContainsObjOrArray(env.promise));
 }
 

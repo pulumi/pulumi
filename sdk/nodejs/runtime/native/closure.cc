@@ -24,6 +24,7 @@ using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Null;
+using v8::Number;
 using v8::Object;
 using v8::Script;
 using v8::String;
@@ -128,8 +129,32 @@ void LookupCapturedVariableValue(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(v);
 }
 
+void GetFunctionFile(const FunctionCallbackInfo<Value>& args) {
+    auto func = Local<Function>::Cast(args[0]);
+    auto origin = func->GetScriptOrigin();
+
+    args.GetReturnValue().Set(origin.ResourceName());
+}
+
+void GetFunctionLine(const FunctionCallbackInfo<Value>& args) {
+    Isolate* isolate = args.GetIsolate();
+
+    auto func = Local<Function>::Cast(args[0]);
+    args.GetReturnValue().Set(Integer::New(isolate, func->GetScriptLineNumber()));
+}
+
+void GetFunctionColumn(const FunctionCallbackInfo<Value>& args) {
+    Isolate* isolate = args.GetIsolate();
+
+    auto func = Local<Function>::Cast(args[0]);
+    args.GetReturnValue().Set(Integer::New(isolate, func->GetScriptColumnNumber()));
+}
+
 void init(Local<Object> exports) {
     NODE_SET_METHOD(exports, "lookupCapturedVariableValue", LookupCapturedVariableValue);
+    NODE_SET_METHOD(exports, "getFunctionFile", GetFunctionFile);
+    NODE_SET_METHOD(exports, "getFunctionLine", GetFunctionLine);
+    NODE_SET_METHOD(exports, "getFunctionColumn", GetFunctionColumn);
 }
 
 NODE_MODULE(nativeruntime, init)
