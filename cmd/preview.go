@@ -53,16 +53,16 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			return s.Preview(proj, root, debug, engine.UpdateOptions{
-				Analyzers:            analyzers,
-				DryRun:               true,
-				Parallel:             parallel,
+				Analyzers: analyzers,
+				DryRun:    true,
+				Parallel:  parallel,
+				Debug:     debug,
+			}, backend.DisplayOptions{
+				Color:                color.Colorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-				Debug:                debug,
-			}, backend.DisplayOptions{
-				Color: color.Colorization(),
 			})
 		}),
 	}

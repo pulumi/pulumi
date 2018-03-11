@@ -43,7 +43,7 @@ type Project struct {
 	Context                  string `json:"context,omitempty" yaml:"context,omitempty"`                   // an optional path (combined with the on disk location of Pulumi.yaml) to control the data uploaded to the service.
 	NoDefaultIgnores         *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
 
-	ConfigDeprecated map[tokens.ModuleMember]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
+	ConfigDeprecated map[config.Key]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
 
 	StacksDeprecated map[tokens.QName]ProjectStack `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
 }

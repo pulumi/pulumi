@@ -16,10 +16,10 @@ type Target struct {
 }
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
-func (t *Target) GetPackageConfig(pkg tokens.Package) (map[tokens.ModuleMember]string, error) {
-	var result map[tokens.ModuleMember]string
+func (t *Target) GetPackageConfig(pkg tokens.Package) (map[config.Key]string, error) {
+	var result map[config.Key]string
 	for k, c := range t.Config {
-		if k.Package() != pkg {
+		if tokens.Package(k.Namespace()) != pkg {
 			continue
 		}
 		v, err := c.Value(t.Decrypter)
@@ -27,7 +27,7 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (map[tokens.ModuleMember]s
 			return nil, err
 		}
 		if result == nil {
-			result = make(map[tokens.ModuleMember]string)
+			result = make(map[config.Key]string)
 		}
 		result[k] = v
 	}

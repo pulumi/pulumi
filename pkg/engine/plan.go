@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -184,150 +183,36 @@ func (res *planResult) Close() error {
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
 func printPlan(result *planResult) (ResourceChanges, error) {
-	// First print config/unchanged/etc. if necessary.
-	var prelude bytes.Buffer
-	printPrelude(&prelude, result, true)
+	result.Options.Events.preludeEvent(result.Options.DryRun,
+		result.Info.Update.GetTarget().Config)
 
-	// Now walk the plan's steps and and pretty-print them out.
-	prelude.WriteString(fmt.Sprintf("%vPreviewing changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	result.Options.Events <- stdOutEventWithColor(&prelude)
-
+	// Walk the plan's steps and and pretty-print them out.
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
-		return nil, errors.Wrapf(err, "An error occurred while advancing the preview")
+		return nil, errors.New("an error occurred while advancing the preview")
 	}
 
 	if !result.Options.Diag.Success() {
 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-		return nil, errors.New("One or more errors occurred during this preview")
+		return nil, errors.New("one or more errors occurred during this preview")
 	}
 
-	// Print a summary of operation counts.
-	var summary bytes.Buffer
+	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)
-	printChangeSummary(&summary, changes, true)
-	result.Options.Events <- stdOutEventWithColor(&summary)
+	result.Options.Events.previewSummaryEvent(changes)
 	return changes, nil
 }
 
-// shouldShow returns true if a step should show in the output.
-func shouldShow(seen map[resource.URN]deploy.Step, step deploy.Step, opts deployOptions) bool {
-	// Ensure we've marked this step as observed.
-	seen[step.URN()] = step
-
-	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
-	if step.Op() == deploy.OpSame {
-		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
-		if step.Old().Protect != step.New().Protect {
-			return true
-		}
-		return opts.ShowSames
-	} else if step.Op() == deploy.OpCreateReplacement || step.Op() == deploy.OpDeleteReplaced {
-		return opts.ShowReplacementSteps
-	} else if step.Op() == deploy.OpReplace {
-		return !opts.ShowReplacementSteps
-	}
-	return true
+func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
+	_, has := seen[step.URN()]
+	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())
 }
 
-// isRootStack returns true if the step pertains to the rootmost stack component.
-func isRootStack(step deploy.Step) bool {
-	return step.URN().Type() == resource.RootStackType
-}
-
-func printPrelude(b *bytes.Buffer, result *planResult, planning bool) {
-	// If there are configuration variables, show them.
-	if result.Options.ShowConfig {
-		printConfig(b, result.Info.Update.GetTarget().Config)
-	}
-}
-
-func printConfig(b *bytes.Buffer, cfg config.Map) {
-	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
-	if cfg != nil {
-		var keys []string
-		for key := range cfg {
-			keys = append(keys, string(key))
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			v, err := cfg[tokens.ModuleMember(key)].Value(config.NewBlindingDecrypter())
-			contract.AssertNoError(err)
-			b.WriteString(fmt.Sprintf("    %v: %v\n", key, v))
-		}
-	}
-}
-
-// printChangeSummary writes summary informatiom about the resoures changed to the provided buffer.
-// Returns the total number of resources changed regardless of operation type.
-func printChangeSummary(b *bytes.Buffer, changes ResourceChanges, preview bool) int {
-	changeCount := 0
-	for op, c := range changes {
-		if op != deploy.OpSame {
-			changeCount += c
-		}
-	}
-	var kind string
-	if preview {
-		kind = "previewed"
-	} else {
-		kind = "performed"
-	}
-
-	var changesLabel string
-	if changeCount == 0 {
-		kind = "required"
-		changesLabel = "no"
-	} else {
-		changesLabel = strconv.Itoa(changeCount)
-	}
-
-	if changeCount > 0 || changes[deploy.OpSame] > 0 {
-		kind += ":"
-	}
-
-	b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v\n",
-		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind))
-
-	var planTo string
-	if preview {
-		planTo = "to "
-	}
-
-	// Now summarize all of the changes; we print sames a little differently.
-	for _, op := range deploy.StepOps {
-		if op != deploy.OpSame {
-			if c := changes[op]; c > 0 {
-				opDescription := string(op)
-				if !preview {
-					opDescription = op.PastTense()
-				}
-				b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v\n",
-					op.Prefix(), c, plural("resource", c), planTo, opDescription, colors.Reset))
-			}
-		}
-	}
-	if c := changes[deploy.OpSame]; c > 0 {
-		b.WriteString(fmt.Sprintf("      %v %v unchanged\n", c, plural("resource", c)))
-	}
-
-	return changeCount
-}
-
-func plural(s string, c int) string {
-	if c != 1 {
-		s += "s"
-	}
-	return s
-}
-
-// stepParentIndent computes a step's parent indentation.  If print is true, it also prints parents as it goes.
-func stepParentIndent(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
-	planning bool, indent int, print bool, debug bool) int {
-
+// getIndent computes a step's parent indentation.
+func getIndent(step deploy.Step, seen map[resource.URN]deploy.Step) int {
+	indent := 0
 	for p := step.Res().Parent; p != ""; {
 		par := seen[p]
 		if par == nil {
@@ -336,49 +221,10 @@ func stepParentIndent(b *bytes.Buffer, step deploy.Step,
 			//     least, it would be ideal to preserve the indentation.
 			break
 		}
-		if print && !shown[p] {
-			// If the parent isn't yet shown, print it now as a summary.
-			printStep(b, par, seen, shown, true, false, planning, indent, debug)
-		}
 		indent++
 		p = par.Res().Parent
 	}
 	return indent
-}
-
-func printStep(b *bytes.Buffer, step deploy.Step, seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
-	summary bool, detailed bool, planning bool, indent int, debug bool) {
-	op := step.Op()
-
-	// First, indent to the same level as this resource has parents, and toggle the level of detail accordingly.
-	// TODO[pulumi/pulumi#340]: this isn't entirely correct.  Conventionally, all children are created adjacent to
-	//     their parents, so this often does the right thing, but not always.  For instance, we can have interleaved
-	//     infrastructure that gets emitted in the middle of the flow, making things look like they are parented
-	//     incorrectly.  The real solution here is to have a more first class way of structuring the output.
-	indent = stepParentIndent(b, step, seen, shown, planning, indent, true, debug)
-
-	// Print the indentation.
-	b.WriteString(getIndentationString(indent, op, false))
-
-	// First, print out the operation's prefix.
-	b.WriteString(op.Prefix())
-
-	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
-	printStepHeader(b, step)
-
-	// Next print the resource URN, properties, etc.
-	var replaces []resource.PropertyKey
-	if step.Op() == deploy.OpCreateReplacement {
-		replaces = step.(*deploy.CreateStep).Keys()
-	} else if step.Op() == deploy.OpReplace {
-		replaces = step.(*deploy.ReplaceStep).Keys()
-	}
-	printResourceProperties(b, step.URN(), step.Old(), step.New(), replaces,
-		summary, detailed, planning, indent, op, debug)
-
-	// Reset the color and mark this as shown -- we're done.
-	b.WriteString(colors.Reset)
-	shown[step.URN()] = true
 }
 
 func printStepHeader(b *bytes.Buffer, step deploy.Step) {
@@ -436,17 +282,26 @@ func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
-func printResourceProperties(
-	b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.State,
-	replaces []resource.PropertyKey, summary bool, detailed bool,
-	planning bool, indent int, op deploy.StepOp, debug bool) {
+func getResourcePropertiesSummary(step deploy.Step, indent int) string {
+	var b bytes.Buffer
 
-	indent++
+	op := step.Op()
+	urn := step.URN()
+	old := step.Old()
+
+	// Print the indentation.
+	b.WriteString(getIndentationString(indent, op, false))
+
+	// First, print out the operation's prefix.
+	b.WriteString(op.Prefix())
+
+	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
+	printStepHeader(&b, step)
 
 	// For these simple properties, print them as 'same' if they're just an update or replace.
 	simplePropOp := considerSameIfNotCreateOrDelete(op)
 
-	// Print out the URN and, if present, the ID, as "pseudo-properties".
+	// Print out the URN and, if present, the ID, as "pseudo-properties" and indent them.
 	var id resource.ID
 	if old != nil {
 		id = old.ID
@@ -454,22 +309,40 @@ func printResourceProperties(
 
 	// Always print the ID and URN.
 	if id != "" {
-		writeWithIndentNoPrefix(b, indent, simplePropOp, "[id=%s]\n", string(id))
+		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
 	if urn != "" {
-		writeWithIndentNoPrefix(b, indent, simplePropOp, "[urn=%s]\n", urn)
+		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
 	}
 
-	// If not summarizing, print all of the properties associated with this resource.
-	if !summary {
-		if old == nil && new != nil {
-			printObject(b, new.Inputs, planning, indent, op, false, debug)
-		} else if new == nil && old != nil {
-			printObject(b, old.Inputs, planning, indent, op, false, debug)
-		} else {
-			printOldNewDiffs(b, old.Inputs, new.Inputs, replaces, detailed, planning, indent, op, debug)
-		}
+	return b.String()
+}
+
+func getResourcePropertiesDetails(step deploy.Step, indent int, planning bool, debug bool) string {
+	var b bytes.Buffer
+
+	// indent everything an additional level, like other properties.
+	indent++
+
+	var replaces []resource.PropertyKey
+	if step.Op() == deploy.OpCreateReplacement {
+		replaces = step.(*deploy.CreateStep).Keys()
+	} else if step.Op() == deploy.OpReplace {
+		replaces = step.(*deploy.ReplaceStep).Keys()
 	}
+
+	old := step.Old()
+	new := step.New()
+
+	if old == nil && new != nil {
+		printObject(&b, new.Inputs, planning, indent, step.Op(), false, debug)
+	} else if new == nil && old != nil {
+		printObject(&b, old.Inputs, planning, indent, step.Op(), false, debug)
+	} else {
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op(), debug)
+	}
+
+	return b.String()
 }
 
 func maxKey(keys []resource.PropertyKey) int {
@@ -501,19 +374,15 @@ func printObject(
 
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
-	seen map[resource.URN]deploy.Step, shown map[resource.URN]bool,
-	planning bool, indent int, debug bool) {
+func getResourceOutputsPropertiesString(step deploy.Step, indent int, planning bool, debug bool) string {
+	var b bytes.Buffer
+
 	// Only certain kinds of steps have output properties associated with them.
 	new := step.New()
 	if new == nil || new.Outputs == nil {
-		return
+		return ""
 	}
 	op := considerSameIfNotCreateOrDelete(step.Op())
-
-	// Now compute the indentation level, in part based on the parents.
-	indent++ // indent for the resource.
-	indent = stepParentIndent(b, step, seen, shown, false, indent, false, debug)
 
 	// First fetch all the relevant property maps that we may consult.
 	ins := new.Inputs
@@ -536,14 +405,16 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step,
 
 			if print {
 				if firstout {
-					writeWithIndentNoPrefix(b, indent, op, "---outputs:---\n")
+					writeWithIndentNoPrefix(&b, indent, op, "---outputs:---\n")
 					firstout = false
 				}
-				printPropertyTitle(b, string(k), maxkey, indent, op, false)
-				printPropertyValue(b, out, planning, indent, op, false, debug)
+				printPropertyTitle(&b, string(k), maxkey, indent, op, false)
+				printPropertyValue(&b, out, planning, indent, op, false, debug)
 			}
 		}
 	}
+
+	return b.String()
 }
 
 func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
@@ -697,20 +568,18 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
-	replaces []resource.PropertyKey, detailed bool,
-	planning bool, indent int, op deploy.StepOp, debug bool) {
+	replaces []resource.PropertyKey, planning bool, indent int, op deploy.StepOp, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, detailed, replaces, false, planning, indent, debug)
+		printObjectDiff(b, *diff, replaces, false, planning, indent, debug)
 	} else {
 		printObject(b, news, planning, indent, op, true, debug)
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, detailed bool,
-	replaces []resource.PropertyKey, causedReplace bool,
-	planning bool, indent int, debug bool) {
+func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
+	replaces []resource.PropertyKey, causedReplace bool, planning bool, indent int, debug bool) {
 
 	contract.Assert(indent > 0)
 
@@ -744,7 +613,8 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, detailed bool,
 			if !causedReplace && replaceMap != nil {
 				causedReplace = replaceMap[k]
 			}
-			printPropertyValueDiff(b, titleFunc, update, detailed, causedReplace, planning, indent, debug)
+
+			printPropertyValueDiff(b, titleFunc, update, causedReplace, planning, indent, debug)
 		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same, planning) {
 			titleFunc(deploy.OpSame, false)
 			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
@@ -753,8 +623,7 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, detailed bool,
 }
 
 func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	diff resource.ValueDiff, detailed bool, causedReplace bool,
-	planning bool, indent int, debug bool) {
+	diff resource.ValueDiff, causedReplace bool, planning bool, indent int, debug bool) {
 
 	op := deploy.OpUpdate
 	contract.Assert(indent > 0)
@@ -773,7 +642,7 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
 				printDelete(b, delete, elemTitleFunc, true, planning, indent+2, debug)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(b, elemTitleFunc, update, detailed, causedReplace, planning, indent+2, debug)
+				printPropertyValueDiff(b, elemTitleFunc, update, causedReplace, planning, indent+2, debug)
 			} else {
 				elemTitleFunc(deploy.OpSame, false)
 				printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false, debug)
@@ -783,7 +652,7 @@ func printPropertyValueDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool)
 	} else if diff.Object != nil {
 		titleFunc(op, true)
 		writeVerbatim(b, op, "{\n")
-		printObjectDiff(b, *diff.Object, detailed, nil, causedReplace, planning, indent+1, debug)
+		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+1, debug)
 		writeWithIndentNoPrefix(b, indent, op, "}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)

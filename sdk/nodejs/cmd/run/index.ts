@@ -148,11 +148,8 @@ export function main(args: string[]): void {
         stopEarly: true,
     });
 
-    // If any config variables are present, parse and set them, so the subsequent accesses are fast.
-    const envObject: {[key: string]: string} = runtime.getConfigEnv();
-    for (const key of Object.keys(envObject)) {
-        runtime.setConfig(key, envObject[key]);
-    }
+    // Load configuration passed from the language plugin
+    runtime.loadConfig();
 
     // If there is a --project=p, and/or a --stack=s, use them in the options.
     const project: string | undefined = argv["project"];

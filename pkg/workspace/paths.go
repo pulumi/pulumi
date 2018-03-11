@@ -23,6 +23,7 @@ const (
 	HistoryDir     = "history"    // the name of the directory that holds historical information for projects.
 	PluginDir      = "plugins"    // the name of the directory containing plugins.
 	StackDir       = "stacks"     // the name of the directory that holds stack information for projects.
+	TemplateDir    = "templates"  // the name of the directory containing templates.
 	WorkspaceDir   = "workspaces" // the name of the directory that holds workspace information for projects.
 
 	IgnoreFile    = ".pulumiignore"  // the name of the file that we use to control what to upload to the service.

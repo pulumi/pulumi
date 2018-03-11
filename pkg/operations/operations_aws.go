@@ -15,6 +15,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
@@ -24,7 +25,7 @@ import (
 // AWSOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/aws` implementation.
 func AWSOperationsProvider(
-	config map[tokens.ModuleMember]string,
+	config map[config.Key]string,
 	component *Resource) (Provider, error) {
 
 	awsRegion, ok := config[regionKey]
@@ -61,13 +62,15 @@ type awsOpsProvider struct {
 
 var _ Provider = (*awsOpsProvider)(nil)
 
-const (
+var (
 	// AWS config keys
-	regionKey = "aws:config:region"
-	accessKey = "aws:config:accessKey"
-	secretKey = "aws:config:secretKey" // nolint: gas
-	token     = "aws:config:token"
+	regionKey = config.MustMakeKey("aws", "region")
+	accessKey = config.MustMakeKey("aws", "accessKey")
+	secretKey = config.MustMakeKey("aws", "secretKey") // nolint: gas
+	token     = config.MustMakeKey("aws", "token")
+)
 
+const (
 	// AWS resource types
 	awsFunctionType = tokens.Type("aws:lambda/function:Function")
 	awsLogGroupType = tokens.Type("aws:cloudwatch/logGroup:LogGroup")

@@ -15,7 +15,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -123,29 +122,16 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	if err != nil {
 		return nil, nil, "", err
 	}
+
 	file := w.StackPath(name)
 
-	// Detect the encoding of the file so we can do our initial unmarshaling.
-	m, ext := encoding.Detect(file)
-	if m == nil {
-		return nil, nil, file,
-			errors.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
-	}
-
-	// Now read the whole file into a byte blob.
-	b, err := ioutil.ReadFile(file)
+	chk, err := stack.GetCheckpoint(w, name)
 	if err != nil {
-		return nil, nil, file, err
-	}
-
-	// Unmarshal the contents into a checkpoint structure.
-	var chk apitype.Checkpoint
-	if err = m.Unmarshal(b, &chk); err != nil {
-		return nil, nil, file, err
+		return nil, nil, file, errors.Wrap(err, "failed to load checkpoint")
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(&chk)
+	snapshot, err := stack.DeserializeCheckpoint(chk)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -161,7 +147,7 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	return chk.Config, snapshot, file, nil
 }
 
-func saveStack(name tokens.QName, config map[tokens.ModuleMember]config.Value, snap *deploy.Snapshot) (string, error) {
+func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *deploy.Snapshot) (string, error) {
 	w, err := workspace.New()
 	if err != nil {
 		return "", err

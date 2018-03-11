@@ -7,12 +7,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func TestPrettyKeyForProject(t *testing.T) {
 	proj := &workspace.Project{Name: tokens.PackageName("test-package"), Runtime: "nodejs"}
-	assert.Equal(t, "foo", prettyKeyForProject("test-package:config:foo", proj))
-	assert.Equal(t, "other-package:config:bar", prettyKeyForProject("other-package:config:bar", proj))
+
+	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))
+	assert.Equal(t, "other-package:bar", prettyKeyForProject(config.MustMakeKey("other-package", "bar"), proj))
 }

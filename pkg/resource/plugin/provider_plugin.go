@@ -10,8 +10,11 @@ import (
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -63,17 +66,20 @@ func (p *provider) label() string {
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *provider) Configure(vars map[tokens.ModuleMember]string) error {
+func (p *provider) Configure(vars map[config.Key]string) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
 	glog.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
 	config := make(map[string]string)
 	for k, v := range vars {
-		config[string(k)] = v
+		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
+		// providers which are on the older plan.
+		config[k.Namespace()+":config:"+k.Name()] = v
 	}
 	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
 	if err != nil {
-		glog.V(7).Infof("%s failed: err=%v", label, err)
-		return err
+		rpcStatus, _ := status.FromError(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcStatus.Message())
+		return errors.New(rpcStatus.Message())
 	}
 	return nil
 }
@@ -102,8 +108,9 @@ func (p *provider) Check(urn resource.URN,
 		News: mnews,
 	})
 	if err != nil {
-		glog.V(7).Infof("%s failed: err=%v", label, err)
-		return nil, nil, err
+		rpcStatus, _ := status.FromError(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcStatus.Message())
+		return nil, nil, errors.New(rpcStatus.Message())
 	}
 
 	// Unmarshal the provider inputs.
@@ -155,8 +162,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		glog.V(7).Infof("%s failed: %v", label, err)
-		return DiffResult{}, err
+		rpcStatus, _ := status.FromError(err)
+		glog.V(7).Infof("%s failed: %v", label, rpcStatus.Message())
+		return DiffResult{}, errors.New(rpcStatus.Message())
 	}
 
 	var replaces []resource.PropertyKey
@@ -196,8 +204,9 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		Properties: mprops,
 	})
 	if err != nil {
-		glog.V(7).Infof("%s failed: err=%v", label, err)
-		return "", nil, resource.StatusUnknown, err
+		resourceStatus, rpcErr := resourceStateAndError(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcErr)
+		return "", nil, resourceStatus, rpcErr
 	}
 
 	id := resource.ID(resp.GetId())
@@ -246,8 +255,9 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	resp, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("%s failed: %v", label, err)
-		return nil, resource.StatusUnknown, err
+		resourceStatus, rpcErr := resourceStateAndError(err)
+		glog.V(7).Infof("%s failed: %v", label, rpcErr)
+		return nil, resourceStatus, rpcErr
 	}
 
 	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
@@ -280,8 +290,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
-		glog.V(7).Infof("%s failed: %v", label, err)
-		return resource.StatusUnknown, err
+		resourceStatus, rpcErr := resourceStateAndError(err)
+		glog.V(7).Infof("%s failed: %v", label, rpcErr)
+		return resourceStatus, rpcErr
 	}
 
 	glog.V(7).Infof("%s success", label)
@@ -330,8 +341,9 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	glog.V(7).Infof("%s executing", label)
 	resp, err := p.client.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		glog.V(7).Infof("%s failed: err=%v", label, err)
-		return workspace.PluginInfo{}, err
+		rpcStatus, _ := status.FromError(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcStatus.Message())
+		return workspace.PluginInfo{}, errors.New(rpcStatus.Message())
 	}
 
 	var version *semver.Version
@@ -354,4 +366,29 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
 	return p.plug.Close()
+}
+
+// resourceStateAndError interprets an error obtained from a gRPC endpoint.
+//
+// gRPC gives us a `status.Status` structure as an `error` whenever our
+// gRPC servers serve up an error. Each `status.Status` contains a code
+// and a message. Based on the error code given to us, we can understand
+// the state of our system and if our resource status is truly unknown.
+//
+// In general, our resource state is only really unknown if the server
+// had an internal error, in which case it will serve one of `codes.Internal`,
+// `codes.DataLoss`, or `codes.Unknown` to us.
+func resourceStateAndError(err error) (resource.Status, error) {
+	rpcStatus, _ := status.FromError(err)
+	glog.V(8).Infof("provider received rpc error `%s`: `%s`", rpcStatus.Code(), rpcStatus.Message())
+	switch rpcStatus.Code() {
+	case codes.Internal:
+	case codes.DataLoss:
+	case codes.Unknown:
+		glog.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcStatus.Code())
+		return resource.StatusUnknown, errors.New(rpcStatus.Message())
+	}
+
+	glog.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcStatus.Code())
+	return resource.StatusOK, errors.New(rpcStatus.Message())
 }

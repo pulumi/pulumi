@@ -41,6 +41,8 @@ type Backend interface {
 	backend.Backend
 	CloudURL() string
 	DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
+	ListTemplates() ([]workspace.Template, error)
+	DownloadTemplate(name string, progress bool) (io.ReadCloser, error)
 }
 
 type cloudBackend struct {
@@ -90,6 +92,41 @@ func (b *cloudBackend) DownloadPlugin(info workspace.PluginInfo, progress bool) 
 		bar := pb.New(int(resp.ContentLength))
 		result = bar.NewProxyReader(result)
 		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading plugin: "))
+		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.SetMaxWidth(80)
+		bar.SetUnits(pb.U_BYTES)
+		bar.Start()
+		defer func() {
+			bar.Finish()
+		}()
+	}
+
+	return result, nil
+}
+
+func (b *cloudBackend) ListTemplates() ([]workspace.Template, error) {
+	// Query all templates.
+	var templates []workspace.Template
+	if err := pulumiRESTCall(b.cloudURL, "GET", "/releases/templates", nil, nil, &templates); err != nil {
+		return nil, err
+	}
+	return templates, nil
+}
+
+func (b *cloudBackend) DownloadTemplate(name string, progress bool) (io.ReadCloser, error) {
+	// Make the GET request to download the template.
+	endpoint := fmt.Sprintf("/releases/templates/%s.tar.gz", name)
+	_, resp, err := pulumiAPICall(b.cloudURL, "GET", endpoint, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to download template")
+	}
+
+	// If progress is requested, and we know the length, show a little animated ASCII progress bar.
+	result := resp.Body
+	if progress && resp.ContentLength != -1 {
+		bar := pb.New(int(resp.ContentLength))
+		result = bar.NewProxyReader(result)
+		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading template: "))
 		bar.Postfix(colors.ColorizeText(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
@@ -438,15 +475,15 @@ func convertResourceChanges(changes map[apitype.OpType]int) engine.ResourceChang
 // convertResourceChanges converts the apitype version of config.Map into the internal version.
 func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error) {
 	c := make(config.Map)
-	for k, v := range apiConfig {
-		mm, err := tokens.ParseModuleMember(k)
+	for rawK, rawV := range apiConfig {
+		k, err := config.ParseKey(rawK)
 		if err != nil {
 			return nil, err
 		}
-		if v.Secret {
-			c[mm] = config.NewSecureValue(v.String)
+		if rawV.Secret {
+			c[k] = config.NewSecureValue(rawV.String)
 		} else {
-			c[mm] = config.NewValue(v.String)
+			c[k] = config.NewValue(rawV.String)
 		}
 	}
 	return c, nil
@@ -568,7 +605,7 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 		v, err := cv.Value(config.NopDecrypter)
 		contract.AssertNoError(err)
 
-		wireConfig[string(k)] = apitype.ConfigValue{
+		wireConfig[k.Namespace()+":config:"+k.Name()] = apitype.ConfigValue{
 			String: v,
 			Secret: cv.Secure(),
 		}
@@ -589,9 +626,9 @@ func (b *cloudBackend) makeProgramUpdateRequest(stackName tokens.QName, proj *wo
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
 			DryRun:               opts.DryRun,
 			Parallel:             opts.Parallel,
-			ShowConfig:           opts.ShowConfig,
-			ShowReplacementSteps: opts.ShowReplacementSteps,
-			ShowSames:            opts.ShowSames,
+			ShowConfig:           false, // This is a legacy option now, the engine will always emit config information
+			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
+			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
 		},
 		Metadata: apitype.UpdateMetadata{
 			Message:     m.Message,

@@ -3,8 +3,6 @@
 package engine
 
 import (
-	"bytes"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -27,13 +25,15 @@ func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
 	// should elide unknown input/output properties when interacting with the language and resource providers and we
 	// will produce unexpected results.
 	opts.DryRun = true
+	emitter := makeEventEmitter(events, update)
+
 	return previewLatest(info, deployOptions{
 		UpdateOptions: opts,
 
 		Destroy: false,
 
-		Events: events,
-		Diag:   newEventSink(events),
+		Events: emitter,
+		Diag:   newEventSink(emitter),
 	})
 }
 
@@ -65,34 +65,34 @@ func previewLatest(info *planContext, opts deployOptions) error {
 }
 
 type previewActions struct {
-	Ops   map[deploy.StepOp]int
-	Opts  deployOptions
-	Seen  map[resource.URN]deploy.Step
-	Shown map[resource.URN]bool
+	Ops  map[deploy.StepOp]int
+	Opts deployOptions
+	Seen map[resource.URN]deploy.Step
 }
 
 func newPreviewActions(opts deployOptions) *previewActions {
 	return &previewActions{
-		Ops:   make(map[deploy.StepOp]int),
-		Opts:  opts,
-		Seen:  make(map[resource.URN]deploy.Step),
-		Shown: make(map[resource.URN]bool),
+		Ops:  make(map[deploy.StepOp]int),
+		Opts: opts,
+		Seen: make(map[resource.URN]deploy.Step),
 	}
 }
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
-	// Print this step information (resource and all its properties).
-	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
-		var b bytes.Buffer
-		printStep(&b, step,
-			acts.Seen, acts.Shown, acts.Opts.Summary, acts.Opts.Detailed, true, 0 /*indent*/, acts.Opts.Debug)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	}
+	acts.Seen[step.URN()] = step
+
+	indent := getIndent(step, acts.Seen)
+	summary := getResourcePropertiesSummary(step, indent)
+	details := getResourcePropertiesDetails(step, indent, true, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, indent, summary, details)
+
 	return nil, nil
 }
 
 func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
+	assertSeen(acts.Seen, step)
+
 	// We let `printPlan` handle error reporting for now.
 	if err == nil {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
@@ -100,20 +100,17 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 			acts.Ops[step.Op()]++
 		}
 
-		// Also show outputs here, since there might be some from the initial registration.
-		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
-			_ = acts.OnResourceOutputs(step)
-		}
+		_ = acts.OnResourceOutputs(step)
 	}
 	return nil
 }
 
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
-	// Print this step's output properties.
-	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
-		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, true, 0 /*indent*/, acts.Opts.Debug)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	}
+	assertSeen(acts.Seen, step)
+
+	indent := getIndent(step, acts.Seen)
+	text := getResourceOutputsPropertiesString(step, indent, true, acts.Opts.Debug)
+	acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+
 	return nil
 }

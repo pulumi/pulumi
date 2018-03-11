@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -101,7 +102,7 @@ func (r *Resource) GetChild(typ string, name string) *Resource {
 }
 
 // OperationsProvider gets an OperationsProvider for this resource.
-func (r *Resource) OperationsProvider(config map[tokens.ModuleMember]string) Provider {
+func (r *Resource) OperationsProvider(config map[config.Key]string) Provider {
 	return &resourceOperations{
 		resource: r,
 		config:   config,
@@ -111,7 +112,7 @@ func (r *Resource) OperationsProvider(config map[tokens.ModuleMember]string) Pro
 // ResourceOperations is an OperationsProvider for Resources
 type resourceOperations struct {
 	resource *Resource
-	config   map[tokens.ModuleMember]string
+	config   map[config.Key]string
 }
 
 var _ Provider = (*resourceOperations)(nil)

@@ -15,7 +15,7 @@ import (
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
-	var checkpoint apitype.Checkpoint
+	var checkpoint apitype.CheckpointV1
 	byts, err := ioutil.ReadFile(path)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)

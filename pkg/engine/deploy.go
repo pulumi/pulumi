@@ -3,14 +3,11 @@
 package engine
 
 import (
-	"bytes"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -18,14 +15,10 @@ import (
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 type UpdateOptions struct {
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
-	DryRun               bool     // true if we should just print the plan without performing it.
-	Parallel             int      // the degree of parallelism for resource operations (<=1 for serial).
-	ShowConfig           bool     // true to show the configuration variables being used.
-	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
-	ShowSames            bool     // true to show the resources that aren't updated in addition to updates.
-	Summary              bool     // true if we should only summarize resources and operations.
-	Debug                bool     // true if debugging output it enabled
+	Analyzers []string // an optional set of analyzers to run as part of this deployment.
+	DryRun    bool     // true if we should just print the plan without performing it.
+	Parallel  int      // the degree of parallelism for resource operations (<=1 for serial).
+	Debug     bool     // true if debugging output it enabled
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
@@ -43,13 +36,15 @@ func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceCha
 	}
 	defer info.Close()
 
+	emitter := makeEventEmitter(events, update)
+
 	return deployLatest(info, deployOptions{
 		UpdateOptions: opts,
 
 		Destroy: false,
 
-		Events: events,
-		Diag:   newEventSink(events),
+		Events: emitter,
+		Diag:   newEventSink(emitter),
 	})
 }
 
@@ -58,10 +53,9 @@ type deployOptions struct {
 
 	Destroy bool // true if we are destroying the stack.
 
-	Detailed bool         // true to show very detailed output, like properties that haven't changed.
-	DOT      bool         // true if we should print the DOT file for this plan.
-	Events   chan<- Event // the channel to write events from the engine to.
-	Diag     diag.Sink    // the sink to use for diag'ing.
+	DOT    bool         // true if we should print the DOT file for this plan.
+	Events eventEmitter // the channel to write events from the engine to.
+	Diag   diag.Sink    // the sink to use for diag'ing.
 }
 
 func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error) {
@@ -89,10 +83,7 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
-			var header bytes.Buffer
-			printPrelude(&header, result, false)
-			header.WriteString(fmt.Sprintf("%vPerforming changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			opts.Events <- stdOutEventWithColor(&header)
+			opts.Events.preludeEvent(opts.DryRun, result.Info.Update.GetTarget().Config)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
@@ -104,23 +95,9 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			}
 			contract.Assert(summary != nil)
 
-			// Print a summary.
-			var footer bytes.Buffer
-
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			resourceChanges = ResourceChanges(actions.Ops)
-			if c := printChangeSummary(&footer, resourceChanges, false); c != 0 {
-				footer.WriteString(fmt.Sprintf("%vUpdate duration: %v%v\n",
-					colors.SpecUnimportant, time.Since(start), colors.Reset))
-			}
-
-			if actions.MaybeCorrupt {
-				footer.WriteString(fmt.Sprintf(
-					"%vA catastrophic error occurred; resources states may be unknown%v\n",
-					colors.SpecAttention, colors.Reset))
-			}
-
-			opts.Events <- stdOutEventWithColor(&footer)
+			opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
 
 			if err != nil {
 				return resourceChanges, err
@@ -140,7 +117,6 @@ type deployActions struct {
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
-	Shown        map[resource.URN]bool
 	MaybeCorrupt bool
 	Update       Update
 	Opts         deployOptions
@@ -150,20 +126,19 @@ func newDeployActions(update Update, opts deployOptions) *deployActions {
 	return &deployActions{
 		Ops:    make(map[deploy.StepOp]int),
 		Seen:   make(map[resource.URN]deploy.Step),
-		Shown:  make(map[resource.URN]bool),
 		Update: update,
 		Opts:   opts,
 	}
 }
 
 func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
-	// Report the beginning of the step if appropriate.
-	if shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step) {
-		var b bytes.Buffer
-		printStep(&b, step, acts.Seen, acts.Shown, acts.Opts.Summary,
-			acts.Opts.Detailed, false, 0 /*indent*/, acts.Opts.Debug)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	}
+	// Ensure we've marked this step as observed.
+	acts.Seen[step.URN()] = step
+
+	indent := getIndent(step, acts.Seen)
+	summary := getResourcePropertiesSummary(step, indent)
+	details := getResourcePropertiesDetails(step, indent, false, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, indent, summary, details)
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Update.BeginMutation()
@@ -171,30 +146,18 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
-	var b bytes.Buffer
+	assertSeen(acts.Seen, step)
 
 	// Report the result of the step.
 	stepop := step.Op()
 	if err != nil {
+		if status == resource.StatusUnknown {
+			acts.MaybeCorrupt = true
+		}
+
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.ErrorPlanApplyFailed, err)
-
-		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
-		stepnum := acts.Steps + 1
-		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, stepop))
-		switch status {
-		case resource.StatusOK:
-			b.WriteString(colors.SpecNote)
-			b.WriteString("provider successfully recovered from this failure")
-		case resource.StatusUnknown:
-			b.WriteString(colors.SpecAttention)
-			b.WriteString("this failure was catastrophic and the provider cannot guarantee recovery")
-			acts.MaybeCorrupt = true
-		default:
-			contract.Failf("Unrecognized resource state: %v", status)
-		}
-		b.WriteString(colors.Reset)
-		b.WriteString("\n")
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps)
 	} else {
 		if step.Logical() {
 			// Increment the counters.
@@ -203,12 +166,10 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		if shouldShow(acts.Seen, step, acts.Opts) && !acts.Opts.Summary {
-			printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/, acts.Opts.Debug)
-		}
+		indent := getIndent(step, acts.Seen)
+		text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 	}
-
-	acts.Opts.Events <- stdOutEventWithColor(&b)
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
@@ -216,12 +177,11 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
-	// Print this step's output properties.
-	if (shouldShow(acts.Seen, step, acts.Opts) || isRootStack(step)) && !acts.Opts.Summary {
-		var b bytes.Buffer
-		printResourceOutputProperties(&b, step, acts.Seen, acts.Shown, false, 0 /*indent*/, acts.Opts.Debug)
-		acts.Opts.Events <- stdOutEventWithColor(&b)
-	}
+	assertSeen(acts.Seen, step)
+
+	indent := getIndent(step, acts.Seen)
+	text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
+	acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
