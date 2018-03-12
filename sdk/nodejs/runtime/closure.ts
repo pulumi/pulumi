@@ -1758,6 +1758,7 @@ function serializeJavaScriptText(func: Function, outerClosure: Closure): string 
     let currentClosureIndex = 0;
     let currentEnvIndex = 0;
     const envEntryToEnvVar = new Map<EnvironmentEntry, string>();
+    const envVarNames = new Set<string>();
     const closureToEnvVar = new Map<Closure, string>();
 
     let environmentText = "";
@@ -1885,16 +1886,32 @@ function serializeJavaScriptText(func: Function, outerClosure: Closure): string 
         // Call all environment variables __e<num> to make them unique.  But suffix
         // them with the original name of the property to help provide context when
         // looking at the source.
-        const envVar = `__e${index}_${makeLegalJSName(varName)}`;
+        const envVar = createEnvVarName(varName);
         envEntryToEnvVar.set(envEntry, envVar);
+        envVarNames.add(envVar);
 
         if (envEntry.obj) {
             emitObject(envVar, envEntry.obj, varName);
-        } else if (envEntry.arr) {
+        }
+         else if (envEntry.arr) {
             emitArray(envVar, envEntry.arr, varName);
         }
 
         return envVar;
+    }
+
+    function createEnvVarName(baseName: string): string {
+        const trimLeadingUnderscoreRegex = /^_*/g;
+        const legalName = makeLegalJSName(baseName).replace(trimLeadingUnderscoreRegex, "");
+        let index = 0;
+
+        let currentName = "__" + legalName;
+        while (envVarNames.has(currentName)) {
+            currentName = "__" + index + "_" + legalName;
+            index++;
+        }
+
+        return currentName;
     }
 
     function emitObject(envVar: string, obj: ObjectEntry, varName: string): void {
@@ -1963,8 +1980,8 @@ function serializeJavaScriptText(func: Function, outerClosure: Closure): string 
 
         for (const [keyEntry, { descriptor, entry: valEntry }] of objEntry.env) {
             const subName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
-            const keyString = envEntryToString(keyEntry, subName);
-            const valString = envEntryToString(valEntry, subName);
+            const keyString = envEntryToString(keyEntry, varName + "_" + subName);
+            const valString = envEntryToString(valEntry, varName + "_" + subName);
 
             if (!descriptor) {
                 // normal property.  Just emit simply as a direct assignment.
