@@ -32,7 +32,8 @@
         "log/index.ts",
 
         "runtime/index.ts",
-        "runtime/closure.ts",
+        "runtime/closureCreation.ts",
+        "runtime/closureSerialization.ts",
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
