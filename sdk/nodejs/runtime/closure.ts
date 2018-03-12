@@ -166,6 +166,27 @@ interface ContextFrame {
     capturedModuleName?: string;
 }
 
+// SerializedOutput is the type we convert real deployment time outputs to when we serialize them
+// into the environment for a closure.  The output will go from something you call 'apply' on to
+// transform during deployment, to something you call .get on to get the raw underlying value from
+// inside a cloud callback.
+class SerializedOutput<T> implements resource.Output<T> {
+    /* @internal */ public readonly promise: () => Promise<T>;
+    /* @internal */ public readonly resources: () => Set<resource.Resource>;
+
+    public constructor(private readonly value: T) {
+    }
+
+    public apply<U>(func: (t: T) => resource.Input<U>): resource.Output<U> {
+        throw new Error(
+"'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    }
+
+     public get(): T {
+         return this.value;
+     }
+}
+
 export async function serializeFunctionAsync(
         func: Function, serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
@@ -925,7 +946,7 @@ function getOrCreateEntry(
 
                 const oldFrames = context.frames;
                 context.frames = framesCopy;
-                entry.output = getOrCreateEntry(val, undefined, context, serialize);
+                entry.output = getOrCreateEntry(new SerializedOutput(val), undefined, context, serialize);
                 context.frames = oldFrames;
             });
         }
@@ -1842,15 +1863,7 @@ function serializeJavaScriptText(func: Function, outerClosure: Closure): string 
             return closureName;
         }
         else if (envEntry.output !== undefined) {
-            // get: () => { ... }
-            // parses as a lambda with a block body, not as a lambda returning an object
-            // initializer.  If we have a block body, wrap it with parens.
-            let value = envEntryToString(envEntry.output, varName);
-            if (value && value.charAt(0) === "{") {
-                value = `(${value})`;
-            }
-
-            return `{ get: () => ${value} }`;
+            return envEntryToString(envEntry.output, varName);
         }
         else if (envEntry.expr) {
             // Entry specifies exactly how it should be emitted.  So just use whatever

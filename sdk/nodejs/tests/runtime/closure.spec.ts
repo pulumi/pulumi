@@ -1178,7 +1178,51 @@ return function () { return mutable; };
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
-var __e0_v = {d: { get: () => 4 }};
+var __e0_v = {};
+var __e2_d_proto = {};
+__f1.prototype = __e2_d_proto;
+Object.defineProperty(__e2_d_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e2_d_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e2_d_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __e1_d = Object.create(__e2_d_proto);
+__e1_d.value = 4;
+__e0_v.d = __e1_d;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 
 function __f0() {
   return (function() {
@@ -1207,11 +1251,60 @@ return function () { console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __e0_v = {};
-__e0_v.d1 = { get: () => 4 };
-__e0_v.d2 = { get: () => "str" };
-__e0_v.d3 = { get: () => undefined };
-var __e1_d4 = {a: 1, b: true};
-__e0_v.d4 = { get: () => __e1_d4 };
+var __e2_d1_proto = {};
+__f1.prototype = __e2_d1_proto;
+Object.defineProperty(__e2_d1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e2_d1_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e2_d1_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __e1_d1 = Object.create(__e2_d1_proto);
+__e1_d1.value = 4;
+__e0_v.d1 = __e1_d1;
+var __e3_d2 = Object.create(__e2_d1_proto);
+__e3_d2.value = "str";
+__e0_v.d2 = __e3_d2;
+var __e4_d3 = Object.create(__e2_d1_proto);
+__e4_d3.value = undefined;
+__e0_v.d3 = __e4_d3;
+var __e5_d4 = Object.create(__e2_d1_proto);
+var __e6_value = {a: 1, b: true};
+__e5_d4.value = __e6_value;
+__e0_v.d4 = __e5_d4;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 
 function __f0() {
   return (function() {
@@ -1241,11 +1334,56 @@ return function () { console.log(v); };
             expectText: `exports.handler = __f0;
 
 var __e0_v = {};
-__e0_v.d1 = { get: () => 4 };
-var __e1_d2 = {};
-__e1_d2.a = 1;
-__e1_d2.b = __e0_v;
-__e0_v.d2 = { get: () => __e1_d2 };
+var __e2_d1_proto = {};
+__f1.prototype = __e2_d1_proto;
+Object.defineProperty(__e2_d1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__e2_d1_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__e2_d1_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __e1_d1 = Object.create(__e2_d1_proto);
+__e1_d1.value = 4;
+__e0_v.d1 = __e1_d1;
+var __e3_d2 = Object.create(__e2_d1_proto);
+var __e4_value = {};
+__e4_value.a = 1;
+__e4_value.b = __e0_v;
+__e3_d2.value = __e4_value;
+__e0_v.d2 = __e3_d2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 
 function __f0() {
   return (function() {
