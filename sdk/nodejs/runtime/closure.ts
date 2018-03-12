@@ -37,16 +37,16 @@ catch (err) {
          supported versions of Node.js: ${supportedNodeVersions}`);
 }
 
-type ObjectInfo = {
+interface ObjectInfo {
     // information about the prototype of this object/function.  If this is an object, we only store
     // this if the object's prototype is not Object.prototype.  If this is a function, we only store
     // this if the function's prototype is not Function.prototype.
-    proto?: Entry,
+    proto?: Entry;
 
     // information about the properties of the object.  We store all properties of the object,
     // regardless of whether they have string or symbol names.
-    env: PropertyMap,
-};
+    env: PropertyMap;
+}
 
 // Information about a javascript function.  Note that this derives from ObjectInfo as all functions
 // are objects in JS, and thus can have their own proto and properties.
@@ -80,14 +80,15 @@ interface PropertyInfo {
 
 // Information about a property.  Specifically the actual entry containing the data about it and
 // then an optional PropertyInfo in the case that this isn't just a common property.
-type PropertyInfoAndValue = {
-    info?: PropertyInfo,
-    entry: Entry,
-};
+interface PropertyInfoAndValue {
+    info?: PropertyInfo;
+    entry: Entry;
+}
 
 // A mapping between the name of a property (symbolic or string) to information about the
 // value for that property.
-type PropertyMap = Map<Entry, PropertyInfoAndValue>;
+interface PropertyMap extends Map<Entry, PropertyInfoAndValue> {
+}
 
 /**
  * Entry is the environment slot for a named lexically captured variable.
@@ -180,6 +181,25 @@ interface SerializedFunction {
     isArrowFunction: boolean;
 }
 
+// Information about a captured property.  Both the name and whether or not the property was
+// invoked.
+interface CapturedPropertyInfo {
+    name: string;
+    invoked: boolean;
+}
+
+interface CapturedVariableMap extends Record<string, CapturedPropertyInfo[]> {
+}
+
+// The set of variables the function attempts to capture.  There is a required set an an optional
+// set. The optional set will not block closure-serialization if we cannot find them, while the
+// required set will.  For each variable that is captured we also specify the list of properties of
+// that variable we need to serialize.  An empty-list means 'serialize all properties'.
+interface CapturedVariables {
+    required: CapturedVariableMap;
+    optional: CapturedVariableMap;
+}
+
 // SerializedOutput is the type we convert real deployment time outputs to when we serialize them
 // into the environment for a closure.  The output will go from something you call 'apply' on to
 // transform during deployment, to something you call .get on to get the raw underlying value from
@@ -204,7 +224,7 @@ class SerializedOutput<T> implements resource.Output<T> {
 export async function serializeFunctionAsync(
         func: Function, serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
-    const functionInfo = await createFunctionInfo(func, serialize);
+    const functionInfo = await createFunctionInfoAsync(func, serialize);
     return serializeJavaScriptText(func, functionInfo);
 }
 
@@ -214,7 +234,7 @@ export async function serializeFunctionAsync(
  * function's source code, suitable for execution. Unlike toString, it actually includes information
  * about the captured environment.
  */
-async function createFunctionInfo(func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+async function createFunctionInfoAsync(func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
     const context: Context = {
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
@@ -257,7 +277,7 @@ async function createFunctionInfo(func: Function, serialize: (o: any) => boolean
     const entry: Entry = {};
     context.cache.set(func, entry);
 
-    entry.function = serializeFunctionInfoRecursive(func, context, serialize);
+    entry.function = createFunctionInfo(func, context, serialize);
 
     await processAsyncWorkQueue();
 
@@ -325,7 +345,7 @@ async function createFunctionInfo(func: Function, serialize: (o: any) => boolean
  * createFunctionInfo does the work to create an asynchronous dataflow graph that resolves to a
  * final FunctionInfo.
  */
-function serializeFunctionInfoRecursive(
+function createFunctionInfo(
         func: Function, context: Context,
         serialize: (o: any) => boolean): FunctionInfo {
 
@@ -927,7 +947,7 @@ function getOrCreateEntry(
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.function = serializeFunctionInfoRecursive(obj, context, serialize);
+            entry.function = createFunctionInfo(obj, context, serialize);
         }
         else if (obj instanceof resource.Output) {
             // captures the frames up to this point. so we can give a good message if we
@@ -1154,24 +1174,6 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
     "exports": true,
     "module": true,
     "require": true,
-};
-
-// Information about a captured property.  Both the name and whether or not the property was
-// invoked.
-type CapturedPropertyInfo = {
-    name: string,
-    invoked: boolean,
-};
-
-type CapturedVariableMap = Record<string, CapturedPropertyInfo[]>;
-
-// The set of variables the function attempts to capture.  There is a required set an an optional
-// set. The optional set will not block closure-serialization if we cannot find them, while the
-// required set will.  For each variable that is captured we also specify the list of properties of
-// that variable we need to serialize.  An empty-list means 'serialize all properties'.
-type CapturedVariables = {
-    required: CapturedVariableMap,
-    optional: CapturedVariableMap,
 };
 
 function parseFunction(serializedFunction: SerializedFunction): ts.SourceFile {
