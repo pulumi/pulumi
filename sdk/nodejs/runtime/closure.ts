@@ -82,7 +82,7 @@ interface PropertyInfo {
 }
 
 // Information about a property.  Specifically the actual entry containing the data about it and
-// then an optional descriptor in the case that this isn't just a common property.
+// then an optional PropertyInfo in the case that this isn't just a common property.
 type PropertyInfoAndValue = {
     info?: PropertyInfo,
     entry: Entry,
@@ -207,8 +207,8 @@ class SerializedOutput<T> implements resource.Output<T> {
 export async function serializeFunctionAsync(
         func: Function, serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
-    const closure = await createFunctionInfo(func, serialize);
-    return serializeJavaScriptText(func, closure);
+    const functionInfo = await createFunctionInfo(func, serialize);
+    return serializeJavaScriptText(func, functionInfo);
 }
 
 /**
@@ -326,7 +326,7 @@ async function createFunctionInfo(func: Function, serialize: (o: any) => boolean
 
 /**
  * createFunctionInfo does the work to create an asynchronous dataflow graph that resolves to a
- * final closure.
+ * final FunctionInfo.
  */
 function serializeFunctionInfoRecursive(
         func: Function, context: Context,
@@ -365,7 +365,7 @@ function serializeFunctionInfoRecursive(
         processCapturedVariables(freeVariableNames.required, /*throwOnFailure:*/ true);
         processCapturedVariables(freeVariableNames.optional, /*throwOnFailure:*/ false);
 
-        const closure: FunctionInfo = {
+        const functionInfo: FunctionInfo = {
             code: funcExprWithoutName,
             runtime: "nodejs",
             capturedValues: capturedValues,
@@ -385,11 +385,11 @@ function serializeFunctionInfoRecursive(
         // Function.prototype by default, so we don't need to do anything for them.
         if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
             const protoEntry = getOrCreateEntry(proto, undefined, context, serialize);
-            closure.proto = protoEntry;
+            functionInfo.proto = protoEntry;
 
             if (isDerivedClassConstructor) {
                 processDerivedClassConstructor(protoEntry);
-                closure.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
+                functionInfo.code = rewriteSuperReferences(funcExprWithName!, /*isStatic*/ false);
             }
         }
 
@@ -412,7 +412,7 @@ function serializeFunctionInfoRecursive(
                 continue;
             }
 
-            closure.env.set(
+            functionInfo.env.set(
                 getOrCreateEntry(keyOrSymbol, undefined, context, serialize),
                 { entry: getOrCreateEntry(funcProp, undefined, context, serialize) });
         }
@@ -426,7 +426,7 @@ function serializeFunctionInfoRecursive(
                 getOrCreateEntry("__super", undefined, context, serialize),
                 { entry: superEntry });
 
-            closure.code = rewriteSuperReferences(
+            functionInfo.code = rewriteSuperReferences(
                 funcExprWithName!, context.classStaticMemberToSuperEntry.has(func));
         }
 
@@ -447,7 +447,7 @@ function serializeFunctionInfoRecursive(
                 { entry: funcEntry });
         }
 
-        return closure;
+        return functionInfo;
 
         function processCapturedVariables(
                 capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
@@ -991,35 +991,35 @@ function getOrCreateEntry(
         }
     }
 
-    function getPropretyInfo(key: PropertyKey) {
+    function getPropertyInfo(key: PropertyKey) {
         const desc = Object.getOwnPropertyDescriptor(obj, key);
-        let entryDescriptor: PropertyInfo | undefined;
+        let propertyInfo: PropertyInfo | undefined;
         if (desc) {
             if (!desc.enumerable || !desc.writable || !desc.configurable || desc.get || desc.set) {
                 // Complex property.  Copy over the relevant flags.  (We copy to make
                 // testing easier).
-                entryDescriptor = { hasValue: desc.value !== undefined };
+                propertyInfo = { hasValue: desc.value !== undefined };
                 if (desc.configurable) {
-                    entryDescriptor.configurable = desc.configurable;
+                    propertyInfo.configurable = desc.configurable;
                 }
                 if (desc.enumerable) {
-                    entryDescriptor.enumerable = desc.enumerable;
+                    propertyInfo.enumerable = desc.enumerable;
                 }
                 if (desc.writable) {
-                    entryDescriptor.writable = desc.writable;
+                    propertyInfo.writable = desc.writable;
                 }
                 if (desc.get) {
-                    entryDescriptor.get = getOrCreateEntry(
+                    propertyInfo.get = getOrCreateEntry(
                         desc.get, undefined, context, serialize);
                 }
                 if (desc.set) {
-                    entryDescriptor.set = getOrCreateEntry(
+                    propertyInfo.set = getOrCreateEntry(
                         desc.set, undefined, context, serialize);
                 }
             }
         }
 
-        return entryDescriptor;
+        return propertyInfo;
     }
 
     function serializeObject() {
@@ -1034,8 +1034,8 @@ function getOrCreateEntry(
     // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
     // property filtering.
     function serializeObjectWorker(localObjectProperties: CapturedPropertyInfo[]): boolean {
-        const objectEntry: ObjectInfo = entry.object || { env: new Map() };
-        entry.object = objectEntry;
+        const objectInfo: ObjectInfo = entry.object || { env: new Map() };
+        entry.object = objectInfo;
         const environment = entry.object.env;
 
         for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(obj)) {
@@ -1054,12 +1054,12 @@ function getOrCreateEntry(
                 // this object again while recursing we won't try to generate this property.
                 environment.set(keyEntry, <any>undefined);
 
-                const descriptor = getPropretyInfo(keyOrSymbol);
+                const propertyInfo = getPropertyInfo(keyOrSymbol);
                 const valEntry = getOrCreateEntry(
                     obj[keyOrSymbol], undefined, context, serialize);
 
                 // Now, replace the dummy entry with the actual one we want.
-                environment.set(keyEntry, { info: descriptor, entry: valEntry });
+                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
 
                 if (capturedPropInfo && capturedPropInfo.invoked) {
                     // If this was a captured property and the property was invoked, then we have to
@@ -1073,8 +1073,8 @@ function getOrCreateEntry(
                 // if we're accessing a getter/setter, and that getter/setter uses
                 // 'this', then we need to serialize out this object entirely.
 
-                if (usesNonLexicalThis(descriptor ? descriptor.get : undefined) ||
-                    usesNonLexicalThis(descriptor ? descriptor.set : undefined)) {
+                if (usesNonLexicalThis(propertyInfo ? propertyInfo.get : undefined) ||
+                    usesNonLexicalThis(propertyInfo ? propertyInfo.set : undefined)) {
 
                     return true;
                 }
@@ -1734,12 +1734,12 @@ function isAwaiterCall(node: ts.CallExpression) {
  *
  * @param c The FunctionInfo to be serialized into a module string.
  */
-function serializeJavaScriptText(func: Function, outerClosure: FunctionInfo): string {
+function serializeJavaScriptText(func: Function, outerFunction: FunctionInfo): string {
     // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
 
     // Ensure the closure is targeting a supported runtime.
-    if (outerClosure.runtime !== "nodejs") {
-        throw new Error(`Runtime '${outerClosure.runtime}' not yet supported (currently only 'nodejs')`);
+    if (outerFunction.runtime !== "nodejs") {
+        throw new Error(`Runtime '${outerFunction.runtime}' not yet supported (currently only 'nodejs')`);
     }
 
     // Now produce a textual representation of the closure and its serialized captured environment.
@@ -1754,44 +1754,44 @@ function serializeJavaScriptText(func: Function, outerClosure: FunctionInfo): st
     // However, for non-common cases (i.e. sparse arrays, objects with configured properties,
     // etc. etc.) we will spit things out in a much more verbose fashion that eschews
     // prettyness for correct semantics.
-    let currentClosureIndex = 0;
+    let currentFunctionIndex = 0;
     let currentEnvIndex = 0;
     const envEntryToEnvVar = new Map<Entry, string>();
     const envVarNames = new Set<string>();
-    const closureToEnvVar = new Map<FunctionInfo, string>();
+    const functionInfoToEnvVar = new Map<FunctionInfo, string>();
 
     let environmentText = "";
     let functionText = "";
 
-    const outerClosureName = emitFunctionAndGetName(outerClosure);
+    const outerFunctionName = emitFunctionAndGetName(outerFunction);
 
     if (environmentText) {
         environmentText = "\n" + environmentText;
     }
 
-    const text = "exports.handler = " + outerClosureName + ";\n"
+    const text = "exports.handler = " + outerFunctionName + ";\n"
         + environmentText + functionText;
 
     // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
     return text;
 
-    function emitFunctionAndGetName(closure: FunctionInfo): string {
-        // If this is the first time seeing this closure, then actually emit the function code for
+    function emitFunctionAndGetName(functionInfo: FunctionInfo): string {
+        // If this is the first time seeing this function, then actually emit the function code for
         // it.  Otherwise, just return the name of the emitted function for anyone that wants to
         // reference it from their own code.
-        let closureName = closureToEnvVar.get(closure);
-        if (!closureName) {
-            closureName = `__f${currentClosureIndex++}`;
-            closureToEnvVar.set(closure, closureName);
+        let functionName = functionInfoToEnvVar.get(functionInfo);
+        if (!functionName) {
+            functionName = `__f${currentFunctionIndex++}`;
+            functionInfoToEnvVar.set(functionInfo, functionName);
 
-            emitClosureWorker(closure, closureName);
+            emitFunctionWorker(functionInfo, functionName);
         }
 
-        return closureName;
+        return functionName;
     }
 
-    function emitClosureWorker(closure: FunctionInfo, varName: string) {
-        const capturedValues = envFromEnvObj(closure.capturedValues);
+    function emitFunctionWorker(functionInfo: FunctionInfo, varName: string) {
+        const capturedValues = envFromEnvObj(functionInfo.capturedValues);
 
         const thisCapture = capturedValues.this;
         const argumentsCapture = capturedValues.arguments;
@@ -1803,17 +1803,17 @@ function serializeJavaScriptText(func: Function, outerClosure: FunctionInfo): st
             "function " + varName + "() {\n" +
             "  return (function() {\n" +
             "    with(" + envObjToString(capturedValues) + ") {\n\n" +
-            "return " + closure.code + ";\n\n" +
+            "return " + functionInfo.code + ";\n\n" +
             "    }\n" +
             "  }).apply(" + thisCapture + ", " + argumentsCapture + ").apply(this, arguments);\n" +
             "}\n";
 
         // If this function is complex (i.e. non-default __proto__, or has properties, etc.)
         // then emit those as well.
-        emitComplexObjectProperties(varName, varName, closure);
+        emitComplexObjectProperties(varName, varName, functionInfo);
 
-        if (closure.proto !== undefined) {
-            const protoVar = envEntryToString(closure.proto, `${varName}_proto`);
+        if (functionInfo.proto !== undefined) {
+            const protoVar = envEntryToString(functionInfo.proto, `${varName}_proto`);
             environmentText += `Object.setPrototypeOf(${varName}, ${protoVar});\n`;
         }
     }
@@ -1839,7 +1839,7 @@ function serializeJavaScriptText(func: Function, outerClosure: FunctionInfo): st
         }
 
         // Objects any arrays may have cycles in them.  They may also be referenced from multiple
-        // closures.  As such, we have to create variables for them in the environment so that all
+        // functions.  As such, we have to create variables for them in the environment so that all
         // references to them unify to the same reference to the env variable.
         if (isObjOrArray(envEntry)) {
             return complexEnvEntryToString(envEntry, varName);
@@ -1857,8 +1857,7 @@ function serializeJavaScriptText(func: Function, outerClosure: FunctionInfo): st
             return JSON.stringify(envEntry.json);
         }
         else if (envEntry.function !== undefined) {
-            const closureName = emitFunctionAndGetName(envEntry.function);
-            return closureName;
+            return emitFunctionAndGetName(envEntry.function);
         }
         else if (envEntry.output !== undefined) {
             return envEntryToString(envEntry.output, varName);
