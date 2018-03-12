@@ -113,13 +113,13 @@ func newNewCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&cloudURL,
-		"cloud-url", "c", "", "A cloud URL to download releases from")
+		"cloud-url", "c", "", "A cloud URL to download templates from")
 	cmd.PersistentFlags().StringVarP(
 		&name, "name", "n", "",
 		"The project name; if not specified, the name of the current working directory is used")
 	cmd.PersistentFlags().StringVarP(
 		&description, "description", "d", "",
-		"The project description; f not specified, a default description is used")
+		"The project description; if not specified, a default description is used")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
