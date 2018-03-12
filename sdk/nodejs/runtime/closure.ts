@@ -54,9 +54,6 @@ interface FunctionInfo extends ObjectInfo {
     // a serialization of the function's source code as text.
     code: string;
 
-    // the language runtime required to execute the serialized code.
-    runtime: string;
-
     // the captured lexical environment of names to values, if any.
     capturedValues: PropertyMap;
 
@@ -367,7 +364,6 @@ function serializeFunctionInfoRecursive(
 
         const functionInfo: FunctionInfo = {
             code: funcExprWithoutName,
-            runtime: "nodejs",
             capturedValues: capturedValues,
             env: new Map(),
             usesNonLexicalThis: computeUsesNonLexicalThis(serializedFunction),
@@ -1736,11 +1732,6 @@ function isAwaiterCall(node: ts.CallExpression) {
  */
 function serializeJavaScriptText(func: Function, outerFunction: FunctionInfo): string {
     // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
-
-    // Ensure the closure is targeting a supported runtime.
-    if (outerFunction.runtime !== "nodejs") {
-        throw new Error(`Runtime '${outerFunction.runtime}' not yet supported (currently only 'nodejs')`);
-    }
 
     // Now produce a textual representation of the closure and its serialized captured environment.
 
