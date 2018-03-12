@@ -380,7 +380,7 @@ func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRu
 func (host *testProviderHost) ListPlugins() []workspace.PluginInfo {
 	return nil
 }
-func (host *testProviderHost) EnsurePlugins(info plugin.ProgInfo) error {
+func (host *testProviderHost) EnsurePlugins(plugins []workspace.PluginInfo) error {
 	return nil
 }
 func (host *testProviderHost) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
