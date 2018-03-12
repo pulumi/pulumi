@@ -14,6 +14,8 @@ import (
 	"runtime"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -36,6 +38,39 @@ type Template struct {
 	Description string `json:"description"`
 }
 
+// templateManifest represents a template's manifest file.
+type templateManifest struct {
+	Description string `yaml:"description"`
+}
+
+// LoadLocalTemplate returns a local template.
+func LoadLocalTemplate(name string) (Template, error) {
+	template := Template{Name: name}
+
+	templateDir, err := GetTemplateDir(name)
+	if err != nil {
+		return Template{}, err
+	}
+
+	info, err := os.Stat(templateDir)
+	if err != nil {
+		return Template{}, err
+	}
+	if !info.IsDir() {
+		return Template{}, errors.Errorf("template '%s' in %s is not a directory", name, templateDir)
+	}
+
+	// Read the description from the manifest (if it exists).
+	manifest, err := readTemplateManifest(filepath.Join(templateDir, pulumiTemplateManifestFile))
+	if err != nil && !os.IsNotExist(err) {
+		return Template{}, err
+	} else if err == nil && manifest.Description != "" {
+		template.Description = manifest.Description
+	}
+
+	return template, nil
+}
+
 // ListLocalTemplates returns a list of local templates.
 func ListLocalTemplates() ([]Template, error) {
 	templateDir, err := GetTemplateDir("")
@@ -51,7 +86,11 @@ func ListLocalTemplates() ([]Template, error) {
 	var templates []Template
 	for _, info := range infos {
 		if info.IsDir() {
-			templates = append(templates, Template{Name: info.Name()})
+			template, err := LoadLocalTemplate(info.Name())
+			if err != nil {
+				return nil, err
+			}
+			templates = append(templates, template)
 		}
 	}
 	return templates, nil
@@ -97,10 +136,10 @@ func InstallTemplate(name string, tarball io.ReadCloser) error {
 
 // CopyTemplateFilesDryRun does a dry run of copying a template to a destination directory,
 // to ensure it won't overwrite any files.
-func CopyTemplateFilesDryRun(name string, destDir string) error {
+func (template Template) CopyTemplateFilesDryRun(destDir string) error {
 	var err error
 	var sourceDir string
-	if sourceDir, err = GetTemplateDir(name); err != nil {
+	if sourceDir, err = GetTemplateDir(template.Name); err != nil {
 		return err
 	}
 
@@ -122,8 +161,10 @@ func CopyTemplateFilesDryRun(name string, destDir string) error {
 }
 
 // CopyTemplateFiles does the actual copy operation to a destination directory.
-func CopyTemplateFiles(name string, destDir string, force bool, projectName string, projectDescription string) error {
-	sourceDir, err := GetTemplateDir(name)
+func (template Template) CopyTemplateFiles(
+	destDir string, force bool, projectName string, projectDescription string) error {
+
+	sourceDir, err := GetTemplateDir(template.Name)
 	if err != nil {
 		return err
 	}
@@ -300,6 +341,22 @@ func walkFiles(sourceDir string, destDir string,
 	}
 
 	return nil
+}
+
+// readTemplateManifest reads a template manifest file.
+func readTemplateManifest(filename string) (templateManifest, error) {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return templateManifest{}, err
+	}
+
+	var manifest templateManifest
+	err = yaml.Unmarshal(b, &manifest)
+	if err != nil {
+		return templateManifest{}, err
+	}
+
+	return manifest, nil
 }
 
 // newExistingFilesError returns a new error from a list of existing file names
