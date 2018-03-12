@@ -345,7 +345,7 @@ function serializeFunctionRecursive(
         // this for functions with a custom prototype (like a derived class constructor, or a functoin
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (proto !== Function.prototype && !isResourceOrDerivedClassConstructor(func)) {
+        if (proto !== Function.prototype && !isDerivedNoCaptureConstructor(func)) {
             const protoEntry = getOrCreateEntry(proto, undefined, context, serialize);
             closure.obj.proto = protoEntry;
 
@@ -894,20 +894,22 @@ function getOrCreateEntry(
     return entry;
 
     function dispatchAny(): void {
-
         if (!serialize(obj)) {
+            // caller explicitly does not want us to capture this value.
             entry.json = undefined;
         }
-        else if (isResourceOrDerivedClassConstructor(obj)) {
+        else if (obj && obj.doNotCapture) {
+            // object has set itself as something that should not be captured.
+            entry.json = undefined;
+        }
+        else if (isDerivedNoCaptureConstructor(obj)) {
+            // this was a constructor that derived from something that should not be captured.
             entry.json = undefined;
         }
         else if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
-        }
-        else if (obj && obj.doNotCapture) {
-            entry.json = undefined;
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
@@ -1081,9 +1083,12 @@ function getOrCreateEntry(
     }
 }
 
-function isResourceOrDerivedClassConstructor(func: Function) {
+// Is this a constructor derived from a noCapture constructor.  if so, we don't want to
+// emit it.  We would be unable to actually hook up the "super()" call as one of the base
+// constructors was set to not be captured.
+function isDerivedNoCaptureConstructor(func: Function) {
     for (let current: any = func; current; current = Object.getPrototypeOf(current)) {
-        if (current === resource.Resource) {
+        if (current && current.doNotCapture) {
             return true;
         }
     }
