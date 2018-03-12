@@ -59,6 +59,10 @@ interface FunctionInfo extends ObjectInfo {
 
     // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
     usesNonLexicalThis: boolean;
+
+    // name that the function was declared with.  used only for trying to emit a better
+    // name into the serialized code for it.
+    name: string | undefined;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -419,6 +423,7 @@ function createFunctionInfo(
             capturedValues: capturedValues,
             env: new Map(),
             usesNonLexicalThis: computeUsesNonLexicalThis(serializedFunction),
+            name: functionDeclarationName,
         };
 
         const proto = Object.getPrototypeOf(func);
@@ -1784,8 +1789,6 @@ function serializeJavaScriptText(func: Function, outerFunction: FunctionInfo): s
     // However, for non-common cases (i.e. sparse arrays, objects with configured properties,
     // etc. etc.) we will spit things out in a much more verbose fashion that eschews
     // prettyness for correct semantics.
-    let currentFunctionIndex = 0;
-    let currentEnvIndex = 0;
     const envEntryToEnvVar = new Map<Entry, string>();
     const envVarNames = new Set<string>();
     const functionInfoToEnvVar = new Map<FunctionInfo, string>();
@@ -1811,7 +1814,9 @@ function serializeJavaScriptText(func: Function, outerFunction: FunctionInfo): s
         // reference it from their own code.
         let functionName = functionInfoToEnvVar.get(functionInfo);
         if (!functionName) {
-            functionName = `__f${currentFunctionIndex++}`;
+            functionName = functionInfo.name
+                ? createEnvVarName(functionInfo.name, /*addIndexAtEnd:*/ false)
+                : createEnvVarName("f", /*addIndexAtEnd:*/ true);
             functionInfoToEnvVar.set(functionInfo, functionName);
 
             emitFunctionWorker(functionInfo, functionName);
@@ -1907,14 +1912,11 @@ function serializeJavaScriptText(func: Function, outerFunction: FunctionInfo): s
 
     function complexEnvEntryToString(
             envEntry: Entry, varName: string): string {
-        const index = currentEnvIndex++;
-
         // Call all environment variables __e<num> to make them unique.  But suffix
         // them with the original name of the property to help provide context when
         // looking at the source.
-        const envVar = createEnvVarName(varName);
+        const envVar = createEnvVarName(varName, /*addIndexAtEnd:*/ false);
         envEntryToEnvVar.set(envEntry, envVar);
-        envVarNames.add(envVar);
 
         if (envEntry.object) {
             emitObject(envVar, envEntry.object, varName);
@@ -1926,17 +1928,22 @@ function serializeJavaScriptText(func: Function, outerFunction: FunctionInfo): s
         return envVar;
     }
 
-    function createEnvVarName(baseName: string): string {
+    function createEnvVarName(baseName: string, addIndexAtEnd: boolean): string {
         const trimLeadingUnderscoreRegex = /^_*/g;
         const legalName = makeLegalJSName(baseName).replace(trimLeadingUnderscoreRegex, "");
         let index = 0;
 
-        let currentName = "__" + legalName;
+        let currentName = addIndexAtEnd
+            ? "__" + legalName + index
+            : "__" + legalName;
         while (envVarNames.has(currentName)) {
-            currentName = "__" + index + "_" + legalName;
+            currentName = addIndexAtEnd
+                ? "__" + legalName + index
+                : "__" + index + "_" + legalName;
             index++;
         }
 
+        envVarNames.add(currentName);
         return currentName;
     }
 

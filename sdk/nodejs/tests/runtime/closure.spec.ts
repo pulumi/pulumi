@@ -43,11 +43,11 @@ return function () { };
         title: "Empty named function",
         // tslint:disable-next-line
         func: function f() { },
-        expectText: `exports.handler = __f0;
+        expectText: `exports.handler = __f;
 
-function __f0() {
+function __f() {
   return (function() {
-    with({ f: __f0 }) {
+    with({ f: __f }) {
 
 return function /*f*/() { };
 
@@ -61,11 +61,11 @@ return function /*f*/() { };
         title: "Named function with self-reference",
         // tslint:disable-next-line
         func: function f() { f(); },
-        expectText: `exports.handler = __f0;
+        expectText: `exports.handler = __f;
 
-function __f0() {
+function __f() {
   return (function() {
-    with({ f: __f0 }) {
+    with({ f: __f }) {
 
 return function /*f*/() { f(); };
 
@@ -1531,21 +1531,21 @@ return function () { return array; };
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __f1_prototype = {};
-Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __C_prototype = {};
+Object.defineProperty(__C_prototype, "constructor", { configurable: true, writable: true, value: __C });
 var __outer = {};
 __outer.o = 1;
 var __outer_b = [];
 __outer_b[0] = __outer;
 __outer.b = __outer_b;
-__f1_prototype.m = __f2;
-__f1_prototype.n = __f3;
-__f1.prototype = __f1_prototype;
-__f1.m = __f4;
+__C_prototype.m = __f1;
+__C_prototype.n = __f2;
+__C.prototype = __C_prototype;
+__C.m = __f3;
 
-function __f1() {
+function __C() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __C }) {
 
 return function /*C*/() { };
 
@@ -1553,7 +1553,7 @@ return function /*C*/() { };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f1() {
   return (function() {
     with({ outer: __outer }) {
 
@@ -1563,7 +1563,7 @@ return function () { return this.n() + outer; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f2() {
   return (function() {
     with({ array: __outer_b }) {
 
@@ -1573,7 +1573,7 @@ return function () { return array; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f4() {
+function __f3() {
   return (function() {
     with({  }) {
 
@@ -1585,7 +1585,7 @@ return function () { return this.n(); };
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __C }) {
 
 return () => C;
 
@@ -2320,15 +2320,15 @@ return () => { return 1; };
         cases.push({
             title: "Test generator func",
             func: f,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f;
 
-var __f0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
-__f0.prototype = __f0_prototype;
-Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
+var __f_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
+__f.prototype = __f_prototype;
+Object.setPrototypeOf(__f, Object.getPrototypeOf(function*(){}));
 
-function __f0() {
+function __f() {
   return (function() {
-    with({ f: __f0 }) {
+    with({ f: __f }) {
 
 return function* /*f*/() { yield 1; };
 
@@ -3469,13 +3469,13 @@ return function () { console.log(o.b); };
             title: "Capture multi props from different contexts #1",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
 var __o = {a: 1, c: 2};
 
-function __f1() {
+function __f2() {
   return (function() {
-    with({ o: __o, f2: __f1 }) {
+    with({ o: __o, f2: __f2 }) {
 
 return function /*f2*/() {
             console.log(o.c);
@@ -3485,9 +3485,9 @@ return function /*f2*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __o, f2: __f1, f1: __f0 }) {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o.a);
@@ -3516,13 +3516,13 @@ return function /*f1*/() {
             title: "Capture all props from different contexts #1",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
 var __o = {a: 1, b: 1, c: 2};
 
-function __f1() {
+function __f2() {
   return (function() {
-    with({ o: __o, f2: __f1 }) {
+    with({ o: __o, f2: __f2 }) {
 
 return function /*f2*/() {
             console.log(o);
@@ -3532,9 +3532,9 @@ return function /*f2*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __o, f2: __f1, f1: __f0 }) {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o.a);
@@ -3563,13 +3563,13 @@ return function /*f1*/() {
             title: "Capture all props from different contexts #2",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
 var __o = {a: 1, b: 1, c: 2};
 
-function __f1() {
+function __f2() {
   return (function() {
-    with({ o: __o, f2: __f1 }) {
+    with({ o: __o, f2: __f2 }) {
 
 return function /*f2*/() {
             console.log(o.a);
@@ -3579,9 +3579,9 @@ return function /*f2*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __o, f2: __f1, f1: __f0 }) {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -3614,11 +3614,28 @@ return function /*f1*/() {
             title: "Cloud table function",
             // tslint:disable-next-line
             func: testScanReturnsAllValues,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __testScanReturnsAllValues;
 
-var __table1 = {primaryKey: 1, insert: __f2};
-${awaiterCode}
-function __f2() {
+var __table1 = {primaryKey: 1, insert: __f1};
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
   return (function() {
     with({  }) {
 
@@ -3628,9 +3645,9 @@ return () => { };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __testScanReturnsAllValues() {
   return (function() {
-    with({ __awaiter: __f1, table1: __table1, testScanReturnsAllValues: __f0 }) {
+    with({ __awaiter: __f0, table1: __table1, testScanReturnsAllValues: __testScanReturnsAllValues }) {
 
 return function /*testScanReturnsAllValues*/() {
             return __awaiter(this, void 0, void 0, function* () {
@@ -3661,13 +3678,13 @@ return function /*testScanReturnsAllValues*/() {
             title: "Do not capture #1",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
 var __o = {a: 1, b: undefined, c: 2};
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __o, f1: __f0 }) {
+    with({ o: __o, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -3692,9 +3709,9 @@ return function /*f1*/() {
             title: "Merge simple functions",
             // tslint:disable-next-line
             func: f3,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f3;
 
-function __f1() {
+function __f0() {
   return (function() {
     with({  }) {
 
@@ -3704,9 +3721,9 @@ return () => console.log(1);
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f3() {
   return (function() {
-    with({ lambda1: __f1, lambda2: __f1, f3: __f0 }) {
+    with({ lambda1: __f0, lambda2: __f0, f3: __f3 }) {
 
 return function /*f3*/() {
             return (lambda1(), lambda2());
@@ -3745,9 +3762,9 @@ return function /*f3*/() {
             title: "Share __awaiter functions",
             // tslint:disable-next-line
             func: f3,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f3;
 
-function __f1() {
+function __f0() {
   return (function() {
     with({  }) {
 
@@ -3774,9 +3791,9 @@ return function (thisArg, _arguments, P, generator) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f3() {
   return (function() {
-    with({ awaiter1: __f1, awaiter2: __f1, f3: __f0 }) {
+    with({ awaiter1: __f0, awaiter2: __f0, f3: __f3 }) {
 
 return function /*f3*/() {
             const v1 = awaiter1, v2 = awaiter2;
