@@ -3680,6 +3680,115 @@ return function /*f1*/() {
 });
     }
 
+    {
+        const lambda1 = () => console.log(1);
+        const lambda2 = () => console.log(1);
+
+        function f3() {
+            return (lambda1(), lambda2());
+        }
+
+        cases.push({
+            title: "Merge simple functions",
+            // tslint:disable-next-line
+            func: f3,
+            expectText: `exports.handler = __f0;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return () => console.log(1);
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ lambda1: __f1, lambda2: __f1, f3: __f0 }) {
+
+return function /*f3*/() {
+            return (lambda1(), lambda2());
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const awaiter1 = function (thisArg: any, _arguments: any, P: any, generator: any) {
+            return new (P || (P = Promise))(function (resolve: any, reject: any) {
+                function fulfilled(value: any) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+                function rejected(value: any) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+                function step(result: any) { result.done ? resolve(result.value) : new P(function (resolve1: any) { resolve1(result.value); }).then(fulfilled, rejected); }
+                step((generator = generator.apply(thisArg, _arguments || [])).next());
+            });
+        };
+        const awaiter2 = function (thisArg: any, _arguments: any, P: any, generator: any) {
+            return new (P || (P = Promise))(function (resolve: any, reject: any) {
+                function fulfilled(value: any) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+                function rejected(value: any) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+                function step(result: any) { result.done ? resolve(result.value) : new P(function (resolve1: any) { resolve1(result.value); }).then(fulfilled, rejected); }
+                step((generator = generator.apply(thisArg, _arguments || [])).next());
+            });
+        };
+
+        function f3() {
+            const v1 = awaiter1, v2 = awaiter2;
+        }
+
+        cases.push({
+            title: "Share __awaiter functions",
+            // tslint:disable-next-line
+            func: f3,
+            expectText: `exports.handler = __f0;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+            return new (P || (P = Promise))(function (resolve, reject) {
+                function fulfilled(value) { try {
+                    step(generator.next(value));
+                }
+                catch (e) {
+                    reject(e);
+                } }
+                function rejected(value) { try {
+                    step(generator["throw"](value));
+                }
+                catch (e) {
+                    reject(e);
+                } }
+                function step(result) { result.done ? resolve(result.value) : new P(function (resolve1) { resolve1(result.value); }).then(fulfilled, rejected); }
+                step((generator = generator.apply(thisArg, _arguments || [])).next());
+            });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ awaiter1: __f1, awaiter2: __f1, f3: __f0 }) {
+
+return function /*f3*/() {
+            const v1 = awaiter1, v2 = awaiter2;
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
     // Make a callback to keep running tests.
     let remaining = cases;
     while (true) {

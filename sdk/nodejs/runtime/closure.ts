@@ -146,6 +146,14 @@ interface Context {
     // work to be done.  So we'll just keep processing this this queue until there is nothing left
     // in it.
     asyncWorkQueue: (() => Promise<void>)[];
+
+    // A list of 'simple' functions.  Simple functions do not capture anything, do not have any
+    // special properties on them, and do not have a custom prototype.  If we run into multiple
+    // functions that are simple, and share the same code, then we can just emit the function once
+    // for them.  A good example of this is the __awaiter function.  Normally, there will be one
+    // __awaiter per .js file that uses 'async/await'.  Instead of needing to generate serialized
+    // functions for each of those, we can just serialize out the function once.
+    simpleFunctions: FunctionInfo[];
  }
 
 interface FunctionLocation {
@@ -241,6 +249,7 @@ async function createFunctionInfoAsync(func: Function, serialize: (o: any) => bo
         classStaticMemberToSuperEntry: new Map(),
         frames: [],
         asyncWorkQueue: [],
+        simpleFunctions: [],
      };
 
     // Add well-known javascript global variables into our cache.  This way, if there
@@ -357,7 +366,30 @@ function createFunctionInfo(
     const result = serializeWorker();
     context.frames.pop();
 
+    if (isSimple(result)) {
+        const existingSimpleFunction = findSimpleFunction(result);
+        if (existingSimpleFunction) {
+            return existingSimpleFunction;
+        }
+
+        context.simpleFunctions.push(result);
+    }
+
     return result;
+
+    function isSimple(info: FunctionInfo) {
+        return info.capturedValues.size === 0 && info.env.size === 0 && !info.proto;
+    }
+
+    function findSimpleFunction(info: FunctionInfo) {
+        for (const other of context.simpleFunctions) {
+            if (other.code === info.code && other.usesNonLexicalThis === info.usesNonLexicalThis) {
+                return other;
+            }
+        }
+
+        return undefined;
+    }
 
     function serializeWorker() {
         const funcEntry = context.cache.get(func);
