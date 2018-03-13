@@ -122,7 +122,7 @@ export interface Entry {
     expr?: string;
 }
 
-export interface Context {
+interface Context {
     // The cache stores a map of objects to the entries we've created for them.  It's used so that
     // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
     // object multiple times while walking the memory graph, we only emit it once.
@@ -159,14 +159,16 @@ export interface Context {
     simpleFunctions: FunctionInfo[];
  }
 
-export interface FunctionLocation {
+interface FunctionLocation {
     func: Function;
     file: string;
     line: number;
     column: number;
+    functionString: string;
+    isArrowFunction?: boolean;
 }
 
-export interface ContextFrame {
+interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
@@ -319,8 +321,10 @@ function createFunctionInfo(
     const file: string =  nativeruntime.getFunctionFile(func);
     const line: number = nativeruntime.getFunctionLine(func);
     const column: number = nativeruntime.getFunctionColumn(func);
+    const functionString = func.toString();
+    const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
-    context.frames.push({ functionLocation: { func, file, line, column } });
+    context.frames.push(frame);
     const result = serializeWorker();
     context.frames.pop();
 
@@ -360,13 +364,14 @@ function createFunctionInfo(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(func, context);
+        const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
             throwSerializationError(func, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
         const functionDeclarationName = parsedFunction.functionDeclarationName;
+        frame.functionLocation.isArrowFunction = parsedFunction.isArrowFunction;
 
         const capturedValues: PropertyMap = new Map();
         processCapturedVariables(parsedFunction.capturedVariables.required, /*throwOnFailure:*/ true);
@@ -571,21 +576,21 @@ function throwSerializationError(func: Function, context: Context, info: string)
 
             if (nextFrameIsFunction) {
                 if (i === 0) {
-                    message += `function ${funcLocation}: referenced\n`;
+                    message += `${funcLocation}: referenced\n`;
                 }
                 else {
-                    message += `function ${funcLocation}: which referenced\n`;
+                    message += `${funcLocation}: which referenced\n`;
                 }
             }
             else {
                 if (i === n - 1) {
-                    message += `function ${funcLocation}: which could not be serialized because\n`;
+                    message += `${funcLocation}: which could not be serialized because\n`;
                 }
                 else if (i === 0) {
-                    message += `function ${funcLocation}: captured\n`;
+                    message += `${funcLocation}: captured\n`;
                 }
                 else {
-                    message += `function ${funcLocation}: which captured\n`;
+                    message += `${funcLocation}: which captured\n`;
                 }
             }
         }
@@ -620,21 +625,53 @@ function throwSerializationError(func: Function, context: Context, info: string)
         const moduleName = context.frames[moduleIndex].capturedModuleName;
         message += "\n";
 
-        const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
+        const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
+        const location = getFunctionLocation(functionLocation);
         message += `Capturing modules can sometimes cause problems.
-Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}`;
+Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
     }
 
     throw new RunError(message);
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
-    let name = "'" + (loc.func.name || "<anonymous>") + "'";
+    let name = "'" + getFunctionName(loc) + "'";
     if (loc.file) {
         name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
-    return name;
+    const prefix = loc.isArrowFunction ? "" : "function ";
+    return prefix + name;
+}
+
+function getFunctionName(loc: FunctionLocation): string {
+    if (loc.isArrowFunction) {
+        let funcString = loc.functionString;
+
+        // If there's a semicolon in the text, only include up to that.  we don't want to pull in
+        // the entire lambda if it's lots of statements.
+        const semicolonIndex = funcString.indexOf(";");
+        if (semicolonIndex >= 0) {
+            funcString = funcString.substr(0, semicolonIndex + 1) + " ...";
+        }
+
+        // squash all whitespace to single spaces.
+        funcString = funcString.replace(/\s\s+/g, " ");
+
+        const lengthLimit = 40;
+        if (funcString.length > lengthLimit) {
+            // Trim the header if its very long.
+            funcString = funcString.substring(0, lengthLimit - " ...".length) + " ...";
+        }
+
+        return funcString;
+    }
+
+    if (loc.func.name) {
+        return loc.func.name;
+    }
+
+    return "<anonymous>";
 }
 
 function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
