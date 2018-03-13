@@ -35,6 +35,7 @@
         "runtime/closureCreation.ts",
         "runtime/closureFunction.ts",
         "runtime/closureSerialization.ts",
+        "runtime/closureSuper.ts",
         "runtime/config.ts",
         "runtime/debuggable.ts",
         "runtime/invoke.ts",
