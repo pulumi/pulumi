@@ -1,12 +1,5 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as crypto from "crypto";
-import { relative as pathRelative } from "path";
-import { basename } from "path";
-import * as ts from "typescript";
-import { RunError } from "../errors";
-import * as log from "../log";
-import * as resource from "../resource";
 import * as closure from "./closureCreation";
 
 export async function serializeFunctionAsync(
@@ -224,7 +217,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
                 const propName = envEntryToString(keyEntry, keyName);
                 const propVal = simpleEnvEntryToString(valEntry, keyName);
 
-                if (typeof keyEntry.json === "string" && isLegalName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && closure.isLegalName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
                 }
                 else {
@@ -266,7 +259,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
 
             if (!info) {
                 // normal property.  Just emit simply as a direct assignment.
-                if (typeof keyEntry.json === "string" && isLegalName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && closure.isLegalName(keyEntry.json)) {
                     environmentText += `${envVar}.${keyEntry.json} = ${valString};\n`;
                 }
                 else {
@@ -345,11 +338,6 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
 const makeLegalRegex = /[^0-9a-zA-Z_]/g;
 function makeLegalJSName(n: string) {
     return n.replace(makeLegalRegex, x => "");
-}
-
-const legalNameRegex = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
-function isLegalName(n: string) {
-    return legalNameRegex.test(n);
 }
 
 function isSparse<T>(arr: Array<T>) {
