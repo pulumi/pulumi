@@ -23,7 +23,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteIfNotFailed(e)
 
 		// Create a temporary local template.
-		template := createTemporaryLocalTemplate(t)
+		template := createTemporaryLocalTemplate(t, "")
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
@@ -36,6 +36,28 @@ func TestPulumiNew(t *testing.T) {
 		e.RunCommand("pulumi", "new", template, "--offline")
 
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
+	})
+
+	t.Run("SanityTestWithManifest", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+
+		const description = "My project description."
+
+		// Create a temporary local template.
+		template := createTemporaryLocalTemplate(t, description)
+		defer deleteTemporaryLocalTemplate(t, template)
+
+		// Create a subdirectory and CD into it.
+		subdir := path.Join(e.RootPath, "foo")
+		err := os.MkdirAll(subdir, os.ModePerm)
+		assert.NoError(t, err, "error creating subdirectory")
+		e.CWD = subdir
+
+		// Run pulumi new.
+		e.RunCommand("pulumi", "new", template, "--offline")
+
+		assertSuccess(t, subdir, "foo", description)
 	})
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
@@ -101,7 +123,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteIfNotFailed(e)
 
 		// Create a temporary local template.
-		template := createTemporaryLocalTemplate(t)
+		template := createTemporaryLocalTemplate(t, "")
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Run pulumi new.
@@ -115,7 +137,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteIfNotFailed(e)
 
 		// Create a temporary local template.
-		template := createTemporaryLocalTemplate(t)
+		template := createTemporaryLocalTemplate(t, "")
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory that contains an invalid char
@@ -137,7 +159,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteIfNotFailed(e)
 
 		// Create a temporary local template.
-		template := createTemporaryLocalTemplate(t)
+		template := createTemporaryLocalTemplate(t, "")
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
@@ -172,7 +194,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteIfNotFailed(e)
 
 		// Create a temporary local template.
-		template := createTemporaryLocalTemplate(t)
+		template := createTemporaryLocalTemplate(t, "")
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
@@ -218,7 +240,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteIfNotFailed(e)
 
 		// Create a temporary local template.
-		template := createTemporaryLocalTemplate(t)
+		template := createTemporaryLocalTemplate(t, "")
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
@@ -263,6 +285,10 @@ func assertSuccess(t *testing.T, dir string, expectedProjectName string, expecte
 	// Confirm the .pulumi.template.yaml file was skipped.
 	_, err := os.Stat(filepath.Join(dir, ".pulumi.template.yaml"))
 	assert.Error(t, err)
+
+	infos, err := ioutil.ReadDir(dir)
+	assert.NoError(t, err, "reading dir")
+	assert.Equal(t, 4, len(infos))
 }
 
 func readFile(t *testing.T, filename string) string {
@@ -271,7 +297,7 @@ func readFile(t *testing.T, filename string) string {
 	return string(b)
 }
 
-func createTemporaryLocalTemplate(t *testing.T) string {
+func createTemporaryLocalTemplate(t *testing.T, description string) string {
 	name := fmt.Sprintf("%v", time.Now().UnixNano())
 	dir := getTemplateDir(t, name)
 	err := os.MkdirAll(dir, 0700)
@@ -295,8 +321,12 @@ func createTemporaryLocalTemplate(t *testing.T) string {
 	err = ioutil.WriteFile(filepath.Join(dir, "sub", "blah.json"), []byte("{}"), 0600)
 	assert.NoError(t, err, "creating sub/blah.json")
 
-	err = ioutil.WriteFile(filepath.Join(dir, ".pulumi.template.yaml"), []byte{}, 0600)
-	assert.NoError(t, err, "creating .pulumi.template.yaml")
+	// If description is not empty, write it out in a manifest file.
+	if description != "" {
+		descriptionBytes := []byte(fmt.Sprintf("description: %s", description))
+		err = ioutil.WriteFile(filepath.Join(dir, ".pulumi.template.yaml"), descriptionBytes, 0600)
+		assert.NoError(t, err, "creating .pulumi.template.yaml")
+	}
 
 	return name
 }
