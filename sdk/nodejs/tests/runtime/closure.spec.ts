@@ -909,7 +909,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             error:
 `Error serializing '() => os': closure.spec.js(0,0)
 
-lambda '() => os': closure.spec.js(0,0): captured
+'() => os': closure.spec.js(0,0): captured
   module 'os' which indirectly referenced
     function 'getHostname': which could not be serialized because
       it was a native code function.
@@ -918,7 +918,35 @@ Function code:
   function getHostname() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside lambda '() => os': closure.spec.js(0,0)`,
+Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
+        });
+    }
+
+    {
+        const os = require("os");
+
+        cases.push({
+            title: "Wrapped lambda function",
+            func: (a: any,
+                   b: any,
+                   c: any) => {
+                       const v =
+                           os;
+                       return { v };
+                   },
+            expectText: undefined,
+            error: `Error serializing '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)
+
+'(a, b, c) => { const v = os; ...': closure.spec.js(0,0): captured
+  module 'os' which indirectly referenced
+    function 'getHostname': which could not be serialized because
+      it was a native code function.
+
+Function code:
+  function getHostname() { [native code] }
+
+Capturing modules can sometimes cause problems.
+Consider using import('os') or require('os') inside '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)`,
         });
     }
 
@@ -937,9 +965,9 @@ Consider using import('os') or require('os') inside lambda '() => os': closure.s
             error:
 `Error serializing '() => handler': closure.spec.js(0,0)
 
-lambda '() => handler': closure.spec.js(0,0): captured
+'() => handler': closure.spec.js(0,0): captured
   'handler', a function defined at
-    lambda '() => os': closure.spec.js(0,0): which captured
+    '() => os': closure.spec.js(0,0): which captured
       module 'os' which indirectly referenced
         function 'getHostname': which could not be serialized because
           it was a native code function.
@@ -948,7 +976,7 @@ Function code:
   function getHostname() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside lambda '() => os': closure.spec.js(0,0)`,
+Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
         });
     }
 
@@ -961,7 +989,7 @@ Consider using import('os') or require('os') inside lambda '() => os': closure.s
             error:
 `Error serializing '() => util': closure.spec.js(0,0)
 
-lambda '() => util': closure.spec.js(0,0): captured
+'() => util': closure.spec.js(0,0): captured
   module './bin/tests/util.js' which indirectly referenced
     function 'assertAsyncThrows': util.js(0,0): which captured
       module 'assert' which indirectly referenced
@@ -979,7 +1007,7 @@ Function code:
   function isArrayBuffer() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside lambda '() => util': closure.spec.js(0,0)`,
+Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside '() => util': closure.spec.js(0,0)`,
         });
     }
 

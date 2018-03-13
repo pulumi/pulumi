@@ -571,27 +571,26 @@ function throwSerializationError(func: Function, context: Context, info: string)
         message += indentString;
 
         if (frame.functionLocation) {
-            const funcOrLambda = getFuncOrLambdaText(frame.functionLocation);
             const funcLocation = getFunctionLocation(frame.functionLocation);
             const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
 
             if (nextFrameIsFunction) {
                 if (i === 0) {
-                    message += `${funcOrLambda} ${funcLocation}: referenced\n`;
+                    message += `${funcLocation}: referenced\n`;
                 }
                 else {
-                    message += `${funcOrLambda} ${funcLocation}: which referenced\n`;
+                    message += `${funcLocation}: which referenced\n`;
                 }
             }
             else {
                 if (i === n - 1) {
-                    message += `${funcOrLambda} ${funcLocation}: which could not be serialized because\n`;
+                    message += `${funcLocation}: which could not be serialized because\n`;
                 }
                 else if (i === 0) {
-                    message += `${funcOrLambda} ${funcLocation}: captured\n`;
+                    message += `${funcLocation}: captured\n`;
                 }
                 else {
-                    message += `${funcOrLambda} ${funcLocation}: which captured\n`;
+                    message += `${funcLocation}: which captured\n`;
                 }
             }
         }
@@ -628,18 +627,11 @@ function throwSerializationError(func: Function, context: Context, info: string)
 
         const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
         const location = getFunctionLocation(functionLocation);
-        const funcOrLambda = getFuncOrLambdaText(functionLocation);
         message += `Capturing modules can sometimes cause problems.
-Consider using import('${moduleName}') or require('${moduleName}') inside ${funcOrLambda} ${location}`;
+Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
     }
 
     throw new RunError(message);
-}
-
-function getFuncOrLambdaText(functionLocation: FunctionLocation) {
-    const isLambda = functionLocation.isArrowFunction;
-    const funcOrLambda = isLambda ? "lambda" : "function";
-    return funcOrLambda;
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
@@ -648,12 +640,20 @@ function getFunctionLocation(loc: FunctionLocation): string {
         name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
-    return name;
+    const prefix = loc.isArrowFunction ? "" : "function ";
+    return prefix + name;
 }
 
 function getFunctionName(loc: FunctionLocation): string {
     if (loc.isArrowFunction) {
         let funcString = loc.functionString;
+
+        // If there's a semicolon in the text, only include up to that.  we don't want to pull in
+        // the entire lambda if it's lots of statements.
+        const semicolonIndex = funcString.indexOf(";");
+        if (semicolonIndex >= 0) {
+            funcString = funcString.substr(0, semicolonIndex + 1) + " ...";
+        }
 
         // squash all whitespace to single spaces.
         funcString = funcString.replace(/\s\s+/g, " ");
@@ -661,7 +661,7 @@ function getFunctionName(loc: FunctionLocation): string {
         const lengthLimit = 40;
         if (funcString.length > lengthLimit) {
             // Trim the header if its very long.
-            funcString = funcString.substring(0, lengthLimit - "...".length) + "...";
+            funcString = funcString.substring(0, lengthLimit - " ...".length) + " ...";
         }
 
         return funcString;
