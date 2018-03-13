@@ -2,7 +2,6 @@
 
 import { relative as pathRelative } from "path";
 import { basename } from "path";
-import * as ts from "typescript";
 import { RunError } from "../errors";
 import * as resource from "../resource";
 import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./closureFunction";

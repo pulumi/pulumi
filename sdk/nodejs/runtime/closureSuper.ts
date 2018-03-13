@@ -105,4 +105,4 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
 
         return (node: ts.Node) => ts.visitNode(node, visitor);
     }
-    }
+}
