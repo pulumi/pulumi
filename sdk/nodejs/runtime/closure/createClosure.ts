@@ -2,10 +2,10 @@
 
 import { relative as pathRelative } from "path";
 import { basename } from "path";
-import { RunError } from "../errors";
-import * as resource from "../resource";
-import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./closureFunction";
-import { rewriteSuperReferences } from "./closureSuper";
+import { RunError } from "../../errors";
+import * as resource from "../../resource";
+import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
+import { rewriteSuperReferences } from "./rewriteSuper";
 
 // Our closure serialization code links against v8 internals. On Windows, we can't dynamically link
 // against v8 internals because their symbols are unexported. In order to address this problem,

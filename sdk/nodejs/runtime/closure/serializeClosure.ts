@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as closure from "./closureCreation";
+import * as closure from "./createClosure";
 
 export async function serializeFunctionAsync(
         func: Function, serialize?: (o: any) => boolean): Promise<string> {

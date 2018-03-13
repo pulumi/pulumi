@@ -1,8 +1,8 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as ts from "typescript";
-import * as log from "../log";
-import * as closure from "./closureCreation";
+import * as log from "../../log";
+import * as closure from "./createClosure";
 
 export interface ParsedFunctionCode {
     // The serialized code for the function, usable as an expression. Valid for all functions forms

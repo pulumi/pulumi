@@ -1,7 +1,7 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as ts from "typescript";
-import * as closure from "./closureCreation";
+import * as closure from "./createClosure";
 
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
     const sourceFile = ts.createSourceFile(
