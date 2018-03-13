@@ -62,8 +62,8 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
 // are represented.  If these change, this will likely break us.zs
-export function parseFunction(func: Function): [string, ParsedFunction] {
-    const [error, functionCode] = parseFunctionCode(func);
+export function parseFunction(funcString: string): [string, ParsedFunction] {
+    const [error, functionCode] = parseFunctionCode(funcString);
     if (error) {
         return [error, <any>undefined];
     }
@@ -83,9 +83,7 @@ export function parseFunction(func: Function): [string, ParsedFunction] {
     return ["", result];
 }
 
-function parseFunctionCode(func: Function): [string, ParsedFunctionCode] {
-
-    const funcString = func.toString();
+function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     if (funcString.startsWith("[Function:")) {
         return [`the function form was not understood.`, <any>undefined];
     }

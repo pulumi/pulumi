@@ -164,6 +164,8 @@ interface FunctionLocation {
     file: string;
     line: number;
     column: number;
+    functionString: string;
+    isArrowFunction?: boolean;
 }
 
 interface ContextFrame {
@@ -319,8 +321,10 @@ function createFunctionInfo(
     const file: string =  nativeruntime.getFunctionFile(func);
     const line: number = nativeruntime.getFunctionLine(func);
     const column: number = nativeruntime.getFunctionColumn(func);
+    const functionString = func.toString();
+    const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
-    context.frames.push({ functionLocation: { func, file, line, column } });
+    context.frames.push(frame);
     const result = serializeWorker();
     context.frames.pop();
 
@@ -360,13 +364,14 @@ function createFunctionInfo(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(func);
+        const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
             throwSerializationError(func, context, error);
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
         const functionDeclarationName = parsedFunction.functionDeclarationName;
+        frame.functionLocation.isArrowFunction = parsedFunction.isArrowFunction;
 
         const capturedValues: PropertyMap = new Map();
         processCapturedVariables(parsedFunction.capturedVariables.required, /*throwOnFailure:*/ true);
@@ -566,26 +571,27 @@ function throwSerializationError(func: Function, context: Context, info: string)
         message += indentString;
 
         if (frame.functionLocation) {
+            const funcOrLambda = getFuncOrLambdaText(frame.functionLocation);
             const funcLocation = getFunctionLocation(frame.functionLocation);
             const nextFrameIsFunction = i < n - 1 && context.frames[i + 1].functionLocation !== undefined;
 
             if (nextFrameIsFunction) {
                 if (i === 0) {
-                    message += `function ${funcLocation}: referenced\n`;
+                    message += `${funcOrLambda} ${funcLocation}: referenced\n`;
                 }
                 else {
-                    message += `function ${funcLocation}: which referenced\n`;
+                    message += `${funcOrLambda} ${funcLocation}: which referenced\n`;
                 }
             }
             else {
                 if (i === n - 1) {
-                    message += `function ${funcLocation}: which could not be serialized because\n`;
+                    message += `${funcOrLambda} ${funcLocation}: which could not be serialized because\n`;
                 }
                 else if (i === 0) {
-                    message += `function ${funcLocation}: captured\n`;
+                    message += `${funcOrLambda} ${funcLocation}: captured\n`;
                 }
                 else {
-                    message += `function ${funcLocation}: which captured\n`;
+                    message += `${funcOrLambda} ${funcLocation}: which captured\n`;
                 }
             }
         }
@@ -620,21 +626,52 @@ function throwSerializationError(func: Function, context: Context, info: string)
         const moduleName = context.frames[moduleIndex].capturedModuleName;
         message += "\n";
 
-        const location = getFunctionLocation(context.frames[moduleIndex - 1].functionLocation!);
+        const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
+        const location = getFunctionLocation(functionLocation);
+        const funcOrLambda = getFuncOrLambdaText(functionLocation);
         message += `Capturing modules can sometimes cause problems.
-Consider using import('${moduleName}') or require('${moduleName}') inside function ${location}`;
+Consider using import('${moduleName}') or require('${moduleName}') inside ${funcOrLambda} ${location}`;
     }
 
     throw new RunError(message);
 }
 
+function getFuncOrLambdaText(functionLocation: FunctionLocation) {
+    const isLambda = functionLocation.isArrowFunction;
+    const funcOrLambda = isLambda ? "lambda" : "function";
+    return funcOrLambda;
+}
+
 function getFunctionLocation(loc: FunctionLocation): string {
-    let name = "'" + (loc.func.name || "<anonymous>") + "'";
+    let name = "'" + getFunctionName(loc) + "'";
     if (loc.file) {
         name += `: ${basename(loc.file)}(${loc.line + 1},${loc.column})`;
     }
 
     return name;
+}
+
+function getFunctionName(loc: FunctionLocation): string {
+    if (loc.isArrowFunction) {
+        let funcString = loc.functionString;
+
+        // squash all whitespace to single spaces.
+        funcString = funcString.replace(/\s\s+/g, " ");
+
+        const lengthLimit = 40;
+        if (funcString.length > lengthLimit) {
+            // Trim the header if its very long.
+            funcString = funcString.substring(0, lengthLimit - "...".length) + "...";
+        }
+
+        return funcString;
+    }
+
+    if (loc.func.name) {
+        return loc.func.name;
+    }
+
+    return "<anonymous>";
 }
 
 function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {

@@ -907,9 +907,9 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             func: () => os,
             expectText: undefined,
             error:
-`Error serializing 'func': closure.spec.js(0,0)
+`Error serializing '() => os': closure.spec.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+lambda '() => os': closure.spec.js(0,0): captured
   module 'os' which indirectly referenced
     function 'getHostname': which could not be serialized because
       it was a native code function.
@@ -918,7 +918,7 @@ Function code:
   function getHostname() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside function 'func': closure.spec.js(0,0)`,
+Consider using import('os') or require('os') inside lambda '() => os': closure.spec.js(0,0)`,
         });
     }
 
@@ -935,11 +935,11 @@ Consider using import('os') or require('os') inside function 'func': closure.spe
             func: func,
             expectText: undefined,
             error:
-`Error serializing '<anonymous>': closure.spec.js(0,0)
+`Error serializing '() => handler': closure.spec.js(0,0)
 
-function '<anonymous>': closure.spec.js(0,0): captured
+lambda '() => handler': closure.spec.js(0,0): captured
   'handler', a function defined at
-    function '<anonymous>': closure.spec.js(0,0): which captured
+    lambda '() => os': closure.spec.js(0,0): which captured
       module 'os' which indirectly referenced
         function 'getHostname': which could not be serialized because
           it was a native code function.
@@ -948,7 +948,7 @@ Function code:
   function getHostname() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside function '<anonymous>': closure.spec.js(0,0)`,
+Consider using import('os') or require('os') inside lambda '() => os': closure.spec.js(0,0)`,
         });
     }
 
@@ -959,9 +959,9 @@ Consider using import('os') or require('os') inside function '<anonymous>': clos
             func: () => util,
             expectText: undefined,
             error:
-`Error serializing 'func': closure.spec.js(0,0)
+`Error serializing '() => util': closure.spec.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+lambda '() => util': closure.spec.js(0,0): captured
   module './bin/tests/util.js' which indirectly referenced
     function 'assertAsyncThrows': util.js(0,0): which captured
       module 'assert' which indirectly referenced
@@ -979,7 +979,7 @@ Function code:
   function isArrayBuffer() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside function 'func': closure.spec.js(0,0)`,
+Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside lambda '() => util': closure.spec.js(0,0)`,
         });
     }
 
