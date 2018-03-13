@@ -122,7 +122,7 @@ export interface Entry {
     expr?: string;
 }
 
-export interface Context {
+interface Context {
     // The cache stores a map of objects to the entries we've created for them.  It's used so that
     // we only ever create a single environemnt entry for a single object. i.e. if we hit the same
     // object multiple times while walking the memory graph, we only emit it once.
@@ -159,14 +159,14 @@ export interface Context {
     simpleFunctions: FunctionInfo[];
  }
 
-export interface FunctionLocation {
+interface FunctionLocation {
     func: Function;
     file: string;
     line: number;
     column: number;
 }
 
-export interface ContextFrame {
+interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
@@ -360,7 +360,7 @@ function createFunctionInfo(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(func, context);
+        const [error, parsedFunction] = parseFunction(func);
         if (error) {
             throwSerializationError(func, context, error);
         }
