@@ -268,6 +268,35 @@ func TestConfigSave(t *testing.T) {
 	validate("configD", "value4", testStack2.Config)
 }
 
+// Tests basic configuration from the perspective of a Pulumi program.
+func TestConfigBasicNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("config_basic", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super secret is encrypted",
+		},
+	})
+}
+
+// Tests basic configuration from the perspective of a Pulumi program.
+func TestConfigBasicPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("config_basic", "python"),
+		Quick: true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a Pythonic value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super Pythonic secret is encrypted",
+		},
+	})
+}
+
 // Tests that when `pulumi` is run, configuration is upgraded from the old format to the new format.
 func TestConfigUpgrade(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
