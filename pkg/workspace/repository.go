@@ -44,15 +44,10 @@ func GetRepository(root string) (*Repository, error) {
 
 	repofilePath := filepath.Join(dotPulumiPath, RepoFile)
 
-	_, err := os.Stat(repofilePath)
+	b, err := ioutil.ReadFile(repofilePath)
 	if os.IsNotExist(err) {
 		return nil, ErrNoRepository
 	} else if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(repofilePath)
-	if err != nil {
 		return nil, err
 	}
 

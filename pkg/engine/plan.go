@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -22,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/sergi/go-diff/diffmatchpatch"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
@@ -61,12 +62,25 @@ func plan(info *planContext, opts deployOptions) (*planResult, error) {
 		return nil, err
 	}
 
+	// Figure out which plugins to load.  In the case of a destroy, we consult the manifest for the plugin versions
+	// required to destroy it.  Otherwise, we inspect the program contents to figure out which will be required.
+	var plugins []workspace.PluginInfo
+	if opts.Destroy {
+		if target.Snapshot != nil {
+			plugins = target.Snapshot.Manifest.Plugins
+		}
+	} else {
+		if plugins, err = ctx.Host.GetRequiredPlugins(plugin.ProgInfo{
+			Proj:    proj,
+			Pwd:     pwd,
+			Program: main,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	// Now ensure that we have loaded up any plugins that the program will need in advance.
-	err = ctx.Host.EnsurePlugins(plugin.ProgInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-	})
+	err = ctx.Host.EnsurePlugins(plugins)
 	if err != nil {
 		return nil, err
 	}
@@ -928,11 +942,11 @@ func getTextChangeString(old string, new string) string {
 }
 
 var (
-	functionRegexp    = regexp.MustCompile(`function __f[0-9]*`)
+	functionRegexp    = regexp.MustCompile(`function __.*`)
 	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
 	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
 	preambleRegexp    = regexp.MustCompile(
-		`function __f[0-9]*\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn `)
+		`function __.*\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn `)
 	postambleRegexp = regexp.MustCompile(
 		`;\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
 )

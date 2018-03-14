@@ -38,7 +38,7 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			startTime, err := parseSince(since)
+			startTime, err := parseSince(since, time.Now())
 			if err != nil {
 				return errors.Wrapf(err, "failed to parse argument to '--since' as duration or timestamp")
 			}
@@ -103,8 +103,8 @@ func newLogsCmd() *cobra.Command {
 	return logsCmd
 }
 
-func parseSince(since string) (*time.Time, error) {
-	startTimestamp, err := mobytime.GetTimestamp(since, time.Now())
+func parseSince(since string, reference time.Time) (*time.Time, error) {
+	startTimestamp, err := mobytime.GetTimestamp(since, reference)
 	if err != nil {
 		return nil, err
 	}

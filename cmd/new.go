@@ -53,11 +53,11 @@ func newNewCmd() *cobra.Command {
 			releases := cloud.New(cmdutil.Diag(), getCloudURL(cloudURL))
 
 			// Get the selected template.
-			var template workspace.Template
+			var templateName string
 			if len(args) > 0 {
-				template = workspace.Template{Name: strings.ToLower(args[0])}
+				templateName = strings.ToLower(args[0])
 			} else {
-				if template, err = chooseTemplate(releases, offline); err != nil {
+				if templateName, err = chooseTemplate(releases, offline); err != nil {
 					return err
 				}
 			}
@@ -66,23 +66,29 @@ func newNewCmd() *cobra.Command {
 			if !offline {
 				var tarball io.ReadCloser
 				source := releases.CloudURL()
-				if tarball, err = releases.DownloadTemplate(template.Name, false); err != nil {
+				if tarball, err = releases.DownloadTemplate(templateName, false); err != nil {
 					message := ""
 					// If the local template is available locally, provide a nicer error message.
 					if localTemplates, localErr := workspace.ListLocalTemplates(); localErr == nil && len(localTemplates) > 0 {
 						_, m := templateArrayToStringArrayAndMap(localTemplates)
-						if _, ok := m[template.Name]; ok {
+						if _, ok := m[templateName]; ok {
 							message = fmt.Sprintf(
 								"; rerun the command and pass --offline to use locally cached template '%s'",
-								template.Name)
+								templateName)
 						}
 					}
 
-					return errors.Wrapf(err, "downloading template '%s' from %s%s", template.Name, source, message)
+					return errors.Wrapf(err, "downloading template '%s' from %s%s", templateName, source, message)
 				}
-				if err = workspace.InstallTemplate(template.Name, tarball); err != nil {
-					return errors.Wrapf(err, "installing template '%s' from %s", template.Name, source)
+				if err = workspace.InstallTemplate(templateName, tarball); err != nil {
+					return errors.Wrapf(err, "installing template '%s' from %s", templateName, source)
 				}
+			}
+
+			// Load the local template.
+			var template workspace.Template
+			if template, err = workspace.LoadLocalTemplate(templateName); err != nil {
+				return errors.Wrapf(err, "template '%s' not found", templateName)
 			}
 
 			// Get the values to fill in.
@@ -91,18 +97,18 @@ func newNewCmd() *cobra.Command {
 
 			// Do a dry run if we're not forcing files to be overwritten.
 			if !force {
-				if err = workspace.CopyTemplateFilesDryRun(template.Name, cwd); err != nil {
+				if err = template.CopyTemplateFilesDryRun(cwd); err != nil {
 					if os.IsNotExist(err) {
-						return errors.Wrapf(err, "template not found")
+						return errors.Wrapf(err, "template '%s' not found", templateName)
 					}
 					return err
 				}
 			}
 
 			// Actually copy the files.
-			if err = workspace.CopyTemplateFiles(template.Name, cwd, force, name, description); err != nil {
+			if err = template.CopyTemplateFiles(cwd, force, name, description); err != nil {
 				if os.IsNotExist(err) {
-					return errors.Wrapf(err, "template not found")
+					return errors.Wrapf(err, "template '%s' not found", templateName)
 				}
 				return err
 			}
@@ -113,13 +119,13 @@ func newNewCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&cloudURL,
-		"cloud-url", "c", "", "A cloud URL to download releases from")
+		"cloud-url", "c", "", "A cloud URL to download templates from")
 	cmd.PersistentFlags().StringVarP(
 		&name, "name", "n", "",
 		"The project name; if not specified, the name of the current working directory is used")
 	cmd.PersistentFlags().StringVarP(
 		&description, "description", "d", "",
-		"The project description; f not specified, a default description is used")
+		"The project description; if not specified, a default description is used")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
@@ -146,10 +152,10 @@ func getCloudURL(cloudURL string) string {
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(backend cloud.Backend, offline bool) (workspace.Template, error) {
+func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !cmdutil.Interactive() {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
+		return "", errors.New(chooseTemplateErr)
 	}
 
 	var templates []workspace.Template
@@ -166,11 +172,11 @@ func chooseTemplate(backend cloud.Backend, offline bool) (workspace.Template, er
 					strings.Join(options, ", ")
 			}
 
-			return workspace.Template{}, errors.Wrap(err, message)
+			return "", errors.Wrap(err, message)
 		}
 	} else {
 		if templates, err = workspace.ListLocalTemplates(); err != nil || len(templates) == 0 {
-			return workspace.Template{}, errors.Wrap(err, chooseTemplateErr)
+			return "", errors.Wrap(err, chooseTemplateErr)
 		}
 	}
 
@@ -181,17 +187,17 @@ func chooseTemplate(backend cloud.Backend, offline bool) (workspace.Template, er
 	message := "\rPlease choose a template:"
 	message = colors.ColorizeText(colors.BrightWhite + message + colors.Reset)
 
-	options, nameToTemplateMap := templateArrayToStringArrayAndMap(templates)
+	options, _ := templateArrayToStringArrayAndMap(templates)
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 	}, &option, nil); err != nil {
-		return workspace.Template{}, errors.New(chooseTemplateErr)
+		return "", errors.New(chooseTemplateErr)
 	}
 
-	return nameToTemplateMap[option], nil
+	return option, nil
 }
 
 // templateArrayToStringArrayAndMap returns an array of template names and map of names to templates

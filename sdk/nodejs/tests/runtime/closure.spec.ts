@@ -43,11 +43,11 @@ return function () { };
         title: "Empty named function",
         // tslint:disable-next-line
         func: function f() { },
-        expectText: `exports.handler = __f0;
+        expectText: `exports.handler = __f;
 
-function __f0() {
+function __f() {
   return (function() {
-    with({ f: __f0 }) {
+    with({ f: __f }) {
 
 return function /*f*/() { };
 
@@ -61,11 +61,11 @@ return function /*f*/() { };
         title: "Named function with self-reference",
         // tslint:disable-next-line
         func: function f() { f(); },
-        expectText: `exports.handler = __f0;
+        expectText: `exports.handler = __f;
 
-function __f0() {
+function __f() {
   return (function() {
-    with({ f: __f0 }) {
+    with({ f: __f }) {
 
 return function /*f*/() { f(); };
 
@@ -135,8 +135,8 @@ return () => { };
         func: () => { console.log(this); },
         expectText: `exports.handler = __f0;
 
-var __e0_this = {};
-Object.defineProperty(__e0_this, "__esModule", { value: true });
+var __this = {};
+Object.defineProperty(__this, "__esModule", { value: true });
 
 function __f0() {
   return (function() {
@@ -145,7 +145,7 @@ function __f0() {
 return () => { console.log(this); };
 
     }
-  }).apply(__e0_this, undefined).apply(this, arguments);
+  }).apply(__this, undefined).apply(this, arguments);
 }
 `,
     });
@@ -194,8 +194,8 @@ return () => __awaiter(this, void 0, void 0, function* () { });
         func: async () => { console.log(this); },
         expectText: `exports.handler = __f0;
 
-var __e0_this = {};
-Object.defineProperty(__e0_this, "__esModule", { value: true });
+var __this = {};
+Object.defineProperty(__this, "__esModule", { value: true });
 ${awaiterCode}
 function __f0() {
   return (function() {
@@ -204,7 +204,7 @@ function __f0() {
 return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
 
     }
-  }).apply(__e0_this, undefined).apply(this, arguments);
+  }).apply(__this, undefined).apply(this, arguments);
 }
 `,
     });
@@ -255,9 +255,9 @@ return function () {
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: `exports.handler = __f0;
 
-var __e0_this = {};
-Object.defineProperty(__e0_this, "__esModule", { value: true });
-var __e1_arguments = [0, 1];
+var __this = {};
+Object.defineProperty(__this, "__esModule", { value: true });
+var __arguments = [0, 1];
 
 function __f0() {
   return (function() {
@@ -266,7 +266,7 @@ function __f0() {
 return () => { console.log(this + arguments); };
 
     }
-  }).apply(__e0_this, __e1_arguments).apply(this, arguments);
+  }).apply(__this, __arguments).apply(this, arguments);
 }
 `,
     });
@@ -324,7 +324,7 @@ return function () { () => { console.log(this + arguments); }; };
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
-var __e0_task = {run: __f2};
+var __task = {run: __f2};
 
 function __f1() {
   return (function() {
@@ -357,7 +357,7 @@ return function () {
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __e0_task }) {
+    with({ __awaiter: __f1, task: __task }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -387,10 +387,10 @@ return function () {
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
-var __e1_task_proto = {};
-Object.defineProperty(__e1_task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
-var __e0_task = Object.create(__e1_task_proto);
-__e0_task.run = __f3;
+var __task_proto = {};
+Object.defineProperty(__task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __task = Object.create(__task_proto);
+__task.run = __f3;
 
 function __f1() {
   return (function() {
@@ -438,7 +438,7 @@ return function () {
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __e0_task }) {
+    with({ __awaiter: __f1, task: __task }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -468,7 +468,7 @@ return function () {
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
-var __e0_task = {run: __f2};
+var __task = {run: __f2};
 
 function __f1() {
   return (function() {
@@ -499,7 +499,7 @@ return () => __awaiter(this, void 0, void 0, function* () { });
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __e0_task }) {
+    with({ __awaiter: __f1, task: __task }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -529,10 +529,10 @@ return function () {
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
-var __e1_task_proto = {};
-Object.defineProperty(__e1_task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
-var __e0_task = Object.create(__e1_task_proto);
-__e0_task.run = __f3;
+var __task_proto = {};
+Object.defineProperty(__task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
+var __task = Object.create(__task_proto);
+__task.run = __f3;
 
 function __f1() {
   return (function() {
@@ -571,12 +571,12 @@ function __f3() {
 return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
 
     }
-  }).apply(__e0_task, undefined).apply(this, arguments);
+  }).apply(__task, undefined).apply(this, arguments);
 }
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __e0_task }) {
+    with({ __awaiter: __f1, task: __task }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -657,18 +657,18 @@ return () => { console.log("Just a global object reference"); };
             func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); },
             expectText: `exports.handler = __f0;
 
-var __e0_ycap = [true, -1, "yup"];
-var __e1_zcap = {};
-__e1_zcap.a = "a";
-__e1_zcap.b = false;
-var __e2_c = [0];
-__e1_zcap.c = __e2_c;
+var __ycap = [true, -1, "yup"];
+var __zcap = {};
+__zcap.a = "a";
+__zcap.b = false;
+var __zcap_c = [0];
+__zcap.c = __zcap_c;
 
 function __f0() {
   return (function() {
-    with({ wcap: "foo", xcap: 97, ycap: __e0_ycap, zcap: __e1_zcap }) {
+    with({ wcap: "foo", xcap: 97, ycap: __ycap, zcap: __zcap }) {
 
-return () => { console.log(wcap + \`$\{xcap\}\` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); };
+return () => { console.log(wcap + \`\${xcap}\` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -907,9 +907,9 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             func: () => os,
             expectText: undefined,
             error:
-`Error serializing 'func': closure.spec.js(0,0)
+`Error serializing '() => os': closure.spec.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+'() => os': closure.spec.js(0,0): captured
   module 'os' which indirectly referenced
     function 'getHostname': which could not be serialized because
       it was a native code function.
@@ -918,7 +918,35 @@ Function code:
   function getHostname() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside function 'func': closure.spec.js(0,0)`,
+Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
+        });
+    }
+
+    {
+        const os = require("os");
+
+        cases.push({
+            title: "Wrapped lambda function",
+            func: (a: any,
+                   b: any,
+                   c: any) => {
+                       const v =
+                           os;
+                       return { v };
+                   },
+            expectText: undefined,
+            error: `Error serializing '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)
+
+'(a, b, c) => { const v = os; ...': closure.spec.js(0,0): captured
+  module 'os' which indirectly referenced
+    function 'getHostname': which could not be serialized because
+      it was a native code function.
+
+Function code:
+  function getHostname() { [native code] }
+
+Capturing modules can sometimes cause problems.
+Consider using import('os') or require('os') inside '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)`,
         });
     }
 
@@ -935,11 +963,11 @@ Consider using import('os') or require('os') inside function 'func': closure.spe
             func: func,
             expectText: undefined,
             error:
-`Error serializing '<anonymous>': closure.spec.js(0,0)
+`Error serializing '() => handler': closure.spec.js(0,0)
 
-function '<anonymous>': closure.spec.js(0,0): captured
+'() => handler': closure.spec.js(0,0): captured
   'handler', a function defined at
-    function '<anonymous>': closure.spec.js(0,0): which captured
+    '() => os': closure.spec.js(0,0): which captured
       module 'os' which indirectly referenced
         function 'getHostname': which could not be serialized because
           it was a native code function.
@@ -948,7 +976,7 @@ Function code:
   function getHostname() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside function '<anonymous>': closure.spec.js(0,0)`,
+Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
         });
     }
 
@@ -959,9 +987,9 @@ Consider using import('os') or require('os') inside function '<anonymous>': clos
             func: () => util,
             expectText: undefined,
             error:
-`Error serializing 'func': closure.spec.js(0,0)
+`Error serializing '() => util': closure.spec.js(0,0)
 
-function 'func': closure.spec.js(0,0): captured
+'() => util': closure.spec.js(0,0): captured
   module './bin/tests/util.js' which indirectly referenced
     function 'assertAsyncThrows': util.js(0,0): which captured
       module 'assert' which indirectly referenced
@@ -979,7 +1007,7 @@ Function code:
   function isArrayBuffer() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside function 'func': closure.spec.js(0,0)`,
+Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside '() => util': closure.spec.js(0,0)`,
         });
     }
 
@@ -1027,13 +1055,13 @@ return () => { try { }
             func: func,
             expectText: `exports.handler = __f0;
 
-var __e0_xcap = {};
-__e0_xcap.fff = __f1;
-__e0_xcap.ggg = __f2;
-var __e1_zzz = {};
-var __e2_a = [__f3];
-__e1_zzz.a = __e2_a;
-__e0_xcap.zzz = __e1_zzz;
+var __xcap = {};
+__xcap.fff = __f1;
+__xcap.ggg = __f2;
+var __xcap_zzz = {};
+var __xcap_zzz_a = [__f3];
+__xcap_zzz.a = __xcap_zzz_a;
+__xcap.zzz = __xcap_zzz;
 
 function __f1() {
   return (function() {
@@ -1067,7 +1095,7 @@ return (a1, a2) => { console.log(a1 + a2); };
 
 function __f0() {
   return (function() {
-    with({ xcap: __e0_xcap }) {
+    with({ xcap: __xcap }) {
 
 return () => {
             xcap.fff();
@@ -1097,7 +1125,7 @@ return () => {
             func: cap.f,
             expectText: `exports.handler = __f0;
 
-var __e0_this = {x: 42};
+var __this = {x: 42};
 
 function __f0() {
   return (function() {
@@ -1106,7 +1134,7 @@ function __f0() {
 return () => { console.log(this.x); };
 
     }
-  }).apply(__e0_this, undefined).apply(this, arguments);
+  }).apply(__this, undefined).apply(this, arguments);
 }
 `,
         });
@@ -1136,11 +1164,11 @@ return function () { return this; };
             func: function() { return mutable; },
             expectText: `exports.handler = __f0;
 
-var __e0_mutable = {};
+var __mutable = {};
 
 function __f0() {
   return (function() {
-    with({ mutable: __e0_mutable }) {
+    with({ mutable: __mutable }) {
 
 return function () { return mutable; };
 
@@ -1154,11 +1182,11 @@ return function () { return mutable; };
                 func: function() { return mutable; },
                 expectText: `exports.handler = __f0;
 
-var __e0_mutable = {timesTheyAreAChangin: true};
+var __mutable = {timesTheyAreAChangin: true};
 
 function __f0() {
   return (function() {
-    with({ mutable: __e0_mutable }) {
+    with({ mutable: __mutable }) {
 
 return function () { return mutable; };
 
@@ -1178,11 +1206,55 @@ return function () { return mutable; };
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
-var __e0_v = {d: { get: () => 4 }};
+var __v = {};
+var __v_d_proto = {};
+__f1.prototype = __v_d_proto;
+Object.defineProperty(__v_d_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__v_d_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__v_d_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __v_d = Object.create(__v_d_proto);
+__v_d.value = 4;
+__v.d = __v_d;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return function () { console.log(v); };
 
@@ -1206,16 +1278,65 @@ return function () { console.log(v); };
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
-var __e0_v = {};
-__e0_v.d1 = { get: () => 4 };
-__e0_v.d2 = { get: () => "str" };
-__e0_v.d3 = { get: () => undefined };
-var __e1_d4 = {a: 1, b: true};
-__e0_v.d4 = { get: () => __e1_d4 };
+var __v = {};
+var __v_d1_proto = {};
+__f1.prototype = __v_d1_proto;
+Object.defineProperty(__v_d1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__v_d1_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__v_d1_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __v_d1 = Object.create(__v_d1_proto);
+__v_d1.value = 4;
+__v.d1 = __v_d1;
+var __v_d2 = Object.create(__v_d1_proto);
+__v_d2.value = "str";
+__v.d2 = __v_d2;
+var __v_d3 = Object.create(__v_d1_proto);
+__v_d3.value = undefined;
+__v.d3 = __v_d3;
+var __v_d4 = Object.create(__v_d1_proto);
+var __v_d4_value = {a: 1, b: true};
+__v_d4.value = __v_d4_value;
+__v.d4 = __v_d4;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return function () { console.log(v); };
 
@@ -1240,16 +1361,61 @@ return function () { console.log(v); };
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
-var __e0_v = {};
-__e0_v.d1 = { get: () => 4 };
-var __e1_d2 = {};
-__e1_d2.a = 1;
-__e1_d2.b = __e0_v;
-__e0_v.d2 = { get: () => __e1_d2 };
+var __v = {};
+var __v_d1_proto = {};
+__f1.prototype = __v_d1_proto;
+Object.defineProperty(__v_d1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__v_d1_proto, "apply", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__v_d1_proto, "get", { configurable: true, writable: true, value: __f3 });
+var __v_d1 = Object.create(__v_d1_proto);
+__v_d1.value = 4;
+__v.d1 = __v_d1;
+var __v_d2 = Object.create(__v_d1_proto);
+var __v_d2_value = {};
+__v_d2_value.a = 1;
+__v_d2_value.b = __v;
+__v_d2.value = __v_d2_value;
+__v.d2 = __v_d2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/(value) {
+        this.value = value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*apply*/(func) {
+        throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({  }) {
+
+return function /*get*/() {
+        return this.value;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return function () { console.log(v); };
 
@@ -1269,7 +1435,7 @@ return function () { console.log(v); };
             func: function () { console.log(obj); },
             expectText: `exports.handler = __f0;
 
-var __e0_obj = {method1: __f1, method2: __f2};
+var __obj = {method1: __f1, method2: __f2};
 
 function __f1() {
   return (function() {
@@ -1293,7 +1459,7 @@ return () => { return; };
 
 function __f0() {
   return (function() {
-    with({ obj: __e0_obj }) {
+    with({ obj: __obj }) {
 
 return function () { console.log(obj); };
 
@@ -1356,15 +1522,15 @@ return function () { const x = typeof a; };
             func: function () { return array; },
             expectText: `exports.handler = __f0;
 
-var __e0_array = [];
-var __e1_array_0 = {};
-__e1_array_0["80"] = "foo";
-__e1_array_0.arr = __e0_array;
-__e0_array[0] = __e1_array_0;
+var __array = [];
+var __array_0 = {};
+__array_0["80"] = "foo";
+__array_0.arr = __array;
+__array[0] = __array_0;
 
 function __f0() {
   return (function() {
-    with({ array: __e0_array }) {
+    with({ array: __array }) {
 
 return function () { return array; };
 
@@ -1393,21 +1559,21 @@ return function () { return array; };
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-var __e1_outer = {};
-__e1_outer.o = 1;
-var __e2_b = [];
-__e2_b[0] = __e1_outer;
-__e1_outer.b = __e2_b;
-__e0_prototype.m = __f2;
-__e0_prototype.n = __f3;
-__f1.prototype = __e0_prototype;
-__f1.m = __f4;
+var __C_prototype = {};
+Object.defineProperty(__C_prototype, "constructor", { configurable: true, writable: true, value: __C });
+var __outer = {};
+__outer.o = 1;
+var __outer_b = [];
+__outer_b[0] = __outer;
+__outer.b = __outer_b;
+__C_prototype.m = __f1;
+__C_prototype.n = __f2;
+__C.prototype = __C_prototype;
+__C.m = __f3;
 
-function __f1() {
+function __C() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __C }) {
 
 return function /*C*/() { };
 
@@ -1415,9 +1581,9 @@ return function /*C*/() { };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f2() {
+function __f1() {
   return (function() {
-    with({ outer: __e1_outer }) {
+    with({ outer: __outer }) {
 
 return function () { return this.n() + outer; };
 
@@ -1425,9 +1591,9 @@ return function () { return this.n() + outer; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f2() {
   return (function() {
-    with({ array: __e2_b }) {
+    with({ array: __outer_b }) {
 
 return function () { return array; };
 
@@ -1435,7 +1601,7 @@ return function () { return array; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f4() {
+function __f3() {
   return (function() {
     with({  }) {
 
@@ -1447,7 +1613,7 @@ return function () { return this.n(); };
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __C }) {
 
 return () => C;
 
@@ -1472,16 +1638,16 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e0_prototype, "m", { configurable: true, writable: true, value: __f2 });
-var __e1_outer = {};
-__e1_outer.o = 1;
-var __e2_b = [];
-__e2_b[0] = __e1_outer;
-__e1_outer.b = __e2_b;
-Object.defineProperty(__e0_prototype, "n", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "m", { configurable: true, writable: true, value: __f2 });
+var __outer = {};
+__outer.o = 1;
+var __outer_b = [];
+__outer_b[0] = __outer;
+__outer.b = __outer_b;
+Object.defineProperty(__f1_prototype, "n", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __f1_prototype;
 __f1.s = __f4;
 
 function __f1() {
@@ -1506,7 +1672,7 @@ return function /*m*/() { return this.n(); };
 
 function __f3() {
   return (function() {
-    with({ outer: __e1_outer }) {
+    with({ outer: __outer }) {
 
 return function /*n*/() { return outer; };
 
@@ -1516,7 +1682,7 @@ return function /*n*/() { return outer; };
 
 function __f4() {
   return (function() {
-    with({ array: __e2_b }) {
+    with({ array: __outer_b }) {
 
 return function /*s*/() { return array; };
 
@@ -1552,11 +1718,11 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e0_prototype, "m", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__e0_prototype, "n", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "m", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f1_prototype, "n", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __f1_prototype;
 __f1.s = __f4;
 
 function __f1() {
@@ -1629,11 +1795,11 @@ return () => C;
             func: () => new C(),
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e0_prototype, "m", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__e0_prototype, "n", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "m", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f1_prototype, "n", { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __f1_prototype;
 __f1.s = __f4;
 
 function __f1() {
@@ -1775,13 +1941,13 @@ return function () { return this.n(); };
             func: () => array,
             expectText: `exports.handler = __f0;
 
-var __e0_array = [];
-__e0_array[0] = 1;
-__e0_array[1] = __e0_array;
+var __array = [];
+__array[0] = 1;
+__array[1] = __array;
 
 function __f0() {
   return (function() {
-    with({ array: __e0_array }) {
+    with({ array: __array }) {
 
 return () => array;
 
@@ -1801,13 +1967,13 @@ return () => array;
             func: () => obj,
             expectText: `exports.handler = __f0;
 
-var __e0_obj = {};
-__e0_obj.a = 1;
-__e0_obj.b = __e0_obj;
+var __obj = {};
+__obj.a = 1;
+__obj.b = __obj;
 
 function __f0() {
   return (function() {
-    with({ obj: __e0_obj }) {
+    with({ obj: __obj }) {
 
 return () => obj;
 
@@ -1828,15 +1994,15 @@ return () => obj;
             func: () => obj,
             expectText: `exports.handler = __f0;
 
-var __e0_obj = {};
-var __e1_a = [];
-__e1_a[0] = __e0_obj;
-__e0_obj.a = __e1_a;
-__e0_obj.b = __e1_a;
+var __obj = {};
+var __obj_a = [];
+__obj_a[0] = __obj;
+__obj.a = __obj_a;
+__obj.b = __obj_a;
 
 function __f0() {
   return (function() {
-    with({ obj: __e0_obj }) {
+    with({ obj: __obj }) {
 
 return () => obj;
 
@@ -1858,18 +2024,18 @@ return () => obj;
             func: () => obj2,
             expectText: `exports.handler = __f0;
 
-var __e0_obj2 = [];
-var __e1_obj2_0 = {};
-var __e2_a = [];
-__e2_a[0] = __e1_obj2_0;
-__e1_obj2_0.a = __e2_a;
-__e1_obj2_0.b = __e2_a;
-__e0_obj2[0] = __e1_obj2_0;
-__e0_obj2[1] = __e1_obj2_0;
+var __obj2 = [];
+var __obj2_0 = {};
+var __obj2_0_a = [];
+__obj2_0_a[0] = __obj2_0;
+__obj2_0.a = __obj2_0_a;
+__obj2_0.b = __obj2_0_a;
+__obj2[0] = __obj2_0;
+__obj2[1] = __obj2_0;
 
 function __f0() {
   return (function() {
-    with({ obj2: __e0_obj2 }) {
+    with({ obj2: __obj2 }) {
 
 return () => obj2;
 
@@ -1891,11 +2057,11 @@ return () => obj2;
             func: () => { f1(); obj.a = 2; f2(); },
             expectText: `exports.handler = __f0;
 
-var __e0_obj = {a: 1};
+var __obj = {a: 1};
 
 function __f1() {
   return (function() {
-    with({ obj: __e0_obj, f1: __f1 }) {
+    with({ obj: __obj, f1: __f1 }) {
 
 return function /*f1*/() { return obj; };
 
@@ -1905,7 +2071,7 @@ return function /*f1*/() { return obj; };
 
 function __f2() {
   return (function() {
-    with({ obj: __e0_obj, f2: __f2 }) {
+    with({ obj: __obj, f2: __f2 }) {
 
 return function /*f2*/() { console.log(obj); };
 
@@ -1915,7 +2081,7 @@ return function /*f2*/() { console.log(obj); };
 
 function __f0() {
   return (function() {
-    with({ f1: __f1, obj: __e0_obj, f2: __f2 }) {
+    with({ f1: __f1, obj: __obj, f2: __f2 }) {
 
 return () => { f1(); obj.a = 2; f2(); };
 
@@ -1937,12 +2103,12 @@ return () => { f1(); obj.a = 2; f2(); };
             func: () => v,
             expectText: `exports.handler = __f0;
 
-var __e0_v = {};
-Object.defineProperty(__e0_v, "key", { configurable: true, value: 1 });
+var __v = {};
+Object.defineProperty(__v, "key", { configurable: true, value: 1 });
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return () => v;
 
@@ -1965,12 +2131,12 @@ return () => v;
             func: () => v,
             expectText: `exports.handler = __f0;
 
-var __e0_v = {};
-Object.defineProperty(__e0_v, "key", { enumerable: true, writable: true, value: 1 });
+var __v = {};
+Object.defineProperty(__v, "key", { enumerable: true, writable: true, value: 1 });
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return () => v;
 
@@ -1990,13 +2156,13 @@ return () => v;
             func: () => v,
             expectText: `exports.handler = __f0;
 
-var __e0_v = [];
-__e0_v[0] = 1;
-__e0_v[2] = 3;
+var __v = [];
+__v[0] = 1;
+__v[2] = 3;
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return () => v;
 
@@ -2017,14 +2183,14 @@ return () => v;
             func: () => v,
             expectText: `exports.handler = __f0;
 
-var __e0_v = [];
-__e0_v[0] = 1;
-__e0_v[2] = 3;
-__e0_v.foo = "";
+var __v = [];
+__v[0] = 1;
+__v[2] = 3;
+__v.foo = "";
 
 function __f0() {
   return (function() {
-    with({ v: __e0_v }) {
+    with({ v: __v }) {
 
 return () => v;
 
@@ -2068,11 +2234,11 @@ return () => { return 1; };
             func: v,
             expectText: `exports.handler = __f0;
 
-var __e0_x = Object.create(null);
+var __x = Object.create(null);
 
 function __f0() {
   return (function() {
-    with({ x: __e0_x }) {
+    with({ x: __x }) {
 
 return () => { return x; };
 
@@ -2092,11 +2258,11 @@ return () => { return x; };
             func: v,
             expectText: `exports.handler = __f0;
 
-var __e0_x = Object.create(global.Number.prototype);
+var __x = Object.create(global.Number.prototype);
 
 function __f0() {
   return (function() {
-    with({ x: __e0_x }) {
+    with({ x: __x }) {
 
 return () => { return x; };
 
@@ -2116,8 +2282,8 @@ return () => { return x; };
             func: v,
             expectText: `exports.handler = __f0;
 
-var __e1_x_proto = {x: __f1};
-var __e0_x = Object.create(__e1_x_proto);
+var __x_proto = {x: __f1};
+var __x = Object.create(__x_proto);
 
 function __f1() {
   return (function() {
@@ -2131,7 +2297,7 @@ return function /*x*/() { return v; };
 
 function __f0() {
   return (function() {
-    with({ x: __e0_x }) {
+    with({ x: __x }) {
 
 return () => { return x; };
 
@@ -2182,15 +2348,15 @@ return () => { return 1; };
         cases.push({
             title: "Test generator func",
             func: f,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f;
 
-var __e0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
-__f0.prototype = __e0_prototype;
-Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
+var __f_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
+__f.prototype = __f_prototype;
+Object.setPrototypeOf(__f, Object.getPrototypeOf(function*(){}));
 
-function __f0() {
+function __f() {
   return (function() {
-    with({ f: __f0 }) {
+    with({ f: __f }) {
 
 return function* /*f*/() { yield 1; };
 
@@ -2209,8 +2375,8 @@ return function* /*f*/() { yield 1; };
             func: gf,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
-__f0.prototype = __e0_prototype;
+var __f0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
+__f0.prototype = __f0_prototype;
 Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
 
 function __f0() {
@@ -2249,10 +2415,10 @@ return function* () { yield 1; };
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e0_prototype, "foo", { configurable: true, get: __f2, set: __f3 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "foo", { configurable: true, get: __f2, set: __f3 });
+__f1.prototype = __f1_prototype;
 
 function __f1() {
   return (function() {
@@ -2316,10 +2482,10 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e0_prototype, "method name", { configurable: true, writable: true, value: __f2 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "method name", { configurable: true, writable: true, value: __f2 });
+__f1.prototype = __f1_prototype;
 
 function __f1() {
   return (function() {
@@ -2371,12 +2537,12 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-var __e1_sym = Object.create(global.Symbol.prototype);
-Object.defineProperty(__e0_prototype, "getSym", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__e0_prototype, __e1_sym, { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __sym = Object.create(global.Symbol.prototype);
+Object.defineProperty(__f1_prototype, "getSym", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f1_prototype, __sym, { configurable: true, writable: true, value: __f3 });
+__f1.prototype = __f1_prototype;
 
 function __f1() {
   return (function() {
@@ -2390,7 +2556,7 @@ return function /*constructor*/() { };
 
 function __f2() {
   return (function() {
-    with({ sym: __e1_sym }) {
+    with({ sym: __sym }) {
 
 return function /*getSym*/() { return sym; };
 
@@ -2435,10 +2601,10 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e0_prototype, Symbol.iterator, { configurable: true, writable: true, value: __f2 });
-__f1.prototype = __e0_prototype;
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, Symbol.iterator, { configurable: true, writable: true, value: __f2 });
+__f1.prototype = __f1_prototype;
 
 function __f1() {
   return (function() {
@@ -2504,16 +2670,16 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__e0_prototype, "dMethod", { configurable: true, writable: true, value: __f3 });
-Object.defineProperty(__e0_prototype, "dVirtual", { configurable: true, writable: true, value: __f4 });
-__f2.prototype = __e0_prototype;
-var __e1_prototype = Object.create(__e0_prototype);
-Object.defineProperty(__e1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e1_prototype, "cMethod", { configurable: true, writable: true, value: __f5 });
-Object.defineProperty(__e1_prototype, "dVirtual", { configurable: true, writable: true, value: __f6 });
-__f1.prototype = __e1_prototype;
+var __f2_prototype = {};
+Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f2_prototype, "dMethod", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__f2_prototype, "dVirtual", { configurable: true, writable: true, value: __f4 });
+__f2.prototype = __f2_prototype;
+var __f1_prototype = Object.create(__f2_prototype);
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "cMethod", { configurable: true, writable: true, value: __f5 });
+Object.defineProperty(__f1_prototype, "dVirtual", { configurable: true, writable: true, value: __f6 });
+__f1.prototype = __f1_prototype;
 Object.setPrototypeOf(__f1, __f2);
 
 function __f2() {
@@ -2629,19 +2795,19 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
-Object.defineProperty(__e0_prototype, "method", { configurable: true, writable: true, value: __f4 });
-__f3.prototype = __e0_prototype;
-var __e1_prototype = Object.create(__e0_prototype);
-Object.defineProperty(__e1_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__e1_prototype, "method", { configurable: true, writable: true, value: __f5 });
-__f2.prototype = __e1_prototype;
+var __f3_prototype = {};
+Object.defineProperty(__f3_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__f3_prototype, "method", { configurable: true, writable: true, value: __f4 });
+__f3.prototype = __f3_prototype;
+var __f2_prototype = Object.create(__f3_prototype);
+Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f2_prototype, "method", { configurable: true, writable: true, value: __f5 });
+__f2.prototype = __f2_prototype;
 Object.setPrototypeOf(__f2, __f3);
-var __e2_prototype = Object.create(__e1_prototype);
-Object.defineProperty(__e2_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e2_prototype, "method", { configurable: true, writable: true, value: __f6 });
-__f1.prototype = __e2_prototype;
+var __f1_prototype = Object.create(__f2_prototype);
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, "method", { configurable: true, writable: true, value: __f6 });
+__f1.prototype = __f1_prototype;
 Object.setPrototypeOf(__f1, __f2);
 
 function __f3() {
@@ -2758,20 +2924,20 @@ return () => C;
             func: () => C,
             expectText: `exports.handler = __f0;
 
-var __e0_prototype = {};
-Object.defineProperty(__e0_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
-var __e1_sym = Object.create(global.Symbol.prototype);
-Object.defineProperty(__e0_prototype, __e1_sym, { configurable: true, writable: true, value: __f4 });
-__f3.prototype = __e0_prototype;
-var __e2_prototype = Object.create(__e0_prototype);
-Object.defineProperty(__e2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
-Object.defineProperty(__e2_prototype, __e1_sym, { configurable: true, writable: true, value: __f5 });
-__f2.prototype = __e2_prototype;
+var __f3_prototype = {};
+Object.defineProperty(__f3_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
+var __f3_prototype_sym = Object.create(global.Symbol.prototype);
+Object.defineProperty(__f3_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f4 });
+__f3.prototype = __f3_prototype;
+var __f2_prototype = Object.create(__f3_prototype);
+Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
+Object.defineProperty(__f2_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f5 });
+__f2.prototype = __f2_prototype;
 Object.setPrototypeOf(__f2, __f3);
-var __e3_prototype = Object.create(__e2_prototype);
-Object.defineProperty(__e3_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-Object.defineProperty(__e3_prototype, __e1_sym, { configurable: true, writable: true, value: __f6 });
-__f1.prototype = __e3_prototype;
+var __f1_prototype = Object.create(__f2_prototype);
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__f1_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f6 });
+__f1.prototype = __f1_prototype;
 Object.setPrototypeOf(__f1, __f2);
 
 function __f3() {
@@ -2812,7 +2978,7 @@ return function /*constructor*/(n) {
 
 function __f5() {
   return (function() {
-    with({ sym: __e1_sym, __super: __f3 }) {
+    with({ sym: __f3_prototype_sym, __super: __f3 }) {
 
 return function /*__computed*/(n) { return 1 + __super.prototype[sym].call(this, n + 1); };
 
@@ -2835,7 +3001,7 @@ return function /*constructor*/(n) {
 
 function __f6() {
   return (function() {
-    with({ sym: __e1_sym, __super: __f2 }) {
+    with({ sym: __f3_prototype_sym, __super: __f2 }) {
 
 return function /*__computed*/(n) { return 2 * __super.prototype[sym].call(this, n * 2); };
 
@@ -2883,10 +3049,10 @@ return () => C;
             expectText: `exports.handler = __f0;
 
 __f2.method = __f3;
-var __e0_sym = Object.create(global.Symbol.prototype);
-__f2[__e0_sym] = __f4;
+var __f2_sym = Object.create(global.Symbol.prototype);
+__f2[__f2_sym] = __f4;
 __f1.method = __f5;
-__f1[__e0_sym] = __f6;
+__f1[__f2_sym] = __f6;
 Object.setPrototypeOf(__f1, __f2);
 
 function __f2() {
@@ -2947,7 +3113,7 @@ return function /*method*/(n) { return 1 + __super.method.call(this, n + 1); };
 
 function __f6() {
   return (function() {
-    with({ sym: __e0_sym, __super: __f2 }) {
+    with({ sym: __f2_sym, __super: __f2 }) {
 
 return function /*__computed*/(x) { return x * __super[sym].call(this, x + 1); };
 
@@ -2976,11 +3142,11 @@ return () => B;
             func: function () { console.log(o.a); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {a: 1};
+var __o = {a: 1};
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.a); };
 
@@ -3000,11 +3166,11 @@ return function () { console.log(o.a); };
             func: function () { console.log(o.b + o.c); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {b: 2, c: 3};
+var __o = {b: 2, c: 3};
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.b + o.c); };
 
@@ -3024,11 +3190,11 @@ return function () { console.log(o.b + o.c); };
             func: function () { console.log(o); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {a: 1, b: 2, c: 3};
+var __o = {a: 1, b: 2, c: 3};
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o); };
 
@@ -3048,7 +3214,7 @@ return function () { console.log(o); };
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {c: __f1, a: 1, b: 2};
+var __o = {c: __f1, a: 1, b: 2};
 
 function __f1() {
   return (function() {
@@ -3062,7 +3228,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.c()); };
 
@@ -3082,7 +3248,7 @@ return function () { console.log(o.c()); };
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {c: __f1, a: 1, b: 2};
+var __o = {c: __f1, a: 1, b: 2};
 
 function __f1() {
   return (function() {
@@ -3096,7 +3262,7 @@ return function /*c*/() { const v = () => this; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.c()); };
 
@@ -3116,7 +3282,7 @@ return function () { console.log(o.c()); };
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {c: __f1};
+var __o = {c: __f1};
 
 function __f1() {
   return (function() {
@@ -3130,7 +3296,7 @@ return function /*c*/() { const v = function () { return this; }; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.c()); };
 
@@ -3150,7 +3316,7 @@ return function () { console.log(o.c()); };
             func: function () { console.log(o.c); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {c: __f1};
+var __o = {c: __f1};
 
 function __f1() {
   return (function() {
@@ -3164,7 +3330,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.c); };
 
@@ -3184,7 +3350,7 @@ return function () { console.log(o.c); };
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {c: __f1};
+var __o = {c: __f1};
 
 function __f1() {
   return (function() {
@@ -3198,7 +3364,7 @@ return function /*c*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.c()); };
 
@@ -3218,9 +3384,9 @@ return function () { console.log(o.c()); };
             func: function () { console.log(o.b.c()); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {};
-var __e1_b = {c: __f1};
-__e0_o.b = __e1_b;
+var __o = {};
+var __o_b = {c: __f1};
+__o.b = __o_b;
 
 function __f1() {
   return (function() {
@@ -3234,7 +3400,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.b.c()); };
 
@@ -3254,9 +3420,9 @@ return function () { console.log(o.b.c()); };
             func: function () { console.log(o.b); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {};
-Object.defineProperty(__e0_o, "b", { configurable: true, enumerable: true, get: __f1 });
-__e0_o.a = 1;
+var __o = {};
+Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
+__o.a = 1;
 
 function __f1() {
   return (function() {
@@ -3270,7 +3436,7 @@ return function /*b*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.b); };
 
@@ -3290,8 +3456,8 @@ return function () { console.log(o.b); };
             func: function () { console.log(o.b); },
             expectText: `exports.handler = __f0;
 
-var __e0_o = {};
-Object.defineProperty(__e0_o, "b", { configurable: true, enumerable: true, get: __f1 });
+var __o = {};
+Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
 
 function __f1() {
   return (function() {
@@ -3305,7 +3471,7 @@ return function /*b*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ o: __e0_o }) {
+    with({ o: __o }) {
 
 return function () { console.log(o.b); };
 
@@ -3331,13 +3497,13 @@ return function () { console.log(o.b); };
             title: "Capture multi props from different contexts #1",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
-var __e0_o = {a: 1, c: 2};
+var __o = {a: 1, c: 2};
 
-function __f1() {
+function __f2() {
   return (function() {
-    with({ o: __e0_o, f2: __f1 }) {
+    with({ o: __o, f2: __f2 }) {
 
 return function /*f2*/() {
             console.log(o.c);
@@ -3347,9 +3513,9 @@ return function /*f2*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __e0_o, f2: __f1, f1: __f0 }) {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o.a);
@@ -3378,13 +3544,13 @@ return function /*f1*/() {
             title: "Capture all props from different contexts #1",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
-var __e0_o = {a: 1, b: 1, c: 2};
+var __o = {a: 1, b: 1, c: 2};
 
-function __f1() {
+function __f2() {
   return (function() {
-    with({ o: __e0_o, f2: __f1 }) {
+    with({ o: __o, f2: __f2 }) {
 
 return function /*f2*/() {
             console.log(o);
@@ -3394,9 +3560,9 @@ return function /*f2*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __e0_o, f2: __f1, f1: __f0 }) {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o.a);
@@ -3425,13 +3591,13 @@ return function /*f1*/() {
             title: "Capture all props from different contexts #2",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
-var __e0_o = {a: 1, b: 1, c: 2};
+var __o = {a: 1, b: 1, c: 2};
 
-function __f1() {
+function __f2() {
   return (function() {
-    with({ o: __e0_o, f2: __f1 }) {
+    with({ o: __o, f2: __f2 }) {
 
 return function /*f2*/() {
             console.log(o.a);
@@ -3441,9 +3607,9 @@ return function /*f2*/() {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __e0_o, f2: __f1, f1: __f0 }) {
+    with({ o: __o, f2: __f2, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -3476,11 +3642,28 @@ return function /*f1*/() {
             title: "Cloud table function",
             // tslint:disable-next-line
             func: testScanReturnsAllValues,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __testScanReturnsAllValues;
 
-var __e0_table1 = {primaryKey: 1, insert: __f2};
-${awaiterCode}
-function __f2() {
+var __table1 = {primaryKey: 1, insert: __f1};
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
   return (function() {
     with({  }) {
 
@@ -3490,9 +3673,9 @@ return () => { };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f0() {
+function __testScanReturnsAllValues() {
   return (function() {
-    with({ __awaiter: __f1, table1: __e0_table1, testScanReturnsAllValues: __f0 }) {
+    with({ __awaiter: __f0, table1: __table1, testScanReturnsAllValues: __testScanReturnsAllValues }) {
 
 return function /*testScanReturnsAllValues*/() {
             return __awaiter(this, void 0, void 0, function* () {
@@ -3523,16 +3706,125 @@ return function /*testScanReturnsAllValues*/() {
             title: "Do not capture #1",
             // tslint:disable-next-line
             func: f1,
-            expectText: `exports.handler = __f0;
+            expectText: `exports.handler = __f1;
 
-var __e0_o = {a: 1, b: undefined, c: 2};
+var __o = {a: 1, b: undefined, c: 2};
 
-function __f0() {
+function __f1() {
   return (function() {
-    with({ o: __e0_o, f1: __f0 }) {
+    with({ o: __o, f1: __f1 }) {
 
 return function /*f1*/() {
             console.log(o);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const lambda1 = () => console.log(1);
+        const lambda2 = () => console.log(1);
+
+        function f3() {
+            return (lambda1(), lambda2());
+        }
+
+        cases.push({
+            title: "Merge simple functions",
+            // tslint:disable-next-line
+            func: f3,
+            expectText: `exports.handler = __f3;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return () => console.log(1);
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ lambda1: __f0, lambda2: __f0, f3: __f3 }) {
+
+return function /*f3*/() {
+            return (lambda1(), lambda2());
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
+        const awaiter1 = function (thisArg: any, _arguments: any, P: any, generator: any) {
+            return new (P || (P = Promise))(function (resolve: any, reject: any) {
+                function fulfilled(value: any) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+                function rejected(value: any) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+                function step(result: any) { result.done ? resolve(result.value) : new P(function (resolve1: any) { resolve1(result.value); }).then(fulfilled, rejected); }
+                step((generator = generator.apply(thisArg, _arguments || [])).next());
+            });
+        };
+        const awaiter2 = function (thisArg: any, _arguments: any, P: any, generator: any) {
+            return new (P || (P = Promise))(function (resolve: any, reject: any) {
+                function fulfilled(value: any) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+                function rejected(value: any) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+                function step(result: any) { result.done ? resolve(result.value) : new P(function (resolve1: any) { resolve1(result.value); }).then(fulfilled, rejected); }
+                step((generator = generator.apply(thisArg, _arguments || [])).next());
+            });
+        };
+
+        function f3() {
+            const v1 = awaiter1, v2 = awaiter2;
+        }
+
+        cases.push({
+            title: "Share __awaiter functions",
+            // tslint:disable-next-line
+            func: f3,
+            expectText: `exports.handler = __f3;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+            return new (P || (P = Promise))(function (resolve, reject) {
+                function fulfilled(value) { try {
+                    step(generator.next(value));
+                }
+                catch (e) {
+                    reject(e);
+                } }
+                function rejected(value) { try {
+                    step(generator["throw"](value));
+                }
+                catch (e) {
+                    reject(e);
+                } }
+                function step(result) { result.done ? resolve(result.value) : new P(function (resolve1) { resolve1(result.value); }).then(fulfilled, rejected); }
+                step((generator = generator.apply(thisArg, _arguments || [])).next());
+            });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ awaiter1: __f0, awaiter2: __f0, f3: __f3 }) {
+
+return function /*f3*/() {
+            const v1 = awaiter1, v2 = awaiter2;
         };
 
     }
@@ -3564,7 +3856,8 @@ return function /*f1*/() {
             if (test.expectText) {
                 const text = await runtime.serializeFunctionAsync(test.func);
                 assert.equal(text, test.expectText);
-            } else {
+            }
+            else {
                 const message = await assertAsyncThrows(async () => {
                     await runtime.serializeFunctionAsync(test.func);
                 });

@@ -35,9 +35,9 @@ type Host interface {
 
 	// ListPlugins lists all plugins that have been loaded, with version information.
 	ListPlugins() []workspace.PluginInfo
-	// EnsurePlugins ensures all plugins for the target package are loaded.  If any are missing, and/or there are
-	// errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(info ProgInfo) error
+	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
+	// and/or there are errors loading one or more plugins, a non-nil error is returned.
+	EnsurePlugins(plugins []workspace.PluginInfo) error
 	// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error)
 
@@ -261,16 +261,9 @@ func (host *defaultHost) ListPlugins() []workspace.PluginInfo {
 	return host.plugins
 }
 
-// EnsurePlugins ensures all plugins for the target package are loaded.  If any are missing, and/or there are
-// errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(info ProgInfo) error {
-	// Compute the list of required plugins, and then iterate them and load 'em up.  This simultaneously ensures
-	// they are installed on the system while also loading them into memory for easy subsequent access.
-	plugins, err := host.GetRequiredPlugins(info)
-	if err != nil {
-		return err
-	}
-
+// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
+// and/or there are errors loading one or more plugins, a non-nil error is returned.
+func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
 	var result error
 	for _, plugin := range plugins {
