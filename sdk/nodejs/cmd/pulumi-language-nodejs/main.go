@@ -350,7 +350,7 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 		transformedConfig[pk.Namespace()+":config:"+pk.Name()] = v
 	}
 
-	configJSON, err := json.Marshal(configMap)
+	configJSON, err := json.Marshal(transformedConfig)
 	if err != nil {
 		return "", err
 	}
