@@ -45,16 +45,16 @@ func displayEvents(action string,
 			case engine.CancelEvent:
 				return
 			case engine.PreludeEvent:
-				displayPreludeEvent(os.Stdout, event.Payload.(engine.PreludeEventPayload), opts)
+				DisplayPreludeEvent(os.Stdout, event.Payload.(engine.PreludeEventPayload), opts)
 			case engine.SummaryEvent:
-				displaySummaryEvent(os.Stdout, event.Payload.(engine.SummaryEventPayload), opts)
+				DisplaySummaryEvent(os.Stdout, event.Payload.(engine.SummaryEventPayload), opts)
 			case engine.ResourceOperationFailed:
-				displayResourceOperationFailedEvent(os.Stdout,
+				DisplayResourceOperationFailedEvent(os.Stdout,
 					event.Payload.(engine.ResourceOperationFailedPayload), opts)
 			case engine.ResourceOutputsEvent:
-				displayResourceOutputsEvent(os.Stdout, event.Payload.(engine.ResourceOutputsEventPayload), opts)
+				DisplayResourceOutputsEvent(os.Stdout, event.Payload.(engine.ResourceOutputsEventPayload), opts)
 			case engine.ResourcePreEvent:
-				displayResourcePreEvent(os.Stdout, event.Payload.(engine.ResourcePreEventPayload), opts)
+				DisplayResourcePreEvent(os.Stdout, event.Payload.(engine.ResourcePreEventPayload), opts)
 			case engine.StdoutColorEvent:
 				payload := event.Payload.(engine.StdoutEventPayload)
 				out = os.Stdout
@@ -72,15 +72,13 @@ func displayEvents(action string,
 			}
 
 			if msg != "" && out != nil {
-				_, err := fmt.Fprint(out, msg)
-				contract.IgnoreError(err)
+				fprintIgnoreError(out, msg)
 			}
 		}
 	}
 }
 
-// nolint: gas
-func displaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts backend.DisplayOptions) {
+func DisplaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts backend.DisplayOptions) {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -108,7 +106,7 @@ func displaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts b
 		kind += ":"
 	}
 
-	fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
+	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
 		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind)))
 
 	var planTo string
@@ -124,28 +122,27 @@ func displaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts b
 				if !event.IsPreview {
 					opDescription = op.PastTense()
 				}
-				fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("    %v%v %v %v%v%v\n",
+				fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("    %v%v %v %v%v%v\n",
 					op.Prefix(), c, plural("resource", c), planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
 	if c := changes[deploy.OpSame]; c > 0 {
-		fmt.Fprintf(out, "      %v %v unchanged\n", c, plural("resource", c))
+		fprintfIgnoreError(out, "      %v %v unchanged\n", c, plural("resource", c))
 	}
 
 	// For actual deploys, we print some additional summary information
 	if !event.IsPreview {
 		if changeCount > 0 {
-			fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%vUpdate duration: %v%v\n",
+			fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vUpdate duration: %v%v\n",
 				colors.SpecUnimportant, event.Duration, colors.Reset)))
 		}
 	}
 }
 
-// nolint: gas
-func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts backend.DisplayOptions) {
+func DisplayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts backend.DisplayOptions) {
 	if opts.ShowConfig {
-		fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
+		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
 
 		var keys []string
 		for key := range event.Config {
@@ -153,7 +150,7 @@ func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts b
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			fmt.Fprintf(out, "    %v: %v\n", key, event.Config[key])
+			fprintfIgnoreError(out, "    %v: %v\n", key, event.Config[key])
 		}
 	}
 
@@ -162,11 +159,11 @@ func displayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts b
 		action = "Performing"
 	}
 
-	fmt.Fprint(out, opts.Color.Colorize(fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
+	fprintIgnoreError(out, opts.Color.Colorize(
+		fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
 }
 
-// nolint: gas
-func displayResourceOperationFailedEvent(out io.Writer,
+func DisplayResourceOperationFailedEvent(out io.Writer,
 	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) {
 
 	// It's not actually useful or interesting to print out any details about
@@ -177,23 +174,21 @@ func displayResourceOperationFailedEvent(out io.Writer,
 	// we can provide useful diagnostics here.
 }
 
-// nolint: gas
-func displayResourcePreEvent(out io.Writer, event engine.ResourcePreEventPayload, opts backend.DisplayOptions) {
+func DisplayResourcePreEvent(out io.Writer, event engine.ResourcePreEventPayload, opts backend.DisplayOptions) {
 	if shouldShow(event.Metadata, opts) || isRootStack(event.Metadata) {
-		fmt.Fprint(out, opts.Color.Colorize(event.Summary))
+		fprintIgnoreError(out, opts.Color.Colorize(event.Summary))
 
 		if !opts.Summary {
-			fmt.Fprint(out, opts.Color.Colorize(event.Details))
+			fprintIgnoreError(out, opts.Color.Colorize(event.Details))
 		}
 
-		fmt.Fprint(out, opts.Color.Colorize(colors.Reset))
+		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 	}
 }
 
-// nolint: gas
-func displayResourceOutputsEvent(out io.Writer, event engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) {
+func DisplayResourceOutputsEvent(out io.Writer, event engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) {
 	if (shouldShow(event.Metadata, opts) || isRootStack(event.Metadata)) && !opts.Summary {
-		fmt.Fprint(out, opts.Color.Colorize(event.Text))
+		fprintIgnoreError(out, opts.Color.Colorize(event.Text))
 	}
 }
 
@@ -224,4 +219,14 @@ func plural(s string, c int) string {
 		s += "s"
 	}
 	return s
+}
+
+func fprintfIgnoreError(w io.Writer, format string, a ...interface{}) {
+	_, err := fmt.Fprintf(w, format, a...)
+	contract.IgnoreError(err)
+}
+
+func fprintIgnoreError(w io.Writer, a ...interface{}) {
+	_, err := fmt.Fprint(w, a...)
+	contract.IgnoreError(err)
 }
