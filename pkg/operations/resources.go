@@ -5,8 +5,6 @@ package operations
 import (
 	"sort"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -119,6 +117,10 @@ var _ Provider = (*resourceOperations)(nil)
 
 // GetLogs gets logs for a Resource
 func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
+	if ops.resource == nil {
+		return nil, nil
+	}
+
 	// Only get logs for this resource if it matches the resource filter query
 	if ops.matchesResourceFilter(query.ResourceFilter) {
 		// Set query to be a new query with `ResourceFilter` nil so that we don't filter out logs from any children of

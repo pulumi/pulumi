@@ -55,6 +55,10 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// those logs to project into our own log output, but leaving out explicit Lambda metadata.
 		name := string(state.URN.Name())
 		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		if serverlessFunction == nil {
+			glog.V(6).Infof("Child resource (type %v, name %v)", awsServerlessFunctionTypeName, name)
+			return nil, nil
+		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
@@ -80,6 +84,10 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// logs.
 		name := string(state.URN.Name())
 		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		if serverlessFunction == nil {
+			glog.V(6).Infof("Child resource (type %v, name %v)", awsServerlessFunctionTypeName, name)
+			return nil, nil
+		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
@@ -124,6 +132,10 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		urn := state.URN
 		name := string(urn.Name())
 		logGroup := ops.component.GetChild(awsLogGroupTypeName, name)
+		if logGroup == nil {
+			glog.V(6).Infof("Child resource (type %v, name %v)", awsLogGroupTypeName, name)
+			return nil, nil
+		}
 		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
