@@ -52,8 +52,40 @@ type UpdateIdentifier struct {
 	UpdateID   string
 }
 
+type accessTokenKind string
+
+const (
+	accessTokenKindAPIToken    accessTokenKind = "token"
+	accessTokenKindUpdateToken accessTokenKind = "update-token"
+)
+
+type accessToken interface {
+	Kind() accessTokenKind
+	String() string
+}
+
+type apiAccessToken string
+
+func (apiAccessToken) Kind() accessTokenKind {
+	return accessTokenKindAPIToken
+}
+
+func (t apiAccessToken) String() string {
+	return string(t)
+}
+
+type updateAccessToken string
+
+func (updateAccessToken) Kind() accessTokenKind {
+	return accessTokenKindUpdateToken
+}
+
+func (t updateAccessToken) String() string {
+	return string(t)
+}
+
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(cloudAPI, method, path string, body []byte, accessToken string) (string, *http.Response, error) {
+func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = strings.TrimPrefix(path, "/")
@@ -71,8 +103,8 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, accessToken strin
 	req.Header.Set("User-Agent", userAgent)
 
 	// Apply credentials if provided.
-	if accessToken != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("token %s", accessToken))
+	if tok.String() != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
 	}
 
 	glog.V(7).Infof("Making Pulumi API call: %s", url)
@@ -91,7 +123,7 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, accessToken strin
 		defer contract.IgnoreClose(resp.Body)
 
 		// Provide a better error if using an authenticated call without having logged in first.
-		if resp.StatusCode == 401 && accessToken == "" {
+		if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
 			return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
 		}
 
@@ -118,7 +150,7 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, accessToken strin
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, accessToken string) error {
+func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, tok accessToken) error {
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -143,7 +175,7 @@ func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj int
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, accessToken)
+	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok)
 	if err != nil {
 		return errors.Wrapf(err, "calling API")
 	}

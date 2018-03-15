@@ -16,6 +16,7 @@ import (
 
 	"github.com/cheggaaa/pb"
 	"github.com/golang/glog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -327,6 +328,47 @@ func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, r
 	return b.updateStack(client.UpdateKindDestroy, stackName, pkg, root, debug, m, opts, displayOpts)
 }
 
+func (b *cloudBackend) createAndStartUpdate(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	root string, debug bool, m backend.UpdateMetadata,
+	opts engine.UpdateOptions) (client.UpdateIdentifier, string, error) {
+
+	stack, err := getCloudStackIdentifier(stackName)
+	if err != nil {
+		return client.UpdateIdentifier{}, "", err
+	}
+	context, main, err := getContextAndMain(pkg, root)
+	if err != nil {
+		return client.UpdateIdentifier{}, "", err
+	}
+	workspaceStack, err := workspace.DetectProjectStack(stackName)
+	if err != nil {
+		return client.UpdateIdentifier{}, "", errors.Wrap(err, "getting configuration")
+	}
+	metadata := apitype.UpdateMetadata{
+		Message:     m.Message,
+		Environment: m.Environment,
+	}
+	getContents := func() (io.ReadCloser, int64, error) {
+		const showProgress = true
+		return getUpdateContents(context, pkg.UseDefaultIgnores(), showProgress)
+	}
+	update, err := b.client.CreateUpdate(action, stack, pkg, workspaceStack.Config, main, metadata, opts, getContents)
+	if err != nil {
+		return client.UpdateIdentifier{}, "", err
+	}
+
+	// Start the update.
+	version, token, err := b.client.StartUpdate(update)
+	if err != nil {
+		return client.UpdateIdentifier{}, "", err
+	}
+	if action == client.UpdateKindUpdate {
+		glog.V(7).Infof("Stack %s being updated to version %d", stackName, version)
+	}
+
+	return update, token, nil
+}
+
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
 	root string, debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions,
@@ -340,42 +382,31 @@ func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QN
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
 		actionLabel, stackName)
 
-	// First create the update object.
-	stack, err := getCloudStackIdentifier(stackName)
-	if err != nil {
-		return err
-	}
-	context, main, err := getContextAndMain(pkg, root)
-	if err != nil {
-		return err
-	}
-	workspaceStack, err := workspace.DetectProjectStack(stackName)
-	if err != nil {
-		return errors.Wrap(err, "getting configuration")
-	}
-	metadata := apitype.UpdateMetadata{
-		Message:     m.Message,
-		Environment: m.Environment,
-	}
-	getContents := func() (io.ReadCloser, int64, error) {
-		const showProgress = true
-		return getUpdateContents(context, pkg.UseDefaultIgnores(), showProgress)
-	}
-	update, err := b.client.CreateUpdate(action, stack, pkg, workspaceStack.Config, main, metadata, opts, getContents)
+	// First get the stack.
+	stack, err := b.GetStack(stackName)
 	if err != nil {
 		return err
 	}
 
-	// Start the update.
-	version, err := b.client.StartUpdate(update)
+	// If we are targeting a stack that uses local operations, handle that now by running the appropriate engine
+	// action.
+	var update client.UpdateIdentifier
+	if stack.(Stack).RunLocally() {
+		var token string
+		if action != client.UpdateKindPreview {
+			update, token, err = b.createAndStartUpdate(action, stackName, pkg, root, debug, m, opts)
+			if err != nil {
+				return err
+			}
+		}
+		return b.runEngineAction(action, stackName, pkg, root, debug, opts, displayOpts, update, token)
+	}
+
+	// Otherwise, simply start the update and wait for it to complete while rendering its events to stdout/stderr.
+	update, _, err = b.createAndStartUpdate(action, stackName, pkg, root, debug, m, opts)
 	if err != nil {
 		return err
 	}
-	if action == client.UpdateKindUpdate {
-		glog.V(7).Infof("Stack %s being updated to version %d", stackName, version)
-	}
-
-	// Wait for the update to complete, which also polls and renders event output to STDOUT.
 	status, err := b.waitForUpdate(actionLabel, update, displayOpts)
 	if err != nil {
 		return errors.Wrapf(err, "waiting for %s", action)
@@ -408,6 +439,48 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 	}
 
 	return archiveReader, int64(archiveContents.Len()), nil
+}
+
+func (b *cloudBackend) runEngineAction(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	root string, debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	update client.UpdateIdentifier, token string) error {
+
+	u, err := b.newUpdate(stackName, pkg, root, update, token)
+	if err != nil {
+		return err
+	}
+
+	events := make(chan engine.Event)
+	done := make(chan bool)
+
+	actionLabel, ok := actionLabels[string(action)]
+	contract.Assertf(ok, "unsupported update kind: %v", action)
+	go u.RecordAndDisplayEvents(actionLabel, events, done, debug, displayOpts)
+
+	switch action {
+	case client.UpdateKindPreview:
+		err = engine.Preview(u, events, opts)
+	case client.UpdateKindUpdate:
+		_, err = engine.Deploy(u, events, opts)
+	case client.UpdateKindDestroy:
+		_, err = engine.Destroy(u, events, opts)
+	}
+
+	<-done
+	close(events)
+	close(done)
+
+	if action != client.UpdateKindPreview {
+		status := apitype.UpdateStatusSucceeded
+		if err != nil {
+			status = apitype.UpdateStatusFailed
+		}
+		completeErr := u.Complete(status)
+		if completeErr != nil {
+			err = multierror.Append(completeErr)
+		}
+	}
+	return err
 }
 
 func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
