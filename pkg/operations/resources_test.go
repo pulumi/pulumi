@@ -32,17 +32,21 @@ func TestTodo(t *testing.T) {
 	assert.Equal(t, 4, len(components.Children))
 
 	// Table child
-	table := components.GetChild("cloud:table:Table", "todo")
+	table, ok := components.GetChild("cloud:table:Table", "todo")
+	assert.True(t, ok)
 	if !assert.NotNil(t, table) {
 		return
 	}
 	assert.Equal(t, 2, len(table.State.Inputs))
 	assert.Equal(t, "id", table.State.Inputs["primaryKey"].StringValue())
 	assert.Equal(t, 1, len(table.Children))
-	assert.NotNil(t, table.GetChild("aws:dynamodb/table:Table", "todo"))
+	table, ok = table.GetChild("aws:dynamodb/table:Table", "todo")
+	assert.True(t, ok)
+	assert.NotNil(t, table)
 
 	// Endpoint child
-	endpoint := components.GetChild("cloud:http:HttpEndpoint", "todo")
+	endpoint, ok := components.GetChild("cloud:http:HttpEndpoint", "todo")
+	assert.True(t, ok)
 	if !assert.NotNil(t, endpoint) {
 		return
 	}
@@ -50,7 +54,14 @@ func TestTodo(t *testing.T) {
 	assert.Equal(t,
 		"https://eupwl7wu4i.execute-api.us-east-2.amazonaws.com/", endpoint.State.Inputs["url"].StringValue())
 	assert.Equal(t, 14, len(endpoint.Children))
-	assert.NotNil(t, endpoint.GetChild("aws:apigateway/restApi:RestApi", "todo"))
+	endpoint, ok = endpoint.GetChild("aws:apigateway/restApi:RestApi", "todo")
+	assert.True(t, ok)
+	assert.NotNil(t, endpoint)
+
+	// Nonexistant resource.
+	r, ok := endpoint.GetChild("garden:ornimentation/gnome", "stone")
+	assert.False(t, ok)
+	assert.Nil(t, r)
 }
 
 func TestCrawler(t *testing.T) {
@@ -58,16 +69,20 @@ func TestCrawler(t *testing.T) {
 	assert.Equal(t, 7, len(components.Children))
 
 	// Topic child
-	topic := components.GetChild("cloud:topic:Topic", "countDown")
+	topic, ok := components.GetChild("cloud:topic:Topic", "countDown")
+	assert.True(t, ok)
 	if !assert.NotNil(t, topic) {
 		return
 	}
 	assert.Equal(t, 0, len(topic.State.Inputs))
 	assert.Equal(t, 1, len(topic.Children))
-	assert.NotNil(t, topic.GetChild("aws:sns/topic:Topic", "countDown"))
+	topic, ok = topic.GetChild("aws:sns/topic:Topic", "countDown")
+	assert.True(t, ok)
+	assert.NotNil(t, topic)
 
 	// Timer child
-	heartbeat := components.GetChild("cloud:timer:Timer", "heartbeat")
+	heartbeat, ok := components.GetChild("cloud:timer:Timer", "heartbeat")
+	assert.True(t, ok)
 	if !assert.NotNil(t, heartbeat) {
 		return
 	}
@@ -76,7 +91,8 @@ func TestCrawler(t *testing.T) {
 	assert.Equal(t, 4, len(heartbeat.Children))
 
 	// Function child of timer
-	function := heartbeat.GetChild("cloud:function:Function", "heartbeat")
+	function, ok := heartbeat.GetChild("cloud:function:Function", "heartbeat")
+	assert.True(t, ok)
 	if !assert.NotNil(t, function) {
 		return
 	}
