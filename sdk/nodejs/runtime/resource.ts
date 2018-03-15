@@ -22,21 +22,24 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         (excessiveDebugOutput ? `, inputProps=...` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
+    // Note: a resource urn is considered stable by default.
     let resolveURN: (urn: URN) => void;
     (res as any).urn = Output.create(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
-            `resolveURN(${label})`));
+            `resolveURN(${label})`),
+        Promise.resolve(true));
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID) => void) | undefined;
+    let resolveIDPerformApply: ((v: boolean) => void) | undefined;
     if (custom) {
         (res as any).id = Output.create(
             res,
-            debuggablePromise(
-                new Promise<ID>(resolve => resolveID = resolve),
-                `resolveID(${label})`));
+            debuggablePromise(new Promise<ID>(resolve => resolveID = resolve), `resolveID(${label})`),
+            debuggablePromise(new Promise<boolean>(
+                resolve => resolveIDPerformApply = resolve), `resolveIDPerformApply(${label})`));
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
@@ -102,10 +105,6 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             const urn = resp.getUrn();
             const id = resp.getId();
             const outputProps = resp.getObject();
-            const stable = resp.getStable();
-
-            const stablesList: string[] | undefined = resp.getStablesList();
-            const stables = new Set<string>(stablesList);
 
             // Always make sure to resolve the URN property, even if it is undefined due to a
             // missing monitor.
@@ -118,8 +117,12 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             //
             // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
             // undefined so that later parts of our system don't have to deal with values like 'null'.
-            if (resolveID) {
-                resolveID(id || undefined);
+            if (resolveID && resolveIDPerformApply) {
+                const idVal = id || undefined;
+                const performApply = idVal !== undefined;
+
+                resolveIDPerformApply(performApply);
+                resolveID(idVal);
             }
 
             // Produce a combined set of property states, starting with inputs and then applying
@@ -146,7 +149,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 }
             }
 
-            resolveProperties(res, resolvers, t, name, allProps, stable, stables);
+            resolveProperties(res, resolvers, t, name, allProps);
         });
     }));
 }

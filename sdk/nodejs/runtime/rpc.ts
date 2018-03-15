@@ -21,15 +21,17 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * that the engine actualy produced will be used to resolve all the unresolved promised placed on
  * 'onto'.
  */
-export function transferProperties(
-        onto: Resource, label: string, props: Inputs): Record<string, (v: any) => void> {
+export function transferProperties(onto: Resource, label: string, props: Inputs):
+        Record<string, [(value: any) => void, (isStable: boolean) => void]> {
 
-    const resolvers: Record<string, (v: any) => void> = {};
+    const resolvers: Record<string, [(value: any) => void, (isStable: boolean) => void]> = {};
     for (const k of Object.keys(props)) {
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
             continue;
         }
+
+        resolvers[k] = <any>[];
 
         // Create a property to wrap the value and store it on the resource.
         if (onto.hasOwnProperty(k)) {
@@ -38,8 +40,11 @@ export function transferProperties(
         (<any>onto)[k] = Output.create(
             onto,
             debuggablePromise(
-                new Promise<any>(resolve => resolvers[k] = resolve),
-                `transferProperty(${label}, ${k}, ${props[k]})`));
+                new Promise<any>(resolve => resolvers[k][0] = resolve),
+                `transferProperty(${label}, ${k}, ${props[k]})`),
+            debuggablePromise(
+                new Promise<boolean>(resolve => resolvers[k][1] = resolve),
+                `transferIsStable(${label}, ${k}, ${props[k]})`));
     }
 
     return resolvers;
@@ -78,9 +83,8 @@ export function deserializeProperties(outputsStruct: any): any {
  * of the resource's matching properties to the values inside.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any) => void>,
-    t: string, name: string, allProps: any,
-    stable: boolean, stables: Set<string>): void {
+    res: Resource, resolvers: Record<string, [(v: any) => void, (performApply: boolean) => void]>,
+    t: string, name: string, allProps: any): void {
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
     for (const k of Object.keys(allProps)) {
@@ -90,25 +94,45 @@ export function resolveProperties(
         }
 
         // Otherwise, unmarshal the value, and store it on the resource object.
-        let resolve = resolvers[k];
-        if (resolve === undefined) {
+        const resolvePair = resolvers[k];
+        let resolveValue: (v: any) => void = <any>undefined;
+        let resolvePerformApply: (v: boolean) => void = <any>undefined;
+
+        if (resolvePair === undefined) {
             // If there is no property yet, zero initialize it.  This ensures unexpected properties
             // are still made available on the object.  This isn't ideal, because any code running
             // prior to the actual resource CRUD operation can't hang computations off of it, but
             // it's better than tossing it.
             (res as any)[k] = Output.create(
                 res,
-                debuggablePromise(new Promise<any>(r => resolve = r)));
+                debuggablePromise(new Promise<any>(r => resolveValue = r)),
+                debuggablePromise(new Promise<boolean>(r => resolvePerformApply = r)));
         }
+        else {
+            resolveValue = resolvePair[0];
+            resolvePerformApply = resolvePair[1];
+        }
+
         try {
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
-            if (!options.dryRun || stable || stables.has(k)) {
-                resolve(allProps[k]);
+            const outputProp: Output<any> = (<any>res)[k];
+            if (!options.dryRun) {
+                // normal 'pulumi update'.  resolve the output with the value we got back
+                // from the engine.  That output can always run its .apply calls.
+                resolvePerformApply(true);
+                resolveValue(allProps[k]);
             }
             else {
-                resolve(undefined);
+                // We're previewing.  If the engine was able to give us a reasonable value back,
+                // then use it.  Otherwise, let the Output know that the value isn't known and it
+                // shoudl not use it when performing .apply calls.
+
+                const value = allProps[k];
+                const performApply = value !== undefined;
+                resolvePerformApply(performApply);
+                resolveValue(value);
             }
         }
         catch (err) {
@@ -125,7 +149,10 @@ export function resolveProperties(
                 throw new Error(
                     `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
             }
-            resolvers[k](undefined);
+
+            const [resolveValue, resolvePerformApply] = resolvers[k];
+            resolvePerformApply(false);
+            resolveValue(undefined);
         }
     }
 }

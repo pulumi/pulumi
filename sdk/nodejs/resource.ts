@@ -139,13 +139,20 @@ export class ComponentResource extends Resource {
 (<any>ComponentResource.prototype).registerOutputs.doNotCapture = true;
 
 /**
- * Output helps encode the relationship between Resources in a Pulumi application. Specifically
- * an Output holds onto a piece of Data and the Resource it was generated from. An Output
- * value can then be provided when constructing new Resources, allowing that new Resource to know
- * both the value as well as the Resource the value came from.  This allows for a precise 'Resource
+ * Output helps encode the relationship between Resources in a Pulumi application. Specifically an
+ * Output holds onto a piece of Data and the Resource it was generated from. An Output value can
+ * then be provided when constructing new Resources, allowing that new Resource to know both the
+ * value as well as the Resource the value came from.  This allows for a precise 'Resource
  * dependency graph' to be created, which properly tracks the relationship between resources.
  */
 export class Output<T> {
+    // Whether or not this 'Output' should actually perform .apply calls.  During a preview,
+    // an Output value may not be known (because it would have to actually be computed by doing an
+    // 'update').  In that case, we don't want to perform any .apply calls as the callbacks
+    // may not expect an undefined value.  So, instead, we just transition to another Output
+    // value that itself knows it should not perform .apply calls.
+    /* @internal */ public performApply: Promise<boolean>;
+
     // Method that actually produces the concrete value of this output, as well as the total
     // deployment-time set of resources this output depends on.
     //
@@ -197,23 +204,29 @@ export class Output<T> {
      public readonly get: () => T;
 
     // Statics
-    /* @internal */ public static create<T>(resource: Resource, promise: Promise<T>): Output<T> {
-        return new Output<T>(new Set<Resource>([resource]), promise);
+    /* @internal */ public static create<T>(
+            resource: Resource, promise: Promise<T>, performApply: Promise<boolean>): Output<T> {
+        return new Output<T>(new Set<Resource>([resource]), promise, performApply);
     }
 
-    /* @internal */ public constructor(resources: Set<Resource>, promise: Promise<T>) {
+    /* @internal */ public constructor(
+            resources: Set<Resource>, promise: Promise<T>, performApply: Promise<boolean>) {
+        this.performApply = performApply;
+
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
 
         this.promise = () => promise;
 
         this.apply = <U>(func: (t: T) => Input<U>) => {
-            if (runtime.options.dryRun) {
-                // During previews we never actually apply the func.
-                return new Output<U>(resources, Promise.resolve(<U><any>undefined));
-            }
-
             return new Output<U>(resources, promise.then(async v => {
+                // During previews do not perform the apply if the engine was not able to
+                // give us an actual value for this Output.
+                const perform = await performApply;
+                if (runtime.options.dryRun && !perform) {
+                    return <U><any>undefined;
+                }
+
                 const transformed = await func(v);
                 if (transformed instanceof Output) {
                     // Note: if the func returned a Output, we unwrap that to get the inner value
@@ -225,7 +238,7 @@ export class Output<T> {
                 } else {
                     return transformed;
                 }
-            }));
+            }), performApply);
         };
 
 
@@ -239,9 +252,10 @@ To manipulate the value of this dependency, use 'apply' instead.`);
 export function output<T>(cv: Input<T>): Output<T>;
 export function output<T>(cv: Input<T> | undefined): Output<T | undefined>;
 export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
+    // outputs created from simply inputs are always stable.
     return cv instanceof Output
         ? cv
-        : new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv));
+        : new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv), Promise.resolve(true));
 }
 
 /**
@@ -273,12 +287,15 @@ export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefine
 export function all<T>(ds: (Input<T> | undefined)[]): Output<T[]>;
 export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<any> {
     if (val instanceof Array) {
-        const allDeps = val.map(output);
+        const allOutputs = val.map(v => output(v));
 
-        const resources = allDeps.reduce<Resource[]>((arr, dep) => (arr.push(...dep.resources()), arr), []);
-        const promises = allDeps.map(d => d.promise());
+        const resources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
+        const promises = allOutputs.map(o => o.promise());
 
-        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises));
+        // A merged output can perform its .apply if all of its inputs can perform their .apply's as well.
+        const performApply = Promise.all(allOutputs.map(o => o.performApply)).then(ps => ps.every(b => b));
+
+        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises), performApply);
     } else {
         const array = Object.keys(val).map(k =>
             output<T>(val[k]).apply(v => ({ key: k, value: v})));
