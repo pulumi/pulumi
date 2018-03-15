@@ -246,8 +246,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	new := resource.NewState(
-		res.Type, urn, res.Custom, false, "", res.Properties, nil,
+	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil,
 		res.Parent, res.Protect, res.Dependencies)
 
 	// Check for an old resource before going any further.

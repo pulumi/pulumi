@@ -353,7 +353,7 @@ func getResourcePropertiesDetails(step deploy.Step, indent int, planning bool, d
 	} else if new == nil && old != nil {
 		printObject(&b, old.Inputs, planning, indent, step.Op(), false, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op(), debug)
 	}
 
 	return b.String()
@@ -388,8 +388,7 @@ func printObject(
 
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func getResourceOutputsPropertiesString(
-	step deploy.Step, indent int, planning bool, debug bool) string {
+func getResourceOutputsPropertiesString(step deploy.Step, indent int, planning bool, debug bool) string {
 	var b bytes.Buffer
 
 	// Only certain kinds of steps have output properties associated with them.
@@ -413,7 +412,7 @@ func getResourceOutputsPropertiesString(
 		if shouldPrintPropertyValue(out, true) {
 			var print bool
 			if in, has := ins[k]; has {
-				print = (out.Diff(in, planning, step.Stables()) != nil)
+				print = (out.Diff(in) != nil)
 			} else {
 				print = true
 			}
@@ -583,13 +582,13 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
-	replaces []resource.PropertyKey, planning bool, indent int, step deploy.Step, debug bool) {
+	replaces []resource.PropertyKey, planning bool, indent int, op deploy.StepOp, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
-	if diff := olds.Diff(news, planning, step.Stables()); diff != nil {
+	if diff := olds.Diff(news); diff != nil {
 		printObjectDiff(b, *diff, replaces, false, planning, indent, debug)
 	} else {
-		printObject(b, news, planning, indent, step.Op(), true, debug)
+		printObject(b, news, planning, indent, op, true, debug)
 	}
 }
 

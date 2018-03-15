@@ -16,14 +16,13 @@ import (
 type Step interface {
 	Apply(preview bool) (resource.Status, error) // applies or previews this step.
 
-	Op() StepOp                      // the operation performed by this step.
-	URN() resource.URN               // the resource URN (for before and after).
-	Type() tokens.Type               // the type affected by this step.
-	Old() *resource.State            // the state of the resource before performing this step.
-	New() *resource.State            // the state of the resource after performing this step.
-	Stables() []resource.PropertyKey // The set of resources that are stable between 'Old' and 'New'
-	Res() *resource.State            // the latest state for the resource that is known (worst case, old).
-	Logical() bool                   // true if this step represents a logical operation in the program.
+	Op() StepOp           // the operation performed by this step.
+	URN() resource.URN    // the resource URN (for before and after).
+	Type() tokens.Type    // the type affected by this step.
+	Old() *resource.State // the state of the resource before performing this step.
+	New() *resource.State // the state of the resource after performing this step.
+	Res() *resource.State // the latest state for the resource that is known (worst case, old).
+	Logical() bool        // true if this step represents a logical operation in the program.
 
 	Plan() *Plan             // the owning plan.
 	Iterator() *PlanIterator // the current plan iterator.
@@ -56,16 +55,15 @@ func NewSameStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.St
 	}
 }
 
-func (s *SameStep) Op() StepOp                      { return OpSame }
-func (s *SameStep) Plan() *Plan                     { return s.iter.p }
-func (s *SameStep) Iterator() *PlanIterator         { return s.iter }
-func (s *SameStep) Type() tokens.Type               { return s.old.Type }
-func (s *SameStep) URN() resource.URN               { return s.old.URN }
-func (s *SameStep) Old() *resource.State            { return s.old }
-func (s *SameStep) New() *resource.State            { return s.new }
-func (s *SameStep) Stables() []resource.PropertyKey { return nil }
-func (s *SameStep) Res() *resource.State            { return s.new }
-func (s *SameStep) Logical() bool                   { return true }
+func (s *SameStep) Op() StepOp              { return OpSame }
+func (s *SameStep) Plan() *Plan             { return s.iter.p }
+func (s *SameStep) Iterator() *PlanIterator { return s.iter }
+func (s *SameStep) Type() tokens.Type       { return s.old.Type }
+func (s *SameStep) URN() resource.URN       { return s.old.URN }
+func (s *SameStep) Old() *resource.State    { return s.old }
+func (s *SameStep) New() *resource.State    { return s.new }
+func (s *SameStep) Res() *resource.State    { return s.new }
+func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, error) {
 	// Retain the URN, ID, and outputs:
@@ -137,16 +135,15 @@ func (s *CreateStep) Op() StepOp {
 	}
 	return OpCreate
 }
-func (s *CreateStep) Plan() *Plan                     { return s.iter.p }
-func (s *CreateStep) Iterator() *PlanIterator         { return s.iter }
-func (s *CreateStep) Type() tokens.Type               { return s.new.Type }
-func (s *CreateStep) URN() resource.URN               { return s.new.URN }
-func (s *CreateStep) Old() *resource.State            { return s.old }
-func (s *CreateStep) New() *resource.State            { return s.new }
-func (s *CreateStep) Stables() []resource.PropertyKey { return nil }
-func (s *CreateStep) Res() *resource.State            { return s.new }
-func (s *CreateStep) Keys() []resource.PropertyKey    { return s.keys }
-func (s *CreateStep) Logical() bool                   { return !s.replacing }
+func (s *CreateStep) Plan() *Plan                  { return s.iter.p }
+func (s *CreateStep) Iterator() *PlanIterator      { return s.iter }
+func (s *CreateStep) Type() tokens.Type            { return s.new.Type }
+func (s *CreateStep) URN() resource.URN            { return s.new.URN }
+func (s *CreateStep) Old() *resource.State         { return s.old }
+func (s *CreateStep) New() *resource.State         { return s.new }
+func (s *CreateStep) Res() *resource.State         { return s.new }
+func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
+func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	if !preview {
@@ -216,15 +213,14 @@ func (s *DeleteStep) Op() StepOp {
 	}
 	return OpDelete
 }
-func (s *DeleteStep) Plan() *Plan                     { return s.iter.p }
-func (s *DeleteStep) Iterator() *PlanIterator         { return s.iter }
-func (s *DeleteStep) Type() tokens.Type               { return s.old.Type }
-func (s *DeleteStep) URN() resource.URN               { return s.old.URN }
-func (s *DeleteStep) Old() *resource.State            { return s.old }
-func (s *DeleteStep) New() *resource.State            { return nil }
-func (s *DeleteStep) Stables() []resource.PropertyKey { return nil }
-func (s *DeleteStep) Res() *resource.State            { return s.old }
-func (s *DeleteStep) Logical() bool                   { return !s.replacing }
+func (s *DeleteStep) Plan() *Plan             { return s.iter.p }
+func (s *DeleteStep) Iterator() *PlanIterator { return s.iter }
+func (s *DeleteStep) Type() tokens.Type       { return s.old.Type }
+func (s *DeleteStep) URN() resource.URN       { return s.old.URN }
+func (s *DeleteStep) Old() *resource.State    { return s.old }
+func (s *DeleteStep) New() *resource.State    { return nil }
+func (s *DeleteStep) Res() *resource.State    { return s.old }
+func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 	// Refuse to delete protected resources.
@@ -282,16 +278,15 @@ func NewUpdateStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                      { return OpUpdate }
-func (s *UpdateStep) Plan() *Plan                     { return s.iter.p }
-func (s *UpdateStep) Iterator() *PlanIterator         { return s.iter }
-func (s *UpdateStep) Type() tokens.Type               { return s.old.Type }
-func (s *UpdateStep) URN() resource.URN               { return s.old.URN }
-func (s *UpdateStep) Old() *resource.State            { return s.old }
-func (s *UpdateStep) New() *resource.State            { return s.new }
-func (s *UpdateStep) Stables() []resource.PropertyKey { return s.stables }
-func (s *UpdateStep) Res() *resource.State            { return s.new }
-func (s *UpdateStep) Logical() bool                   { return true }
+func (s *UpdateStep) Op() StepOp              { return OpUpdate }
+func (s *UpdateStep) Plan() *Plan             { return s.iter.p }
+func (s *UpdateStep) Iterator() *PlanIterator { return s.iter }
+func (s *UpdateStep) Type() tokens.Type       { return s.old.Type }
+func (s *UpdateStep) URN() resource.URN       { return s.old.URN }
+func (s *UpdateStep) Old() *resource.State    { return s.old }
+func (s *UpdateStep) New() *resource.State    { return s.new }
+func (s *UpdateStep) Res() *resource.State    { return s.new }
+func (s *UpdateStep) Logical() bool           { return true }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	if preview {
@@ -358,17 +353,16 @@ func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State
 	}
 }
 
-func (s *ReplaceStep) Op() StepOp                      { return OpReplace }
-func (s *ReplaceStep) Plan() *Plan                     { return s.iter.p }
-func (s *ReplaceStep) Iterator() *PlanIterator         { return s.iter }
-func (s *ReplaceStep) Type() tokens.Type               { return s.old.Type }
-func (s *ReplaceStep) URN() resource.URN               { return s.old.URN }
-func (s *ReplaceStep) Old() *resource.State            { return s.old }
-func (s *ReplaceStep) New() *resource.State            { return s.new }
-func (s *ReplaceStep) Stables() []resource.PropertyKey { return nil }
-func (s *ReplaceStep) Res() *resource.State            { return s.new }
-func (s *ReplaceStep) Keys() []resource.PropertyKey    { return s.keys }
-func (s *ReplaceStep) Logical() bool                   { return true }
+func (s *ReplaceStep) Op() StepOp                   { return OpReplace }
+func (s *ReplaceStep) Plan() *Plan                  { return s.iter.p }
+func (s *ReplaceStep) Iterator() *PlanIterator      { return s.iter }
+func (s *ReplaceStep) Type() tokens.Type            { return s.old.Type }
+func (s *ReplaceStep) URN() resource.URN            { return s.old.URN }
+func (s *ReplaceStep) Old() *resource.State         { return s.old }
+func (s *ReplaceStep) New() *resource.State         { return s.new }
+func (s *ReplaceStep) Res() *resource.State         { return s.new }
+func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
+func (s *ReplaceStep) Logical() bool                { return true }
 
 func (s *ReplaceStep) Apply(preview bool) (resource.Status, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
