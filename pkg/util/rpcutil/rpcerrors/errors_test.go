@@ -1,0 +1,127 @@
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+
+package rpcerrors
+
+import (
+	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func TestError(t *testing.T) {
+	err := Error(codes.FailedPrecondition, "i failed a precondition")
+	rpcErr, ok := FromError(err)
+	if !assert.True(t, ok) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, codes.FailedPrecondition, rpcErr.Code())
+	assert.Equal(t, "i failed a precondition", rpcErr.Error())
+	assert.Nil(t, rpcErr.Cause())
+}
+
+func TestErrorf(t *testing.T) {
+	err := Errorf(codes.AlreadyExists, "foo %d already exists", 42)
+
+	rpcErr, ok := FromError(err)
+	if !assert.True(t, ok) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, codes.AlreadyExists, rpcErr.Code())
+	assert.Equal(t, "foo 42 already exists", rpcErr.Error())
+	assert.Nil(t, rpcErr.Cause())
+}
+
+func TestWrap(t *testing.T) {
+	first := errors.New("first error")
+	second := errors.Wrap(first, "second error")
+	third := errors.Wrap(second, "third error")
+	err := Wrap(codes.Aborted, third, "fourth error")
+
+	rpcErr, ok := FromError(err)
+	if !assert.True(t, ok) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, codes.Aborted, rpcErr.Code())
+	assert.Equal(t, "fourth error", rpcErr.Message())
+	if !assert.NotNil(t, rpcErr.Cause()) {
+		t.FailNow()
+	}
+
+	cause := rpcErr.Cause()
+	assert.Equal(t, "third error: second error: first error", cause.Message())
+
+	// pkg/errors attaches stack traces to errors.New and errors.Wrap, so we
+	// should have something.
+	assert.NotEqual(t, "", cause.StackTrace())
+}
+
+func TestWrapWithoutBase(t *testing.T) {
+	wrapped := errors.New("first error")
+	err := Wrap(codes.Unauthenticated, wrapped, "second error")
+
+	rpcErr, ok := FromError(err)
+	if !assert.True(t, ok) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, codes.Unauthenticated, rpcErr.Code())
+	assert.Equal(t, "second error", rpcErr.Message())
+	if !assert.NotNil(t, rpcErr.Cause()) {
+		t.FailNow()
+	}
+
+	cause := rpcErr.Cause()
+	assert.Equal(t, "first error", cause.Message())
+	assert.NotEqual(t, "", cause.StackTrace())
+}
+
+func TestFromErrorRoundtrip(t *testing.T) {
+	status := status.New(codes.NotFound, "this is a raw gRPC error")
+
+	// This scenario is exactly what RPC clients will see if they receive
+	// an error off the wire
+	rpcErr, ok := FromError(status.Err())
+	if !assert.True(t, ok) || !assert.NotNil(t, rpcErr) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, codes.NotFound, rpcErr.Code())
+	assert.Equal(t, "this is a raw gRPC error", rpcErr.Message())
+	assert.Nil(t, rpcErr.Cause())
+
+	// This is an elaborate no-op, but it's a different code path so it's still
+	// useful to test
+	rpcErrAgain, ok := FromError(rpcErr)
+	if !assert.True(t, ok) || !assert.NotNil(t, rpcErr) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, codes.NotFound, rpcErrAgain.Code())
+	assert.Equal(t, "this is a raw gRPC error", rpcErrAgain.Message())
+	assert.Nil(t, rpcErrAgain.Cause())
+}
+
+func TestErrorString(t *testing.T) {
+	err := errors.New("oh no")
+	withCause := Wrap(codes.NotFound, err, "thing failed")
+	unwrapped, ok := FromError(withCause)
+	if !assert.True(t, ok) || !assert.NotNil(t, unwrapped) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, "thing failed: oh no", unwrapped.Error())
+
+	withoutCause := Error(codes.NotFound, "thing failed 2")
+	unwrapped, ok = FromError(withoutCause)
+	if !assert.True(t, ok) || !assert.NotNil(t, unwrapped) {
+		t.FailNow()
+	}
+
+	assert.Equal(t, "thing failed 2", unwrapped.Error())
+}
