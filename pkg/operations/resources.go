@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/hashicorp/go-multierror"
-
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -88,17 +87,17 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 }
 
 // GetChild find a child with the given type and name or returns `nil`.
-func (r *Resource) GetChild(typ string, name string) *Resource {
+func (r *Resource) GetChild(typ string, name string) (*Resource, bool) {
 	for childURN, childResource := range r.Children {
 		if childURN.Stack() == r.Stack &&
 			childURN.Project() == r.Project &&
 			childURN.Type() == tokens.Type(typ) &&
 			childURN.Name() == tokens.QName(name) {
-			return childResource
+			return childResource, true
 		}
 	}
 
-	return nil
+	return nil, false
 }
 
 // OperationsProvider gets an OperationsProvider for this resource.
@@ -119,6 +118,10 @@ var _ Provider = (*resourceOperations)(nil)
 
 // GetLogs gets logs for a Resource
 func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
+	if ops.resource == nil {
+		return nil, nil
+	}
+
 	// Only get logs for this resource if it matches the resource filter query
 	if ops.matchesResourceFilter(query.ResourceFilter) {
 		// Set query to be a new query with `ResourceFilter` nil so that we don't filter out logs from any children of
