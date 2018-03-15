@@ -22,8 +22,12 @@ class Settings(object):
         # Actually connect to the monitor/engine over gRPC.
         if monitor:
             self.monitor = resource_pb2_grpc.ResourceMonitorStub(grpc.insecure_channel(monitor))
+        else:
+            self.monitor = None
         if engine:
             self.engine = engine_pb2_grpc.EngineStub(grpc.insecure_channel(engine))
+        else:
+            self.engine = None
 
 # default to "empty" settings.
 SETTINGS = Settings()

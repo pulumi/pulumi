@@ -37,7 +37,7 @@ class Stack(ComponentResource):
             self.register_outputs(self.outputs)
             # Intentionally leave this resource installed in case subsequent async work uses it.
 
-    def export(self, name, value):
+    def output(self, name, value):
         """
         Export a stack output with a given name and value.
         """
