@@ -105,7 +105,7 @@ func (diff *ArrayDiff) Len() int {
 }
 
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
-func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
+func (props PropertyMap) Diff(other PropertyMap, planning bool, stables []PropertyKey) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)
 	sames := make(PropertyMap)
@@ -117,13 +117,22 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 			// If a new exists, use it; for output properties, however, ignore differences.
 			if new.IsOutput() {
 				sames[k] = old
-			} else if diff := old.Diff(new); diff != nil {
+			} else if diff := old.Diff(new, planning, stables); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
 					deletes[k] = old
 				} else {
-					updates[k] = *diff
+					// During planning, if we are comparing stable properties, assume that
+					// they haven't changed.  This is the most likely case, and it prevents
+					// large fallout from conservatively assuming that they are changing
+					// when it's almost certainly the case that they're not.
+					isStable := contains(stables, k)
+					if planning && isStable {
+						sames[k] = old
+					} else {
+						updates[k] = *diff
+					}
 				}
 			} else {
 				sames[k] = old
@@ -153,8 +162,18 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 	}
 }
 
+func contains(array []PropertyKey, key PropertyKey) bool {
+	for _, val := range array {
+		if val == key {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
-func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
+func (v PropertyValue) Diff(other PropertyValue, planning bool, stables []PropertyKey) *ValueDiff {
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()
@@ -172,7 +191,7 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 		sames := make(map[int]PropertyValue)
 		updates := make(map[int]ValueDiff)
 		for i := 0; i < len(old) && i < len(new); i++ {
-			if diff := old[i].Diff(new[i]); diff != nil {
+			if diff := old[i].Diff(new[i], planning, stables); diff != nil {
 				updates[i] = *diff
 			} else {
 				sames[i] = old[i]
@@ -196,7 +215,7 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 	if v.IsObject() && other.IsObject() {
 		old := v.ObjectValue()
 		new := other.ObjectValue()
-		if diff := old.Diff(new); diff != nil {
+		if diff := old.Diff(new, planning, stables); diff != nil {
 			return &ValueDiff{
 				Old:    v,
 				New:    other,

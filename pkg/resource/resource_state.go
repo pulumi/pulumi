@@ -25,7 +25,9 @@ type State struct {
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool, dependencies []URN) *State {
+	inputs PropertyMap, outputs PropertyMap,
+	parent URN, protect bool, dependencies []URN) *State {
+
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
