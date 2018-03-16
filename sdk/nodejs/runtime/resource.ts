@@ -22,14 +22,15 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         (excessiveDebugOutput ? `, inputProps=...` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
-    // Note: a resource urn is considered stable by default.
+    // Note: a resource urn will always get a value, and thus the output property
+    // for it can always run .apply calls.
     let resolveURN: (urn: URN) => void;
     (res as any).urn = Output.create(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
             `resolveURN(${label})`),
-        Promise.resolve(true));
+        /*performApply:*/ Promise.resolve(true));
 
     // If a custom resource, make room for the ID property.
     let resolveID: ((v: ID) => void) | undefined;
