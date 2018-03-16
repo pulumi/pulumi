@@ -33,8 +33,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         /*performApply:*/ Promise.resolve(true));
 
     // If a custom resource, make room for the ID property.
-    let resolveID: ((v: ID) => void) | undefined;
-    let resolveIDPerformApply: ((v: boolean) => void) | undefined;
+    // tslint:disable:no-empty
+    let resolveID = (v: ID) => { };
+    let resolveIDPerformApply = (v: boolean) =>  { };
     if (custom) {
         (res as any).id = Output.create(
             res,
@@ -107,24 +108,13 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             const id = resp.getId();
             const outputProps = resp.getObject();
 
-            // Always make sure to resolve the URN property, even if it is undefined due to a
-            // missing monitor.
             resolveURN(urn);
 
-            // If an ID is present, then it's safe to say it's final, because the resource planner
-            // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
-            // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
-            // it to undefined (indicating it isn't known).
-            //
             // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
             // undefined so that later parts of our system don't have to deal with values like 'null'.
-            if (resolveID && resolveIDPerformApply) {
-                const idVal = id || undefined;
-                const performApply = idVal !== undefined;
-
-                resolveIDPerformApply(performApply);
-                resolveID(idVal);
-            }
+            const idVal = id || undefined;
+            resolveIDPerformApply(idVal !== undefined);
+            resolveID(idVal);
 
             // Produce a combined set of property states, starting with inputs and then applying
             // outputs.  If the same property exists in the inputs and outputs states, the output wins.
