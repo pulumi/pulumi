@@ -6,12 +6,51 @@ Resource-related runtime functions.  These are not designed for external use.
 
 from ..errors import RunError
 from google.protobuf import struct_pb2
-from proto import resource_pb2
+from proto import provider_pb2, resource_pb2
 from settings import get_monitor
 import six
 import sys
 
-def register_resource(res, typ, name, custom, props, opts):
+def invoke(tok, args):
+    """
+    Dynamically invokes the function identified by tok, which is implemented by a provider plugin.  The input args
+    is a dictionary of arbitrary values, and the return value contains a similar dictionary returned by the function.
+    """
+
+    # Ensure we have flushed all stdout/stderr, in case the RPC fails.
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    # Now perform the invocation.  This is synchronous and will return only after the operation completes.
+    # TODO(joe): asynchronous registration to support parallelism.
+    monitor = get_monitor()
+    resp = monitor.Invoke(provider_pb2.InvokeRequest(
+        tok=tok,
+        args=serialize_resource_props(args)))
+
+    # If the invoke failed, raise an error.
+    if resp.failures:
+        raise Exception('invoke of %s failed: %s (%s)' % (tok, resp.failures[0].reason, resp.failures[0].property))
+
+    # Otherwise, return the output properties.
+    rets = dict()
+    retobj = getattr(resp, 'return')
+    if retobj:
+        for k, v in retobj.items():
+            rets[k] = v
+    return rets
+
+class RegisterResourceResult:
+    """
+    RegisterResourceResult contains the assigned URN, the ID -- if applicable -- and the resulting resource
+    output properties, representing a resource's state after registration has completed.
+    """
+    def __init__(self, urn, id, outputs):
+        self.urn = urn
+        self.id = id
+        self.outputs = outputs
+
+def register_resource(typ, name, custom, props, opts):
     """
     Registers a new resource object with a given type and name.  This call is synchronous while the resource is
     created and All properties will be initialized to real property values once it completes.
@@ -35,20 +74,21 @@ def register_resource(res, typ, name, custom, props, opts):
         object=objprops,
         protect=opts.protect if opts else None))
 
-    # Now copy the URN and ID properties back onto the resource object.
-    res.urn = resp.urn
+    # Return the URN, ID, and output properties.
+    urn = resp.urn
     if custom:
-        if resp.id is None or resp.id == "":
-            res.id = UNKNOWN
+        if resp.id:
+            id = resp.id
         else:
-            res.id = resp.id
-
-    # Now let the class itself decide how to accept output properties, if desired.
+            id = UNKNOWN
+    else:
+        id = None
+    outputs = dict()
     if resp.object:
-        outs = dict()
         for k, v in resp.object.items():
-            outs[k] = v
-        res.set_outputs(outs)
+            outputs[k] = v
+
+    return RegisterResourceResult(urn, id, outputs)
 
 def register_resource_outputs(res, outputs):
     """
