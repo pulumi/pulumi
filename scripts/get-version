@@ -1,0 +1,25 @@
+#!/bin/bash
+set -o nounset -o errexit -o pipefail
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+COMMITISH=${1:-HEAD}
+DIRTY_TAG=""
+
+# Figure out if the worktree is dirty, we run update-index first
+# as we've seen cases in Travis where not doing so causes git to
+# treat the worktree as dirty when it is not.
+git update-index -q --refresh
+if ! git diff-files --quiet; then
+    DIRTY_TAG="-dirty"
+fi
+
+# If the commit in question has a tag applied to it directly, use it.
+if git describe --tags --exact-match "${COMMITISH}" >/dev/null 2>&1; then
+    echo "$(git describe --tags --exact-match "${COMMITISH}")${DIRTY_TAG}"
+    exit 0
+fi
+
+# Otherwise we don't have an exact tag, so produce one that is the
+# base tag, plus a timestamp and commit hash. We use the timestamp of
+# the commit itself, not the date it was authored (so it will change
+# when someone rebases a PR into master, for example).
+echo "$(git describe --tags --abbrev=0 ${COMMITISH})-$(git show -s --format='%ct-g%h' ${COMMITISH})${DIRTY_TAG}"

@@ -5,7 +5,7 @@ include build/common.mk
 PROJECT         := github.com/pulumi/pulumi
 PROJECT_PKGS    := $(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 EXTRA_TEST_PKGS := $(shell go list ./examples/ ./tests/... | grep -v /vendor/)
-VERSION         := $(shell git describe --tags --dirty 2>/dev/null)
+VERSION         := $(shell scripts/get-version)
 
 GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=Gometalinter.json
