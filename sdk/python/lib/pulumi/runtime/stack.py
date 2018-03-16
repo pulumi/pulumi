@@ -5,7 +5,7 @@ Support for automatic stack components.
 """
 
 from ..resource import ComponentResource
-from settings import get_root_resource, set_root_resource, SETTINGS
+from settings import get_project, get_stack, get_root_resource, set_root_resource
 
 def run_in_stack(func):
     """
@@ -25,7 +25,7 @@ class Stack(ComponentResource):
             raise Exception('Only one root Pulumi Stack may be active at once')
 
         # Now invoke the registration to begin creating this resource.
-        name = '%s-%s' % (SETTINGS.project, SETTINGS.stack)
+        name = '%s-%s' % (get_project(), get_stack())
         super(Stack, self).__init__('pulumi:pulumi:Stack', name, None, None)
 
         # Invoke the function while this stack is active and then register its outputs.

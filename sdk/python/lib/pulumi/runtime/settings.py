@@ -41,6 +41,18 @@ def configure(settings):
     global SETTINGS # pylint: disable=global-statement
     SETTINGS = settings
 
+def get_project():
+    """
+    Returns the current project name.
+    """
+    return SETTINGS.project
+
+def get_stack():
+    """
+    Returns the current stack name.
+    """
+    return SETTINGS.stack
+
 def get_monitor():
     """
     Returns the current resource monitoring service client for RPC communications.
