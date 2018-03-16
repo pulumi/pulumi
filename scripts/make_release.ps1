@@ -7,7 +7,7 @@ $Root=Join-Path $PSScriptRoot ".."
 $PublishDir=New-Item -ItemType Directory -Path "$env:TEMP\$([System.IO.Path]::GetRandomFileName())"
 $GitHash=$(git rev-parse HEAD)
 $PublishFile="$(Split-Path -Parent -Path $PublishDir)\$GitHash.zip"
-$Version = $(git describe --tags --dirty 2>$null)
+$Version = $( & "$PSScriptRoot\get-version.cmd")
 $Branch = $(if (Test-Path env:APPVEYOR_REPO_BRANCH) { $env:APPVEYOR_REPO_BRANCH } else { $(git rev-parse --abbrev-ref HEAD) })
 $PublishTargets = @($GitHash, $Version, $Branch)
 
