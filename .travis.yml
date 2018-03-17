@@ -17,7 +17,7 @@ install:
 before_script:
     - ./build/travis/ensure-dependencies
 script:
-    - make travis_${TRAVIS_EVENT_TYPE}
+    - go run inter.go
 after_failure:
     - "${PULUMI_HOME}/scripts/upload-failed-tests"
 notifications:

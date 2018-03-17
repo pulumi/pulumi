@@ -4,11 +4,8 @@ package cmdutil
 
 import (
 	"fmt"
-	"os"
 	"time"
 	"unicode/utf8"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // NewSpinnerAndTicker returns a new Spinner and a ticker that will fire an event when the next call to Spinner.Tick()
@@ -25,7 +22,7 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string) (Spinner, *time.Tick
 		}
 	}
 
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+	if Interactive() {
 		return &ttySpinner{
 			prefix: prefix,
 			frames: ttyFrames,
