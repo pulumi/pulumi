@@ -22,8 +22,12 @@ class Settings(object):
         # Actually connect to the monitor/engine over gRPC.
         if monitor:
             self.monitor = resource_pb2_grpc.ResourceMonitorStub(grpc.insecure_channel(monitor))
+        else:
+            self.monitor = None
         if engine:
             self.engine = engine_pb2_grpc.EngineStub(grpc.insecure_channel(engine))
+        else:
+            self.engine = None
 
 # default to "empty" settings.
 SETTINGS = Settings()
@@ -36,6 +40,18 @@ def configure(settings):
         raise TypeError('Settings is expected to be non-None and of type Settings')
     global SETTINGS # pylint: disable=global-statement
     SETTINGS = settings
+
+def get_project():
+    """
+    Returns the current project name.
+    """
+    return SETTINGS.project
+
+def get_stack():
+    """
+    Returns the current stack name.
+    """
+    return SETTINGS.stack
 
 def get_monitor():
     """
