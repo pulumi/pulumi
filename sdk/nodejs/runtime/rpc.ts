@@ -117,7 +117,6 @@ export function resolveProperties(
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
-            const outputProp: Output<any> = (<any>res)[k];
             if (!options.dryRun) {
                 // normal 'pulumi update'.  resolve the output with the value we got back
                 // from the engine.  That output can always run its .apply calls.
