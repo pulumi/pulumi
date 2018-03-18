@@ -33,15 +33,22 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         /*performApply:*/ Promise.resolve(true));
 
     // If a custom resource, make room for the ID property.
-    // tslint:disable:no-empty
-    let resolveID = (v: ID) => { };
-    let resolveIDPerformApply = (v: boolean) =>  { };
+    let resolveID: (v: any, performApply: boolean) => void;
+
     if (custom) {
+        let resolveValue: (v: ID) => void;
+        let resolvePerformApply: (v: boolean) => void;
+
+        resolveID = (v, performApply) => {
+            resolveValue(v);
+            resolvePerformApply(performApply);
+        };
+
         (res as any).id = Output.create(
             res,
-            debuggablePromise(new Promise<ID>(resolve => resolveID = resolve), `resolveID(${label})`),
+            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
             debuggablePromise(new Promise<boolean>(
-                resolve => resolveIDPerformApply = resolve), `resolveIDPerformApply(${label})`));
+                resolve => resolvePerformApply = resolve), `resolveIDPerformApply(${label})`));
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
@@ -112,9 +119,10 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
             // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
             // undefined so that later parts of our system don't have to deal with values like 'null'.
-            const idVal = id || undefined;
-            resolveIDPerformApply(idVal !== undefined);
-            resolveID(idVal);
+            if (resolveID) {
+                const idVal = id || undefined;
+                resolveID(idVal, idVal !== undefined);
+            }
 
             // Produce a combined set of property states, starting with inputs and then applying
             // outputs.  If the same property exists in the inputs and outputs states, the output wins.
