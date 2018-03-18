@@ -86,7 +86,13 @@ func TestStackCommands(t *testing.T) {
 		// Confirm passing both --local and --remote fails.
 		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--local", "--remote")
 		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "cannot pass both --local and --remote")
+		assert.Contains(t, err, "cannot pass both --local with either --remote or --cloud-url")
+
+		// Confirm passing both --local and --cloud-url similarly fails.
+		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo",
+			"--local", "--cloud-url", "https://api.pulumi.com/api")
+		assert.Empty(t, out, "expected no stdout")
+		assert.Contains(t, err, "cannot pass both --local with either --remote or --cloud-url")
 
 		// Confirm passing --remote while logged out fails.
 		e.RunCommand("pulumi", "logout")
