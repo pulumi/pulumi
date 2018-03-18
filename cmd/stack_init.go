@@ -28,7 +28,8 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			cloudURL = cloud.ValueOrDefaultURL(cloudURL)
+			// If --cloud-url was passed, infer that the user wanted --remote.
+			remoteBackend = remoteBackend || cloudURL != ""
 
 			var b backend.Backend
 			var opts interface{}
@@ -37,16 +38,16 @@ func newStackInitCmd() *cobra.Command {
 					return errors.New("cannot pass both --local and --ppc; PPCs only available in cloud mode")
 				}
 				if remoteBackend {
-					return errors.New("cannot pass both --local and --remote")
+					return errors.New("cannot pass both --local with either --remote or --cloud-url")
 				}
 				b = local.New(cmdutil.Diag())
-			} else if isLoggedIn(cloudURL) {
-				b = cloud.New(cmdutil.Diag(), cloudURL)
+			} else if url := cloud.ValueOrDefaultURL(cloudURL); isLoggedIn(url) {
+				b = cloud.New(cmdutil.Diag(), url)
 				opts = cloud.CreateStackOptions{CloudName: ppc}
 			} else {
-				// If the user is not logged in and --remote was passed, fail.
+				// If the user is not logged in and --remote or --cloud-url was passed, fail.
 				if remoteBackend {
-					return errors.New("you must be logged in to create stacks in the Pulumi Cloud. Run " +
+					return errors.Errorf("you must be logged in to create stacks in the Pulumi Cloud. Run " +
 						"`pulumi login` to log in.")
 				}
 				b = local.New(cmdutil.Diag())
