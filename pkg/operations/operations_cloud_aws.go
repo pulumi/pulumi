@@ -54,7 +54,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// We get the aws:serverless:Function child and request it's logs, parsing out the user-visible content from
 		// those logs to project into our own log output, but leaving out explicit Lambda metadata.
 		name := string(state.URN.Name())
-		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		serverlessFunction, ok := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		if !ok {
+			glog.V(6).Infof("Child resource (type %v, name %v) not found", awsServerlessFunctionTypeName, name)
+			return nil, nil
+		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
@@ -79,7 +83,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// live Lambda logs from individual functions, de-duplicating the results, to piece together the full set of
 		// logs.
 		name := string(state.URN.Name())
-		serverlessFunction := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		serverlessFunction, ok := ops.component.GetChild(awsServerlessFunctionTypeName, name)
+		if !ok {
+			glog.V(6).Infof("Child resource (type %v, name %v) not found", awsServerlessFunctionTypeName, name)
+			return nil, nil
+		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err
@@ -123,7 +131,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		// populated by user code within containers, so we can safely project these logs back unmodified.
 		urn := state.URN
 		name := string(urn.Name())
-		logGroup := ops.component.GetChild(awsLogGroupTypeName, name)
+		logGroup, ok := ops.component.GetChild(awsLogGroupTypeName, name)
+		if !ok {
+			glog.V(6).Infof("Child resource (type %v, name %v) not found", awsLogGroupTypeName, name)
+			return nil, nil
+		}
 		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
 		if err != nil {
 			return nil, err

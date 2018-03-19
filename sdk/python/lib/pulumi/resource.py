@@ -38,13 +38,26 @@ class Resource(object):
         # Now register the resource.  If we are actually performing a deployment, this resource's properties
         # will be resolved to real values.  If we are only doing a dry-run preview, on the other hand, they will
         # resolve to special Preview sentinel values to indicate the value isn't yet available.
-        register_resource(self, t, name, custom, props, opts)
+        result = register_resource(t, name, custom, props, opts)
+
+        # Set the URN, ID, and output properties.
+        self.urn = result.urn
+        """
+        The stable, logical URN used to distinctly address a resource, both before and after deployments.
+        """
+        if result.id:
+            self.id = result.id
+            """
+            The provider-assigned unique ID for this managed resource.  It is set during deployments and may
+            be missing during planning phases.
+            """
+        if result.outputs:
+            self.set_outputs(result.outputs)
 
     def set_outputs(self, outputs):
         """
         Sets output properties after a registration has completed.
         """
-        # By default, do nothing.  If subclasses wish to support provider outputs, they must override this.
 
 class ResourceOptions(object):
     """
@@ -71,6 +84,7 @@ class ComponentResource(Resource):
     """
     def __init__(self, t, name, props=None, opts=None):
         Resource.__init__(self, t, name, False, props, opts)
+        self.id = None
 
     def register_outputs(self, outputs):
         """
@@ -80,10 +94,10 @@ class ComponentResource(Resource):
         if outputs:
             register_resource_outputs(self, outputs)
 
-def export(name, value):
+def output(name, value):
     """
     Exports a named stack output.
     """
     stack = get_root_resource()
     if stack is not None:
-        stack.export(name, value)
+        stack.output(name, value)

@@ -188,10 +188,14 @@ describe("rpc", () => {
                     case "test:index:ResourceB": {
                         assert.strictEqual(name, "resourceB");
                         assert.deepEqual(dependencies, ["test:index:ResourceA::resourceA"]);
+
                         if (dryrun) {
-                            // If this is a dry-run, we won't have the real values:
+                            // If this is a dry-run, we will have the values of the original
+                            // resource copied over as outputs.  Note: this should really
+                            // only be done for values known to be stable.  This is tracked
+                            // by: https://github.com/pulumi/pulumi/issues/1055
                             assert.deepEqual(res, {
-                                otherIn: runtime.undefinedValue,
+                                otherIn: 777,
                                 otherOut: runtime.undefinedValue,
                             });
                         }
@@ -202,6 +206,7 @@ describe("rpc", () => {
                                 otherOut: "output yeah",
                             });
                         }
+
                         if (!dryrun) {
                             id = name;
                         }

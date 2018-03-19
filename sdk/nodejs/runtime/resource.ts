@@ -22,21 +22,33 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         (excessiveDebugOutput ? `, inputProps=...` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
+    // Note: a resource urn will always get a value, and thus the output property
+    // for it can always run .apply calls.
     let resolveURN: (urn: URN) => void;
     (res as any).urn = Output.create(
         res,
         debuggablePromise(
             new Promise<URN>(resolve => resolveURN = resolve),
-            `resolveURN(${label})`));
+            `resolveURN(${label})`),
+        /*performApply:*/ Promise.resolve(true));
 
     // If a custom resource, make room for the ID property.
-    let resolveID: ((v: ID) => void) | undefined;
+    let resolveID: (v: any, performApply: boolean) => void;
+
     if (custom) {
+        let resolveValue: (v: ID) => void;
+        let resolvePerformApply: (v: boolean) => void;
+
+        resolveID = (v, performApply) => {
+            resolveValue(v);
+            resolvePerformApply(performApply);
+        };
+
         (res as any).id = Output.create(
             res,
-            debuggablePromise(
-                new Promise<ID>(resolve => resolveID = resolve),
-                `resolveID(${label})`));
+            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
+            debuggablePromise(new Promise<boolean>(
+                resolve => resolvePerformApply = resolve), `resolveIDPerformApply(${label})`));
     }
 
     // Now "transfer" all input properties into unresolved Promises on res.  This way,
@@ -102,24 +114,14 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             const urn = resp.getUrn();
             const id = resp.getId();
             const outputProps = resp.getObject();
-            const stable = resp.getStable();
 
-            const stablesList: string[] | undefined = resp.getStablesList();
-            const stables = new Set<string>(stablesList);
-
-            // Always make sure to resolve the URN property, even if it is undefined due to a
-            // missing monitor.
             resolveURN(urn);
 
-            // If an ID is present, then it's safe to say it's final, because the resource planner
-            // wouldn't hand it back to us otherwise (e.g., if the resource was being replaced, it
-            // would be missing).  If it isn't available, ensure the ID gets resolved, just resolve
-            // it to undefined (indicating it isn't known).
-            //
             // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
             // undefined so that later parts of our system don't have to deal with values like 'null'.
             if (resolveID) {
-                resolveID(id || undefined);
+                const idVal = id || undefined;
+                resolveID(idVal, idVal !== undefined);
             }
 
             // Produce a combined set of property states, starting with inputs and then applying
@@ -146,7 +148,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 }
             }
 
-            resolveProperties(res, resolvers, t, name, allProps, stable, stables);
+            resolveProperties(res, resolvers, t, name, allProps);
         });
     }));
 }
