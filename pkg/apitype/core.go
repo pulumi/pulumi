@@ -80,6 +80,12 @@ type Resource struct {
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	// Status has the mutation status of this resource
+	Status resource.MutationStatus `json:"status,omitempty" yaml:"status,omitempty"`
+	// CreatedAt is the time when this resource was created
+	CreatedAt time.Time `json:"created_at,omitempty" yaml:"created_at,omitempty"`
+	// UpdatedAt is the time when this resource was last updated
+	UpdatedAt time.Time `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
 }

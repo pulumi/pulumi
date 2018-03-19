@@ -9,13 +9,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
+func Preview(u UpdateInfo, manager SnapshotManager, events chan<- Event, opts UpdateOptions) error {
 	contract.Require(u != nil, "u")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	ctx, err := newPlanContext(u, manager)
 	if err != nil {
 		return err
 	}

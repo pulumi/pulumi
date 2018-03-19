@@ -145,18 +145,20 @@ func (b *localBackend) Preview(
 		return err
 	}
 
+	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
 	go DisplayEvents("previewing", events, done, displayOpts)
 
-	if err = engine.Preview(update, events, opts); err != nil {
+	if err = engine.Preview(update, manager, events, opts); err != nil {
 		return err
 	}
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreError(manager.Close())
 	return nil
 }
 
@@ -177,8 +179,8 @@ func (b *localBackend) Update(
 	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
 		stackName, proj, root, m, opts, displayOpts,
-		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
-			return engine.Update(update, events, opts)
+		func(update *update, manager *backend.SnapshotManager, events chan engine.Event) (engine.ResourceChanges, error) {
+			return engine.Update(update, manager, events, opts)
 		},
 	)
 }
@@ -189,8 +191,8 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
 		stackName, proj, root, m, opts, displayOpts,
-		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
-			return engine.Destroy(update, events, opts)
+		func(update *update, manager *backend.SnapshotManager, events chan engine.Event) (engine.ResourceChanges, error) {
+			return engine.Destroy(update, manager, events, opts)
 		},
 	)
 }
@@ -198,13 +200,13 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
-	performEngineOp func(*update, chan engine.Event) (engine.ResourceChanges, error)) error {
-
+	performEngineOp func(*update, *backend.SnapshotManager, chan engine.Event) (engine.ResourceChanges, error)) error {
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
 
+	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
@@ -212,12 +214,13 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, events)
+	changes, updateErr := performEngineOp(update, manager, events)
 	end := time.Now().Unix()
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreError(manager.Close())
 
 	// Save update results.
 	result := backend.SucceededResult

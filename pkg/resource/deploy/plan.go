@@ -47,7 +47,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	if prev != nil {
 		for _, oldres := range prev.Resources {
 			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
-			if oldres.Delete {
+			if oldres.Delete || oldres.Status == resource.ResourceStatusPendingDeletion {
 				continue
 			}
 

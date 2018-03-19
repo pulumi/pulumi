@@ -94,9 +94,10 @@ type cloudUpdate struct {
 	update      client.UpdateIdentifier
 	tokenSource *tokenSource
 
-	root   string
-	proj   *workspace.Project
-	target *deploy.Target
+	root    string
+	proj    *workspace.Project
+	target  *deploy.Target
+	manager *backend.SnapshotManager
 }
 
 func (u *cloudUpdate) GetRoot() string {
@@ -109,32 +110,6 @@ func (u *cloudUpdate) GetProject() *workspace.Project {
 
 func (u *cloudUpdate) GetTarget() *deploy.Target {
 	return u.target
-}
-
-type cloudStackMutation struct {
-	update *cloudUpdate
-}
-
-func (u *cloudUpdate) BeginMutation() (engine.SnapshotMutation, error) {
-	// invalidate the current checkpoint
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return nil, err
-	}
-	if err = u.backend.client.InvalidateUpdateCheckpoint(u.update, token); err != nil {
-		return nil, err
-	}
-	return &cloudStackMutation{update: u}, nil
-}
-
-func (m *cloudStackMutation) End(snapshot *deploy.Snapshot) error {
-	// Upload the new checkpoint.
-	token, err := m.update.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-	deployment := stack.SerializeDeployment(snapshot)
-	return m.update.backend.client.PatchUpdateCheckpoint(m.update.update, deployment, token)
 }
 
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
@@ -233,15 +208,22 @@ func (b *cloudBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 		return nil, err
 	}
 
+	persister := &cloudSnapshotPersister{backend: b, tokenSource: tokenSource}
+
 	// Construct and return a new update.
-	return &cloudUpdate{
+	updateImpl := &cloudUpdate{
 		backend:     b,
 		update:      update,
 		tokenSource: tokenSource,
 		root:        root,
 		proj:        proj,
 		target:      target,
-	}, nil
+		manager:     nil,
+	}
+
+	persister.update = updateImpl
+	updateImpl.manager = backend.NewSnapshotManager(persister, updateImpl)
+	return updateImpl, nil
 }
 
 func (b *cloudBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
@@ -275,4 +257,20 @@ func (b *cloudBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 		Decrypter: decrypter,
 		Snapshot:  snapshot,
 	}, nil
+}
+
+type cloudSnapshotPersister struct {
+	update      *cloudUpdate
+	backend     *cloudBackend
+	tokenSource *tokenSource
+}
+
+func (b *cloudSnapshotPersister) SaveSnapshot(snap *deploy.Snapshot) error {
+	token, err := b.tokenSource.GetToken()
+	if err != nil {
+		return err
+	}
+
+	deployment := stack.SerializeDeployment(snap)
+	return b.backend.client.PatchUpdateCheckpoint(b.update.update, deployment, token)
 }

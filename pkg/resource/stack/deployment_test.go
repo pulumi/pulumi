@@ -4,6 +4,7 @@ package stack
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -13,6 +14,8 @@ import (
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
+	fakeCreateTime := time.Unix(1521574406, 0)
+	fakeUpdateTime := time.Unix(1521574414, 0)
 	res := resource.NewState(
 		tokens.Type("Test"),
 		resource.NewURN(
@@ -56,6 +59,9 @@ func TestDeploymentSerialization(t *testing.T) {
 		}),
 		"",
 		false,
+		resource.ResourceStatusCreated,
+		fakeCreateTime,
+		fakeUpdateTime,
 		[]resource.URN{
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
@@ -69,6 +75,9 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.NotNil(t, dep.ID)
 	assert.Equal(t, resource.ID("test-resource-x"), dep.ID)
 	assert.Equal(t, tokens.Type("Test"), dep.Type)
+	assert.Equal(t, resource.ResourceStatusCreated, dep.Status)
+	assert.Equal(t, fakeCreateTime, dep.CreatedAt)
+	assert.Equal(t, fakeUpdateTime, dep.UpdatedAt)
 	assert.Equal(t, 2, len(dep.Dependencies))
 	assert.Equal(t, resource.URN("foo:bar:baz"), dep.Dependencies[0])
 	assert.Equal(t, resource.URN("foo:bar:boo"), dep.Dependencies[1])
