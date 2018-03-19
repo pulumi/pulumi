@@ -46,7 +46,7 @@
 </Target>
 
   <Target Name="TypeScriptCompileNodeSdk">
-    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
     <Exec Command="yarn run tsc" WorkingDirectory="$(NodeJSSdkDirectory)" />
@@ -60,7 +60,7 @@
       <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" />
     </ItemGroup>
 
-    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
 
@@ -120,7 +120,7 @@
       <GoCmdsToBuild Include="github.com/pulumi/pulumi" />
     </ItemGroup>
 
-    <Exec Command="git describe --tags 2>nul" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
 

@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python
-VERSION          := $(shell git describe --tags --dirty 2>/dev/null | sed "s/v//" | sed "s/-/+/" | sed "s/-/./g")
+VERSION          := $(shell ../../scripts/get-version | sed "s/v//" | sed "s/-/+/" | sed "s/-/./g")
 
 PYENV := env
 PYENVBIN := $(PYENV)/bin
