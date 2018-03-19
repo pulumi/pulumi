@@ -6,7 +6,7 @@ ROOT=$(dirname $0)/..
 PUBDIR=$(mktemp -du)
 GITHASH=$(git rev-parse HEAD)
 PUBFILE=$(dirname ${PUBDIR})/${GITHASH}.tgz
-VERSION=$(./get-version)
+VERSION=$($ROOT/scripts/get-version)
 
 # Figure out which branch we're on. Prefer $TRAVIS_BRANCH, if set, since
 # Travis leaves us at detached HEAD and `git rev-parse` just returns "HEAD".
