@@ -22,7 +22,7 @@ def invoke(tok, args):
     sys.stderr.flush()
 
     # Now perform the invocation.  This is synchronous and will return only after the operation completes.
-    # TODO(joe): asynchronous registration to support parallelism.
+    # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
     monitor = get_monitor()
     resp = monitor.Invoke(provider_pb2.InvokeRequest(
         tok=tok,
@@ -64,7 +64,7 @@ def register_resource(typ, name, custom, props, opts):
     sys.stderr.flush()
 
     # Now perform the resource registration.  This is synchronous and will return only after the operation completes.
-    # TODO(joe): asynchronous registration to support parallelism.
+    # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
     monitor = get_monitor()
     resp = monitor.RegisterResource(resource_pb2.RegisterResourceRequest(
         type=typ,
@@ -103,7 +103,7 @@ def register_resource_outputs(res, outputs):
     sys.stderr.flush()
 
     # Now perform the output registration.  This is synchronous and will return only after the operation completes.
-    # TODO(joe): asynchronous registration to support parallelism.
+    # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
     monitor = get_monitor()
     monitor.RegisterResourceOutputs(resource_pb2.RegisterResourceOutputsRequest(
         urn=res.urn,
@@ -144,5 +144,5 @@ def serialize_resource_value(value):
         return a
     else:
         # All other values are directly serializable.
-        # TODO(joe): eventually, we want to think about Output, Properties, and so on.
+        # TODO[pulumi/pulumi#1063]: eventually, we want to think about Output, Properties, and so on.
         return value
