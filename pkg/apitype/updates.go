@@ -56,21 +56,6 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
-// UpdateProgramRequestUntyped is a legacy type: see comment in pulumi-service stacks_update.go
-// unmarshalConfig()
-// TODO(#478): remove support for string-only config.
-type UpdateProgramRequestUntyped struct {
-	// Properties from the Project file.
-	Name        string `json:"name"`
-	Runtime     string `json:"runtime"`
-	Main        string `json:"main"`
-	Description string `json:"description"`
-
-	// Configuration values. Note that although the element type of this map is an `interface{}`, the value
-	// must be either a string or a ConfigValue.
-	Config map[string]interface{} `json:"config"`
-}
-
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
