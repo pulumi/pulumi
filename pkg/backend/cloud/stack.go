@@ -59,7 +59,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		name:      stackName,
-		cloudURL:  b.cloudURL,
+		cloudURL:  b.CloudURL(),
 		orgName:   apistack.OrgName,
 		cloudName: apistack.CloudName,
 		config:    nil, // TODO[pulumi/pulumi-service#249]: add the config variables.

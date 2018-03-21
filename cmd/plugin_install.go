@@ -74,7 +74,11 @@ func newPluginInstallCmd() *cobra.Command {
 			// Target the cloud URL for downloads.
 			var releases cloud.Backend
 			if len(installs) > 0 && file == "" {
-				releases = cloud.New(cmdutil.Diag(), cloud.ValueOrDefaultURL(cloudURL))
+				r, err := cloud.New(cmdutil.Diag(), cloud.ValueOrDefaultURL(cloudURL))
+				if err != nil {
+					return errors.Wrap(err, "creating API client")
+				}
+				releases = r
 			}
 
 			// Now for each kind, name, version pair, download it from the release website, and install it.
