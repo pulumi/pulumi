@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+# Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 import argparse
 import os

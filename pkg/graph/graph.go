@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 // Package graph defines resource graphs.  Each graph is directed and acyclic, and the nodes have been topologically
 // sorted based on dependencies (edges) between them.  Each node in the graph has a type and a set of properties.

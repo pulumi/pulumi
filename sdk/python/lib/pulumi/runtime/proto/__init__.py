@@ -1,4 +1,4 @@
-# Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+# Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 """
 The Pulumi SDK runtime's Protobufs and gRPC stubs.  These are meant for internal use only.

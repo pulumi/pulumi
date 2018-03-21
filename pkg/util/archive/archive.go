@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 // Package archive provides support for creating zip archives of local folders and returning the
 // in-memory buffer. This is how we pass Pulumi program source to the Cloud for hosted scenarios,
