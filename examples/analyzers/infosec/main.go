@@ -66,7 +66,7 @@ func (a *analyzer) analyzeAWSEC2Instance(bag *pbstruct.Struct) []*lumirpc.Analyz
 		{
 			Property: "imageId",
 			Reason: fmt.Sprintf(
-				"AMI '%v' has known unpatched security vulnerabilities (CVE-2018-6410, CVE-2017-2326)", image),
+				"AMI '%v' has known unpatched security vulnerabilities (CVE-2017-6410, CVE-2017-2326)", image),
 		},
 	}
 }
