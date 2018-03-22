@@ -42,7 +42,11 @@ func newStackInitCmd() *cobra.Command {
 				}
 				b = local.New(cmdutil.Diag())
 			} else if url := cloud.ValueOrDefaultURL(cloudURL); isLoggedIn(url) {
-				b = cloud.New(cmdutil.Diag(), url)
+				c, err := cloud.New(cmdutil.Diag(), url)
+				if err != nil {
+					return errors.Wrap(err, "creating API client")
+				}
+				b = c
 				opts = cloud.CreateStackOptions{CloudName: ppc}
 			} else {
 				// If the user is not logged in and --remote or --cloud-url was passed, fail.
