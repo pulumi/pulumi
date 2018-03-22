@@ -477,7 +477,7 @@ func (b *cloudBackend) runEngineAction(action client.UpdateKind, stackName token
 		}
 		completeErr := u.Complete(status)
 		if completeErr != nil {
-			err = multierror.Append(completeErr)
+			err = multierror.Append(err, completeErr)
 		}
 	}
 	return err
