@@ -223,7 +223,7 @@ type GetApplyUpdateResultsResponse UpdateResults
 // endpoint of the PPC API.
 type GetPreviewUpdateResultsResponse UpdateResults
 
-// RenewUpdateLeaseRequest defines the body of a requst to the update lease renewal endpoint of the service API.
+// RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
 type RenewUpdateLeaseRequest struct {
 	// The current, valid lease token.
 	Token string `json:"token"`

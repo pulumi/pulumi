@@ -52,18 +52,25 @@ type UpdateIdentifier struct {
 	UpdateID   string
 }
 
+// accessTokenKind is enumerates the various types of access token used with the Pulumi API. These kinds correspond
+// directly to the "method" piece of an HTTP `Authorization` header.
 type accessTokenKind string
 
 const (
-	accessTokenKindAPIToken    accessTokenKind = "token"
+	// accessTokenKindAPIToken denotes a standard Pulumi API token.
+	accessTokenKindAPIToken accessTokenKind = "token"
+	// accessTokenKindUpdateToken denotes an update lease token.
 	accessTokenKindUpdateToken accessTokenKind = "update-token"
 )
 
+// accessToken is an abstraction over the two different kinds of access tokens used by the Pulumi API.
 type accessToken interface {
 	Kind() accessTokenKind
 	String() string
 }
 
+// apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
+// accessTokenKindAPIToken)
 type apiAccessToken string
 
 func (apiAccessToken) Kind() accessTokenKind {
@@ -74,6 +81,8 @@ func (t apiAccessToken) String() string {
 	return string(t)
 }
 
+// updateAccessToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
+// accessTokenKindUpdateToken)
 type updateAccessToken string
 
 func (updateAccessToken) Kind() accessTokenKind {
