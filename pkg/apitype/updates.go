@@ -71,6 +71,9 @@ type StartUpdateResponse struct {
 	// Version is the version of the program once the update is complete.
 	// (Will be the current, unchanged value for previews.)
 	Version int `json:"version"`
+
+	// Token is the lease token (if any) to be used to authorize operations on this update.
+	Token string `json:"token,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -219,3 +222,44 @@ type GetApplyUpdateResultsResponse UpdateResults
 // GetPreviewUpdateResultsResponse describes the data returned by the `GET /updates/{updateID}/preview`
 // endpoint of the PPC API.
 type GetPreviewUpdateResultsResponse UpdateResults
+
+// RenewUpdateLeaseRequest defines the body of a request to the update lease renewal endpoint of the service API.
+type RenewUpdateLeaseRequest struct {
+	// The current, valid lease token.
+	Token string `json:"token"`
+	// The duration for which to renew the lease in seconds (maximum 300).
+	Duration int `json:"duration"`
+}
+
+// RenewUpdateLeaseResponse defines the data returned by the update lease renewal endpoint of the service API.
+type RenewUpdateLeaseResponse struct {
+	// The renewed token.
+	Token string `json:"token"`
+}
+
+const (
+	// UpdateStatusSucceeded indicates that an update completed successfully.
+	UpdateStatusSucceeded UpdateStatus = "succeeded"
+	// UpdateStatusFailed indicates that an update completed with one or more failures.
+	UpdateStatusFailed UpdateStatus = "failed"
+	// UpdateStatusCancelled indicates that an update completed due to cancellation.
+	UpdateStatusCancelled UpdateStatus = "cancelled"
+)
+
+// CompleteUpdateRequest defines the body of a reqeust to the update completion endpoint of the service API.
+type CompleteUpdateRequest struct {
+	Status UpdateStatus `json:"status"`
+}
+
+// PatchUpdateCheckpointRequest defines the body of a request to the patch update checkpoint endpoint of the service
+// API.
+type PatchUpdateCheckpointRequest struct {
+	IsInvalid  bool        `json:"isInvalid"`
+	Deployment *Deployment `json:"deployment,omitempty"`
+}
+
+// AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
+type AppendUpdateLogEntryRequest struct {
+	Kind   string                 `json:"kind"`
+	Fields map[string]interface{} `json:"fields"`
+}

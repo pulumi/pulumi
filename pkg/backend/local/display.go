@@ -3,6 +3,7 @@
 package local
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -19,10 +20,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// displayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
+// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
 // Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
 // await all the events being written.
-func displayEvents(action string,
+func DisplayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
@@ -38,47 +39,58 @@ func displayEvents(action string,
 		case <-ticker.C:
 			spinner.Tick()
 		case event := <-events:
-			var out io.Writer
-			var msg string
 			spinner.Reset()
-			switch event.Type {
-			case engine.CancelEvent:
-				return
-			case engine.PreludeEvent:
-				DisplayPreludeEvent(os.Stdout, event.Payload.(engine.PreludeEventPayload), opts)
-			case engine.SummaryEvent:
-				DisplaySummaryEvent(os.Stdout, event.Payload.(engine.SummaryEventPayload), opts)
-			case engine.ResourceOperationFailed:
-				DisplayResourceOperationFailedEvent(os.Stdout,
-					event.Payload.(engine.ResourceOperationFailedPayload), opts)
-			case engine.ResourceOutputsEvent:
-				DisplayResourceOutputsEvent(os.Stdout, event.Payload.(engine.ResourceOutputsEventPayload), opts)
-			case engine.ResourcePreEvent:
-				DisplayResourcePreEvent(os.Stdout, event.Payload.(engine.ResourcePreEventPayload), opts)
-			case engine.StdoutColorEvent:
-				payload := event.Payload.(engine.StdoutEventPayload)
-				out = os.Stdout
-				msg = opts.Color.Colorize(payload.Message)
-			case engine.DiagEvent:
+
+			out := os.Stdout
+			if event.Type == engine.DiagEvent {
 				payload := event.Payload.(engine.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = os.Stderr
-				} else if payload.Severity != diag.Debug || debug {
-					out = os.Stdout
 				}
-				msg = opts.Color.Colorize(payload.Message)
-			default:
-				contract.Failf("unknown event type '%s'", event.Type)
 			}
 
+			msg := RenderEvent(event, debug, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
+			}
+
+			if event.Type == engine.CancelEvent {
+				return
 			}
 		}
 	}
 }
 
-func DisplaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts backend.DisplayOptions) {
+func RenderEvent(event engine.Event, debug bool, opts backend.DisplayOptions) string {
+	switch event.Type {
+	case engine.CancelEvent:
+		return ""
+	case engine.PreludeEvent:
+		return RenderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+	case engine.SummaryEvent:
+		return RenderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+	case engine.ResourceOperationFailed:
+		return RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+	case engine.ResourceOutputsEvent:
+		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), opts)
+	case engine.ResourcePreEvent:
+		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), opts)
+	case engine.StdoutColorEvent:
+		payload := event.Payload.(engine.StdoutEventPayload)
+		return opts.Color.Colorize(payload.Message)
+	case engine.DiagEvent:
+		payload := event.Payload.(engine.DiagEventPayload)
+		if payload.Severity == diag.Debug && !debug {
+			return ""
+		}
+		return opts.Color.Colorize(payload.Message)
+	default:
+		contract.Failf("unknown event type '%s'", event.Type)
+		return ""
+	}
+}
+
+func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -106,6 +118,7 @@ func DisplaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts b
 		kind += ":"
 	}
 
+	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vinfo%v: %v %v %v\n",
 		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changeCount), kind)))
 
@@ -138,9 +151,13 @@ func DisplaySummaryEvent(out io.Writer, event engine.SummaryEventPayload, opts b
 				colors.SpecUnimportant, event.Duration, colors.Reset)))
 		}
 	}
+
+	return out.String()
 }
 
-func DisplayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts backend.DisplayOptions) {
+func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions) string {
+	out := &bytes.Buffer{}
+
 	if opts.ShowConfig {
 		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset)))
 
@@ -161,10 +178,12 @@ func DisplayPreludeEvent(out io.Writer, event engine.PreludeEventPayload, opts b
 
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%v%v changes:%v\n", colors.SpecUnimportant, action, colors.Reset)))
+
+	return out.String()
 }
 
-func DisplayResourceOperationFailedEvent(out io.Writer,
-	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) {
+func RenderResourceOperationFailedEvent(
+	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -172,9 +191,13 @@ func DisplayResourceOperationFailedEvent(out io.Writer,
 	//
 	// In the future, once we get more fine-grained error messages from providers,
 	// we can provide useful diagnostics here.
+
+	return ""
 }
 
-func DisplayResourcePreEvent(out io.Writer, event engine.ResourcePreEventPayload, opts backend.DisplayOptions) {
+func RenderResourcePreEvent(event engine.ResourcePreEventPayload, opts backend.DisplayOptions) string {
+	out := &bytes.Buffer{}
+
 	if shouldShow(event.Metadata, opts) || isRootStack(event.Metadata) {
 		fprintIgnoreError(out, opts.Color.Colorize(event.Summary))
 
@@ -184,12 +207,16 @@ func DisplayResourcePreEvent(out io.Writer, event engine.ResourcePreEventPayload
 
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 	}
+
+	return out.String()
 }
 
-func DisplayResourceOutputsEvent(out io.Writer, event engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) {
+func RenderResourceOutputsEvent(event engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) string {
+	out := &bytes.Buffer{}
 	if (shouldShow(event.Metadata, opts) || isRootStack(event.Metadata)) && !opts.Summary {
 		fprintIgnoreError(out, opts.Color.Colorize(event.Text))
 	}
+	return out.String()
 }
 
 // isRootStack returns true if the step pertains to the rootmost stack component.

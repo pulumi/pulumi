@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -25,14 +26,14 @@ import (
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL   string
-	apiToken string
+	apiToken apiAccessToken
 }
 
 // NewClient creates a new Pulumi API client with the given URL and API token.
 func NewClient(apiURL, apiToken string) *Client {
 	return &Client{
 		apiURL:   apiURL,
-		apiToken: apiToken,
+		apiToken: apiAccessToken(apiToken),
 	}
 }
 
@@ -45,6 +46,15 @@ func (pc *Client) apiCall(method, path string, body []byte) (string, *http.Respo
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(method, path string, queryObj, reqObj, respObj interface{}) error {
 	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken)
+}
+
+// updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
+// object. The call is authorized with the indicated update token. If a response object is provided, the server's
+// response is deserialized into that object.
+func (pc *Client) updateRESTCall(method, path string, queryObj, reqObj, respObj interface{},
+	token updateAccessToken) error {
+
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, token)
 }
 
 // getProjectPath returns the API path to for the given project with the given components joined with path separators
@@ -275,7 +285,7 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 	}
 
 	// Now upload the program if necessary.
-	if kind != UpdateKindDestroy {
+	if kind != UpdateKindDestroy && updateResponse.UploadURL != "" {
 		uploadURL, err := url.Parse(updateResponse.UploadURL)
 		if err != nil {
 			return UpdateIdentifier{}, errors.Wrap(err, "parsing upload URL")
@@ -307,14 +317,15 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 	}, nil
 }
 
-// StartUpdate starts the indicated update. It returns the new version of the update's target stack.
-func (pc *Client) StartUpdate(update UpdateIdentifier) (int, error) {
+// StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
+// to authenticate operations on the update if any.
+func (pc *Client) StartUpdate(update UpdateIdentifier) (int, string, error) {
 	var resp apitype.StartUpdateResponse
 	if err := pc.restCall("POST", getUpdatePath(update), nil, nil, &resp); err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
-	return resp.Version, nil
+	return resp.Version, resp.Token, nil
 }
 
 // GetUpdateEvents returns all events for the indicated update after the given index.
@@ -327,4 +338,52 @@ func (pc *Client) GetUpdateEvents(update UpdateIdentifier, afterIndex string) (a
 	}
 
 	return results, nil
+}
+
+// RenewUpdateLease renews the indicated update lease for the given duration.
+func (pc *Client) RenewUpdateLease(update UpdateIdentifier, token string, duration time.Duration) (string, error) {
+	req := apitype.RenewUpdateLeaseRequest{
+		Token:    token,
+		Duration: int(duration / time.Second),
+	}
+	var resp apitype.RenewUpdateLeaseResponse
+	if err := pc.restCall("POST", getUpdatePath(update, "renew_lease"), nil, req, &resp); err != nil {
+		return "", err
+	}
+	return resp.Token, nil
+}
+
+// InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
+func (pc *Client) InvalidateUpdateCheckpoint(update UpdateIdentifier, token string) error {
+	req := apitype.PatchUpdateCheckpointRequest{
+		IsInvalid: true,
+	}
+	return pc.updateRESTCall("PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+}
+
+// PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
+func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *apitype.Deployment, token string) error {
+	req := apitype.PatchUpdateCheckpointRequest{
+		Deployment: deployment,
+	}
+	return pc.updateRESTCall("PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+}
+
+// CompleteUpdate completes the indicated update with the given status.
+func (pc *Client) CompleteUpdate(update UpdateIdentifier, status apitype.UpdateStatus, token string) error {
+	req := apitype.CompleteUpdateRequest{
+		Status: status,
+	}
+	return pc.updateRESTCall("POST", getUpdatePath(update, "complete"), nil, req, nil, updateAccessToken(token))
+}
+
+// AppendUpdateLogEntry appends the given entry to the indicated update's logs.
+func (pc *Client) AppendUpdateLogEntry(update UpdateIdentifier, kind string, fields map[string]interface{},
+	token string) error {
+
+	req := apitype.AppendUpdateLogEntryRequest{
+		Kind:   kind,
+		Fields: fields,
+	}
+	return pc.updateRESTCall("POST", getUpdatePath(update, "log"), nil, req, nil, updateAccessToken(token))
 }
