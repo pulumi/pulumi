@@ -55,12 +55,6 @@
   version = "v3.5.1"
 
 [[projects]]
-  name = "github.com/cheggaaa/pb"
-  packages = ["."]
-  revision = "657164d0228d6bebe316fdf725c69f131a50fb10"
-  version = "v1.0.18"
-
-[[projects]]
   branch = "master"
   name = "github.com/codahale/hdrhistogram"
   packages = ["."]
@@ -418,6 +412,12 @@
   version = "v1.4.1"
 
 [[projects]]
+  name = "gopkg.in/cheggaaa/pb.v1"
+  packages = ["."]
+  revision = "72b964305fba1230d3d818711138195f22b9ceea"
+  version = "v1.0.22"
+
+[[projects]]
   name = "gopkg.in/src-d/go-billy.v4"
   packages = [
     ".",
@@ -491,6 +491,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "76350e35ff08713aed79c3abcb863a6febdc516afbbe469042d202311f483f1e"
+  inputs-digest = "daa6f33d577ea1ba263df036220f14297ac4e2b1395ab89a6adaf1219cdb4638"
   solver-name = "gps-cdcl"
   solver-version = 1
