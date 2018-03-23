@@ -2,6 +2,21 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/Azure/go-ansiterm"
+  packages = [
+    ".",
+    "winterm"
+  ]
+  revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
+
+[[projects]]
+  name = "github.com/Sirupsen/logrus"
+  packages = ["."]
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
+
+[[projects]]
   name = "github.com/apache/thrift"
   packages = ["lib/go/thrift"]
   revision = "b2a4d4ae21c789b689dd162deb819665567f481c"
@@ -71,6 +86,22 @@
   packages = ["."]
   revision = "95292e44976d1217cf3611dc7c8d9466877d3ed5"
   version = "v1.0.1"
+
+[[projects]]
+  name = "github.com/docker/docker"
+  packages = [
+    "pkg/jsonlog",
+    "pkg/term",
+    "pkg/term/windows"
+  ]
+  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
+  version = "v1.13.1"
+
+[[projects]]
+  name = "github.com/docker/go-units"
+  packages = ["."]
+  revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
+  version = "v0.3.2"
 
 [[projects]]
   branch = "master"
@@ -190,7 +221,12 @@
 
 [[projects]]
   name = "github.com/moby/moby"
-  packages = ["api/types/time"]
+  packages = [
+    "api/types/time",
+    "pkg/jsonmessage",
+    "pkg/progress",
+    "pkg/term"
+  ]
   revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
   version = "v1.13.1"
 
@@ -365,6 +401,12 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  revision = "26559e0f760e39c24d730d3224364aef164ee23f"
+
+[[projects]]
+  branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   revision = "11c7f9e547da6db876260ce49ea7536985904c9b"
@@ -491,6 +533,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "daa6f33d577ea1ba263df036220f14297ac4e2b1395ab89a6adaf1219cdb4638"
+  inputs-digest = "c61a83197ee7e7fd1f150871ed0963f7eeefe7253c1b2fa0768e0c863eb981be"
   solver-name = "gps-cdcl"
   solver-version = 1
