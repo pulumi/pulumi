@@ -15,7 +15,7 @@ import (
 	// "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	// "github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/term"
@@ -133,19 +133,19 @@ func newUpdate2Cmd() *cobra.Command {
 		Long:    "New update",
 		Args:    cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// _, stdout, _ := term.StdStreams()
+			_, stdout, _ := term.StdStreams()
 
-			// pipeReader, pipeWriter := io.Pipe()
-			// progressChan := make(chan progress.Progress, 100)
-			// writesDone := make(chan struct{})
+			pipeReader, pipeWriter := io.Pipe()
+			progressChan := make(chan progress.Progress, 100)
+			writesDone := make(chan struct{})
 
-			// chanOutput := progress.ChanOutput(progressChan)
+			chanOutput := progress.ChanOutput(progressChan)
 
-			// go func() {
-			// 	writeDistributionProgress(pipeWriter, progressChan)
-			// 	// fmt.Printf("Done writing distribution.  closing")
-			// 	close(writesDone)
-			// }()
+			go func() {
+				writeDistributionProgress(pipeWriter, progressChan)
+				// fmt.Printf("Done writing distribution.  closing")
+				close(writesDone)
+			}()
 
 			// go func() {
 			// 	for {
@@ -161,109 +161,110 @@ func newUpdate2Cmd() *cobra.Command {
 			// 	}
 			// }()
 
-			// go func() {
-			file, _ := ioutil.ReadFile("/home/cyrusn/Downloads/video-thumbnailer.checkpoint.initial.json")
-			var topLevelObj map[string]interface{}
-			json.Unmarshal(file, &topLevelObj)
-			checkpointObj := topLevelObj["checkpoint"].(map[string]interface{})
-			latestObj := checkpointObj["latest"].(map[string]interface{})
-			resourcesArray := latestObj["resources"].([]interface{})
+			go func() {
+				file, _ := ioutil.ReadFile("/home/cyrusn/Downloads/video-thumbnailer.checkpoint.initial.json")
+				var topLevelObj map[string]interface{}
+				json.Unmarshal(file, &topLevelObj)
+				checkpointObj := topLevelObj["checkpoint"].(map[string]interface{})
+				latestObj := checkpointObj["latest"].(map[string]interface{})
+				resourcesArray := latestObj["resources"].([]interface{})
 
-			var stackUrn string
-			var endTime = time.Unix(1<<63-62135596801, 999999999)
-			var nextTime = endTime
-			for _, resourceObjAny := range resourcesArray {
-				resourceObj := resourceObjAny.(map[string]interface{})
-				resourceType := resourceObj["type"].(string)
-				urn := resourceObj["urn"].(string)
-				if resourceType == "pulumi:pulumi:Stack" {
-					stackUrn = urn
-					fmt.Printf("Stack urn %v\n", stackUrn)
-				}
-
-				lastUpdateStartTime := resourceObj["lastUpdateStartTime"].(string)
-
-				if lastUpdateStartTime != "0001-01-01T00:00:00Z" {
-					lastUpdate, e := time.Parse(time.RFC3339Nano, lastUpdateStartTime)
-					if e != nil {
-						panic(e)
-					}
-
-					if lastUpdate.Before(nextTime) {
-						nextTime = lastUpdate
-					}
-				}
-			}
-
-			fmt.Printf("Initial time %v\n", nextTime)
-
-			for nextTime != endTime {
-				nextNextTime := endTime
-
-				var toStart []map[string]interface{}
-				var toEnd []map[string]interface{}
-
+				// var stackUrn string
+				var endTime = time.Unix(1<<63-62135596801, 999999999)
+				var nextTime = endTime
 				for _, resourceObjAny := range resourcesArray {
 					resourceObj := resourceObjAny.(map[string]interface{})
+					// resourceType := resourceObj["type"].(string)
+					// urn := resourceObj["urn"].(string)
+					// if resourceType == "pulumi:pulumi:Stack" {
+					// 	stackUrn = urn
+					// }
+
 					lastUpdateStartTime := resourceObj["lastUpdateStartTime"].(string)
+
 					if lastUpdateStartTime != "0001-01-01T00:00:00Z" {
-						startTime, _ := time.Parse(time.RFC3339Nano, lastUpdateStartTime)
-
-						lastUpdateEndTime := resourceObj["lastUpdateEndTime"].(string)
-						endTime, _ := time.Parse(time.RFC3339Nano, lastUpdateEndTime)
-
-						if startTime == nextTime {
-							toStart = append(toStart, resourceObj)
-						} else if startTime.After(nextTime) && startTime.Before(nextNextTime) {
-							nextNextTime = startTime
+						lastUpdate, e := time.Parse(time.RFC3339Nano, lastUpdateStartTime)
+						if e != nil {
+							panic(e)
 						}
 
-						if endTime == nextTime {
-							toEnd = append(toEnd, resourceObj)
-						} else if endTime.After(nextTime) && endTime.Before(nextNextTime) {
-							nextNextTime = endTime
+						if lastUpdate.Before(nextTime) {
+							nextTime = lastUpdate
 						}
 					}
 				}
 
-				getResourceName := func(r map[string]interface{}) string {
-					urn := r["urn"].(string)
-					resourceType := r["type"].(string)
-					resourceInputs, e := r["inputs"].(map[string]interface{})
-					if !e {
-						panic(urn)
+				for nextTime != endTime {
+					nextNextTime := endTime
+
+					var toStart []map[string]interface{}
+					var toEnd []map[string]interface{}
+
+					for _, resourceObjAny := range resourcesArray {
+						resourceObj := resourceObjAny.(map[string]interface{})
+						lastUpdateStartTime := resourceObj["lastUpdateStartTime"].(string)
+						if lastUpdateStartTime != "0001-01-01T00:00:00Z" {
+							startTime, _ := time.Parse(time.RFC3339Nano, lastUpdateStartTime)
+
+							lastUpdateEndTime := resourceObj["lastUpdateEndTime"].(string)
+							endTime, _ := time.Parse(time.RFC3339Nano, lastUpdateEndTime)
+
+							if startTime == nextTime {
+								toStart = append(toStart, resourceObj)
+							} else if startTime.After(nextTime) && startTime.Before(nextNextTime) {
+								nextNextTime = startTime
+							}
+
+							if endTime == nextTime {
+								toEnd = append(toEnd, resourceObj)
+							} else if endTime.After(nextTime) && endTime.Before(nextNextTime) {
+								nextNextTime = endTime
+							}
+						}
 					}
 
-					name, e := resourceInputs["name"].(string)
-					if !e {
-						name, e = r["id"].(string)
+					getResourceName := func(r map[string]interface{}) string {
+						urn := r["urn"].(string)
+						resourceType := r["type"].(string)
+						resourceInputs, e := r["inputs"].(map[string]interface{})
 						if !e {
 							panic(urn)
 						}
+
+						name, e := resourceInputs["name"].(string)
+						if !e {
+							name, e = r["id"].(string)
+							if !e {
+								panic(urn)
+							}
+						}
+
+						return fmt.Sprintf("%s(\"%s\")", resourceType, name)
 					}
 
-					return fmt.Sprintf("%s(\"%s\")", resourceType, name)
+					for _, start := range toStart {
+						chanOutput.WriteProgress(progress.Progress{
+							ID:      getResourceName(start),
+							Message: "Creating...",
+						})
+					}
+
+					for _, end := range toEnd {
+						chanOutput.WriteProgress(progress.Progress{
+							ID:      getResourceName(end),
+							Message: "Done creating",
+						})
+					}
+
+					if nextNextTime != endTime {
+						time.Sleep(nextNextTime.Sub(nextTime))
+					}
+
+					nextTime = nextNextTime
 				}
+			}()
 
-				for _, start := range toStart {
-					fmt.Printf("Creating     : %v\n", getResourceName(start))
-				}
-
-				for _, end := range toEnd {
-					fmt.Printf("Done creating: %v\n", getResourceName(end))
-				}
-
-				if nextNextTime != endTime {
-					time.Sleep(nextNextTime.Sub(nextTime))
-				}
-
-				nextTime = nextNextTime
-			}
-
-			fmt.Printf("Done!\n")
-			// }()
-
-			return nil //  jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+			return jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
 
 			// s, err := requireStack(tokens.QName(stack), true)
 			// if err != nil {
