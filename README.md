@@ -1,6 +1,8 @@
-# Pulumi Fabric
+# Pulumi
 
-The Pulumi Fabric ("Pulumi") is a framework and toolset for creating reusable cloud services.
+Pulumi is a framework and toolset for creating reusable cloud services.
+
+This repo contains the core SDKs, CLI, and libraries, most notably the Pulumi Engine itself.
 
 If you are learning about Pulumi for the first time, please [visit our docs website](https://docs.pulumi.com/).
 
