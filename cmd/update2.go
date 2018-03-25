@@ -190,10 +190,7 @@ func newUpdate2Cmd() *cobra.Command {
 					}
 
 					if lastUpdate.Before(nextTime) {
-						fmt.Printf("Last update before next time %v\n", lastUpdate)
 						nextTime = lastUpdate
-					} else {
-						fmt.Printf("Last update not before next time %v\n", lastUpdate)
 					}
 				}
 			}
@@ -229,18 +226,34 @@ func newUpdate2Cmd() *cobra.Command {
 					}
 				}
 
+				getResourceName := func(r map[string]interface{}) string {
+					urn := r["urn"].(string)
+					resourceType := r["type"].(string)
+					resourceInputs, e := r["inputs"].(map[string]interface{})
+					if !e {
+						panic(urn)
+					}
+
+					name, e := resourceInputs["name"].(string)
+					if !e {
+						name, e = r["id"].(string)
+						if !e {
+							panic(urn)
+						}
+					}
+
+					return fmt.Sprintf("%s(\"%s\")", resourceType, name)
+				}
+
 				for _, start := range toStart {
-					urn := start["urn"].(string)
-					fmt.Printf("Starting %v\n", urn)
+					fmt.Printf("Creating     : %v\n", getResourceName(start))
 				}
 
 				for _, end := range toEnd {
-					urn := end["urn"].(string)
-					fmt.Printf("Ending %v\n", urn)
+					fmt.Printf("Done creating: %v\n", getResourceName(end))
 				}
 
 				if nextNextTime != endTime {
-					fmt.Printf("Sleeping for %v\n", nextNextTime.Sub(nextTime))
 					time.Sleep(nextNextTime.Sub(nextTime))
 				}
 
@@ -251,6 +264,7 @@ func newUpdate2Cmd() *cobra.Command {
 			// }()
 
 			return nil //  jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+
 			// s, err := requireStack(tokens.QName(stack), true)
 			// if err != nil {
 			// 	return err
