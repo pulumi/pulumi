@@ -1,6 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-package rpcerrors
+package rpcerror
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 )
 
 func TestError(t *testing.T) {
-	err := Error(codes.FailedPrecondition, "i failed a precondition")
+	err := New(codes.FailedPrecondition, "i failed a precondition")
 	rpcErr, ok := FromError(err)
 	if !assert.True(t, ok) {
 		t.FailNow()
@@ -24,7 +24,7 @@ func TestError(t *testing.T) {
 }
 
 func TestErrorf(t *testing.T) {
-	err := Errorf(codes.AlreadyExists, "foo %d already exists", 42)
+	err := Newf(codes.AlreadyExists, "foo %d already exists", 42)
 
 	rpcErr, ok := FromError(err)
 	if !assert.True(t, ok) {
@@ -117,7 +117,7 @@ func TestErrorString(t *testing.T) {
 
 	assert.Equal(t, "thing failed: oh no", unwrapped.Error())
 
-	withoutCause := Error(codes.NotFound, "thing failed 2")
+	withoutCause := New(codes.NotFound, "thing failed 2")
 	unwrapped, ok = FromError(withoutCause)
 	if !assert.True(t, ok) || !assert.NotNil(t, unwrapped) {
 		t.FailNow()

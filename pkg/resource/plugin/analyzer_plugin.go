@@ -13,7 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerrors"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -33,7 +33,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	_, path, err := workspace.GetPluginPath(
 		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
-		return nil, rpcerrors.Convert(err)
+		return nil, rpcerror.Convert(err)
 	} else if path == "" {
 		return nil, NewMissingError(workspace.PluginInfo{
 			Kind: workspace.AnalyzerPlugin,
@@ -76,7 +76,7 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 		Properties: mprops,
 	})
 	if err != nil {
-		rpcError := rpcerrors.Convert(err)
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("%s failed: err=%v", label, rpcError)
 		return nil, rpcError
 	}
@@ -98,7 +98,7 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	glog.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		rpcError := rpcerrors.Convert(err)
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
 		return workspace.PluginInfo{}, rpcError
 	}

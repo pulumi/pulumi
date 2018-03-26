@@ -13,7 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerrors"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -68,7 +68,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		Program: info.Program,
 	})
 	if err != nil {
-		rpcError := rpcerrors.Convert(err)
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
 			h.runtime, proj, info.Pwd, info.Program, rpcError)
 
@@ -129,7 +129,7 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		Parallel:       int32(info.Parallel),
 	})
 	if err != nil {
-		rpcError := rpcerrors.Convert(err)
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			h.runtime, info.Pwd, info.Program, info.DryRun, rpcError)
 		return "", rpcError
@@ -146,7 +146,7 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	glog.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		rpcError := rpcerrors.Convert(err)
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
 		return workspace.PluginInfo{}, rpcError
 	}
