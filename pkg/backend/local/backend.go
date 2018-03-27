@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -231,6 +232,11 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 		return nil, err
 	}
 
+	return GetLogsForTarget(target, query)
+}
+
+// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
+func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
 	contract.Assert(target != nil)
 	contract.Assert(target.Snapshot != nil)
 
