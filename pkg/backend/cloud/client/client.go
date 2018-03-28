@@ -131,6 +131,15 @@ func (pc *Client) ListStacks(project ProjectIdentifier) ([]apitype.Stack, error)
 	return stacks, nil
 }
 
+// GetStack retrieves the stack with the given name.
+func (pc *Client) GetStack(stackID StackIdentifier) (apitype.Stack, error) {
+	var stack apitype.Stack
+	if err := pc.restCall("GET", getStackPath(stackID), nil, nil, &stack); err != nil {
+		return apitype.Stack{}, err
+	}
+	return stack, nil
+}
+
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
 func (pc *Client) CreateStack(project ProjectIdentifier, cloudName string, stackName string) (apitype.Stack, error) {
 	stack := apitype.Stack{
