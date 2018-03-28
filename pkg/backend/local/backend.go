@@ -41,7 +41,6 @@ func New(d diag.Sink) Backend {
 }
 
 func (b *localBackend) Name() string {
-	// nolint: gas
 	name, _ := os.Hostname()
 	if name == "" {
 		name = "local"
@@ -139,18 +138,18 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 
 func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.updateOrDestroy(
+	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
 		stackName, proj, root, debug, m, opts, displayOpts,
 		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
-			return engine.Deploy(update, events, opts)
+			return engine.Update(update, events, opts)
 		},
 	)
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.updateOrDestroy(
+	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
 		stackName, proj, root, debug, m, opts, displayOpts,
 		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
@@ -159,7 +158,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 	)
 }
 
-func (b *localBackend) updateOrDestroy(op string, kind backend.UpdateKind,
+func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	performEngineOp func(*update, chan engine.Event) (engine.ResourceChanges, error)) error {

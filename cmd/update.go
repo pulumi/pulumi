@@ -33,7 +33,7 @@ func newUpdateCmd() *cobra.Command {
 		Aliases:    []string{"up"},
 		SuggestFor: []string{"deploy", "push"},
 		Short:      "Update the resources in a stack",
-		Long: "Update the resources in a stack\n" +
+		Long: "Update the resources in a stack.\n" +
 			"\n" +
 			"This command updates an existing stack whose state is represented by the existing checkpoint\n" +
 			"file. The new desired state is computed by running a Pulumi program, and extracting all resource\n" +
@@ -50,6 +50,7 @@ func newUpdateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			proj, root, err := readProject()
 			if err != nil {
 				return err

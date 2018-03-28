@@ -3,26 +3,44 @@
 package engine
 
 import (
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Destroy(update Update, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
-	contract.Require(update != nil, "update")
+func Destroy(u UpdateInfo, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
+	contract.Require(u != nil, "u")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := planContextFromUpdate(update)
+	ctx, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
-	defer info.Close()
+	defer ctx.Close()
 
-	emitter := makeEventEmitter(events, update)
-
-	return deployLatest(info, deployOptions{
+	emitter := makeEventEmitter(events, u)
+	return update(ctx, planOptions{
 		UpdateOptions: opts,
-		Destroy:       true,
+		SourceFunc:    newDestroySourceFunc(),
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	})
+}
+
+func newDestroySourceFunc() planSourceFunc {
+	return func(opts planOptions, proj *workspace.Project, pwd, main string,
+		target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
+		// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
+		if target != nil && target.Snapshot != nil {
+			if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins); err != nil {
+				return nil, err
+			}
+		}
+
+		// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
+		// engine to destroy the entire existing state.
+		return deploy.NullSource, nil
+	}
 }
