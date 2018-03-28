@@ -462,7 +462,7 @@ func (b *cloudBackend) runEngineAction(action client.UpdateKind, stackName token
 	case client.UpdateKindPreview:
 		err = engine.Preview(u, events, opts)
 	case client.UpdateKindUpdate:
-		_, err = engine.Deploy(u, events, opts)
+		_, err = engine.Update(u, events, opts)
 	case client.UpdateKindDestroy:
 		_, err = engine.Destroy(u, events, opts)
 	}

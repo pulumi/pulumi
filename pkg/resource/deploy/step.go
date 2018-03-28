@@ -300,6 +300,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 			if err != nil {
 				return resource.StatusOK, err
 			}
+
 			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
 			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), s.new.Inputs)
 			if upderr != nil {

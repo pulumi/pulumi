@@ -394,6 +394,7 @@ type testProvider struct {
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	create func(resource.URN, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	diff   func(resource.URN, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
+	read   func(resource.URN, resource.ID, resource.PropertyMap) (resource.PropertyMap, error)
 	update func(resource.URN, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	delete func(resource.URN, resource.ID, resource.PropertyMap) (resource.Status, error)
@@ -416,6 +417,10 @@ func (prov *testProvider) Check(urn resource.URN,
 func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	return prov.create(urn, props)
+}
+func (prov *testProvider) Read(urn resource.URN, id resource.ID,
+	props resource.PropertyMap) (resource.PropertyMap, error) {
+	return prov.read(urn, id, props)
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
