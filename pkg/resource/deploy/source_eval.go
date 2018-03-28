@@ -133,11 +133,8 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 func (iter *evalSourceIterator) forkRun(opts Options) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
-	// FIXME: we need to ensure that out of order calls won't deadlock us.  In particular, we need to ensure: 1)
-	//    gRPC won't block the dispatching of calls, and 2) that the channel's fixed size won't cause troubles.
 	go func() {
 		// Next, launch the language plugin.
-		// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
 		run := func() error {
 			rt := iter.src.runinfo.Proj.Runtime
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
