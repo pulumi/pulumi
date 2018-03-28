@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -16,81 +18,259 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	// "github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/progress"
+	"github.com/docker/docker/pkg/streamformatter"
+	"github.com/docker/docker/pkg/term"
 )
+
+// copied from: https://github.com/docker/cli/blob/master/cli/command/out.go
+// replace with usage of that library when we can figure out hte right version story
+
+type commonStream struct {
+	fd         uintptr
+	isTerminal bool
+	state      *term.State
+}
+
+// FD returns the file descriptor number for this stream
+func (s *commonStream) FD() uintptr {
+	return s.fd
+}
+
+// IsTerminal returns true if this stream is connected to a terminal
+func (s *commonStream) IsTerminal() bool {
+	return s.isTerminal
+}
+
+// RestoreTerminal restores normal mode to the terminal
+func (s *commonStream) RestoreTerminal() {
+	if s.state != nil {
+		term.RestoreTerminal(s.fd, s.state)
+	}
+}
+
+// SetIsTerminal sets the boolean used for isTerminal
+func (s *commonStream) SetIsTerminal(isTerminal bool) {
+	s.isTerminal = isTerminal
+}
+
+type outStream struct {
+	commonStream
+	out io.Writer
+}
+
+func (o *outStream) Write(p []byte) (int, error) {
+	return o.out.Write(p)
+}
+
+// SetRawTerminal sets raw mode on the input terminal
+func (o *outStream) SetRawTerminal() (err error) {
+	if os.Getenv("NORAW") != "" || !o.commonStream.isTerminal {
+		return nil
+	}
+	o.commonStream.state, err = term.SetRawTerminalOutput(o.commonStream.fd)
+	return err
+}
+
+// GetTtySize returns the height and width in characters of the tty
+func (o *outStream) GetTtySize() (uint, uint) {
+	if !o.isTerminal {
+		return 0, 0
+	}
+	ws, err := term.GetWinsize(o.fd)
+	if err != nil {
+		if ws == nil {
+			return 0, 0
+		}
+	}
+	return uint(ws.Height), uint(ws.Width)
+}
+
+// NewOutStream returns a new OutStream object from a Writer
+func newOutStream(out io.Writer) *outStream {
+	fd, isTerminal := term.GetFdInfo(out)
+	return &outStream{commonStream: commonStream{fd: fd, isTerminal: isTerminal}, out: out}
+}
+
+func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) {
+	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(outStream, false)
+
+	for prog := range progressChan {
+		// fmt.Printf("Received progress")
+		progressOutput.WriteProgress(prog)
+	}
+}
 
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
 // Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
 // await all the events being written.
 func DisplayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
-	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
+	// prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
+	// spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
 
 	defer func() {
-		spinner.Reset()
-		ticker.Stop()
+		// spinner.Reset()
+		// ticker.Stop()
 		done <- true
 	}()
 
-	for {
-		select {
-		case <-ticker.C:
-			spinner.Tick()
-		case event := <-events:
-			spinner.Reset()
+	_, stdout, _ := term.StdStreams()
+	// _, isTerminal := term.GetFdInfo(stdout)
 
-			out := os.Stdout
-			if event.Type == engine.DiagEvent {
-				payload := event.Payload.(engine.DiagEventPayload)
-				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-					out = os.Stderr
+	pipeReader, pipeWriter := io.Pipe()
+	progressChan := make(chan progress.Progress, 100)
+
+	chanOutput := progress.ChanOutput(progressChan)
+
+	go func() {
+		writeDistributionProgress(pipeWriter, progressChan)
+		pipeWriter.Close()
+	}()
+
+	// chanOutput.WriteProgress(progress.Progress{"Id"})
+
+	go func() {
+		for {
+			select {
+			// case <-ticker.C:
+			// 	spinner.Tick()
+			case event := <-events:
+				fmt.Printf("Got event %v\n", event.Type)
+				// spinner.Reset()
+
+				out := os.Stdout
+				if event.Type == engine.DiagEvent {
+					payload := event.Payload.(engine.DiagEventPayload)
+					if payload.Severity == diag.Error || payload.Severity == diag.Warning {
+						out = os.Stderr
+					}
+				}
+
+				msg := RenderEvent(event, debug, opts, chanOutput)
+				if msg != "" && out != nil {
+					fprintIgnoreError(out, msg)
+				}
+
+				if event.Type == engine.CancelEvent {
+					fmt.Printf("Got cancel\n")
+					close(progressChan)
+					return
 				}
 			}
-
-			msg := RenderEvent(event, debug, opts)
-			if msg != "" && out != nil {
-				fprintIgnoreError(out, msg)
-			}
-
-			if event.Type == engine.CancelEvent {
-				return
-			}
 		}
-	}
+	}()
+
+	jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
 }
 
-func RenderEvent(event engine.Event, debug bool, opts backend.DisplayOptions) string {
+func RenderEvent(
+	event engine.Event, debug bool,
+	opts backend.DisplayOptions, chanOutput progress.Output) string {
+
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
 	case engine.PreludeEvent:
-		return RenderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+		return RenderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts, chanOutput)
 	case engine.SummaryEvent:
-		return RenderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		return RenderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts, chanOutput)
 	case engine.ResourceOperationFailed:
-		return RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+		return RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts, chanOutput)
 	case engine.ResourceOutputsEvent:
-		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), opts)
+		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), opts, chanOutput)
 	case engine.ResourcePreEvent:
-		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), opts)
+		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), opts, chanOutput)
 	case engine.StdoutColorEvent:
-		payload := event.Payload.(engine.StdoutEventPayload)
-		return opts.Color.Colorize(payload.Message)
+		return RenderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts, chanOutput)
 	case engine.DiagEvent:
-		payload := event.Payload.(engine.DiagEventPayload)
-		if payload.Severity == diag.Debug && !debug {
-			return ""
-		}
-		return opts.Color.Colorize(payload.Message)
+		return RenderDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts, chanOutput)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
 }
 
-func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
+var (
+	newlineRegexp = regexp.MustCompile(`\r?\n`)
+)
+
+func trim(id string, msg string, opts backend.DisplayOptions) string {
+	_, stdout, _ := term.StdStreams()
+	fd, _ := term.GetFdInfo(stdout)
+	size, _ := term.GetWinsize(fd)
+
+	trimLength := (int(size.Width) - len(id)) - 5
+
+	if trimLength <= 0 {
+		return ""
+	}
+
+	msg = newlineRegexp.ReplaceAllString(msg, " ")
+
+	for {
+		newMsg := strings.Replace(msg, "  ", " ", -1)
+		if newMsg == msg {
+			break
+		}
+
+		msg = newMsg
+	}
+
+	msg = strings.TrimSpace(msg)
+
+	if trimLength > len(msg) {
+		trimLength = len(msg)
+	}
+
+	msg = msg[0:trimLength] + opts.Color.Colorize(colors.Reset)
+	return msg
+}
+
+func RenderDiagEvent(
+	payload engine.DiagEventPayload, debug bool,
+	opts backend.DisplayOptions, chanOutput progress.Output) string {
+
+	if payload.Severity == diag.Debug && !debug {
+		return ""
+	}
+
+	msg := opts.Color.Colorize(payload.Message)
+
+	if chanOutput != nil {
+		id := "Diagnostics"
+		chanOutput.WriteProgress(progress.Progress{
+			ID:     id,
+			Action: trim(id, msg, opts),
+		})
+
+		return ""
+	}
+
+	return msg
+}
+
+func RenderStdoutColorEvent(payload engine.StdoutEventPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
+	msg := opts.Color.Colorize(payload.Message)
+
+	if chanOutput != nil {
+		id := "Out"
+		chanOutput.WriteProgress(progress.Progress{
+			ID:     id,
+			Action: trim(id, msg, opts),
+		})
+
+		return ""
+	}
+
+	return msg
+}
+
+func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -155,7 +335,7 @@ func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOp
 	return out.String()
 }
 
-func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions) string {
+func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
 	out := &bytes.Buffer{}
 
 	if opts.ShowConfig {
@@ -183,7 +363,7 @@ func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 }
 
 func RenderResourceOperationFailedEvent(
-	event engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
+	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -192,31 +372,69 @@ func RenderResourceOperationFailedEvent(
 	// In the future, once we get more fine-grained error messages from providers,
 	// we can provide useful diagnostics here.
 
+	if chanOutput != nil {
+		chanOutput.WriteProgress(progress.Progress{
+			ID:     string(payload.Metadata.URN),
+			Action: fmt.Sprintf("Operation failed! Status unknown."),
+		})
+
+		return ""
+	}
+
 	return ""
 }
 
-func RenderResourcePreEvent(event engine.ResourcePreEventPayload, opts backend.DisplayOptions) string {
+func RenderResourcePreEvent(
+	payload engine.ResourcePreEventPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
+
 	out := &bytes.Buffer{}
 
-	if shouldShow(event.Metadata, opts) || isRootStack(event.Metadata) {
-		fprintIgnoreError(out, opts.Color.Colorize(event.Summary))
+	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
+		fprintIgnoreError(out, opts.Color.Colorize(payload.Summary))
 
 		if !opts.Summary {
-			fprintIgnoreError(out, opts.Color.Colorize(event.Details))
+			fprintIgnoreError(out, opts.Color.Colorize(payload.Details))
 		}
 
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 	}
 
-	return out.String()
+	msg := out.String()
+
+	if msg != "" && chanOutput != nil {
+		id := string(payload.Metadata.URN)
+		chanOutput.WriteProgress(progress.Progress{
+			ID:     id,
+			Action: trim(id, msg, opts),
+		})
+
+		return ""
+	}
+
+	return msg
 }
 
-func RenderResourceOutputsEvent(event engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) string {
+func RenderResourceOutputsEvent(
+	payload engine.ResourceOutputsEventPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
+
 	out := &bytes.Buffer{}
-	if (shouldShow(event.Metadata, opts) || isRootStack(event.Metadata)) && !opts.Summary {
-		fprintIgnoreError(out, opts.Color.Colorize(event.Text))
+	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
+		fprintIgnoreError(out, opts.Color.Colorize(payload.Text))
 	}
-	return out.String()
+
+	msg := out.String()
+
+	if msg != "" && chanOutput != nil {
+		id := string(payload.Metadata.URN)
+		chanOutput.WriteProgress(progress.Progress{
+			ID:     id,
+			Action: trim(id, msg, opts),
+		})
+
+		return ""
+	}
+
+	return msg
 }
 
 // isRootStack returns true if the step pertains to the rootmost stack component.

@@ -134,30 +134,48 @@ func newUpdate2Cmd() *cobra.Command {
 		Args:    cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			_, stdout, _ := term.StdStreams()
+			_, isTerminal := term.GetFdInfo(stdout)
 
 			pipeReader, pipeWriter := io.Pipe()
 			progressChan := make(chan progress.Progress, 100)
-			writesDone := make(chan struct{})
 
 			chanOutput := progress.ChanOutput(progressChan)
 
 			go func() {
 				writeDistributionProgress(pipeWriter, progressChan)
-				// fmt.Printf("Done writing distribution.  closing")
-				close(writesDone)
+				pipeWriter.Close()
 			}()
+
+			// progressBuckets := make(map[int64]int64)
 
 			// go func() {
 			// 	for {
-			// 		id := strconv.Itoa(rand.Int() % 5)
-			// 		r := rand.Int()
-			// 		action := fmt.Sprintf("Updating... %v", r)
-			// 		chanOutput.WriteProgress(progress.Progress{
-			// 			ID:     id,
-			// 			Action: action,
-			// 		})
-			// 		// fmt.Printf("Done writing message")
-			// 		time.Sleep(10 * time.Millisecond)
+			// 		bucket := rand.Int63() % 5
+			// 		val, has := progressBuckets[bucket]
+
+			// 		if has {
+			// 			val++
+			// 		} else {
+			// 			val = 0
+			// 		}
+
+			// 		progressBuckets[bucket] = val
+			// 		id := fmt.Sprintf("%v", bucket)
+			// 		if val >= 100 {
+			// 			chanOutput.WriteProgress(progress.Progress{
+			// 				ID:     id,
+			// 				Action: "Done!",
+			// 			})
+			// 		} else {
+			// 			chanOutput.WriteProgress(progress.Progress{
+			// 				ID:      id,
+			// 				Action:  "updating...",
+			// 				Current: val,
+			// 				Total:   100,
+			// 			})
+			// 		}
+
+			// 		time.Sleep(time.Millisecond * 100)
 			// 	}
 			// }()
 
@@ -169,16 +187,38 @@ func newUpdate2Cmd() *cobra.Command {
 				latestObj := checkpointObj["latest"].(map[string]interface{})
 				resourcesArray := latestObj["resources"].([]interface{})
 
-				// var stackUrn string
+				var stackUrn string
 				var endTime = time.Unix(1<<63-62135596801, 999999999)
 				var nextTime = endTime
+
+				var topLevelResourceToChildrenWithTimes = make(map[string][]string)
+
+				var getTopLevelResource func(r map[string]interface{}) map[string]interface{}
+				getTopLevelResource = func(r map[string]interface{}) map[string]interface{} {
+					parent := r["parent"].(string)
+					if parent == stackUrn {
+						return r
+					}
+
+					for _, resourceObjAny := range resourcesArray {
+						resourceObj := resourceObjAny.(map[string]interface{})
+						resourceUrn := resourceObj["urn"].(string)
+						if resourceUrn == parent {
+							return getTopLevelResource(resourceObj)
+						}
+					}
+
+					panic(fmt.Sprintf("Could not find parent: %s", parent))
+				}
+
 				for _, resourceObjAny := range resourcesArray {
 					resourceObj := resourceObjAny.(map[string]interface{})
-					// resourceType := resourceObj["type"].(string)
-					// urn := resourceObj["urn"].(string)
-					// if resourceType == "pulumi:pulumi:Stack" {
-					// 	stackUrn = urn
-					// }
+					resourceType := resourceObj["type"].(string)
+					urn := resourceObj["urn"].(string)
+					if resourceType == "pulumi:pulumi:Stack" {
+						stackUrn = urn
+						continue
+					}
 
 					lastUpdateStartTime := resourceObj["lastUpdateStartTime"].(string)
 
@@ -191,8 +231,22 @@ func newUpdate2Cmd() *cobra.Command {
 						if lastUpdate.Before(nextTime) {
 							nextTime = lastUpdate
 						}
+
+						topLevelResource := getTopLevelResource(resourceObj)
+						topLevelResourceUrn := topLevelResource["urn"].(string)
+
+						children := topLevelResourceToChildrenWithTimes[topLevelResourceUrn]
+						children = append(children, urn)
+						topLevelResourceToChildrenWithTimes[topLevelResourceUrn] = children
 					}
 				}
+
+				// for k, v := range topLevelResourceToChildrenWithTimes {
+				// 	fmt.Printf("%s\n", k)
+				// 	for _, c := range v {
+				// 		fmt.Printf("  %s\n", c)
+				// 	}
+				// }
 
 				for nextTime != endTime {
 					nextNextTime := endTime
@@ -224,36 +278,87 @@ func newUpdate2Cmd() *cobra.Command {
 					}
 
 					getResourceName := func(r map[string]interface{}) string {
-						urn := r["urn"].(string)
 						resourceType := r["type"].(string)
 						resourceInputs, e := r["inputs"].(map[string]interface{})
-						if !e {
-							panic(urn)
+						var name = ""
+						if e {
+							name, e = resourceInputs["name"].(string)
 						}
 
-						name, e := resourceInputs["name"].(string)
-						if !e {
+						if name == "" {
 							name, e = r["id"].(string)
-							if !e {
-								panic(urn)
-							}
 						}
 
-						return fmt.Sprintf("%s(\"%s\")", resourceType, name)
+						if name != "" {
+							return fmt.Sprintf("%s(\"%s\")", resourceType, name)
+						}
+
+						return resourceType
 					}
 
 					for _, start := range toStart {
-						chanOutput.WriteProgress(progress.Progress{
-							ID:      getResourceName(start),
-							Message: "Creating...",
-						})
+						startUrn := start["urn"].(string)
+						if isTerminal {
+							topLevelResource := getTopLevelResource(start)
+							topLevelUrn := topLevelResource["urn"].(string)
+							var action string
+							if startUrn == topLevelUrn {
+								action = "\033[33mStarting...\033[0m"
+							} else {
+								action = fmt.Sprintf("\033[32mCreating %s\033[0m", getResourceName(start))
+							}
+
+							chanOutput.WriteProgress(progress.Progress{
+								ID:     getResourceName(topLevelResource),
+								Action: action,
+							})
+						} else {
+							chanOutput.WriteProgress(progress.Progress{
+								ID:      getResourceName(start),
+								Message: "Creating...",
+							})
+						}
+					}
+
+					remove := func(a []string, val string) []string {
+						for i := range a {
+							if a[i] == val {
+								a[i] = a[len(a)-1] // Replace it with the last one.
+								a = a[:len(a)-1]   // Chop off the last one.
+								return a
+							}
+						}
+
+						panic(fmt.Sprintf("Could not file %s", val))
 					}
 
 					for _, end := range toEnd {
-						chanOutput.WriteProgress(progress.Progress{
-							ID:      getResourceName(end),
-							Message: "Done creating",
-						})
+						if isTerminal {
+							topLevelResource := getTopLevelResource(end)
+							topLevelUrn := topLevelResource["urn"].(string)
+							endUrn := end["urn"].(string)
+
+							children := topLevelResourceToChildrenWithTimes[topLevelUrn]
+							children = remove(children, endUrn)
+							topLevelResourceToChildrenWithTimes[topLevelUrn] = children
+
+							var action string
+							if len(children) > 0 {
+								action = fmt.Sprintf("\033[32mFinished %s. \033[33mWaiting...\033[0m", getResourceName(end))
+							} else {
+								action = "\033[34mDone!\033[0m"
+							}
+
+							chanOutput.WriteProgress(progress.Progress{
+								ID:     getResourceName(topLevelResource),
+								Action: action,
+							})
+						} else {
+							chanOutput.WriteProgress(progress.Progress{
+								ID:      getResourceName(end),
+								Message: "\033[34mDone!\033[0m",
+							})
+						}
 					}
 
 					if nextNextTime != endTime {
@@ -262,9 +367,14 @@ func newUpdate2Cmd() *cobra.Command {
 
 					nextTime = nextNextTime
 				}
+
+				close(progressChan)
 			}()
 
-			return jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+			e := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+			fmt.Printf("\033[34mAll Done!\033[0m\n")
+
+			return e
 
 			// s, err := requireStack(tokens.QName(stack), true)
 			// if err != nil {
