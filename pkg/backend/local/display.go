@@ -55,6 +55,7 @@ func DisplayEvents(action string,
 			}
 
 			if event.Type == engine.CancelEvent {
+				fmt.Printf("Got cancel\n")
 				return
 			}
 		}
