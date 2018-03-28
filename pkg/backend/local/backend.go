@@ -72,10 +72,14 @@ func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 
 func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
 	config, snapshot, path, err := getStack(stackName)
-	if err != nil {
+	switch {
+	case os.IsNotExist(errors.Cause(err)):
 		return nil, nil
+	case err != nil:
+		return nil, err
+	default:
+		return newStack(stackName, path, config, snapshot, b), nil
 	}
-	return newStack(stackName, path, config, snapshot, b), nil
 }
 
 func (b *localBackend) ListStacks() ([]backend.Stack, error) {
