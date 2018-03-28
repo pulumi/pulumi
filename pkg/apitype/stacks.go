@@ -33,6 +33,8 @@ type CreateStackRequest struct {
 	CloudName string `json:"cloudName"`
 	// The rest of the StackIdentifier (repo, project) is in the URL.
 	StackName string `json:"stackName"`
+	// An optional set of tags to apply to the stack.
+	Tags map[StackTagName]string `json:"tags,omitEmpty"`
 }
 
 // CreateStackResponseByName is the response from a create Stack request.
