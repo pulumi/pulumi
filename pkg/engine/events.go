@@ -167,13 +167,10 @@ type eventEmitter struct {
 func makeStepEventMetadata(step deploy.Step, filter filter, debug bool) StepEventMetadata {
 	var keys []resource.PropertyKey
 
-	switch v := step.(type) {
-	case *deploy.CreateStep:
-		keys = v.Keys()
-		break
-	case *deploy.ReplaceStep:
-		keys = v.Keys()
-		break
+	if step.Op() == deploy.OpCreateReplacement {
+		keys = step.(*deploy.CreateStep).Keys()
+	} else if step.Op() == deploy.OpReplace {
+		keys = step.(*deploy.ReplaceStep).Keys()
 	}
 
 	return StepEventMetadata{
