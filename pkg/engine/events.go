@@ -77,9 +77,6 @@ type ResourceOutputsEventPayload struct {
 	Seen     map[resource.URN]StepEventMetadata
 	Planning bool
 	Debug    bool
-	// Indent   int
-	// Summary  string
-	// Details  string
 }
 
 type ResourcePreEventPayload struct {
@@ -87,9 +84,6 @@ type ResourcePreEventPayload struct {
 	Seen     map[resource.URN]StepEventMetadata
 	Planning bool
 	Debug    bool
-	// Indent   int
-	// Summary  string
-	// Details  string
 }
 
 type StepEventMetadata struct {
@@ -315,9 +309,6 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter filter, debug bo
 				obj[k] = filterValue(v)
 			}
 			return obj
-		// case reflect.Struct:
-		// 	obj := NewPropertyMapRepl(v, replk, replv)
-		// 	return NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
 		}
@@ -366,18 +357,10 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 	}
 }
 
-// func (e *eventEmitter) resourceOutputsEvent(step deploy.Step, indent int, text string) {
 func (e *eventEmitter) resourceOutputsEvent(
 	step deploy.Step, seen map[resource.URN]deploy.Step, planning bool, debug bool) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
-
-	/*
-		getIndent(step, acts.Seen)
-		   Seen         map[resource.URN]deploy.Step
-		   		// text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-		   		// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
-	*/
 
 	e.Chan <- Event{
 		Type: ResourceOutputsEvent,
@@ -386,8 +369,6 @@ func (e *eventEmitter) resourceOutputsEvent(
 			Seen:     makeStepEventMetadataMap(seen, e.Filter, debug),
 			Planning: planning,
 			Debug:    debug,
-			// Indent:   indent,
-			// Text:     e.Filter.Filter(text),
 		},
 	}
 }
@@ -407,10 +388,6 @@ func (e *eventEmitter) resourcePreEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	// indent := getIndent(step, acts.Seen)
-	// summary := getResourcePropertiesSummary(step, indent)
-	// details := getResourcePropertiesDetails(step, indent, false, acts.Opts.Debug)
-
 	e.Chan <- Event{
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
@@ -418,9 +395,6 @@ func (e *eventEmitter) resourcePreEvent(
 			Seen:     makeStepEventMetadataMap(seen, e.Filter, debug),
 			Planning: planning,
 			Debug:    debug,
-			// Indent:   indent,
-			// Summary:  e.Filter.Filter(summary),
-			// Details:  e.Filter.Filter(details),
 		},
 	}
 }

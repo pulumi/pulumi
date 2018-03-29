@@ -164,9 +164,6 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		// indent := getIndent(step, acts.Seen)
-		// text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-		// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 		acts.Opts.Events.resourceOutputsEvent(
 			step, acts.Seen, false /*planning*/, acts.Opts.Debug)
 	}
@@ -179,9 +176,6 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	// indent := getIndent(step, acts.Seen)
-	// text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-	// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 	acts.Opts.Events.resourceOutputsEvent(step, acts.Seen, false /*planning*/, acts.Opts.Debug)
 
 	// There's a chance there are new outputs that weren't written out last time.
