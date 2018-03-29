@@ -99,6 +99,7 @@ type StepEventMetadata struct {
 	Old     *StepEventStateMetadata // the state of the resource before performing this step.
 	New     *StepEventStateMetadata // the state of the resource after performing this step.
 	Res     *StepEventStateMetadata // the latest state for the resource that is known (worst case, old).
+	Keys    []resource.PropertyKey  // the keys causing replacement (only for CreateStep and ReplaceStep).
 	Logical bool                    // true if this step represents a logical operation in the program.
 }
 
@@ -170,10 +171,22 @@ type eventEmitter struct {
 }
 
 func makeStepEventMetadata(step deploy.Step, filter filter, debug bool) StepEventMetadata {
+	var keys []resource.PropertyKey
+
+	switch v := step.(type) {
+	case *deploy.CreateStep:
+		keys = v.Keys()
+		break
+	case *deploy.ReplaceStep:
+		keys = v.Keys()
+		break
+	}
+
 	return StepEventMetadata{
 		Op:      step.Op(),
 		URN:     step.URN(),
 		Type:    step.Type(),
+		Keys:    keys,
 		Old:     makeStepEventStateMetadata(step.Old(), filter, debug),
 		New:     makeStepEventStateMetadata(step.New(), filter, debug),
 		Res:     makeStepEventStateMetadata(step.Res(), filter, debug),

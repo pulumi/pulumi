@@ -391,8 +391,8 @@ func RenderResourcePreEvent(
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := getIndent(payload.Metadata, payload.Seen)
-		summary := getResourcePropertiesSummary(payload.Metadata, indent)
-		details := getResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
+		details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
 
@@ -443,7 +443,7 @@ func RenderResourceOutputsEvent(
 
 		indent := getIndent(payload.Metadata, payload.Seen)
 		// Seen         map[resource.URN]deploy.Step
-		text := getResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
+		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
 		// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))

@@ -240,10 +240,10 @@ func getIndent(step deploy.Step, seen map[resource.URN]deploy.Step) int {
 	return indent
 }
 
-func printStepHeader(b *bytes.Buffer, step deploy.Step) {
+func printStepHeader(b *bytes.Buffer, step StepEventMetadata) {
 	var extra string
-	old := step.Old()
-	new := step.New()
+	old := step.Old
+	new := step.New
 	if new != nil && !new.Protect && old != nil && old.Protect {
 		// show an unlocked symbol, since we are unprotecting a resource.
 		extra = " 🔓"
@@ -251,7 +251,7 @@ func printStepHeader(b *bytes.Buffer, step deploy.Step) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
-	b.WriteString(fmt.Sprintf("%s: (%s)%s\n", string(step.Type()), step.Op(), extra))
+	b.WriteString(fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
 func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
@@ -295,12 +295,12 @@ func writeVerbatim(b *bytes.Buffer, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
-func getResourcePropertiesSummary(step deploy.Step, indent int) string {
+func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 	var b bytes.Buffer
 
-	op := step.Op()
-	urn := step.URN()
-	old := step.Old()
+	op := step.Op
+	urn := step.URN
+	old := step.Old
 
 	// Print the indentation.
 	b.WriteString(getIndentationString(indent, op, false))
@@ -331,28 +331,26 @@ func getResourcePropertiesSummary(step deploy.Step, indent int) string {
 	return b.String()
 }
 
-func getResourcePropertiesDetails(step deploy.Step, indent int, planning bool, debug bool) string {
+func GetResourcePropertiesDetails(step StepEventMetadata, indent int, planning bool, debug bool) string {
 	var b bytes.Buffer
 
 	// indent everything an additional level, like other properties.
 	indent++
 
 	var replaces []resource.PropertyKey
-	if step.Op() == deploy.OpCreateReplacement {
-		replaces = step.(*deploy.CreateStep).Keys()
-	} else if step.Op() == deploy.OpReplace {
-		replaces = step.(*deploy.ReplaceStep).Keys()
+	if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpReplace {
+		replaces = step.Keys
 	}
 
-	old := step.Old()
-	new := step.New()
+	old := step.Old
+	new := step.New
 
 	if old == nil && new != nil {
-		printObject(&b, new.Inputs, planning, indent, step.Op(), false, debug)
+		printObject(&b, new.Inputs, planning, indent, step.Op, false, debug)
 	} else if new == nil && old != nil {
-		printObject(&b, old.Inputs, planning, indent, step.Op(), false, debug)
+		printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op(), debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op, debug)
 	}
 
 	return b.String()
@@ -387,7 +385,7 @@ func printObject(
 
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func getResourceOutputsPropertiesString(step StepEventMetadata, indent int, planning bool, debug bool) string {
+func GetResourceOutputsPropertiesString(step StepEventMetadata, indent int, planning bool, debug bool) string {
 	var b bytes.Buffer
 
 	// Only certain kinds of steps have output properties associated with them.
