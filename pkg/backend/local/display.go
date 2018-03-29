@@ -76,14 +76,9 @@ func RenderEvent(event engine.Event, debug bool, opts backend.DisplayOptions) st
 	case engine.ResourcePreEvent:
 		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), opts)
 	case engine.StdoutColorEvent:
-		payload := event.Payload.(engine.StdoutEventPayload)
-		return opts.Color.Colorize(payload.Message)
+		return RenderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 	case engine.DiagEvent:
-		payload := event.Payload.(engine.DiagEventPayload)
-		if payload.Severity == diag.Debug && !debug {
-			return ""
-		}
-		return opts.Color.Colorize(payload.Message)
+		return RenderDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
