@@ -29,7 +29,7 @@ func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
 	emitter := makeEventEmitter(events, u)
 	return preview(ctx, planOptions{
 		UpdateOptions: opts,
-		SourceFunc:    newUpdateSourceFunc(),
+		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	})
