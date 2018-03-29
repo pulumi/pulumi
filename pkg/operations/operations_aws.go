@@ -66,7 +66,7 @@ var (
 	// AWS config keys
 	regionKey = config.MustMakeKey("aws", "region")
 	accessKey = config.MustMakeKey("aws", "accessKey")
-	secretKey = config.MustMakeKey("aws", "secretKey") // nolint: gas
+	secretKey = config.MustMakeKey("aws", "secretKey")
 	token     = config.MustMakeKey("aws", "token")
 )
 

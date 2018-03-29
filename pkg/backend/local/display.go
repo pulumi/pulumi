@@ -209,7 +209,7 @@ func RenderResourcePreEvent(
 	out := &bytes.Buffer{}
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		indent := getIndent(payload.Metadata, payload.Seen)
+		indent := engine.GetIndent(payload.Metadata, payload.Seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 		details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
 
@@ -225,30 +225,13 @@ func RenderResourcePreEvent(
 	return out.String()
 }
 
-// getIndent computes a step's parent indentation.
-func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
-	indent := 0
-	for p := step.Res.Parent; p != ""; {
-		if par, has := seen[p]; !has {
-			// This can happen during deletes, since we delete children before parents.
-			// TODO[pulumi/pulumi#340]: we need to figure out how best to display this sequence; at the very
-			//     least, it would be ideal to preserve the indentation.
-			break
-		} else {
-			indent++
-			p = par.Res.Parent
-		}
-	}
-	return indent
-}
-
 func RenderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) string {
 
 	out := &bytes.Buffer{}
 	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
 
-		indent := getIndent(payload.Metadata, payload.Seen)
+		indent := engine.GetIndent(payload.Metadata, payload.Seen)
 		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))

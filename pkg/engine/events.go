@@ -124,7 +124,7 @@ type StepEventStateMetadata struct {
 	Outputs resource.PropertyMap
 }
 
-func makeEventEmitter(events chan<- Event, update Update) eventEmitter {
+func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 	var f filter = &nopFilter{}
 
 	target := update.GetTarget()

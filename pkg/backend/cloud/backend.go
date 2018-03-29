@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"runtime"
 	"sort"
@@ -22,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
+	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -200,17 +202,21 @@ func (b *cloudBackend) DownloadTemplate(name string, progress bool) (io.ReadClos
 }
 
 func (b *cloudBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
-	// IDEA: query the stack directly instead of listing them.
-	stacks, err := b.ListStacks()
+	stackID, err := getCloudStackIdentifier(stackName)
 	if err != nil {
 		return nil, err
 	}
-	for _, stack := range stacks {
-		if stack.Name() == stackName {
-			return stack, nil
+
+	stack, err := b.client.GetStack(stackID)
+	if err != nil {
+		// If this was a 404, return nil, nil as per this method's contract.
+		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
+			return nil, nil
 		}
+		return nil, err
 	}
-	return nil, nil
+
+	return newStack(stack, b), nil
 }
 
 // CreateStackOptions is an optional bag of options specific to creating cloud stacks.
@@ -244,7 +250,12 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 }
 
 func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
-	stacks, err := b.listCloudStacks()
+	project, err := getCloudProjectIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	stacks, err := b.client.ListStacks(project)
 	if err != nil {
 		return nil, err
 	}
@@ -387,6 +398,9 @@ func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QN
 	if err != nil {
 		return err
 	}
+	if stack == nil {
+		return errors.New("stack not found")
+	}
 
 	// If we are targeting a stack that uses local operations, handle that now by running the appropriate engine
 	// action.
@@ -461,7 +475,7 @@ func (b *cloudBackend) runEngineAction(action client.UpdateKind, stackName token
 	case client.UpdateKindPreview:
 		err = engine.Preview(u, events, opts)
 	case client.UpdateKindUpdate:
-		_, err = engine.Deploy(u, events, opts)
+		_, err = engine.Update(u, events, opts)
 	case client.UpdateKindDestroy:
 		_, err = engine.Destroy(u, events, opts)
 	}
@@ -546,12 +560,30 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 }
 
 func (b *cloudBackend) GetLogs(stackName tokens.QName, logQuery operations.LogQuery) ([]operations.LogEntry, error) {
-	stack, err := getCloudStackIdentifier(stackName)
+	stack, err := b.GetStack(stackName)
 	if err != nil {
 		return nil, err
 	}
+	if stack == nil {
+		return nil, errors.New("stack not found")
+	}
 
-	return b.client.GetStackLogs(stack, logQuery)
+	// If we're dealing with a stack that runs its operations locally, get the stack's target and fetch the logs
+	// directly
+	if stack.(Stack).RunLocally() {
+		target, targetErr := b.getTarget(stackName)
+		if targetErr != nil {
+			return nil, targetErr
+		}
+		return local.GetLogsForTarget(target, logQuery)
+	}
+
+	// Otherwise, fetch the logs from the service.
+	stackID, err := getCloudStackIdentifier(stackName)
+	if err != nil {
+		return nil, err
+	}
+	return b.client.GetStackLogs(stackID, logQuery)
 }
 
 func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.UntypedDeployment, error) {
@@ -587,16 +619,6 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 		return errors.Errorf("import unsuccessful: status %v", status)
 	}
 	return nil
-}
-
-// listCloudStacks returns all stacks for the current repository x workspace on the Pulumi Cloud.
-func (b *cloudBackend) listCloudStacks() ([]apitype.Stack, error) {
-	project, err := getCloudProjectIdentifier()
-	if err != nil {
-		return nil, err
-	}
-
-	return b.client.ListStacks(project)
 }
 
 // getCloudProjectIdentifier returns information about the current repository and project, based on the current

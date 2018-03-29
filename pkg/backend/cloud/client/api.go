@@ -186,7 +186,7 @@ func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj int
 	// Make API call
 	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok)
 	if err != nil {
-		return errors.Wrapf(err, "calling API")
+		return err
 	}
 	defer contract.IgnoreClose(resp.Body)
 

@@ -97,5 +97,5 @@ func GetStacks(e *testing.Environment) ([]string, *string) {
 // TestAccountAccessToken is a Pulumi access token of a well-known test account. Most importantly, we can
 // rely on this test account existing in all Pulumi environments. GitHub user "lumi-test-1". See
 // pulumi-service/cmd/service/model/test.go for more information.
-// nolint: gas
+// nolint: gas, intentionally using a test token
 const TestAccountAccessToken = "gGo1WLk2Jh_NZlqo2FFvjPtBvo73IW3xsJvBRmDOPW4="

@@ -24,9 +24,9 @@ const (
 	// DeployUpdate is the prototypical Pulumi program update.
 	DeployUpdate UpdateKind = "update"
 	// PreviewUpdate is a preview of an update, without impacting resources.
-	PreviewUpdate = "preview"
+	PreviewUpdate UpdateKind = "preview"
 	// DestroyUpdate is an update which removes all resources.
-	DestroyUpdate = "destroy"
+	DestroyUpdate UpdateKind = "destroy"
 )
 
 // UpdateResult is an enum for the result of the update.

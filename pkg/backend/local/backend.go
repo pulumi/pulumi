@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -40,7 +41,6 @@ func New(d diag.Sink) Backend {
 }
 
 func (b *localBackend) Name() string {
-	// nolint: gas
 	name, _ := os.Hostname()
 	if name == "" {
 		name = "local"
@@ -71,10 +71,14 @@ func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 
 func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
 	config, snapshot, path, err := getStack(stackName)
-	if err != nil {
+	switch {
+	case os.IsNotExist(errors.Cause(err)):
 		return nil, nil
+	case err != nil:
+		return nil, err
+	default:
+		return newStack(stackName, path, config, snapshot, b), nil
 	}
-	return newStack(stackName, path, config, snapshot, b), nil
 }
 
 func (b *localBackend) ListStacks() ([]backend.Stack, error) {
@@ -138,18 +142,18 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 
 func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.updateOrDestroy(
+	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
 		stackName, proj, root, debug, m, opts, displayOpts,
 		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
-			return engine.Deploy(update, events, opts)
+			return engine.Update(update, events, opts)
 		},
 	)
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.updateOrDestroy(
+	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
 		stackName, proj, root, debug, m, opts, displayOpts,
 		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
@@ -158,7 +162,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 	)
 }
 
-func (b *localBackend) updateOrDestroy(op string, kind backend.UpdateKind,
+func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string,
 	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	performEngineOp func(*update, chan engine.Event) (engine.ResourceChanges, error)) error {
@@ -231,6 +235,11 @@ func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery
 		return nil, err
 	}
 
+	return GetLogsForTarget(target, query)
+}
+
+// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
+func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
 	contract.Assert(target != nil)
 	contract.Assert(target.Snapshot != nil)
 
