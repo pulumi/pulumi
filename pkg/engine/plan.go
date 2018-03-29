@@ -385,6 +385,51 @@ func printObject(
 	}
 }
 
+// printResourceOutputProperties prints only those properties that either differ from the input properties or, if
+// there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
+func getResourceOutputsPropertiesString(step StepEventMetadata, indent int, planning bool, debug bool) string {
+	var b bytes.Buffer
+
+	// Only certain kinds of steps have output properties associated with them.
+	new := step.New
+	if new == nil || new.Outputs == nil {
+		return ""
+	}
+	op := considerSameIfNotCreateOrDelete(step.Op)
+
+	// First fetch all the relevant property maps that we may consult.
+	ins := new.Inputs
+	outs := new.Outputs
+
+	// Now sort the keys and enumerate each output property in a deterministic order.
+	firstout := true
+	keys := outs.StableKeys()
+	maxkey := maxKey(keys)
+	for _, k := range keys {
+		out := outs[k]
+		// Print this property if it is printable and either ins doesn't have it or it's different.
+		if shouldPrintPropertyValue(out, true) {
+			var print bool
+			if in, has := ins[k]; has {
+				print = (out.Diff(in) != nil)
+			} else {
+				print = true
+			}
+
+			if print {
+				if firstout {
+					writeWithIndentNoPrefix(&b, indent, op, "---outputs:---\n")
+					firstout = false
+				}
+				printPropertyTitle(&b, string(k), maxkey, indent, op, false)
+				printPropertyValue(&b, out, planning, indent, op, false, debug)
+			}
+		}
+	}
+
+	return b.String()
+}
+
 func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
 	if op == deploy.OpCreate || op == deploy.OpDelete || op == deploy.OpDeleteReplaced {
 		return op
