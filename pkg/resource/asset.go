@@ -115,8 +115,8 @@ func (a *Asset) IsUserProgramCode() bool {
 		environmentRegexp.MatchString(text)
 }
 
-// massageText takes the text for a function and cleans it up a bit to make the user visible diffs
-// less noisy.  Specifically:
+// MassageIfUserProgramCodeAsset takes the text for a function and cleans it up a bit to make the
+// user visible diffs less noisy.  Specifically:
 //   1. it tries to condense things by changling multiple blank lines into a single blank line.
 //   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
 //   3. it elides the with-capture headers, as changes there are not generally meaningful.

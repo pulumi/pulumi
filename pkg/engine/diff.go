@@ -183,7 +183,7 @@ func printObject(
 	}
 }
 
-// printResourceOutputProperties prints only those properties that either differ from the input properties or, if
+// GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(step StepEventMetadata, indent int, planning bool, debug bool) string {
 	var b bytes.Buffer

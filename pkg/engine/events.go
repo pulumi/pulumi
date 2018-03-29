@@ -248,7 +248,7 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter filter, debug bo
 				// progress/diffs/etc.
 				if t.IsUserProgramCode() {
 					// also make sure we filter this in case there are any secrets in the code.
-					text = filter.Filter(resource.MassageUserProgramCodeAsset(t, debug).Text)
+					text = filter.Filter(resource.MassageIfUserProgramCodeAsset(t, debug).Text)
 				} else {
 					// We need to have some string here so that we preserve that this is a
 					// text-asset
