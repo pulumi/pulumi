@@ -207,9 +207,8 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter filter, debug bo
 	mappable := propertyMap.Mappable()
 
 	var filterValue func(v interface{}) interface{}
-	var filterPropertyValue func(pv resource.PropertyValue) resource.PropertyValue
 
-	filterPropertyValue = func(pv resource.PropertyValue) resource.PropertyValue {
+	filterPropertyValue := func(pv resource.PropertyValue) resource.PropertyValue {
 		return resource.NewPropertyValue(filterValue(pv.Mappable()))
 	}
 
@@ -370,7 +369,9 @@ func (e *eventEmitter) resourceOutputsEvent(
 	}
 }
 
-func makeStepEventMetadataMap(seen map[resource.URN]deploy.Step, filter filter, debug bool) map[resource.URN]StepEventMetadata {
+func makeStepEventMetadataMap(
+	seen map[resource.URN]deploy.Step, filter filter, debug bool) map[resource.URN]StepEventMetadata {
+
 	result := make(map[resource.URN]StepEventMetadata)
 
 	for k, v := range seen {

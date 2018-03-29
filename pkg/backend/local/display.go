@@ -188,7 +188,8 @@ func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 	return out.String()
 }
 
-func RenderResourceOperationFailedEvent(payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
+func RenderResourceOperationFailedEvent(
+	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
