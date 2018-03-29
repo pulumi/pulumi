@@ -128,7 +128,7 @@ func (a *Asset) IsUserProgramCode() bool {
 //      emit those delimeters around code that should be ignored.
 //   2. Have our resource generation code supply not just the resource, but the "user presentable"
 //      resource that cuts out a lot of cruft.  We could then just diff that content here.
-func MassageUserProgramCodeAsset(asset *Asset, debug bool) *Asset {
+func MassageIfUserProgramCodeAsset(asset *Asset, debug bool) *Asset {
 	if debug {
 		return asset
 	}
