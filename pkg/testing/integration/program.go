@@ -161,7 +161,9 @@ func (opts *ProgramTestOptions) GetDebugLogLevel() int {
 		return opts.DebugLogLevel
 	}
 	if du := os.Getenv("PULUMI_TEST_DEBUG_LOG_LEVEL"); du != "" {
-		if n, _ := strconv.Atoi(du); n > 0 {
+		if n, e := strconv.Atoi(du); e != nil {
+			panic(e)
+		} else if n > 0 {
 			return n
 		}
 	}
