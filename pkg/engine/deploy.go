@@ -135,10 +135,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Ensure we've marked this step as observed.
 	acts.Seen[step.URN()] = step
 
-	indent := getIndent(step, acts.Seen)
-	summary := getResourcePropertiesSummary(step, indent)
-	details := getResourcePropertiesDetails(step, indent, false, acts.Opts.Debug)
-	acts.Opts.Events.resourcePreEvent(step, indent, summary, details)
+	acts.Opts.Events.resourcePreEvent(step, acts.Seen, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Update.BeginMutation()
@@ -146,6 +143,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 
 func (acts *deployActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
+
 	assertSeen(acts.Seen, step)
 
 	// Report the result of the step.
@@ -157,7 +155,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.ErrorPlanApplyFailed, err)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 	} else {
 		if step.Logical() {
 			// Increment the counters.
@@ -166,9 +164,11 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		indent := getIndent(step, acts.Seen)
-		text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-		acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+		// indent := getIndent(step, acts.Seen)
+		// text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
+		// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+		acts.Opts.Events.resourceOutputsEvent(
+			step, acts.Seen, false /*planning*/, acts.Opts.Debug)
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -179,9 +179,10 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	indent := getIndent(step, acts.Seen)
-	text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
-	acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+	// indent := getIndent(step, acts.Seen)
+	// text := getResourceOutputsPropertiesString(step, indent, false, acts.Opts.Debug)
+	// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+	acts.Opts.Events.resourceOutputsEvent(step, acts.Seen, false /*planning*/, acts.Opts.Debug)
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.

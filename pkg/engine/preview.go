@@ -81,10 +81,10 @@ func newPreviewActions(opts deployOptions) *previewActions {
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	acts.Seen[step.URN()] = step
 
-	indent := getIndent(step, acts.Seen)
-	summary := getResourcePropertiesSummary(step, indent)
-	details := getResourcePropertiesDetails(step, indent, true, acts.Opts.Debug)
-	acts.Opts.Events.resourcePreEvent(step, indent, summary, details)
+	// indent := getIndent(step, acts.Seen)
+	// summary := getResourcePropertiesSummary(step, indent)
+	// details := getResourcePropertiesDetails(step, indent, true, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, acts.Seen, true /*planning*/, acts.Opts.Debug)
 
 	return nil, nil
 }
@@ -108,9 +108,10 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	indent := getIndent(step, acts.Seen)
-	text := getResourceOutputsPropertiesString(step, indent, true, acts.Opts.Debug)
-	acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+	// indent := getIndent(step, acts.Seen)
+	// text := getResourceOutputsPropertiesString(step, indent, true, acts.Opts.Debug)
+	// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+	acts.Opts.Events.resourceOutputsEvent(step, acts.Seen, true /*planning*/, acts.Opts.Debug)
 
 	return nil
 }

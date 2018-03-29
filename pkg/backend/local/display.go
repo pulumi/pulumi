@@ -414,12 +414,35 @@ func RenderResourcePreEvent(
 	return msg
 }
 
+// getIndent computes a step's parent indentation.
+func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
+	indent := 0
+	for p := step.Res.Parent; p != ""; {
+		if par, has := seen[p]; !has {
+			// This can happen during deletes, since we delete children before parents.
+			// TODO[pulumi/pulumi#340]: we need to figure out how best to display this sequence; at the very
+			//     least, it would be ideal to preserve the indentation.
+			break
+		} else {
+			indent++
+			p = par.Res.Parent
+		}
+	}
+	return indent
+}
+
 func RenderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload, opts backend.DisplayOptions, chanOutput progress.Output) string {
 
 	out := &bytes.Buffer{}
 	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
-		fprintIgnoreError(out, opts.Color.Colorize(payload.Text))
+
+		indent := getIndent(payload.Metadata, payload.Seen)
+		// Seen         map[resource.URN]deploy.Step
+		text := getResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
+		// acts.Opts.Events.resourceOutputsEvent(step, indent, text)
+
+		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
 
 	msg := out.String()
@@ -437,13 +460,58 @@ func RenderResourceOutputsEvent(
 	return msg
 }
 
+// printResourceOutputProperties prints only those properties that either differ from the input properties or, if
+// there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
+func getResourceOutputsPropertiesString(step engine.StepEventMetadata, indent int, planning bool, debug bool) string {
+	var b bytes.Buffer
+
+	// Only certain kinds of steps have output properties associated with them.
+	new := step.New
+	if new == nil || new.Outputs == nil {
+		return ""
+	}
+	op := considerSameIfNotCreateOrDelete(step.Op)
+
+	// First fetch all the relevant property maps that we may consult.
+	ins := new.Inputs
+	outs := new.Outputs
+
+	// Now sort the keys and enumerate each output property in a deterministic order.
+	firstout := true
+	keys := outs.StableKeys()
+	maxkey := maxKey(keys)
+	for _, k := range keys {
+		out := outs[k]
+		// Print this property if it is printable and either ins doesn't have it or it's different.
+		if shouldPrintPropertyValue(out, true) {
+			var print bool
+			if in, has := ins[k]; has {
+				print = (out.Diff(in) != nil)
+			} else {
+				print = true
+			}
+
+			if print {
+				if firstout {
+					writeWithIndentNoPrefix(&b, indent, op, "---outputs:---\n")
+					firstout = false
+				}
+				printPropertyTitle(&b, string(k), maxkey, indent, op, false)
+				printPropertyValue(&b, out, planning, indent, op, false, debug)
+			}
+		}
+	}
+
+	return b.String()
+}
+
 // isRootStack returns true if the step pertains to the rootmost stack component.
-func isRootStack(step engine.StepEventMetdata) bool {
+func isRootStack(step engine.StepEventMetadata) bool {
 	return step.URN.Type() == resource.RootStackType
 }
 
 // shouldShow returns true if a step should show in the output.
-func shouldShow(step engine.StepEventMetdata, opts backend.DisplayOptions) bool {
+func shouldShow(step engine.StepEventMetadata, opts backend.DisplayOptions) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op == deploy.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.

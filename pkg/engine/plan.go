@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -386,51 +385,6 @@ func printObject(
 	}
 }
 
-// printResourceOutputProperties prints only those properties that either differ from the input properties or, if
-// there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func getResourceOutputsPropertiesString(step deploy.Step, indent int, planning bool, debug bool) string {
-	var b bytes.Buffer
-
-	// Only certain kinds of steps have output properties associated with them.
-	new := step.New()
-	if new == nil || new.Outputs == nil {
-		return ""
-	}
-	op := considerSameIfNotCreateOrDelete(step.Op())
-
-	// First fetch all the relevant property maps that we may consult.
-	ins := new.Inputs
-	outs := new.Outputs
-
-	// Now sort the keys and enumerate each output property in a deterministic order.
-	firstout := true
-	keys := outs.StableKeys()
-	maxkey := maxKey(keys)
-	for _, k := range keys {
-		out := outs[k]
-		// Print this property if it is printable and either ins doesn't have it or it's different.
-		if shouldPrintPropertyValue(out, true) {
-			var print bool
-			if in, has := ins[k]; has {
-				print = (out.Diff(in) != nil)
-			} else {
-				print = true
-			}
-
-			if print {
-				if firstout {
-					writeWithIndentNoPrefix(&b, indent, op, "---outputs:---\n")
-					firstout = false
-				}
-				printPropertyTitle(&b, string(k), maxkey, indent, op, false)
-				printPropertyValue(&b, out, planning, indent, op, false, debug)
-			}
-		}
-	}
-
-	return b.String()
-}
-
 func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
 	if op == deploy.OpCreate || op == deploy.OpDelete || op == deploy.OpDeleteReplaced {
 		return op
@@ -492,10 +446,11 @@ func printPropertyValue(
 		}
 	} else if v.IsAsset() {
 		a := v.AssetValue()
-		if text, has := a.GetText(); has {
+		if a.IsText() {
 			write(b, op, "asset(text:%s) {\n", shortHash(a.Hash))
 
-			massaged := massageText(text, debug)
+			a = resource.MassageUserProgramCodeAsset(a, debug)
+			massaged := a.Text
 
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(massaged, "\n")
@@ -887,13 +842,16 @@ func printAssetDiff(
 
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
-	if oldText, has := oldAsset.GetText(); has {
-		if newText, has := newAsset.GetText(); has {
+	if oldAsset.IsText() {
+		if newAsset.IsText() {
 			titleFunc(deploy.OpUpdate, true)
 			write(b, op, "asset(text:%s) {\n", hashChange)
 
-			massagedOldText := massageText(oldText, debug)
-			massagedNewText := massageText(newText, debug)
+			oldAsset = resource.MassageUserProgramCodeAsset(oldAsset, debug)
+			newAsset = resource.MassageUserProgramCodeAsset(newAsset, debug)
+
+			massagedOldText := oldAsset.Text
+			massagedNewText := newAsset.Text
 
 			differ := diffmatchpatch.New()
 			differ.DiffTimeout = 0
@@ -939,69 +897,6 @@ func getTextChangeString(old string, new string) string {
 	}
 
 	return fmt.Sprintf("%s->%s", old, new)
-}
-
-var (
-	functionRegexp    = regexp.MustCompile(`function __.*`)
-	withRegexp        = regexp.MustCompile(`    with\({ .* }\) {`)
-	environmentRegexp = regexp.MustCompile(`  }\).apply\(.*\).apply\(this, arguments\);`)
-	preambleRegexp    = regexp.MustCompile(
-		`function __.*\(\) {\n  return \(function\(\) {\n    with \(__closure\) {\n\nreturn `)
-	postambleRegexp = regexp.MustCompile(
-		`;\n\n    }\n  }\).apply\(__environment\).apply\(this, arguments\);\n}`)
-)
-
-// massageText takes the text for a function and cleans it up a bit to make the user visible diffs
-// less noisy.  Specifically:
-//   1. it tries to condense things by changling multiple blank lines into a single blank line.
-//   2. it normalizs the sha hashes we emit so that changes to them don't appear in the diff.
-//   3. it elides the with-capture headers, as changes there are not generally meaningful.
-//
-// TODO(https://github.com/pulumi/pulumi/issues/592) this is baking in a lot of knowledge about
-// pulumi serialized functions.  We should try to move to an alternative mode that isn't so brittle.
-// Options include:
-//   1. Have a documented delimeter format that plan.go will look for.  Have the function serializer
-//      emit those delimeters around code that should be ignored.
-//   2. Have our resource generation code supply not just the resource, but the "user presentable"
-//      resource that cuts out a lot of cruft.  We could then just diff that content here.
-func massageText(text string, debug bool) string {
-	if debug {
-		return text
-	}
-
-	// Only do this for strings that match our serialized function pattern.
-	if !functionRegexp.MatchString(text) ||
-		!withRegexp.MatchString(text) ||
-		!environmentRegexp.MatchString(text) {
-
-		return text
-	}
-
-	replaceNewlines := func() {
-		for {
-			newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
-			if len(newText) == len(text) {
-				break
-			}
-
-			text = newText
-		}
-	}
-
-	replaceNewlines()
-
-	firstFunc := functionRegexp.FindStringIndex(text)
-	text = text[firstFunc[0]:]
-
-	text = withRegexp.ReplaceAllString(text, "    with (__closure) {")
-	text = environmentRegexp.ReplaceAllString(text, "  }).apply(__environment).apply(this, arguments);")
-
-	text = preambleRegexp.ReplaceAllString(text, "")
-	text = postambleRegexp.ReplaceAllString(text, "")
-
-	replaceNewlines()
-
-	return text
 }
 
 // diffToPrettyString takes the full diff produed by diffmatchpatch and condenses it into something
