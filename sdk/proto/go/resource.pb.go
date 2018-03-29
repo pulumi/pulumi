@@ -34,7 +34,7 @@ type RegisterResourceRequest struct {
 func (m *RegisterResourceRequest) Reset()                    { *m = RegisterResourceRequest{} }
 func (m *RegisterResourceRequest) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResourceRequest) ProtoMessage()               {}
-func (*RegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*RegisterResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func (m *RegisterResourceRequest) GetType() string {
 	if m != nil {
@@ -98,7 +98,7 @@ type RegisterResourceResponse struct {
 func (m *RegisterResourceResponse) Reset()                    { *m = RegisterResourceResponse{} }
 func (m *RegisterResourceResponse) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResourceResponse) ProtoMessage()               {}
-func (*RegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*RegisterResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
 
 func (m *RegisterResourceResponse) GetUrn() string {
 	if m != nil {
@@ -144,7 +144,7 @@ type RegisterResourceOutputsRequest struct {
 func (m *RegisterResourceOutputsRequest) Reset()                    { *m = RegisterResourceOutputsRequest{} }
 func (m *RegisterResourceOutputsRequest) String() string            { return proto.CompactTextString(m) }
 func (*RegisterResourceOutputsRequest) ProtoMessage()               {}
-func (*RegisterResourceOutputsRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
+func (*RegisterResourceOutputsRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{2} }
 
 func (m *RegisterResourceOutputsRequest) GetUrn() string {
 	if m != nil {
@@ -304,9 +304,9 @@ var _ResourceMonitor_serviceDesc = grpc.ServiceDesc{
 	Metadata: "resource.proto",
 }
 
-func init() { proto.RegisterFile("resource.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("resource.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 405 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x93, 0xcd, 0x8e, 0xd3, 0x30,
 	0x10, 0xc7, 0x37, 0xc9, 0x6e, 0x4a, 0x07, 0x54, 0x56, 0x3e, 0x74, 0x4d, 0x40, 0x28, 0x0a, 0x97,
