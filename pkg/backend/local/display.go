@@ -85,9 +85,7 @@ func RenderEvent(event engine.Event, debug bool, opts backend.DisplayOptions) st
 	}
 }
 
-func RenderDiagEvent(
-	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
-
+func RenderDiagEvent(payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
 	if payload.Severity == diag.Debug && !debug {
 		return ""
 	}
@@ -190,8 +188,7 @@ func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 	return out.String()
 }
 
-func RenderResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
+func RenderResourceOperationFailedEvent(payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -203,8 +200,7 @@ func RenderResourceOperationFailedEvent(
 	return ""
 }
 
-func RenderResourcePreEvent(
-	payload engine.ResourcePreEventPayload, opts backend.DisplayOptions) string {
+func RenderResourcePreEvent(payload engine.ResourcePreEventPayload, opts backend.DisplayOptions) string {
 
 	out := &bytes.Buffer{}
 
@@ -225,12 +221,10 @@ func RenderResourcePreEvent(
 	return out.String()
 }
 
-func RenderResourceOutputsEvent(
-	payload engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) string {
-
+func RenderResourceOutputsEvent(payload engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) string {
 	out := &bytes.Buffer{}
-	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
 
+	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
 		indent := engine.GetIndent(payload.Metadata, payload.Seen)
 		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
 
