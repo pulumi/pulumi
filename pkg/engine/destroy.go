@@ -23,24 +23,22 @@ func Destroy(u UpdateInfo, events chan<- Event, opts UpdateOptions) (ResourceCha
 	emitter := makeEventEmitter(events, u)
 	return update(ctx, planOptions{
 		UpdateOptions: opts,
-		SourceFunc:    newDestroySourceFunc(),
+		SourceFunc:    newDestroySource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	})
 }
 
-func newDestroySourceFunc() planSourceFunc {
-	return func(opts planOptions, proj *workspace.Project, pwd, main string,
-		target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
-		// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
-		if target != nil && target.Snapshot != nil {
-			if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins); err != nil {
-				return nil, err
-			}
+func newDestroySource(opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
+	// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
+	if target != nil && target.Snapshot != nil {
+		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins); err != nil {
+			return nil, err
 		}
-
-		// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
-		// engine to destroy the entire existing state.
-		return deploy.NullSource, nil
 	}
+
+	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
+	// engine to destroy the entire existing state.
+	return deploy.NullSource, nil
 }

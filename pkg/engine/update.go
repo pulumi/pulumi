@@ -41,39 +41,37 @@ func Update(u UpdateInfo, events chan<- Event, opts UpdateOptions) (ResourceChan
 	emitter := makeEventEmitter(events, u)
 	return update(ctx, planOptions{
 		UpdateOptions: opts,
-		SourceFunc:    newUpdateSourceFunc(),
+		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	})
 }
 
-func newUpdateSourceFunc() planSourceFunc {
-	return func(opts planOptions, proj *workspace.Project, pwd, main string,
-		target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
-		// Figure out which plugins to load by inspecting the program contents.
-		plugins, err := plugctx.Host.GetRequiredPlugins(plugin.ProgInfo{
-			Proj:    proj,
-			Pwd:     pwd,
-			Program: main,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		// Now ensure that we have loaded up any plugins that the program will need in advance.
-		if err = plugctx.Host.EnsurePlugins(plugins); err != nil {
-			return nil, err
-		}
-
-		// If that succeeded, create a new source that will perform interpretation of the compiled program.
-		// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
-		return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
-			Proj:    proj,
-			Pwd:     pwd,
-			Program: main,
-			Target:  target,
-		}, opts.DryRun), nil
+func newUpdateSource(opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
+	// Figure out which plugins to load by inspecting the program contents.
+	plugins, err := plugctx.Host.GetRequiredPlugins(plugin.ProgInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+	})
+	if err != nil {
+		return nil, err
 	}
+
+	// Now ensure that we have loaded up any plugins that the program will need in advance.
+	if err = plugctx.Host.EnsurePlugins(plugins); err != nil {
+		return nil, err
+	}
+
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
+	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
+	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+		Target:  target,
+	}, opts.DryRun), nil
 }
 
 func update(info *planContext, opts planOptions) (ResourceChanges, error) {
