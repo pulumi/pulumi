@@ -10,6 +10,7 @@ branches:
 init:
 - ps: Install-Product node 6.10.2 x64
 environment:
+  PULUMI_API: https://api.pulumi-staging.io
   AWS_ACCESS_KEY_ID:
     secure: eB7Gfl1GHhz60tH2EEASI7IFsWHDd5SV+kponXwaCSo=
   AWS_SECRET_ACCESS_KEY:
