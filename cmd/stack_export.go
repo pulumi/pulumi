@@ -13,7 +13,8 @@ import (
 )
 
 func newStackExportCmd() *cobra.Command {
-	return &cobra.Command{
+	var file string
+	cmd := &cobra.Command{
 		Use:   "export",
 		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Export a stack's deployment to standard out",
@@ -35,7 +36,18 @@ func newStackExportCmd() *cobra.Command {
 				return err
 			}
 
-			enc := json.NewEncoder(os.Stdout)
+			// Read from stdin or a specified file.
+			writer := os.Stdout
+			if file != "" {
+				f, err := os.Create(file)
+				if err != nil {
+					return errors.Wrap(err, "could not open file")
+				}
+				writer = f
+			}
+
+			// Write the deployment.
+			enc := json.NewEncoder(writer)
 			enc.SetIndent("", "    ")
 			if err = enc.Encode(deployment); err != nil {
 				return errors.Wrap(err, "could not export deployment")
@@ -43,4 +55,7 @@ func newStackExportCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&file, "file", "", "", "A filename to write stack output to")
+	return cmd
 }

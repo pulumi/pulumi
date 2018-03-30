@@ -18,6 +18,7 @@ import (
 
 func newStackImportCmd() *cobra.Command {
 	var force bool
+	var file string
 	cmd := &cobra.Command{
 		Use:   "import",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -35,16 +36,26 @@ func newStackImportCmd() *cobra.Command {
 				return err
 			}
 
+			// Read from stdin or a specified file
+			reader := os.Stdin
+			if file != "" {
+				f, err := os.Open(file)
+				if err != nil {
+					return errors.Wrap(err, "could not open file")
+				}
+				reader = f
+			}
+
 			// Read the checkpoint from stdin.  We decode this into a json.RawMessage so as not to lose any fields
 			// sent by the server that the client CLI does not recognize (enabling round-tripping).
 			var deployment apitype.UntypedDeployment
-			if err = json.NewDecoder(os.Stdin).Decode(&deployment); err != nil {
+			if err = json.NewDecoder(reader).Decode(&deployment); err != nil {
 				return err
 			}
 
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
-			// we can check that the checkpoint doesn't contain resources from a stack other than the selected one. This
-			// catches errors wherein someone imports the wrong stack's checkpoint (which can seriously hork things).
+			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
+			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
 			var typed apitype.Deployment
 			if err = json.Unmarshal(deployment.Deployment, &typed); err != nil {
 				return err
@@ -80,6 +91,8 @@ func newStackImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)")
+	cmd.PersistentFlags().StringVarP(
+		&file, "file", "", "", "A filename to read stack input from")
 
 	return cmd
 }

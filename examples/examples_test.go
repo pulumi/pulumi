@@ -32,9 +32,8 @@ func TestExamples(t *testing.T) {
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, minimal.GetStackName(), stackInfo.Checkpoint.Stack)
+			assert.NotNil(t, stackInfo.Deployment)
 		},
-		ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
 	}
 
 	var formattableStdout, formattableStderr bytes.Buffer
@@ -56,7 +55,7 @@ func TestExamples(t *testing.T) {
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
 			Dependencies: []string{"@pulumi/pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				for _, res := range stackInfo.Snapshot.Resources {
+				for _, res := range stackInfo.Deployment.Resources {
 					if res.Parent == "" {
 						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
 							"every resource but the root resource should have a parent, but %v didn't", res.URN)
@@ -96,8 +95,11 @@ func TestExamples(t *testing.T) {
 	}
 
 	for _, example := range examples {
+		ex := example.With(integration.ProgramTestOptions{
+			ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
+		})
 		t.Run(example.Dir, func(t *testing.T) {
-			integration.ProgramTest(t, &example)
+			integration.ProgramTest(t, &ex)
 		})
 	}
 }

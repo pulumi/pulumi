@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,8 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -34,9 +33,8 @@ import (
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
-	Checkpoint   apitype.CheckpointV1
-	Snapshot     deploy.Snapshot
-	RootResource resource.State
+	Deployment   *apitype.Deployment
+	RootResource *apitype.Resource
 	Outputs      map[string]interface{}
 }
 
@@ -538,14 +536,9 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	if err := pt.runPulumiCommand("pulumi-stack-rm",
-		[]string{"stack", "rm", "--yes", string(stackName)}, dir); err != nil {
+	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes", string(stackName)}, dir)
+	if err != nil {
 		return err
-	}
-
-	if !pt.opts.LocalDeployment {
-		return pt.runPulumiCommand("pulumi-logout",
-			[]string{"logout", "--cloud-url", pt.opts.CloudURL}, dir)
 	}
 
 	return nil
@@ -733,37 +726,50 @@ func (pt *programTester) performExtraRuntimeValidation(
 
 	stackName := pt.opts.GetStackName()
 
-	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
-	ws, err := workspace.NewFrom(dir)
+	// Create a temporary file name for the stack export
+	tempDir, err := ioutil.TempDir("", string(stackName))
 	if err != nil {
-		return errors.Wrapf(err, "expected to load project workspace at %v", dir)
+		return err
 	}
-	chk, err := stack.GetCheckpoint(ws, stackName)
-	if err != nil {
-		return errors.Wrapf(err, "expected to load checkpoint file for target %v: %v", stackName)
-	} else if !assert.NotNil(pt.t, chk, "expected checkpoint file to be populated from %v: %v", stackName, err) {
-		return errors.New("missing checkpoint")
+	fileName := path.Join(tempDir, "stack.json")
+
+	// Invoke `pulumi stack export`
+	if err := pt.runPulumiCommand("pulumi-export", []string{"stack", "export", "--file", fileName}, dir); err != nil {
+		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
 	}
 
-	// Deserialize snapshot from checkpoint
-	snapshot, err := stack.DeserializeCheckpoint(chk)
+	// Open the exported JSON file
+	f, err := os.Open(fileName)
 	if err != nil {
-		return errors.Wrapf(err, "expected checkpoint deserialization to succeed")
-	} else if !assert.NotNil(pt.t, snapshot, "expected snapshot to be populated from checkpoint file %v", stackName) {
-		return errors.New("missing snapshot")
+		return errors.Wrapf(err, "expected to be able to open file with stack exports: %s", fileName)
+	}
+	defer func() {
+		f.Close()
+		contract.IgnoreError(os.RemoveAll(tempDir))
+	}()
+
+	// Unmarshal the Deployment
+	var deployment apitype.Deployment
+	decoder := json.NewDecoder(f)
+	err = decoder.Decode(&deployment)
+	if err != nil {
+		return err
 	}
 
-	// Get root resources from snapshot
-	rootResource, outputs := stack.GetRootStackResource(snapshot)
-	if !assert.NotNil(pt.t, rootResource, "expected root resource to be populated from snapshot file %v", stackName) {
-		return errors.New("missing root resource")
+	// Get the root resource and outputs from the deployment
+	var rootResource *apitype.Resource
+	var outputs map[string]interface{}
+	for _, res := range deployment.Resources {
+		if res.Type == resource.RootStackType {
+			rootResource = &res
+			outputs = res.Outputs
+		}
 	}
 
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
-		Checkpoint:   *chk,
-		Snapshot:     *snapshot,
-		RootResource: *rootResource,
+		Deployment:   &deployment,
+		RootResource: rootResource,
 		Outputs:      outputs,
 	}
 	extraRuntimeValidation(pt.t, stackInfo)
