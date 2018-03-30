@@ -746,10 +746,12 @@ func (pt *programTester) performExtraRuntimeValidation(
 	}()
 
 	// Unmarshal the Deployment
+	var untypedDeployment apitype.UntypedDeployment
+	if err = json.NewDecoder(f).Decode(&untypedDeployment); err != nil {
+		return err
+	}
 	var deployment apitype.Deployment
-	decoder := json.NewDecoder(f)
-	err = decoder.Decode(&deployment)
-	if err != nil {
+	if err = json.Unmarshal(untypedDeployment.Deployment, &deployment); err != nil {
 		return err
 	}
 
