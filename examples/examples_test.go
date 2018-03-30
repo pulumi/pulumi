@@ -95,8 +95,7 @@ func TestExamples(t *testing.T) {
 		},
 	}
 
-	for _, ex := range examples {
-		example := ex
+	for _, example := range examples {
 		t.Run(example.Dir, func(t *testing.T) {
 			integration.ProgramTest(t, &example)
 		})

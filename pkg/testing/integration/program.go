@@ -116,9 +116,11 @@ type ProgramTestOptions struct {
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 
-	// CloudURL is an optional URL to a Pulumi Service API. If set, the program test will attempt to login
-	// to that CloudURL (assuming PULUMI_ACCESS_TOKEN is set) and create the stack using that hosted service.
-	// If nil, will test Pulumi using the fire-and-forget mode.
+	// LocalDeployment can be set to true to force tests to run without logging into the Pulumi service
+	LocalDeployment bool
+
+	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
+	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
 	// Owner and Repo are optional values to specify during calls to `pulumi init`. Otherwise the --owner and
 	// --repo flags will not be set.
@@ -228,6 +230,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
+	opts.LocalDeployment = overrides.LocalDeployment
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
 	}
@@ -441,6 +444,22 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		dir = path.Join(dir, pt.opts.RelativeWorkDir)
 	}
 
+	// Set the default target Pulumi API if not overridden in options.
+	if pt.opts.CloudURL == "" {
+		pulumiAPI := os.Getenv("PULUMI_API")
+		if pulumiAPI != "" {
+			pt.opts.CloudURL = pulumiAPI
+		}
+	}
+
+	// Set the owner organization from an environment variable if not overridden in options.
+	if pt.opts.Owner == "" {
+		pulumiAPIOwnerOrganization := os.Getenv("PULUMI_API_OWNER_ORGANIZATION")
+		if pulumiAPIOwnerOrganization != "" {
+			pt.opts.Owner = pulumiAPIOwnerOrganization
+		}
+	}
+
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
@@ -452,7 +471,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Login as needed.
-	if pt.opts.CloudURL != "" {
+	if !pt.opts.LocalDeployment {
 		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 			pt.t.Fatalf("Unable to run pulumi login. PULUMI_ACCESS_TOKEN environment variable not set.")
 		}
@@ -471,7 +490,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(stackName)}
-	if pt.opts.CloudURL == "" {
+	if pt.opts.LocalDeployment {
 		stackInitArgs = append(stackInitArgs, "--local")
 	} else {
 		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--cloud-url", pt.opts.CloudURL)
@@ -516,7 +535,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	if pt.opts.CloudURL != "" {
+	if !pt.opts.LocalDeployment {
 		return pt.runPulumiCommand("pulumi-logout",
 			[]string{"logout", "--cloud-url", pt.opts.CloudURL}, dir)
 	}
