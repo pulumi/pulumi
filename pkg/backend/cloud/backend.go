@@ -10,8 +10,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,7 +42,9 @@ import (
 
 const (
 	// defaultURL is the Cloud URL used if no environment or explicit cloud is chosen.
-	defaultURL = "https://api.pulumi.com"
+	defaultURL = "https://" + defaultAPIURLPrefix + "pulumi.com"
+	// defaultAPIURLPrefix is the assumed Cloud URL prefix for typical Pulumi Cloud API endpoints.
+	defaultAPIURLPrefix = "api."
 	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
 	defaultURLEnvVar = "PULUMI_API"
 	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
@@ -136,6 +140,31 @@ func New(d diag.Sink, apiURL string) (Backend, error) {
 
 func (b *cloudBackend) Name() string     { return b.name }
 func (b *cloudBackend) CloudURL() string { return b.name }
+
+// CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
+// created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
+func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
+	// To produce a cloud console URL, we assume that the URL is of the form `api.xx.yy`, and simply strip off the
+	// `api.` part.  If that is not the case, we will return an empty string because we don't recognize the pattern.
+	url := b.CloudURL()
+	ix := strings.Index(url, defaultAPIURLPrefix)
+	if ix == -1 {
+		return ""
+	}
+	return url[:ix] + path.Join(append([]string{url[ix+len(defaultAPIURLPrefix):]}, paths...)...)
+}
+
+// CloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
+// must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
+func (b *cloudBackend) CloudConsoleProjectPath(projID client.ProjectIdentifier) string {
+	return path.Join(projID.Owner, projID.Repository, projID.Project)
+}
+
+// CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
+// must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
+func (b *cloudBackend) CloudConsoleStackPath(stackID client.StackIdentifier) string {
+	return path.Join(b.CloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+}
 
 // DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
 // that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
@@ -341,19 +370,19 @@ func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, r
 
 func (b *cloudBackend) createAndStartUpdate(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
 	root string, debug bool, m backend.UpdateMetadata,
-	opts engine.UpdateOptions) (client.UpdateIdentifier, string, error) {
+	opts engine.UpdateOptions) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := getCloudStackIdentifier(stackName)
 	if err != nil {
-		return client.UpdateIdentifier{}, "", err
+		return client.UpdateIdentifier{}, 0, "", err
 	}
 	context, main, err := getContextAndMain(pkg, root)
 	if err != nil {
-		return client.UpdateIdentifier{}, "", err
+		return client.UpdateIdentifier{}, 0, "", err
 	}
 	workspaceStack, err := workspace.DetectProjectStack(stackName)
 	if err != nil {
-		return client.UpdateIdentifier{}, "", errors.Wrap(err, "getting configuration")
+		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     m.Message,
@@ -365,19 +394,19 @@ func (b *cloudBackend) createAndStartUpdate(action client.UpdateKind, stackName 
 	}
 	update, err := b.client.CreateUpdate(action, stack, pkg, workspaceStack.Config, main, metadata, opts, getContents)
 	if err != nil {
-		return client.UpdateIdentifier{}, "", err
+		return client.UpdateIdentifier{}, 0, "", err
 	}
 
 	// Start the update.
 	version, token, err := b.client.StartUpdate(update)
 	if err != nil {
-		return client.UpdateIdentifier{}, "", err
+		return client.UpdateIdentifier{}, 0, "", err
 	}
 	if action == client.UpdateKindUpdate {
 		glog.V(7).Infof("Stack %s being updated to version %d", stackName, version)
 	}
 
-	return update, token, nil
+	return update, version, token, nil
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
@@ -397,36 +426,45 @@ func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QN
 	stack, err := b.GetStack(stackName)
 	if err != nil {
 		return err
-	}
-	if stack == nil {
+	} else if stack == nil {
 		return errors.New("stack not found")
 	}
 
-	// If we are targeting a stack that uses local operations, handle that now by running the appropriate engine
-	// action.
+	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
 	var update client.UpdateIdentifier
-	if stack.(Stack).RunLocally() {
-		var token string
-		if action != client.UpdateKindPreview {
-			update, token, err = b.createAndStartUpdate(action, stackName, pkg, root, debug, m, opts)
-			if err != nil {
-				return err
-			}
-		}
-		return b.runEngineAction(action, stackName, pkg, root, debug, opts, displayOpts, update, token)
+	var version int
+	var token string
+	if !stack.(Stack).RunLocally() || action != client.UpdateKindPreview {
+		update, version, token, err = b.createAndStartUpdate(action, stackName, pkg, root, debug, m, opts)
 	}
-
-	// Otherwise, simply start the update and wait for it to complete while rendering its events to stdout/stderr.
-	update, _, err = b.createAndStartUpdate(action, stackName, pkg, root, debug, m, opts)
 	if err != nil {
 		return err
 	}
+	if version != 0 {
+		// Print a URL afterwards to redirect to the version URL.
+		base := b.CloudConsoleStackPath(update.StackIdentifier)
+		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
+			defer func() {
+				fmt.Printf(
+					colors.ColorizeText(
+						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
+			}()
+		}
+	}
+
+	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
+	if stack.(Stack).RunLocally() {
+		return b.runEngineAction(action, stackName, pkg, root, debug, opts, displayOpts, update, token)
+	}
+
+	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
 	status, err := b.waitForUpdate(actionLabel, update, displayOpts)
 	if err != nil {
 		return errors.Wrapf(err, "waiting for %s", action)
 	} else if status != apitype.StatusSucceeded {
 		return errors.Errorf("%s unsuccessful: status %v", action, status)
 	}
+
 	return nil
 }
 
@@ -704,9 +742,7 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 
 		// Check if in termal state and if so return.
 		switch updateResults.Status {
-		case apitype.StatusFailed:
-			fallthrough
-		case apitype.StatusSucceeded:
+		case apitype.StatusFailed, apitype.StatusSucceeded:
 			return updateResults.Status, nil
 		}
 	}
