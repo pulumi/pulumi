@@ -55,6 +55,12 @@
   version = "v3.5.1"
 
 [[projects]]
+  name = "github.com/cheggaaa/pb"
+  packages = ["."]
+  revision = "657164d0228d6bebe316fdf725c69f131a50fb10"
+  version = "v1.0.18"
+
+[[projects]]
   branch = "master"
   name = "github.com/codahale/hdrhistogram"
   packages = ["."]
@@ -374,13 +380,9 @@
   packages = [
     ".",
     "balancer",
-    "balancer/base",
-    "balancer/roundrobin",
     "codes",
     "connectivity",
     "credentials",
-    "encoding",
-    "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
@@ -391,15 +393,13 @@
     "reflection",
     "reflection/grpc_reflection_v1alpha",
     "resolver",
-    "resolver/dns",
-    "resolver/passthrough",
     "stats",
     "status",
     "tap",
     "transport"
   ]
-  revision = "8e4536a86ab602859c20df5ebfd0bd4228d08655"
-  version = "v1.10.0"
+  revision = "5ffe3083946d5603a0578721101dc8165b1d5b5f"
+  version = "v1.7.2"
 
 [[projects]]
   name = "gopkg.in/AlecAivazis/survey.v1"
@@ -410,12 +410,6 @@
   ]
   revision = "0aa8b6a162b391fe2d95648b7677d1d6ac2090a6"
   version = "v1.4.1"
-
-[[projects]]
-  name = "gopkg.in/cheggaaa/pb.v1"
-  packages = ["."]
-  revision = "72b964305fba1230d3d818711138195f22b9ceea"
-  version = "v1.0.22"
 
 [[projects]]
   name = "gopkg.in/src-d/go-billy.v4"
@@ -491,6 +485,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "daa6f33d577ea1ba263df036220f14297ac4e2b1395ab89a6adaf1219cdb4638"
+  inputs-digest = "1de7bd262e1e77d3cc0d7d0bba2a51e124c40a6b7e18f0fcc0566121b364f068"
   solver-name = "gps-cdcl"
   solver-version = 1
