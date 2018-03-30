@@ -9,6 +9,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -79,8 +80,9 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-		return rpcError
+		return createConfigureError(rpcError)
 	}
+
 	return nil
 }
 
@@ -366,6 +368,32 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
 	return p.plug.Close()
+}
+
+// createConfigureError creates a nice error message from an RPC error that
+// originated from `Configure`.
+//
+// If we requested that a resource configure itself but omitted required configuration
+// variables, tfbridge will respond with a list of missing variables and their descriptions.
+// If that is what occurred, we'll use that information here to construct a nice error message.
+func createConfigureError(err *rpcerror.Error) error {
+	var aggregateErr error
+	for _, detail := range err.Details() {
+		if missingKeys, ok := detail.(*pulumirpc.ConfigureErrorMissingKeys); ok {
+			for _, missingKey := range missingKeys.MissingKeys {
+				singleError := fmt.Errorf("missing required configuration key \"%s\": %s\n"+
+					"Set a value using the command `pulumi config set %s <value>`.",
+					missingKey.Name, missingKey.Description, missingKey.Name)
+				aggregateErr = multierror.Append(aggregateErr, singleError)
+			}
+		}
+	}
+
+	if aggregateErr != nil {
+		return aggregateErr
+	}
+
+	return err
 }
 
 // resourceStateAndError interprets an error obtained from a gRPC endpoint.
