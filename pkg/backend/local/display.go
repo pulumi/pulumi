@@ -34,6 +34,8 @@ func DisplayEvents(action string,
 		done <- true
 	}()
 
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+
 	for {
 		select {
 		case <-ticker.C:
@@ -49,7 +51,7 @@ func DisplayEvents(action string,
 				}
 			}
 
-			msg := RenderEvent(event, debug, opts)
+			msg := RenderEvent(event, seen, debug, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -61,7 +63,9 @@ func DisplayEvents(action string,
 	}
 }
 
-func RenderEvent(event engine.Event, debug bool, opts backend.DisplayOptions) string {
+func RenderEvent(
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) string {
+
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
@@ -72,9 +76,9 @@ func RenderEvent(event engine.Event, debug bool, opts backend.DisplayOptions) st
 	case engine.ResourceOperationFailed:
 		return RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
-		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), opts)
+		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
 	case engine.ResourcePreEvent:
-		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), opts)
+		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.StdoutColorEvent:
 		return RenderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 	case engine.DiagEvent:
@@ -201,12 +205,15 @@ func RenderResourceOperationFailedEvent(
 	return ""
 }
 
-func RenderResourcePreEvent(payload engine.ResourcePreEventPayload, opts backend.DisplayOptions) string {
+func RenderResourcePreEvent(
+	payload engine.ResourcePreEventPayload, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+
+	seen[payload.Metadata.URN] = payload.Metadata
 
 	out := &bytes.Buffer{}
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		indent := engine.GetIndent(payload.Metadata, payload.Seen)
+		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 		details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
 
@@ -222,11 +229,13 @@ func RenderResourcePreEvent(payload engine.ResourcePreEventPayload, opts backend
 	return out.String()
 }
 
-func RenderResourceOutputsEvent(payload engine.ResourceOutputsEventPayload, opts backend.DisplayOptions) string {
+func RenderResourceOutputsEvent(
+	payload engine.ResourceOutputsEventPayload, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+
 	out := &bytes.Buffer{}
 
 	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
-		indent := engine.GetIndent(payload.Metadata, payload.Seen)
+		indent := engine.GetIndent(payload.Metadata, seen)
 		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))

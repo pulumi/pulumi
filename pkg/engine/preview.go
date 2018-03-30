@@ -79,7 +79,7 @@ func newPreviewActions(opts planOptions) *previewActions {
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	acts.Seen[step.URN()] = step
 
-	acts.Opts.Events.resourcePreEvent(step, acts.Seen, true /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 
 	return nil, nil
 }
@@ -103,7 +103,7 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	acts.Opts.Events.resourceOutputsEvent(step, acts.Seen, true /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
 
 	return nil
 }

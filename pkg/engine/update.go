@@ -151,7 +151,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	// Ensure we've marked this step as observed.
 	acts.Seen[step.URN()] = step
 
-	acts.Opts.Events.resourcePreEvent(step, acts.Seen, false /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Update.BeginMutation()
@@ -180,8 +180,7 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Also show outputs here, since there might be some from the initial registration.
-		acts.Opts.Events.resourceOutputsEvent(
-			step, acts.Seen, false /*planning*/, acts.Opts.Debug)
+		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -192,7 +191,7 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	acts.Opts.Events.resourceOutputsEvent(step, acts.Seen, false /*planning*/, acts.Opts.Debug)
+	acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.

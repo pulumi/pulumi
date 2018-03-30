@@ -74,14 +74,12 @@ type ResourceOperationFailedPayload struct {
 
 type ResourceOutputsEventPayload struct {
 	Metadata StepEventMetadata
-	Seen     map[resource.URN]StepEventMetadata
 	Planning bool
 	Debug    bool
 }
 
 type ResourcePreEventPayload struct {
 	Metadata StepEventMetadata
-	Seen     map[resource.URN]StepEventMetadata
 	Planning bool
 	Debug    bool
 }
@@ -347,7 +345,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 }
 
 func (e *eventEmitter) resourceOutputsEvent(
-	step deploy.Step, seen map[resource.URN]deploy.Step, planning bool, debug bool) {
+	step deploy.Step, planning bool, debug bool) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -355,27 +353,14 @@ func (e *eventEmitter) resourceOutputsEvent(
 		Type: ResourceOutputsEvent,
 		Payload: ResourceOutputsEventPayload{
 			Metadata: makeStepEventMetadata(step, e.Filter, debug),
-			Seen:     makeStepEventMetadataMap(seen, e.Filter, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
 	}
 }
 
-func makeStepEventMetadataMap(
-	seen map[resource.URN]deploy.Step, filter filter, debug bool) map[resource.URN]StepEventMetadata {
-
-	result := make(map[resource.URN]StepEventMetadata)
-
-	for k, v := range seen {
-		result[k] = makeStepEventMetadata(v, filter, debug)
-	}
-
-	return result
-}
-
 func (e *eventEmitter) resourcePreEvent(
-	step deploy.Step, seen map[resource.URN]deploy.Step, planning bool, debug bool) {
+	step deploy.Step, planning bool, debug bool) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -383,7 +368,6 @@ func (e *eventEmitter) resourcePreEvent(
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
 			Metadata: makeStepEventMetadata(step, e.Filter, debug),
-			Seen:     makeStepEventMetadataMap(seen, e.Filter, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
