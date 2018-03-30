@@ -64,6 +64,7 @@ func TestExamples(t *testing.T) {
 			DebugUpdates:  true,
 			DebugLogLevel: 12,
 			ExpectFailure: true,
+			Quick:         true,
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
