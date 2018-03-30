@@ -206,7 +206,9 @@ func RenderResourceOperationFailedEvent(
 }
 
 func RenderResourcePreEvent(
-	payload engine.ResourcePreEventPayload, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+	payload engine.ResourcePreEventPayload,
+	seen map[resource.URN]engine.StepEventMetadata,
+	opts backend.DisplayOptions) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
 
@@ -230,7 +232,9 @@ func RenderResourcePreEvent(
 }
 
 func RenderResourceOutputsEvent(
-	payload engine.ResourceOutputsEventPayload, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
+	payload engine.ResourceOutputsEventPayload,
+	seen map[resource.URN]engine.StepEventMetadata,
+	opts backend.DisplayOptions) string {
 
 	out := &bytes.Buffer{}
 
