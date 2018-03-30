@@ -223,15 +223,8 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter filter, debug bo
 
 		// Else, check for some known primitive types.
 		switch t := v.(type) {
-		case bool:
-		case int:
-		case uint:
-		case int32:
-		case uint32:
-		case int64:
-		case uint64:
-		case float32:
-		case float64:
+		case bool, int, uint, int32, uint32,
+			int64, uint64, float32, float64:
 			// simple types.  map over as is.
 			return v
 		case string:
