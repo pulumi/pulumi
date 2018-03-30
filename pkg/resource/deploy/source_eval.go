@@ -96,7 +96,15 @@ type evalSourceIterator struct {
 
 func (iter *evalSourceIterator) Close() error {
 	// Cancel the monitor and reclaim any associated resources.
-	return iter.mon.Cancel()
+	//
+	// [pulumi/pulumi#1075] new changes in gRPC revealed that closing the resource monitor
+	// at this time is likely not the thing that we want to do. In order to unblock ourselves,
+	// never closing it is sufficient to prevent hangs on deployment failures.
+	//
+	// We will certainly want to revisit this once we can think about the problem of `RegisterResource`
+	// cancellation more thoroughly.
+	// return iter.mon.Cancel()
+	return nil
 }
 
 func (iter *evalSourceIterator) Next() (SourceEvent, error) {

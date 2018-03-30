@@ -53,6 +53,20 @@ func TestExamples(t *testing.T) {
 			DebugLogLevel: 12,
 		},
 		{
+			Dir:          path.Join(cwd, "dynamic-provider/simple"),
+			Dependencies: []string{"@pulumi/pulumi"},
+			Config: map[string]string{
+				"simple:config:w": "0",
+				"simple:config:x": "0",
+				"simple:config:y": "0",
+			},
+			Verbose:       true,
+			DebugUpdates:  true,
+			DebugLogLevel: 12,
+			ExpectFailure: true,
+			Quick:         true,
+		},
+		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
 			Dependencies: []string{"@pulumi/pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
