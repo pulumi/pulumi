@@ -460,6 +460,14 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
+	// Set the target PPC from an environment variable if not overridden in options.
+	if pt.opts.PPCName == "" {
+		ppcName := os.Getenv("PULUMI_API_PPC_NAME")
+		if ppcName != "" {
+			pt.opts.PPCName = ppcName
+		}
+	}
+
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
