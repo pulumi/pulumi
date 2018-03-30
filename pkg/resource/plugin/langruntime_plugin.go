@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package plugin
 
@@ -10,10 +10,10 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -68,16 +68,17 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		Program: info.Program,
 	})
 	if err != nil {
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
-			h.runtime, proj, info.Pwd, info.Program, err)
+			h.runtime, proj, info.Pwd, info.Program, rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPlugins
 		// method.  In such cases, we will silently error (with the above log left behind).
-		if staterr, ok := status.FromError(err); ok && staterr.Code() == codes.Unimplemented {
+		if rpcError.Code() == codes.Unimplemented {
 			return nil, nil
 		}
 
-		return nil, err
+		return nil, rpcError
 	}
 
 	var results []workspace.PluginInfo
@@ -128,9 +129,10 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 		Parallel:       int32(info.Parallel),
 	})
 	if err != nil {
+		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
-			h.runtime, info.Pwd, info.Program, info.DryRun, err)
-		return "", err
+			h.runtime, info.Pwd, info.Program, info.DryRun, rpcError)
+		return "", rpcError
 	}
 
 	progerr := resp.GetError()
@@ -144,8 +146,9 @@ func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	glog.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		glog.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, err)
-		return workspace.PluginInfo{}, err
+		rpcError := rpcerror.Convert(err)
+		glog.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
+		return workspace.PluginInfo{}, rpcError
 	}
 
 	var version *semver.Version

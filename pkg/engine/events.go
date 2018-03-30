@@ -1,4 +1,4 @@
-// Copyright 2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2018, Pulumi Corporation.  All rights reserved.
 
 package engine
 
@@ -104,7 +104,7 @@ type StepEventStateMetadata struct {
 	Protect bool         // true to "protect" this resource (protected resources cannot be deleted).
 }
 
-func makeEventEmitter(events chan<- Event, update Update) eventEmitter {
+func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 	var f filter = &nopFilter{}
 
 	target := update.GetTarget()

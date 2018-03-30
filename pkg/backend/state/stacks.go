@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package state
 
@@ -17,15 +17,12 @@ func Stack(name tokens.QName, backends []backend.Backend) (backend.Stack, error)
 
 	// If not using the current stack, check all of the known backends to see if they know about it.
 	for _, be := range backends {
-		stacks, err := be.ListStacks()
+		stack, err := be.GetStack(name)
 		if err != nil {
 			return nil, err
 		}
-
-		for _, stack := range stacks {
-			if stack.Name() == name {
-				return stack, nil
-			}
+		if stack != nil {
+			return stack, nil
 		}
 	}
 

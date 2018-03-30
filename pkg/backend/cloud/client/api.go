@@ -1,6 +1,6 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-package cloud
+package client
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"runtime"
 	"strings"
 
@@ -17,76 +16,85 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+// UpdateKind is an enum for describing the kinds of updates we support.
+type UpdateKind string
 
 const (
-	// defaultURL is the Cloud URL used if no environment or explicit cloud is chosen.
-	defaultURL = "https://api.pulumi.com"
-	// defaultAPIEnvVar can be set to override the default cloud chosen, if `--cloud` is not present.
-	defaultURLEnvVar = "PULUMI_API"
-	// AccessTokenEnvVar is the environment variable used to bypass a prompt on login.
-	AccessTokenEnvVar = "PULUMI_ACCESS_TOKEN"
+	UpdateKindUpdate  UpdateKind = "update"
+	UpdateKindPreview UpdateKind = "preview"
+	UpdateKindDestroy UpdateKind = "destroy"
 )
 
-// DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
-// variable.  If no override is found, and we are authenticated with only one cloud, choose that.  Otherwise,
-// we will default to the https://api.pulumi.com/ endpoint.
-func DefaultURL() string {
-	return ValueOrDefaultURL("")
-}
-
-// ValueOrDefaultURL returns the value if specified, or the default cloud URL otherwise.
-func ValueOrDefaultURL(cloudURL string) string {
-	// If we have a cloud URL, just return it.
-	if cloudURL != "" {
-		return cloudURL
-	}
-
-	// Otherwise, respect the PULUMI_API override.
-	if cloudURL := os.Getenv(defaultURLEnvVar); cloudURL != "" {
-		return cloudURL
-	}
-
-	// If that didn't work, see if we're authenticated with any clouds.
-	urls, current, err := CurrentBackendURLs()
-	if err == nil {
-		if current != "" {
-			// If there's a current cloud selected, return that.
-			return current
-		} else if len(urls) == 1 {
-			// Else, if we're authenticated with a single cloud, use that.
-			return urls[0]
-		}
-	}
-
-	// If none of those led to a cloud URL, simply return the default.
-	return defaultURL
-}
-
-// cloudProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
+// ProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
 // logical "home" of a stack on the Pulumi Cloud.
-type cloudProjectIdentifier struct {
+type ProjectIdentifier struct {
 	Owner      string
 	Repository string
-	Project    tokens.PackageName
+	Project    string
+}
+
+// StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
+type StackIdentifier struct {
+	ProjectIdentifier
+
+	Stack string
+}
+
+// UpdateIdentifier is the set of data needed to identify an update to a Pulumi Cloud stack.
+type UpdateIdentifier struct {
+	StackIdentifier
+
+	UpdateKind UpdateKind
+	UpdateID   string
+}
+
+// accessTokenKind is enumerates the various types of access token used with the Pulumi API. These kinds correspond
+// directly to the "method" piece of an HTTP `Authorization` header.
+type accessTokenKind string
+
+const (
+	// accessTokenKindAPIToken denotes a standard Pulumi API token.
+	accessTokenKindAPIToken accessTokenKind = "token"
+	// accessTokenKindUpdateToken denotes an update lease token.
+	accessTokenKindUpdateToken accessTokenKind = "update-token"
+)
+
+// accessToken is an abstraction over the two different kinds of access tokens used by the Pulumi API.
+type accessToken interface {
+	Kind() accessTokenKind
+	String() string
+}
+
+// apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
+// accessTokenKindAPIToken)
+type apiAccessToken string
+
+func (apiAccessToken) Kind() accessTokenKind {
+	return accessTokenKindAPIToken
+}
+
+func (t apiAccessToken) String() string {
+	return string(t)
+}
+
+// updateAccessToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
+// accessTokenKindUpdateToken)
+type updateAccessToken string
+
+func (updateAccessToken) Kind() accessTokenKind {
+	return accessTokenKindUpdateToken
+}
+
+func (t updateAccessToken) String() string {
+	return string(t)
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(cloudAPI, method, path string, body []byte) (string, *http.Response, error) {
-	accessToken, err := workspace.GetAccessToken(cloudAPI)
-	if err != nil {
-		return "", nil, errors.Wrapf(err, "getting stored credentials")
-	}
-	return pulumiAPICallToken(cloudAPI, method, path, body, accessToken)
-}
-
-// pulumiAPICallToken makes an HTTP request to the Pulumi API with an explicit access token.
-func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
-	accessToken string) (string, *http.Response, error) {
+func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = strings.TrimPrefix(path, "/")
@@ -104,8 +112,8 @@ func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
 	req.Header.Set("User-Agent", userAgent)
 
 	// Apply credentials if provided.
-	if accessToken != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("token %s", accessToken))
+	if tok.String() != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
 	}
 
 	glog.V(7).Infof("Making Pulumi API call: %s", url)
@@ -113,8 +121,7 @@ func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
 		glog.V(9).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
@@ -125,7 +132,7 @@ func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
 		defer contract.IgnoreClose(resp.Body)
 
 		// Provide a better error if using an authenticated call without having logged in first.
-		if resp.StatusCode == 401 && accessToken == "" {
+		if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
 			return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
 		}
 
@@ -152,19 +159,7 @@ func pulumiAPICallToken(cloudAPI, method, path string, body []byte,
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string,
-	queryObj interface{}, reqObj interface{}, respObj interface{}) error {
-	accessToken, err := workspace.GetAccessToken(cloudAPI)
-	if err != nil {
-		return errors.Wrapf(err, "getting stored credentials")
-	}
-	return pulumiRESTCallToken(cloudAPI, method, path, queryObj, reqObj, respObj, accessToken)
-}
-
-// pulumiRESTCallToken calls the Pulumi REST API, just like pulumiRESTCall, only with
-// an explicit accessToken rather than reading it from the workspace.
-func pulumiRESTCallToken(cloudAPI, method, path string,
-	queryObj interface{}, reqObj interface{}, respObj interface{}, accessToken string) error {
+func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, tok accessToken) error {
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -189,9 +184,9 @@ func pulumiRESTCallToken(cloudAPI, method, path string,
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICallToken(cloudAPI, method, path+querystring, reqBody, accessToken)
+	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok)
 	if err != nil {
-		return errors.Wrapf(err, "calling API")
+		return err
 	}
 	defer contract.IgnoreClose(resp.Body)
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package plugin
 
@@ -11,12 +11,12 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -77,9 +77,9 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 	}
 	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
 	if err != nil {
-		rpcStatus, _ := status.FromError(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcStatus.Message())
-		return errors.New(rpcStatus.Message())
+		rpcError := rpcerror.Convert(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return rpcError
 	}
 	return nil
 }
@@ -108,9 +108,9 @@ func (p *provider) Check(urn resource.URN,
 		News: mnews,
 	})
 	if err != nil {
-		rpcStatus, _ := status.FromError(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcStatus.Message())
-		return nil, nil, errors.New(rpcStatus.Message())
+		rpcError := rpcerror.Convert(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return nil, nil, rpcError
 	}
 
 	// Unmarshal the provider inputs.
@@ -162,9 +162,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		rpcStatus, _ := status.FromError(err)
-		glog.V(7).Infof("%s failed: %v", label, rpcStatus.Message())
-		return DiffResult{}, errors.New(rpcStatus.Message())
+		rpcError := rpcerror.Convert(err)
+		glog.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		return DiffResult{}, rpcError
 	}
 
 	var replaces []resource.PropertyKey
@@ -341,9 +341,9 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	glog.V(7).Infof("%s executing", label)
 	resp, err := p.client.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
-		rpcStatus, _ := status.FromError(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcStatus.Message())
-		return workspace.PluginInfo{}, errors.New(rpcStatus.Message())
+		rpcError := rpcerror.Convert(err)
+		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return workspace.PluginInfo{}, rpcError
 	}
 
 	var version *semver.Version
@@ -379,16 +379,14 @@ func (p *provider) Close() error {
 // had an internal error, in which case it will serve one of `codes.Internal`,
 // `codes.DataLoss`, or `codes.Unknown` to us.
 func resourceStateAndError(err error) (resource.Status, error) {
-	rpcStatus, _ := status.FromError(err)
-	glog.V(8).Infof("provider received rpc error `%s`: `%s`", rpcStatus.Code(), rpcStatus.Message())
-	switch rpcStatus.Code() {
-	case codes.Internal:
-	case codes.DataLoss:
-	case codes.Unknown:
-		glog.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcStatus.Code())
-		return resource.StatusUnknown, errors.New(rpcStatus.Message())
+	rpcError := rpcerror.Convert(err)
+	glog.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
+	switch rpcError.Code() {
+	case codes.Internal, codes.DataLoss, codes.Unknown:
+		glog.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcError.Code())
+		return resource.StatusUnknown, rpcError
 	}
 
-	glog.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcStatus.Code())
-	return resource.StatusOK, errors.New(rpcStatus.Message())
+	glog.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcError.Code())
+	return resource.StatusOK, rpcError
 }

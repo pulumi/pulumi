@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package cmd
 
@@ -29,7 +29,7 @@ func newPreviewCmd() *cobra.Command {
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
-		Long: "Show a preview of updates a stack's resources\n" +
+		Long: "Show a preview of updates a stack's resources.\n" +
 			"\n" +
 			"This command displays a preview of the updates to an existing stack whose state is\n" +
 			"represented by an existing snapshot file. The new desired state is computed by running\n" +

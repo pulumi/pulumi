@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package integration
 
@@ -161,7 +161,9 @@ func (opts *ProgramTestOptions) GetDebugLogLevel() int {
 		return opts.DebugLogLevel
 	}
 	if du := os.Getenv("PULUMI_TEST_DEBUG_LOG_LEVEL"); du != "" {
-		if n, _ := strconv.Atoi(du); n > 0 { // nolint: gas
+		if n, e := strconv.Atoi(du); e != nil {
+			panic(e)
+		} else if n > 0 {
 			return n
 		}
 	}

@@ -1,4 +1,4 @@
-// Copyright 2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2018, Pulumi Corporation.  All rights reserved.
 
 package engine
 
@@ -10,7 +10,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
@@ -24,41 +26,55 @@ type UpdateOptions struct {
 // ResourceChanges contains the aggregate resource changes by operation type.
 type ResourceChanges map[deploy.StepOp]int
 
-func Deploy(update Update, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
-	contract.Require(update != nil, "update")
+func Update(u UpdateInfo, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
+	contract.Require(u != nil, "update")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := planContextFromUpdate(update)
+	ctx, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
-	defer info.Close()
+	defer ctx.Close()
 
-	emitter := makeEventEmitter(events, update)
-
-	return deployLatest(info, deployOptions{
+	emitter := makeEventEmitter(events, u)
+	return update(ctx, planOptions{
 		UpdateOptions: opts,
-
-		Destroy: false,
-
-		Events: emitter,
-		Diag:   newEventSink(emitter),
+		SourceFunc:    newUpdateSource,
+		Events:        emitter,
+		Diag:          newEventSink(emitter),
 	})
 }
 
-type deployOptions struct {
-	UpdateOptions
+func newUpdateSource(opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
+	// Figure out which plugins to load by inspecting the program contents.
+	plugins, err := plugctx.Host.GetRequiredPlugins(plugin.ProgInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	Destroy bool // true if we are destroying the stack.
+	// Now ensure that we have loaded up any plugins that the program will need in advance.
+	if err = plugctx.Host.EnsurePlugins(plugins); err != nil {
+		return nil, err
+	}
 
-	DOT    bool         // true if we should print the DOT file for this plan.
-	Events eventEmitter // the channel to write events from the engine to.
-	Diag   diag.Sink    // the sink to use for diag'ing.
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
+	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
+	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+		Target:  target,
+	}, opts.DryRun), nil
 }
 
-func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error) {
+func update(info *planContext, opts planOptions) (ResourceChanges, error) {
 	result, err := plan(info, opts)
 	if err != nil {
 		return nil, err
@@ -83,11 +99,11 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
-			opts.Events.preludeEvent(opts.DryRun, result.Info.Update.GetTarget().Config)
+			opts.Events.preludeEvent(opts.DryRun, result.Ctx.Update.GetTarget().Config)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := newDeployActions(info.Update, opts)
+			actions := newUpdateActions(info.Update, opts)
 			summary, _, _, err := result.Walk(actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
@@ -112,26 +128,26 @@ func deployLatest(info *planContext, opts deployOptions) (ResourceChanges, error
 	return resourceChanges, nil
 }
 
-// deployActions pretty-prints the plan application process as it goes.
-type deployActions struct {
+// updateActions pretty-prints the plan application process as it goes.
+type updateActions struct {
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
 	MaybeCorrupt bool
-	Update       Update
-	Opts         deployOptions
+	Update       UpdateInfo
+	Opts         planOptions
 }
 
-func newDeployActions(update Update, opts deployOptions) *deployActions {
-	return &deployActions{
+func newUpdateActions(u UpdateInfo, opts planOptions) *updateActions {
+	return &updateActions{
 		Ops:    make(map[deploy.StepOp]int),
 		Seen:   make(map[resource.URN]deploy.Step),
-		Update: update,
+		Update: u,
 		Opts:   opts,
 	}
 }
 
-func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Ensure we've marked this step as observed.
 	acts.Seen[step.URN()] = step
 
@@ -144,7 +160,7 @@ func (acts *deployActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	return acts.Update.BeginMutation()
 }
 
-func (acts *deployActions) OnResourceStepPost(ctx interface{},
+func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
 	assertSeen(acts.Seen, step)
 
@@ -176,7 +192,7 @@ func (acts *deployActions) OnResourceStepPost(ctx interface{},
 	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
 }
 
-func (acts *deployActions) OnResourceOutputs(step deploy.Step) error {
+func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
 	indent := getIndent(step, acts.Seen)

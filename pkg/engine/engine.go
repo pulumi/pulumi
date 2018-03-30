@@ -1,4 +1,4 @@
-// Copyright 2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2018, Pulumi Corporation.  All rights reserved.
 
 package engine
 
@@ -7,8 +7,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// Update abstracts away information about an apply, preview, or destroy.
-type Update interface {
+// UpdateInfo abstracts away information about an apply, preview, or destroy.
+type UpdateInfo interface {
 	// GetRoot returns the root directory for this update. This defines the scope for any filesystem resources
 	// accessed by this update.
 	GetRoot() string

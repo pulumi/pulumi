@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 // Package stack contains the serialized and configurable state associated with an stack; or, in other
 // words, a deployment target.  It pertains to resources and deployment plans, but is a package unto itself.

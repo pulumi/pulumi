@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package deploy
 
@@ -32,14 +32,10 @@ type EvalRunInfo struct {
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-//
-// If destroy is true, then all of the usual initialization will take place, but the state will be presented to the
-// planning engine as if no new resources exist.  This will cause it to forcibly remove them.
-func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo, destroy bool, dryRun bool) Source {
+func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo, dryRun bool) Source {
 	return &evalSource{
 		plugctx: plugctx,
 		runinfo: runinfo,
-		destroy: destroy,
 		dryRun:  dryRun,
 	}
 }
@@ -47,7 +43,6 @@ func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo, destroy bool, 
 type evalSource struct {
 	plugctx *plugin.Context // the plugin context.
 	runinfo *EvalRunInfo    // the directives to use when running the program.
-	destroy bool            // true if this source will trigger total destruction.
 	dryRun  bool            // true if this is a dry-run operation only.
 }
 
@@ -110,11 +105,6 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		return nil, nil
 	}
 
-	// If we are destroying, we simply return nothing.
-	if iter.src.destroy {
-		return nil, nil
-	}
-
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
 	case reg := <-iter.regChan:
@@ -141,56 +131,50 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 
 // forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
 func (iter *evalSourceIterator) forkRun(opts Options) {
-	// If we are destroying, no need to perform any evaluation beyond the config initialization.
-	if !iter.src.destroy {
-		// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
-		// to queue things up in the resource channel will occur, and we will serve them concurrently.
-		// FIXME: we need to ensure that out of order calls won't deadlock us.  In particular, we need to ensure: 1)
-		//    gRPC won't block the dispatching of calls, and 2) that the channel's fixed size won't cause troubles.
-		go func() {
-			// Next, launch the language plugin.
-			// IDEA: cache these so we reuse the same language plugin instance; if we do this, monitors must be per-run.
-			run := func() error {
-				rt := iter.src.runinfo.Proj.Runtime
-				langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
-				if err != nil {
-					return errors.Wrapf(err, "failed to launch language host %s", rt)
-				}
-				contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
+	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
+	// to queue things up in the resource channel will occur, and we will serve them concurrently.
+	go func() {
+		// Next, launch the language plugin.
+		run := func() error {
+			rt := iter.src.runinfo.Proj.Runtime
+			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
+			if err != nil {
+				return errors.Wrapf(err, "failed to launch language host %s", rt)
+			}
+			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
-				// Make sure to clean up before exiting.
-				defer contract.IgnoreClose(langhost)
+			// Make sure to clean up before exiting.
+			defer contract.IgnoreClose(langhost)
 
-				// Decrypt the configuration.
-				config, err := iter.src.runinfo.Target.Config.Decrypt(iter.src.runinfo.Target.Decrypter)
-				if err != nil {
-					return err
-				}
-
-				// Now run the actual program.
-				var progerr string
-				progerr, err = langhost.Run(plugin.RunInfo{
-					MonitorAddress: iter.mon.Address(),
-					Stack:          string(iter.src.runinfo.Target.Name),
-					Project:        string(iter.src.runinfo.Proj.Name),
-					Pwd:            iter.src.runinfo.Pwd,
-					Program:        iter.src.runinfo.Program,
-					Args:           iter.src.runinfo.Args,
-					Config:         config,
-					DryRun:         iter.src.dryRun,
-					Parallel:       opts.Parallel,
-				})
-				if err == nil && progerr != "" {
-					// If the program had an unhandled error; propagate it to the caller.
-					err = errors.Errorf("an unhandled error occurred: %v", progerr)
-				}
+			// Decrypt the configuration.
+			config, err := iter.src.runinfo.Target.Config.Decrypt(iter.src.runinfo.Target.Decrypter)
+			if err != nil {
 				return err
 			}
 
-			// Communicate the error, if it exists, or nil if the program exited cleanly.
-			iter.finChan <- run()
-		}()
-	}
+			// Now run the actual program.
+			var progerr string
+			progerr, err = langhost.Run(plugin.RunInfo{
+				MonitorAddress: iter.mon.Address(),
+				Stack:          string(iter.src.runinfo.Target.Name),
+				Project:        string(iter.src.runinfo.Proj.Name),
+				Pwd:            iter.src.runinfo.Pwd,
+				Program:        iter.src.runinfo.Program,
+				Args:           iter.src.runinfo.Args,
+				Config:         config,
+				DryRun:         iter.src.dryRun,
+				Parallel:       opts.Parallel,
+			})
+			if err == nil && progerr != "" {
+				// If the program had an unhandled error; propagate it to the caller.
+				err = errors.Errorf("an unhandled error occurred: %v", progerr)
+			}
+			return err
+		}
+
+		// Communicate the error, if it exists, or nil if the program exited cleanly.
+		iter.finChan <- run()
+	}()
 }
 
 // resmon implements the lumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's

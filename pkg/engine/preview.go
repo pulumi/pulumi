@@ -1,4 +1,4 @@
-// Copyright 2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2018, Pulumi Corporation.  All rights reserved.
 
 package engine
 
@@ -9,36 +9,34 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Preview(update Update, events chan<- Event, opts UpdateOptions) error {
-	contract.Require(update != nil, "update")
+func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
+	contract.Require(u != nil, "u")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	info, err := planContextFromUpdate(update)
+	ctx, err := newPlanContext(u)
 	if err != nil {
 		return err
 	}
-	defer info.Close()
+	defer ctx.Close()
 
 	// Always set opts.DryRun to `true` when processing previews: if we do not do this, the engine will assume that it
 	// should elide unknown input/output properties when interacting with the language and resource providers and we
 	// will produce unexpected results.
 	opts.DryRun = true
-	emitter := makeEventEmitter(events, update)
 
-	return previewLatest(info, deployOptions{
+	emitter := makeEventEmitter(events, u)
+	return preview(ctx, planOptions{
 		UpdateOptions: opts,
-
-		Destroy: false,
-
-		Events: emitter,
-		Diag:   newEventSink(emitter),
+		SourceFunc:    newUpdateSource,
+		Events:        emitter,
+		Diag:          newEventSink(emitter),
 	})
 }
 
-func previewLatest(info *planContext, opts deployOptions) error {
-	result, err := plan(info, opts)
+func preview(ctx *planContext, opts planOptions) error {
+	result, err := plan(ctx, opts)
 	if err != nil {
 		return err
 	}
@@ -66,11 +64,11 @@ func previewLatest(info *planContext, opts deployOptions) error {
 
 type previewActions struct {
 	Ops  map[deploy.StepOp]int
-	Opts deployOptions
+	Opts planOptions
 	Seen map[resource.URN]deploy.Step
 }
 
-func newPreviewActions(opts deployOptions) *previewActions {
+func newPreviewActions(opts planOptions) *previewActions {
 	return &previewActions{
 		Ops:  make(map[deploy.StepOp]int),
 		Opts: opts,

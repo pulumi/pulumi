@@ -50,7 +50,10 @@ func newNewCmd() *cobra.Command {
 				return errors.Wrap(err, "getting the working directory")
 			}
 
-			releases := cloud.New(cmdutil.Diag(), getCloudURL(cloudURL))
+			releases, err := cloud.New(cmdutil.Diag(), getCloudURL(cloudURL))
+			if err != nil {
+				return errors.Wrap(err, "creating API client")
+			}
 
 			// Get the selected template.
 			var templateName string

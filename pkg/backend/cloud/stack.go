@@ -1,4 +1,4 @@
-// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 package cloud
 
@@ -20,6 +20,7 @@ type Stack interface {
 	CloudURL() string  // the URL to the cloud containing this stack.
 	OrgName() string   // the organization that owns this stack.
 	CloudName() string // the PPC in which this stack is running.
+	RunLocally() bool  // true if previews/updates/destroys targeting this stack run locally.
 }
 
 // cloudStack is a cloud stack descriptor.
@@ -59,7 +60,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		name:      stackName,
-		cloudURL:  b.cloudURL,
+		cloudURL:  b.CloudURL(),
 		orgName:   apistack.OrgName,
 		cloudName: apistack.CloudName,
 		config:    nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
@@ -68,6 +69,10 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	}
 }
 
+// managedCloudName is the name used to refer to the cloud in the Pulumi Service that owns all of an organization's
+// managed stacks. All engine operations for a managed stack--previews, updates, destroys, etc.--run locally.
+const managedCloudName = "pulumi"
+
 func (s *cloudStack) Name() tokens.QName         { return s.name }
 func (s *cloudStack) Config() config.Map         { return s.config }
 func (s *cloudStack) Snapshot() *deploy.Snapshot { return s.snapshot }
@@ -75,6 +80,7 @@ func (s *cloudStack) Backend() backend.Backend   { return s.b }
 func (s *cloudStack) CloudURL() string           { return s.cloudURL }
 func (s *cloudStack) OrgName() string            { return s.orgName }
 func (s *cloudStack) CloudName() string          { return s.cloudName }
+func (s *cloudStack) RunLocally() bool           { return s.cloudName == managedCloudName }
 
 func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
