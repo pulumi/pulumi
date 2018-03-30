@@ -36,7 +36,10 @@ func newStackLsCmd() *cobra.Command {
 			}
 
 			// Get a list of all known backends, as we will query them all.
-			bes, hasClouds := allBackends()
+			bes, hasClouds, err := allBackends()
+			if err != nil {
+				return err
+			}
 
 			// Get the current stack so we can print a '*' next to it.
 			var current tokens.QName

@@ -17,11 +17,8 @@ func newLoginCmd() *cobra.Command {
 		Long:  "Log into the Pulumi Cloud.  You can script by using PULUMI_ACCESS_TOKEN environment variable.",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if cloudURL == "" {
-				// If no URL was specified, assume it's the default URL.
-				cloudURL = cloud.DefaultURL()
-			}
-			return cloud.Login(cloudURL)
+			_, err := cloud.Login(cmdutil.Diag(), cloudURL)
+			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log into")

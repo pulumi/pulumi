@@ -112,46 +112,87 @@ func newBarProxyReadCloser(bar *pb.ProgressBar, r io.Reader) io.ReadCloser {
 // Backend extends the base backend interface with specific information about cloud backends.
 type Backend interface {
 	backend.Backend
+
 	CloudURL() string
+
+	Logout() error
 	DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
-	ListTemplates() ([]workspace.Template, error)
 	DownloadTemplate(name string, progress bool) (io.ReadCloser, error)
+	ListTemplates() ([]workspace.Template, error)
 }
 
 type cloudBackend struct {
 	d      diag.Sink
-	name   string
+	url    string
 	client *client.Client
 }
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, apiURL string) (Backend, error) {
-	apiToken, err := workspace.GetAccessToken(apiURL)
+func New(d diag.Sink, cloudURL string) (Backend, error) {
+	cloudURL = ValueOrDefaultURL(cloudURL)
+	apiToken, err := workspace.GetAccessToken(cloudURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting stored credentials")
 	}
 
 	return &cloudBackend{
 		d:      d,
-		name:   apiURL,
-		client: client.NewClient(apiURL, apiToken),
+		url:    cloudURL,
+		client: client.NewClient(cloudURL, apiToken),
 	}, nil
 }
 
-func (b *cloudBackend) Name() string     { return b.name }
-func (b *cloudBackend) CloudURL() string { return b.name }
+// Login logs into the target cloud URL and returns the cloud backend for it.
+func Login(d diag.Sink, cloudURL string) (Backend, error) {
+	cloudURL = ValueOrDefaultURL(cloudURL)
+
+	// We intentionally don't accept command-line args for the user's access token. Having it in
+	// .bash_history is not great, and specifying it via flag isn't of much use.
+	accessToken := os.Getenv(AccessTokenEnvVar)
+	if accessToken != "" {
+		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
+	} else {
+		token, readerr := cmdutil.ReadConsoleNoEcho(
+			fmt.Sprintf("Enter your Pulumi access token (located at %s)", cloudConsoleURL(cloudURL, "account")))
+		if readerr != nil {
+			return nil, readerr
+		}
+		accessToken = token
+	}
+
+	// Try and use the credentials to see if they are valid.
+	valid, err := isValidAccessToken(cloudURL, accessToken)
+	if err != nil {
+		return nil, err
+	} else if !valid {
+		return nil, errors.Errorf("invalid access token")
+	}
+
+	// Save them.
+	if err = workspace.StoreAccessToken(cloudURL, accessToken, true); err != nil {
+		return nil, err
+	}
+
+	return New(d, cloudURL)
+}
+
+func (b *cloudBackend) Name() string     { return b.url }
+func (b *cloudBackend) CloudURL() string { return b.url }
 
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
 // created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
 func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
+	return cloudConsoleURL(b.CloudURL(), paths...)
+}
+
+func cloudConsoleURL(cloudURL string, paths ...string) string {
 	// To produce a cloud console URL, we assume that the URL is of the form `api.xx.yy`, and simply strip off the
 	// `api.` part.  If that is not the case, we will return an empty string because we don't recognize the pattern.
-	url := b.CloudURL()
-	ix := strings.Index(url, defaultAPIURLPrefix)
+	ix := strings.Index(cloudURL, defaultAPIURLPrefix)
 	if ix == -1 {
 		return ""
 	}
-	return url[:ix] + path.Join(append([]string{url[ix+len(defaultAPIURLPrefix):]}, paths...)...)
+	return cloudURL[:ix] + path.Join(append([]string{cloudURL[ix+len(defaultAPIURLPrefix):]}, paths...)...)
 }
 
 // CloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
@@ -164,6 +205,11 @@ func (b *cloudBackend) CloudConsoleProjectPath(projID client.ProjectIdentifier) 
 // must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) CloudConsoleStackPath(stackID client.StackIdentifier) string {
 	return path.Join(b.CloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+}
+
+// Logout logs out of the target cloud URL.
+func (b *cloudBackend) Logout() error {
+	return workspace.DeleteAccessToken(b.CloudURL())
 }
 
 // DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
@@ -839,35 +885,6 @@ func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, afterIndex 
 	return false, nil, nil
 }
 
-// Login logs into the target cloud URL.
-func Login(cloudURL string) error {
-	fmt.Printf("Logging into Pulumi Cloud: %s\n", cloudURL)
-
-	// We intentionally don't accept command-line args for the user's access token. Having it in
-	// .bash_history is not great, and specifying it via flag isn't of much use.
-	accessToken := os.Getenv(AccessTokenEnvVar)
-	if accessToken != "" {
-		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
-	} else {
-		token, readerr := cmdutil.ReadConsole("Enter your Pulumi access token")
-		if readerr != nil {
-			return readerr
-		}
-		accessToken = token
-	}
-
-	// Try and use the credentials to see if they are valid.
-	valid, err := isValidAccessToken(cloudURL, accessToken)
-	if err != nil {
-		return err
-	} else if !valid {
-		return fmt.Errorf("invalid access token")
-	}
-
-	// Save them.
-	return workspace.StoreAccessToken(cloudURL, accessToken, true)
-}
-
 // isValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
 // or not. Returns error on any unexpected error.
 func isValidAccessToken(cloud, accessToken string) (bool, error) {
@@ -887,11 +904,6 @@ func isValidAccessToken(cloud, accessToken string) (bool, error) {
 	}
 
 	return true, nil
-}
-
-// Logout logs out of the target cloud URL.
-func Logout(cloudURL string) error {
-	return workspace.DeleteAccessToken(cloudURL)
 }
 
 // CurrentBackends returns a list of the cloud backends the user is currently logged into.

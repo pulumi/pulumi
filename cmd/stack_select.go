@@ -28,7 +28,11 @@ func newStackSelectCmd() *cobra.Command {
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			bes, hasClouds := allBackends()
+			bes, hasClouds, err := allBackends()
+			if err != nil {
+				return err
+			}
+
 			if len(args) > 0 {
 				// A stack was given, ask all known backends about it
 				stackName := tokens.QName(args[0])
