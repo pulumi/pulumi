@@ -39,11 +39,10 @@ func newStackImportCmd() *cobra.Command {
 			// Read from stdin or a specified file
 			reader := os.Stdin
 			if file != "" {
-				f, err := os.Open(file)
+				reader, err = os.Open(file)
 				if err != nil {
 					return errors.Wrap(err, "could not open file")
 				}
-				reader = f
 			}
 
 			// Read the checkpoint from stdin.  We decode this into a json.RawMessage so as not to lose any fields

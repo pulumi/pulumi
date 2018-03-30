@@ -537,11 +537,8 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	}
 
 	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes", string(stackName)}, dir)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
@@ -734,7 +731,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 	fileName := path.Join(tempDir, "stack.json")
 
 	// Invoke `pulumi stack export`
-	if err := pt.runPulumiCommand("pulumi-export", []string{"stack", "export", "--file", fileName}, dir); err != nil {
+	if err = pt.runPulumiCommand("pulumi-export", []string{"stack", "export", "--file", fileName}, dir); err != nil {
 		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
 	}
 
@@ -744,7 +741,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 		return errors.Wrapf(err, "expected to be able to open file with stack exports: %s", fileName)
 	}
 	defer func() {
-		f.Close()
+		contract.IgnoreClose(f)
 		contract.IgnoreError(os.RemoveAll(tempDir))
 	}()
 

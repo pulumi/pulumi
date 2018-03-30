@@ -39,11 +39,10 @@ func newStackExportCmd() *cobra.Command {
 			// Read from stdin or a specified file.
 			writer := os.Stdout
 			if file != "" {
-				f, err := os.Create(file)
+				writer, err = os.Create(file)
 				if err != nil {
 					return errors.Wrap(err, "could not open file")
 				}
-				writer = f
 			}
 
 			// Write the deployment.
