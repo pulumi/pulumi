@@ -5,6 +5,7 @@ package plugin
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/golang/glog"
@@ -27,6 +28,15 @@ type provider struct {
 	pkg    tokens.Package
 	plug   *plugin
 	client pulumirpc.ResourceProviderClient
+
+	// The configuration of resource plugins is delayed as long as possible, to allow higher-level components
+	// (i.e. the config subsystem) to present better error messages about configuration keys that are potentially
+	// missing. The `Provider` interface contract stipulates that consumers of the `Provider` interface must call
+	// `Configure` before any other method other than `GetPluginInfo` is called, but we as the implementation
+	// have the freedom to send the `Configure` RPC call whenever we wish; we'll take advantage of this by only
+	// firing the `Configure` call if the provider has not already been configured.
+	configOnce sync.Once             // Once protecting the configuring of the provider, which must occur once
+	configKeys map[config.Key]string // Configuration keys that will be given to the provider to initialize
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -65,28 +75,21 @@ func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s]", p.pkg)
 }
 
-// Configure configures the resource provider with "globals" that control its behavior.
+// Configure configures the resource provider with "globals" that control its behavior. It does not actually
+// configure the provider yet; configuring is performed lazily once the first resource operation occurs.
 func (p *provider) Configure(vars map[config.Key]string) error {
-	label := fmt.Sprintf("%s.Configure()", p.label())
-	glog.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
-	config := make(map[string]string)
-	for k, v := range vars {
-		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
-		// providers which are on the older plan.
-		config[k.Namespace()+":config:"+k.Name()] = v
-	}
-	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-		return rpcError
-	}
+	// The only thing we have to do here is stash the config keys that we are given, so that we
+	// can hand them off to the provider when it comes time to perform a resource operation.
+	p.configKeys = vars
 	return nil
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+	if err := p.ensureConfigured(); err != nil {
+		return nil, nil, err
+	}
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	glog.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
@@ -141,6 +144,10 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
 
+	if err := p.ensureConfigured(); err != nil {
+		return DiffResult{}, err
+	}
+
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
 	glog.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
@@ -191,6 +198,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
 
+	if err := p.ensureConfigured(); err != nil {
+		return "", nil, resource.StatusOK, err
+	}
+
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	glog.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
@@ -232,6 +243,10 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
+
+	if err := p.ensureConfigured(); err != nil {
+		return nil, resource.StatusOK, err
+	}
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
 	glog.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
@@ -275,6 +290,10 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 
+	if err := p.ensureConfigured(); err != nil {
+		return resource.StatusOK, err
+	}
+
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
 	glog.V(7).Infof("%s executing (#props=%d)", label, len(props))
 
@@ -303,6 +322,10 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap,
 	[]CheckFailure, error) {
 	contract.Assert(tok != "")
+
+	if err := p.ensureConfigured(); err != nil {
+		return nil, nil, err
+	}
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	glog.V(7).Infof("%s executing (#args=%d)", label, len(args))
@@ -366,6 +389,30 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
 	return p.plug.Close()
+}
+
+// ensureConfigured will configure the resource provider if it has not already
+// been configured. It is a no-op if the provider has already been configured.
+func (p *provider) ensureConfigured() error {
+	var configureError error
+	p.configOnce.Do(func() {
+		label := fmt.Sprintf("%s.Configure()", p.label())
+		glog.V(7).Infof("%s executing (#vars=%d)", label, len(p.configKeys))
+		config := make(map[string]string)
+		for k, v := range p.configKeys {
+			// Pass the older spelling of a configuration key across the RPC interface, for now, to support
+			// providers which are on the older plan.
+			config[k.Namespace()+":config:"+k.Name()] = v
+		}
+		_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
+		if err != nil {
+			rpcError := rpcerror.Convert(err)
+			glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			configureError = rpcError
+		}
+	})
+
+	return configureError
 }
 
 // resourceStateAndError interprets an error obtained from a gRPC endpoint.
