@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -146,7 +147,9 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	return u.backend.client.CompleteUpdate(u.update, status, token)
 }
 
-func (u *cloudUpdate) recordEvent(event engine.Event, debug bool, opts backend.DisplayOptions) error {
+func (u *cloudUpdate) recordEvent(
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) error {
+
 	// If we don't have a token source, we can't perform any mutations.
 	if u.tokenSource == nil {
 		return nil
@@ -162,7 +165,7 @@ func (u *cloudUpdate) recordEvent(event engine.Event, debug bool, opts backend.D
 
 	// Ensure we render events with raw colorization tags.
 	opts.Color = colors.Raw
-	msg := local.RenderEvent(event, debug, opts)
+	msg := local.RenderEvent(event, seen, debug, opts)
 	if msg == "" {
 		return nil
 	}
@@ -183,12 +186,14 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 	displayEvents := make(chan engine.Event)
 	go local.DisplayEvents(action, displayEvents, done, debug, opts)
 
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+
 	for e := range events {
 		// First echo the event to the local display.
 		displayEvents <- e
 
 		// Then render and record the event for posterity.
-		if err := u.recordEvent(e, debug, opts); err != nil {
+		if err := u.recordEvent(e, seen, debug, opts); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
