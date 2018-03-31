@@ -184,10 +184,10 @@ func TestDiffs(t *testing.T) {
 }
 
 func assertPreviewOutput(t *testing.T, expected, outputWithControlSeqeunces string) {
-	// Remove the first and last lines.  The first contains the local 	path that the test is running
+	// Remove the first two and last lines.  The first contains the local 	path that the test is running
 	// in and last line contains the duration.
 	lines := strings.Split(outputWithControlSeqeunces, "\n")
-	outputWithControlSeqeunces = strings.Join(lines[1:len(lines)-2], "\n")
+	outputWithControlSeqeunces = strings.Join(lines[2:len(lines)-3], "\n")
 
 	assertProgramOutput(t, expected, outputWithControlSeqeunces)
 }
