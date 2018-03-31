@@ -28,10 +28,10 @@ catch (err) {
         // This node version is explicitly supported, but the load still failed.
         // This means that Pulumi messed up when installing itself.
         throw new RunError(
-            /*urn:*/ "", `Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
+            `Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
     }
 
-    throw new RunError(/*urn:*/ "",
+    throw new RunError(
         `Failed to load custom Pulumi SDK Node.js extension; The version of Node.js that you are
          using (${thisNodeVersion}) is not explicitly supported, you must use one of these
          supported versions of Node.js: ${supportedNodeVersions}`);
@@ -635,7 +635,7 @@ function throwSerializationError(func: Function, context: Context, info: string)
 Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
     }
 
-    throw new RunError("", message);
+    throw new RunError(message);
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {

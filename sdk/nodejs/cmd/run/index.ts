@@ -220,7 +220,7 @@ export function main(args: string[]): void {
         if (err instanceof RunError) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
             // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
-            log.errorX(err.urn, err.message);
+            log.errorX("", err.message);
         }
         else {
             log.errorX("", `Running program '${program}' failed with an unhandled exception:`);

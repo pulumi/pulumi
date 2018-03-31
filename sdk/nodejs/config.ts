@@ -165,7 +165,7 @@ export class Config {
  */
 class ConfigTypeError extends RunError {
     constructor(key: string, v: any, expectedType: string) {
-        super(/*urn:*/ "", `Configuration '${key}' value '${v}' is not a valid ${expectedType}`);
+        super(`Configuration '${key}' value '${v}' is not a valid ${expectedType}`);
     }
 }
 
@@ -174,7 +174,7 @@ class ConfigTypeError extends RunError {
  */
 class ConfigMissingError extends RunError {
     constructor(public key: string) {
-        super(/*urn:*/ "",
+        super(
             `Missing required configuration variable '${key}'\n` +
             `\tplease set a value using the command \`pulumi config set ${key} <value>\``,
         );
