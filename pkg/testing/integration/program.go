@@ -34,7 +34,7 @@ import (
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
 	Deployment   *apitype.Deployment
-	RootResource *apitype.Resource
+	RootResource apitype.Resource
 	Outputs      map[string]interface{}
 }
 
@@ -273,7 +273,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi update (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
-//   (*) pulumi logout
 //
 //   (*) Only if ProgramTestOptions.CloudURL is not empty.
 //
@@ -756,11 +755,11 @@ func (pt *programTester) performExtraRuntimeValidation(
 	}
 
 	// Get the root resource and outputs from the deployment
-	var rootResource *apitype.Resource
+	var rootResource apitype.Resource
 	var outputs map[string]interface{}
 	for _, res := range deployment.Resources {
 		if res.Type == resource.RootStackType {
-			rootResource = &res
+			rootResource = res
 			outputs = res.Outputs
 		}
 	}

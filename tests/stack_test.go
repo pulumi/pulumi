@@ -94,13 +94,6 @@ func TestStackCommands(t *testing.T) {
 		assert.Empty(t, out, "expected no stdout")
 		assert.Contains(t, err, "cannot pass both --local with either --remote or --cloud-url")
 
-		// Confirm passing --remote while logged out fails.
-		e.RunCommand("pulumi", "logout")
-		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--remote")
-		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "error: you must be logged in to create stacks in the Pulumi Cloud.")
-		assert.Contains(t, err, "Run `pulumi login` to log in.")
-
 		// Confirm stack init without --local works when logged out.
 		e.RunCommand("pulumi", "stack", "init", "foo")
 		stacks, current := integration.GetStacks(e)
