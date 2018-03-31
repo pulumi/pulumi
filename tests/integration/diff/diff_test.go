@@ -27,18 +27,17 @@ func TestDiffs(t *testing.T) {
 		StackName:              "diffstack",
 		UpdateCommandlineFlags: []string{"--color=raw"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			checkpoint := stack.Checkpoint
-			assert.NotNil(t, checkpoint.Latest)
-			assert.Equal(t, 5, len(checkpoint.Latest.Resources))
-			stackRes := checkpoint.Latest.Resources[0]
+			assert.NotNil(t, stack.Deployment)
+			assert.Equal(t, 5, len(stack.Deployment.Resources))
+			stackRes := stack.Deployment.Resources[0]
 			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-			a := checkpoint.Latest.Resources[1]
+			a := stack.Deployment.Resources[1]
 			assert.Equal(t, "a", string(a.URN.Name()))
-			b := checkpoint.Latest.Resources[2]
+			b := stack.Deployment.Resources[2]
 			assert.Equal(t, "b", string(b.URN.Name()))
-			c := checkpoint.Latest.Resources[3]
+			c := stack.Deployment.Resources[3]
 			assert.Equal(t, "c", string(c.URN.Name()))
-			d := checkpoint.Latest.Resources[4]
+			d := stack.Deployment.Resources[4]
 			assert.Equal(t, "d", string(d.URN.Name()))
 		},
 		EditDirs: []integration.EditDir{
@@ -48,18 +47,17 @@ func TestDiffs(t *testing.T) {
 				Stdout:   &buf,
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-					checkpoint := stack.Checkpoint
-					assert.NotNil(t, checkpoint.Latest)
-					assert.Equal(t, 5, len(checkpoint.Latest.Resources))
-					stackRes := checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stack.Deployment)
+					assert.Equal(t, 5, len(stack.Deployment.Resources))
+					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := checkpoint.Latest.Resources[1]
+					a := stack.Deployment.Resources[1]
 					assert.Equal(t, "a", string(a.URN.Name()))
-					b := checkpoint.Latest.Resources[2]
+					b := stack.Deployment.Resources[2]
 					assert.Equal(t, "b", string(b.URN.Name()))
-					c := checkpoint.Latest.Resources[3]
+					c := stack.Deployment.Resources[3]
 					assert.Equal(t, "c", string(c.URN.Name()))
-					e := checkpoint.Latest.Resources[4]
+					e := stack.Deployment.Resources[4]
 					assert.Equal(t, "e", string(e.URN.Name()))
 
 					expected :=
@@ -89,16 +87,15 @@ func TestDiffs(t *testing.T) {
 				Stdout:   &buf,
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-					checkpoint := stack.Checkpoint
-					assert.NotNil(t, checkpoint.Latest)
-					assert.Equal(t, 4, len(checkpoint.Latest.Resources))
-					stackRes := checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stack.Deployment)
+					assert.Equal(t, 4, len(stack.Deployment.Resources))
+					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := checkpoint.Latest.Resources[1]
+					a := stack.Deployment.Resources[1]
 					assert.Equal(t, "a", string(a.URN.Name()))
-					c := checkpoint.Latest.Resources[2]
+					c := stack.Deployment.Resources[2]
 					assert.Equal(t, "c", string(c.URN.Name()))
-					e := checkpoint.Latest.Resources[3]
+					e := stack.Deployment.Resources[3]
 					assert.Equal(t, "e", string(e.URN.Name()))
 
 					expected :=
@@ -124,21 +121,16 @@ func TestDiffs(t *testing.T) {
 				Stdout:   &buf,
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-					checkpoint := stack.Checkpoint
-					assert.NotNil(t, checkpoint.Latest)
-					// assert.Equal(t, 5, len(checkpoint.Latest.Resources))
-					assert.Equal(t, 4, len(checkpoint.Latest.Resources))
-					stackRes := checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stack.Deployment)
+					assert.Equal(t, 4, len(stack.Deployment.Resources))
+					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := checkpoint.Latest.Resources[1]
+					a := stack.Deployment.Resources[1]
 					assert.Equal(t, "a", string(a.URN.Name()))
-					c := checkpoint.Latest.Resources[2]
+					c := stack.Deployment.Resources[2]
 					assert.Equal(t, "c", string(c.URN.Name()))
-					e := checkpoint.Latest.Resources[3]
+					e := stack.Deployment.Resources[3]
 					assert.Equal(t, "e", string(e.URN.Name()))
-					// aPendingDelete := checkpoint.Latest.Resources[4]
-					// assert.Equal(t, "a", string(aPendingDelete.URN.Name()))
-					// assert.True(t, aPendingDelete.Delete)
 
 					expected := `<unchanged>Performing changes:
 * pulumi:pulumi:Stack: (same)
@@ -156,10 +148,9 @@ func TestDiffs(t *testing.T) {
 				Stdout:   &buf,
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-					checkpoint := stack.Checkpoint
-					assert.NotNil(t, checkpoint.Latest)
-					assert.Equal(t, 1, len(checkpoint.Latest.Resources))
-					stackRes := checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stack.Deployment)
+					assert.Equal(t, 1, len(stack.Deployment.Resources))
+					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 
 					expected := `<unchanged>Performing changes:
