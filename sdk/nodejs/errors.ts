@@ -5,7 +5,7 @@
  * verbose unhandled error logic which emits the source program text and complete stack trace.
  */
 export class RunError extends Error {
-    constructor(message: string) {
+    constructor(public readonly urn: string, message: string) {
         super(message);
     }
 }

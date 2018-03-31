@@ -42,7 +42,7 @@ export function hasMonitor(): boolean {
  */
 export function getMonitor(): Object {
     if (!options.monitor) {
-        throw new RunError(
+        throw new RunError(/*urn:*/ "",
             "Pulumi program not connected to the engine -- are you running with the `pulumi` CLI?\n" +
             "This can also happen if you've loaded the Pulumi SDK module multiple times into the same proces");
     }

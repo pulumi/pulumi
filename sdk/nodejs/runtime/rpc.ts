@@ -186,7 +186,7 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 async function serializeProperty(prop: Input<any>, ctx: string, dependentResources: Resource[]): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: undefined`);
+            log.debugX("", `Serialize property [${ctx}]: undefined`);
         }
         return undefinedValue;
     }
@@ -195,7 +195,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
              typeof prop === "number" ||
              typeof prop === "string") {
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
+            log.debugX("", `Serialize property [${ctx}]: primitive=${prop}`);
         }
         return prop;
     }
@@ -203,7 +203,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
         const elems: any[] = [];
         for (let i = 0; i < prop.length; i++) {
             if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: array[${i}] element`);
+                log.debugX("", `Serialize property [${ctx}]: array[${i}] element`);
             }
             elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`, dependentResources));
         }
@@ -212,7 +212,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
     else if (prop instanceof CustomResource) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: resource ID`);
+            log.debugX("", `Serialize property [${ctx}]: resource ID`);
         }
 
         dependentResources.push(prop);
@@ -230,7 +230,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
     else if (prop instanceof Promise) {
         // For a promise input, await the property and then serialize the result.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: Promise<T>`);
+            log.debugX("", `Serialize property [${ctx}]: Promise<T>`);
         }
         const subctx = `Promise<${ctx}>`;
         return serializeProperty(
@@ -238,7 +238,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
     }
     else if (prop instanceof Output) {
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: Dependency<T>`);
+            log.debugX("", `Serialize property [${ctx}]: Dependency<T>`);
         }
 
         dependentResources.push(...prop.resources());
@@ -250,7 +250,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
     async function serializeAllKeys(innerProp: any, obj: any) {
         for (const k of Object.keys(innerProp)) {
             if (excessiveDebugOutput) {
-                log.debug(`Serialize property [${ctx}]: object.${k}`);
+                log.debugX("", `Serialize property [${ctx}]: object.${k}`);
             }
             obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`, dependentResources);
         }

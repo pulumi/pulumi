@@ -1,5 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+import * as log from "./log";
 import * as runtime from "./runtime";
 import { registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
@@ -47,6 +48,29 @@ export abstract class Resource {
         // that dependent computations resolve normally.  If we are just planning, on the other
         // hand, values will never resolve.
         registerResource(this, t, name, custom, props, opts);
+    }
+
+    private async logAsync(
+            logFn: (urn: string, message: string, ...args: any[]) => void,
+            message: string, args: any[]): Promise<void> {
+        const urn = await this.urn.promise();
+        logFn(urn, message, ...args);
+    }
+
+    public debugAsync(message: string, ...args: any[]): Promise<void> {
+        return this.logAsync(log.debugX, message, args);
+    }
+
+    public async infoAsync(message: string, ...args: any[]): Promise<void> {
+        return this.logAsync(log.infoX, message, args);
+    }
+
+    public async warnAsync(message: string, ...args: any[]): Promise<void> {
+        return this.logAsync(log.warnX, message, args);
+    }
+
+    public async errorAsync(message: string, ...args: any[]): Promise<void> {
+        return this.logAsync(log.errorX, message, args);
     }
 }
 

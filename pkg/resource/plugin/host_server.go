@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -62,8 +63,7 @@ func (eng *hostServer) Cancel() error {
 }
 
 // Log logs a global message in the engine, including errors and warnings.
-func (eng *hostServer) Log(ctx context.Context,
-	req *lumirpc.LogRequest) (*pbempty.Empty, error) {
+func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbempty.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
 	case lumirpc.LogSeverity_DEBUG:
@@ -77,6 +77,6 @@ func (eng *hostServer) Log(ctx context.Context,
 	default:
 		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
-	eng.host.Log(sev, req.Message)
+	eng.host.Log(sev, resource.URN(req.Urn), req.Message)
 	return &pbempty.Empty{}, nil
 }

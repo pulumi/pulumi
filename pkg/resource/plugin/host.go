@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -20,8 +21,9 @@ type Host interface {
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
 
-	// Log logs a global message, including errors and warnings.
-	Log(sev diag.Severity, msg string)
+	// Log logs a message, including errors and warnings.  Messages can have a resource URN
+	// associated with them.  If no urn is provided, the message is global.
+	Log(sev diag.Severity, urn resource.URN, msg string)
 
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
 	// could not be found, or an error occurred while creating it, a non-nil error is returned.
@@ -109,8 +111,8 @@ func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
 }
 
-func (host *defaultHost) Log(sev diag.Severity, msg string) {
-	host.ctx.Diag.Logf(sev, diag.RawMessage(msg))
+func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string) {
+	host.ctx.Diag.Logf(sev, diag.RawMessage(urn, msg))
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
@@ -197,7 +199,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 						v = info.Version.String()
 					}
 					host.ctx.Diag.Warningf(
-						diag.Message("resource plugin %s mis-reported its own version, expected %s got %s"),
+						diag.Message("" /*urn*/, "resource plugin %s mis-reported its own version, expected %s got %s"),
 						info.Name, version.String(), v)
 				}
 			}

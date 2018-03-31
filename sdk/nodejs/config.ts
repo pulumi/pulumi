@@ -22,7 +22,7 @@ export class Config {
         // just new Config("<package>") was called.
         if (name.endsWith(":config")) {
             const newName = name.replace(/:config$/, "");
-            log.warn("`:config` is no longer required at the end of configuration " +
+            log.warnX("", "`:config` is no longer required at the end of configuration " +
                 "bag names and support will be removed in a future version, please " +
                 "use new Config(\"%s\") instead.", newName);
             name = newName;
@@ -165,7 +165,7 @@ export class Config {
  */
 class ConfigTypeError extends RunError {
     constructor(key: string, v: any, expectedType: string) {
-        super(`Configuration '${key}' value '${v}' is not a valid ${expectedType}`);
+        super(/*urn:*/ "", `Configuration '${key}' value '${v}' is not a valid ${expectedType}`);
     }
 }
 
@@ -174,7 +174,7 @@ class ConfigTypeError extends RunError {
  */
 class ConfigMissingError extends RunError {
     constructor(public key: string) {
-        super(
+        super(/*urn:*/ "",
             `Missing required configuration variable '${key}'\n` +
             `\tplease set a value using the command \`pulumi config set ${key} <value>\``,
         );

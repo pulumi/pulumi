@@ -15,7 +15,7 @@ const resproto = require("../proto/resource_pb.js");
  * resolves when the invoke finishes.
  */
 export async function invoke(tok: string, props: Inputs): Promise<any> {
-    log.debug(`Invoking function: tok=${tok}` +
+    log.debugX("", `Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
     // Wait for all values to be available, and then perform the RPC.
@@ -23,7 +23,7 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
     try {
         const obj = gstruct.Struct.fromJavaScript(
             await serializeProperties(`invoke:${tok}`, props));
-        log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
+        log.debugX("", `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
@@ -33,7 +33,7 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
         req.setArgs(obj);
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
             monitor.invoke(req, (err: Error, innerResponse: any) => {
-                log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                log.debugX("", `Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
                     innerReject(err);
                 }

@@ -831,8 +831,8 @@ func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, afterIndex 
 
 	// Issue a warning if appropriate.
 	if warn {
-		b.d.Warningf(diag.Message("error querying update status: %v"), err)
-		b.d.Warningf(diag.Message("retrying in %vs... ^C to stop (this will not cancel the update)"),
+		b.d.Warningf(diag.Message("" /*urn*/, "error querying update status: %v"), err)
+		b.d.Warningf(diag.Message("" /*urn*/, "retrying in %vs... ^C to stop (this will not cancel the update)"),
 			nextRetryTime.Seconds())
 	}
 

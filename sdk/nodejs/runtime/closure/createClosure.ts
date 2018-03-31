@@ -27,10 +27,11 @@ catch (err) {
     if (supportedNodeVersions.indexOf(thisNodeVersion) > -1) {
         // This node version is explicitly supported, but the load still failed.
         // This means that Pulumi messed up when installing itself.
-        throw new RunError(`Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
+        throw new RunError(
+            /*urn:*/ "", `Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
     }
 
-    throw new RunError(
+    throw new RunError(/*urn:*/ "",
         `Failed to load custom Pulumi SDK Node.js extension; The version of Node.js that you are
          using (${thisNodeVersion}) is not explicitly supported, you must use one of these
          supported versions of Node.js: ${supportedNodeVersions}`);
@@ -203,7 +204,9 @@ class SerializedOutput<T> implements resource.Output<T> {
  * function's source code, suitable for execution. Unlike toString, it actually includes information
  * about the captured environment.
  */
-export async function createFunctionInfoAsync(func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+export async function createFunctionInfoAsync(
+    func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+
     const context: Context = {
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
@@ -632,7 +635,7 @@ function throwSerializationError(func: Function, context: Context, info: string)
 Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
     }
 
-    throw new RunError(message);
+    throw new RunError("", message);
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {

@@ -19,11 +19,11 @@ export function hasErrors(): boolean {
 /**
  * debug logs a debug-level message that is generally hidden from end-users.
  */
-export function debug(format: any, ...args: any[]): void {
+export function debugX(urn: string, format: any, ...args: any[]): void {
     const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.DEBUG, msg);
+        logX(engine, engproto.LogSeverity.DEBUG, urn, msg);
     }
     else {
         // ignore debug messages when no engine is available.
@@ -33,11 +33,11 @@ export function debug(format: any, ...args: any[]): void {
 /**
  * info logs an informational message that is generally printed to stdout during resource operations.
  */
-export function info(format: any, ...args: any[]): void {
+export function infoX(urn: string, format: any, ...args: any[]): void {
     const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.INFO, msg);
+        logX(engine, engproto.LogSeverity.INFO, urn, msg);
     }
     else {
         console.log(`info: [runtime] ${msg}`);
@@ -47,11 +47,11 @@ export function info(format: any, ...args: any[]): void {
 /**
  * warn logs a warning to indicate that something went wrong, but not catastrophically so.
  */
-export function warn(format: any, ...args: any[]): void {
+export function warnX(urn: string, format: any, ...args: any[]): void {
     const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.WARNING, msg);
+        logX(engine, engproto.LogSeverity.WARNING, urn, msg);
     }
     else {
         console.warn(`warning: [runtime] ${msg}`);
@@ -61,20 +61,20 @@ export function warn(format: any, ...args: any[]): void {
 /**
  * error logs a fatal error to indicate that the tool should stop processing resource operations immediately.
  */
-export function error(format: any, ...args: any[]): void {
+export function errorX(urn: string, format: any, ...args: any[]): void {
     errcnt++; // remember the error so we can suppress leaks.
 
     const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.ERROR, msg);
+        logX(engine, engproto.LogSeverity.ERROR, urn, msg);
     }
     else {
         console.error(`error: [runtime] ${msg}`);
     }
 }
 
-export function log(engine: any, sev: any, format: any, ...args: any[]): void {
+export function logX(engine: any, sev: any, urn: string, format: any, ...args: any[]): void {
     // Ensure we log everything in serial order.
     const msg: string = util.format(format, ...args);
     const keepAlive: () => void = rpcKeepAlive();
@@ -83,6 +83,7 @@ export function log(engine: any, sev: any, format: any, ...args: any[]): void {
             const req = new engproto.LogRequest();
             req.setSeverity(sev);
             req.setMessage(msg);
+            req.setUrn(urn);
             engine.log(req, () => {
                 resolve(); // let the next log through
                 keepAlive(); // permit RPC channel tear-downs

@@ -37,9 +37,9 @@ echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"
 mkdir -p $JS_PULUMIRPC
 $PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=$JS_PULUMIRPC --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` *.proto
 
-PY_PULUMIRPC=../python/lib/pulumi/runtime/proto/
-echo -e "\tPython: $PY_PULUMIRPC"
-mkdir -p $PY_PULUMIRPC
-python -m grpc_tools.protoc -I./ --python_out=$PY_PULUMIRPC --grpc_python_out=$PY_PULUMIRPC *.proto
+# PY_PULUMIRPC=../python/lib/pulumi/runtime/proto/
+# echo -e "\tPython: $PY_PULUMIRPC"
+# mkdir -p $PY_PULUMIRPC
+# python -m grpc_tools.protoc -I./ --python_out=$PY_PULUMIRPC --grpc_python_out=$PY_PULUMIRPC *.proto
 
 echo Done.

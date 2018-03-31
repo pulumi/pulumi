@@ -18,7 +18,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                                  inputProps: Inputs, opts: ResourceOptions): void {
 
     const label = `resource:${name}[${t}]`;
-    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}` +
+    log.debugX("", `Registering resource: t=${t}, name=${name}, custom=${custom}` +
         (excessiveDebugOutput ? `, inputProps=...` : ``));
 
     // Simply initialize the URN property and get prepared to resolve it later on.
@@ -70,7 +70,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const flattenedInputProps = await serializeProperties(
             label, inputProps, implicitResourceDependencies);
 
-        log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
+        log.debugX("", `RegisterResource RPC prepared: t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(flattenedInputProps)}` : ``));
 
         // Fetch the monitor and make an RPC request.
@@ -100,10 +100,10 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         runAsyncResourceOp(opLabel, async () => {
             const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
                 monitor.registerResource(req, (err: Error, innerResponse: any) => {
-                    log.debug(`RegisterResource RPC finished: t=${t}, name=${name}; ` +
+                    log.debugX("", `RegisterResource RPC finished: t=${t}, name=${name}; ` +
                         `err: ${err}, resp: ${innerResponse}`);
                     if (err) {
-                        log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
+                        log.errorX("", `Failed to register new resource '${name}' [${t}]: ${err.stack}`);
                         reject(err);
                     }
                     else {
@@ -169,7 +169,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
         const urn = await res.urn.promise();
         const outputsObj = gstruct.Struct.fromJavaScript(
             await serializeProperties(`completeResource`, outputs));
-        log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
+        log.debugX("", `RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
 
         // Fetch the monitor and make an RPC request.
@@ -181,10 +181,10 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
 
         await debuggablePromise(new Promise((resolve, reject) =>
             monitor.registerResourceOutputs(req, (err: Error, innerResponse: any) => {
-                log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
+                log.debugX("", `RegisterResourceOutputs RPC finished: urn=${urn}; `+
                     `err: ${err}, resp: ${innerResponse}`);
                 if (err) {
-                    log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
+                    log.errorX("", `Failed to end new resource registration '${urn}': ${err.stack}`);
                     reject(err);
                 }
                 else {
@@ -212,7 +212,7 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
     const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
         if (serial) {
             resourceChainLabel = label;
-            log.debug(`Resource RPC serialization requested: ${label} is current`);
+            log.debugX("", `Resource RPC serialization requested: ${label} is current`);
         }
         return callback();
     }));
@@ -229,7 +229,7 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
     if (serial) {
         resourceChain = finalOp;
         if (resourceChainLabel) {
-            log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
+            log.debugX("", `Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
 }
