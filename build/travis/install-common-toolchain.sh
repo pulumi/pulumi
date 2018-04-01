@@ -11,6 +11,7 @@ nvm install v6.10.2
     YARN_VERSION="1.3.2"
     DEP_VERSION="0.4.1"
     GOMETALINTER_VERSION="2.0.3"
+    VIRTUALENV_VERSION="15.2.0"
     AWSCLI_VERSION="1.14.30"
     WHEEL_VERSION="0.30.0"
     TWINE_VERSION="1.9.1"
@@ -50,6 +51,10 @@ nvm install v6.10.2
     # gocovmerge does not publish versioned releases, but it also hasn't been updated in two years, so
     # getting HEAD is pretty safe.
     go get -v github.com/wadey/gocovmerge
+
+    echo "installing virtualenv ${VIRTUALENV_VERSION}"
+    pip install "virtualenv==${VIRTUALENV_VERSION}"
+    pip install --user "virtualenv==${VIRTUALENV_VERSION}"
 
     echo "installing AWS cli ${AWSCLI_VERSION}"
     pip install --user "awscli==${AWSCLI_VERSION}"
