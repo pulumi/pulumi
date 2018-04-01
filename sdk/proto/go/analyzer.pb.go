@@ -7,6 +7,7 @@ Package pulumirpc is a generated protocol buffer package.
 
 It is generated from these files:
 	analyzer.proto
+	coin.proto
 	engine.proto
 	errors.proto
 	language.proto
@@ -18,6 +19,12 @@ It has these top-level messages:
 	AnalyzeRequest
 	AnalyzeResponse
 	AnalyzeFailure
+	OfferRequest
+	OfferResponse
+	PumpRequest
+	PumpResponse
+	DumpRequest
+	DumpResponse
 	LogRequest
 	ErrorCause
 	GetRequiredPluginsRequest

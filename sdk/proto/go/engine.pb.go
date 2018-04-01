@@ -45,7 +45,7 @@ var LogSeverity_value = map[string]int32{
 func (x LogSeverity) String() string {
 	return proto.EnumName(LogSeverity_name, int32(x))
 }
-func (LogSeverity) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (LogSeverity) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 type LogRequest struct {
 	Severity LogSeverity `protobuf:"varint,1,opt,name=severity,enum=pulumirpc.LogSeverity" json:"severity,omitempty"`
@@ -55,7 +55,7 @@ type LogRequest struct {
 func (m *LogRequest) Reset()                    { *m = LogRequest{} }
 func (m *LogRequest) String() string            { return proto.CompactTextString(m) }
 func (*LogRequest) ProtoMessage()               {}
-func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 func (m *LogRequest) GetSeverity() LogSeverity {
 	if m != nil {
@@ -150,9 +150,9 @@ var _Engine_serviceDesc = grpc.ServiceDesc{
 	Metadata: "engine.proto",
 }
 
-func init() { proto.RegisterFile("engine.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("engine.proto", fileDescriptor2) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor2 = []byte{
 	// 227 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0xcd, 0x4b, 0xcf,
 	0xcc, 0x4b, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2c, 0x28, 0xcd, 0x29, 0xcd, 0xcd,

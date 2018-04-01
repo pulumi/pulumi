@@ -27,7 +27,7 @@ type ConfigureRequest struct {
 func (m *ConfigureRequest) Reset()                    { *m = ConfigureRequest{} }
 func (m *ConfigureRequest) String() string            { return proto.CompactTextString(m) }
 func (*ConfigureRequest) ProtoMessage()               {}
-func (*ConfigureRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*ConfigureRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func (m *ConfigureRequest) GetVariables() map[string]string {
 	if m != nil {
@@ -44,7 +44,7 @@ type InvokeRequest struct {
 func (m *InvokeRequest) Reset()                    { *m = InvokeRequest{} }
 func (m *InvokeRequest) String() string            { return proto.CompactTextString(m) }
 func (*InvokeRequest) ProtoMessage()               {}
-func (*InvokeRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*InvokeRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
 
 func (m *InvokeRequest) GetTok() string {
 	if m != nil {
@@ -68,7 +68,7 @@ type InvokeResponse struct {
 func (m *InvokeResponse) Reset()                    { *m = InvokeResponse{} }
 func (m *InvokeResponse) String() string            { return proto.CompactTextString(m) }
 func (*InvokeResponse) ProtoMessage()               {}
-func (*InvokeResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
+func (*InvokeResponse) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{2} }
 
 func (m *InvokeResponse) GetReturn() *google_protobuf1.Struct {
 	if m != nil {
@@ -93,7 +93,7 @@ type CheckRequest struct {
 func (m *CheckRequest) Reset()                    { *m = CheckRequest{} }
 func (m *CheckRequest) String() string            { return proto.CompactTextString(m) }
 func (*CheckRequest) ProtoMessage()               {}
-func (*CheckRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
+func (*CheckRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{3} }
 
 func (m *CheckRequest) GetUrn() string {
 	if m != nil {
@@ -124,7 +124,7 @@ type CheckResponse struct {
 func (m *CheckResponse) Reset()                    { *m = CheckResponse{} }
 func (m *CheckResponse) String() string            { return proto.CompactTextString(m) }
 func (*CheckResponse) ProtoMessage()               {}
-func (*CheckResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
+func (*CheckResponse) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{4} }
 
 func (m *CheckResponse) GetInputs() *google_protobuf1.Struct {
 	if m != nil {
@@ -148,7 +148,7 @@ type CheckFailure struct {
 func (m *CheckFailure) Reset()                    { *m = CheckFailure{} }
 func (m *CheckFailure) String() string            { return proto.CompactTextString(m) }
 func (*CheckFailure) ProtoMessage()               {}
-func (*CheckFailure) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
+func (*CheckFailure) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{5} }
 
 func (m *CheckFailure) GetProperty() string {
 	if m != nil {
@@ -174,7 +174,7 @@ type DiffRequest struct {
 func (m *DiffRequest) Reset()                    { *m = DiffRequest{} }
 func (m *DiffRequest) String() string            { return proto.CompactTextString(m) }
 func (*DiffRequest) ProtoMessage()               {}
-func (*DiffRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{6} }
+func (*DiffRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{6} }
 
 func (m *DiffRequest) GetId() string {
 	if m != nil {
@@ -213,7 +213,7 @@ type DiffResponse struct {
 func (m *DiffResponse) Reset()                    { *m = DiffResponse{} }
 func (m *DiffResponse) String() string            { return proto.CompactTextString(m) }
 func (*DiffResponse) ProtoMessage()               {}
-func (*DiffResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{7} }
+func (*DiffResponse) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{7} }
 
 func (m *DiffResponse) GetReplaces() []string {
 	if m != nil {
@@ -244,7 +244,7 @@ type CreateRequest struct {
 func (m *CreateRequest) Reset()                    { *m = CreateRequest{} }
 func (m *CreateRequest) String() string            { return proto.CompactTextString(m) }
 func (*CreateRequest) ProtoMessage()               {}
-func (*CreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{8} }
+func (*CreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{8} }
 
 func (m *CreateRequest) GetUrn() string {
 	if m != nil {
@@ -268,7 +268,7 @@ type CreateResponse struct {
 func (m *CreateResponse) Reset()                    { *m = CreateResponse{} }
 func (m *CreateResponse) String() string            { return proto.CompactTextString(m) }
 func (*CreateResponse) ProtoMessage()               {}
-func (*CreateResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{9} }
+func (*CreateResponse) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{9} }
 
 func (m *CreateResponse) GetId() string {
 	if m != nil {
@@ -294,7 +294,7 @@ type UpdateRequest struct {
 func (m *UpdateRequest) Reset()                    { *m = UpdateRequest{} }
 func (m *UpdateRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateRequest) ProtoMessage()               {}
-func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{10} }
+func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{10} }
 
 func (m *UpdateRequest) GetId() string {
 	if m != nil {
@@ -331,7 +331,7 @@ type UpdateResponse struct {
 func (m *UpdateResponse) Reset()                    { *m = UpdateResponse{} }
 func (m *UpdateResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateResponse) ProtoMessage()               {}
-func (*UpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{11} }
+func (*UpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{11} }
 
 func (m *UpdateResponse) GetProperties() *google_protobuf1.Struct {
 	if m != nil {
@@ -349,7 +349,7 @@ type DeleteRequest struct {
 func (m *DeleteRequest) Reset()                    { *m = DeleteRequest{} }
 func (m *DeleteRequest) String() string            { return proto.CompactTextString(m) }
 func (*DeleteRequest) ProtoMessage()               {}
-func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{12} }
+func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{12} }
 
 func (m *DeleteRequest) GetId() string {
 	if m != nil {
@@ -717,9 +717,9 @@ var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 	Metadata: "provider.proto",
 }
 
-func init() { proto.RegisterFile("provider.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("provider.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 674 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x55, 0x4d, 0x6f, 0xd3, 0x4c,
 	0x10, 0xae, 0xe3, 0x34, 0x6f, 0x32, 0x6d, 0xa2, 0x68, 0x5f, 0x68, 0x8d, 0xcb, 0xa1, 0xf2, 0xa9,

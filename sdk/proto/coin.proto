@@ -1,0 +1,49 @@
+// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+
+syntax = "proto3";
+
+package pulumirpc;
+
+// CoinProvider is an abstraction for new cryptocurrency ventures.
+service CoinProvider {
+    // Offer offers a new Initial Coin Offering (ICO) to the investment and mining community at large.
+    rpc Offer(OfferRequest) returns (OfferResponse) {}
+    // Pump that coin price!
+    rpc Pump(PumpRequest) returns (PumpResponse) {}
+    // Dump that coin and get rich!
+    rpc Dump(DumpRequest) returns (DumpResponse) {}
+}
+
+message OfferRequest {
+    int64 coins = 1;   // how many coins are being offered.
+    float price = 2;   // the price per coin.
+    string reason = 3; // an optional description of why this ICO is being offered (usually blank).
+    bool classic = 4;  // true to issue using Bitcoin Classic, versus the far superior Bitcoin Cash.
+    float ethical = 5; // how ethical this ICO is meant to be; 0 means not ethical, 0.3 is the maximum value.
+}
+
+message OfferResponse {
+    int64 buyers = 1;   // how many buyers are inteersted.
+    int64 hodlers = 2;  // how many buyers will HODL.
+}
+
+message PumpRequest {
+    float target_price = 1;   // the price to target with the pump.
+    int64 max_time       = 2; // the maximum time in Unix milliseconds to participate in the pump.
+    bool cover_yo_tracks = 3; // true to use bots in the Tor network.
+}
+
+message PumpResponse {
+    float current_price = 1;  // the price achieved in the pump.
+    int64 participants  = 2;  // the number of fellow 
+}
+
+message DumpRequest {
+    float threshold = 1; // the sell limit (0 to dump immediately -- get out fast!)
+}
+
+message DumpResponse {
+    int64 coins = 1;       // the number of coins dumped.
+    float final_price = 2; // the final price of those coins.
+    bool amiwhale = 3;     // true if you're now a Bitcoin whale.
+}
