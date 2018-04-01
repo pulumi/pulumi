@@ -28,7 +28,7 @@ type GetRequiredPluginsRequest struct {
 func (m *GetRequiredPluginsRequest) Reset()                    { *m = GetRequiredPluginsRequest{} }
 func (m *GetRequiredPluginsRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetRequiredPluginsRequest) ProtoMessage()               {}
-func (*GetRequiredPluginsRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (*GetRequiredPluginsRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 func (m *GetRequiredPluginsRequest) GetProject() string {
 	if m != nil {
@@ -58,7 +58,7 @@ type GetRequiredPluginsResponse struct {
 func (m *GetRequiredPluginsResponse) Reset()                    { *m = GetRequiredPluginsResponse{} }
 func (m *GetRequiredPluginsResponse) String() string            { return proto.CompactTextString(m) }
 func (*GetRequiredPluginsResponse) ProtoMessage()               {}
-func (*GetRequiredPluginsResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (*GetRequiredPluginsResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
 
 func (m *GetRequiredPluginsResponse) GetPlugins() []*PluginDependency {
 	if m != nil {
@@ -83,7 +83,7 @@ type RunRequest struct {
 func (m *RunRequest) Reset()                    { *m = RunRequest{} }
 func (m *RunRequest) String() string            { return proto.CompactTextString(m) }
 func (*RunRequest) ProtoMessage()               {}
-func (*RunRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (*RunRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
 
 func (m *RunRequest) GetProject() string {
 	if m != nil {
@@ -156,7 +156,7 @@ type RunResponse struct {
 func (m *RunResponse) Reset()                    { *m = RunResponse{} }
 func (m *RunResponse) String() string            { return proto.CompactTextString(m) }
 func (*RunResponse) ProtoMessage()               {}
-func (*RunResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
+func (*RunResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
 
 func (m *RunResponse) GetError() string {
 	if m != nil {
@@ -316,9 +316,9 @@ var _LanguageRuntime_serviceDesc = grpc.ServiceDesc{
 	Metadata: "language.proto",
 }
 
-func init() { proto.RegisterFile("language.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("language.proto", fileDescriptor4) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor4 = []byte{
 	// 451 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x93, 0xcf, 0x6e, 0xd4, 0x30,
 	0x10, 0xc6, 0x9b, 0xa6, 0xfb, 0x6f, 0x16, 0x5a, 0x64, 0xb5, 0x2b, 0x93, 0x5e, 0x42, 0x00, 0x91,
