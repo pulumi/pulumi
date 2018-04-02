@@ -11,7 +11,6 @@ init:
 - ps: Install-Product node 6.10.2 x64
 environment:
   PULUMI_API: https://api.pulumi-staging.io
-  PULUMI_API_OWNER_ORGANIZATION: moolumi
   PULUMI_ACCESS_TOKEN:
     secure: 9Li/DP5L9031eDUK1eqlyWn4pMyVOK4Ph9YbBe3O1iKQFL64LZmUibgp+jcqkjhX
   AWS_ACCESS_KEY_ID:
