@@ -53,7 +53,7 @@ nvm install v6.10.2
     go get -v github.com/wadey/gocovmerge
 
     echo "installing virtualenv ${VIRTUALENV_VERSION}"
-    pip install "virtualenv==${VIRTUALENV_VERSION}"
+    sudo pip install "virtualenv==${VIRTUALENV_VERSION}"
     pip install --user "virtualenv==${VIRTUALENV_VERSION}"
 
     echo "installing AWS cli ${AWSCLI_VERSION}"
