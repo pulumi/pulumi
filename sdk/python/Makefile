@@ -13,7 +13,7 @@ GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 include ../../build/common.mk
 
 ensure::
-	$(PIP) install 'virtualenv>=15.2.0'
+	$(PIP) install --user 'virtualenv>=15.2.0'
 	rm -rf $(PYENV) && virtualenv --python=$(PYTHON) $(PYENV)/
 	echo "export PYTHONPATH=$${PYTHONPATH}:$(shell pwd)/$(PYENVLIB)/python2.7/site-packages" >> $(PYENVBIN)/activate
 	( \
