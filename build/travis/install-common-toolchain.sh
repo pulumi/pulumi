@@ -53,7 +53,7 @@ nvm install v6.10.2
     go get -v github.com/wadey/gocovmerge
 
     echo "installing virtualenv ${VIRTUALENV_VERSION}"
-    pip install "virtualenv==${VIRTUALENV_VERSION}"
+    sudo pip install "virtualenv==${VIRTUALENV_VERSION}"
     pip install --user "virtualenv==${VIRTUALENV_VERSION}"
 
     echo "installing AWS cli ${AWSCLI_VERSION}"
@@ -62,6 +62,9 @@ nvm install v6.10.2
     echo "installing Wheel and Twine, so we can publish Python packages"
     pip install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
 )
+
+# If the sub shell failed, bail out now.
+[ "$?" -eq 0 ] || exit 1
 
 # By default some tools are not on the PATH, let's fix that
 
@@ -74,6 +77,3 @@ fi
 
 # Add yarn to the $PATH
 export PATH=$HOME/.yarn/bin:$PATH
-
-# If the sub shell failed, bail out now.
-[ "$?" -eq 0 ] || exit 1
