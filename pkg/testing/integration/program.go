@@ -274,7 +274,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
 //
-//   (*) Only if ProgramTestOptions.CloudURL is not empty.
+//   (*) Only if PULUMI_ACCESS_TOKEN is set.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -454,6 +454,9 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		pulumiAPIOwnerOrganization := os.Getenv("PULUMI_API_OWNER_ORGANIZATION")
 		if pulumiAPIOwnerOrganization != "" {
 			pt.opts.Owner = pulumiAPIOwnerOrganization
+		} else {
+			// Default to the `pulumi` organization.
+			pt.opts.Owner = "pulumi"
 		}
 	}
 
@@ -478,21 +481,19 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	// Login as needed.
 	if !pt.opts.LocalDeployment {
 		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-			pt.t.Fatalf("Unable to run pulumi login. PULUMI_ACCESS_TOKEN environment variable not set.")
-		}
+			fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
+		} else {
+			// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
+			// e.g. replacing the current user's with that of a test account.
+			if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
+				pt.t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
+			}
 
-		// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
-		// e.g. replacing the current user's with that of a test account.
-		if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
-			pt.t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
-		}
-
-		if err := pt.runPulumiCommand("pulumi-login",
-			append([]string{"login", "--cloud-url", pt.opts.CloudURL}), dir); err != nil {
-			return err
+			if err := pt.runPulumiCommand("pulumi-login", []string{"login"}, dir); err != nil {
+				return err
+			}
 		}
 	}
-
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(stackName)}
 	if pt.opts.LocalDeployment {
