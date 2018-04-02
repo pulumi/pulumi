@@ -41,8 +41,8 @@ message ConfigureRequest {
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
 message ConfigureErrorMissingKeys {
     message MissingKey {
-        string name = 1;        // the Pulumi name (not the TF name!) of the missing config key.
-        string description = 2; // a description of the missing config key, from the TF schema.
+        string name = 1;        // the Pulumi name (not the provider name!) of the missing config key.
+        string description = 2; // a description of the missing config key, as reported by the provider.
     }
 
     repeated MissingKey missingKeys = 1; // a list of required configuration keys that were not supplied.

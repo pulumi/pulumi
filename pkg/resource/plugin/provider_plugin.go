@@ -374,26 +374,26 @@ func (p *provider) Close() error {
 // originated from `Configure`.
 //
 // If we requested that a resource configure itself but omitted required configuration
-// variables, tfbridge will respond with a list of missing variables and their descriptions.
+// variables, resource providers will respond with a list of missing variables and their descriptions.
 // If that is what occurred, we'll use that information here to construct a nice error message.
-func createConfigureError(err *rpcerror.Error) error {
-	var aggregateErr error
-	for _, detail := range err.Details() {
+func createConfigureError(rpcerr *rpcerror.Error) error {
+	var err error
+	for _, detail := range rpcerr.Details() {
 		if missingKeys, ok := detail.(*pulumirpc.ConfigureErrorMissingKeys); ok {
 			for _, missingKey := range missingKeys.MissingKeys {
 				singleError := fmt.Errorf("missing required configuration key \"%s\": %s\n"+
 					"Set a value using the command `pulumi config set %s <value>`.",
 					missingKey.Name, missingKey.Description, missingKey.Name)
-				aggregateErr = multierror.Append(aggregateErr, singleError)
+				err = multierror.Append(err, singleError)
 			}
 		}
 	}
 
-	if aggregateErr != nil {
-		return aggregateErr
+	if err != nil {
+		return err
 	}
 
-	return err
+	return rpcerr
 }
 
 // resourceStateAndError interprets an error obtained from a gRPC endpoint.
