@@ -148,6 +148,11 @@ func (pc *Client) CreateStack(project ProjectIdentifier, cloudName string, stack
 		OrgName:     project.Owner,
 		RepoName:    project.Repository,
 		ProjectName: project.Project,
+		Tags: map[apitype.StackTagName]string{
+			apitype.GitHubOwnerNameTag:      project.Owner,
+			apitype.GitHubRepositoryNameTag: project.Repository,
+			apitype.ProjectNameTag:          project.Project,
+		},
 	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,

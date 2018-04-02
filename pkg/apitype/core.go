@@ -112,6 +112,21 @@ type ConfigValue struct {
 	Secret bool `json:"secret"`
 }
 
+// StackTagName is the key for the tags bag in stack. This is just a string, but we use a type alias to provide a richer
+// description of how the string is used in our apitype definitions.
+type StackTagName = string
+
+const (
+	// ProjectNameTag is a tag that represents the name of a project (coresponds to the `name` property of Pulumi.yaml).
+	ProjectNameTag StackTagName = "pulumi:project"
+	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
+	// may be associated with (inferred by the CLI based on git remote info).
+	GitHubOwnerNameTag StackTagName = "gitHub:owner"
+	// GitHubRepositoryNameTag is a tag that represents the name of a repository on GitHub that this stack
+	// may be associated with (inferred by the CLI based on git remote info).
+	GitHubRepositoryNameTag StackTagName = "gitHub:repo"
+)
+
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
 	CloudName string `json:"cloudName"`
@@ -121,8 +136,9 @@ type Stack struct {
 	ProjectName string       `json:"projName"`
 	StackName   tokens.QName `json:"stackName"`
 
-	ActiveUpdate string     `json:"activeUpdate"`
-	Resources    []Resource `json:"resources,omitempty"`
+	ActiveUpdate string                  `json:"activeUpdate"`
+	Resources    []Resource              `json:"resources,omitempty"`
+	Tags         map[StackTagName]string `json:"tags,omitempty"`
 
 	Version int `json:"version"`
 }
