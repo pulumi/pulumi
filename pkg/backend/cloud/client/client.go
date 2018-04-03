@@ -79,14 +79,16 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 }
 
 // DescribeUser describes the user implied by the API token associated with this client.
-func (pc *Client) DescribeUser() (string, error) {
+func (pc *Client) DescribeUser() (string, string, string, error) {
 	resp := struct {
-		Name string `json:"name"`
+		Name        string `json:"name"`
+		GitHubLogin string `json:"githubLogin"`
+		AvatarURL   string `json:"avatarUrl"`
 	}{}
 	if err := pc.restCall("GET", "/api/user", nil, nil, &resp); err != nil {
-		return "", err
+		return "", "", "", err
 	}
-	return resp.Name, nil
+	return resp.Name, resp.GitHubLogin, resp.AvatarURL, nil
 }
 
 // DownloadPlugin downloads the indicated plugin from the Pulumi API.

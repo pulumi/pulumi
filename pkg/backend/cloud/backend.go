@@ -873,8 +873,8 @@ func Login(cloudURL string) error {
 func isValidAccessToken(cloud, accessToken string) (bool, error) {
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
-	// it has a name field that is non-empty (like the Pulumi Service would return).
-	name, err := client.NewClient(cloud, accessToken).DescribeUser()
+	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
+	_, githubLogin, _, err := client.NewClient(cloud, accessToken).DescribeUser()
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
@@ -882,7 +882,7 @@ func isValidAccessToken(cloud, accessToken string) (bool, error) {
 		return false, errors.Wrapf(err, "getting user info from %v", cloud)
 	}
 
-	if name == "" {
+	if githubLogin == "" {
 		return false, errors.New("unexpected response from cloud API")
 	}
 
