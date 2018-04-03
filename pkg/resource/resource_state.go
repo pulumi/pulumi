@@ -47,6 +47,11 @@ const (
 	// When the engine decides to delete this resource, it will transition into the "deleting" state, where
 	// it will be removed from the snapshot once the deletion completes successfully.
 	ResourceStatusPendingDeletion MutationStatus = "pending-deletion"
+
+	// ResourceStatusDeleted is the state of resources that have been successfully deleted. Since they no
+	// longer exist, they should never be persisted in the snapshot file. However, resources of this state
+	// may exist as intermediate states within the snapshot manager.
+	ResourceStatusDeleted MutationStatus = "deleted"
 )
 
 // Live returns whether or not this MutationStatus represents a "live" state. A state is "live" if it

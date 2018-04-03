@@ -25,17 +25,14 @@ type SnapshotPersister interface {
 }
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
-// mutations on the global snapshot object serially.
+// mutations on the global snapshot object serially. This implementation maintains two snapshots: the "base"
+// snapshot, which is completely immutable and represents the state of the world prior to the application
+// of the current plan, and the "new" snapshot, which consists of the changes that have occurred as a result
+// of executing the current plan.
 //
 // All public members of SnapshotManager (namely `BeginMutation`, `RegisterResourceOutputs`, `RecordPlugins`,
 // and all `End` functions returned by implementations of `SnapshotMutation`) are safe to use
 // unsynchronized across goroutines.
-//
-// In this implementation of SnapshotManager, public members of SnapshotManager and `mutate` are
-// the *only* methods that are safe to use without synchronization. `mutate` is the single synchronization
-// primitive that should be used within this file; it wraps a mutating function with logic that serializes
-// writes to the global snapshot, updates the manifest, serializes it to persistent storage, and optionally
-// verifies the invariants of the global snapshot before and after mutation.
 //
 // A more principled language might allow us to express that `mutate` yields a mutable reference to the snapshot,
 // but this is Go, and we can't do that.
@@ -52,8 +49,9 @@ type SnapshotPersister interface {
 // `diff_checkpoint.sh n` shows a diff of the n'th mutation to the snapshot.
 type SnapshotManager struct {
 	persister        SnapshotPersister // The persister responsible for saving the snapshot
-	snapshot         *deploy.Snapshot  // The snapshot itself, managed by this struct
-	doVerify         bool              // If true, call `snapshot.VerifyIntegrity` before and after modifying the snapshot
+	baseSnapshot     *deploy.Snapshot  // The base snapshot of the current plan.
+	newSnapshot      *deploy.Snapshot  // The new snapshot representing changes made by the current plan.
+	doVerify         bool              // If true, call `snapshot.VerifyIntegrity` after modifying the snapshot
 	mutationRequests chan func()       // channel for serializing mutations to the snapshot
 }
 
@@ -76,26 +74,114 @@ var _ engine.SnapshotManager = (*SnapshotManager)(nil)
 func (sm *SnapshotManager) mutate(mutator func()) error {
 	responseChan := make(chan error)
 	sm.mutationRequests <- func() {
-		if sm.doVerify {
-			if err := sm.snapshot.VerifyIntegrity(); err != nil {
-				responseChan <- errors.Wrapf(err, "before mutation of snapshot")
-				return
-			}
-		}
-
 		mutator()
 		sm.updateManifest()
-		if sm.doVerify {
-			if verifyErr := sm.snapshot.VerifyIntegrity(); verifyErr != nil {
+		snap := sm.merge()
+		err := sm.persister.SaveSnapshot(snap)
+		if err != nil && sm.doVerify {
+			if verifyErr := snap.VerifyIntegrity(); verifyErr != nil {
 				responseChan <- errors.Wrapf(verifyErr, "after mutation of snapshot")
 				return
 			}
 		}
 
-		responseChan <- sm.persister.SaveSnapshot(sm.snapshot)
+		responseChan <- err
 	}
 
 	return <-responseChan
+}
+
+// merge is responsible for "merging" the base snapshot, `baseSnapshot`, and the current list
+// of resources, `newSnapshot` into a snapshot that ultimately will be persisted.
+func (sm *SnapshotManager) merge() *deploy.Snapshot {
+	// This algorithm is loosely based on one originally devised by Pat for `PlanIterator.Snap()`, which
+	// conceptually used to do something quite similar to what is done here. Below is a sketch of
+	// the algorithm used here.
+	//
+	// This is the algorithm for producing a "merged" snapshot, given a valid base and new snapshot:
+	//   1. Begin with an empty merged snapshot, called "merge".
+	//   2. For each resource R in the new snapshot:
+	//       a. If R is not pending deletion, deleting, or deleted,
+	//         i. Insert R into "merge".
+	//   2. For each resource R in the base snapshot:
+	//       a. If R does not exist in the new snapshot
+	//         i. Insert R into "merge".
+	//       b. If R does exist in the new snapshot AND at least one of its occurrences is pending deletion:
+	//         i. Insert the node that is pending deletion from the new snapshot into "merge".
+	//       c. If R does exist in the new snapshot AND at least one of its occurrences is deleting:
+	//         i. Insert the node that is deleting from the new snapshot into "merge".
+	//       d. Otherwise, do nothing.
+	//   3. "merge" now contains a correctly merged DAG of resources.
+	//
+	// The difference between the `PlanIterator.Snap()` algorithm and this one is that deletions are not
+	// guaranteed to come in to the snapshot manager in a dependency-ordered fashion; in fact, they almost
+	// always will appear to us in the *opposite* of a dependency-ordered fashion. In order to ensure that
+	// in-progress deletes, pending deletions, and fully-deleted resources appear correctly in the merged DAG,
+	// we will insert pending-delete and deleting nodes from the new snapshot into the merged snapshot if such
+	// nodes exist in the new snapshot and the algorithm would otherwise dictate that we copy the live
+	// (i.e. resource that this plan deleted) node from the base snapshot into the merged snapshot.
+	snap := deploy.NewSnapshot(sm.newSnapshot.Stack, sm.newSnapshot.Manifest, nil)
+	var resources []*resource.State
+
+	addNews := func() {
+		for _, newResource := range sm.newSnapshot.Resources {
+			switch newResource.Status {
+			case resource.ResourceStatusPendingDeletion:
+			case resource.ResourceStatusDeleting:
+			case resource.ResourceStatusDeleted:
+				continue
+			default:
+				resources = append(resources, newResource.Clone())
+			}
+		}
+	}
+
+	copyBase := func(oldResource *resource.State) {
+		var pendingDelete *resource.State
+		var deleting *resource.State
+		var seenResource bool
+
+		for _, newResource := range sm.newSnapshot.Resources {
+			if newResource.URN != oldResource.URN {
+				continue
+			}
+
+			switch newResource.Status {
+			case resource.ResourceStatusPendingDeletion:
+				seenResource = true
+				pendingDelete = newResource
+			case resource.ResourceStatusDeleting:
+				seenResource = true
+				deleting = newResource
+			default:
+				seenResource = true
+			}
+		}
+
+		if !seenResource {
+			resources = append(resources, oldResource.Clone())
+		}
+
+		if pendingDelete != nil {
+			contract.Assertf(deleting == nil, "should not have seen resource that is both deleting and pending delete")
+			resources = append(resources, pendingDelete.Clone())
+		}
+
+		if deleting != nil {
+			resources = append(resources, deleting.Clone())
+		}
+	}
+
+	copyBases := func() {
+		for _, oldResource := range sm.baseSnapshot.Resources {
+			copyBase(oldResource)
+		}
+	}
+
+	addNews()
+	copyBases()
+	snap.Resources = resources
+	return snap
 }
 
 func (sm *SnapshotManager) doMutations() {
@@ -115,8 +201,8 @@ func (sm *SnapshotManager) Close() error {
 // the program.
 func (sm *SnapshotManager) RecordPlugins(plugins []workspace.PluginInfo) error {
 	err := sm.mutate(func() {
-		pluginsSlice := sm.snapshot.Manifest.Plugins[:0]
-		sm.snapshot.Manifest.Plugins = append(pluginsSlice, plugins...)
+		pluginsSlice := sm.newSnapshot.Manifest.Plugins[:0]
+		sm.newSnapshot.Manifest.Plugins = append(pluginsSlice, plugins...)
 	})
 
 	if err != nil {
@@ -180,15 +266,19 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 // graph of a resource to change without changing input properties, which will result in a Same step
 // generated by the planner but with new state that must be saved in the snapshot.
 type sameSnapshotMutation struct {
-	same *resource.State // The resource that is staying the same.
-	// Points to the global snapshot, don't use without `mutate`
+	old *resource.State // The node in the base snapshot that is being "same"-d. Points into
+	// the global base snapshot, which is legal to use outside of `mutate`.
 
 	manager *SnapshotManager
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step) error {
 	err := ssm.manager.mutate(func() {
-		step.New().CopyIntoWithoutMetadata(ssm.same)
+		new := step.New().Clone()
+		new.Status = ssm.old.Status
+		new.CreatedAt = ssm.old.CreatedAt
+		new.UpdatedAt = ssm.old.UpdatedAt
+		ssm.manager.addResource(new)
 	})
 
 	if err != nil {
@@ -202,23 +292,15 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step) error {
 // liveness of existing resources. They do require a mutation after step application.
 func (sm *SnapshotManager) doSameMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Require(step.Op() == deploy.OpSame, "step.Op() == deploy.OpSame")
-	var sameResource *resource.State
-	err := sm.mutate(func() {
-		sameResource = sm.findLiveInSnapshot(step.URN())
-	})
-
-	if err != nil {
-		glog.V(9).Infof("begin same mutation for URN `%s`, persistence failed: %s", step.URN(), err)
-		return nil, err
-	}
-
-	return &sameSnapshotMutation{same: sameResource, manager: sm}, nil
+	old := sm.findLiveInBaseSnapshot(step.URN())
+	contract.Assertf(old != nil, "failed to find same URN in base snapshot")
+	return &sameSnapshotMutation{old: old, manager: sm}, nil
 }
 
 // createSnapshotMutation is a SnapshotMutation for a CreateStep.
 type createSnapshotMutation struct {
 	new *resource.State // The resource created by this CreateStep.
-	// Points into the global snapshot, don't use without `mutate`!
+	// Points into the global new snapshot, don't use without `mutate`!
 
 	manager *SnapshotManager // The snapshot manager that created this mutation
 }
@@ -240,9 +322,12 @@ func (csm *createSnapshotMutation) End(step deploy.Step) error {
 			// Not that findLiveInSnapshot should never find the resource we just created because it
 			// has status "creating", which is not live, and the fact that we are replacing something
 			// means that there is exactly one resource that is live for this URN.
-			old := csm.manager.findLiveInSnapshot(step.URN())
+			old := csm.manager.findLiveInBaseSnapshot(step.URN())
 			contract.Assertf(old != nil, "failed to find step.URN() in snapshot")
-			old.Status = resource.ResourceStatusPendingDeletion
+
+			clonedOld := old.Clone()
+			clonedOld.Status = resource.ResourceStatusPendingDeletion
+			csm.manager.addResource(clonedOld)
 		}
 
 		csm.new.Status = resource.ResourceStatusCreated
@@ -265,7 +350,7 @@ func (sm *SnapshotManager) doCreationMutation(step deploy.Step) (engine.Snapshot
 	snapshotResource := step.New().Clone()
 	snapshotResource.Status = resource.ResourceStatusCreating
 	err := sm.mutate(func() {
-		sm.snapshot.Resources = append(sm.snapshot.Resources, snapshotResource)
+		sm.addResource(snapshotResource)
 	})
 
 	if err != nil {
@@ -279,7 +364,7 @@ func (sm *SnapshotManager) doCreationMutation(step deploy.Step) (engine.Snapshot
 // updateSnapshotMutation is a SnapshotMutation for an Update, pointing to a resource
 // that will be updated without replacement.
 type updateSnapshotMutation struct {
-	old *resource.State // The resource being updated by this UpdateStep.
+	new *resource.State // The resource being updated by this UpdateStep.
 	// Points into the global snapshot, don't use without `mutate`!
 
 	manager *SnapshotManager // The snapshot manager that created this mutation
@@ -287,10 +372,13 @@ type updateSnapshotMutation struct {
 
 func (usm *updateSnapshotMutation) End(step deploy.Step) error {
 	err := usm.manager.mutate(func() {
-		contract.Assert(usm.old.Status == resource.ResourceStatusUpdating)
-		step.New().CopyIntoWithoutMetadata(usm.old)
-		usm.old.Status = resource.ResourceStatusUpdated
-		usm.old.UpdatedAt = time.Now()
+		replacedNode := usm.manager.findLiveInBaseSnapshot(step.URN())
+		contract.Assertf(replacedNode != nil, "failed to find updated node in base snapshot")
+		contract.Assert(usm.new.Status == resource.ResourceStatusUpdating)
+		step.New().CopyIntoWithoutMetadata(usm.new)
+		usm.new.Status = resource.ResourceStatusUpdated
+		usm.new.CreatedAt = replacedNode.CreatedAt
+		usm.new.UpdatedAt = time.Now()
 	})
 
 	if err != nil {
@@ -306,17 +394,12 @@ func (sm *SnapshotManager) doUpdateMutation(step deploy.Step) (engine.SnapshotMu
 	contract.Require(step.New() != nil, "step.New() != nil")
 	contract.Require(step.Old() != nil, "step.Old() != nil")
 
-	// Instead of creating a new resource for the updated resource, we'll clobber the existing
-	// resource with the new resource's inputs. This does mean that the original inputs to the resource
-	// are lost, but it's not clear whether or not they are of any value to us.
-	//
-	// The modified resource's status is set to "updating".
-	var snapshotOld *resource.State
+	// add a comment here
+	var updateNode *resource.State
 	err := sm.mutate(func() {
-		snapshotOld = sm.findLiveInSnapshot(step.URN())
-		contract.Assertf(snapshotOld != nil, "failed to find live state for resource `%s` in snapshot", step.Old().URN)
-		step.New().CopyIntoWithoutMetadata(snapshotOld)
-		snapshotOld.Status = resource.ResourceStatusUpdating
+		updateNode = step.New().Clone()
+		updateNode.Status = resource.ResourceStatusUpdating
+		sm.addResource(updateNode)
 	})
 
 	if err != nil {
@@ -324,7 +407,7 @@ func (sm *SnapshotManager) doUpdateMutation(step deploy.Step) (engine.SnapshotMu
 		return nil, err
 	}
 
-	return &updateSnapshotMutation{old: snapshotOld, manager: sm}, nil
+	return &updateSnapshotMutation{new: updateNode, manager: sm}, nil
 }
 
 // deleteSnapshotMutation is generated by resource deletions. Deleted resources get removed
@@ -340,7 +423,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step) error {
 	err := dsm.manager.mutate(func() {
 		// Nothing to do here except unlink this resource from the snapshot.
 		contract.Assert(dsm.old.Status == resource.ResourceStatusDeleting)
-		dsm.manager.removeFromSnapshot(dsm.old)
+		dsm.old.Status = resource.ResourceStatusDeleted
 	})
 
 	if err != nil {
@@ -367,19 +450,23 @@ func (sm *SnapshotManager) doDeleteMutation(step deploy.Step) (engine.SnapshotMu
 		// deleted is most definitely the only live resource with the given URN. If we are doing an OpDeleteReplaced,
 		// our job is significantly harder; we must determine which resource we are going to delete, which depends
 		// on whether or not we are deleting-before-creating or creating-before-deleting.
-		if step.Op() == deploy.OpDelete {
-			snapshotOld = sm.findLiveInSnapshot(step.URN())
-		} else {
-			// If a CreateReplacement step ran before this, it should have marked a resource as pending-delete
-			// in the snapshot. Try and find it.
-			snapshotOld = sm.findPendingDeleteInSnapshot(step.URN())
-			if snapshotOld == nil {
-				// If there's no pending delete snapshot, the condemned resource must still be live.
-				snapshotOld = sm.findLiveInSnapshot(step.URN())
-			}
+		//
+		// If we are creating-before-deleting, then there must be a resource in the new snapshot with the
+		// "pending-delete" status.
+		snapshotOld = sm.findPendingDeleteInSnapshot(step.URN())
+		if snapshotOld == nil {
+			// If there is not such a resource, we are either doing an OpDelete (in which case we are not
+			// replacing anything) or a delete-before-create (in which case the thing that we are deleting is
+			// still live).
+			old := sm.findLiveInBaseSnapshot(step.URN())
+			contract.Assertf(old != nil, "failed to find condemned node in base snapshot")
+
+			// Either way, we need to insert a node into the new snapshot indicating that we are beginning
+			// a delete operation on a URN that is not present yet in the new snapshot.
+			snapshotOld = old.Clone()
+			sm.addResource(snapshotOld)
 		}
 
-		contract.Assert(snapshotOld != nil)
 		snapshotOld.Status = resource.ResourceStatusDeleting
 	})
 
@@ -394,22 +481,37 @@ func (sm *SnapshotManager) doDeleteMutation(step deploy.Step) (engine.SnapshotMu
 
 // Updates the snapshot manifest. Can only be called from within a `mutate` callback.
 func (sm *SnapshotManager) updateManifest() {
-	sm.snapshot.Manifest.Time = time.Now()
-	sm.snapshot.Manifest.Version = version.Version
-	sm.snapshot.Manifest.Magic = sm.snapshot.Manifest.NewMagic()
+	sm.newSnapshot.Manifest.Time = time.Now()
+	sm.newSnapshot.Manifest.Version = version.Version
+	sm.newSnapshot.Manifest.Magic = sm.newSnapshot.Manifest.NewMagic()
+}
+
+// Adds a resource to the new snapshot. Can only be called from within a `mutate` callback.
+func (sm *SnapshotManager) addResource(resource *resource.State) {
+	sm.newSnapshot.Resources = append(sm.newSnapshot.Resources, resource)
+}
+
+// findLiveInBaseSnapshot finds the live resource with the given URN in the *base* snapshot,
+// returning nil if one could not be found. The base snapshot is not mutable and it is safe
+// to use this method from outside `mutate` callbacks.
+func (sm *SnapshotManager) findLiveInBaseSnapshot(urn resource.URN) *resource.State {
+	return findInSnapshot(sm.baseSnapshot, urn, func(candidate *resource.State) bool {
+		return candidate.Status.Live()
+	})
 }
 
 // Finds the resource object in the snapshot corresponding to the given URN, returning
 // a pointer to it if found. Can only be called from within a `mutate` callback.
 func (sm *SnapshotManager) findLiveInSnapshot(urn resource.URN) *resource.State {
-	return sm.findInSnapshot(urn, func(candidate *resource.State) bool {
+	return findInSnapshot(sm.newSnapshot, urn, func(candidate *resource.State) bool {
 		return candidate.Status.Live()
 	})
 }
 
-func (sm *SnapshotManager) findInSnapshot(urn resource.URN, findFunc func(*resource.State) bool) *resource.State {
+// Finds a resource object that matches the given predicate function in a given snapshot.
+func findInSnapshot(snap *deploy.Snapshot, urn resource.URN, findFunc func(*resource.State) bool) *resource.State {
 	contract.Require(urn != "", "urn != \"\"")
-	for _, candidate := range sm.snapshot.Resources {
+	for _, candidate := range snap.Resources {
 		if candidate.URN == urn && findFunc(candidate) {
 			return candidate
 		}
@@ -418,31 +520,12 @@ func (sm *SnapshotManager) findInSnapshot(urn resource.URN, findFunc func(*resou
 	return nil
 }
 
+// Finds a resource with the given URN that is pending deletion in the new snapshot, returning nil
+// if no such resource exists. Can only be called from within a `mutate` callback.
 func (sm *SnapshotManager) findPendingDeleteInSnapshot(urn resource.URN) *resource.State {
-	return sm.findInSnapshot(urn, func(candidate *resource.State) bool {
+	return findInSnapshot(sm.newSnapshot, urn, func(candidate *resource.State) bool {
 		return candidate.Status == resource.ResourceStatusPendingDeletion
 	})
-}
-
-// Removes a resource from the snapshot. Can only be called from within a `mutate` callback.
-func (sm *SnapshotManager) removeFromSnapshot(res *resource.State) {
-	contract.Require(res != nil, "res != nil")
-	newResources := sm.snapshot.Resources[:0]
-	removedSomething := false
-	for _, candidate := range sm.snapshot.Resources {
-		if candidate.URN == res.URN && candidate.Status == res.Status {
-			contract.Assertf(!removedSomething,
-				"attempting to remove multiple states from snapshot file: URN `%s`, state `%s`", res.URN, res.Status)
-			glog.V(9).Infof("removing URN `%s`, state `%s` from checkpoint file", res.URN, res.Status)
-			removedSomething = true
-		} else {
-			newResources = append(newResources, candidate)
-		}
-	}
-
-	sm.snapshot.Resources = newResources
-	contract.Assertf(removedSomething,
-		"failed to locate URN `%s` with state `%s` in checkpoint file for removal", res.URN, res.Status)
 }
 
 // NewSnapshotManager creates a new SnapshotManager given a persister and an original snapshot to use as
@@ -466,7 +549,8 @@ func NewSnapshotManager(persister SnapshotPersister, update engine.UpdateInfo) *
 
 	manager := &SnapshotManager{
 		persister:        persister,
-		snapshot:         snap.Clone(),
+		baseSnapshot:     snap.Clone(),
+		newSnapshot:      deploy.NewSnapshot(snap.Stack, snap.Manifest, nil),
 		doVerify:         true,
 		mutationRequests: make(chan func()),
 	}

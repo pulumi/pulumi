@@ -106,6 +106,10 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			return errors.Errorf("resource %s has status `unspecified`", urn)
 		}
 
+		if state.Status == resource.ResourceStatusDeleted {
+			return errors.Errorf("resource %s has status `deleted`", urn)
+		}
+
 		if seen, has := seenLive[urn]; has && seen && state.Status.Live() {
 			// There should never be two resources live with the same URN.
 			return errors.Errorf("duplicate live resource %s, with status %s", urn, state.Status)
