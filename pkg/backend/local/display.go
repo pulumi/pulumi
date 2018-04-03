@@ -9,6 +9,12 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
+
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/progress"
+	"github.com/docker/docker/pkg/streamformatter"
+	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -20,61 +26,273 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// copied from: https://github.com/docker/cli/blob/master/cli/command/out.go
+// replace with usage of that library when we can figure out hte right version story
+
+type commonStream struct {
+	fd         uintptr
+	isTerminal bool
+	state      *term.State
+}
+
+// FD returns the file descriptor number for this stream
+func (s *commonStream) FD() uintptr {
+	return s.fd
+}
+
+// IsTerminal returns true if this stream is connected to a terminal
+func (s *commonStream) IsTerminal() bool {
+	return s.isTerminal
+}
+
+// RestoreTerminal restores normal mode to the terminal
+func (s *commonStream) RestoreTerminal() {
+	if s.state != nil {
+		term.RestoreTerminal(s.fd, s.state)
+	}
+}
+
+// SetIsTerminal sets the boolean used for isTerminal
+func (s *commonStream) SetIsTerminal(isTerminal bool) {
+	s.isTerminal = isTerminal
+}
+
+type outStream struct {
+	commonStream
+	out io.Writer
+}
+
+func (o *outStream) Write(p []byte) (int, error) {
+	return o.out.Write(p)
+}
+
+// SetRawTerminal sets raw mode on the input terminal
+func (o *outStream) SetRawTerminal() (err error) {
+	if os.Getenv("NORAW") != "" || !o.commonStream.isTerminal {
+		return nil
+	}
+	o.commonStream.state, err = term.SetRawTerminalOutput(o.commonStream.fd)
+	return err
+}
+
+// GetTtySize returns the height and width in characters of the tty
+func (o *outStream) GetTtySize() (uint, uint) {
+	if !o.isTerminal {
+		return 0, 0
+	}
+	ws, err := term.GetWinsize(o.fd)
+	if err != nil {
+		if ws == nil {
+			return 0, 0
+		}
+	}
+	return uint(ws.Height), uint(ws.Width)
+}
+
+// NewOutStream returns a new OutStream object from a Writer
+func newOutStream(out io.Writer) *outStream {
+	fd, isTerminal := term.GetFdInfo(out)
+	return &outStream{commonStream: commonStream{fd: fd, isTerminal: isTerminal}, out: out}
+}
+
+func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) {
+	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(outStream, false)
+
+	for prog := range progressChan {
+		// fmt.Printf("Received progress")
+		progressOutput.WriteProgress(prog)
+	}
+}
+
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
 // Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
 // await all the events being written.
 func DisplayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
+	_, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 1 /*timesPerSecond*/)
+
+	_, stdout, _ := term.StdStreams()
+	// _, isTerminal := term.GetFdInfo(stdout)
+
+	pipeReader, pipeWriter := io.Pipe()
+	progressChan := make(chan progress.Progress, 100)
+
+	chanOutput := progress.ChanOutput(progressChan)
+
+	go func() {
+		writeDistributionProgress(pipeWriter, progressChan)
+		pipeWriter.Close()
+	}()
 
 	defer func() {
-		spinner.Reset()
+		// spinner.Reset()
 		ticker.Stop()
 		done <- true
 	}()
 
+	var stackURN resource.URN
 	seen := make(map[resource.URN]engine.StepEventMetadata)
+	topLevelUrnToInProgressObj := make(map[resource.URN]progress.Progress)
+	diagEvents := []engine.DiagEventPayload{}
+	tickCount := 0
 
-	for {
-		select {
-		case <-ticker.C:
-			spinner.Tick()
-		case event := <-events:
-			spinner.Reset()
+	processEndSteps := func() {
+		// Mark all in progress resources as done.
+		for _, v := range topLevelUrnToInProgressObj {
+			chanOutput.WriteProgress(progress.Progress{
+				ID:     v.ID,
+				Action: "Done!",
+			})
+		}
 
+		// Print all diagnostics at the end
+		for _, v := range diagEvents {
 			out := os.Stdout
-			if event.Type == engine.DiagEvent {
-				payload := event.Payload.(engine.DiagEventPayload)
-				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-					out = os.Stderr
-				}
+			if v.Severity == diag.Error || v.Severity == diag.Warning {
+				out = os.Stderr
 			}
 
-			msg := RenderEvent(event, seen, debug, opts)
+			_, msg := RenderDiagEvent(v, debug, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
+		}
 
-			if event.Type == engine.CancelEvent {
-				return
+		close(progressChan)
+	}
+
+	var makeID func(urn resource.URN) string
+	makeID = func(urn resource.URN) string {
+		if urn == "" {
+			return "global"
+		}
+
+		return string(urn.Type()) + "(" + string(urn.Name()) + ")"
+	}
+
+	var mapToTopLevelUrn func(urn resource.URN) resource.URN
+	mapToTopLevelUrn = func(urn resource.URN) resource.URN {
+		if urn == "" {
+			return ""
+		}
+
+		if urn == stackURN {
+			return stackURN
+		}
+
+		v, ok := seen[urn]
+		if !ok {
+			return ""
+		}
+
+		parent := v.Res.Parent
+		if parent == stackURN {
+			return urn
+		}
+
+		return mapToTopLevelUrn(parent)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				tickCount++
+				ellipses := strings.Repeat(".", (tickCount%3)+1) + "  "
+				for _, v := range topLevelUrnToInProgressObj {
+					chanOutput.WriteProgress(progress.Progress{
+						ID:     v.ID,
+						Action: v.Action + ellipses,
+					})
+				}
+
+			// 	spinner.Tick()
+			case event := <-events:
+				// spinner.Reset()
+
+				// out := os.Stdout
+				// if event.Type == engine.DiagEvent {
+				// 	payload := event.Payload.(engine.DiagEventPayload)
+				// 	if payload.Severity == diag.Error || payload.Severity == diag.Warning {
+				// 		out = os.Stderr
+				// 	}
+				// }
+
+				// msg := RenderEvent(event, seen, debug, opts)
+				// if msg != "" && out != nil {
+				// 	// fprintIgnoreError(out, event.Type+": ")
+				// 	fprintIgnoreError(out, msg)
+
+				// if msg != "" && out != nil {
+				// 	// fprintIgnoreError(out, event.Type+": ")
+				// 	fprintIgnoreError(out, msg)
+				// }
+
+				if event.Type == engine.CancelEvent {
+					processEndSteps()
+					break
+				}
+				// }
+
+				eventUrn, msg := RenderEvent(event, seen, debug, opts)
+				if msg != "" {
+					switch event.Type {
+					case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
+						fprintIgnoreError(os.Stdout, msg)
+						continue
+					}
+
+					// case engine.ResourceOutputsEvent:
+					// 	return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
+					// case engine.ResourcePreEvent:
+					// 	return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
+					// case engine.DiagEvent:
+					// }
+
+					if isRootURN(eventUrn) {
+						stackURN = eventUrn
+					}
+
+					topLevelUrn := mapToTopLevelUrn(eventUrn)
+					id := makeID(topLevelUrn)
+					prog := progress.Progress{ID: id, Action: msg}
+					chanOutput.WriteProgress(prog)
+
+					if event.Type == engine.DiagEvent {
+						// also record this diagnostic so we print it at the end.
+						diagEvents = append(diagEvents, event.Payload.(engine.DiagEventPayload))
+					} else if event.Type == engine.ResourceOutputsEvent {
+						if eventUrn == topLevelUrn {
+							// resource finished.  take it out of the in-progress group so that we don't
+							// continually update the ellipses for it.
+							delete(topLevelUrnToInProgressObj, topLevelUrn)
+						}
+					} else {
+						// mark the latest progress message we made for this resource.
+						topLevelUrnToInProgressObj[topLevelUrn] = prog
+					}
+				}
 			}
 		}
-	}
+	}()
+
+	jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
 }
 
 func RenderEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) string {
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
+	debug bool, opts backend.DisplayOptions) (resource.URN, string) {
 
 	switch event.Type {
 	case engine.CancelEvent:
-		return ""
+		return "", ""
 	case engine.PreludeEvent:
-		return RenderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+		return "", RenderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return RenderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		return "", RenderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
 	case engine.ResourceOperationFailed:
-		return RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+		return "", RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
 		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
 	case engine.ResourcePreEvent:
@@ -85,19 +303,45 @@ func RenderEvent(
 		return RenderDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
-		return ""
+		return "", ""
 	}
 }
 
-func RenderDiagEvent(payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
+// func upToFirstNewLine(opts backend.DisplayOptions, msg string) string {
+// 	if msg == "" {
+// 		return msg
+// 	}
+
+// 	var newLineIndex = strings.Index(msg, "\n")
+// 	if newLineIndex >= 0 {
+// 		msg = msg[0:newLineIndex]
+// 	}
+
+// 	if len(msg) > 180 {
+// 		msg = msg[0:180]
+// 	}
+
+// 	msg = msg + opts.Color.Colorize(colors.Reset) + "\n"
+// 	return msg
+// }
+
+func RenderDiagEvent(
+	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) (resource.URN, string) {
 	if payload.Severity == diag.Debug && !debug {
-		return ""
+		return "", ""
 	}
-	return opts.Color.Colorize(payload.Message)
+
+	return payload.URN, opts.Color.Colorize(payload.Message)
+	// var msg = "Diag: " + string(payload.URN) + ": "
+	// msg += opts.Color.Colorize(payload.Message)
+
+	// return upToFirstNewLine(opts, msg)
 }
 
-func RenderStdoutColorEvent(payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
-	return opts.Color.Colorize(payload.Message)
+func RenderStdoutColorEvent(
+	payload engine.StdoutEventPayload, opts backend.DisplayOptions) (resource.URN, string) {
+
+	return "", opts.Color.Colorize(payload.Message)
 }
 
 func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
@@ -208,49 +452,61 @@ func RenderResourceOperationFailedEvent(
 func RenderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) string {
+	opts backend.DisplayOptions) (resource.URN, string) {
 
 	seen[payload.Metadata.URN] = payload.Metadata
 
-	out := &bytes.Buffer{}
-
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		indent := engine.GetIndent(payload.Metadata, seen)
-		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
-		details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+		out := &bytes.Buffer{}
 
+		// indent := engine.GetIndent(payload.Metadata, seen)
+		summary := engine.GetResourcePropertiesSummary(payload.Metadata, 0)
+		// details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+
+		// fprintIgnoreError(out, "Pre: ")
+		// fprintIgnoreError(out, payload.Metadata.URN)
+		// fprintIgnoreError(out, ": ")
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
 
-		if !opts.Summary {
-			fprintIgnoreError(out, opts.Color.Colorize(details))
-		}
+		// if !opts.Summary {
+		// 	fprintIgnoreError(out, opts.Color.Colorize(details))
+		// }
 
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
+
+		return payload.Metadata.URN, out.String()
+	} else {
+		return payload.Metadata.URN, ""
 	}
 
-	return out.String()
+	// return upToFirstNewLine(opts, out.String())
 }
 
 func RenderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) string {
+	opts backend.DisplayOptions) (resource.URN, string) {
 
-	out := &bytes.Buffer{}
+	// out := &bytes.Buffer{}
 
 	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
-		indent := engine.GetIndent(payload.Metadata, seen)
-		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
+		// indent := engine.GetIndent(payload.Metadata, seen)
+		// text := engine.GetResourceOutputsPropertiesString(payload.Metadata, payload.Planning, payload.Debug)
+		return payload.Metadata.URN, "Done!"
 
-		fprintIgnoreError(out, opts.Color.Colorize(text))
+		// fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
 
-	return out.String()
+	return payload.Metadata.URN, ""
 }
 
 // isRootStack returns true if the step pertains to the rootmost stack component.
 func isRootStack(step engine.StepEventMetadata) bool {
-	return step.URN.Type() == resource.RootStackType
+	return isRootURN(step.URN)
+}
+
+func isRootURN(urn resource.URN) bool {
+	return urn != "" && urn.Type() == resource.RootStackType
 }
 
 // shouldShow returns true if a step should show in the output.

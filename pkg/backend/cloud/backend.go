@@ -750,7 +750,7 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 
 func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 
 	defer func() {
 		spinner.Reset()

@@ -165,7 +165,7 @@ func (u *cloudUpdate) recordEvent(
 
 	// Ensure we render events with raw colorization tags.
 	opts.Color = colors.Raw
-	msg := local.RenderEvent(event, seen, debug, opts)
+	_, msg := local.RenderEvent(event, seen, debug, opts)
 	if msg == "" {
 		return nil
 	}
