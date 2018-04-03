@@ -22,7 +22,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) (string, string) {
 	// We need to specify a well-known owner so that commands don't fail for reasons like
 	// the organization isn't in the private beta. The repository name is randomly generated
 	// so that testcases can assume no stacks, etc.
-	const owner = "moolumi"
+	const owner = "pulumi"
 	name := fmt.Sprintf("integration-test-%x", time.Now().Unix())
 	e.RunCommand("pulumi", "init", "--owner", owner, "--name", name)
 
