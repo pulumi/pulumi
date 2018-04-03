@@ -12,7 +12,7 @@ init:
 environment:
   PULUMI_API: https://api.pulumi-staging.io
   PULUMI_ACCESS_TOKEN:
-    secure: 9Li/DP5L9031eDUK1eqlyWn4pMyVOK4Ph9YbBe3O1iKQFL64LZmUibgp+jcqkjhX
+    secure: +c7s1GgUunQl8QlLZs7zafFv6lJbZp40fx1kJl7v+n0qa8oq3ssBlVEl9gfoMBgH
   AWS_ACCESS_KEY_ID:
     secure: eB7Gfl1GHhz60tH2EEASI7IFsWHDd5SV+kponXwaCSo=
   AWS_SECRET_ACCESS_KEY:
