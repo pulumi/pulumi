@@ -42,7 +42,7 @@ func TestProjectMain(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, test.GetStackName(), stackInfo.Checkpoint.Stack)
+			assert.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -99,9 +99,10 @@ func TestStackOutputs(t *testing.T) {
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			if assert.Equal(t, 1, len(stackInfo.Checkpoint.Latest.Resources)) {
-				stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Equal(t, 0, len(stackRes.Inputs))
@@ -130,15 +131,15 @@ func TestStackParenting(t *testing.T) {
 			//
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			if assert.Equal(t, 8, len(stackInfo.Checkpoint.Latest.Resources)) {
-				stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 8, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 
 				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Checkpoint.Latest.Resources[1:] {
+				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
 					urns[string(res.URN.Name())] = res.URN
@@ -169,8 +170,8 @@ func TestStackDependencyGraph(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			latest := stackInfo.Checkpoint.Latest
+			assert.NotNil(t, stackInfo.Deployment)
+			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
 			fmt.Println(latest.Resources)
 			sawFirst := false

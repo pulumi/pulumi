@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,8 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -34,9 +33,8 @@ import (
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
-	Checkpoint   apitype.CheckpointV1
-	Snapshot     deploy.Snapshot
-	RootResource resource.State
+	Deployment   *apitype.Deployment
+	RootResource apitype.Resource
 	Outputs      map[string]interface{}
 }
 
@@ -116,9 +114,11 @@ type ProgramTestOptions struct {
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 
-	// CloudURL is an optional URL to a Pulumi Service API. If set, the program test will attempt to login
-	// to that CloudURL (assuming PULUMI_ACCESS_TOKEN is set) and create the stack using that hosted service.
-	// If nil, will test Pulumi using the fire-and-forget mode.
+	// LocalDeployment can be set to true to force tests to run without logging into the Pulumi service
+	LocalDeployment bool
+
+	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
+	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
 	// Owner and Repo are optional values to specify during calls to `pulumi init`. Otherwise the --owner and
 	// --repo flags will not be set.
@@ -228,6 +228,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
+	opts.LocalDeployment = overrides.LocalDeployment
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
 	}
@@ -272,9 +273,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi update (expected to be empty)
 //   pulumi destroy --yes
 //   pulumi stack rm --yes integrationtesting
-//   (*) pulumi logout
 //
-//   (*) Only if ProgramTestOptions.CloudURL is not empty.
+//   (*) Only if PULUMI_ACCESS_TOKEN is set.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -441,6 +441,33 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		dir = path.Join(dir, pt.opts.RelativeWorkDir)
 	}
 
+	// Set the default target Pulumi API if not overridden in options.
+	if pt.opts.CloudURL == "" {
+		pulumiAPI := os.Getenv("PULUMI_API")
+		if pulumiAPI != "" {
+			pt.opts.CloudURL = pulumiAPI
+		}
+	}
+
+	// Set the owner organization from an environment variable if not overridden in options.
+	if pt.opts.Owner == "" {
+		pulumiAPIOwnerOrganization := os.Getenv("PULUMI_API_OWNER_ORGANIZATION")
+		if pulumiAPIOwnerOrganization != "" {
+			pt.opts.Owner = pulumiAPIOwnerOrganization
+		} else {
+			// Default to the `pulumi` organization.
+			pt.opts.Owner = "pulumi"
+		}
+	}
+
+	// Set the target PPC from an environment variable if not overridden in options.
+	if pt.opts.PPCName == "" {
+		ppcName := os.Getenv("PULUMI_API_PPC_NAME")
+		if ppcName != "" {
+			pt.opts.PPCName = ppcName
+		}
+	}
+
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
@@ -452,26 +479,24 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Login as needed.
-	if pt.opts.CloudURL != "" {
+	if !pt.opts.LocalDeployment {
 		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-			pt.t.Fatalf("Unable to run pulumi login. PULUMI_ACCESS_TOKEN environment variable not set.")
-		}
+			fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
+		} else {
+			// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
+			// e.g. replacing the current user's with that of a test account.
+			if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
+				pt.t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
+			}
 
-		// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
-		// e.g. replacing the current user's with that of a test account.
-		if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
-			pt.t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
-		}
-
-		if err := pt.runPulumiCommand("pulumi-login",
-			append([]string{"login", "--cloud-url", pt.opts.CloudURL}), dir); err != nil {
-			return err
+			if err := pt.runPulumiCommand("pulumi-login", []string{"login"}, dir); err != nil {
+				return err
+			}
 		}
 	}
-
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(stackName)}
-	if pt.opts.CloudURL == "" {
+	if pt.opts.LocalDeployment {
 		stackInitArgs = append(stackInitArgs, "--local")
 	} else {
 		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--cloud-url", pt.opts.CloudURL)
@@ -511,17 +536,9 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	if err := pt.runPulumiCommand("pulumi-stack-rm",
-		[]string{"stack", "rm", "--yes", string(stackName)}, dir); err != nil {
-		return err
-	}
+	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes", string(stackName)}, dir)
 
-	if pt.opts.CloudURL != "" {
-		return pt.runPulumiCommand("pulumi-logout",
-			[]string{"logout", "--cloud-url", pt.opts.CloudURL}, dir)
-	}
-
-	return nil
+	return err
 }
 
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
@@ -706,37 +723,52 @@ func (pt *programTester) performExtraRuntimeValidation(
 
 	stackName := pt.opts.GetStackName()
 
-	// Load up the checkpoint file from .pulumi/stacks/<project-name>/<stack-name>.json.
-	ws, err := workspace.NewFrom(dir)
+	// Create a temporary file name for the stack export
+	tempDir, err := ioutil.TempDir("", string(stackName))
 	if err != nil {
-		return errors.Wrapf(err, "expected to load project workspace at %v", dir)
+		return err
 	}
-	chk, err := stack.GetCheckpoint(ws, stackName)
-	if err != nil {
-		return errors.Wrapf(err, "expected to load checkpoint file for target %v: %v", stackName)
-	} else if !assert.NotNil(pt.t, chk, "expected checkpoint file to be populated from %v: %v", stackName, err) {
-		return errors.New("missing checkpoint")
+	fileName := path.Join(tempDir, "stack.json")
+
+	// Invoke `pulumi stack export`
+	if err = pt.runPulumiCommand("pulumi-export", []string{"stack", "export", "--file", fileName}, dir); err != nil {
+		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
 	}
 
-	// Deserialize snapshot from checkpoint
-	snapshot, err := stack.DeserializeCheckpoint(chk)
+	// Open the exported JSON file
+	f, err := os.Open(fileName)
 	if err != nil {
-		return errors.Wrapf(err, "expected checkpoint deserialization to succeed")
-	} else if !assert.NotNil(pt.t, snapshot, "expected snapshot to be populated from checkpoint file %v", stackName) {
-		return errors.New("missing snapshot")
+		return errors.Wrapf(err, "expected to be able to open file with stack exports: %s", fileName)
+	}
+	defer func() {
+		contract.IgnoreClose(f)
+		contract.IgnoreError(os.RemoveAll(tempDir))
+	}()
+
+	// Unmarshal the Deployment
+	var untypedDeployment apitype.UntypedDeployment
+	if err = json.NewDecoder(f).Decode(&untypedDeployment); err != nil {
+		return err
+	}
+	var deployment apitype.Deployment
+	if err = json.Unmarshal(untypedDeployment.Deployment, &deployment); err != nil {
+		return err
 	}
 
-	// Get root resources from snapshot
-	rootResource, outputs := stack.GetRootStackResource(snapshot)
-	if !assert.NotNil(pt.t, rootResource, "expected root resource to be populated from snapshot file %v", stackName) {
-		return errors.New("missing root resource")
+	// Get the root resource and outputs from the deployment
+	var rootResource apitype.Resource
+	var outputs map[string]interface{}
+	for _, res := range deployment.Resources {
+		if res.Type == resource.RootStackType {
+			rootResource = res
+			outputs = res.Outputs
+		}
 	}
 
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
-		Checkpoint:   *chk,
-		Snapshot:     *snapshot,
-		RootResource: *rootResource,
+		Deployment:   &deployment,
+		RootResource: rootResource,
 		Outputs:      outputs,
 	}
 	extraRuntimeValidation(pt.t, stackInfo)

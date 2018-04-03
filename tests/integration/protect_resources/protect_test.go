@@ -19,11 +19,11 @@ func TestSteps(t *testing.T) {
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// A single synthetic stack and a single "eternal" resource.
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			assert.Equal(t, 2, len(stackInfo.Checkpoint.Latest.Resources))
-			stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+			stackRes := stackInfo.Deployment.Resources[0]
 			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-			a := stackInfo.Checkpoint.Latest.Resources[1]
+			a := stackInfo.Deployment.Resources[1]
 			assert.Equal(t, "eternal", string(a.URN.Name()))
 			assert.True(t, a.Protect)
 		},
@@ -33,11 +33,11 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// An update to "eternal"; should still be there.
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 2, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Checkpoint.Latest.Resources[1]
+					a := stackInfo.Deployment.Resources[1]
 					assert.Equal(t, "eternal", string(a.URN.Name()))
 					assert.True(t, a.Protect)
 				},
@@ -53,11 +53,11 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// "eternal" should now be unprotected.
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 2, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Checkpoint.Latest.Resources[1]
+					a := stackInfo.Deployment.Resources[1]
 					assert.Equal(t, "eternal", string(a.URN.Name()))
 					assert.False(t, a.Protect)
 				},
@@ -67,9 +67,9 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// Finally, "eternal" should be deleted.
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					assert.Equal(t, 1, len(stackInfo.Checkpoint.Latest.Resources))
-					stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 1, len(stackInfo.Deployment.Resources))
+					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				},
 			},
