@@ -134,6 +134,7 @@ func DisplayEvents(action string,
 	var stackURN resource.URN
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	topLevelUrnToInProgressObj := make(map[resource.URN]progress.Progress)
+	var summaryEvent *engine.SummaryEventPayload
 	diagEvents := []engine.DiagEventPayload{}
 	tickCount := 0
 
@@ -146,19 +147,7 @@ func DisplayEvents(action string,
 			})
 		}
 
-		// Print all diagnostics at the end
-		for _, v := range diagEvents {
-			out := os.Stdout
-			if v.Severity == diag.Error || v.Severity == diag.Warning {
-				out = os.Stderr
-			}
-
-			_, msg := RenderDiagEvent(v, debug, opts)
-			if msg != "" && out != nil {
-				fprintIgnoreError(out, msg)
-			}
-		}
-
+		// no more progress events from this point on.
 		close(progressChan)
 	}
 
@@ -168,26 +157,22 @@ func DisplayEvents(action string,
 			return "global"
 		}
 
-		return string(urn.Type()) + "(" + string(urn.Name()) + ")"
+		return string(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
 	}
 
 	var mapToTopLevelUrn func(urn resource.URN) resource.URN
 	mapToTopLevelUrn = func(urn resource.URN) resource.URN {
-		if urn == "" {
-			return ""
-		}
-
-		if urn == stackURN {
+		if urn == "" || urn == stackURN {
 			return stackURN
 		}
 
 		v, ok := seen[urn]
 		if !ok {
-			return ""
+			return stackURN
 		}
 
 		parent := v.Res.Parent
-		if parent == stackURN {
+		if parent == "" || parent == stackURN {
 			return urn
 		}
 
@@ -228,18 +213,22 @@ func DisplayEvents(action string,
 				// 	// fprintIgnoreError(out, event.Type+": ")
 				// 	fprintIgnoreError(out, msg)
 				// }
-
-				if event.Type == engine.CancelEvent {
+				if event.Type == "" || event.Type == engine.CancelEvent {
 					processEndSteps()
-					break
+					return
 				}
 				// }
 
 				eventUrn, msg := RenderEvent(event, seen, debug, opts)
 				if msg != "" {
 					switch event.Type {
-					case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
-						fprintIgnoreError(os.Stdout, msg)
+					case engine.PreludeEvent: // , engine.StdoutColorEvent:
+						chanOutput.WriteProgress(progress.Progress{Message: msg})
+						// fprintIgnoreError(os.Stdout, msg)
+						continue
+					case engine.SummaryEvent:
+						payload := event.Payload.(engine.SummaryEventPayload)
+						summaryEvent = &payload
 						continue
 					}
 
@@ -278,6 +267,35 @@ func DisplayEvents(action string,
 	}()
 
 	jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+
+	// print the summary
+	out := os.Stdout
+	if summaryEvent != nil {
+		msg := RenderSummaryEvent(*summaryEvent, opts)
+		if msg != "" && out != nil {
+			fprintIgnoreError(out, "\n")
+			fprintIgnoreError(out, msg)
+		}
+	}
+
+	// Print all diagnostics at the end
+	if len(diagEvents) > 0 {
+		if out != nil {
+			fprintIgnoreError(out, "\n")
+		}
+	}
+
+	for _, v := range diagEvents {
+		out = os.Stdout
+		if v.Severity == diag.Error || v.Severity == diag.Warning {
+			out = os.Stderr
+		}
+
+		_, msg := RenderDiagEvent(v, debug, opts)
+		if msg != "" && out != nil {
+			fprintIgnoreError(out, msg)
+		}
+	}
 }
 
 func RenderEvent(
@@ -449,6 +467,25 @@ func RenderResourceOperationFailedEvent(
 	return ""
 }
 
+func getMetadataSummary(metadata engine.StepEventMetadata, opts backend.DisplayOptions) string {
+	out := &bytes.Buffer{}
+	summary := engine.GetResourcePropertiesSummary(metadata, 0)
+	// details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+
+	// fprintIgnoreError(out, "Pre: ")
+	// fprintIgnoreError(out, payload.Metadata.URN)
+	// fprintIgnoreError(out, ": ")
+	fprintIgnoreError(out, opts.Color.Colorize(summary))
+
+	// if !opts.Summary {
+	// 	fprintIgnoreError(out, opts.Color.Colorize(details))
+	// }
+
+	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
+
+	return out.String()
+}
+
 func RenderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
@@ -457,24 +494,27 @@ func RenderResourcePreEvent(
 	seen[payload.Metadata.URN] = payload.Metadata
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		out := &bytes.Buffer{}
+		summary := getMetadataSummary(payload.Metadata, opts)
+		// out := &bytes.Buffer{}
 
-		// indent := engine.GetIndent(payload.Metadata, seen)
-		summary := engine.GetResourcePropertiesSummary(payload.Metadata, 0)
-		// details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+		// // indent := engine.GetIndent(payload.Metadata, seen)
+		// summary := engine.GetResourcePropertiesSummary(payload.Metadata, 0)
+		// // details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
 
-		// fprintIgnoreError(out, "Pre: ")
-		// fprintIgnoreError(out, payload.Metadata.URN)
-		// fprintIgnoreError(out, ": ")
-		fprintIgnoreError(out, opts.Color.Colorize(summary))
+		// // fprintIgnoreError(out, "Pre: ")
+		// // fprintIgnoreError(out, payload.Metadata.URN)
+		// // fprintIgnoreError(out, ": ")
+		// fprintIgnoreError(out, opts.Color.Colorize(summary))
 
-		// if !opts.Summary {
-		// 	fprintIgnoreError(out, opts.Color.Colorize(details))
-		// }
+		// // if !opts.Summary {
+		// // 	fprintIgnoreError(out, opts.Color.Colorize(details))
+		// // }
 
-		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
+		// fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 
-		return payload.Metadata.URN, out.String()
+		// return payload.Metadata.URN, out.String()
+
+		return payload.Metadata.URN, summary
 	} else {
 		return payload.Metadata.URN, ""
 	}
@@ -489,10 +529,11 @@ func RenderResourceOutputsEvent(
 
 	// out := &bytes.Buffer{}
 
-	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
+	if shouldShow(payload.Metadata, opts) && !opts.Summary {
 		// indent := engine.GetIndent(payload.Metadata, seen)
 		// text := engine.GetResourceOutputsPropertiesString(payload.Metadata, payload.Planning, payload.Debug)
-		return payload.Metadata.URN, "Done!"
+		summary := getMetadataSummary(payload.Metadata, opts)
+		return payload.Metadata.URN, summary + " - Done!"
 
 		// fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
