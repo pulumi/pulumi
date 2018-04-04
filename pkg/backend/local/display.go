@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -109,6 +111,10 @@ type ProgressAndEllipses struct {
 	Ellipses int
 }
 
+var (
+	typeNameRegex = regexp.MustCompile("^(.*):(.*):(.*)$")
+)
+
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
@@ -137,7 +143,9 @@ func DisplayEvents(action string,
 		done <- true
 	}()
 
-	var stackURN resource.URN
+	summarize := opts.Summary
+
+	var stackUrn resource.URN
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	topLevelUrnToInProgressObj := make(map[resource.URN]ProgressAndEllipses)
 	var summaryEvent *engine.Event
@@ -166,21 +174,30 @@ func DisplayEvents(action string,
 			chanOutput.WriteProgress(progress.Progress{Message: " "})
 		}
 
-		// Print all diagnostics at the end
-		for _, v := range diagEvents {
-			// out = os.Stdout
-			// if v.Severity == diag.Error || v.Severity == diag.Warning {
-			// 	out = os.Stderr
-			// }
+		// Print all diagnostics at the end.  We only need to do this if we were summarizing.
+		// Otherwise, this would have been seen while we were receiving the events.
 
-			_, msg := RenderEvent(v, seen, debug, opts)
-			if msg != "" {
-				chanOutput.WriteProgress(progress.Progress{Message: msg})
+		if !summarize {
+			for _, v := range diagEvents {
+				// out = os.Stdout
+				// if v.Severity == diag.Error || v.Severity == diag.Warning {
+				// 	out = os.Stderr
+				// }
+
+				_, msg := RenderEvent(v, seen, debug, opts)
+				if msg != "" {
+					chanOutput.WriteProgress(progress.Progress{Message: msg})
+				}
 			}
 		}
 
 		// no more progress events from this point on.
 		close(progressChan)
+	}
+
+	simplifyTypeName := func(typ tokens.Type) string {
+		typeString := string(typ)
+		return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
 	}
 
 	var makeID func(urn resource.URN) string
@@ -189,26 +206,26 @@ func DisplayEvents(action string,
 			return "global"
 		}
 
-		return string(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
+		return simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
 	}
 
-	var mapToTopLevelUrn func(urn resource.URN) resource.URN
-	mapToTopLevelUrn = func(urn resource.URN) resource.URN {
-		if urn == "" || urn == stackURN {
-			return stackURN
+	var mapToStackUrnOrImmediateStackChildUrn func(urn resource.URN) resource.URN
+	mapToStackUrnOrImmediateStackChildUrn = func(urn resource.URN) resource.URN {
+		if urn == "" || urn == stackUrn {
+			return stackUrn
 		}
 
 		v, ok := seen[urn]
 		if !ok {
-			return stackURN
+			return stackUrn
 		}
 
 		parent := v.Res.Parent
-		if parent == "" || parent == stackURN {
+		if parent == "" || parent == stackUrn {
 			return urn
 		}
 
-		return mapToTopLevelUrn(parent)
+		return mapToStackUrnOrImmediateStackChildUrn(parent)
 	}
 
 	go func() {
@@ -260,30 +277,44 @@ func DisplayEvents(action string,
 				msg = strings.TrimSpace(msg)
 				if msg != "" {
 					switch event.Type {
-					case engine.PreludeEvent: // , engine.StdoutColorEvent:
+					case engine.PreludeEvent:
 						chanOutput.WriteProgress(progress.Progress{Message: " "})
 						chanOutput.WriteProgress(progress.Progress{Message: msg})
 						// fprintIgnoreError(os.Stdout, msg)
 						continue
 					case engine.SummaryEvent:
+						// keep track of hte summar event so that we can display it after all other
+						// resource-related events we receive.
 						summaryEvent = &event
 						continue
 					}
 
-					// case engine.ResourceOutputsEvent:
-					// 	return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
-					// case engine.ResourcePreEvent:
-					// 	return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
-					// case engine.DiagEvent:
-					// }
-
 					if isRootURN(eventUrn) {
-						stackURN = eventUrn
+						stackUrn = eventUrn
 					}
 
-					topLevelUrn := mapToTopLevelUrn(eventUrn)
+					if eventUrn == "" {
+						eventUrn = stackUrn
+					}
+
+					var topLevelUrn resource.URN
+					if summarize {
+						// if we're summarizing, then we want to write this message associated
+						// either with the stack-urn, or an immediate child of the stack-urn.
+						topLevelUrn = mapToStackUrnOrImmediateStackChildUrn(eventUrn)
+					} else {
+						// otherwise, we print the information out for each resource.
+						topLevelUrn = eventUrn
+					}
+
 					id := makeID(topLevelUrn)
+
+					if summarize && topLevelUrn != eventUrn {
+						msg = makeID(eventUrn) + ": " + msg
+					}
+
 					prog := progress.Progress{ID: id, Action: msg}
+
 					chanOutput.WriteProgress(prog)
 
 					if event.Type == engine.DiagEvent {
@@ -547,11 +578,17 @@ func renderResourceOutputsEvent(
 
 	// out := &bytes.Buffer{}
 
-	if shouldShow(payload.Metadata, opts) && !opts.Summary {
+	if shouldShow(payload.Metadata, opts) {
 		// indent := engine.GetIndent(payload.Metadata, seen)
 		// text := engine.GetResourceOutputsPropertiesString(payload.Metadata, payload.Planning, payload.Debug)
-		summary := getMetadataSummary(payload.Metadata, opts)
-		return payload.Metadata.URN, summary + " - Done!"
+		// if opts.Summary {
+		// 	// if we're summarizing, then our info is being added to a parent node.
+		// 	// so we want to print out our child info
+		// 	summary := getMetadataSummary(payload.Metadata, opts)
+		// 	return payload.Metadata.URN, summary + " - Done!"
+		// } else {
+		return payload.Metadata.URN, "Done!"
+		// }
 
 		// fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
