@@ -104,7 +104,6 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -137,6 +136,8 @@ func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
+	// this assert is useful, but makes it hard to mock CreateReplacement
+	contract.Assert(s.old == nil || !s.old.Delete)
 	if !preview {
 		if s.new.Custom {
 			// Invoke the Create RPC function for this provider:

@@ -160,11 +160,13 @@ func (sm *SnapshotManager) merge() *deploy.Snapshot {
 
 		if !seenResource {
 			resources = append(resources, oldResource.Clone())
+			return
 		}
 
 		if pendingDelete != nil {
 			contract.Assertf(deleting == nil, "should not have seen resource that is both deleting and pending delete")
 			resources = append(resources, pendingDelete.Clone())
+			return
 		}
 
 		if deleting != nil {
@@ -174,7 +176,12 @@ func (sm *SnapshotManager) merge() *deploy.Snapshot {
 
 	copyBases := func() {
 		for _, oldResource := range sm.baseSnapshot.Resources {
-			copyBase(oldResource)
+			// copyBase handles these two states specially. If they exist in the
+			// base snapshot, ignore them.
+			if oldResource.Status != resource.ResourceStatusPendingDeletion &&
+				oldResource.Status != resource.ResourceStatusDeleting {
+				copyBase(oldResource)
+			}
 		}
 	}
 
@@ -455,6 +462,15 @@ func (sm *SnapshotManager) doDeleteMutation(step deploy.Step) (engine.SnapshotMu
 		// "pending-delete" status.
 		snapshotOld = sm.findPendingDeleteInSnapshot(step.URN())
 		if snapshotOld == nil {
+			// Is there one in the base snapshot?
+			snapshotOld = sm.findPendingDeleteInBaseSnapshot(step.URN())
+			if snapshotOld != nil {
+				snapshotOld = snapshotOld.Clone()
+				sm.addResource(snapshotOld)
+			}
+		}
+
+		if snapshotOld == nil {
 			// If there is not such a resource, we are either doing an OpDelete (in which case we are not
 			// replacing anything) or a delete-before-create (in which case the thing that we are deleting is
 			// still live).
@@ -524,6 +540,14 @@ func findInSnapshot(snap *deploy.Snapshot, urn resource.URN, findFunc func(*reso
 // if no such resource exists. Can only be called from within a `mutate` callback.
 func (sm *SnapshotManager) findPendingDeleteInSnapshot(urn resource.URN) *resource.State {
 	return findInSnapshot(sm.newSnapshot, urn, func(candidate *resource.State) bool {
+		return candidate.Status == resource.ResourceStatusPendingDeletion
+	})
+}
+
+// Finds a resource with the given URN that is pending deletion in the base snapshot, returning
+// nil if no such resource exists. Safe to call outside a `mutate` callback.
+func (sm *SnapshotManager) findPendingDeleteInBaseSnapshot(urn resource.URN) *resource.State {
+	return findInSnapshot(sm.baseSnapshot, urn, func(candidate *resource.State) bool {
 		return candidate.Status == resource.ResourceStatusPendingDeletion
 	})
 }
