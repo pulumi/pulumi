@@ -125,7 +125,7 @@ func DisplayEvents(action string,
 	_, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 1 /*timesPerSecond*/)
 
 	_, stdout, _ := term.StdStreams()
-	// _, isTerminal := term.GetFdInfo(stdout)
+	_, isTerminal := term.GetFdInfo(stdout)
 
 	pipeReader, pipeWriter := io.Pipe()
 	progressChan := make(chan progress.Progress, 100)
@@ -147,18 +147,57 @@ func DisplayEvents(action string,
 
 	var stackUrn resource.URN
 	seen := make(map[resource.URN]engine.StepEventMetadata)
-	topLevelUrnToInProgressObj := make(map[resource.URN]ProgressAndEllipses)
 	var summaryEvent *engine.Event
 	diagEvents := []engine.Event{}
+	maxIDLength := 0
+
+	inFlightTopLevelResources := make(map[resource.URN]ProgressAndEllipses)
+	completedTopLevelResources := make(map[resource.URN]progress.Progress)
+
+	writeAction := func(id string, msg string) {
+		extraWhitespace := 0
+
+		// In the terminal we try to align the status messages for each resource.
+		// do not bother with this in the non-terminal case.
+		if isTerminal {
+			extraWhitespace = maxIDLength - len(id)
+		}
+
+		chanOutput.WriteProgress(progress.Progress{
+			ID:     id,
+			Action: strings.Repeat(" ", extraWhitespace) + msg,
+		})
+	}
+
+	updateStatusForInFlightResources := func() {
+		for _, v := range inFlightTopLevelResources {
+			ellipses := strings.Repeat(".", (v.Ellipses%3)+1) + "  "
+			writeAction(v.ID, v.Action+ellipses)
+		}
+
+		for k, v := range inFlightTopLevelResources {
+			inFlightTopLevelResources[k] =
+				ProgressAndEllipses{Progress: v.Progress, Ellipses: v.Ellipses + 1}
+		}
+	}
+
+	updateStatusForCompletedResources := func() {
+		for _, v := range completedTopLevelResources {
+			writeAction(v.ID, v.Action)
+		}
+	}
 
 	processEndSteps := func() {
 		// Mark all in progress resources as done.
-		for _, v := range topLevelUrnToInProgressObj {
-			chanOutput.WriteProgress(progress.Progress{
-				ID:     v.ID,
-				Action: "Done!",
-			})
+		// Move all in flight resources over to being done.
+		// Then write out that they're done.
+
+		for k, v := range inFlightTopLevelResources {
+			completedTopLevelResources[k] = progress.Progress{ID: v.ID, Action: "Done!"}
 		}
+
+		inFlightTopLevelResources = make(map[resource.URN]ProgressAndEllipses)
+		updateStatusForCompletedResources()
 
 		// print the summary
 		// out := os.Stdout
@@ -232,19 +271,7 @@ func DisplayEvents(action string,
 		for {
 			select {
 			case <-ticker.C:
-				for _, v := range topLevelUrnToInProgressObj {
-					ellipses := strings.Repeat(".", (v.Ellipses%3)+1) + "  "
-
-					chanOutput.WriteProgress(progress.Progress{
-						ID:     v.ID,
-						Action: v.Action + ellipses,
-					})
-				}
-
-				for k, v := range topLevelUrnToInProgressObj {
-					topLevelUrnToInProgressObj[k] =
-						ProgressAndEllipses{Progress: v.Progress, Ellipses: v.Ellipses + 1}
-				}
+				updateStatusForInFlightResources()
 
 			// 	spinner.Tick()
 			case event := <-events:
@@ -275,62 +302,73 @@ func DisplayEvents(action string,
 
 				eventUrn, msg := RenderEvent(event, seen, debug, opts)
 				msg = strings.TrimSpace(msg)
-				if msg != "" {
-					switch event.Type {
-					case engine.PreludeEvent:
-						chanOutput.WriteProgress(progress.Progress{Message: " "})
-						chanOutput.WriteProgress(progress.Progress{Message: msg})
-						// fprintIgnoreError(os.Stdout, msg)
-						continue
-					case engine.SummaryEvent:
-						// keep track of hte summar event so that we can display it after all other
-						// resource-related events we receive.
-						summaryEvent = &event
-						continue
+				if msg == "" {
+					continue
+				}
+
+				switch event.Type {
+				case engine.PreludeEvent:
+					chanOutput.WriteProgress(progress.Progress{Message: " "})
+					chanOutput.WriteProgress(progress.Progress{Message: msg})
+					// fprintIgnoreError(os.Stdout, msg)
+					continue
+				case engine.SummaryEvent:
+					// keep track of hte summar event so that we can display it after all other
+					// resource-related events we receive.
+					summaryEvent = &event
+					continue
+				}
+
+				if isRootURN(eventUrn) {
+					stackUrn = eventUrn
+				}
+
+				if eventUrn == "" {
+					eventUrn = stackUrn
+				}
+
+				var topLevelUrn resource.URN
+				if summarize {
+					// if we're summarizing, then we want to write this message associated
+					// either with the stack-urn, or an immediate child of the stack-urn.
+					topLevelUrn = mapToStackUrnOrImmediateStackChildUrn(eventUrn)
+				} else {
+					// otherwise, we print the information out for each resource.
+					topLevelUrn = eventUrn
+				}
+
+				id := makeID(topLevelUrn)
+
+				if isTerminal {
+					// in the terminal we want to align the status portions of messages. If we
+					// heard about a resource with a longer id, go and update all in-flight and
+					// finished resources so that their statuses get aligned.
+					if len(id) > maxIDLength {
+						maxIDLength = len(id)
+
+						updateStatusForInFlightResources()
+						updateStatusForCompletedResources()
 					}
+				}
 
-					if isRootURN(eventUrn) {
-						stackUrn = eventUrn
+				prog := progress.Progress{ID: id, Action: msg}
+				writeAction(prog.ID, prog.Action)
+
+				if event.Type == engine.DiagEvent {
+					// also record this diagnostic so we print it at the end.
+					diagEvents = append(diagEvents, event)
+				} else if event.Type == engine.ResourceOutputsEvent {
+					if eventUrn == topLevelUrn {
+						// resource finished.  take it out of the in-progress group so that we don't
+						// continually update the ellipses for it.
+						delete(inFlightTopLevelResources, topLevelUrn)
+						completedTopLevelResources[topLevelUrn] = prog
 					}
-
-					if eventUrn == "" {
-						eventUrn = stackUrn
-					}
-
-					var topLevelUrn resource.URN
-					if summarize {
-						// if we're summarizing, then we want to write this message associated
-						// either with the stack-urn, or an immediate child of the stack-urn.
-						topLevelUrn = mapToStackUrnOrImmediateStackChildUrn(eventUrn)
-					} else {
-						// otherwise, we print the information out for each resource.
-						topLevelUrn = eventUrn
-					}
-
-					id := makeID(topLevelUrn)
-
-					if summarize && topLevelUrn != eventUrn {
-						msg = makeID(eventUrn) + ": " + msg
-					}
-
-					prog := progress.Progress{ID: id, Action: msg}
-
-					chanOutput.WriteProgress(prog)
-
-					if event.Type == engine.DiagEvent {
-						// also record this diagnostic so we print it at the end.
-						diagEvents = append(diagEvents, event)
-					} else if event.Type == engine.ResourceOutputsEvent {
-						if eventUrn == topLevelUrn {
-							// resource finished.  take it out of the in-progress group so that we don't
-							// continually update the ellipses for it.
-							delete(topLevelUrnToInProgressObj, topLevelUrn)
-						}
-					} else {
-						// mark the latest progress message we made for this resource.
-						topLevelUrnToInProgressObj[topLevelUrn] =
-							ProgressAndEllipses{Progress: prog, Ellipses: 0}
-					}
+				} else {
+					// mark the latest progress message we made for this resource.
+					inFlightTopLevelResources[topLevelUrn] =
+						ProgressAndEllipses{Progress: prog, Ellipses: 0}
+					delete(completedTopLevelResources, topLevelUrn)
 				}
 			}
 		}
