@@ -518,7 +518,7 @@ func renderResourceOperationFailedEvent(
 
 func getMetadataSummary(metadata engine.StepEventMetadata, opts backend.DisplayOptions) string {
 	out := &bytes.Buffer{}
-	summary := engine.GetResourcePropertiesSummary(metadata, 0)
+	summary := getMetadataSummaryWorker(metadata)
 	// details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
 
 	// fprintIgnoreError(out, "Pre: ")
@@ -533,6 +533,76 @@ func getMetadataSummary(metadata engine.StepEventMetadata, opts backend.DisplayO
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 
 	return out.String()
+}
+
+func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
+	var b bytes.Buffer
+
+	op := step.Op
+	urn := step.URN
+	// old := step.Old
+
+	// First, print out the operation's prefix.
+	writeString(&b, op.Prefix())
+
+	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
+	writeString(&b, getStepHeader(step))
+
+	// For these simple properties, print them as 'same' if they're just an update or replace.
+	simplePropOp := op
+
+	if op != deploy.OpCreate && op != deploy.OpDelete && op != deploy.OpDeleteReplaced {
+		simplePropOp = deploy.OpSame
+	}
+
+	// Print out the URN and, if present, the ID, as "pseudo-properties" and indent them.
+	// var id resource.ID
+	// if old != nil {
+	// 	id = old.ID
+	// }
+
+	// Always print the ID and URN.
+	// if id != "" {
+	// 	writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
+	// }
+	if urn != "" {
+		write(&b, simplePropOp, " [urn=%s]", urn)
+	}
+
+	return b.String()
+}
+
+func getStepHeader(step engine.StepEventMetadata) string {
+	switch step.Op {
+	case deploy.OpSame:
+		return "Unchanged"
+	case deploy.OpCreate:
+		return "Creating"
+	case deploy.OpUpdate:
+		return "Updating"
+	case deploy.OpDelete:
+		return "Deleting"
+	case deploy.OpReplace:
+		return "Replacing"
+	case deploy.OpCreateReplacement:
+		return "Creating for replacement"
+	case deploy.OpDeleteReplaced:
+		return "Deleting for replacement"
+	default:
+		contract.Failf("Unrecognized resource step op: %v", step.Op)
+		return ""
+	}
+}
+
+func writeString(b *bytes.Buffer, s string) {
+	_, err := b.WriteString(s)
+	contract.IgnoreError(err)
+}
+
+func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
+	writeString(b, op.Color())
+	writeString(b, fmt.Sprintf(format, a...))
+	writeString(b, colors.Reset)
 }
 
 func renderResourcePreEvent(
