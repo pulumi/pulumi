@@ -109,11 +109,12 @@ type ProgressAndEllipses struct {
 	Ellipses int
 }
 
-// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
-// Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
-// await all the events being written.
+// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
+// it comes in. Once all events have been read from the channel and displayed, it closes the `done`
+// channel so the caller can await all the events being written.
 func DisplayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
+
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	_, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 1 /*timesPerSecond*/)
 
