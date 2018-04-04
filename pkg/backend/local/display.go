@@ -539,7 +539,7 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 	var b bytes.Buffer
 
 	op := step.Op
-	urn := step.URN
+	// urn := step.URN
 	// old := step.Old
 
 	// First, print out the operation's prefix.
@@ -547,13 +547,46 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	writeString(&b, getStepHeader(step))
+	writeString(&b, colors.Reset)
+
+	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
+		diff := step.Old.Inputs.Diff(step.New.Inputs)
+
+		/*
+			addLen := 0
+			deleteLen := 0
+			updateLen := 0
+			if diff.Adds != nil {
+				addLen = len(diff.Adds)
+			}
+			if diff.Deletes != nil {
+				addLen = len(diff.Deletes)
+			}
+			if diff.Updates != nil {
+				updateLen = len(diff.Updates)
+			}
+		*/
+
+		if diff != nil {
+			writeString(&b, ". Props: ")
+
+			updates := make(resource.PropertyMap)
+			for k := range diff.Updates {
+				updates[k] = resource.PropertyValue{}
+			}
+
+			writePropertyKeys(&b, diff.Adds, deploy.OpCreate)
+			writePropertyKeys(&b, diff.Deletes, deploy.OpDelete)
+			writePropertyKeys(&b, updates, deploy.OpReplace)
+		}
+	}
 
 	// For these simple properties, print them as 'same' if they're just an update or replace.
-	simplePropOp := op
+	// simplePropOp := op
 
-	if op != deploy.OpCreate && op != deploy.OpDelete && op != deploy.OpDeleteReplaced {
-		simplePropOp = deploy.OpSame
-	}
+	// if op != deploy.OpCreate && op != deploy.OpDelete && op != deploy.OpDeleteReplaced {
+	// 	simplePropOp = deploy.OpSame
+	// }
 
 	// Print out the URN and, if present, the ID, as "pseudo-properties" and indent them.
 	// var id resource.ID
@@ -565,9 +598,9 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 	// if id != "" {
 	// 	writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	// }
-	if urn != "" {
-		write(&b, simplePropOp, " [urn=%s]", urn)
-	}
+	// if urn != "" {
+	// 	write(&b, simplePropOp, " [urn=%s]", urn)
+	// }
 
 	return b.String()
 }
@@ -591,6 +624,19 @@ func getStepHeader(step engine.StepEventMetadata) string {
 	default:
 		contract.Failf("Unrecognized resource step op: %v", step.Op)
 		return ""
+	}
+}
+
+func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {
+	if len(propMap) > 0 {
+		writeString(b, op.Prefix())
+
+		for k := range propMap {
+			writeString(b, " ")
+			writeString(b, string(k))
+		}
+
+		writeString(b, colors.Reset)
 	}
 }
 
