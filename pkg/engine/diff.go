@@ -46,7 +46,7 @@ func printStepHeader(b *bytes.Buffer, step StepEventMetadata) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
-	writeString(b, fmt.Sprintf("%s: (%s)%s", string(step.Type), step.Op, extra))
+	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
 func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
@@ -99,11 +99,11 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 	var b bytes.Buffer
 
 	op := step.Op
-	// urn := step.URN
+	urn := step.URN
 	old := step.Old
 
 	// Print the indentation.
-	writeString(&b, getIndentationString(0, op, false))
+	writeString(&b, getIndentationString(indent, op, false))
 
 	// First, print out the operation's prefix.
 	writeString(&b, op.Prefix())
@@ -122,11 +122,11 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 
 	// Always print the ID and URN.
 	if id != "" {
-		writeWithIndentNoPrefix(&b, 0, simplePropOp, " [id=%s]", string(id))
+		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
-	// if urn != "" {
-	// 	writeWithIndentNoPrefix(&b, 0, simplePropOp, " [urn=%s]", urn)
-	// }
+	if urn != "" {
+		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
+	}
 
 	return b.String()
 }
