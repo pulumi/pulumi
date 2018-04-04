@@ -28,7 +28,7 @@ func newLogoutCmd() *cobra.Command {
 				}
 				var result error
 				for _, be := range bes {
-					if err = cloud.Logout(be.CloudURL()); err != nil {
+					if err = be.Logout(); err != nil {
 						result = multierror.Append(result, err)
 					}
 				}
@@ -36,7 +36,11 @@ func newLogoutCmd() *cobra.Command {
 			}
 
 			// Otherwise, just log out of a single cloud (either the one specified, or the default).
-			return cloud.Logout(cloud.ValueOrDefaultURL(cloudURL))
+			be, err := cloud.New(cmdutil.Diag(), cloudURL)
+			if err != nil {
+				return err
+			}
+			return be.Logout()
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(&all, "all", "a", false, "Log out of all clouds")

@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -22,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -29,23 +31,47 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const (
+	// legacyEnvvar controls whether legacy features are supported or not.  If it is truthy, then features like
+	// purely local deployments are still supported.
+	legacyEnvvar = "PULUMI_LEGACY"
+)
+
 // allBackends returns all known backends.  The boolean is true if any are cloud backends.
-func allBackends() ([]backend.Backend, bool) {
-	// Add all the known backends to the list and query them all.  We always use the local backend,
-	// in addition to all of those cloud backends we are currently logged into.
+func allBackends() ([]backend.Backend, bool, error) {
+	// Add all the known backends to the list and query them all.
+	var backends []backend.Backend
+
+	// If legacy mode is enabled, add the local backend.
 	d := cmdutil.Diag()
-	backends := []backend.Backend{local.New(d)}
+	legacy, _ := strconv.ParseBool(os.Getenv(legacyEnvvar))
+	if legacy {
+		backends = append(backends, local.New(d))
+	}
+
+	// Now use all backends we are logged into.  If there are none, and legacy mode is disabled, prompt for login.
 	cloudBackends, _, err := cloud.CurrentBackends(d)
 	if err != nil {
 		// Print the error, but keep going so that the local operations still occur.
 		_, fmterr := fmt.Fprintf(os.Stderr, "error: could not obtain current cloud backends: %v", err)
 		contract.IgnoreError(fmterr)
-	} else {
+	} else if len(cloudBackends) > 0 {
+		// We got some cloud backends the user is logged into, huzzah, simply append them.
 		for _, be := range cloudBackends {
 			backends = append(backends, be)
 		}
+	} else if !legacy {
+		// The user isn't logged in, and we aren't in legacy mode.  We will need to ask them to login.
+		fmt.Printf(colors.ColorizeText(
+			colors.SpecImportant + "This command requires that you login." + colors.Reset + "\n"))
+		be, err := cloud.Login(d, "")
+		if err != nil {
+			return nil, false, err
+		}
+		backends = append(backends, be)
 	}
-	return backends, len(cloudBackends) > 0
+
+	return backends, len(cloudBackends) > 0, nil
 }
 
 // createStack creates a stack with the given name, and selects it as the current.
@@ -71,7 +97,10 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 	}
 
 	// Search all known backends for this stack.
-	bes, _ := allBackends()
+	bes, _, err := allBackends()
+	if err != nil {
+		return nil, err
+	}
 	stack, err := state.Stack(stackName, bes)
 	if err != nil {
 		return nil, err
@@ -105,7 +134,10 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 
 func requireCurrentStack(offerNew bool) (backend.Stack, error) {
 	// Search for the current stack.
-	bes, _ := allBackends()
+	bes, _, err := allBackends()
+	if err != nil {
+		return nil, err
+	}
 	stack, err := state.CurrentStack(bes)
 	if err != nil {
 		return nil, err
@@ -399,4 +431,176 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	return m, nil
+}
+
+// upgradeConfigurationFiles does an upgrade to move from the old configuration system (where we had config stored) in
+// workspace settings and Pulumi.yaml, to the new system where configuration data is stored in Pulumi.<stack-name>.yaml
+func upgradeConfigurationFiles() error {
+	bes, _, err := allBackends()
+	if err != nil {
+		return err
+	}
+
+	skippedUpgrade := false
+	for _, b := range bes {
+		stacks, err := b.ListStacks()
+		if err != nil {
+			skippedUpgrade = true
+			continue
+		}
+
+		for _, stack := range stacks {
+			stackName := stack.Name()
+
+			// If the new file exists, we can skip upgrading this stack.
+			newFile, err := workspace.DetectProjectStackPath(stackName)
+			if err != nil {
+				return errors.Wrap(err, "upgrade project")
+			}
+
+			_, err = os.Stat(newFile)
+			if err != nil && !os.IsNotExist(err) {
+				return errors.Wrap(err, "upgrading project")
+			} else if err == nil {
+				// new file was present, skip upgrading this stack.
+				continue
+			}
+
+			cfg, salt, err := getOldConfiguration(stackName)
+			if err != nil {
+				return errors.Wrap(err, "upgrading project")
+			}
+
+			ps, err := workspace.DetectProjectStack(stackName)
+			if err != nil {
+				return errors.Wrap(err, "upgrading project")
+			}
+
+			ps.Config = cfg
+			ps.EncryptionSalt = salt
+
+			if err := workspace.SaveProjectStack(stackName, ps); err != nil {
+				return errors.Wrap(err, "upgrading project")
+			}
+
+			if err := removeOldConfiguration(stackName); err != nil {
+				return errors.Wrap(err, "upgrading project")
+			}
+		}
+	}
+
+	if !skippedUpgrade {
+		return removeOldProjectConfiguration()
+	}
+
+	return nil
+}
+
+// getOldConfiguration reads the configuration for a given stack from the current workspace.  It applies a hierarchy
+// of configuration settings based on stack overrides and workspace-wide global settings.  If any of the workspace
+// settings had an impact on the values returned, the second return value will be true. It also returns the encryption
+// salt used for the stack.
+func getOldConfiguration(stackName tokens.QName) (config.Map, string, error) {
+	contract.Require(stackName != "", "stackName")
+
+	// Get the workspace and package and get ready to merge their views of the configuration.
+	ws, err := workspace.New()
+	if err != nil {
+		return nil, "", err
+	}
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// We need to apply workspace and project configuration values in the right order.  Basically, we want to
+	// end up taking the most specific settings, where per-stack configuration is more specific than global, and
+	// project configuration is more specific than workspace.
+	result := make(config.Map)
+
+	// First, apply project-local stack-specific configuration.
+	if stack, has := proj.StacksDeprecated[stackName]; has {
+		for key, value := range stack.Config {
+			result[key] = value
+		}
+	}
+
+	// Now, apply workspace stack-specific configuration.
+	if wsStackConfig, has := ws.Settings().ConfigDeprecated[stackName]; has {
+		for key, value := range wsStackConfig {
+			if _, has := result[key]; !has {
+				result[key] = value
+			}
+		}
+	}
+
+	// Next, take anything from the global settings in our project file.
+	for key, value := range proj.ConfigDeprecated {
+		if _, has := result[key]; !has {
+			result[key] = value
+		}
+	}
+
+	// Finally, take anything left in the workspace's global configuration.
+	if wsGlobalConfig, has := ws.Settings().ConfigDeprecated[""]; has {
+		for key, value := range wsGlobalConfig {
+			if _, has := result[key]; !has {
+				result[key] = value
+			}
+		}
+	}
+
+	// Now, get the encryption key. A stack specific one overrides the global one (global encryption keys were
+	// deprecated previously)
+	encryptionSalt := proj.EncryptionSaltDeprecated
+	if stack, has := proj.StacksDeprecated[stackName]; has && stack.EncryptionSalt != "" {
+		encryptionSalt = stack.EncryptionSalt
+	}
+
+	return result, encryptionSalt, nil
+}
+
+// removeOldConfiguration deletes all configuration information about a stack from both the workspace
+// and the project file. It does not touch the newly added Pulumi.<stack-name>.yaml file.
+func removeOldConfiguration(stackName tokens.QName) error {
+	ws, err := workspace.New()
+	if err != nil {
+		return err
+	}
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return err
+	}
+
+	delete(proj.StacksDeprecated, stackName)
+	delete(ws.Settings().ConfigDeprecated, stackName)
+
+	if err := ws.Save(); err != nil {
+		return err
+	}
+
+	return workspace.SaveProject(proj)
+}
+
+// removeOldProjectConfiguration deletes all project level configuration information from both the workspace and the
+// project file.
+func removeOldProjectConfiguration() error {
+	ws, err := workspace.New()
+	if err != nil {
+		return err
+	}
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return err
+	}
+
+	proj.EncryptionSaltDeprecated = ""
+	proj.ConfigDeprecated = nil
+	ws.Settings().ConfigDeprecated = nil
+
+	if err := ws.Save(); err != nil {
+		return err
+	}
+
+	return workspace.SaveProject(proj)
 }
