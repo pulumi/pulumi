@@ -32,6 +32,7 @@ func TestStackErrors(t *testing.T) {
 			}
 		}()
 
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "does-not-exist", "--yes")
 		assert.Empty(t, stdout, "expected nothing to be written to stdout")
 		assert.Contains(t, stderr, "error: no repository")
@@ -49,7 +50,8 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "stack", "init", "--local", "foo")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "foo")
 
 		stacks, current := integration.GetStacks(e)
 		assert.Equal(t, 1, len(stacks))
@@ -68,33 +70,6 @@ func TestStackCommands(t *testing.T) {
 		assert.Equal(t, 0, len(stacks))
 	})
 
-	t.Run("StackInit", func(t *testing.T) {
-		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
-
-		integration.CreateBasicPulumiRepo(e)
-
-		// Confirm passing both --local and --ppc fails.
-		out, err := e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--local", "--ppc", "bar")
-		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "cannot pass both --local and --ppc; PPCs only available in cloud mode")
-
-		// Confirm passing both --local and --remote fails.
-		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo", "--local", "--remote")
-		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "cannot pass both --local with either --remote or --cloud-url")
-
-		// Confirm passing both --local and --cloud-url similarly fails.
-		out, err = e.RunCommandExpectError("pulumi", "stack", "init", "foo",
-			"--local", "--cloud-url", "https://api.pulumi.com/api")
-		assert.Empty(t, out, "expected no stdout")
-		assert.Contains(t, err, "cannot pass both --local with either --remote or --cloud-url")
-	})
-
 	t.Run("StackSelect", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -104,9 +79,10 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "stack", "init", "--local", "blighttown")
-		e.RunCommand("pulumi", "stack", "init", "--local", "majula")
-		e.RunCommand("pulumi", "stack", "init", "--local", "lothric")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "blighttown")
+		e.RunCommand("pulumi", "stack", "init", "majula")
+		e.RunCommand("pulumi", "stack", "init", "lothric")
 
 		// Last one created is always selected.
 		stacks, current := integration.GetStacks(e)
@@ -141,9 +117,10 @@ func TestStackCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "stack", "init", "--local", "blighttown")
-		e.RunCommand("pulumi", "stack", "init", "--local", "majula")
-		e.RunCommand("pulumi", "stack", "init", "--local", "lothric")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "blighttown")
+		e.RunCommand("pulumi", "stack", "init", "majula")
+		e.RunCommand("pulumi", "stack", "init", "lothric")
 		stacks, _ := integration.GetStacks(e)
 		assert.Equal(t, 3, len(stacks))
 
@@ -209,7 +186,8 @@ func TestStackBackups(t *testing.T) {
 
 		// Create a stack.
 		const stackName = "imulup"
-		e.RunCommand("pulumi", "stack", "init", "--local", stackName)
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
 		e.RunCommand("yarn", "install")

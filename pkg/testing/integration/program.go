@@ -114,9 +114,6 @@ type ProgramTestOptions struct {
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
 
-	// LocalDeployment can be set to true to force tests to run without logging into the Pulumi service
-	LocalDeployment bool
-
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
@@ -154,6 +151,9 @@ type ProgramTestOptions struct {
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+
+	// Additional environment variaibles to pass for each command we run.
+	Env []string
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -228,7 +228,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
-	opts.LocalDeployment = overrides.LocalDeployment
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
 	}
@@ -479,29 +478,25 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Login as needed.
-	if !pt.opts.LocalDeployment {
-		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-			fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
-		} else {
-			// Set the "use alt location" flag so this test doesn't interact with any credentials already on the machine.
-			// e.g. replacing the current user's with that of a test account.
-			if err := os.Setenv(workspace.UseAltCredentialsLocationEnvVar, "1"); err != nil {
-				pt.t.Fatalf("error setting env var '%s': %v", workspace.UseAltCredentialsLocationEnvVar, err)
-			}
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" && pt.opts.CloudURL == "" {
+		fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
+	} else {
+		// Set PulumiCredentialsPathEnvVar to our CWD, so we use credentials specific to just this
+		// test.
+		pt.opts.Env = append(pt.opts.Env, fmt.Sprintf("%s=%s", workspace.PulumiCredentialsPathEnvVar, dir))
 
-			if err := pt.runPulumiCommand("pulumi-login", []string{"login"}, dir); err != nil {
-				return err
-			}
+		loginArgs := []string{"login"}
+		loginArgs = addFlagIfNonNil(loginArgs, "--cloud-url", pt.opts.CloudURL)
+
+		if err := pt.runPulumiCommand("pulumi-login", loginArgs, dir); err != nil {
+			return err
 		}
 	}
+
 	// Stack init
 	stackInitArgs := []string{"stack", "init", string(stackName)}
-	if pt.opts.LocalDeployment {
-		stackInitArgs = append(stackInitArgs, "--local")
-	} else {
-		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--cloud-url", pt.opts.CloudURL)
-		stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
-	}
+	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
+
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
 	}
