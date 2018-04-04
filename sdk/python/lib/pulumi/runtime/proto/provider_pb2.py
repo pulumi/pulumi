@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='provider.proto',
   package='pulumirpc',
   syntax='proto3',
-  serialized_pb=_b('\n\x0eprovider.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x83\x01\n\x10\x43onfigureRequest\x12=\n\tvariables\x18\x01 \x03(\x0b\x32*.pulumirpc.ConfigureRequest.VariablesEntry\x1a\x30\n\x0eVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"C\n\rInvokeRequest\x12\x0b\n\x03tok\x18\x01 \x01(\t\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"d\n\x0eInvokeResponse\x12\'\n\x06return\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\"i\n\x0c\x43heckRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12%\n\x04olds\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"c\n\rCheckResponse\x12\'\n\x06inputs\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\"0\n\x0c\x43heckFailure\x12\x10\n\x08property\x18\x01 \x01(\t\x12\x0e\n\x06reason\x18\x02 \x01(\t\"t\n\x0b\x44iffRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"N\n\x0c\x44iffResponse\x12\x10\n\x08replaces\x18\x01 \x03(\t\x12\x0f\n\x07stables\x18\x02 \x03(\t\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\x03 \x01(\x08\"I\n\rCreateRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"I\n\x0e\x43reateResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"v\n\rUpdateRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"=\n\x0eUpdateResponse\x12+\n\nproperties\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\"U\n\rDeleteRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct2\x92\x04\n\x10ResourceProvider\x12\x42\n\tConfigure\x12\x1b.pulumirpc.ConfigureRequest\x1a\x16.google.protobuf.Empty\"\x00\x12?\n\x06Invoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse\"\x00\x12<\n\x05\x43heck\x12\x17.pulumirpc.CheckRequest\x1a\x18.pulumirpc.CheckResponse\"\x00\x12\x39\n\x04\x44iff\x12\x16.pulumirpc.DiffRequest\x1a\x17.pulumirpc.DiffResponse\"\x00\x12?\n\x06\x43reate\x12\x18.pulumirpc.CreateRequest\x1a\x19.pulumirpc.CreateResponse\"\x00\x12?\n\x06Update\x12\x18.pulumirpc.UpdateRequest\x1a\x19.pulumirpc.UpdateResponse\"\x00\x12<\n\x06\x44\x65lete\x12\x18.pulumirpc.DeleteRequest\x1a\x16.google.protobuf.Empty\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0eprovider.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x83\x01\n\x10\x43onfigureRequest\x12=\n\tvariables\x18\x01 \x03(\x0b\x32*.pulumirpc.ConfigureRequest.VariablesEntry\x1a\x30\n\x0eVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x92\x01\n\x19\x43onfigureErrorMissingKeys\x12\x44\n\x0bmissingKeys\x18\x01 \x03(\x0b\x32/.pulumirpc.ConfigureErrorMissingKeys.MissingKey\x1a/\n\nMissingKey\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\"C\n\rInvokeRequest\x12\x0b\n\x03tok\x18\x01 \x01(\t\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"d\n\x0eInvokeResponse\x12\'\n\x06return\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\"i\n\x0c\x43heckRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12%\n\x04olds\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"c\n\rCheckResponse\x12\'\n\x06inputs\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\"0\n\x0c\x43heckFailure\x12\x10\n\x08property\x18\x01 \x01(\t\x12\x0e\n\x06reason\x18\x02 \x01(\t\"t\n\x0b\x44iffRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"N\n\x0c\x44iffResponse\x12\x10\n\x08replaces\x18\x01 \x03(\t\x12\x0f\n\x07stables\x18\x02 \x03(\t\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\x03 \x01(\x08\"I\n\rCreateRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"I\n\x0e\x43reateResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"v\n\rUpdateRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"=\n\x0eUpdateResponse\x12+\n\nproperties\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\"U\n\rDeleteRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct2\x92\x04\n\x10ResourceProvider\x12\x42\n\tConfigure\x12\x1b.pulumirpc.ConfigureRequest\x1a\x16.google.protobuf.Empty\"\x00\x12?\n\x06Invoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse\"\x00\x12<\n\x05\x43heck\x12\x17.pulumirpc.CheckRequest\x1a\x18.pulumirpc.CheckResponse\"\x00\x12\x39\n\x04\x44iff\x12\x16.pulumirpc.DiffRequest\x1a\x17.pulumirpc.DiffResponse\"\x00\x12?\n\x06\x43reate\x12\x18.pulumirpc.CreateRequest\x1a\x19.pulumirpc.CreateResponse\"\x00\x12?\n\x06Update\x12\x18.pulumirpc.UpdateRequest\x1a\x19.pulumirpc.UpdateResponse\"\x00\x12<\n\x06\x44\x65lete\x12\x18.pulumirpc.DeleteRequest\x1a\x16.google.protobuf.Empty\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
   ,
   dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
 
@@ -97,6 +97,74 @@ _CONFIGUREREQUEST = _descriptor.Descriptor(
 )
 
 
+_CONFIGUREERRORMISSINGKEYS_MISSINGKEY = _descriptor.Descriptor(
+  name='MissingKey',
+  full_name='pulumirpc.ConfigureErrorMissingKeys.MissingKey',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='pulumirpc.ConfigureErrorMissingKeys.MissingKey.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='description', full_name='pulumirpc.ConfigureErrorMissingKeys.MissingKey.description', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=336,
+  serialized_end=383,
+)
+
+_CONFIGUREERRORMISSINGKEYS = _descriptor.Descriptor(
+  name='ConfigureErrorMissingKeys',
+  full_name='pulumirpc.ConfigureErrorMissingKeys',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='missingKeys', full_name='pulumirpc.ConfigureErrorMissingKeys.missingKeys', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CONFIGUREERRORMISSINGKEYS_MISSINGKEY, ],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=237,
+  serialized_end=383,
+)
+
+
 _INVOKEREQUEST = _descriptor.Descriptor(
   name='InvokeRequest',
   full_name='pulumirpc.InvokeRequest',
@@ -130,8 +198,8 @@ _INVOKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=236,
-  serialized_end=303,
+  serialized_start=385,
+  serialized_end=452,
 )
 
 
@@ -168,8 +236,8 @@ _INVOKERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=305,
-  serialized_end=405,
+  serialized_start=454,
+  serialized_end=554,
 )
 
 
@@ -213,8 +281,8 @@ _CHECKREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=407,
-  serialized_end=512,
+  serialized_start=556,
+  serialized_end=661,
 )
 
 
@@ -251,8 +319,8 @@ _CHECKRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=514,
-  serialized_end=613,
+  serialized_start=663,
+  serialized_end=762,
 )
 
 
@@ -289,8 +357,8 @@ _CHECKFAILURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=615,
-  serialized_end=663,
+  serialized_start=764,
+  serialized_end=812,
 )
 
 
@@ -341,8 +409,8 @@ _DIFFREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=665,
-  serialized_end=781,
+  serialized_start=814,
+  serialized_end=930,
 )
 
 
@@ -386,8 +454,8 @@ _DIFFRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=783,
-  serialized_end=861,
+  serialized_start=932,
+  serialized_end=1010,
 )
 
 
@@ -424,8 +492,8 @@ _CREATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=863,
-  serialized_end=936,
+  serialized_start=1012,
+  serialized_end=1085,
 )
 
 
@@ -462,8 +530,8 @@ _CREATERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=938,
-  serialized_end=1011,
+  serialized_start=1087,
+  serialized_end=1160,
 )
 
 
@@ -514,8 +582,8 @@ _UPDATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1013,
-  serialized_end=1131,
+  serialized_start=1162,
+  serialized_end=1280,
 )
 
 
@@ -545,8 +613,8 @@ _UPDATERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1133,
-  serialized_end=1194,
+  serialized_start=1282,
+  serialized_end=1343,
 )
 
 
@@ -590,12 +658,14 @@ _DELETEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1196,
-  serialized_end=1281,
+  serialized_start=1345,
+  serialized_end=1430,
 )
 
 _CONFIGUREREQUEST_VARIABLESENTRY.containing_type = _CONFIGUREREQUEST
 _CONFIGUREREQUEST.fields_by_name['variables'].message_type = _CONFIGUREREQUEST_VARIABLESENTRY
+_CONFIGUREERRORMISSINGKEYS_MISSINGKEY.containing_type = _CONFIGUREERRORMISSINGKEYS
+_CONFIGUREERRORMISSINGKEYS.fields_by_name['missingKeys'].message_type = _CONFIGUREERRORMISSINGKEYS_MISSINGKEY
 _INVOKEREQUEST.fields_by_name['args'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _INVOKERESPONSE.fields_by_name['return'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _INVOKERESPONSE.fields_by_name['failures'].message_type = _CHECKFAILURE
@@ -612,6 +682,7 @@ _UPDATEREQUEST.fields_by_name['news'].message_type = google_dot_protobuf_dot_str
 _UPDATERESPONSE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _DELETEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 DESCRIPTOR.message_types_by_name['ConfigureRequest'] = _CONFIGUREREQUEST
+DESCRIPTOR.message_types_by_name['ConfigureErrorMissingKeys'] = _CONFIGUREERRORMISSINGKEYS
 DESCRIPTOR.message_types_by_name['InvokeRequest'] = _INVOKEREQUEST
 DESCRIPTOR.message_types_by_name['InvokeResponse'] = _INVOKERESPONSE
 DESCRIPTOR.message_types_by_name['CheckRequest'] = _CHECKREQUEST
@@ -640,6 +711,21 @@ ConfigureRequest = _reflection.GeneratedProtocolMessageType('ConfigureRequest', 
   ))
 _sym_db.RegisterMessage(ConfigureRequest)
 _sym_db.RegisterMessage(ConfigureRequest.VariablesEntry)
+
+ConfigureErrorMissingKeys = _reflection.GeneratedProtocolMessageType('ConfigureErrorMissingKeys', (_message.Message,), dict(
+
+  MissingKey = _reflection.GeneratedProtocolMessageType('MissingKey', (_message.Message,), dict(
+    DESCRIPTOR = _CONFIGUREERRORMISSINGKEYS_MISSINGKEY,
+    __module__ = 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureErrorMissingKeys.MissingKey)
+    ))
+  ,
+  DESCRIPTOR = _CONFIGUREERRORMISSINGKEYS,
+  __module__ = 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureErrorMissingKeys)
+  ))
+_sym_db.RegisterMessage(ConfigureErrorMissingKeys)
+_sym_db.RegisterMessage(ConfigureErrorMissingKeys.MissingKey)
 
 InvokeRequest = _reflection.GeneratedProtocolMessageType('InvokeRequest', (_message.Message,), dict(
   DESCRIPTOR = _INVOKEREQUEST,
@@ -735,8 +821,8 @@ _RESOURCEPROVIDER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=1284,
-  serialized_end=1814,
+  serialized_start=1433,
+  serialized_end=1963,
   methods=[
   _descriptor.MethodDescriptor(
     name='Configure',
