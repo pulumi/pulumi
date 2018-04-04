@@ -58,7 +58,8 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("project_main_abs")
-		e.RunCommand("pulumi", "stack", "init", "--local", "main-abs")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
@@ -75,7 +76,8 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("project_main_parent")
-		e.RunCommand("pulumi", "stack", "init", "--local", "main-parent")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
@@ -214,8 +216,9 @@ func TestConfigSave(t *testing.T) {
 	assert.NoError(t, err)
 	e.RunCommand("git", "init")
 	e.RunCommand("pulumi", "init")
-	e.RunCommand("pulumi", "stack", "init", "--local", "testing-2")
-	e.RunCommand("pulumi", "stack", "init", "--local", "testing-1")
+	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+	e.RunCommand("pulumi", "stack", "init", "testing-2")
+	e.RunCommand("pulumi", "stack", "init", "testing-1")
 
 	// Now configure and save a few different things:
 	e.RunCommand("pulumi", "config", "set", "configA", "value1")
@@ -309,7 +312,8 @@ func TestConfigUpgrade(t *testing.T) {
 
 	e.ImportDirectory("config_upgrade")
 
-	// Run a pulumi command, which will upgrade everything.
+	// Run a pulumi command, which will upgrade everything (but we have to be logged in first!)
+	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
 	e.RunCommand("pulumi", "config")
 
 	validate := func(k string, v string, cfg config.Map) {
