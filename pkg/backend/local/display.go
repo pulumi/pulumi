@@ -107,8 +107,8 @@ func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress
 }
 
 type Status struct {
-	Op         deploy.StepOp
 	ID         string
+	Op         *deploy.StepOp
 	LastAction string
 	Tick       int
 	Done       bool
@@ -157,23 +157,8 @@ func DisplayEvents(action string,
 
 	topLevelResourceToStatus := make(map[resource.URN]Status)
 
-	writeAction := func(id string, msg string) {
-		extraWhitespace := 0
-
-		// In the terminal we try to align the status messages for each resource.
-		// do not bother with this in the non-terminal case.
-		if isTerminal {
-			extraWhitespace = maxIDLength - len(id)
-		}
-
-		chanOutput.WriteProgress(progress.Progress{
-			ID:     id,
-			Action: strings.Repeat(" ", extraWhitespace) + msg,
-		})
-	}
-
 	createDoneMessage := func(status Status) string {
-		msg := opts.Color.Colorize(colors.Blue) + getStepDoneDescription(status.Op) + opts.Color.Colorize(colors.Reset)
+		msg := colors.ColorizeText(getStepDescription(*status.Op) + ". " + colors.Blue + "Complete" + colors.Reset)
 
 		// if len(status.DiagEvents) > 0 {
 		// 	msg += ". With"
@@ -220,11 +205,30 @@ func DisplayEvents(action string,
 	}
 
 	printStatusForTopLevelResource := func(status Status) {
-		if !status.Done {
-			ellipses := strings.Repeat(".", (status.Tick+currentTick)%3) + "  "
-			writeAction(status.ID, status.LastAction+ellipses)
-		} else {
-			writeAction(status.ID, createDoneMessage(status))
+		if status.Op != nil {
+			writeAction := func(msg string) {
+				extraWhitespace := 0
+
+				// In the terminal we try to align the status messages for each resource.
+				// do not bother with this in the non-terminal case.
+				if isTerminal {
+					extraWhitespace = maxIDLength - len(status.ID)
+				}
+
+				id := colors.ColorizeText(status.Op.Prefix()+colors.Reset) + status.ID
+
+				chanOutput.WriteProgress(progress.Progress{
+					ID:     id,
+					Action: strings.Repeat(" ", extraWhitespace) + msg,
+				})
+			}
+
+			if !status.Done {
+				ellipses := strings.Repeat(".", (status.Tick+currentTick)%3) + "  "
+				writeAction(status.LastAction + ellipses)
+			} else {
+				writeAction(createDoneMessage(status))
+			}
 		}
 	}
 
@@ -415,29 +419,30 @@ func DisplayEvents(action string,
 					topLevelUrn = eventUrn
 				}
 
-				id := makeID(topLevelUrn)
-
-				if isTerminal {
-					// in the terminal we want to align the status portions of messages. If we
-					// heard about a resource with a longer id, go and update all in-flight and
-					// finished resources so that their statuses get aligned.
-					if len(id) > maxIDLength {
-						maxIDLength = len(id)
-
-						printStatusForTopLevelResources(true /*includeDone*/)
-					}
-				}
-
 				status, has := topLevelResourceToStatus[topLevelUrn]
 				if !has {
-					status = Status{ID: id, LastAction: msg, Tick: currentTick}
+					status = Status{LastAction: msg, Tick: currentTick}
 				}
 
-				if event.Type == engine.DiagEvent {
+				if event.Type == engine.ResourcePreEvent {
+					op := event.Payload.(engine.ResourcePreEventPayload).Metadata.Op
+
+					status.Op = &op
+					status.ID = makeID(topLevelUrn)
+
+					if isTerminal {
+						// in the terminal we want to align the status portions of messages. If we
+						// heard about a resource with a longer id, go and update all in-flight and
+						// finished resources so that their statuses get aligned.
+						if len(status.ID) > maxIDLength {
+							maxIDLength = len(status.ID)
+
+							printStatusForTopLevelResources(true /*includeDone*/)
+						}
+					}
+				} else if event.Type == engine.DiagEvent {
 					// also record this diagnostic so we print it at the end.
 					status.DiagEvents = append(status.DiagEvents, event)
-				} else if event.Type == engine.ResourcePreEvent {
-					status.Op = event.Payload.(engine.ResourcePreEventPayload).Metadata.Op
 				} else if event.Type == engine.ResourceOutputsEvent {
 					if eventUrn == topLevelUrn {
 						status.Done = true
@@ -652,13 +657,6 @@ func getMetadataSummary(metadata engine.StepEventMetadata, opts backend.DisplayO
 func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 	var b bytes.Buffer
 
-	op := step.Op
-	// urn := step.URN
-	// old := step.Old
-
-	// First, print out the operation's prefix.
-	writeString(&b, op.Prefix())
-
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	writeString(&b, getStepDescription(step.Op))
 	writeString(&b, colors.Reset)
@@ -720,6 +718,10 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 }
 
 func getStepDescription(op deploy.StepOp) string {
+	return op.Color() + getStepDescriptionNoColor(op) + colors.Reset
+}
+
+func getStepDescriptionNoColor(op deploy.StepOp) string {
 	switch op {
 	case deploy.OpSame:
 		return "Unchanged"
@@ -735,28 +737,6 @@ func getStepDescription(op deploy.StepOp) string {
 		return "Creating for replacement"
 	case deploy.OpDeleteReplaced:
 		return "Deleting for replacement"
-	default:
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
-	}
-}
-
-func getStepDoneDescription(op deploy.StepOp) string {
-	switch op {
-	case deploy.OpSame:
-		return "Done"
-	case deploy.OpCreate:
-		return "Done creating"
-	case deploy.OpUpdate:
-		return "Done updating"
-	case deploy.OpDelete:
-		return "Done deleting"
-	case deploy.OpReplace:
-		return "Done replacing"
-	case deploy.OpCreateReplacement:
-		return "Done creating for replacement"
-	case deploy.OpDeleteReplaced:
-		return "Done deleting for replacement"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
