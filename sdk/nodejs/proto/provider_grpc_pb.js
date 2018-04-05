@@ -142,6 +142,28 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
   return plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ReadRequest(arg) {
+  if (!(arg instanceof provider_pb.ReadRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ReadRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ReadRequest(buffer_arg) {
+  return provider_pb.ReadRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ReadResponse(arg) {
+  if (!(arg instanceof provider_pb.ReadResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ReadResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ReadResponse(buffer_arg) {
+  return provider_pb.ReadResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_UpdateRequest(arg) {
   if (!(arg instanceof provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type pulumirpc.UpdateRequest');
@@ -232,6 +254,19 @@ var ResourceProviderService = exports.ResourceProviderService = {
     requestDeserialize: deserialize_pulumirpc_CreateRequest,
     responseSerialize: serialize_pulumirpc_CreateResponse,
     responseDeserialize: deserialize_pulumirpc_CreateResponse,
+  },
+  // Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+  // identify the resource; this is typically just the resource ID, but may also include some properties.
+  read: {
+    path: '/pulumirpc.ResourceProvider/Read',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.ReadRequest,
+    responseType: provider_pb.ReadResponse,
+    requestSerialize: serialize_pulumirpc_ReadRequest,
+    requestDeserialize: deserialize_pulumirpc_ReadRequest,
+    responseSerialize: serialize_pulumirpc_ReadResponse,
+    responseDeserialize: deserialize_pulumirpc_ReadResponse,
   },
   // Update updates an existing resource with new values.
   update: {
