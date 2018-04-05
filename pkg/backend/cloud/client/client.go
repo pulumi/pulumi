@@ -39,13 +39,20 @@ func NewClient(apiURL, apiToken string) *Client {
 
 // apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
 func (pc *Client) apiCall(method, path string, body []byte) (string, *http.Response, error) {
-	return pulumiAPICall(pc.apiURL, method, path, body, pc.apiToken)
+	return pulumiAPICall(pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(method, path string, queryObj, reqObj, respObj interface{}) error {
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken)
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
+}
+
+// restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
+// object. If a response object is provided, the server's response is deserialized into that object.
+func (pc *Client) restCallWithOptions(method, path string, queryObj, reqObj,
+	respObj interface{}, opts httpCallOptions) error {
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -54,7 +61,7 @@ func (pc *Client) restCall(method, path string, queryObj, reqObj, respObj interf
 func (pc *Client) updateRESTCall(method, path string, queryObj, reqObj, respObj interface{},
 	token updateAccessToken) error {
 
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, token)
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpCallOptions{})
 }
 
 // getProjectPath returns the API path to for the given project with the given components joined with path separators
@@ -361,7 +368,8 @@ func (pc *Client) RenewUpdateLease(update UpdateIdentifier, token string, durati
 		Duration: int(duration / time.Second),
 	}
 	var resp apitype.RenewUpdateLeaseResponse
-	if err := pc.restCall("POST", getUpdatePath(update, "renew_lease"), nil, req, &resp); err != nil {
+	if err := pc.restCallWithOptions("POST", getUpdatePath(update, "renew_lease"), nil,
+		req, &resp, httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil
