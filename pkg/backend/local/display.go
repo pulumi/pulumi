@@ -106,9 +106,13 @@ func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress
 	}
 }
 
-type ProgressAndEllipses struct {
-	progress.Progress
-	Ellipses int
+type Status struct {
+	Op         deploy.StepOp
+	ID         string
+	LastAction string
+	Tick       int
+	Done       bool
+	DiagEvents []engine.Event
 }
 
 var (
@@ -148,11 +152,10 @@ func DisplayEvents(action string,
 	var stackUrn resource.URN
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	var summaryEvent *engine.Event
-	diagEvents := []engine.Event{}
 	maxIDLength := 0
+	currentTick := 0
 
-	inFlightTopLevelResources := make(map[resource.URN]ProgressAndEllipses)
-	completedTopLevelResources := make(map[resource.URN]progress.Progress)
+	topLevelResourceToStatus := make(map[resource.URN]Status)
 
 	writeAction := func(id string, msg string) {
 		extraWhitespace := 0
@@ -169,35 +172,81 @@ func DisplayEvents(action string,
 		})
 	}
 
-	updateStatusForInFlightResources := func() {
-		for _, v := range inFlightTopLevelResources {
-			ellipses := strings.Repeat(".", (v.Ellipses%3)+1) + "  "
-			writeAction(v.ID, v.Action+ellipses)
+	createDoneMessage := func(status Status) string {
+		msg := opts.Color.Colorize(colors.Blue) + getStepDoneDescription(status.Op) + opts.Color.Colorize(colors.Reset)
+
+		// if len(status.DiagEvents) > 0 {
+		// 	msg += ". With"
+		// }
+
+		debugEvents := 0
+		infoEvents := 0
+		errorEvents := 0
+		warningEvents := 0
+		for _, ev := range status.DiagEvents {
+			payload := ev.Payload.(engine.DiagEventPayload)
+
+			switch payload.Severity {
+			case diag.Debug:
+				debugEvents++
+			case diag.Info:
+				infoEvents++
+			case diag.Infoerr:
+				errorEvents++
+			case diag.Warning:
+				warningEvents++
+			case diag.Error:
+				errorEvents++
+			}
 		}
 
-		for k, v := range inFlightTopLevelResources {
-			inFlightTopLevelResources[k] =
-				ProgressAndEllipses{Progress: v.Progress, Ellipses: v.Ellipses + 1}
+		if debugEvents > 0 {
+			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
+		}
+
+		if infoEvents > 0 {
+			msg += fmt.Sprintf(", %v info message(s)", infoEvents)
+		}
+
+		if warningEvents > 0 {
+			msg += fmt.Sprintf(", %v warning(s)", warningEvents)
+		}
+
+		if errorEvents > 0 {
+			msg += fmt.Sprintf(", %v error(s)", errorEvents)
+		}
+
+		return msg
+	}
+
+	printStatusForTopLevelResource := func(status Status) {
+		if !status.Done {
+			ellipses := strings.Repeat(".", (status.Tick+currentTick)%3) + "  "
+			writeAction(status.ID, status.LastAction+ellipses)
+		} else {
+			writeAction(status.ID, createDoneMessage(status))
 		}
 	}
 
-	updateStatusForCompletedResources := func() {
-		for _, v := range completedTopLevelResources {
-			writeAction(v.ID, v.Action)
+	printStatusForTopLevelResources := func(includeDone bool) {
+		for _, v := range topLevelResourceToStatus {
+			if v.Done && !includeDone {
+				continue
+			}
+
+			printStatusForTopLevelResource(v)
 		}
 	}
 
 	processEndSteps := func() {
 		// Mark all in progress resources as done.
-		// Move all in flight resources over to being done.
-		// Then write out that they're done.
-
-		for k, v := range inFlightTopLevelResources {
-			completedTopLevelResources[k] = progress.Progress{ID: v.ID, Action: "Done!"}
+		for k, v := range topLevelResourceToStatus {
+			if !v.Done {
+				v.Done = true
+				topLevelResourceToStatus[k] = v
+				printStatusForTopLevelResource(v)
+			}
 		}
-
-		inFlightTopLevelResources = make(map[resource.URN]ProgressAndEllipses)
-		updateStatusForCompletedResources()
 
 		// print the summary
 		// out := os.Stdout
@@ -209,23 +258,24 @@ func DisplayEvents(action string,
 			}
 		}
 
-		if len(diagEvents) > 0 {
-			chanOutput.WriteProgress(progress.Progress{Message: " "})
-		}
-
 		// Print all diagnostics at the end.  We only need to do this if we were summarizing.
 		// Otherwise, this would have been seen while we were receiving the events.
 
 		if !summarize {
-			for _, v := range diagEvents {
-				// out = os.Stdout
-				// if v.Severity == diag.Error || v.Severity == diag.Warning {
-				// 	out = os.Stderr
-				// }
+			for _, status := range topLevelResourceToStatus {
+				if len(status.DiagEvents) > 0 {
+					chanOutput.WriteProgress(progress.Progress{Message: " "})
+					for _, v := range status.DiagEvents {
+						// out = os.Stdout
+						// if v.Severity == diag.Error || v.Severity == diag.Warning {
+						// 	out = os.Stderr
+						// }
 
-				_, msg := RenderEvent(v, seen, debug, opts)
-				if msg != "" {
-					chanOutput.WriteProgress(progress.Progress{Message: msg})
+						_, msg := RenderEvent(v, seen, debug, opts)
+						if msg != "" {
+							chanOutput.WriteProgress(progress.Progress{Message: msg})
+						}
+					}
 				}
 			}
 		}
@@ -239,13 +289,40 @@ func DisplayEvents(action string,
 		return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
 	}
 
-	var makeID func(urn resource.URN) string
-	makeID = func(urn resource.URN) string {
+	urnToID := make(map[resource.URN]string)
+	idToUrn := make(map[string]resource.URN)
+
+	makeIDWorker := func(urn resource.URN, suffix int) string {
+		// for i := 0
+		var id string
 		if urn == "" {
-			return "global"
+			id = "global"
+		} else {
+			id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
 		}
 
-		return simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
+		if suffix > 0 {
+			id += fmt.Sprintf("-%v", suffix)
+		}
+
+		return id
+	}
+
+	makeID := func(urn resource.URN) string {
+		if id, has := urnToID[urn]; !has {
+			for i := 0; ; i++ {
+				id = makeIDWorker(urn, i)
+
+				if _, has = idToUrn[id]; !has {
+					urnToID[urn] = id
+					idToUrn[id] = urn
+
+					return id
+				}
+			}
+		} else {
+			return id
+		}
 	}
 
 	var mapToStackUrnOrImmediateStackChildUrn func(urn resource.URN) resource.URN
@@ -271,7 +348,8 @@ func DisplayEvents(action string,
 		for {
 			select {
 			case <-ticker.C:
-				updateStatusForInFlightResources()
+				currentTick++
+				printStatusForTopLevelResources(false /*includeDone:*/)
 
 			// 	spinner.Tick()
 			case event := <-events:
@@ -346,30 +424,28 @@ func DisplayEvents(action string,
 					if len(id) > maxIDLength {
 						maxIDLength = len(id)
 
-						updateStatusForInFlightResources()
-						updateStatusForCompletedResources()
+						printStatusForTopLevelResources(true /*includeDone*/)
 					}
 				}
 
-				prog := progress.Progress{ID: id, Action: msg}
-				writeAction(prog.ID, prog.Action)
+				status, has := topLevelResourceToStatus[topLevelUrn]
+				if !has {
+					status = Status{ID: id, LastAction: msg, Tick: currentTick}
+				}
 
 				if event.Type == engine.DiagEvent {
 					// also record this diagnostic so we print it at the end.
-					diagEvents = append(diagEvents, event)
+					status.DiagEvents = append(status.DiagEvents, event)
+				} else if event.Type == engine.ResourcePreEvent {
+					status.Op = event.Payload.(engine.ResourcePreEventPayload).Metadata.Op
 				} else if event.Type == engine.ResourceOutputsEvent {
 					if eventUrn == topLevelUrn {
-						// resource finished.  take it out of the in-progress group so that we don't
-						// continually update the ellipses for it.
-						delete(inFlightTopLevelResources, topLevelUrn)
-						completedTopLevelResources[topLevelUrn] = prog
+						status.Done = true
 					}
-				} else {
-					// mark the latest progress message we made for this resource.
-					inFlightTopLevelResources[topLevelUrn] =
-						ProgressAndEllipses{Progress: prog, Ellipses: 0}
-					delete(completedTopLevelResources, topLevelUrn)
 				}
+
+				topLevelResourceToStatus[topLevelUrn] = status
+				printStatusForTopLevelResource(status)
 			}
 		}
 	}()
@@ -584,7 +660,7 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 	writeString(&b, op.Prefix())
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
-	writeString(&b, getStepHeader(step))
+	writeString(&b, getStepDescription(step.Op))
 	writeString(&b, colors.Reset)
 
 	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
@@ -643,8 +719,8 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata) string {
 	return b.String()
 }
 
-func getStepHeader(step engine.StepEventMetadata) string {
-	switch step.Op {
+func getStepDescription(op deploy.StepOp) string {
+	switch op {
 	case deploy.OpSame:
 		return "Unchanged"
 	case deploy.OpCreate:
@@ -660,7 +736,29 @@ func getStepHeader(step engine.StepEventMetadata) string {
 	case deploy.OpDeleteReplaced:
 		return "Deleting for replacement"
 	default:
-		contract.Failf("Unrecognized resource step op: %v", step.Op)
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
+}
+
+func getStepDoneDescription(op deploy.StepOp) string {
+	switch op {
+	case deploy.OpSame:
+		return "Done"
+	case deploy.OpCreate:
+		return "Done creating"
+	case deploy.OpUpdate:
+		return "Done updating"
+	case deploy.OpDelete:
+		return "Done deleting"
+	case deploy.OpReplace:
+		return "Done replacing"
+	case deploy.OpCreateReplacement:
+		return "Done creating for replacement"
+	case deploy.OpDeleteReplaced:
+		return "Done deleting for replacement"
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
 }
