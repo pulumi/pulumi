@@ -17,7 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -54,18 +54,15 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
 
-		loggedInto, current, logErr := cloud.CurrentBackends(cmdutil.Diag())
-		contract.IgnoreError(logErr) // we want to make progress anyway.
-		if len(loggedInto) > 0 {
+		url, err := workspace.GetCurrentCloudURL()
+		if err == nil && url != "" && !local.IsLocalBackendURL(url) {
 			fmt.Printf("\n")
-			fmt.Printf("Currently logged into the Pulumi Cloud%s\n", cmdutil.EmojiOr(" ☁️", ""))
-			for _, be := range loggedInto {
-				var marker string
-				if be.Name() == current {
-					marker = "*"
-				}
-				fmt.Printf("    %s%s\n", be.Name(), marker)
+			suffix := ""
+			if url != cloud.PulumiCloudURL {
+				suffix = fmt.Sprintf(" (%s)", url)
 			}
+
+			fmt.Printf("Currently logged into the Pulumi Cloud%s%s\n", cmdutil.EmojiOr(" ☁️", ""), suffix)
 		}
 	})
 

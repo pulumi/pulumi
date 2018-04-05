@@ -4,12 +4,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 
 	"github.com/dustin/go-humanize"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -36,11 +34,14 @@ func newStackLsCmd() *cobra.Command {
 			}
 
 			// Get a list of all known backends, as we will query them all.
-			bes, hasClouds := allBackends()
+			b, err := currentBackend()
+			if err != nil {
+				return err
+			}
 
 			// Get the current stack so we can print a '*' next to it.
 			var current tokens.QName
-			if s, _ := state.CurrentStack(bes); s != nil {
+			if s, _ := state.CurrentStack(b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
 				current = s.Name()
 			}
@@ -48,73 +49,56 @@ func newStackLsCmd() *cobra.Command {
 			// Now produce a list of summaries, and enumerate them sorted by name.
 			var result error
 			var stackNames []string
-			var success bool
 			stacks := make(map[string]backend.Stack)
-			for _, b := range bes {
-				bs, err := b.ListStacks()
-				if err != nil {
-					// Remember the error, but keep going, so that if the cloud is unavailable we still show
-					// something useful for the local development case.
-					result = multierror.Append(result,
-						errors.Wrapf(err, "could not list %s stacks", b.Name()))
-					continue
-				}
-				for _, stack := range bs {
-					name := string(stack.Name())
-					stacks[name] = stack
-					stackNames = append(stackNames, name)
-				}
-				success = true
+			bs, err := b.ListStacks()
+			if err != nil {
+				return err
+			}
+			for _, stack := range bs {
+				name := string(stack.Name())
+				stacks[name] = stack
+				stackNames = append(stackNames, name)
 			}
 			sort.Strings(stackNames)
 
-			// Finally, print them all.
-			if success {
-				// Devote 48 characters to the name width, unless there is a longer name.
-				maxname := 48
-				for _, name := range stackNames {
-					if len(name) > maxname {
-						maxname = len(name)
+			// Devote 48 characters to the name width, unless there is a longer name.
+			maxname := 48
+			for _, name := range stackNames {
+				if len(name) > maxname {
+					maxname = len(name)
+				}
+			}
+
+			fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
+				"NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
+			for _, name := range stackNames {
+				// Mark the name as current '*' if we've selected it.
+				stack := stacks[name]
+				if name == string(current) {
+					name += "*"
+				}
+
+				// Get last deployment info, provided that it exists.
+				none := "n/a"
+				lastUpdate := none
+				resourceCount := none
+				if snap := stack.Snapshot(); snap != nil {
+					if t := snap.Manifest.Time; !t.IsZero() {
+						lastUpdate = humanize.Time(t)
 					}
+					resourceCount = strconv.Itoa(len(snap.Resources))
+				}
+
+				// Print out the cloud URL.
+				var cloudInfo string
+				if cs, ok := stack.(cloud.Stack); ok {
+					cloudInfo = fmt.Sprintf("%s:%s/%s", cs.CloudURL(), cs.OrgName(), cs.CloudName())
+				} else {
+					cloudInfo = none
 				}
 
 				fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
-					"NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
-				for _, name := range stackNames {
-					// Mark the name as current '*' if we've selected it.
-					stack := stacks[name]
-					if name == string(current) {
-						name += "*"
-					}
-
-					// Get last deployment info, provided that it exists.
-					none := "n/a"
-					lastUpdate := none
-					resourceCount := none
-					if snap := stack.Snapshot(); snap != nil {
-						if t := snap.Manifest.Time; !t.IsZero() {
-							lastUpdate = humanize.Time(t)
-						}
-						resourceCount = strconv.Itoa(len(snap.Resources))
-					}
-
-					// Print out the cloud URL.
-					var cloudInfo string
-					if cs, ok := stack.(cloud.Stack); ok {
-						cloudInfo = fmt.Sprintf("%s:%s/%s", cs.CloudURL(), cs.OrgName(), cs.CloudName())
-					} else {
-						cloudInfo = none
-					}
-
-					fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
-						name, lastUpdate, resourceCount, cloudInfo)
-				}
-
-				// If we aren't logged into any clouds, print a warning, since it could be a mistake.
-				if !hasClouds {
-					fmt.Fprintf(os.Stderr, "\n")
-					fmt.Fprintf(os.Stderr, "Only local stacks being shown; to see Pulumi Cloud stacks, `pulumi login`\n")
-				}
+					name, lastUpdate, resourceCount, cloudInfo)
 			}
 
 			return result

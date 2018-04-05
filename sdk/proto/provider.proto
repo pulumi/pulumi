@@ -12,7 +12,7 @@ package pulumirpc;
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
     // Configure configures the resource provider with "globals" that control its behavior.
-    rpc Configure(ConfigureRequest) returns (google.protobuf.Empty){}
+    rpc Configure(ConfigureRequest) returns (google.protobuf.Empty) {}
     // Invoke dynamically executes a built-in function in the provider.
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
     // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
@@ -36,6 +36,16 @@ service ResourceProvider {
 
 message ConfigureRequest {
     map<string, string> variables = 1; // a map of configuration keys to values.
+}
+
+// ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
+message ConfigureErrorMissingKeys {
+    message MissingKey {
+        string name = 1;        // the Pulumi name (not the provider name!) of the missing config key.
+        string description = 2; // a description of the missing config key, as reported by the provider.
+    }
+
+    repeated MissingKey missingKeys = 1; // a list of required configuration keys that were not supplied.
 }
 
 message InvokeRequest {

@@ -4,6 +4,7 @@ package testing
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,16 +68,17 @@ func (e *Environment) PathExists(p string) bool {
 // Fails on non-zero exit code.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	e.Helper()
-	return runCommand(e.T, true, cmd, e.CWD, args...)
+	return e.runCommand(e.T, true, cmd, e.CWD, args...)
 }
 
 // RunCommandExpectError runs the command expecting a non-zero exit code.
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
 	e.Helper()
-	return runCommand(e.T, false, cmd, e.CWD, args...)
+	return e.runCommand(e.T, false, cmd, e.CWD, args...)
 }
 
-func runCommand(t *testing.T, expectSuccess bool, command, cwd string, args ...string) (string, string) {
+func (e *Environment) runCommand(t *testing.T, expectSuccess bool, command,
+	cwd string, args ...string) (string, string) {
 	t.Helper()
 	t.Logf("Running command %v %v", command, strings.Join(args, " "))
 
@@ -88,6 +91,7 @@ func runCommand(t *testing.T, expectSuccess bool, command, cwd string, args ...s
 	cmd.Dir = cwd
 	cmd.Stdout = &outBuffer
 	cmd.Stderr = &errBuffer
+	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", workspace.PulumiCredentialsPathEnvVar, e.RootPath))
 
 	runErr := cmd.Run()
 	if (runErr == nil) != expectSuccess {
