@@ -17,7 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
-	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
@@ -50,8 +50,14 @@ func (src *evalSource) Close() error {
 	return nil
 }
 
+// Project is the name of the project being run by this evaluation source.
 func (src *evalSource) Project() tokens.PackageName {
 	return src.runinfo.Proj.Name
+}
+
+// Stack is the name of the stack being targeted by this evaluation source.
+func (src *evalSource) Stack() tokens.QName {
+	return src.runinfo.Target.Name
 }
 
 func (src *evalSource) Info() interface{} {
@@ -177,7 +183,7 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 	}()
 }
 
-// resmon implements the lumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
+// resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
 	src        *evalSource                        // the evaluation source.
@@ -202,7 +208,7 @@ func newResourceMonitor(src *evalSource, regChan chan *registerResourceEvent,
 	// Fire up a gRPC server and start listening for incomings.
 	port, done, err := rpcutil.Serve(0, resmon.cancel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			lumirpc.RegisterResourceMonitorServer(srv, resmon)
+			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
 	})
@@ -228,7 +234,7 @@ func (rm *resmon) Cancel() error {
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumirpc.InvokeResponse, error) {
+func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider.
 	// TODO: we should be flowing version information about this request, but instead, we'll bind to the latest.
 	tok := tokens.ModuleMember(req.GetTok())
@@ -257,19 +263,62 @@ func (rm *resmon) Invoke(ctx context.Context, req *lumirpc.InvokeRequest) (*lumi
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
 	}
-	var chkfails []*lumirpc.CheckFailure
+	var chkfails []*pulumirpc.CheckFailure
 	for _, failure := range failures {
-		chkfails = append(chkfails, &lumirpc.CheckFailure{
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
 			Reason:   failure.Reason,
 		})
 	}
-	return &lumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+}
+
+// ReadResource reads the current state associated with a resource from its provider plugin.
+func (rm *resmon) ReadResource(ctx context.Context,
+	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
+	// Read the basic inputs necessary to identify the plugin.
+	id := resource.ID(req.GetId())
+	t := tokens.Type(req.GetType())
+	name := tokens.QName(req.GetName())
+	parent := resource.URN(req.GetParent())
+	prov, err := rm.src.plugctx.Host.Provider(t.Package(), nil)
+	if err != nil {
+		return nil, err
+	} else if prov == nil {
+		return nil, errors.Errorf("could not load resource provider for package '%v' from $PATH", t.Package())
+	}
+
+	// Manufacture a URN that is based on the program evaluation context.
+	var pt tokens.Type
+	if parent != "" {
+		pt = parent.Type()
+	}
+	urn := resource.NewURN(rm.src.Stack(), rm.src.Project(), pt, t, name)
+
+	// Unmarshal any additional state that came with the message.
+	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s)", id, t, name)
+	props, err := plugin.UnmarshalProperties(
+		req.GetProperties(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal read properties for resource %s", id)
+	}
+
+	// Now actually call the plugin to read the state and then return the results.
+	glog.V(5).Infof("ResourceMonitor.ReadResource received: %s #props=%d", label, len(props))
+	result, err := prov.Read(urn, id, props)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading resource %s state", urn)
+	}
+	marshaled, err := plugin.MarshalProperties(result, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal %s return state", urn)
+	}
+	return &pulumirpc.ReadResourceResponse{Urn: string(urn), Properties: marshaled}, nil
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *resmon) RegisterResource(ctx context.Context,
-	req *lumirpc.RegisterResourceRequest) (*lumirpc.RegisterResourceResponse, error) {
+	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
 
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	t := tokens.Type(req.GetType())
@@ -321,7 +370,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	return &lumirpc.RegisterResourceResponse{
+	return &pulumirpc.RegisterResourceResponse{
 		Urn:     string(state.URN),
 		Id:      string(state.ID),
 		Object:  obj,
@@ -333,7 +382,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
 func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
-	req *lumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
+	req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
 
 	// Obtain and validate the message's inputs (a URN plus the output property map).
 	urn := resource.URN(req.GetUrn())

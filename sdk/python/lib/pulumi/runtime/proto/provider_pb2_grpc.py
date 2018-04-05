@@ -42,6 +42,11 @@ class ResourceProviderStub(object):
         request_serializer=provider__pb2.CreateRequest.SerializeToString,
         response_deserializer=provider__pb2.CreateResponse.FromString,
         )
+    self.Read = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/Read',
+        request_serializer=provider__pb2.ReadRequest.SerializeToString,
+        response_deserializer=provider__pb2.ReadResponse.FromString,
+        )
     self.Update = channel.unary_unary(
         '/pulumirpc.ResourceProvider/Update',
         request_serializer=provider__pb2.UpdateRequest.SerializeToString,
@@ -104,6 +109,14 @@ class ResourceProviderServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def Read(self, request, context):
+    """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+    identify the resource; this is typically just the resource ID, but may also include some properties.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def Update(self, request, context):
     """Update updates an existing resource with new values.
     """
@@ -152,6 +165,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
           servicer.Create,
           request_deserializer=provider__pb2.CreateRequest.FromString,
           response_serializer=provider__pb2.CreateResponse.SerializeToString,
+      ),
+      'Read': grpc.unary_unary_rpc_method_handler(
+          servicer.Read,
+          request_deserializer=provider__pb2.ReadRequest.FromString,
+          response_serializer=provider__pb2.ReadResponse.SerializeToString,
       ),
       'Update': grpc.unary_unary_rpc_method_handler(
           servicer.Update,

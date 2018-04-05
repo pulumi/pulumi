@@ -177,13 +177,15 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	dbr := resp.GetDeleteBeforeReplace()
-	glog.V(7).Infof("%s success: #replaces=%d #stables=%d delbefrepl=%v",
-		label, len(replaces), len(stables), dbr)
+	changes := resp.GetChanges()
+	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
+	glog.V(7).Infof("%s success: changes=%d #replaces=%d #stables=%d delbefrepl=%v",
+		label, changes, len(replaces), len(stables), deleteBeforeReplace)
 	return DiffResult{
+		Changes:             DiffChanges(changes),
 		ReplaceKeys:         replaces,
 		StableKeys:          stables,
-		DeleteBeforeReplace: dbr,
+		DeleteBeforeReplace: deleteBeforeReplace,
 	}, nil
 }
 
@@ -225,6 +227,43 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 
 	glog.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 	return id, outs, resource.StatusOK, nil
+}
+
+// read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
+// identify the resource; this is typically just the resource id, but may also include some properties.
+func (p *provider) Read(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.PropertyMap, error) {
+	contract.Assert(urn != "")
+	contract.Assert(id != "")
+
+	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
+	glog.V(7).Infof("%s executing (#props=%v)", label, len(props))
+
+	// Marshal the input state so we can perform the RPC.
+	marshaled, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
+	if err != nil {
+		return nil, err
+	}
+
+	// Now issue the read request over RPC, blocking until it finished.
+	resp, err := p.client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
+		Id:         string(id),
+		Urn:        string(urn),
+		Properties: marshaled,
+	})
+	if err != nil {
+		glog.V(7).Infof("%s failed: %v", label, err)
+		return nil, err
+	}
+
+	// Finally, unmarshal the resulting state properties and return them.
+	results, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
+	if err != nil {
+		return nil, err
+	}
+
+	glog.V(7).Infof("%s success; #outs=%d", label, len(results))
+	return results, nil
 }
 
 // Update updates an existing resource with new values.
