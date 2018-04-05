@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -310,7 +311,7 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 			return UpdateIdentifier{}, err
 		}
 
-		resp, err := http.DefaultClient.Do(&http.Request{
+		resp, err := httputil.DoWithRetry(&http.Request{
 			Method:        "PUT",
 			URL:           uploadURL,
 			ContentLength: size,
