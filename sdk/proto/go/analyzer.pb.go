@@ -42,6 +42,8 @@ It has these top-level messages:
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest
+	ReadResourceRequest
+	ReadResourceResponse
 	RegisterResourceRequest
 	RegisterResourceResponse
 	RegisterResourceOutputsRequest

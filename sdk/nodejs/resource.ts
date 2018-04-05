@@ -1,7 +1,11 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 import * as runtime from "./runtime";
-import { registerResource, registerResourceOutputs } from "./runtime/resource";
+import {
+    readResource,
+    registerResource,
+    registerResourceOutputs,
+} from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
@@ -28,8 +32,10 @@ export abstract class Resource {
      * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
+     * @param existing If non-empty, state will be read from an existing custom resource with the given ID.
      */
-    constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
+    constructor(t: string, name: string, custom: boolean,
+                props: Inputs = {}, opts: ResourceOptions = {}, existing?: Input<ID>) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -42,11 +48,19 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
 
-        // Now kick off the resource registration.  If we are actually performing a deployment, this
-        // resource's properties will be resolved asynchronously after the operation completes, so
-        // that dependent computations resolve normally.  If we are just planning, on the other
-        // hand, values will never resolve.
-        registerResource(this, t, name, custom, props, opts);
+        if (existing) {
+            // If this resource already exists, read its state rather than registering it anew.
+            if (!custom) {
+                throw new Error("Cannot read an existing resource unless it has a custom provider");
+            }
+            readResource(this, existing, t, name, props, opts);
+        } else {
+            // Kick off the resource registration.  If we are actually performing a deployment, this
+            // resource's properties will be resolved asynchronously after the operation completes, so
+            // that dependent computations resolve normally.  If we are just planning, on the other
+            // hand, values will never resolve.
+            registerResource(this, t, name, custom, props, opts);
+        }
     }
 }
 
@@ -95,9 +109,10 @@ export abstract class CustomResource extends Resource {
      * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
+     * @param existing An optional existing resource ID to read state from rather than register anew.
      */
-    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
-        super(t, name, true, props, opts);
+    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions, existing?: Input<ID>) {
+        super(t, name, true, props, opts, existing);
     }
 }
 
