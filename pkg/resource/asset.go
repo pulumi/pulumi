@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -321,7 +322,7 @@ func (a *Asset) readURI() (*Blob, error) {
 	contract.Assertf(isurl, "Expected a URI-based asset")
 	switch s := url.Scheme; s {
 	case "http", "https":
-		resp, err := http.Get(url.String())
+		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
 		if err != nil {
 			return nil, err
 		}
@@ -827,7 +828,7 @@ func (a *Archive) readURI() (ArchiveReader, error) {
 func (a *Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 	switch s := url.Scheme; s {
 	case "http", "https":
-		resp, err := http.Get(url.String())
+		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
 		if err != nil {
 			return nil, err
 		}
