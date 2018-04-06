@@ -18,6 +18,7 @@ export NODE_PATH:=$(NODE_PATH):./runtime/native/build/Release
 
 ensure::
 	cd runtime/native && ./ensure_node_v8.sh
+	node install.js
 
 lint::
 	$(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
@@ -32,6 +33,8 @@ build::
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	cp -R proto/. bin/proto/
+	cp runtime/native/build/Release/nativeruntime-v0.11.0.node bin/
+	cp install.js bin/
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 

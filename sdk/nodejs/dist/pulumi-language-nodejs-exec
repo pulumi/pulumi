@@ -2,5 +2,22 @@
 # we exploit the fact that the cwd when `pulumi-language-nodejs-exec` is
 # run is the root of the node program we want to run and use a relative
 # path here.
-export NODE_PATH="$NODE_PATH:`dirname $0`/`node --version`"
-node ./node_modules/@pulumi/pulumi/cmd/run $@
+PULUMI_NODE_MODULE=./node_modules/@pulumi/pulumi
+if [ ! -e ${PULUMI_NODE_MODULE}/third_party/node ]; then
+    # This is an old version of the Pulumi Node SDK, so we don't have a custom Node
+    # to use here. Use the system one.
+    #
+    # The native Node module also ships alongside the SDK, which we know to
+    # be where this file is located (hence the dirname).
+    export NODE_PATH="$NODE_PATH:`dirname $0`/`node --version`"
+    node ${PULUMI_NODE_MODULE}/cmd/run $@
+    exit
+fi
+
+# Newer versions of the Pulumi Node SDK contain their own version of Node
+# that we should use to execute Pulumi programs. They also contain the
+# native module for that node in the package, so we don't have to look in
+# the CLI install directory.
+export NODE_PATH="$NODE_PATH:$PULUMI_NODE_MODULE"
+PULUMI_NODE=$(find ${PULUMI_NODE_MODULE} -name "node" -type f -follow)
+${PULUMI_NODE} ${PULUMI_NODE_MODULE}/cmd/run $@
