@@ -277,7 +277,6 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) ReadResource(ctx context.Context,
 	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
 	// Read the basic inputs necessary to identify the plugin.
-	id := resource.ID(req.GetId())
 	t := tokens.Type(req.GetType())
 	name := tokens.QName(req.GetName())
 	parent := resource.URN(req.GetParent())
@@ -295,25 +294,34 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 	urn := resource.NewURN(rm.src.Stack(), rm.src.Project(), pt, t, name)
 
-	// Unmarshal any additional state that came with the message.
+	// Now get the ID.  If it is an unknown value -- as might happen during planning when, for example, reading
+	// the output of another resource's output property -- then we can skip the RPC as it can't possibly do anything.
+	id := resource.ID(req.GetId())
 	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s)", id, t, name)
-	props, err := plugin.UnmarshalProperties(
-		req.GetProperties(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal read properties for resource %s", id)
+	resp := &pulumirpc.ReadResourceResponse{Urn: string(urn)}
+
+	if id != plugin.UnknownStringValue {
+		// Unmarshal any additional state that came with the message.
+		props, err := plugin.UnmarshalProperties(
+			req.GetProperties(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to unmarshal read properties for resource %s", id)
+		}
+
+		// Now actually call the plugin to read the state and then return the results.
+		glog.V(5).Infof("ResourceMonitor.ReadResource received: %s #props=%d", label, len(props))
+		result, err := prov.Read(urn, id, props)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading resource %s state", urn)
+		}
+		marshaled, err := plugin.MarshalProperties(result, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to marshal %s return state", urn)
+		}
+		resp.Properties = marshaled
 	}
 
-	// Now actually call the plugin to read the state and then return the results.
-	glog.V(5).Infof("ResourceMonitor.ReadResource received: %s #props=%d", label, len(props))
-	result, err := prov.Read(urn, id, props)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading resource %s state", urn)
-	}
-	marshaled, err := plugin.MarshalProperties(result, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal %s return state", urn)
-	}
-	return &pulumirpc.ReadResourceResponse{Urn: string(urn), Properties: marshaled}, nil
+	return resp, nil
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
