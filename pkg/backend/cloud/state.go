@@ -148,7 +148,8 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 }
 
 func (u *cloudUpdate) recordEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) error {
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
+	debug bool, opts backend.DisplayOptions, isPreview bool) error {
 
 	// If we don't have a token source, we can't perform any mutations.
 	if u.tokenSource == nil {
@@ -165,7 +166,7 @@ func (u *cloudUpdate) recordEvent(
 
 	// Ensure we render events with raw colorization tags.
 	opts.Color = colors.Raw
-	_, msg := local.RenderEvent(event, seen, debug, opts)
+	_, msg := local.RenderEvent(event, seen, debug, opts, isPreview)
 	if msg == "" {
 		return nil
 	}
@@ -187,13 +188,17 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 	go local.DisplayEvents(action, displayEvents, done, debug, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
-
+	isPreview := false
 	for e := range events {
 		// First echo the event to the local display.
 		displayEvents <- e
 
+		if e.Type == engine.PreludeEvent {
+			isPreview = e.Payload.(engine.PreludeEventPayload).IsPreview
+		}
+
 		// Then render and record the event for posterity.
-		if err := u.recordEvent(e, seen, debug, opts); err != nil {
+		if err := u.recordEvent(e, seen, debug, opts, isPreview); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
