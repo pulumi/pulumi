@@ -108,7 +108,7 @@ func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress
 
 type Status struct {
 	ID   string
-	Op   deploy.StepOp
+	Step engine.StepEventMetadata
 	Tick int
 	Done bool
 
@@ -125,48 +125,20 @@ func simplifyTypeName(typ tokens.Type) string {
 	return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
 }
 
-func createDoneMessage(status Status, isPreview bool) string {
-	msg := colors.ColorizeText(
-		getStepCompleteDescription(status.Op, isPreview))
-
-	debugEvents := 0
-	infoEvents := 0
-	errorEvents := 0
-	warningEvents := 0
-	for _, ev := range status.DiagEvents {
-		payload := ev.Payload.(engine.DiagEventPayload)
-
-		switch payload.Severity {
-		case diag.Debug:
-			debugEvents++
-		case diag.Info:
-			infoEvents++
-		case diag.Infoerr:
-			errorEvents++
-		case diag.Warning:
-			warningEvents++
-		case diag.Error:
-			errorEvents++
-		}
+func getEventUrn(event engine.Event) resource.URN {
+	if event.Type == engine.ResourcePreEvent {
+		payload := event.Payload.(engine.ResourcePreEventPayload)
+		return payload.Metadata.URN
+	} else if event.Type == engine.ResourceOutputsEvent {
+		payload := event.Payload.(engine.ResourceOutputsEventPayload)
+		return payload.Metadata.URN
+	} else if event.Type == engine.DiagEvent {
+		payload := event.Payload.(engine.DiagEventPayload)
+		return payload.URN
 	}
 
-	if debugEvents > 0 {
-		msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
-	}
-
-	if infoEvents > 0 {
-		msg += fmt.Sprintf(", %v info message(s)", infoEvents)
-	}
-
-	if warningEvents > 0 {
-		msg += fmt.Sprintf(", %v warning(s)", warningEvents)
-	}
-
-	if errorEvents > 0 {
-		msg += fmt.Sprintf(", %v error(s)", errorEvents)
-	}
-
-	return msg
+	contract.Failf("Unhandled event type '%s'", event.Type)
+	return ""
 }
 
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
@@ -211,7 +183,7 @@ func DisplayEvents(action string,
 	createInProgressMessage := func(status Status) string {
 		msg := status.Action
 		if len(status.DiagEvents) > 0 {
-			_, diagMsg := RenderEvent(
+			diagMsg := RenderEvent(
 				status.DiagEvents[len(status.DiagEvents)-1], seen, debug, opts, isPreview)
 
 			if diagMsg != "" {
@@ -221,6 +193,50 @@ func DisplayEvents(action string,
 
 		ellipses := strings.Repeat(".", (status.Tick+currentTick)%3) + "  "
 		msg += ellipses
+
+		return msg
+	}
+
+	createDoneMessage := func(status Status, isPreview bool) string {
+		msg := colors.ColorizeText(
+			getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/))
+
+		debugEvents := 0
+		infoEvents := 0
+		errorEvents := 0
+		warningEvents := 0
+		for _, ev := range status.DiagEvents {
+			payload := ev.Payload.(engine.DiagEventPayload)
+
+			switch payload.Severity {
+			case diag.Debug:
+				debugEvents++
+			case diag.Info:
+				infoEvents++
+			case diag.Infoerr:
+				errorEvents++
+			case diag.Warning:
+				warningEvents++
+			case diag.Error:
+				errorEvents++
+			}
+		}
+
+		if debugEvents > 0 {
+			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
+		}
+
+		if infoEvents > 0 {
+			msg += fmt.Sprintf(", %v info message(s)", infoEvents)
+		}
+
+		if warningEvents > 0 {
+			msg += fmt.Sprintf(", %v warning(s)", warningEvents)
+		}
+
+		if errorEvents > 0 {
+			msg += fmt.Sprintf(", %v error(s)", errorEvents)
+		}
 
 		return msg
 	}
@@ -270,7 +286,7 @@ func DisplayEvents(action string,
 
 		// print the summary
 		if summaryEvent != nil {
-			_, msg := RenderEvent(*summaryEvent, seen, debug, opts, isPreview)
+			msg := RenderEvent(*summaryEvent, seen, debug, opts, isPreview)
 			if msg != "" {
 				chanOutput.WriteProgress(progress.Progress{Message: " "})
 				chanOutput.WriteProgress(progress.Progress{Message: msg})
@@ -290,7 +306,7 @@ func DisplayEvents(action string,
 						// 	out = os.Stderr
 						// }
 
-						_, msg := RenderEvent(v, seen, debug, opts, isPreview)
+						msg := RenderEvent(v, seen, debug, opts, isPreview)
 						if msg != "" {
 							chanOutput.WriteProgress(progress.Progress{Message: msg})
 						}
@@ -365,35 +381,15 @@ func DisplayEvents(action string,
 				currentTick++
 				printStatusForTopLevelResources(false /*includeDone:*/)
 
-			// 	spinner.Tick()
 			case event := <-events:
-				// spinner.Reset()
-
-				// out := os.Stdout
-				// if event.Type == engine.DiagEvent {
-				// 	payload := event.Payload.(engine.DiagEventPayload)
-				// 	if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-				// 		out = os.Stderr
-				// 	}
-				// }
-
-				// msg := RenderEvent(event, seen, debug, opts)
-				// if msg != "" && out != nil {
-				// 	// fprintIgnoreError(out, event.Type+": ")
-				// 	fprintIgnoreError(out, msg)
-
-				// if msg != "" && out != nil {
-				// 	// fprintIgnoreError(out, event.Type+": ")
-				// 	fprintIgnoreError(out, msg)
-				// }
 				if event.Type == "" || event.Type == engine.CancelEvent {
 					processEndSteps()
 					return
 				}
-				// }
 
-				eventUrn, msg := RenderEvent(event, seen, debug, opts, isPreview)
-				msg = strings.TrimSpace(msg)
+				// First just make a string out of the event.  If we get nothing back this isn't an
+				// interesting event and we can just skip it.
+				msg := RenderEvent(event, seen, debug, opts, isPreview)
 				if msg == "" {
 					continue
 				}
@@ -403,7 +399,6 @@ func DisplayEvents(action string,
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
 					chanOutput.WriteProgress(progress.Progress{Message: " "})
 					chanOutput.WriteProgress(progress.Progress{Message: msg})
-					// fprintIgnoreError(os.Stdout, msg)
 					continue
 				case engine.SummaryEvent:
 					// keep track of hte summar event so that we can display it after all other
@@ -412,6 +407,7 @@ func DisplayEvents(action string,
 					continue
 				}
 
+				eventUrn := getEventUrn(event)
 				if isRootURN(eventUrn) {
 					stackUrn = eventUrn
 				}
@@ -432,13 +428,14 @@ func DisplayEvents(action string,
 
 				status, has := topLevelResourceToStatus[topLevelUrn]
 				if !has {
-					status = Status{Op: deploy.OpSame, Tick: currentTick}
+					status = Status{Tick: currentTick}
 					status.ID = makeID(topLevelUrn)
 				}
 
+				refreshAllStatuses := false
 				if event.Type == engine.ResourcePreEvent {
 					status.Action = msg
-					status.Op = event.Payload.(engine.ResourcePreEventPayload).Metadata.Op
+					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
 
 					if isTerminal {
 						// in the terminal we want to align the status portions of messages. If we
@@ -446,21 +443,28 @@ func DisplayEvents(action string,
 						// finished resources so that their statuses get aligned.
 						if len(status.ID) > maxIDLength {
 							maxIDLength = len(status.ID)
-
-							printStatusForTopLevelResources(true /*includeDone*/)
+							refreshAllStatuses = true
 						}
+					}
+				} else if event.Type == engine.ResourceOutputsEvent {
+					status.Step = event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+					if eventUrn == topLevelUrn {
+						status.Done = true
 					}
 				} else if event.Type == engine.DiagEvent {
 					// also record this diagnostic so we print it at the end.
 					status.DiagEvents = append(status.DiagEvents, event)
-				} else if event.Type == engine.ResourceOutputsEvent {
-					if eventUrn == topLevelUrn {
-						status.Done = true
-					}
+				} else {
+					contract.Failf("Unhandled event type '%s'", event.Type)
 				}
 
 				topLevelResourceToStatus[topLevelUrn] = status
-				printStatusForTopLevelResource(status)
+
+				if refreshAllStatuses {
+					printStatusForTopLevelResources(true /*includeDone*/)
+				} else {
+					printStatusForTopLevelResource(status)
+				}
 			}
 		}
 	}()
@@ -470,27 +474,27 @@ func DisplayEvents(action string,
 
 func RenderEvent(
 	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	debug bool, opts backend.DisplayOptions, isPreview bool) (resource.URN, string) {
+	debug bool, opts backend.DisplayOptions, isPreview bool) string {
 
-	urn, msg := renderEventWorker(event, seen, debug, opts, isPreview)
-	return urn, strings.TrimSpace(msg)
+	msg := renderEventWorker(event, seen, debug, opts, isPreview)
+	return strings.TrimSpace(msg)
 }
 
 func renderEventWorker(
 	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	debug bool, opts backend.DisplayOptions, isPreview bool) (resource.URN, string) {
+	debug bool, opts backend.DisplayOptions, isPreview bool) string {
 
 	switch event.Type {
 	case engine.CancelEvent:
-		return "", ""
+		return ""
 	case engine.PreludeEvent:
-		return "", renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return "", renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
 	case engine.ResourceOperationFailed:
-		return "", renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
-		return renderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
+		return renderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts, isPreview)
 	case engine.ResourcePreEvent:
 		return renderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts, isPreview)
 	case engine.StdoutColorEvent:
@@ -499,7 +503,7 @@ func renderEventWorker(
 		return renderDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
-		return "", ""
+		return ""
 	}
 }
 
@@ -522,12 +526,12 @@ func renderEventWorker(
 // }
 
 func renderDiagEvent(
-	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) (resource.URN, string) {
+	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
 	if payload.Severity == diag.Debug && !debug {
-		return "", ""
+		return ""
 	}
 
-	return payload.URN, opts.Color.Colorize(payload.Message)
+	return opts.Color.Colorize(payload.Message)
 	// var msg = "Diag: " + string(payload.URN) + ": "
 	// msg += opts.Color.Colorize(payload.Message)
 
@@ -535,9 +539,9 @@ func renderDiagEvent(
 }
 
 func renderStdoutColorEvent(
-	payload engine.StdoutEventPayload, opts backend.DisplayOptions) (resource.URN, string) {
+	payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
 
-	return "", opts.Color.Colorize(payload.Message)
+	return opts.Color.Colorize(payload.Message)
 }
 
 func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
@@ -645,52 +649,35 @@ func renderResourceOperationFailedEvent(
 	return ""
 }
 
-func getMetadataSummary(metadata engine.StepEventMetadata, opts backend.DisplayOptions, isPreview bool) string {
+func getMetadataSummary(
+	metadata engine.StepEventMetadata, opts backend.DisplayOptions,
+	isPreview bool, isComplete bool) string {
+
 	out := &bytes.Buffer{}
-	summary := getMetadataSummaryWorker(metadata, isPreview)
-	// details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+	summary := getMetadataSummaryWorker(metadata, isPreview, isComplete)
 
-	// fprintIgnoreError(out, "Pre: ")
-	// fprintIgnoreError(out, payload.Metadata.URN)
-	// fprintIgnoreError(out, ": ")
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
-
-	// if !opts.Summary {
-	// 	fprintIgnoreError(out, opts.Color.Colorize(details))
-	// }
-
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 
 	return out.String()
 }
 
-func getMetadataSummaryWorker(step engine.StepEventMetadata, isPreview bool) string {
+func getMetadataSummaryWorker(step engine.StepEventMetadata, isPreview bool, isComplete bool) string {
 	var b bytes.Buffer
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
-	writeString(&b, getStepDescription(step.Op, isPreview))
+	if isComplete {
+		writeString(&b, getStepCompleteDescription(step.Op, isPreview))
+	} else {
+		writeString(&b, getStepDescription(step.Op, isPreview))
+	}
 	writeString(&b, colors.Reset)
 
 	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
 		diff := step.Old.Inputs.Diff(step.New.Inputs)
 
-		/*
-			addLen := 0
-			deleteLen := 0
-			updateLen := 0
-			if diff.Adds != nil {
-				addLen = len(diff.Adds)
-			}
-			if diff.Deletes != nil {
-				addLen = len(diff.Deletes)
-			}
-			if diff.Updates != nil {
-				updateLen = len(diff.Updates)
-			}
-		*/
-
 		if diff != nil {
-			writeString(&b, ". Changes: ")
+			writeString(&b, ". Changes:")
 
 			updates := make(resource.PropertyMap)
 			for k := range diff.Updates {
@@ -702,27 +689,6 @@ func getMetadataSummaryWorker(step engine.StepEventMetadata, isPreview bool) str
 			writePropertyKeys(&b, updates, deploy.OpReplace)
 		}
 	}
-
-	// For these simple properties, print them as 'same' if they're just an update or replace.
-	// simplePropOp := op
-
-	// if op != deploy.OpCreate && op != deploy.OpDelete && op != deploy.OpDeleteReplaced {
-	// 	simplePropOp = deploy.OpSame
-	// }
-
-	// Print out the URN and, if present, the ID, as "pseudo-properties" and indent them.
-	// var id resource.ID
-	// if old != nil {
-	// 	id = old.ID
-	// }
-
-	// Always print the ID and URN.
-	// if id != "" {
-	// 	writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
-	// }
-	// if urn != "" {
-	// 	write(&b, simplePropOp, " [urn=%s]", urn)
-	// }
 
 	return b.String()
 }
@@ -804,11 +770,16 @@ func getStepCompleteDescriptionNoColor(op deploy.StepOp) string {
 
 func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {
 	if len(propMap) > 0 {
+		writeString(b, " ")
 		writeString(b, op.Prefix())
 
+		index := 0
 		for k := range propMap {
-			writeString(b, " ")
+			if index != 0 {
+				writeString(b, ",")
+			}
 			writeString(b, string(k))
+			index++
 		}
 
 		writeString(b, colors.Reset)
@@ -830,12 +801,12 @@ func renderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts backend.DisplayOptions,
-	isPreview bool) (resource.URN, string) {
+	isPreview bool) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		summary := getMetadataSummary(payload.Metadata, opts, isPreview)
+		summary := getMetadataSummary(payload.Metadata, opts, isPreview, false /*isComplete*/)
 		// out := &bytes.Buffer{}
 
 		// // indent := engine.GetIndent(payload.Metadata, seen)
@@ -855,9 +826,9 @@ func renderResourcePreEvent(
 
 		// return payload.Metadata.URN, out.String()
 
-		return payload.Metadata.URN, summary
+		return summary
 	} else {
-		return payload.Metadata.URN, ""
+		return ""
 	}
 
 	// return upToFirstNewLine(opts, out.String())
@@ -866,7 +837,8 @@ func renderResourcePreEvent(
 func renderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions) (resource.URN, string) {
+	opts backend.DisplayOptions,
+	isPreview bool) string {
 
 	// out := &bytes.Buffer{}
 
@@ -879,13 +851,13 @@ func renderResourceOutputsEvent(
 		// 	summary := getMetadataSummary(payload.Metadata, opts)
 		// 	return payload.Metadata.URN, summary + " - Done!"
 		// } else {
-		return payload.Metadata.URN, "Done!"
+		return getMetadataSummary(payload.Metadata, opts, isPreview, true /*isComplete*/)
 		// }
 
 		// fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
 
-	return payload.Metadata.URN, ""
+	return ""
 }
 
 // isRootStack returns true if the step pertains to the rootmost stack component.
