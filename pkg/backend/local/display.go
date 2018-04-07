@@ -50,7 +50,8 @@ func (s *commonStream) IsTerminal() bool {
 // RestoreTerminal restores normal mode to the terminal
 func (s *commonStream) RestoreTerminal() {
 	if s.state != nil {
-		term.RestoreTerminal(s.fd, s.state)
+		err := term.RestoreTerminal(s.fd, s.state)
+		contract.IgnoreError(err)
 	}
 }
 
@@ -97,18 +98,12 @@ func newOutStream(out io.Writer) *outStream {
 	return &outStream{commonStream: commonStream{fd: fd, isTerminal: isTerminal}, out: out}
 }
 
-func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) error {
+func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) {
 	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(outStream, false)
 
 	for prog := range progressChan {
-		// fmt.Printf("Received progress")
-		err := progressOutput.WriteProgress(prog)
-		if err != nil {
-			return err
-		}
+		writeProgress(progressOutput, prog)
 	}
-
-	return nil
 }
 
 type Status struct {
@@ -146,6 +141,13 @@ func getEventUrn(event engine.Event) resource.URN {
 	return ""
 }
 
+func writeProgress(chanOutput progress.Output, progress progress.Progress) {
+	err := chanOutput.WriteProgress(progress)
+	if err != nil {
+		contract.IgnoreError(err)
+	}
+}
+
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
@@ -165,7 +167,10 @@ func DisplayEvents(action string,
 
 	go func() {
 		writeDistributionProgress(pipeWriter, progressChan)
-		pipeWriter.Close()
+		err := pipeWriter.Close()
+		if err != nil {
+			contract.IgnoreError(err)
+		}
 	}()
 
 	defer func() {
@@ -261,7 +266,7 @@ func DisplayEvents(action string,
 				contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, status.ID)
 			}
 
-			chanOutput.WriteProgress(progress.Progress{
+			writeProgress(chanOutput, progress.Progress{
 				ID:     status.ID,
 				Action: strings.Repeat(" ", extraWhitespace) + msg,
 			})
@@ -298,8 +303,8 @@ func DisplayEvents(action string,
 		if summaryEvent != nil {
 			msg := RenderEvent(*summaryEvent, seen, debug, opts, isPreview)
 			if msg != "" {
-				chanOutput.WriteProgress(progress.Progress{Message: " "})
-				chanOutput.WriteProgress(progress.Progress{Message: msg})
+				writeProgress(chanOutput, progress.Progress{Message: " "})
+				writeProgress(chanOutput, progress.Progress{Message: msg})
 			}
 		}
 
@@ -309,7 +314,7 @@ func DisplayEvents(action string,
 		if !summarize {
 			for _, status := range topLevelResourceToStatus {
 				if len(status.DiagEvents) > 0 {
-					chanOutput.WriteProgress(progress.Progress{Message: " "})
+					writeProgress(chanOutput, progress.Progress{Message: " "})
 					for _, v := range status.DiagEvents {
 						// out = os.Stdout
 						// if v.Severity == diag.Error || v.Severity == diag.Warning {
@@ -318,7 +323,7 @@ func DisplayEvents(action string,
 
 						msg := RenderEvent(v, seen, debug, opts, isPreview)
 						if msg != "" {
-							chanOutput.WriteProgress(progress.Progress{Message: msg})
+							writeProgress(chanOutput, progress.Progress{Message: msg})
 						}
 					}
 				}
@@ -407,8 +412,8 @@ func DisplayEvents(action string,
 				switch event.Type {
 				case engine.PreludeEvent:
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					chanOutput.WriteProgress(progress.Progress{Message: " "})
-					chanOutput.WriteProgress(progress.Progress{Message: msg})
+					writeProgress(chanOutput, progress.Progress{Message: " "})
+					writeProgress(chanOutput, progress.Progress{Message: msg})
 					continue
 				case engine.SummaryEvent:
 					// keep track of hte summar event so that we can display it after all other
@@ -482,7 +487,10 @@ func DisplayEvents(action string,
 		}
 	}()
 
-	jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+	if err != nil {
+		contract.IgnoreError(err)
+	}
 }
 
 func RenderEvent(
@@ -804,12 +812,6 @@ func writeString(b *bytes.Buffer, s string) {
 	contract.IgnoreError(err)
 }
 
-func write(b *bytes.Buffer, op deploy.StepOp, format string, a ...interface{}) {
-	writeString(b, op.Color())
-	writeString(b, fmt.Sprintf(format, a...))
-	writeString(b, colors.Reset)
-}
-
 func renderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
@@ -831,21 +833,8 @@ func renderResourceOutputsEvent(
 	opts backend.DisplayOptions,
 	isPreview bool) string {
 
-	// out := &bytes.Buffer{}
-
 	if shouldShow(payload.Metadata, opts) {
-		// indent := engine.GetIndent(payload.Metadata, seen)
-		// text := engine.GetResourceOutputsPropertiesString(payload.Metadata, payload.Planning, payload.Debug)
-		// if opts.Summary {
-		// 	// if we're summarizing, then our info is being added to a parent node.
-		// 	// so we want to print out our child info
-		// 	summary := getMetadataSummary(payload.Metadata, opts)
-		// 	return payload.Metadata.URN, summary + " - Done!"
-		// } else {
 		return getMetadataSummary(payload.Metadata, opts, isPreview, true /*isComplete*/)
-		// }
-
-		// fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
 
 	return ""
