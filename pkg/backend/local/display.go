@@ -356,15 +356,22 @@ func DisplayEvents(action string,
 		close(progressChan)
 	}
 
+	// Main processing loop.  The purpose of this func is to read in events from the engine
+	// and translate them into Status objects and progress messages to be presented to the
+	// command line.
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
+				// Got a tick.  Update all the in-progress resources.
 				currentTick++
 				printStatusForTopLevelResources(false /*includeDone:*/)
 
 			case event := <-events:
 				if event.Type == "" || event.Type == engine.CancelEvent {
+					// Engine finished sending events.  Do all the final processing and return
+					// from this local func.  This will print out things like full diagnostic
+					// events, as well as the summary event from the engine.
 					processEndSteps()
 					return
 				}
@@ -378,6 +385,10 @@ func DisplayEvents(action string,
 
 				switch event.Type {
 				case engine.PreludeEvent:
+					// A prelude event can just be printed out directly to the console.
+					// Note: we should probably make sure we don't get any prelude events
+					// once we start hearing about actual resource events.
+
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
 					writeProgress(chanOutput, progress.Progress{Message: " "})
 					writeProgress(chanOutput, progress.Progress{Message: msg})
@@ -389,18 +400,24 @@ func DisplayEvents(action string,
 					continue
 				}
 
+				// At this point, all events should relate to resources.
+
 				eventUrn := getEventUrn(event)
 				if isRootURN(eventUrn) {
 					stackUrn = eventUrn
 				}
 
 				if eventUrn == "" {
+					// if the event doesn't have any URN associated with it, just associate
+					// it with the stack.
 					eventUrn = stackUrn
 				}
 
 				refreshAllStatuses := false
 				status, has := eventUrnToStatus[eventUrn]
 				if !has {
+					// first time we're hearing about this resource.  Create an initial nearly-empty
+					// status for it, assigning it a nice short ID.
 					status = Status{Tick: currentTick}
 					status.Step.Op = deploy.OpSame
 					status.ID = makeID(eventUrn)
@@ -423,6 +440,7 @@ func DisplayEvents(action string,
 						contract.Failf("Got empty op for %s %s", event.Type, msg)
 					}
 				} else if event.Type == engine.ResourceOutputsEvent {
+					// transition the status to done.
 					status.Done = true
 				} else if event.Type == engine.DiagEvent {
 					// also record this diagnostic so we print it at the end.
@@ -431,8 +449,11 @@ func DisplayEvents(action string,
 					contract.Failf("Unhandled event type '%s'", event.Type)
 				}
 
+				// Ensure that this updated status is recorded.
 				eventUrnToStatus[eventUrn] = status
 
+				// refresh teh progress information for this resource.  (or update all resources if
+				// we need to realign everything)
 				if refreshAllStatuses {
 					printStatusForTopLevelResources(true /*includeDone*/)
 				} else {
@@ -442,6 +463,8 @@ func DisplayEvents(action string,
 		}
 	}()
 
+	// Call into Docker to actually suck the progress messages out of pipeReader and display
+	// them to the console.
 	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
 	if err != nil {
 		contract.IgnoreError(err)
@@ -486,14 +509,12 @@ func renderEventWorker(
 func renderDiagEvent(
 	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
 	if payload.Severity == diag.Debug && !debug {
+		// If this was a debug diagnostic and we're not displaying debug diagnostics,
+		// then just return empty.  our callers will then filter out this message.
 		return ""
 	}
 
 	return opts.Color.Colorize(payload.Message)
-	// var msg = "Diag: " + string(payload.URN) + ": "
-	// msg += opts.Color.Colorize(payload.Message)
-
-	// return upToFirstNewLine(opts, msg)
 }
 
 func renderStdoutColorEvent(
@@ -757,7 +778,7 @@ func renderResourcePreEvent(
 
 	seen[payload.Metadata.URN] = payload.Metadata
 
-	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
+	if shouldShow(payload.Metadata, opts) {
 		return getMetadataSummary(payload.Metadata, opts, isPreview, false /*isComplete*/)
 	}
 
