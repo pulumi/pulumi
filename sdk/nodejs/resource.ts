@@ -2,7 +2,11 @@
 
 import * as log from "./log";
 import * as runtime from "./runtime";
-import { registerResource, registerResourceOutputs } from "./runtime/resource";
+import {
+    readResource,
+    registerResource,
+    registerResourceOutputs,
+} from "./runtime/resource";
 import { getRootResource } from "./runtime/settings";
 
 export type ID = string;  // a provider-assigned ID.
@@ -43,11 +47,19 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
 
-        // Now kick off the resource registration.  If we are actually performing a deployment, this
-        // resource's properties will be resolved asynchronously after the operation completes, so
-        // that dependent computations resolve normally.  If we are just planning, on the other
-        // hand, values will never resolve.
-        registerResource(this, t, name, custom, props, opts);
+        if (opts.id) {
+            // If this resource already exists, read its state rather than registering it anew.
+            if (!custom) {
+                throw new Error("Cannot read an existing resource unless it has a custom provider");
+            }
+            readResource(this, t, name, props, opts);
+        } else {
+            // Kick off the resource registration.  If we are actually performing a deployment, this
+            // resource's properties will be resolved asynchronously after the operation completes, so
+            // that dependent computations resolve normally.  If we are just planning, on the other
+            // hand, values will never resolve.
+            registerResource(this, t, name, custom, props, opts);
+        }
     }
 
     private async logAsync(
@@ -85,6 +97,10 @@ export abstract class Resource {
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
 export interface ResourceOptions {
+    /**
+     * An optional existing ID to load, rather than create.
+     */
+    id?: Input<ID>;
     /**
      * An optional parent resource to which this resource belongs.
      */
@@ -252,7 +268,7 @@ export class Output<T> {
                 // During previews do not perform the apply if the engine was not able to
                 // give us an actual value for this Output.
                 const perform = await performApply;
-                if (runtime.options.dryRun && !perform) {
+                if (runtime.isDryRun() && !perform) {
                     return <U><any>undefined;
                 }
 

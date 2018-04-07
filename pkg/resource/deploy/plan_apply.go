@@ -250,10 +250,10 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		res.Parent, res.Protect, res.Dependencies)
 
 	// Check for an old resource before going any further.
-	old, hasold := iter.p.Olds()[urn]
+	old, hasOld := iter.p.Olds()[urn]
 	var olds resource.PropertyMap
 	var oldState resource.PropertyMap
-	if hasold {
+	if hasOld {
 		olds = old.Inputs
 		oldState = old.All()
 	}
@@ -318,23 +318,38 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	//
 	//     * If the URN does not exist in the old snapshot, create the resource anew.
 	//
-	if hasold {
+	if hasOld {
 		contract.Assert(old != nil && old.Type == new.Type)
 
 		// The resource exists in both new and old; it could be an update.  This constitutes an update if the old
 		// and new properties don't match exactly.  It is also possible we'll need to replace the resource if the
 		// update impact assessment says so.  In this case, the resource's ID will change, which might have a
 		// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-		if !olds.DeepEquals(inputs) {
-			// The properties changed; we need to figure out whether to do an update or replacement.
-			var diff plugin.DiffResult
-			if prov != nil {
-				if diff, err = prov.Diff(urn, old.ID, oldState, inputs, allowUnknowns); err != nil {
-					return nil, err
-				}
+		var diff plugin.DiffResult
+		if prov != nil {
+			if diff, err = prov.Diff(urn, old.ID, oldState, inputs, allowUnknowns); err != nil {
+				return nil, err
 			}
+		}
 
-			// This is either an update or a replacement; check for the latter first, and handle it specially.
+		// Determine whether the change resulted in a diff.  Our legacy behavior here entailed actually performing
+		// diffs of state on the Pulumi side, whereas our new behavior is to defer to the provider to decide.
+		var hasChanges bool
+		switch diff.Changes {
+		case plugin.DiffSome:
+			hasChanges = true
+		case plugin.DiffNone:
+			hasChanges = false
+		case plugin.DiffUnknown:
+			// This is legacy behavior; just use the DeepEquals function to diff on the Pulumi side.
+			hasChanges = !olds.DeepEquals(inputs)
+		default:
+			return nil, errors.Errorf(
+				"resource provider for %s replied with unrecognized diff state: %d", urn, diff.Changes)
+		}
+
+		// If this is an update, create the necessary step; otherwise, it's the same.
+		if hasChanges {
 			if diff.Replace() {
 				iter.replaces[urn] = true
 

@@ -25,6 +25,8 @@ interface RunCase {
     expectError?: string;
     expectResourceCount?: number;
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
+    readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
+        urn: URN | undefined, props: any | undefined };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[]) => {
         urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
@@ -323,6 +325,36 @@ describe("rpc", () => {
             expectResourceCount: 0,
             expectError: "Program exited with non-zero exit code: 1",
         },
+        // A simple test of the read resource behavior.
+        "read_resource": {
+            program: path.join(base, "014.read_resource"),
+            expectResourceCount: 0,
+            readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
+                assert.strictEqual(t, "test:read:resource");
+                assert.strictEqual(name, "foo");
+                assert.strictEqual(id, "abc123");
+                assert.deepEqual(state, {
+                    a: "fizzz",
+                    b: false,
+                    c: [ 0.73, "x", { zed: 923 } ],
+                });
+                return {
+                    urn: makeUrn(t, name),
+                    props: {
+                        b: true,
+                        d: "and then, out of nowhere ...",
+                    },
+                };
+            },
+        },
+        // Test that the runtime can be loaded twice.
+        "runtime_sxs": {
+            program: path.join(base, "015.runtime_sxs"),
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: name, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -347,6 +379,22 @@ describe("rpc", () => {
                                 opts.invoke(ctx, req.getTok(), args);
                             resp.setFailuresList(failures);
                             resp.setReturn(gstruct.Struct.fromJavaScript(ret));
+                        }
+                        callback(undefined, resp);
+                    },
+                    // ReadResource callback.
+                    (call: any, callback: any) => {
+                        const req: any = call.request;
+                        const resp = new resproto.ReadResourceResponse();
+                        if (opts.readResource) {
+                            const t = req.getType();
+                            const name = req.getName();
+                            const id = req.getId();
+                            const par = req.getParent();
+                            const state = req.getProperties().toJavaScript();
+                            const { urn, props } = opts.readResource(ctx, t, name, id, par, state);
+                            resp.setUrn(urn);
+                            resp.setProperties(gstruct.Struct.fromJavaScript(props));
                         }
                         callback(undefined, resp);
                     },
@@ -440,12 +488,8 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
         (resolve, reject) => {
             const runReq = new langproto.RunRequest();
             runReq.setMonitorAddress(monitor);
-            if (opts.project) {
-                runReq.setProject(opts.project);
-            }
-            if (opts.stack) {
-                runReq.setStack(opts.stack);
-            }
+            runReq.setProject(opts.project || "project");
+            runReq.setStack(opts.stack || "stack");
             if (opts.pwd) {
                 runReq.setPwd(opts.pwd);
             }
@@ -475,12 +519,14 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
 
 function createMockResourceMonitor(
         invokeCallback: (call: any, request: any) => any,
+        readResourceCallback: (call: any, request: any) => any,
         registerResourceCallback: (call: any, request: any) => any,
         registerResourceOutputsCallback: (call: any, request: any) => any): { server: any, addr: string } {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server();
     server.addService(resrpc.ResourceMonitorService, {
         invoke: invokeCallback,
+        readResource: readResourceCallback,
         registerResource: registerResourceCallback,
         registerResourceOutputs: registerResourceOutputsCallback,
     });

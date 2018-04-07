@@ -42,48 +42,48 @@ func TestSteps(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "b", "c", "d")
+			assert.NotNil(t, stackInfo.Deployment)
+			validateResources(t, stackInfo.Deployment.Resources, "a", "b", "c", "d")
 		},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:      "step2",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "b", "c", "e")
+					assert.NotNil(t, stackInfo.Deployment)
+					validateResources(t, stackInfo.Deployment.Resources, "a", "b", "c", "e")
 				},
 			},
 			{
 				Dir:      "step3",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "c", "e")
+					assert.NotNil(t, stackInfo.Deployment)
+					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
 			},
 			{
 				Dir:      "step4",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "c", "e")
+					assert.NotNil(t, stackInfo.Deployment)
+					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
 			},
 			{
 				Dir:      "step5",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					validateResources(t, stackInfo.Checkpoint.Latest.Resources, "a", "c", "e")
+					assert.NotNil(t, stackInfo.Deployment)
+					validateResources(t, stackInfo.Deployment.Resources, "a", "c", "e")
 				},
 			},
 			{
 				Dir:      "step6",
 				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Checkpoint.Latest)
-					validateResources(t, stackInfo.Checkpoint.Latest.Resources)
+					assert.NotNil(t, stackInfo.Deployment)
+					validateResources(t, stackInfo.Deployment.Resources)
 				},
 			},
 		},

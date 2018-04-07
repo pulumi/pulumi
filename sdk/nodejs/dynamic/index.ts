@@ -38,6 +38,11 @@ export interface CheckFailure {
  */
 export interface DiffResult {
     /**
+     * If true, this diff detected changes and suggests an update.
+     */
+    readonly changes?: boolean;
+
+    /**
      * If this update requires a replacement, the set of properties triggering it.
      */
     readonly replaces?: string[];
@@ -67,6 +72,13 @@ export interface CreateResult {
      * Any properties that were computed during creation.
      */
     readonly outs?: any;
+}
+
+export interface ReadResult {
+    /**
+     * The current property state read from the live environment.
+     */
+    readonly props?: any;
 }
 
 /**
@@ -107,6 +119,12 @@ export interface ResourceProvider {
      * @param inputs The properties to set during creation.
      */
     create: (inputs: any) => Promise<CreateResult>;
+
+    /**
+     * Reads the current live state associated with a resource.  Enough state must be included in the inputs to uniquely
+     * identify the resource; this is typically just the resource ID, but it may also include some properties.
+     */
+    read?: (id: resource.ID, props?: any) => Promise<ReadResult>;
 
     /**
      * Update updates an existing resource with new values.

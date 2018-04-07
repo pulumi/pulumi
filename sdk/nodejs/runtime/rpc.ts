@@ -5,9 +5,11 @@ import * as asset from "../asset";
 import * as log from "../log";
 import { CustomResource, Input, Inputs, Output, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { excessiveDebugOutput, options } from "./settings";
+import { excessiveDebugOutput, isDryRun } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+
+export type OutputResolvers = Record<string, (value: any, isStable: boolean) => void>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -21,10 +23,8 @@ const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
  * that the engine actualy produced will be used to resolve all the unresolved promised placed on
  * 'onto'.
  */
-export function transferProperties(onto: Resource, label: string, props: Inputs):
-        Record<string, (value: any, isStable: boolean) => void> {
-
-    const resolvers: Record<string, (value: any, isStable: boolean) => void> = {};
+export function transferProperties(onto: Resource, label: string, props: Inputs): OutputResolvers {
+    const resolvers: OutputResolvers = {};
     for (const k of Object.keys(props)) {
         // Skip "id" and "urn", since we handle those specially.
         if (k === "id" || k === "urn") {
@@ -66,7 +66,7 @@ export async function serializeProperties(
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (k !== "id" && k !== "urn" && props[k] !== undefined) {
-            result[k] = await serializeProperty(props[k], `${label}.${k}`, dependentResources);
+            result[k] = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
         }
     }
 
@@ -126,7 +126,7 @@ export function resolveProperties(
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
-            if (!options.dryRun) {
+            if (!isDryRun()) {
                 // normal 'pulumi update'.  resolve the output with the value we got back
                 // from the engine.  That output can always run its .apply calls.
                 resolve(allProps[k], true);
@@ -151,7 +151,7 @@ export function resolveProperties(
     // actually propagate the provisional state, because we cannot know for sure that it is final yet.
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
-            if (!options.dryRun) {
+            if (!isDryRun()) {
                 throw new Error(
                     `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
             }
@@ -183,7 +183,7 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-async function serializeProperty(prop: Input<any>, ctx: string, dependentResources: Resource[]): Promise<any> {
+export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
     if (prop === undefined) {
         if (excessiveDebugOutput) {
             log.debugX("", `Serialize property [${ctx}]: undefined`);
@@ -205,7 +205,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
             if (excessiveDebugOutput) {
                 log.debugX("", `Serialize property [${ctx}]: array[${i}] element`);
             }
-            elems.push(await serializeProperty(prop[i], `${ctx}[${i}]`, dependentResources));
+            elems.push(await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources));
         }
         return elems;
     }
@@ -216,7 +216,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
         }
 
         dependentResources.push(prop);
-        return serializeProperty(prop.id, `${ctx}.id`, dependentResources);
+        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
     }
     else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
@@ -233,8 +233,8 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
             log.debugX("", `Serialize property [${ctx}]: Promise<T>`);
         }
         const subctx = `Promise<${ctx}>`;
-        return serializeProperty(
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), subctx, dependentResources);
+        return serializeProperty(subctx,
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
     }
     else if (prop instanceof Output) {
         if (excessiveDebugOutput) {
@@ -242,7 +242,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
         }
 
         dependentResources.push(...prop.resources());
-        return await serializeProperty(prop.promise(), `${ctx}.id`, dependentResources);
+        return await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
     } else {
         return await serializeAllKeys(prop, {});
     }
@@ -252,7 +252,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
             if (excessiveDebugOutput) {
                 log.debugX("", `Serialize property [${ctx}]: object.${k}`);
             }
-            obj[k] = await serializeProperty(innerProp[k], `${ctx}.${k}`, dependentResources);
+            obj[k] = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
         }
 
         return obj;
@@ -262,7 +262,7 @@ async function serializeProperty(prop: Input<any>, ctx: string, dependentResourc
 /**
  * deserializeProperty unpacks some special types, reversing the above process.
  */
-function deserializeProperty(prop: any): any {
+export function deserializeProperty(prop: any): any {
     if (prop === undefined || prop === undefinedValue) {
         return undefined;
     }

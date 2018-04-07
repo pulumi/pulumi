@@ -79,15 +79,20 @@ export function logX(engine: any, sev: any, urn: string, format: any, ...args: a
     const msg: string = util.format(format, ...args);
     const keepAlive: () => void = rpcKeepAlive();
     lastLog = lastLog.then(() => {
-        return new Promise((resolve) => {
-            const req = new engproto.LogRequest();
-            req.setSeverity(sev);
-            req.setMessage(msg);
-            req.setUrn(urn);
-            engine.log(req, () => {
-                resolve(); // let the next log through
-                keepAlive(); // permit RPC channel tear-downs
-            });
+        return new Promise((resolve, reject) => {
+            try {
+                const req = new engproto.LogRequest();
+                req.setSeverity(sev);
+                req.setMessage(msg);
+                req.setUrn(urn);
+                engine.log(req, () => {
+                    resolve(); // let the next log through
+                    keepAlive(); // permit RPC channel tear-downs
+                });
+            }
+            catch (err) {
+                reject(err);
+            }
         });
     });
 }

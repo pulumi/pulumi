@@ -21,6 +21,11 @@ class ResourceMonitorStub(object):
         request_serializer=provider__pb2.InvokeRequest.SerializeToString,
         response_deserializer=provider__pb2.InvokeResponse.FromString,
         )
+    self.ReadResource = channel.unary_unary(
+        '/pulumirpc.ResourceMonitor/ReadResource',
+        request_serializer=resource__pb2.ReadResourceRequest.SerializeToString,
+        response_deserializer=resource__pb2.ReadResourceResponse.FromString,
+        )
     self.RegisterResource = channel.unary_unary(
         '/pulumirpc.ResourceMonitor/RegisterResource',
         request_serializer=resource__pb2.RegisterResourceRequest.SerializeToString,
@@ -38,6 +43,13 @@ class ResourceMonitorServicer(object):
   """
 
   def Invoke(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def ReadResource(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -65,6 +77,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
           servicer.Invoke,
           request_deserializer=provider__pb2.InvokeRequest.FromString,
           response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+      ),
+      'ReadResource': grpc.unary_unary_rpc_method_handler(
+          servicer.ReadResource,
+          request_deserializer=resource__pb2.ReadResourceRequest.FromString,
+          response_serializer=resource__pb2.ReadResourceResponse.SerializeToString,
       ),
       'RegisterResource': grpc.unary_unary_rpc_method_handler(
           servicer.RegisterResource,

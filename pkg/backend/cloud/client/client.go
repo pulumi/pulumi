@@ -81,12 +81,12 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 // DescribeUser describes the user implied by the API token associated with this client.
 func (pc *Client) DescribeUser() (string, error) {
 	resp := struct {
-		Name string `json:"name"`
+		GitHubLogin string `json:"githubLogin"`
 	}{}
 	if err := pc.restCall("GET", "/api/user", nil, nil, &resp); err != nil {
 		return "", err
 	}
-	return resp.Name, nil
+	return resp.GitHubLogin, nil
 }
 
 // DownloadPlugin downloads the indicated plugin from the Pulumi API.
@@ -148,6 +148,11 @@ func (pc *Client) CreateStack(project ProjectIdentifier, cloudName string, stack
 		OrgName:     project.Owner,
 		RepoName:    project.Repository,
 		ProjectName: project.Project,
+		Tags: map[apitype.StackTagName]string{
+			apitype.GitHubOwnerNameTag:      project.Owner,
+			apitype.GitHubRepositoryNameTag: project.Repository,
+			apitype.ProjectNameTag:          project.Project,
+		},
 	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,

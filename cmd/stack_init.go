@@ -6,18 +6,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackInitCmd() *cobra.Command {
-	var cloudURL string
-	var localBackend bool
-	var remoteBackend bool
 	var ppc string
 	cmd := &cobra.Command{
 		Use:   "init <stack-name>",
@@ -28,42 +22,23 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// If --cloud-url was passed, infer that the user wanted --remote.
-			remoteBackend = remoteBackend || cloudURL != ""
+			b, err := currentBackend()
+			if err != nil {
+				return err
+			}
 
-			var b backend.Backend
 			var opts interface{}
-			if localBackend {
-				if ppc != "" {
-					return errors.New("cannot pass both --local and --ppc; PPCs only available in cloud mode")
-				}
-				if remoteBackend {
-					return errors.New("cannot pass both --local with either --remote or --cloud-url")
-				}
-				b = local.New(cmdutil.Diag())
-			} else if url := cloud.ValueOrDefaultURL(cloudURL); isLoggedIn(url) {
-				c, err := cloud.New(cmdutil.Diag(), url)
-				if err != nil {
-					return errors.Wrap(err, "creating API client")
-				}
-				b = c
+			if _, ok := b.(cloud.Backend); ok {
 				opts = cloud.CreateStackOptions{CloudName: ppc}
-			} else {
-				// If the user is not logged in and --remote or --cloud-url was passed, fail.
-				if remoteBackend {
-					return errors.Errorf("you must be logged in to create stacks in the Pulumi Cloud. Run " +
-						"`pulumi login` to log in.")
-				}
-				b = local.New(cmdutil.Diag())
 			}
 
 			var stackName tokens.QName
 			if len(args) > 0 {
 				stackName = tokens.QName(args[0])
 			} else if cmdutil.Interactive() {
-				name, err := cmdutil.ReadConsole("Enter a stack name")
-				if err != nil {
-					return err
+				name, nameErr := cmdutil.ReadConsole("Enter a stack name")
+				if nameErr != nil {
+					return nameErr
 				}
 				stackName = tokens.QName(name)
 			}
@@ -72,22 +47,11 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			_, err := createStack(b, stackName, opts)
+			_, err = createStack(b, stackName, opts)
 			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&cloudURL, "cloud-url", "c", "", "A URL for the Pulumi Cloud in which to initialize this stack")
-	cmd.PersistentFlags().BoolVarP(
-		&localBackend, "local", "l", false, "Initialize this stack locally instead of in the Pulumi Cloud")
-	cmd.PersistentFlags().BoolVarP(
-		&remoteBackend, "remote", "r", false, "Initialize this stack in the Pulumi Cloud instead of locally")
-	cmd.PersistentFlags().StringVarP(
 		&ppc, "ppc", "p", "", "A Pulumi Private Cloud (PPC) name to initialize this stack in (if not --local)")
 	return cmd
-}
-
-func isLoggedIn(cloudURL string) bool {
-	creds, err := workspace.GetAccessToken(cloudURL)
-	return err == nil && creds != ""
 }

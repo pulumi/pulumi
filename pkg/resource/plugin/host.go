@@ -167,13 +167,12 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			contract.Assert(plug != nil)
 
 			// Make sure the versions match.
-			// TODO: support loading multiple plugin versions side-by-side.
 			if version != nil {
 				if plug.Info.Version == nil {
 					return nil,
 						errors.Errorf("resource plugin version %s requested, but an unknown version was found",
 							version.String())
-				} else if !version.EQ(*plug.Info.Version) {
+				} else if !plug.Info.Version.GTE(*version) {
 					return nil,
 						errors.Errorf("resource plugin version %s requested, but version %s was found",
 							version.String(), plug.Info.Version.String())
@@ -193,13 +192,15 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 
 			// Warn if the plugin version was not what we expected
 			if version != nil {
-				if info.Version == nil || !version.EQ(*info.Version) {
+				if info.Version == nil || !info.Version.GTE(*version) {
 					var v string
 					if info.Version != nil {
 						v = info.Version.String()
 					}
 					host.ctx.Diag.Warningf(
-						diag.Message("" /*urn*/, "resource plugin %s mis-reported its own version, expected %s got %s"),
+						diag.Message("", /*urn*/
+							"resource plugin %s is expected to have version >=%s, but has %s; "+
+								"the wrong version may be on your path, or this may be a bug in the plugin"),
 						info.Name, version.String(), v)
 				}
 			}
