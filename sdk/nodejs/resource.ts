@@ -75,6 +75,11 @@ export abstract class Resource {
 }
 
 (<any>Resource).doNotCapture = true;
+(<any>Resource.prototype).logAsync.doNotCapture = true;
+(<any>Resource.prototype).debugAsync.doNotCapture = true;
+(<any>Resource.prototype).infoAsync.doNotCapture = true;
+(<any>Resource.prototype).warnAsync.doNotCapture = true;
+(<any>Resource.prototype).errorAsync.doNotCapture = true;
 
 /**
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
