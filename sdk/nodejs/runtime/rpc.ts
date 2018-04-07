@@ -5,7 +5,7 @@ import * as asset from "../asset";
 import * as log from "../log";
 import { CustomResource, Input, Inputs, Output, Resource } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
-import { excessiveDebugOutput, options } from "./settings";
+import { excessiveDebugOutput, isDryRun } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
@@ -126,7 +126,7 @@ export function resolveProperties(
             // If either we are performing a real deployment, or this is a stable property value, we
             // can propagate its final value.  Otherwise, it must be undefined, since we don't know
             // if it's final.
-            if (!options.dryRun) {
+            if (!isDryRun()) {
                 // normal 'pulumi update'.  resolve the output with the value we got back
                 // from the engine.  That output can always run its .apply calls.
                 resolve(allProps[k], true);
@@ -151,7 +151,7 @@ export function resolveProperties(
     // actually propagate the provisional state, because we cannot know for sure that it is final yet.
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
-            if (!options.dryRun) {
+            if (!isDryRun()) {
                 throw new Error(
                     `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
             }

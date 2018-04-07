@@ -238,7 +238,7 @@ export class Output<T> {
                 // During previews do not perform the apply if the engine was not able to
                 // give us an actual value for this Output.
                 const perform = await performApply;
-                if (runtime.options.dryRun && !perform) {
+                if (runtime.isDryRun() && !perform) {
                     return <U><any>undefined;
                 }
 

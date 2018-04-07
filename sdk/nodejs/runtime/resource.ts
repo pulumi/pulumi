@@ -11,7 +11,7 @@ import {
     serializeProperty,
     transferProperties,
 } from "./rpc";
-import { excessiveDebugOutput, getMonitor, options, rpcKeepAlive, serialize } from "./settings";
+import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
