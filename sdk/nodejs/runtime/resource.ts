@@ -66,7 +66,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
                 monitor.readResource(req, (err: Error, innerResponse: any) => {
                     log.debug("", `ReadResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
-                        log.errorX("", `Failed to read resource #${resolvedID} '${name}' [${t}]: ${err.stack}`);
+                        log.error("", `Failed to read resource #${resolvedID} '${name}' [${t}]: ${err.stack}`);
                         reject(err);
                     }
                     else {
@@ -114,7 +114,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                 monitor.registerResource(req, (err: Error, innerResponse: any) => {
                     log.debug("", `RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
-                        log.errorX("", `Failed to register new resource '${name}' [${t}]: ${err.stack}`);
+                        log.error("", `Failed to register new resource '${name}' [${t}]: ${err.stack}`);
                         reject(err);
                     }
                     else {
@@ -271,7 +271,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
                 log.debug("", `RegisterResourceOutputs RPC finished: urn=${urn}; `+
                     `err: ${err}, resp: ${innerResponse}`);
                 if (err) {
-                    log.errorX("", `Failed to end new resource registration '${urn}': ${err.stack}`);
+                    log.error("", `Failed to end new resource registration '${urn}': ${err.stack}`);
                     reject(err);
                 }
                 else {
