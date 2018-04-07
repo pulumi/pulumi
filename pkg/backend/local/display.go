@@ -97,13 +97,18 @@ func newOutStream(out io.Writer) *outStream {
 	return &outStream{commonStream: commonStream{fd: fd, isTerminal: isTerminal}, out: out}
 }
 
-func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) {
+func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) error {
 	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(outStream, false)
 
 	for prog := range progressChan {
 		// fmt.Printf("Received progress")
-		progressOutput.WriteProgress(prog)
+		err := progressOutput.WriteProgress(prog)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 type Status struct {
@@ -814,32 +819,10 @@ func renderResourcePreEvent(
 	seen[payload.Metadata.URN] = payload.Metadata
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		summary := getMetadataSummary(payload.Metadata, opts, isPreview, false /*isComplete*/)
-		// out := &bytes.Buffer{}
-
-		// // indent := engine.GetIndent(payload.Metadata, seen)
-		// summary := engine.GetResourcePropertiesSummary(payload.Metadata, 0)
-		// // details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
-
-		// // fprintIgnoreError(out, "Pre: ")
-		// // fprintIgnoreError(out, payload.Metadata.URN)
-		// // fprintIgnoreError(out, ": ")
-		// fprintIgnoreError(out, opts.Color.Colorize(summary))
-
-		// // if !opts.Summary {
-		// // 	fprintIgnoreError(out, opts.Color.Colorize(details))
-		// // }
-
-		// fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
-
-		// return payload.Metadata.URN, out.String()
-
-		return summary
-	} else {
-		return ""
+		return getMetadataSummary(payload.Metadata, opts, isPreview, false /*isComplete*/)
 	}
 
-	// return upToFirstNewLine(opts, out.String())
+	return ""
 }
 
 func renderResourceOutputsEvent(
