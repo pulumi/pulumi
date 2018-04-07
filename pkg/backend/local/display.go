@@ -37,6 +37,8 @@ type Status struct {
 }
 
 var (
+	// simple regex to take our names like "aws:function:Function" and convert to
+	// "aws:Function"
 	typeNameRegex = regexp.MustCompile("^(.*):(.*):(.*)$")
 )
 
@@ -45,6 +47,8 @@ func simplifyTypeName(typ tokens.Type) string {
 	return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
 }
 
+// getEventUrn returns the resource URN associated with an event.  Should only be called
+// on events that actually can be associated with resources.
 func getEventUrn(event engine.Event) resource.URN {
 	if event.Type == engine.ResourcePreEvent {
 		payload := event.Payload.(engine.ResourcePreEventPayload)
@@ -74,9 +78,30 @@ func writeProgress(chanOutput progress.Output, progress progress.Progress) {
 func DisplayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
 
+	// Create a ticker that will update all our status messages once a second.  Any
+	// in-flight resources will get a varying .  ..  ... ticker appended to them to
+	// let the user know what is still being worked on.
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	_, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 1 /*timesPerSecond*/)
 
+	// Whether or not we're previewing.  We don't know what we are actually doing until
+	// we get the initial 'prelude' event.
+	//
+	// this flag is only used to adjust how we describe what's going on to the user.
+	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
+	isPreview := false
+
+	// The urn of the stack.
+	var stackUrn resource.URN
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+
+	var summaryEvent *engine.Event
+	maxIDLength := 0
+	currentTick := 0
+
+	eventUrnToStatus := make(map[resource.URN]Status)
+
+	// As we receive information for the engine, we will convert them into
 	_, stdout, _ := term.StdStreams()
 	_, isTerminal := term.GetFdInfo(stdout)
 
@@ -98,17 +123,6 @@ func DisplayEvents(action string,
 		ticker.Stop()
 		done <- true
 	}()
-
-	isPreview := false
-	summarize := opts.Summary
-
-	var stackUrn resource.URN
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-	var summaryEvent *engine.Event
-	maxIDLength := 0
-	currentTick := 0
-
-	topLevelResourceToStatus := make(map[resource.URN]Status)
 
 	createInProgressMessage := func(status Status) string {
 		msg := status.Action
@@ -200,7 +214,7 @@ func DisplayEvents(action string,
 	}
 
 	printStatusForTopLevelResources := func(includeDone bool) {
-		for _, v := range topLevelResourceToStatus {
+		for _, v := range eventUrnToStatus {
 			if v.Done && !includeDone {
 				continue
 			}
@@ -211,10 +225,10 @@ func DisplayEvents(action string,
 
 	processEndSteps := func() {
 		// Mark all in progress resources as done.
-		for k, v := range topLevelResourceToStatus {
+		for k, v := range eventUrnToStatus {
 			if !v.Done {
 				v.Done = true
-				topLevelResourceToStatus[k] = v
+				eventUrnToStatus[k] = v
 				printStatusForTopLevelResource(v)
 			}
 		}
@@ -231,20 +245,18 @@ func DisplayEvents(action string,
 		// Print all diagnostics at the end.  We only need to do this if we were summarizing.
 		// Otherwise, this would have been seen while we were receiving the events.
 
-		if !summarize {
-			for _, status := range topLevelResourceToStatus {
-				if len(status.DiagEvents) > 0 {
-					writeProgress(chanOutput, progress.Progress{Message: " "})
-					for _, v := range status.DiagEvents {
-						// out = os.Stdout
-						// if v.Severity == diag.Error || v.Severity == diag.Warning {
-						// 	out = os.Stderr
-						// }
+		for _, status := range eventUrnToStatus {
+			if len(status.DiagEvents) > 0 {
+				writeProgress(chanOutput, progress.Progress{Message: " "})
+				for _, v := range status.DiagEvents {
+					// out = os.Stdout
+					// if v.Severity == diag.Error || v.Severity == diag.Warning {
+					// 	out = os.Stderr
+					// }
 
-						msg := RenderEvent(v, seen, debug, opts, isPreview)
-						if msg != "" {
-							writeProgress(chanOutput, progress.Progress{Message: msg})
-						}
+					msg := RenderEvent(v, seen, debug, opts, isPreview)
+					if msg != "" {
+						writeProgress(chanOutput, progress.Progress{Message: msg})
 					}
 				}
 			}
@@ -351,22 +363,12 @@ func DisplayEvents(action string,
 					eventUrn = stackUrn
 				}
 
-				var topLevelUrn resource.URN
-				if summarize {
-					// if we're summarizing, then we want to write this message associated
-					// either with the stack-urn, or an immediate child of the stack-urn.
-					topLevelUrn = mapToStackUrnOrImmediateStackChildUrn(eventUrn)
-				} else {
-					// otherwise, we print the information out for each resource.
-					topLevelUrn = eventUrn
-				}
-
 				refreshAllStatuses := false
-				status, has := topLevelResourceToStatus[topLevelUrn]
+				status, has := eventUrnToStatus[eventUrn]
 				if !has {
 					status = Status{Tick: currentTick}
 					status.Step.Op = deploy.OpSame
-					status.ID = makeID(topLevelUrn)
+					status.ID = makeID(eventUrn)
 
 					if isTerminal {
 						// in the terminal we want to align the status portions of messages. If we
@@ -386,9 +388,7 @@ func DisplayEvents(action string,
 						contract.Failf("Got empty op for %s %s", event.Type, msg)
 					}
 				} else if event.Type == engine.ResourceOutputsEvent {
-					if eventUrn == topLevelUrn {
-						status.Done = true
-					}
+					status.Done = true
 				} else if event.Type == engine.DiagEvent {
 					// also record this diagnostic so we print it at the end.
 					status.DiagEvents = append(status.DiagEvents, event)
@@ -396,7 +396,7 @@ func DisplayEvents(action string,
 					contract.Failf("Unhandled event type '%s'", event.Type)
 				}
 
-				topLevelResourceToStatus[topLevelUrn] = status
+				eventUrnToStatus[eventUrn] = status
 
 				if refreshAllStatuses {
 					printStatusForTopLevelResources(true /*includeDone*/)
