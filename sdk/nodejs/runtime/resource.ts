@@ -20,7 +20,7 @@ interface ResourceResolverOperation {
     // A resolver for a resource's URN.
     resolveURN: (urn: URN) => void;
     // A resolver for a resource's ID (for custom resources only).
-    resolveID: ((v: any, performApply: boolean) => void) | undefined;
+    resolveID: ((v: ID, performApply: boolean) => void) | undefined;
     // A collection of resolvers for a resource's properties.
     resolvers: OutputResolvers;
     // A parent URN, fully resolved, if any.
@@ -35,8 +35,12 @@ interface ResourceResolverOperation {
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
-export function readResource(res: Resource, id: Input<ID>, t: string, name: string,
-                             props: Inputs, opts: ResourceOptions): void {
+export function readResource(res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
+    const id: Input<ID> | undefined = opts.id;
+    if (!id) {
+        throw new Error("Cannot read resource whose options are lacking an ID value");
+    }
+
     const label = `resource:${name}[${t}]#...`;
     log.debug(`Reading resource: id=${id}, t=${t}, name=${name}`);
 
@@ -72,7 +76,7 @@ export function readResource(res: Resource, id: Input<ID>, t: string, name: stri
 
             // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
             resop.resolveURN(resp.getUrn());
-            resop.resolveID!(id, id !== undefined);
+            resop.resolveID!(resolvedID, resolvedID !== undefined);
             await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
         });
     }));
