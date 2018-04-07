@@ -141,22 +141,21 @@ func (pc *Client) GetStack(stackID StackIdentifier) (apitype.Stack, error) {
 }
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
-func (pc *Client) CreateStack(project ProjectIdentifier, cloudName string, stackName string) (apitype.Stack, error) {
+func (pc *Client) CreateStack(
+	project ProjectIdentifier, cloudName string, stackName string,
+	tags map[apitype.StackTagName]string) (apitype.Stack, error) {
 	stack := apitype.Stack{
 		CloudName:   cloudName,
 		StackName:   tokens.QName(stackName),
 		OrgName:     project.Owner,
 		RepoName:    project.Repository,
 		ProjectName: project.Project,
-		Tags: map[apitype.StackTagName]string{
-			apitype.GitHubOwnerNameTag:      project.Owner,
-			apitype.GitHubRepositoryNameTag: project.Repository,
-			apitype.ProjectNameTag:          project.Project,
-		},
+		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,
 		StackName: stackName,
+		Tags:      tags,
 	}
 
 	var createStackResp apitype.CreateStackResponseByName
@@ -332,10 +331,14 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 }
 
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
-// to authenticate operations on the update if any.
-func (pc *Client) StartUpdate(update UpdateIdentifier) (int, string, error) {
+// to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
+func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTagName]string) (int, string, error) {
+	req := apitype.StartUpdateRequest{
+		Tags: tags,
+	}
+
 	var resp apitype.StartUpdateResponse
-	if err := pc.restCall("POST", getUpdatePath(update), nil, nil, &resp); err != nil {
+	if err := pc.restCall("POST", getUpdatePath(update), req, nil, &resp); err != nil {
 		return 0, "", err
 	}
 

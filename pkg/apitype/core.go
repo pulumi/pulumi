@@ -119,6 +119,10 @@ type StackTagName = string
 const (
 	// ProjectNameTag is a tag that represents the name of a project (coresponds to the `name` property of Pulumi.yaml).
 	ProjectNameTag StackTagName = "pulumi:project"
+	// ProjectRuntimeTag is a tag that represents the runtime of a project (the `runtime` property of Pulumi.yaml).
+	ProjectRuntimeTag StackTagName = "pulumi:runtime"
+	// ProjectDescriptionTag is a tag that represents the description of a project (Pulumi.yaml's `description`).
+	ProjectDescriptionTag StackTagName = "pulumi:runtime"
 	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	GitHubOwnerNameTag StackTagName = "gitHub:owner"
