@@ -32,10 +32,8 @@ export abstract class Resource {
      * @param custom True to indicate that this is a custom resource, managed by a plugin.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
-     * @param existing If non-empty, state will be read from an existing custom resource with the given ID.
      */
-    constructor(t: string, name: string, custom: boolean,
-                props: Inputs = {}, opts: ResourceOptions = {}, existing?: Input<ID>) {
+    constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
         if (!t) {
             throw new Error("Missing resource type argument");
         }
@@ -48,12 +46,12 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
 
-        if (existing) {
+        if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
             if (!custom) {
                 throw new Error("Cannot read an existing resource unless it has a custom provider");
             }
-            readResource(this, existing, t, name, props, opts);
+            readResource(this, t, name, props, opts);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
@@ -70,6 +68,10 @@ export abstract class Resource {
  * ResourceOptions is a bag of optional settings that control a resource's behavior.
  */
 export interface ResourceOptions {
+    /**
+     * An optional existing ID to load, rather than create.
+     */
+    id?: Input<ID>;
     /**
      * An optional parent resource to which this resource belongs.
      */
@@ -109,10 +111,9 @@ export abstract class CustomResource extends Resource {
      * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
-     * @param existing An optional existing resource ID to read state from rather than register anew.
      */
-    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions, existing?: Input<ID>) {
-        super(t, name, true, props, opts, existing);
+    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
+        super(t, name, true, props, opts);
     }
 }
 
