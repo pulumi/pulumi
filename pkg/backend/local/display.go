@@ -26,13 +26,28 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// Status helps us keep track for a resource as it is worked on by the engine.
 type Status struct {
-	ID   string
+	// The simple short ID we have generated for the resource to present it to the user.
+	// Usually similar to the form: aws.Function("name")
+	ID string
+
+	// The change that the engine wants apply to that resource.
 	Step engine.StepEventMetadata
+
+	// The tick we were on when we created this status.  Purely used for generating an
+	// ellipses to show progress for in-flight resources.
 	Tick int
+
+	// If the engine finished processing this resources.
 	Done bool
 
-	Action     string
+	// The progress message to print.
+	Message string
+
+	// All the diagnostic events we've heard about this resource.  We'll print the last
+	// diagnostic in the status region while a resource is in progress.  At the end we'll
+	// print out all diagnostics for a resource.
 	DiagEvents []engine.Event
 }
 
@@ -95,10 +110,21 @@ func DisplayEvents(action string,
 	var stackUrn resource.URN
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 
+	// The summary event from the engine.  If we get this, we'll print this after all
+	// normal resource events are heard.  That way we don't interfere with all the progress
+	// messages we're outputting for them.
 	var summaryEvent *engine.Event
+
+	// The length of the largest ID we've seen.  We use this so we can align status messages per
+	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
+	// everything aligns.
 	maxIDLength := 0
+
+	// What tick we're currently on.  Used to determine the number of ellipses to concat to
+	// a status message to help indicate that things are still working.
 	currentTick := 0
 
+	// A mapping from each resource URN we are told about to its current status.
 	eventUrnToStatus := make(map[resource.URN]Status)
 
 	// As we receive information for the engine, we will convert them into
@@ -125,7 +151,7 @@ func DisplayEvents(action string,
 	}()
 
 	createInProgressMessage := func(status Status) string {
-		msg := status.Action
+		msg := status.Message
 		if len(status.DiagEvents) > 0 {
 			diagMsg := RenderEvent(
 				status.DiagEvents[len(status.DiagEvents)-1], seen, debug, opts, isPreview)
@@ -382,7 +408,7 @@ func DisplayEvents(action string,
 				}
 
 				if event.Type == engine.ResourcePreEvent {
-					status.Action = msg
+					status.Message = msg
 					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
 					if status.Step.Op == "" {
 						contract.Failf("Got empty op for %s %s", event.Type, msg)
