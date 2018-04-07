@@ -70,19 +70,19 @@ export abstract class Resource {
     }
 
     public debugAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.debugX, message, args);
+        return this.logAsync(log.debug, message, args);
     }
 
     public async infoAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.infoX, message, args);
+        return this.logAsync(log.info, message, args);
     }
 
     public async warnAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.warnX, message, args);
+        return this.logAsync(log.warn, message, args);
     }
 
     public async errorAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.errorX, message, args);
+        return this.logAsync(log.error, message, args);
     }
 }
 
