@@ -198,6 +198,10 @@ func DisplayEvents(action string,
 	}
 
 	createDoneMessage := func(status Status, isPreview bool) string {
+		if status.Step.Op == "" {
+			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
+		}
+
 		msg := colors.ColorizeText(
 			getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/))
 
@@ -249,6 +253,7 @@ func DisplayEvents(action string,
 			// do not bother with this in the non-terminal case.
 			if isTerminal {
 				extraWhitespace = maxIDLength - len(status.ID)
+				contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, status.ID)
 			}
 
 			chanOutput.WriteProgress(progress.Progress{
@@ -426,16 +431,12 @@ func DisplayEvents(action string,
 					topLevelUrn = eventUrn
 				}
 
+				refreshAllStatuses := false
 				status, has := topLevelResourceToStatus[topLevelUrn]
 				if !has {
 					status = Status{Tick: currentTick}
+					status.Step.Op = deploy.OpSame
 					status.ID = makeID(topLevelUrn)
-				}
-
-				refreshAllStatuses := false
-				if event.Type == engine.ResourcePreEvent {
-					status.Action = msg
-					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
 
 					if isTerminal {
 						// in the terminal we want to align the status portions of messages. If we
@@ -446,8 +447,15 @@ func DisplayEvents(action string,
 							refreshAllStatuses = true
 						}
 					}
+				}
+
+				if event.Type == engine.ResourcePreEvent {
+					status.Action = msg
+					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
+					if status.Step.Op == "" {
+						contract.Failf("Got empty op for %s %s", event.Type, msg)
+					}
 				} else if event.Type == engine.ResourceOutputsEvent {
-					status.Step = event.Payload.(engine.ResourceOutputsEventPayload).Metadata
 					if eventUrn == topLevelUrn {
 						status.Done = true
 					}
