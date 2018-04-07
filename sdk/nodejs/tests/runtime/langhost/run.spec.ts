@@ -347,6 +347,14 @@ describe("rpc", () => {
                 };
             },
         },
+        // Test that the runtime can be loaded twice.
+        "runtime_sxs": {
+            program: path.join(base, "015.runtime_sxs"),
+            expectResourceCount: 2,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                return { urn: makeUrn(t, name), id: name, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -480,12 +488,8 @@ function mockRun(langHostClient: any, monitor: string, opts: RunCase, dryrun: bo
         (resolve, reject) => {
             const runReq = new langproto.RunRequest();
             runReq.setMonitorAddress(monitor);
-            if (opts.project) {
-                runReq.setProject(opts.project);
-            }
-            if (opts.stack) {
-                runReq.setStack(opts.stack);
-            }
+            runReq.setProject(opts.project || "project");
+            runReq.setStack(opts.stack || "stack");
             if (opts.pwd) {
                 runReq.setPwd(opts.pwd);
             }

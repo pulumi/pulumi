@@ -1,7 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 import * as log from "../log";
-import { options } from "./settings";
 
 /**
  * debugPromiseTimeout can be set to enable promises debugging.  If it is -1, it has no effect.  Be careful setting
@@ -88,7 +87,7 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
  * errorString produces a string from an error, conditionally including additional diagnostics.
  */
 export function errorString(err: Error): string {
-    if (options.includeStackTraces && err.stack) {
+    if (err.stack) {
         return err.stack;
     }
     return err.toString();
