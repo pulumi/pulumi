@@ -240,7 +240,7 @@ export function main(args: string[]): void {
         // problem with the current Component design though - not sure what else we could do here.
         //
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-        log.debugX("", `Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+        log.debug("", `Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
             return require(program);
         } catch (e) {

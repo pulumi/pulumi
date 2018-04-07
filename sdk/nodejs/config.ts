@@ -22,7 +22,7 @@ export class Config {
         // just new Config("<package>") was called.
         if (name.endsWith(":config")) {
             const newName = name.replace(/:config$/, "");
-            log.warnX("", "`:config` is no longer required at the end of configuration " +
+            log.warn("", "`:config` is no longer required at the end of configuration " +
                 "bag names and support will be removed in a future version, please " +
                 "use new Config(\"%s\") instead.", newName);
             name = newName;
