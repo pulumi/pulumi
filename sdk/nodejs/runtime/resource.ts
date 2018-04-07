@@ -47,6 +47,7 @@ export function readResource(res: Resource, id: Input<ID>, t: string, name: stri
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
+        // Create a resource request and do the RPC.
         const req = new resproto.ReadResourceRequest();
         req.setType(t);
         req.setName(name);
@@ -71,7 +72,7 @@ export function readResource(res: Resource, id: Input<ID>, t: string, name: stri
 
             // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
             resop.resolveURN(resp.getUrn());
-            resop.resolveID!(resolvedID, true);
+            resop.resolveID!(id, id !== undefined);
             await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
         });
     }));
