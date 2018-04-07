@@ -87,6 +87,46 @@ func writeProgress(chanOutput progress.Output, progress progress.Progress) {
 	}
 }
 
+var (
+	// We want to present a trim name to users for any URN.  These maps, and the helper functions
+	// below are used for that.
+	urnToID = make(map[resource.URN]string)
+	idToUrn = make(map[string]resource.URN)
+)
+
+func makeIDWorker(urn resource.URN, suffix int) string {
+	// for i := 0
+	var id string
+	if urn == "" {
+		id = "global"
+	} else {
+		id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
+	}
+
+	if suffix > 0 {
+		id += fmt.Sprintf("-%v", suffix)
+	}
+
+	return id
+}
+
+func makeID(urn resource.URN) string {
+	if id, has := urnToID[urn]; !has {
+		for i := 0; ; i++ {
+			id = makeIDWorker(urn, i)
+
+			if _, has = idToUrn[id]; !has {
+				urnToID[urn] = id
+				idToUrn[id] = urn
+
+				return id
+			}
+		}
+	} else {
+		return id
+	}
+}
+
 // DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
@@ -127,8 +167,15 @@ func DisplayEvents(action string,
 	// A mapping from each resource URN we are told about to its current status.
 	eventUrnToStatus := make(map[resource.URN]Status)
 
-	// As we receive information for the engine, we will convert them into
+	// As we receive information for the engine, we will convert them into Status objects
+	// that we track.  In turn, every time we update our status (or our ticker fires) we'll
+	// update the "progress channel".  This progress chanel is what the Docker cli listens
+	// to which it then updates the actual CLI with.
 	_, stdout, _ := term.StdStreams()
+
+	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
+	// For example, we'll go back and update previous status messages to make sure things
+	// align.  We don't need to do that in non-terminal situations.
 	_, isTerminal := term.GetFdInfo(stdout)
 
 	pipeReader, pipeWriter := io.Pipe()
@@ -137,21 +184,27 @@ func DisplayEvents(action string,
 	chanOutput := progress.ChanOutput(progressChan)
 
 	go func() {
+		// docker helper that reads progress messages in from progressChan and converts them
+		// into special formatted messages that are written to pipe-writer.
 		writeDistributionProgress(pipeWriter, progressChan)
+
+		// Once we've written everything to the pipe, we're done with it can let it go.
 		err := pipeWriter.Close()
 		if err != nil {
 			contract.IgnoreError(err)
 		}
-	}()
 
-	defer func() {
-		// spinner.Reset()
 		ticker.Stop()
+
+		// let our caller knwo we're done.
 		done <- true
 	}()
 
 	createInProgressMessage := func(status Status) string {
 		msg := status.Message
+
+		// if there are any diagnostics for this resource, add information about the
+		// last diagnostic to the status message.
 		if len(status.DiagEvents) > 0 {
 			diagMsg := RenderEvent(
 				status.DiagEvents[len(status.DiagEvents)-1], seen, debug, opts, isPreview)
@@ -161,6 +214,7 @@ func DisplayEvents(action string,
 			}
 		}
 
+		// Add an changing ellipses to help convey that progress is happening.
 		ellipses := strings.Repeat(".", (status.Tick+currentTick)%3) + "  "
 		msg += ellipses
 
@@ -171,6 +225,9 @@ func DisplayEvents(action string,
 		if status.Step.Op == "" {
 			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 		}
+
+		// Colorize the information about the resource operation, and add a summary
+		// of all the diagnostics we heard about it.
 
 		msg := colors.ColorizeText(
 			getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/))
@@ -249,6 +306,10 @@ func DisplayEvents(action string,
 		}
 	}
 
+	// Performs all the work at the end once we've heard about the last message
+	// from the engine. Specifically, this will update the status messages for
+	// any resources, and will also then print out all final diagnostics. and
+	// finally will print out the summary.
 	processEndSteps := func() {
 		// Mark all in progress resources as done.
 		for k, v := range eventUrnToStatus {
@@ -256,15 +317,6 @@ func DisplayEvents(action string,
 				v.Done = true
 				eventUrnToStatus[k] = v
 				printStatusForTopLevelResource(v)
-			}
-		}
-
-		// print the summary
-		if summaryEvent != nil {
-			msg := RenderEvent(*summaryEvent, seen, debug, opts, isPreview)
-			if msg != "" {
-				writeProgress(chanOutput, progress.Progress{Message: " "})
-				writeProgress(chanOutput, progress.Progress{Message: msg})
 			}
 		}
 
@@ -288,63 +340,20 @@ func DisplayEvents(action string,
 			}
 		}
 
-		// no more progress events from this point on.
-		close(progressChan)
-	}
-
-	urnToID := make(map[resource.URN]string)
-	idToUrn := make(map[string]resource.URN)
-
-	makeIDWorker := func(urn resource.URN, suffix int) string {
-		// for i := 0
-		var id string
-		if urn == "" {
-			id = "global"
-		} else {
-			id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
-		}
-
-		if suffix > 0 {
-			id += fmt.Sprintf("-%v", suffix)
-		}
-
-		return id
-	}
-
-	makeID := func(urn resource.URN) string {
-		if id, has := urnToID[urn]; !has {
-			for i := 0; ; i++ {
-				id = makeIDWorker(urn, i)
-
-				if _, has = idToUrn[id]; !has {
-					urnToID[urn] = id
-					idToUrn[id] = urn
-
-					return id
-				}
+		// print the summary
+		if summaryEvent != nil {
+			msg := RenderEvent(*summaryEvent, seen, debug, opts, isPreview)
+			if msg != "" {
+				writeProgress(chanOutput, progress.Progress{Message: " "})
+				writeProgress(chanOutput, progress.Progress{Message: msg})
 			}
-		} else {
-			return id
-		}
-	}
-
-	var mapToStackUrnOrImmediateStackChildUrn func(urn resource.URN) resource.URN
-	mapToStackUrnOrImmediateStackChildUrn = func(urn resource.URN) resource.URN {
-		if urn == "" || urn == stackUrn {
-			return stackUrn
 		}
 
-		v, ok := seen[urn]
-		if !ok {
-			return stackUrn
-		}
-
-		parent := v.Res.Parent
-		if parent == "" || parent == stackUrn {
-			return urn
-		}
-
-		return mapToStackUrnOrImmediateStackChildUrn(parent)
+		// no more progress events from this point on.  By closing the progress channel, this will
+		// cause writeDistributionProgress to finish.  This, in turn, will close the pipeWriter.
+		// This will then cause DisplayJSONMessagesToStream to finish once it processes the last
+		// message is receives from pipeReader, causing DisplayEvents to finally complete.
+		close(progressChan)
 	}
 
 	go func() {
@@ -473,24 +482,6 @@ func renderEventWorker(
 		return ""
 	}
 }
-
-// func upToFirstNewLine(opts backend.DisplayOptions, msg string) string {
-// 	if msg == "" {
-// 		return msg
-// 	}
-
-// 	var newLineIndex = strings.Index(msg, "\n")
-// 	if newLineIndex >= 0 {
-// 		msg = msg[0:newLineIndex]
-// 	}
-
-// 	if len(msg) > 180 {
-// 		msg = msg[0:180]
-// 	}
-
-// 	msg = msg + opts.Color.Colorize(colors.Reset) + "\n"
-// 	return msg
-// }
 
 func renderDiagEvent(
 	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
