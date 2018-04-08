@@ -196,7 +196,7 @@ func DisplayEvents(action string,
 
 		ticker.Stop()
 
-		// let our caller knwo we're done.
+		// let our caller know we're done.
 		done <- true
 	}()
 
@@ -452,7 +452,7 @@ func DisplayEvents(action string,
 				// Ensure that this updated status is recorded.
 				eventUrnToStatus[eventUrn] = status
 
-				// refresh teh progress information for this resource.  (or update all resources if
+				// refresh the progress information for this resource.  (or update all resources if
 				// we need to realign everything)
 				if refreshAllStatuses {
 					printStatusForTopLevelResources(true /*includeDone*/)
@@ -796,11 +796,6 @@ func renderResourceOutputsEvent(
 	}
 
 	return ""
-}
-
-// isRootStack returns true if the step pertains to the rootmost stack component.
-func isRootStack(step engine.StepEventMetadata) bool {
-	return isRootURN(step.URN)
 }
 
 func isRootURN(urn resource.URN) bool {
