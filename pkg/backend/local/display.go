@@ -74,10 +74,9 @@ func getEventUrn(event engine.Event) resource.URN {
 	} else if event.Type == engine.DiagEvent {
 		payload := event.Payload.(engine.DiagEventPayload)
 		return payload.URN
+	} else {
+		return ""
 	}
-
-	contract.Failf("Unhandled event type '%s'", event.Type)
-	return ""
 }
 
 func writeProgress(chanOutput progress.Output, progress progress.Progress) {
@@ -200,6 +199,7 @@ func DisplayEvents(action string,
 		done <- true
 	}()
 
+	ellipses := []string{"", ".", "..", "..."}
 	createInProgressMessage := func(status Status) string {
 		msg := status.Message
 
@@ -215,8 +215,7 @@ func DisplayEvents(action string,
 		}
 
 		// Add an changing ellipses to help convey that progress is happening.
-		ellipses := strings.Repeat(".", (status.Tick+currentTick)%3) + "  "
-		msg += ellipses
+		msg += ellipses[(status.Tick+currentTick)%len(ellipses)]
 
 		return msg
 	}
@@ -325,7 +324,7 @@ func DisplayEvents(action string,
 
 		for _, status := range eventUrnToStatus {
 			if len(status.DiagEvents) > 0 {
-				writeProgress(chanOutput, progress.Progress{Message: " "})
+				wroteHeader := false
 				for _, v := range status.DiagEvents {
 					// out = os.Stdout
 					// if v.Severity == diag.Error || v.Severity == diag.Warning {
@@ -334,7 +333,13 @@ func DisplayEvents(action string,
 
 					msg := RenderEvent(v, seen, debug, opts, isPreview)
 					if msg != "" {
-						writeProgress(chanOutput, progress.Progress{Message: msg})
+						if !wroteHeader {
+							wroteHeader = true
+							writeProgress(chanOutput, progress.Progress{Message: " "})
+							writeProgress(chanOutput, progress.Progress{ID: status.ID, Message: "Diagnostics"})
+						}
+
+						writeProgress(chanOutput, progress.Progress{Message: "  " + msg})
 					}
 				}
 			}
@@ -376,6 +381,11 @@ func DisplayEvents(action string,
 					return
 				}
 
+				eventUrn := getEventUrn(event)
+				if isRootURN(eventUrn) {
+					stackUrn = eventUrn
+				}
+
 				// First just make a string out of the event.  If we get nothing back this isn't an
 				// interesting event and we can just skip it.
 				msg := RenderEvent(event, seen, debug, opts, isPreview)
@@ -401,11 +411,6 @@ func DisplayEvents(action string,
 				}
 
 				// At this point, all events should relate to resources.
-
-				eventUrn := getEventUrn(event)
-				if isRootURN(eventUrn) {
-					stackUrn = eventUrn
-				}
 
 				if eventUrn == "" {
 					// if the event doesn't have any URN associated with it, just associate
