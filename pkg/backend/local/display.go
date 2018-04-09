@@ -108,6 +108,12 @@ func renderDiagEvent(payload engine.DiagEventPayload, debug bool, opts backend.D
 	return opts.Color.Colorize(payload.Message)
 }
 
+func renderStdoutColorEvent(
+	payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
+
+	return opts.Color.Colorize(payload.Message)
+}
+
 func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
 	changes := event.ResourceChanges
 
@@ -233,12 +239,6 @@ func renderResourcePreEvent(
 	}
 
 	return out.String()
-}
-
-func renderStdoutColorEvent(
-	payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
-
-	return opts.Color.Colorize(payload.Message)
 }
 
 func renderResourceOutputsEvent(
