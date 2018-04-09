@@ -405,8 +405,20 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 // workspace settings and Pulumi.yaml, to the new system where configuration data is stored in Pulumi.<stack-name>.yaml
 func upgradeConfigurationFiles() error {
 	// If there's no workspace, don't even try to upgrade.
-	_, err := workspace.New()
+	w, err := workspace.New()
 	if err != nil {
+		return nil
+	}
+
+	// If we can't detect a project, also don't try to upgrade.
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return nil
+	}
+
+	// If the project does not have any workspace or project level configuration (this will be true for new projects
+	// and for any projects that have been upgraded), we can bail out early, as there is nothing to do.
+	if len(w.Settings().ConfigDeprecated) == 0 && len(proj.ConfigDeprecated) == 0 {
 		return nil
 	}
 
