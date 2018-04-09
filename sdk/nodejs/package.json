@@ -3,6 +3,9 @@
     "version": "${VERSION}",
     "description": "Pulumi's Node.js SDK",
     "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
+    "scripts": {
+        "install": "node install.js"
+    },
     "devDependencies": {
         "@types/minimist": "^1.2.0",
         "@types/mocha": "^2.2.42",
@@ -19,5 +22,8 @@
         "require-from-string": "^2.0.1",
         "source-map-support": "^0.4.16",
         "typescript": "^2.5.2"
+    },
+    "pulumi": {
+        "nodeVersion": "v6.10.2"
     }
 }
