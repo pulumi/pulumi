@@ -5,37 +5,9 @@ import { basename } from "path";
 import * as ts from "typescript";
 import { RunError } from "../../errors";
 import * as resource from "../../resource";
+import * as nativeruntime from "./native";
 import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
-
-// Our closure serialization code links against v8 internals. On Windows, we can't dynamically link
-// against v8 internals because their symbols are unexported. In order to address this problem,
-// Pulumi programs run on a custom build of Node.
-//
-// On Linux and OSX, we can dynamically link against v8 internals, so we can run on stock Node.
-// However, we only build nativeruntime.node against specific versions of Node, users running Pulumi
-// programs must explicitly use a supported version of Node.
-const supportedNodeVersions = ["v6.10.2"];
-let nativeruntime: any;
-try {
-    nativeruntime = require("nativeruntime-v0.11.0.node");
-}
-catch (err) {
-    // There are two reasons why this can happen:
-    //   1. We messed up when packaging Pulumi and failed to include nativeruntime.node,
-    //   2. A user is running their Pulumi program with a version of Node that we do not explicitly support.
-    const thisNodeVersion = process.version;
-    if (supportedNodeVersions.indexOf(thisNodeVersion) > -1) {
-        // This node version is explicitly supported, but the load still failed.
-        // This means that Pulumi messed up when installing itself.
-        throw new RunError(`Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
-    }
-
-    throw new RunError(
-        `Failed to load custom Pulumi SDK Node.js extension; The version of Node.js that you are
-         using (${thisNodeVersion}) is not explicitly supported, you must use one of these
-         supported versions of Node.js: ${supportedNodeVersions}`);
-}
 
 export interface ObjectInfo {
     // information about the prototype of this object/function.  If this is an object, we only store
