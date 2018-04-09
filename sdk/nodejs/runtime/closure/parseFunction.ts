@@ -208,14 +208,17 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             }];
         }
 
-        const funcName = v.substr(0, openParenIndex);
-        const commentedName = closure.isLegalName(funcName) ? "/*" + funcName + "*/" : "";
+        const nameChunk = v.substr(0, openParenIndex);
+        const funcName = closure.isLegalMemberName(nameChunk)
+            ? closure.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
+            : "";
+        const commentedName = closure.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
         v = v.substr(openParenIndex).trimLeft();
 
         return ["", {
             funcExprWithoutName: prefix + commentedName + v,
             funcExprWithName: prefix + funcName + v,
-            functionDeclarationName: isFunctionDeclaration ? funcName : undefined,
+            functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
             isArrowFunction: false,
         }];
     }

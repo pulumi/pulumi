@@ -34,7 +34,7 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 firstFunctionDeclaration = false;
                 const funcDecl = ts.visitEachChild(node, visitor, transformationContext);
 
-                const text = closure.isLegalName(funcDecl.name!.text)
+                const text = closure.isLegalMemberName(funcDecl.name!.text)
                     ? "/*" + funcDecl.name!.text + "*/" : "";
                 return ts.updateFunctionDeclaration(
                     funcDecl,

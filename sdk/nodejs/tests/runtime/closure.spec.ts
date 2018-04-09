@@ -1811,6 +1811,29 @@ return function /*m*/() { return this.n(); };
 
     {
         class C {
+            public delete() { return 0; }
+        }
+        cases.push({
+            title: "Serialize method with reserved name",
+            func: new C().delete,
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({  }) {
+
+return function /*delete*/() { return 0; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+
+    {
+        class C {
             public static m() { return this.n(); }
             public static n() { return 0; }
         }
