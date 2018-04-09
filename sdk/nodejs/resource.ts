@@ -1,6 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-import * as log from "./log";
 import * as runtime from "./runtime";
 import {
     readResource,
