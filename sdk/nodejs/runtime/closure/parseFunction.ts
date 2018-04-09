@@ -80,6 +80,10 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
 
+    if (result.capturedVariables.required.this) {
+        return ["lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.", result];
+    }
+
     return ["", result];
 }
 

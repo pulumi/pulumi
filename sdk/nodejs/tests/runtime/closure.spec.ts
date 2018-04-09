@@ -133,20 +133,15 @@ return () => { };
         title: "Arrow closure with this capture",
         // tslint:disable-next-line
         func: () => { console.log(this); },
-        expectText: `exports.handler = __f0;
+        expectText: undefined,
+        error:
+`Error serializing function 'func': closure.spec.js(0,0)
 
-var __this = {};
-Object.defineProperty(__this, "__esModule", { value: true });
+function 'func': closure.spec.js(0,0): which could not be serialized because
+  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
 
-function __f0() {
-  return (function() {
-    with({  }) {
-
-return () => { console.log(this); };
-
-    }
-  }).apply(__this, undefined).apply(this, arguments);
-}
+Function code:
+  () => { console.log(this); }
 `,
     });
 
@@ -192,20 +187,14 @@ return () => __awaiter(this, void 0, void 0, function* () { });
         title: "Async lambda that does capture this",
         // tslint:disable-next-line
         func: async () => { console.log(this); },
-        expectText: `exports.handler = __f0;
+        expectText: undefined,
+        error: `Error serializing function 'func': closure.spec.js(0,0)
 
-var __this = {};
-Object.defineProperty(__this, "__esModule", { value: true });
-${awaiterCode}
-function __f0() {
-  return (function() {
-    with({ __awaiter: __f1 }) {
+function 'func': closure.spec.js(0,0): which could not be serialized because
+  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
 
-return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
-
-    }
-  }).apply(__this, undefined).apply(this, arguments);
-}
+Function code:
+  () => __awaiter(this, void 0, void 0, function* () { console.log(this); })
 `,
     });
 
@@ -253,21 +242,14 @@ return function () {
         title: "Arrow closure with this and arguments capture",
         // tslint:disable-next-line
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
-        expectText: `exports.handler = __f0;
+        expectText: undefined,
+        error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
 
-var __this = {};
-Object.defineProperty(__this, "__esModule", { value: true });
-var __arguments = [0, 1];
+function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
 
-function __f0() {
-  return (function() {
-    with({  }) {
-
-return () => { console.log(this + arguments); };
-
-    }
-  }).apply(__this, __arguments).apply(this, arguments);
-}
+Function code:
+  () => { console.log(this + arguments); }
 `,
     });
 
@@ -527,64 +509,16 @@ return function () {
             title: "Invocation of async lambda that capture this #1",
             // tslint:disable-next-line
             func: async function() { await task.run(); },
-            expectText: `exports.handler = __f0;
+            expectText: undefined,
+            error: `Error serializing function 'func': closure.spec.js(0,0)
 
-var __task_proto = {};
-Object.defineProperty(__task_proto, "constructor", { configurable: true, writable: true, value: __f2 });
-var __task = Object.create(__task_proto);
-__task.run = __f3;
+function 'func': closure.spec.js(0,0): captured
+  variable 'task' which indirectly referenced
+    function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+      lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
 
-function __f1() {
-  return (function() {
-    with({  }) {
-
-return function (thisArg, _arguments, P, generator) {
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __f2() {
-  return (function() {
-    with({ __awaiter: __f1 }) {
-
-return function /*constructor*/() {
-                // tslint:disable-next-line:no-empty
-                this.run = () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
-            };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __f3() {
-  return (function() {
-    with({ __awaiter: __f1 }) {
-
-return () => __awaiter(this, void 0, void 0, function* () { console.log(this); });
-
-    }
-  }).apply(__task, undefined).apply(this, arguments);
-}
-
-function __f0() {
-  return (function() {
-    with({ __awaiter: __f1, task: __task }) {
-
-return function () {
-                return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
-            };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
+Function code:
+  () => __awaiter(this, void 0, void 0, function* () { console.log(this); })
 `,
         });
     }
@@ -1123,19 +1057,14 @@ return () => {
         cases.push({
             title: "Serializes `this` capturing arrow functions",
             func: cap.f,
-            expectText: `exports.handler = __f0;
+            expectText: undefined,
+            error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
 
-var __this = {x: 42};
+function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
+  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
 
-function __f0() {
-  return (function() {
-    with({  }) {
-
-return () => { console.log(this.x); };
-
-    }
-  }).apply(__this, undefined).apply(this, arguments);
-}
+Function code:
+  () => { console.log(this.x); }
 `,
         });
     }
