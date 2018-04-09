@@ -93,7 +93,7 @@ func (info PluginInfo) Delete() error {
 }
 
 // SetFileMetadata adds extra metadata from the given file, representing this plugin's directory.
-func (info *PluginInfo) SetFileMetadata(dir, path string) error {
+func (info *PluginInfo) SetFileMetadata(path string) error {
 	// Get the file info.
 	file, err := os.Stat(path)
 	if err != nil {
@@ -101,15 +101,11 @@ func (info *PluginInfo) SetFileMetadata(dir, path string) error {
 	}
 
 	// Next, get the size from the directory (or, if there is none, just the file).
-	if dir == "" {
-		info.Size = file.Size()
-	} else {
-		size, err := getPluginSize(dir)
-		if err != nil {
-			return errors.Wrapf(err, "getting plugin dir %s size", dir)
-		}
-		info.Size = size
+	size, err := getPluginSize(path)
+	if err != nil {
+		return errors.Wrapf(err, "getting plugin dir %s size", path)
 	}
+	info.Size = size
 
 	// Next get the access times from the plugin binary itself.
 	tinfo := times.Get(file)
@@ -273,7 +269,7 @@ func GetPlugins() ([]PluginInfo, error) {
 				Kind:    kind,
 				Version: &version,
 			}
-			if err = plugin.SetFileMetadata(dir, filepath.Join(dir, file.Name())); err != nil {
+			if err = plugin.SetFileMetadata(filepath.Join(dir, file.Name())); err != nil {
 				return nil, err
 			}
 			plugins = append(plugins, plugin)
