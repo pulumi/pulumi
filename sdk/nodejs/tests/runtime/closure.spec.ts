@@ -138,7 +138,7 @@ return () => { };
 `Error serializing function 'func': closure.spec.js(0,0)
 
 function 'func': closure.spec.js(0,0): which could not be serialized because
-  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
+  arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
   () => { console.log(this); }
@@ -191,7 +191,7 @@ return () => __awaiter(this, void 0, void 0, function* () { });
         error: `Error serializing function 'func': closure.spec.js(0,0)
 
 function 'func': closure.spec.js(0,0): which could not be serialized because
-  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
+  arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
   () => __awaiter(this, void 0, void 0, function* () { console.log(this); })
@@ -246,7 +246,7 @@ return function () {
         error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
 
 function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
-  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
+  arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
   () => { console.log(this + arguments); }
@@ -515,7 +515,7 @@ return function () {
 function 'func': closure.spec.js(0,0): captured
   variable 'task' which indirectly referenced
     function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
-      lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
+      arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
   () => __awaiter(this, void 0, void 0, function* () { console.log(this); })
@@ -1061,7 +1061,7 @@ return () => {
             error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
 
 function '<anonymous>': closure.spec.js(0,0): which could not be serialized because
-  lambda captured 'this'. Assign 'this' to another name outside lambda and capture that.
+  arrow function captured 'this'. Assign 'this' to another name outside function and capture that.
 
 Function code:
   () => { console.log(this.x); }
