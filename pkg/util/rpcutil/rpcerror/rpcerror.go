@@ -19,6 +19,7 @@ package rpcerror
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,6 +35,7 @@ type Error struct {
 	code    codes.Code
 	message string
 	cause   *ErrorCause
+	details []interface{}
 }
 
 func (r *Error) Error() string {
@@ -58,6 +60,13 @@ func (r *Error) Message() string {
 // or nil if one wasn't provided.
 func (r *Error) Cause() *ErrorCause {
 	return r.cause
+}
+
+// Details returns the list of all auxiliary protobuf objects that were
+// attached to this error by the server. It's up to the caller to try and
+// downcast them to look for the one they are interested in.
+func (r *Error) Details() []interface{} {
+	return r.details
 }
 
 // ErrorCause represents a root cause of an error that ultimately caused
@@ -123,6 +132,17 @@ func Wrapf(code codes.Code, err error, messageFormat string, args ...interface{}
 	return status.Err()
 }
 
+// WithDetails adds arbitrary protobuf payloads to errors created by this package.
+// These errors will be accessible by calling `Details` on `Error` instances created
+// by `FromError`.
+func WithDetails(err error, details ...proto.Message) error {
+	status, ok := status.FromError(err)
+	contract.Assertf(ok, "WithDetails called on error not created by rpcerror")
+	status, conversionError := status.WithDetails(details...)
+	contract.AssertNoError(conversionError)
+	return status.Err()
+}
+
 // FromError "unwraps" an error created by functions in the `rpcerror` package and produces
 // an `Error` structure from them.
 //
@@ -141,6 +161,7 @@ func FromError(err error) (*Error, bool) {
 	var rpcError Error
 	rpcError.code = status.Code()
 	rpcError.message = status.Message()
+	rpcError.details = status.Details()
 	for _, details := range status.Details() {
 		if errorCause, ok := details.(*pulumirpc.ErrorCause); ok {
 			contract.Assertf(rpcError.cause == nil, "RPC endpoint sent more than one ErrorCause")

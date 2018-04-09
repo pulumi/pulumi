@@ -208,7 +208,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				cmdutil.Diag().Warningf(
 					diag.Message(
 						"saved config key '%s' value '%s' as plaintext; "+
-							"re-run with --secret to encrypt the value instead. Use"+
+							"re-run with --secret to encrypt the value instead. Use "+
 							"--plaintext to avoid this warning"),
 					key, value)
 			}

@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python
-VERSION          := $(shell ../../scripts/get-version | sed "s/v//" | sed "s/-dev-/a/" | sed "s/-rc/rc/")
+VERSION          := $(shell ../../scripts/get-py-version)
 
 PYENV := env
 PYENVBIN := $(PYENV)/bin
@@ -13,7 +13,7 @@ GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 include ../../build/common.mk
 
 ensure::
-	$(PIP) install virtualenv
+	$(PIP) install --user 'virtualenv>=15.2.0'
 	rm -rf $(PYENV) && virtualenv --python=$(PYTHON) $(PYENV)/
 	echo "export PYTHONPATH=$${PYTHONPATH}:$(shell pwd)/$(PYENVLIB)/python2.7/site-packages" >> $(PYENVBIN)/activate
 	( \

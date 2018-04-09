@@ -27,6 +27,7 @@ It has these top-level messages:
 	PluginInfo
 	PluginDependency
 	ConfigureRequest
+	ConfigureErrorMissingKeys
 	InvokeRequest
 	InvokeResponse
 	CheckRequest
@@ -36,9 +37,13 @@ It has these top-level messages:
 	DiffResponse
 	CreateRequest
 	CreateResponse
+	ReadRequest
+	ReadResponse
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest
+	ReadResourceRequest
+	ReadResourceResponse
 	RegisterResourceRequest
 	RegisterResourceResponse
 	RegisterResourceOutputsRequest

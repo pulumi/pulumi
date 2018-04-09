@@ -8,6 +8,13 @@ const configEnvKey = "PULUMI_CONFIG";
 const config: {[key: string]: string} = {};
 
 /**
+ * allConfig returns a copy of the full config map.
+ */
+export function allConfig(): {[key: string]: string} {
+    return Object.assign({}, config);
+}
+
+/**
  * setConfig sets a configuration variable.
  */
 export function setConfig(k: string, v: string): void {

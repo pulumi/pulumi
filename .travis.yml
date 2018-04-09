@@ -7,6 +7,8 @@ jobs:
 language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
+env:
+    - PULUMI_API=https://api.pulumi-staging.io
 git:
   depth: false
 before_install:

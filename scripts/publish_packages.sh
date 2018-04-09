@@ -5,8 +5,17 @@ ROOT=$(dirname $0)/..
 
 if [[ "${TRAVIS_OS_NAME:-}" == "linux" ]]; then
     echo "Publishing NPM package to NPMjs.com:"
+    NPM_TAG="dev"
+
+    # If the package doesn't have a pre-release tag, use the tag of latest instead of
+    # dev. NPM uses this tag as the default version to add, so we want it to mean
+    # the newest released version.
+    if [[ $(jq -r .version < "${ROOT}/sdk/nodejs/bin/package.json") != *-* ]]; then
+        NPM_TAG="latest"
+    fi
+
     pushd ${ROOT}/sdk/nodejs/bin && \
-        npm publish && \
+        npm publish --tag "${NPM_TAG}" && \
         npm info 2>/dev/null || true && \
         popd
 

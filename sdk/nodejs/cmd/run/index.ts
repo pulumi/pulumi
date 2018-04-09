@@ -10,10 +10,6 @@ import { RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 
-const grpc = require("grpc");
-const engrpc = require("../../proto/engine_grpc_pb.js");
-const resrpc = require("../../proto/resource_grpc_pb.js");
-
 function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
     console.error(``);
@@ -180,23 +176,17 @@ export function main(args: string[]): void {
         return printErrorUsageAndExit(`error: --monitor=addr must be provided.`);
     }
 
-    const monitor = new resrpc.ResourceMonitorClient(monitorAddr, grpc.credentials.createInsecure());
-
     // If there is an engine argument, connect to it too.
-    let engine: Object | undefined;
     const engineAddr: string | undefined = argv["engine"];
-    if (engineAddr) {
-        engine = new engrpc.EngineClient(engineAddr, grpc.credentials.createInsecure());
-    }
 
     // Now configure the runtime and get it ready to run the program.
-    runtime.configure({
+    runtime.setOptions({
         project: project,
         stack: stack,
         dryRun: dryRun,
         parallel: parallel,
-        monitor: monitor,
-        engine: engine,
+        monitorAddr: monitorAddr,
+        engineAddr: engineAddr,
     });
 
     // Pluck out the program and arguments.

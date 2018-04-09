@@ -17,6 +17,7 @@ import (
 
 func newPluginInstallCmd() *cobra.Command {
 	var cloudURL string
+	var exact bool
 	var file string
 	var reinstall bool
 	var cmd = &cobra.Command{
@@ -83,9 +84,18 @@ func newPluginInstallCmd() *cobra.Command {
 
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
-				// If the plugin already exists, don't download it unless --reinstall was passed.
-				if !reinstall && workspace.HasPlugin(install) {
-					continue
+				// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
+				// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
+				if !reinstall {
+					if exact {
+						if workspace.HasPlugin(install) {
+							continue
+						}
+					} else {
+						if has, _ := workspace.HasPluginGTE(install); has {
+							continue
+						}
+					}
 				}
 
 				// If we got here, actually try to do the download.
@@ -115,6 +125,8 @@ func newPluginInstallCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&cloudURL,
 		"cloud-url", "c", "", "A cloud URL to download releases from")
+	cmd.PersistentFlags().BoolVar(&exact,
+		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,
 		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,

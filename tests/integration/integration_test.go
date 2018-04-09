@@ -42,7 +42,7 @@ func TestProjectMain(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.Equal(t, test.GetStackName(), stackInfo.Checkpoint.Stack)
+			assert.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -58,7 +58,8 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("project_main_abs")
-		e.RunCommand("pulumi", "stack", "init", "--local", "main-abs")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
@@ -75,7 +76,8 @@ func TestProjectMain(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("project_main_parent")
-		e.RunCommand("pulumi", "stack", "init", "--local", "main-parent")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
@@ -99,9 +101,10 @@ func TestStackOutputs(t *testing.T) {
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			if assert.Equal(t, 1, len(stackInfo.Checkpoint.Latest.Resources)) {
-				stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 				assert.Equal(t, 0, len(stackRes.Inputs))
@@ -130,15 +133,15 @@ func TestStackParenting(t *testing.T) {
 			//
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			if assert.Equal(t, 8, len(stackInfo.Checkpoint.Latest.Resources)) {
-				stackRes := stackInfo.Checkpoint.Latest.Resources[0]
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 8, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 
 				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Checkpoint.Latest.Resources[1:] {
+				for _, res := range stackInfo.Deployment.Resources[1:] {
 					assert.NotNil(t, res)
 
 					urns[string(res.URN.Name())] = res.URN
@@ -169,8 +172,8 @@ func TestStackDependencyGraph(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Checkpoint.Latest)
-			latest := stackInfo.Checkpoint.Latest
+			assert.NotNil(t, stackInfo.Deployment)
+			latest := stackInfo.Deployment
 			assert.True(t, len(latest.Resources) >= 2)
 			fmt.Println(latest.Resources)
 			sawFirst := false
@@ -213,8 +216,9 @@ func TestConfigSave(t *testing.T) {
 	assert.NoError(t, err)
 	e.RunCommand("git", "init")
 	e.RunCommand("pulumi", "init")
-	e.RunCommand("pulumi", "stack", "init", "--local", "testing-2")
-	e.RunCommand("pulumi", "stack", "init", "--local", "testing-1")
+	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+	e.RunCommand("pulumi", "stack", "init", "testing-2")
+	e.RunCommand("pulumi", "stack", "init", "testing-1")
 
 	// Now configure and save a few different things:
 	e.RunCommand("pulumi", "config", "set", "configA", "value1")
@@ -308,7 +312,8 @@ func TestConfigUpgrade(t *testing.T) {
 
 	e.ImportDirectory("config_upgrade")
 
-	// Run a pulumi command, which will upgrade everything.
+	// Run a pulumi command, which will upgrade everything (but we have to be logged in first!)
+	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
 	e.RunCommand("pulumi", "config")
 
 	validate := func(k string, v string, cfg config.Map) {

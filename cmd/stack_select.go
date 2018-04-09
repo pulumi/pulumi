@@ -3,9 +3,6 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -28,35 +25,27 @@ func newStackSelectCmd() *cobra.Command {
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			bes, hasClouds := allBackends()
+			b, err := currentBackend()
+			if err != nil {
+				return err
+			}
+
 			if len(args) > 0 {
 				// A stack was given, ask all known backends about it
 				stackName := tokens.QName(args[0])
 
-				var result error
-				for _, b := range bes {
-					stack, err := b.GetStack(stackName)
-					if err != nil {
-						// If there is an error, file it away, but keep going in case it's a transient cloud error.
-						result = multierror.Append(result, errors.Wrapf(err,
-							"could not query '%s' backend for stack selection", b.Name()))
-						continue
-					} else if stack != nil {
-						return state.SetCurrentStack(stackName)
-					}
+				stack, stackErr := b.GetStack(stackName)
+				if stackErr != nil {
+					return stackErr
+				} else if stack != nil {
+					return state.SetCurrentStack(stackName)
 				}
 
-				// If we fell through, the stack was not found.  Issue an error.  Also customize the error
-				// message if no clouds are logged into, since that is presumably a common mistake.
-				msg := fmt.Sprintf("no stack named '%s' found", stackName)
-				if !hasClouds {
-					msg += "; you aren't logged into the Pulumi Cloud -- did you forget to 'pulumi login'?"
-				}
-				return multierror.Append(result, errors.New(msg))
+				return errors.Errorf("no stack named '%s' found", stackName)
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(bes, true)
+			stack, err := chooseStack(b, true)
 			if err != nil {
 				return err
 			}
