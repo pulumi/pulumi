@@ -217,7 +217,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
                 const propName = envEntryToString(keyEntry, keyName);
                 const propVal = simpleEnvEntryToString(valEntry, keyName);
 
-                if (typeof keyEntry.json === "string" && closure.isLegalName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
                 }
                 else {
@@ -259,7 +259,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
 
             if (!info) {
                 // normal property.  Just emit simply as a direct assignment.
-                if (typeof keyEntry.json === "string" && closure.isLegalName(keyEntry.json)) {
+                if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
                     environmentText += `${envVar}.${keyEntry.json} = ${valString};\n`;
                 }
                 else {

@@ -10,11 +10,11 @@ class OperatorProvider implements dynamic.ResourceProvider {
         this.op = op;
     }
 
-    check = (olds: any, news: any) => Promise.resolve({ inputs: news });
-    diff = (id: pulumi.ID, olds: any, news: any) => Promise.resolve({});
-    delete = (id: pulumi.ID, props: any) => Promise.resolve();
-    create = (inputs: any) => Promise.resolve({ id: "0", outs: this.op(Number(inputs.left), Number(inputs.right)) });
-    update = (id: string, olds: any, news: any) => Promise.resolve({ outs: this.op(Number(news.left), Number(news.right)) });
+    public check(olds: any, news: any) { return Promise.resolve({ inputs: news }); }
+    public diff(id: pulumi.ID, olds: any, news: any) { return Promise.resolve({}); }
+    public delete(id: pulumi.ID, props: any) { return Promise.resolve(); }
+    public create(inputs: any) { return Promise.resolve({ id: "0", outs: this.op(Number(inputs.left), Number(inputs.right)) }); }
+    public update(id: string, olds: any, news: any) { return Promise.resolve({ outs: this.op(Number(news.left), Number(news.right)) }); }
 }
 
 class DivProvider extends OperatorProvider {
@@ -22,10 +22,12 @@ class DivProvider extends OperatorProvider {
         super((left: number, right: number) => <any>{ quotient: Math.floor(left / right), remainder: left % right });
     }
 
-    check = (olds: any, news: any) => Promise.resolve({
-        inputs: news,
-        failures: news.right == 0 ? [ { property: "right", reason: "divisor must be non-zero" } ] : [],
-    });
+    public async check(olds: any, news: any) {
+        return {
+            inputs: news,
+            failures: news.right == 0 ? [ { property: "right", reason: "divisor must be non-zero" } ] : [],
+        }
+    }
 }
 
 class Add extends dynamic.Resource {
