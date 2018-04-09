@@ -164,7 +164,8 @@ func (u *cloudUpdate) recordEvent(
 		}
 	}
 
-	// Ensure we render events with raw colorization tags.
+	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
+	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
 	msg := local.RenderDiffEvent(event, seen, debug, opts)
 	if msg == "" {
