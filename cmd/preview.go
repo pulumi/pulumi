@@ -22,7 +22,7 @@ func newPreviewCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var summary bool
+	var diffDisplay bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -62,7 +62,7 @@ func newPreviewCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
-				Summary:              summary,
+				DiffDisplay:          diffDisplay,
 			})
 		}),
 	}
@@ -93,8 +93,8 @@ func newPreviewCmd() *cobra.Command {
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVar(
-		&summary, "summary", false,
-		"Only display summarization of resources and operations")
+		&diffDisplay, "diff", false,
+		"Display operation as a rich diff showing the overall change")
 
 	return cmd
 }
