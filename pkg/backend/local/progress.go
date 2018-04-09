@@ -72,9 +72,9 @@ func getEventUrn(event engine.Event) resource.URN {
 	} else if event.Type == engine.DiagEvent {
 		payload := event.Payload.(engine.DiagEventPayload)
 		return payload.URN
-	} else {
-		return ""
 	}
+
+	return ""
 }
 
 func writeProgress(chanOutput progress.Output, progress progress.Progress) {
