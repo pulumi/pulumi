@@ -34,12 +34,6 @@ CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-language-nodejs-exec.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
-Copy-Item "$Root\sdk\nodejs\custom_node\node\node.exe" "$PublishDir\bin\pulumi-language-nodejs-node.exe"
-
-$NodeFolder = "$PublishDir\bin\$NodeVersion"
-New-Item -ItemType Directory -Force -Path $NodeFolder | Out-Null
-Copy-Item "$Root\sdk\nodejs\runtime\native\build\Release\nativeruntime-v0.11.0.node" $NodeFolder
-Copy-Item "$Root\sdk\nodejs\runtime\native\build\Release\nativeruntime-v0.11.0.pdb" $NodeFolder
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing
 # archive if it exists.
