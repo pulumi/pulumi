@@ -683,3 +683,8 @@ func renderProgressResourceOutputsEvent(
 
 	return ""
 }
+
+func writeString(b *bytes.Buffer, s string) {
+	_, err := b.WriteString(s)
+	contract.IgnoreError(err)
+}

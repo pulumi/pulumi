@@ -291,11 +291,6 @@ func plural(s string, c int) string {
 	return s
 }
 
-func writeString(b *bytes.Buffer, s string) {
-	_, err := b.WriteString(s)
-	contract.IgnoreError(err)
-}
-
 func fprintfIgnoreError(w io.Writer, format string, a ...interface{}) {
 	_, err := fmt.Fprintf(w, format, a...)
 	contract.IgnoreError(err)
