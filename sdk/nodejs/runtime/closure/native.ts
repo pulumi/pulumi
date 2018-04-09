@@ -66,19 +66,13 @@ interface V8ScopeDetails {
     readonly scopeObject: Record<string, any>;
 }
 
-// getScopesForFunction invokes the necessary intrinsics to get a list of `V8ScopeDetails` for a given
-// function.
-function getScopesForFunction(func: Function): V8ScopeDetails[] {
-    const scopes: V8ScopeDetails[] = [];
-    const count = getFunctionScopeCount(func);
-    for (let scope = 0; scope < count; scope++) {
-        const scopeDetails = getFunctionScopeDetails(func, scope);
-        scopes.push({
-            scopeObject: scopeDetails[V8ScopeDetailsFields.kScopeDetailsObjectIndex] as Record<string, any>,
-        });
-    }
-
-    return scopes;
+// getScopeForFunction extracts a V8ScopeDetails for the index'th element in the scope chain for the
+// given function.
+function getScopeForFunction(func: Function, index: number): V8ScopeDetails {
+    const scopeDetails = getFunctionScopeDetails(func, index);
+    return {
+        scopeObject: scopeDetails[V8ScopeDetailsFields.kScopeDetailsObjectIndex] as Record<string, any>,
+    };
 }
 
 /**
@@ -94,8 +88,9 @@ function getScopesForFunction(func: Function): V8ScopeDetails[] {
 export function lookupCapturedVariableValue(func: Function, freeVariable: string, throwOnFailure: boolean): any {
     // The implementation of this function is now very straightforward since the intrinsics do all of the
     // difficult work.
-    const scopes = getScopesForFunction(func);
-    for (const scope of scopes) {
+    const count = getFunctionScopeCount(func);
+    for (let i = 0; i < count; i++) {
+        const scope = getScopeForFunction(func, i);
         if (freeVariable in scope.scopeObject) {
             return scope.scopeObject[freeVariable];
         }
