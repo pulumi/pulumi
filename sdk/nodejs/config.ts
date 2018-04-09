@@ -1,5 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+import * as util from "util";
 import { RunError } from "./errors";
 import * as log from "./log";
 import * as runtime from "./runtime";
@@ -22,9 +23,9 @@ export class Config {
         // just new Config("<package>") was called.
         if (name.endsWith(":config")) {
             const newName = name.replace(/:config$/, "");
-            log.warn("", "`:config` is no longer required at the end of configuration " +
+            log.warn(util.format("`:config` is no longer required at the end of configuration " +
                 "bag names and support will be removed in a future version, please " +
-                "use new Config(\"%s\") instead.", newName);
+                "use new Config(\"%s\") instead.", newName));
             name = newName;
         }
 

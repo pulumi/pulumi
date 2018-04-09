@@ -61,37 +61,9 @@ export abstract class Resource {
             registerResource(this, t, name, custom, props, opts);
         }
     }
-
-    private async logAsync(
-            logFn: (urn: string, message: string, ...args: any[]) => void,
-            message: string, args: any[]): Promise<void> {
-        const urn = await this.urn.promise();
-        logFn(urn, message, ...args);
-    }
-
-    public debugAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.debug, message, args);
-    }
-
-    public async infoAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.info, message, args);
-    }
-
-    public async warnAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.warn, message, args);
-    }
-
-    public async errorAsync(message: string, ...args: any[]): Promise<void> {
-        return this.logAsync(log.error, message, args);
-    }
 }
 
 (<any>Resource).doNotCapture = true;
-(<any>Resource.prototype).logAsync.doNotCapture = true;
-(<any>Resource.prototype).debugAsync.doNotCapture = true;
-(<any>Resource.prototype).infoAsync.doNotCapture = true;
-(<any>Resource.prototype).warnAsync.doNotCapture = true;
-(<any>Resource.prototype).errorAsync.doNotCapture = true;
 
 /**
  * ResourceOptions is a bag of optional settings that control a resource's behavior.

@@ -42,13 +42,13 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     }
 
     const label = `resource:${name}[${t}]#...`;
-    log.debug("", `Reading resource: id=${id}, t=${t}, name=${name}`);
+    log.debug(`Reading resource: id=${id}, t=${t}, name=${name}`);
 
     const monitor: any = getMonitor();
     const resopAsync = prepareResource(label, res, true, props, opts);
     debuggablePromise(resopAsync.then(async (resop) => {
         const resolvedID = await serializeProperty(label, id, []);
-        log.debug("", `ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
+        log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
         // Create a resource request and do the RPC.
@@ -64,9 +64,9 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         runAsyncResourceOp(opLabel, async () => {
             const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
                 monitor.readResource(req, (err: Error, innerResponse: any) => {
-                    log.debug("", `ReadResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
+                    log.debug(`ReadResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
-                        log.error("", `Failed to read resource #${resolvedID} '${name}' [${t}]: ${err.stack}`);
+                        log.error(`Failed to read resource #${resolvedID} '${name}' [${t}]: ${err.stack}`);
                         reject(err);
                     }
                     else {
@@ -90,12 +90,12 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 export function registerResource(res: Resource, t: string, name: string, custom: boolean,
                                  props: Inputs, opts: ResourceOptions): void {
     const label = `resource:${name}[${t}]`;
-    log.debug("", `Registering resource: t=${t}, name=${name}, custom=${custom}`);
+    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
 
     const monitor: any = getMonitor();
     const resopAsync = prepareResource(label, res, custom, props, opts);
     debuggablePromise(resopAsync.then(async (resop) => {
-        log.debug("", `RegisterResource RPC prepared: t=${t}, name=${name}` +
+        log.debug(`RegisterResource RPC prepared: t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
         const req = new resproto.RegisterResourceRequest();
@@ -112,9 +112,9 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         runAsyncResourceOp(opLabel, async () => {
             const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
                 monitor.registerResource(req, (err: Error, innerResponse: any) => {
-                    log.debug("", `RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
+                    log.debug(`RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
-                        log.error("", `Failed to register new resource '${name}' [${t}]: ${err.stack}`);
+                        log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
                         reject(err);
                     }
                     else {
@@ -256,7 +256,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
         const urn = await res.urn.promise();
         const outputsObj = gstruct.Struct.fromJavaScript(
             await serializeProperties(`completeResource`, outputs));
-        log.debug("", `RegisterResourceOutputs RPC prepared: urn=${urn}` +
+        log.debug(`RegisterResourceOutputs RPC prepared: urn=${urn}` +
             (excessiveDebugOutput ? `, outputs=${JSON.stringify(outputsObj)}` : ``));
 
         // Fetch the monitor and make an RPC request.
@@ -268,10 +268,10 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
 
         await debuggablePromise(new Promise((resolve, reject) =>
             monitor.registerResourceOutputs(req, (err: Error, innerResponse: any) => {
-                log.debug("", `RegisterResourceOutputs RPC finished: urn=${urn}; `+
+                log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
                     `err: ${err}, resp: ${innerResponse}`);
                 if (err) {
-                    log.error("", `Failed to end new resource registration '${urn}': ${err.stack}`);
+                    log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
                     reject(err);
                 }
                 else {
@@ -299,7 +299,7 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
     const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
         if (serial) {
             resourceChainLabel = label;
-            log.debug("", `Resource RPC serialization requested: ${label} is current`);
+            log.debug(`Resource RPC serialization requested: ${label} is current`);
         }
         return callback();
     }));
@@ -316,7 +316,7 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
     if (serial) {
         resourceChain = finalOp;
         if (resourceChainLabel) {
-            log.debug("", `Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
+            log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
 }

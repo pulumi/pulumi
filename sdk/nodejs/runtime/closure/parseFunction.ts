@@ -353,7 +353,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     // console.log("Free variables for:\n" + serializedFunction.funcExprWithName  +
     //     "\n" + JSON.stringify(result));
-    log.debug("", `Found free variables: ${JSON.stringify(result)}`);
+    log.debug(`Found free variables: ${JSON.stringify(result)}`);
     return result;
 
     function isBuiltIn(ident: string): boolean {

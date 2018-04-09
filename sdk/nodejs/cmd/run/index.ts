@@ -5,6 +5,7 @@
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as util from "util";
 import * as pulumi from "../../";
 import { RunError } from "../../errors";
 import * as log from "../../log";
@@ -210,11 +211,11 @@ export function main(args: string[]): void {
         if (err instanceof RunError) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
             // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
-            log.error("", err.message);
+            log.error(err.message);
         }
         else {
-            log.error("", `Running program '${program}' failed with an unhandled exception:`);
-            log.error("", err);
+            log.error(`Running program '${program}' failed with an unhandled exception:`);
+            log.error(util.format(err));
         }
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.
@@ -240,7 +241,7 @@ export function main(args: string[]): void {
         // problem with the current Component design though - not sure what else we could do here.
         //
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
-        log.debug("", `Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+        log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
             return require(program);
         } catch (e) {
