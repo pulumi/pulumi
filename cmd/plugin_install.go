@@ -125,8 +125,8 @@ func newPluginInstallCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&cloudURL,
 		"cloud-url", "c", "", "A cloud URL to download releases from")
-	cmd.PersistentFlags().BoolVarP(&exact,
-		"exact", "e", false, "Force installation of an exact version match (usually >= is accepted)")
+	cmd.PersistentFlags().BoolVar(&exact,
+		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,
 		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,

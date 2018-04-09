@@ -66,6 +66,13 @@ type UpdateProgramResponse struct {
 	UploadURL string `json:"uploadURL"`
 }
 
+// StartUpdateRequest requests that an update starts getting applied to a stack.
+type StartUpdateRequest struct {
+	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
+	// set of tags associated with the stack.
+	Tags map[StackTagName]string `json:"tags,omitempty"`
+}
+
 // StartUpdateResponse is the result of the command to start an update.
 type StartUpdateResponse struct {
 	// Version is the version of the program once the update is complete.
