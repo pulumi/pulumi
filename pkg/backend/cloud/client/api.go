@@ -17,6 +17,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 
@@ -121,7 +122,7 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken) 
 		glog.V(9).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httputil.DoWithRetry(req)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
