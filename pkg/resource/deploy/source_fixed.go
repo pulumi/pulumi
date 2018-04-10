@@ -17,17 +17,10 @@ type fixedSource struct {
 	steps []SourceEvent
 }
 
-func (src *fixedSource) Close() error {
-	return nil // nothing to do.
-}
-
-func (src *fixedSource) Project() tokens.PackageName {
-	return src.ctx
-}
-
-func (src *fixedSource) Info() interface{} {
-	return nil
-}
+func (src *fixedSource) Close() error                { return nil }
+func (src *fixedSource) Project() tokens.PackageName { return src.ctx }
+func (src *fixedSource) Info() interface{}           { return nil }
+func (src *fixedSource) Refresh() bool               { return false }
 
 func (src *fixedSource) Iterate(opts Options) (SourceIterator, error) {
 	return &fixedSourceIterator{

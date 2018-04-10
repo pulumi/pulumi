@@ -74,6 +74,7 @@ func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
 func (p *Plan) Prev() *Snapshot                        { return p.prev }
 func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
+func (p *Plan) Refresh() bool                          { return p.source.Refresh() }
 
 // Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
 // provider could not be found, or an error occurred while creating it, a non-nil error is returned.

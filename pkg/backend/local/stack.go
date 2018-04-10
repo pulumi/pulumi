@@ -54,6 +54,11 @@ func (s *localStack) Update(proj *workspace.Project, root string,
 	return backend.UpdateStack(s, proj, root, m, opts, displayOpts)
 }
 
+func (s *localStack) Refresh(proj *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.RefreshStack(s, proj, root, m, opts, displayOpts)
+}
+
 func (s *localStack) Destroy(proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 	return backend.DestroyStack(s, proj, root, m, opts, displayOpts)

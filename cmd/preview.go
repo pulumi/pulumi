@@ -17,11 +17,11 @@ func newPreviewCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var color colorFlag
+	var diffDisplay bool
 	var parallel int
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var diffDisplay bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -43,11 +43,14 @@ func newPreviewCmd() *cobra.Command {
 		"Choose a stack other than the currently selected one")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
+	cmd.PersistentFlags().VarP(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().BoolVar(
+		&diffDisplay, "diff", false,
+		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
@@ -60,9 +63,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVar(
-		&diffDisplay, "diff", false,
-		"Display operation as a rich diff showing the overall change")
 
 	return cmd
 }

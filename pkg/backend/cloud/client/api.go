@@ -26,7 +26,9 @@ type UpdateKind string
 
 const (
 	UpdateKindUpdate  UpdateKind = "update"
+	UpdateKindRefresh UpdateKind = "refresh"
 	UpdateKindDestroy UpdateKind = "destroy"
+	UpdateKindImport  UpdateKind = "import"
 )
 
 // ProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the

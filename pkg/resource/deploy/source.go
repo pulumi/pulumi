@@ -12,10 +12,15 @@ import (
 // A Source can generate a new set of resources that the planner will process accordingly.
 type Source interface {
 	io.Closer
+
 	// Project returns the package name of the Pulumi project we are obtaining resources from.
 	Project() tokens.PackageName
 	// Info returns a serializable payload that can be used to stamp snapshots for future reconciliation.
 	Info() interface{}
+	// Refresh indicates whether this source returns events source from existing state (true), and hence can simply be
+	// assumed to reflect existing state, or whether the events should acted upon (false).
+	Refresh() bool
+
 	// Iterate begins iterating the source.  Error is non-nil upon failure; otherwise, a valid iterator is returned.
 	Iterate(opts Options) (SourceIterator, error)
 }
@@ -23,6 +28,7 @@ type Source interface {
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
 	io.Closer
+
 	// Next returns the next event from the source.
 	Next() (SourceEvent, error)
 }

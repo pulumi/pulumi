@@ -143,11 +143,13 @@ func GetResourcePropertiesDetails(
 		replaces = step.Keys
 	}
 
-	old := step.Old
-	new := step.New
-
+	old, new := step.Old, step.New
 	if old == nil && new != nil {
-		printObject(&b, new.Inputs, planning, indent, step.Op, false, debug)
+		if len(new.Outputs) > 0 {
+			printObject(&b, new.Outputs, planning, indent, step.Op, false, debug)
+		} else {
+			printObject(&b, new.Inputs, planning, indent, step.Op, false, debug)
+		}
 	} else if new == nil && old != nil {
 		// in summary view, we don't have to print out the entire object that is getting deleted.
 		// note, the caller will have already printed out the type/name/id/urn of the resource,
@@ -155,6 +157,8 @@ func GetResourcePropertiesDetails(
 		if !summary {
 			printObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
 		}
+	} else if len(new.Outputs) > 0 {
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, replaces, planning, indent, step.Op, summary, debug)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, replaces, planning, indent, step.Op, summary, debug)
 	}
