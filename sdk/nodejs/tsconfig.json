@@ -32,6 +32,7 @@
         "log/index.ts",
 
         "runtime/index.ts",
+        "runtime/closure/v8.ts",
         "runtime/closure/createClosure.ts",
         "runtime/closure/parseFunction.ts",
         "runtime/closure/serializeClosure.ts",

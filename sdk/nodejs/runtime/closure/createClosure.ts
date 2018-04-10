@@ -7,35 +7,7 @@ import { RunError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
-
-// Our closure serialization code links against v8 internals. On Windows, we can't dynamically link
-// against v8 internals because their symbols are unexported. In order to address this problem,
-// Pulumi programs run on a custom build of Node.
-//
-// On Linux and OSX, we can dynamically link against v8 internals, so we can run on stock Node.
-// However, we only build nativeruntime.node against specific versions of Node, users running Pulumi
-// programs must explicitly use a supported version of Node.
-const supportedNodeVersions = ["v6.10.2"];
-let nativeruntime: any;
-try {
-    nativeruntime = require("nativeruntime-v0.11.0.node");
-}
-catch (err) {
-    // There are two reasons why this can happen:
-    //   1. We messed up when packaging Pulumi and failed to include nativeruntime.node,
-    //   2. A user is running their Pulumi program with a version of Node that we do not explicitly support.
-    const thisNodeVersion = process.version;
-    if (supportedNodeVersions.indexOf(thisNodeVersion) > -1) {
-        // This node version is explicitly supported, but the load still failed.
-        // This means that Pulumi messed up when installing itself.
-        throw new RunError(`Failed to locate custom Pulumi SDK Node.js extension. This is a bug! (${err.message})`);
-    }
-
-    throw new RunError(
-        `Failed to load custom Pulumi SDK Node.js extension; The version of Node.js that you are
-         using (${thisNodeVersion}) is not explicitly supported, you must use one of these
-         supported versions of Node.js: ${supportedNodeVersions}`);
-}
+import * as v8 from "./v8";
 
 export interface ObjectInfo {
     // information about the prototype of this object/function.  If this is an object, we only store
@@ -320,9 +292,9 @@ function createFunctionInfo(
         func: Function, context: Context,
         serialize: (o: any) => boolean): FunctionInfo {
 
-    const file: string =  nativeruntime.getFunctionFile(func);
-    const line: number = nativeruntime.getFunctionLine(func);
-    const column: number = nativeruntime.getFunctionColumn(func);
+    const file: string =  v8.getFunctionFile(func);
+    const line: number = v8.getFunctionLine(func);
+    const column: number = v8.getFunctionColumn(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
@@ -469,7 +441,7 @@ function createFunctionInfo(
             for (const name of Object.keys(capturedVariables)) {
                 let value: any;
                 try {
-                    value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+                    value = v8.lookupCapturedVariableValue(func, name, throwOnFailure);
                 }
                 catch (err) {
                     throwSerializationError(func, context, err.message);
