@@ -93,7 +93,7 @@ func (info PluginInfo) Delete() error {
 }
 
 // SetFileMetadata adds extra metadata from the given file, representing this plugin's directory.
-func (info *PluginInfo) SetFileMetadata(dir, path string) error {
+func (info *PluginInfo) SetFileMetadata(path string) error {
 	// Get the file info.
 	file, err := os.Stat(path)
 	if err != nil {
@@ -101,15 +101,11 @@ func (info *PluginInfo) SetFileMetadata(dir, path string) error {
 	}
 
 	// Next, get the size from the directory (or, if there is none, just the file).
-	if dir == "" {
-		info.Size = file.Size()
-	} else {
-		size, err := getPluginSize(dir)
-		if err != nil {
-			return errors.Wrapf(err, "getting plugin dir %s size", dir)
-		}
-		info.Size = size
+	size, err := getPluginSize(path)
+	if err != nil {
+		return errors.Wrapf(err, "getting plugin dir %s size", path)
 	}
+	info.Size = size
 
 	// Next get the access times from the plugin binary itself.
 	tinfo := times.Get(file)
@@ -217,6 +213,28 @@ func HasPlugin(plug PluginInfo) bool {
 	return false
 }
 
+// HasPluginGTE returns true if the given plugin exists at the given version number or greater.
+func HasPluginGTE(plug PluginInfo) (bool, error) {
+	// If an exact match, return true right away.
+	if HasPlugin(plug) {
+		return true, nil
+	}
+
+	// Otherwise, load up the list of plugins and find one with the same name/type and >= version.
+	plugs, err := GetPlugins()
+	if err != nil {
+		return false, err
+	}
+	for _, p := range plugs {
+		if p.Name == plug.Name &&
+			p.Kind == plug.Kind &&
+			(p.Version != nil && plug.Version != nil && p.Version.GTE(*plug.Version)) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // GetPluginDir returns the directory in which plugins on the current machine are managed.
 func GetPluginDir() (string, error) {
 	u, err := user.Current()
@@ -251,7 +269,7 @@ func GetPlugins() ([]PluginInfo, error) {
 				Kind:    kind,
 				Version: &version,
 			}
-			if err = plugin.SetFileMetadata(dir, filepath.Join(dir, file.Name())); err != nil {
+			if err = plugin.SetFileMetadata(filepath.Join(dir, file.Name())); err != nil {
 				return nil, err
 			}
 			plugins = append(plugins, plugin)
@@ -260,54 +278,57 @@ func GetPlugins() ([]PluginInfo, error) {
 	return plugins, nil
 }
 
-// GetPluginPath finds a plugin's path by its kind, name, and optional version.  If no version is supplied, the latest
-// plugin for that given kind/name pair is loaded, using standard semver sorting rules.
+// GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
+// is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
+// using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
-	// If we have a version, check the plugin cache first.
-	if version != nil {
-		plugins, err := GetPlugins()
-		if err != nil {
-			return "", "", errors.Wrapf(err, "loading plugin list")
-		}
-		var match *PluginInfo
-		for _, plugin := range plugins {
-			if plugin.Kind == kind && plugin.Name == name {
-				if version == nil {
-					// If no version filter was specified, pick the most recent version.  But we must also keep going
-					// because we could later on find a version that is even more recent and should take precedence.
-					if match == nil || match.Version == nil ||
-						(plugin.Version != nil && (*match).Version.LT(*plugin.Version)) {
-						match = &plugin
-					}
-				} else if plugin.Version != nil && (*version).EQ(*plugin.Version) {
-					// If there's a specific version being sought, and we found it, we're done.
-					match = &plugin
-					break
-				}
-			}
-		}
+	// If we have a version of the plugin on its $PATH, use it.  This supports development scenarios.
+	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
+	if path, err := exec.LookPath(filename); err == nil {
+		glog.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
+		return "", path, nil
+	}
 
-		if match != nil {
-			matchDir, err := match.DirPath()
-			if err != nil {
-				return "", "", err
-			}
-			matchPath, err := match.FilePath()
-			if err != nil {
-				return "", "", err
+	// Otherwise, check the plugin cache.
+	plugins, err := GetPlugins()
+	if err != nil {
+		return "", "", errors.Wrapf(err, "loading plugin list")
+	}
+	var match *PluginInfo
+	for _, plugin := range plugins {
+		if plugin.Kind == kind && plugin.Name == name {
+			// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
+			// keep on searching just in case there's a newer version available.
+			var m *PluginInfo
+			if match == nil && version == nil {
+				m = &plugin // no existing match, no version spec, take it.
+			} else if match != nil &&
+				(match.Version == nil || (plugin.Version != nil && plugin.Version.GT(*match.Version))) {
+				m = &plugin // existing match, but this plugin is newer, prefer it.
+			} else if version != nil && plugin.Version != nil && plugin.Version.GTE(*version) {
+				m = &plugin // this plugin is >= the version being requested, use it.
 			}
 
-			glog.V(9).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
-			return matchDir, matchPath, nil
+			if m != nil {
+				match = m
+				glog.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
+					kind, name, *version, match.Version)
+			}
 		}
 	}
 
-	// If we don't have a version (or we do, but it wasn't in the cache), then fall back to the version on the $PATH.
-	// This supports development scenarios where we want to make it easy to override.
-	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
-	if path, err := exec.LookPath(filename); err == nil {
-		glog.V(9).Infof("GetPluginPath(%s, %s, %v): found on path %s", kind, name, version, path)
-		return "", path, nil
+	if match != nil {
+		matchDir, err := match.DirPath()
+		if err != nil {
+			return "", "", err
+		}
+		matchPath, err := match.FilePath()
+		if err != nil {
+			return "", "", err
+		}
+
+		glog.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
+		return matchDir, matchPath, nil
 	}
 
 	return "", "", nil

@@ -10,27 +10,16 @@ import (
 
 // Stack returns an stack name after ensuring the stack exists.  When an empty stack name is passed, the
 // "current" ambient stack is returned.
-func Stack(name tokens.QName, backends []backend.Backend) (backend.Stack, error) {
+func Stack(name tokens.QName, b backend.Backend) (backend.Stack, error) {
 	if name == "" {
-		return CurrentStack(backends)
+		return CurrentStack(b)
 	}
 
-	// If not using the current stack, check all of the known backends to see if they know about it.
-	for _, be := range backends {
-		stack, err := be.GetStack(name)
-		if err != nil {
-			return nil, err
-		}
-		if stack != nil {
-			return stack, nil
-		}
-	}
-
-	return nil, nil
+	return b.GetStack(name)
 }
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
-func CurrentStack(backends []backend.Backend) (backend.Stack, error) {
+func CurrentStack(backends backend.Backend) (backend.Stack, error) {
 	w, err := workspace.New()
 	if err != nil {
 		return nil, err

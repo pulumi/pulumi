@@ -20,4 +20,3 @@ assert.equal(configOld.requireNumber("A"), 42);
 assert.equal(configOld.get("bbbb"), "a string o' b's");
 assert.equal(configOld.require("bbbb"), "a string o' b's");
 assert.equal(configOld.get("missingC"), undefined);
-

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -29,23 +30,29 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// allBackends returns all known backends.  The boolean is true if any are cloud backends.
-func allBackends() ([]backend.Backend, bool) {
-	// Add all the known backends to the list and query them all.  We always use the local backend,
-	// in addition to all of those cloud backends we are currently logged into.
-	d := cmdutil.Diag()
-	backends := []backend.Backend{local.New(d)}
-	cloudBackends, _, err := cloud.CurrentBackends(d)
+func currentBackend() (backend.Backend, error) {
+	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
-		// Print the error, but keep going so that the local operations still occur.
-		_, fmterr := fmt.Fprintf(os.Stderr, "error: could not obtain current cloud backends: %v", err)
-		contract.IgnoreError(fmterr)
-	} else {
-		for _, be := range cloudBackends {
-			backends = append(backends, be)
-		}
+		return nil, err
 	}
-	return backends, len(cloudBackends) > 0
+	if local.IsLocalBackendURL(creds.Current) {
+		return local.New(cmdutil.Diag()), nil
+	}
+	return cloud.Login(cmdutil.Diag(), creds.Current)
+}
+
+func isLoggedIn() (bool, error) {
+	creds, err := workspace.GetStoredCredentials()
+	if err != nil {
+		return false, err
+	}
+	if creds.Current == "" {
+		return false, nil
+	} else if local.IsLocalBackendURL(creds.Current) {
+		return true, nil
+	}
+
+	return cloud.IsValidAccessToken(creds.Current, creds.AccessTokens[creds.Current])
 }
 
 // createStack creates a stack with the given name, and selects it as the current.
@@ -71,8 +78,11 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 	}
 
 	// Search all known backends for this stack.
-	bes, _ := allBackends()
-	stack, err := state.Stack(stackName, bes)
+	b, err := currentBackend()
+	if err != nil {
+		return nil, err
+	}
+	stack, err := state.Stack(stackName, b)
 	if err != nil {
 		return nil, err
 	}
@@ -84,19 +94,12 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 	if cmdutil.Interactive() {
 		fmt.Printf("The stack '%s' does not exist.\n", stackName)
 		fmt.Printf("\n")
-		fmt.Printf("It is possible that you aren't logged into the correct cloud where this stack\n")
-		fmt.Printf("has been provisioned.  If that is the case, please press ^C and run `pulumi login`\n")
-		fmt.Printf("to log into the cloud, and then try this operation again.\n")
-		fmt.Printf("\n")
-		_, err = cmdutil.ReadConsole("If instead, you would like to create this stack now, please press <ENTER>")
+		_, err = cmdutil.ReadConsole("If you would like to create this stack now, please press <ENTER>, otherwise " +
+			"press ^C")
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO[pulumi/pulumi#816]: right now, we assume that we're creating a local stack.  This is a little
-		//     inconsistent compared to where we are now, but it's closer to where we think we're going.  As
-		//     part of 816, we should tidy this up.
-		b := local.New(cmdutil.Diag())
 		return createStack(b, stackName, nil)
 	}
 
@@ -105,8 +108,11 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 
 func requireCurrentStack(offerNew bool) (backend.Stack, error) {
 	// Search for the current stack.
-	bes, _ := allBackends()
-	stack, err := state.CurrentStack(bes)
+	b, err := currentBackend()
+	if err != nil {
+		return nil, err
+	}
+	stack, err := state.CurrentStack(b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -114,12 +120,12 @@ func requireCurrentStack(offerNew bool) (backend.Stack, error) {
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(bes, offerNew)
+	return chooseStack(b, offerNew)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(bes []backend.Backend, offerNew bool) (backend.Stack, error) {
+func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if offerNew {
@@ -134,16 +140,14 @@ func chooseStack(bes []backend.Backend, offerNew bool) (backend.Stack, error) {
 	// First create a list and map of stack names.
 	var options []string
 	stacks := make(map[string]backend.Stack)
-	for _, be := range bes {
-		allStacks, err := be.ListStacks()
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not query backend for stacks")
-		}
-		for _, stack := range allStacks {
-			name := string(stack.Name())
-			options = append(options, name)
-			stacks[name] = stack
-		}
+	allStacks, err := b.ListStacks()
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not query backend for stacks")
+	}
+	for _, stack := range allStacks {
+		name := string(stack.Name())
+		options = append(options, name)
+		stacks[name] = stack
 	}
 	sort.Strings(options)
 
@@ -158,7 +162,7 @@ func chooseStack(bes []backend.Backend, offerNew bool) (backend.Stack, error) {
 
 	// If a stack is already selected, make that the default.
 	var current string
-	currStack, currErr := state.CurrentStack(bes)
+	currStack, currErr := state.CurrentStack(b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
 		current = string(currStack.Name())
@@ -191,10 +195,6 @@ func chooseStack(bes []backend.Backend, offerNew bool) (backend.Stack, error) {
 			return nil, err
 		}
 
-		// TODO[pulumi/pulumi#816]: right now, we assume that we're creating a local stack.  This is a little
-		//     inconsistent compared to where we are now, but it's closer to where we think we're going.  As
-		//     part of 816, we should tidy this up.
-		b := local.New(cmdutil.Diag())
 		return createStack(b, tokens.QName(stackName), nil)
 	}
 
@@ -399,4 +399,180 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	return m, nil
+}
+
+// upgradeConfigurationFiles does an upgrade to move from the old configuration system (where we had config stored) in
+// workspace settings and Pulumi.yaml, to the new system where configuration data is stored in Pulumi.<stack-name>.yaml
+func upgradeConfigurationFiles() error {
+	// If there's no workspace, don't even try to upgrade.
+	_, err := workspace.New()
+	if err != nil {
+		return nil
+	}
+
+	// If we aren't logged in, also don't try. We ignore errors here, and just assume we aren't logged in.
+	if hasLogin, loginErr := isLoggedIn(); !hasLogin {
+		contract.IgnoreError(loginErr)
+		return nil
+	}
+
+	b, err := currentBackend()
+	if err != nil {
+		return err
+	}
+
+	stacks, err := b.ListStacks()
+	if err != nil {
+		return err
+	}
+
+	for _, stack := range stacks {
+		stackName := stack.Name()
+
+		// If the new file exists, we can skip upgrading this stack.
+		newFile, err := workspace.DetectProjectStackPath(stackName)
+		if err != nil {
+			return errors.Wrap(err, "upgrade project")
+		}
+
+		_, err = os.Stat(newFile)
+		if err != nil && !os.IsNotExist(err) {
+			return errors.Wrap(err, "upgrading project")
+		} else if err == nil {
+			// new file was present, skip upgrading this stack.
+			continue
+		}
+
+		cfg, salt, err := getOldConfiguration(stackName)
+		if err != nil {
+			return errors.Wrap(err, "upgrading project")
+		}
+
+		ps, err := workspace.DetectProjectStack(stackName)
+		if err != nil {
+			return errors.Wrap(err, "upgrading project")
+		}
+
+		ps.Config = cfg
+		ps.EncryptionSalt = salt
+
+		if err := workspace.SaveProjectStack(stackName, ps); err != nil {
+			return errors.Wrap(err, "upgrading project")
+		}
+
+		if err := removeOldConfiguration(stackName); err != nil {
+			return errors.Wrap(err, "upgrading project")
+		}
+	}
+
+	return removeOldProjectConfiguration()
+}
+
+// getOldConfiguration reads the configuration for a given stack from the current workspace.  It applies a hierarchy
+// of configuration settings based on stack overrides and workspace-wide global settings.  If any of the workspace
+// settings had an impact on the values returned, the second return value will be true. It also returns the encryption
+// salt used for the stack.
+func getOldConfiguration(stackName tokens.QName) (config.Map, string, error) {
+	contract.Require(stackName != "", "stackName")
+
+	// Get the workspace and package and get ready to merge their views of the configuration.
+	ws, err := workspace.New()
+	if err != nil {
+		return nil, "", err
+	}
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// We need to apply workspace and project configuration values in the right order.  Basically, we want to
+	// end up taking the most specific settings, where per-stack configuration is more specific than global, and
+	// project configuration is more specific than workspace.
+	result := make(config.Map)
+
+	// First, apply project-local stack-specific configuration.
+	if stack, has := proj.StacksDeprecated[stackName]; has {
+		for key, value := range stack.Config {
+			result[key] = value
+		}
+	}
+
+	// Now, apply workspace stack-specific configuration.
+	if wsStackConfig, has := ws.Settings().ConfigDeprecated[stackName]; has {
+		for key, value := range wsStackConfig {
+			if _, has := result[key]; !has {
+				result[key] = value
+			}
+		}
+	}
+
+	// Next, take anything from the global settings in our project file.
+	for key, value := range proj.ConfigDeprecated {
+		if _, has := result[key]; !has {
+			result[key] = value
+		}
+	}
+
+	// Finally, take anything left in the workspace's global configuration.
+	if wsGlobalConfig, has := ws.Settings().ConfigDeprecated[""]; has {
+		for key, value := range wsGlobalConfig {
+			if _, has := result[key]; !has {
+				result[key] = value
+			}
+		}
+	}
+
+	// Now, get the encryption key. A stack specific one overrides the global one (global encryption keys were
+	// deprecated previously)
+	encryptionSalt := proj.EncryptionSaltDeprecated
+	if stack, has := proj.StacksDeprecated[stackName]; has && stack.EncryptionSalt != "" {
+		encryptionSalt = stack.EncryptionSalt
+	}
+
+	return result, encryptionSalt, nil
+}
+
+// removeOldConfiguration deletes all configuration information about a stack from both the workspace
+// and the project file. It does not touch the newly added Pulumi.<stack-name>.yaml file.
+func removeOldConfiguration(stackName tokens.QName) error {
+	ws, err := workspace.New()
+	if err != nil {
+		return err
+	}
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return err
+	}
+
+	delete(proj.StacksDeprecated, stackName)
+	delete(ws.Settings().ConfigDeprecated, stackName)
+
+	if err := ws.Save(); err != nil {
+		return err
+	}
+
+	return workspace.SaveProject(proj)
+}
+
+// removeOldProjectConfiguration deletes all project level configuration information from both the workspace and the
+// project file.
+func removeOldProjectConfiguration() error {
+	ws, err := workspace.New()
+	if err != nil {
+		return err
+	}
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return err
+	}
+
+	proj.EncryptionSaltDeprecated = ""
+	proj.ConfigDeprecated = nil
+	ws.Settings().ConfigDeprecated = nil
+
+	if err := ws.Save(); err != nil {
+		return err
+	}
+
+	return workspace.SaveProject(proj)
 }

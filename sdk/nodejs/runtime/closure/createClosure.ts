@@ -2,6 +2,7 @@
 
 import { relative as pathRelative } from "path";
 import { basename } from "path";
+import * as ts from "typescript";
 import { RunError } from "../../errors";
 import * as resource from "../../resource";
 import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
@@ -255,7 +256,7 @@ export async function createFunctionInfoAsync(func: Function, serialize: (o: any
 
     function addGlobalInfo(key: string) {
         const globalObj = (<any>global)[key];
-        const text = isLegalName(key) ? `global.${key}` :  `global["${key}"]`;
+        const text = isLegalMemberName(key) ? `global.${key}` :  `global["${key}"]`;
 
         if (!context.cache.has(globalObj)) {
             context.cache.set(globalObj, { expr: text });
@@ -962,6 +963,22 @@ function findModuleName(obj: any): string | undefined  {
 }
 
 const legalNameRegex = /^[a-zA-Z_][0-9a-zA-Z_]*$/;
-export function isLegalName(n: string) {
+export function isLegalMemberName(n: string) {
     return legalNameRegex.test(n);
+}
+
+export function isLegalFunctionName(n: string) {
+    if (!isLegalMemberName(n)) {
+        return false;
+    }
+
+    const scanner = ts.createScanner(
+        ts.ScriptTarget.Latest, /*skipTrivia:*/false, ts.LanguageVariant.Standard, n);
+    const tokenKind = scanner.scan();
+    if (tokenKind !== ts.SyntaxKind.Identifier &&
+        tokenKind !== ts.SyntaxKind.ConstructorKeyword) {
+        return false;
+    }
+
+    return true;
 }

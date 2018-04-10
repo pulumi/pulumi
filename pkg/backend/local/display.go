@@ -240,7 +240,7 @@ func RenderResourceOutputsEvent(
 
 	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
 		indent := engine.GetIndent(payload.Metadata, seen)
-		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
+		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent+1, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}

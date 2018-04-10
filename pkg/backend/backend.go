@@ -52,4 +52,6 @@ type Backend interface {
 	ExportDeployment(stackName tokens.QName) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
 	ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error
+	// Logout logs you out of the backend and removes any stored credentials.
+	Logout() error
 }

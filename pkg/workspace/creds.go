@@ -12,10 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// UseAltCredentialsLocationEnvVar is the name of an environment variable which if set, will cause
-// pulumi to use an alternative file path for saving and updating user credentials. This allows for
-// a script or testcase to login/logout without impacting regular usage.
-const UseAltCredentialsLocationEnvVar = "PULUMI_USE_ALT_CREDENTIALS_LOCATION"
+// PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
+// We use this in testing so that tests which log in and out do not impact the local developer's
+// credentials or tests interacting with one another
+const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
 // GetAccessToken returns an access token underneath a given key.
 func GetAccessToken(key string) (string, error) {
@@ -75,20 +75,29 @@ func getCredsFilePath() (string, error) {
 		return "", errors.Wrapf(err, "getting creds file path: failed to get current user")
 	}
 
-	pulumiFolder := filepath.Join(user.HomeDir, BookkeepingDir)
+	// Allow the folder we use to store credentials to be overridden by tests
+	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
+	if pulumiFolder == "" {
+		pulumiFolder = filepath.Join(user.HomeDir, BookkeepingDir)
+	}
+
 	err = os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
 	}
 
-	// If we are running as part of unit tests, we want to save/restore a different set
-	// of credentials as to not modify the developer's machine.
-	credentialsFile := "credentials.json"
-	if os.Getenv(UseAltCredentialsLocationEnvVar) != "" {
-		credentialsFile = "alt-credentials.json"
+	return filepath.Join(pulumiFolder, "credentials.json"), nil
+}
+
+// GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
+// have not logged in.
+func GetCurrentCloudURL() (string, error) {
+	creds, err := GetStoredCredentials()
+	if err != nil {
+		return "", err
 	}
 
-	return filepath.Join(pulumiFolder, credentialsFile), nil
+	return creds.Current, nil
 }
 
 // GetStoredCredentials returns any credentials stored on the local machine.

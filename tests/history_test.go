@@ -61,6 +61,7 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
 		out, err := e.RunCommandExpectError("pulumi", "history")
 		assert.Equal(t, "", out)
 		assert.NotEqual(t, err, "")
@@ -72,7 +73,8 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "stack", "init", "no-updates-test", "--local")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "no-updates-test")
 		assertHasNoHistory(e)
 	})
 
@@ -83,8 +85,9 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "stack", "init", "stack-without-updates", "--local")
-		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
+		e.RunCommand("pulumi", "stack", "init", "history-test")
 
 		// Update the history-test stack.
 		e.RunCommand("yarn", "install")
@@ -115,7 +118,8 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "history-test")
 
 		// Update the history-test stack.
 		e.RunCommand("yarn", "install")
@@ -193,7 +197,8 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "stack", "init", "history-test", "--local")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "stack", "init", "history-test")
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")

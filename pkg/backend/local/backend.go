@@ -26,6 +26,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// localBackendURL is fake URL we use to signal we want to use the local backend vs a cloud one.
+const localBackendURL = "local://"
+
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
@@ -36,8 +39,16 @@ type localBackend struct {
 	d diag.Sink
 }
 
+func IsLocalBackendURL(url string) bool {
+	return url == localBackendURL
+}
+
 func New(d diag.Sink) Backend {
 	return &localBackend{d: d}
+}
+
+func Login(d diag.Sink) (Backend, error) {
+	return &localBackend{d: d}, workspace.StoreAccessToken("local://", "", true)
 }
 
 func (b *localBackend) Name() string {
@@ -294,6 +305,10 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 
 	_, err = saveStack(stackName, config, snap)
 	return err
+}
+
+func (b *localBackend) Logout() error {
+	return workspace.DeleteAccessToken(localBackendURL)
 }
 
 func getLocalStacks() ([]tokens.QName, error) {
