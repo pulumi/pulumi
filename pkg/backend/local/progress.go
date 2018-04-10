@@ -517,47 +517,38 @@ func renderProgressDiagEvent(
 }
 
 func getMetadataSummary(
-	metadata engine.StepEventMetadata, opts backend.DisplayOptions,
+	step engine.StepEventMetadata, opts backend.DisplayOptions,
 	isPreview bool, isComplete bool) string {
 
 	out := &bytes.Buffer{}
-	summary := getMetadataSummaryWorker(metadata, isPreview, isComplete)
 
-	fprintIgnoreError(out, opts.Color.Colorize(summary))
-	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
-
-	return out.String()
-}
-
-func getMetadataSummaryWorker(step engine.StepEventMetadata, isPreview bool, isComplete bool) string {
-	var b bytes.Buffer
-
-	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	if isComplete {
-		writeString(&b, getStepCompleteDescription(step.Op, isPreview))
+		writeString(out, getStepCompleteDescription(step.Op, isPreview))
 	} else {
-		writeString(&b, getStepDescription(step.Op, isPreview))
+		writeString(out, getStepDescription(step.Op, isPreview))
 	}
-	writeString(&b, colors.Reset)
+	writeString(out, colors.Reset)
 
 	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
 		diff := step.Old.Inputs.Diff(step.New.Inputs)
 
 		if diff != nil {
-			writeString(&b, ". Changes:")
+			writeString(out, ". Changes:")
 
 			updates := make(resource.PropertyMap)
 			for k := range diff.Updates {
 				updates[k] = resource.PropertyValue{}
 			}
 
-			writePropertyKeys(&b, diff.Adds, deploy.OpCreate)
-			writePropertyKeys(&b, diff.Deletes, deploy.OpDelete)
-			writePropertyKeys(&b, updates, deploy.OpReplace)
+			writePropertyKeys(out, diff.Adds, deploy.OpCreate)
+			writePropertyKeys(out, diff.Deletes, deploy.OpDelete)
+			writePropertyKeys(out, updates, deploy.OpReplace)
 		}
 	}
 
-	return b.String()
+	fprintIgnoreError(out, colors.Reset)
+
+	return opts.Color.Colorize(out.String())
 }
 
 func getStepCompleteDescription(op deploy.StepOp, isPreview bool) string {
