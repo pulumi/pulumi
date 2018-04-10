@@ -92,7 +92,6 @@ var (
 )
 
 func makeIDWorker(urn resource.URN, suffix int) string {
-	// for i := 0
 	var id string
 	if urn == "" {
 		id = "global"
