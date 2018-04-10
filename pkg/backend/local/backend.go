@@ -136,7 +136,8 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return symmetricCrypter(stackName)
 }
 
-func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, root string, debug bool,
+func (b *localBackend) Preview(
+	stackName tokens.QName, proj *workspace.Project, root string,
 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	update, err := b.newUpdate(stackName, proj, root)
@@ -147,7 +148,7 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go DisplayEvents("previewing", events, done, debug, displayOpts)
+	go DisplayEvents("previewing", events, done, displayOpts)
 
 	if err = engine.Preview(update, events, opts); err != nil {
 		return err
@@ -159,8 +160,9 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 	return nil
 }
 
-func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+func (b *localBackend) Update(
+	stackName tokens.QName, proj *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
 	// paritiy with stacks managed by the Pulumi Service.
@@ -174,7 +176,7 @@ func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, r
 
 	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
-		stackName, proj, root, debug, m, opts, displayOpts,
+		stackName, proj, root, m, opts, displayOpts,
 		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
 			return engine.Update(update, events, opts)
 		},
@@ -182,10 +184,11 @@ func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, r
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+
 	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
-		stackName, proj, root, debug, m, opts, displayOpts,
+		stackName, proj, root, m, opts, displayOpts,
 		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
 			return engine.Destroy(update, events, opts)
 		},
@@ -194,8 +197,9 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	performEngineOp func(*update, chan engine.Event) (engine.ResourceChanges, error)) error {
+
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
@@ -204,7 +208,7 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go DisplayEvents(op, events, done, debug, displayOpts)
+	go DisplayEvents(op, events, done, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()

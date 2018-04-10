@@ -413,7 +413,7 @@ func (op StepOp) Color() string {
 	case OpDeleteReplaced:
 		return colors.SpecDeleteReplaced
 	default:
-		contract.Failf("Unrecognized resource step op: %v", op)
+		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
 	}
 }

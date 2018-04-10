@@ -43,13 +43,17 @@ func AWSOperationsProvider(
 	awsSecretKey := config[secretKey]
 	awsToken := config[token]
 
-	awsConnection, err := getAWSConnection(awsRegion, awsAccessKey, awsSecretKey, awsToken)
+	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken)
 	if err != nil {
 		return nil, err
 	}
 
+	connection := &awsConnection{
+		logSvc: cloudwatchlogs.New(sess),
+	}
+
 	prov := &awsOpsProvider{
-		awsConnection: awsConnection,
+		awsConnection: connection,
 		component:     component,
 	}
 	return prov, nil
@@ -110,39 +114,35 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 }
 
 type awsConnection struct {
-	sess   *session.Session
 	logSvc *cloudwatchlogs.CloudWatchLogs
 }
 
-var awsConnectionCache = map[string]*awsConnection{}
-var awsConnectionCacheMutex = sync.RWMutex{}
+var awsDefaultSession *session.Session
+var awsDefaultSessionMutex sync.Mutex
 
-func getAWSConnection(awsRegion, awsAccessKey, awsSecretKey, token string) (*awsConnection, error) {
-	awsConnectionCacheMutex.RLock()
-	connection, ok := awsConnectionCache[awsRegion]
-	awsConnectionCacheMutex.RUnlock()
-	if !ok {
-		awsConfig := aws.NewConfig()
-		awsConfig.Region = aws.String(awsRegion)
-		if awsAccessKey != "" || awsSecretKey != "" {
-			awsConfig.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, token)
-			glog.V(5).Infof("Using credentials from stack config for AWS operations provider.")
-		} else {
-			glog.V(5).Infof("Using ambient credentials for AWS operations provider.")
-		}
-		sess, err := session.NewSession(awsConfig)
+func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*session.Session, error) {
+	// AWS SDK for Go documentation: "Sessions should be cached when possible"
+	// We keep a default session around and then make cheap copies of it.
+	awsDefaultSessionMutex.Lock()
+	defer awsDefaultSessionMutex.Unlock()
+
+	if awsDefaultSession == nil {
+		sess, err := session.NewSession()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create AWS session")
 		}
-		connection = &awsConnection{
-			sess:   sess,
-			logSvc: cloudwatchlogs.New(sess),
-		}
-		awsConnectionCacheMutex.Lock()
-		awsConnectionCache[awsRegion] = connection
-		awsConnectionCacheMutex.Unlock()
+
+		awsDefaultSession = sess
 	}
-	return connection, nil
+
+	extraConfig := aws.NewConfig()
+	extraConfig.Region = aws.String(awsRegion)
+
+	if awsAccessKey != "" || awsSecretKey != "" || token != "" {
+		extraConfig.Credentials = credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, token)
+	}
+
+	return awsDefaultSession.Copy(extraConfig), nil
 }
 
 func (p *awsConnection) getLogsForLogGroupsConcurrently(

@@ -62,7 +62,8 @@ proto.pulumirpc.LogRequest.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.LogRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    message: jspb.Message.getFieldWithDefault(msg, 2, "")
+    message: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    urn: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -107,6 +108,10 @@ proto.pulumirpc.LogRequest.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setMessage(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUrn(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -150,6 +155,13 @@ proto.pulumirpc.LogRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getUrn();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -180,6 +192,21 @@ proto.pulumirpc.LogRequest.prototype.getMessage = function() {
 /** @param {string} value */
 proto.pulumirpc.LogRequest.prototype.setMessage = function(value) {
   jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string urn = 3;
+ * @return {string}
+ */
+proto.pulumirpc.LogRequest.prototype.getUrn = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.LogRequest.prototype.setUrn = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

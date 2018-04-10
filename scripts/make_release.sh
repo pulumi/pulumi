@@ -53,10 +53,6 @@ cp ${ROOT}/sdk/nodejs/dist/pulumi-language-nodejs-exec ${PUBDIR}/bin/
 cp ${ROOT}/sdk/nodejs/dist/pulumi-resource-pulumi-nodejs ${PUBDIR}/bin/
 cp ${ROOT}/sdk/python/cmd/pulumi-language-python-exec ${PUBDIR}/bin/
 
-# Copy over our custom Node plugin
-mkdir -p ${PUBDIR}/bin/$(node --version)
-cp ${ROOT}/sdk/nodejs/runtime/native/build/Release/nativeruntime-v0.11.0.node ${PUBDIR}/bin/$(node --version)/nativeruntime-v0.11.0.node
-
 # Copy packages
 copy_package "${ROOT}/sdk/nodejs/bin/." "@pulumi/pulumi"
 
