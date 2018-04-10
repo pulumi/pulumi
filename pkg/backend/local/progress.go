@@ -60,8 +60,8 @@ func simplifyTypeName(typ tokens.Type) string {
 	return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
 }
 
-// getEventUrn returns the resource URN associated with an event.  Should only be called
-// on events that actually can be associated with resources.
+// getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
+// event that has a URN.
 func getEventUrn(event engine.Event) resource.URN {
 	if event.Type == engine.ResourcePreEvent {
 		payload := event.Payload.(engine.ResourcePreEventPayload)
