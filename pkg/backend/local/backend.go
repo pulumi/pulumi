@@ -166,10 +166,10 @@ func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, r
 	// paritiy with stacks managed by the Pulumi Service.
 	tags, err := backend.GetStackTags()
 	if err != nil {
-		return nil, errors.Wrap(err, "getting stack tags")
+		return errors.Wrap(err, "getting stack tags")
 	}
 	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
-		return nil, errors.Wrap(err, "validating stack properties")
+		return errors.Wrap(err, "validating stack properties")
 	}
 
 	return b.performEngineOp(
