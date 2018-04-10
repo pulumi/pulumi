@@ -423,7 +423,7 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 	}
 }
 
-func (e *eventEmitter) diagDebugEvent(msg string) {
+func diagEvent(e *eventEmitter, msg string, sev diag.Severity) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
@@ -431,59 +431,27 @@ func (e *eventEmitter) diagDebugEvent(msg string) {
 		Payload: DiagEventPayload{
 			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
-			Severity: diag.Debug,
+			Severity: sev,
 		},
 	}
+}
+
+func (e *eventEmitter) diagDebugEvent(msg string) {
+	diagEvent(e, msg, diag.Debug)
 }
 
 func (e *eventEmitter) diagInfoEvent(msg string) {
-	contract.Requiref(e != nil, "e", "!= nil")
-
-	e.Chan <- Event{
-		Type: DiagEvent,
-		Payload: DiagEventPayload{
-			Message:  e.Filter.Filter(msg),
-			Color:    colors.Raw,
-			Severity: diag.Info,
-		},
-	}
+	diagEvent(e, msg, diag.Info)
 }
 
 func (e *eventEmitter) diagInfoerrEvent(msg string) {
-	contract.Requiref(e != nil, "e", "!= nil")
-
-	e.Chan <- Event{
-		Type: DiagEvent,
-		Payload: DiagEventPayload{
-			Message:  e.Filter.Filter(msg),
-			Color:    colors.Raw,
-			Severity: diag.Infoerr,
-		},
-	}
+	diagEvent(e, msg, diag.Infoerr)
 }
 
 func (e *eventEmitter) diagErrorEvent(msg string) {
-	contract.Requiref(e != nil, "e", "!= nil")
-
-	e.Chan <- Event{
-		Type: DiagEvent,
-		Payload: DiagEventPayload{
-			Message:  e.Filter.Filter(msg),
-			Color:    colors.Raw,
-			Severity: diag.Error,
-		},
-	}
+	diagEvent(e, msg, diag.Error)
 }
 
 func (e *eventEmitter) diagWarningEvent(msg string) {
-	contract.Requiref(e != nil, "e", "!= nil")
-
-	e.Chan <- Event{
-		Type: DiagEvent,
-		Payload: DiagEventPayload{
-			Message:  e.Filter.Filter(msg),
-			Color:    colors.Raw,
-			Severity: diag.Warning,
-		},
-	}
+	diagEvent(e, msg, diag.Warning)
 }
