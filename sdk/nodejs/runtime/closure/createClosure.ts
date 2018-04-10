@@ -5,9 +5,9 @@ import { basename } from "path";
 import * as ts from "typescript";
 import { RunError } from "../../errors";
 import * as resource from "../../resource";
-import * as nativeruntime from "./native";
 import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import * as v8 from "./v8";
 
 export interface ObjectInfo {
     // information about the prototype of this object/function.  If this is an object, we only store
@@ -292,9 +292,9 @@ function createFunctionInfo(
         func: Function, context: Context,
         serialize: (o: any) => boolean): FunctionInfo {
 
-    const file: string =  nativeruntime.getFunctionFile(func);
-    const line: number = nativeruntime.getFunctionLine(func);
-    const column: number = nativeruntime.getFunctionColumn(func);
+    const file: string =  v8.getFunctionFile(func);
+    const line: number = v8.getFunctionLine(func);
+    const column: number = v8.getFunctionColumn(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
@@ -441,7 +441,7 @@ function createFunctionInfo(
             for (const name of Object.keys(capturedVariables)) {
                 let value: any;
                 try {
-                    value = nativeruntime.lookupCapturedVariableValue(func, name, throwOnFailure);
+                    value = v8.lookupCapturedVariableValue(func, name, throwOnFailure);
                 }
                 catch (err) {
                     throwSerializationError(func, context, err.message);

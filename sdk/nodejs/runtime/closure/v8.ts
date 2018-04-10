@@ -33,7 +33,12 @@ interface V8Script {
 const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
 
+// V8SourcePosition is an opaque value that should be passed verbatim to `V8Script.locationFromPosition`
+// in order to receive a V8SourceLocation.
 interface V8SourcePosition {}
+
+// V8SourceLocation contains metadata about a single location within a Script. For a function, it
+// refers to the last character of that function's declaration.
 interface V8SourceLocation {
     readonly line: number;
     readonly column: number;
