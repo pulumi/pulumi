@@ -219,11 +219,7 @@ func DisplayProgressEvents(
 			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 		}
 
-		// Colorize the information about the resource operation, and add a summary
-		// of all the diagnostics we heard about it.
-
-		msg := colors.ColorizeText(
-			getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/))
+		msg := getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/)
 
 		debugEvents := 0
 		infoEvents := 0
@@ -320,11 +316,6 @@ func DisplayProgressEvents(
 			if len(status.DiagEvents) > 0 {
 				wroteHeader := false
 				for _, v := range status.DiagEvents {
-					// out = os.Stdout
-					// if v.Severity == diag.Error || v.Severity == diag.Warning {
-					// 	out = os.Stderr
-					// }
-
 					msg := renderProgressEvent(v, seen, debug, opts, isPreview)
 					if msg != "" {
 						if !wroteHeader {
@@ -474,35 +465,32 @@ func renderProgressEvent(
 	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
 	debug bool, opts backend.DisplayOptions, isPreview bool) string {
 
-	msg := renderProgressEventWorker(event, seen, debug, opts, isPreview)
-	return strings.TrimSpace(msg)
-}
-
-func renderProgressEventWorker(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	debug bool, opts backend.DisplayOptions, isPreview bool) string {
-
-	switch event.Type {
-	case engine.CancelEvent:
-		return ""
-	case engine.PreludeEvent:
-		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
-	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
-	case engine.ResourceOperationFailed:
-		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
-	case engine.ResourceOutputsEvent:
-		return renderProgressResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts, isPreview)
-	case engine.ResourcePreEvent:
-		return renderProgressResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts, isPreview)
-	case engine.StdoutColorEvent:
-		return ""
-	case engine.DiagEvent:
-		return renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
-	default:
-		contract.Failf("unknown event type '%s'", event.Type)
-		return ""
+	dispatch := func() string {
+		switch event.Type {
+		case engine.CancelEvent:
+			return ""
+		case engine.PreludeEvent:
+			return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+		case engine.SummaryEvent:
+			return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		case engine.ResourceOperationFailed:
+			return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+		case engine.ResourceOutputsEvent:
+			return renderProgressResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts, isPreview)
+		case engine.ResourcePreEvent:
+			return renderProgressResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts, isPreview)
+		case engine.StdoutColorEvent:
+			return ""
+		case engine.DiagEvent:
+			return renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
+		default:
+			contract.Failf("unknown event type '%s'", event.Type)
+			return ""
+		}
 	}
+
+	msg := dispatch()
+	return opts.Color.Colorize(strings.TrimSpace(msg))
 }
 
 func renderProgressDiagEvent(
@@ -513,7 +501,7 @@ func renderProgressDiagEvent(
 		return ""
 	}
 
-	return opts.Color.Colorize(payload.Message)
+	return payload.Message
 }
 
 func getMetadataSummary(
@@ -548,7 +536,7 @@ func getMetadataSummary(
 
 	fprintIgnoreError(out, colors.Reset)
 
-	return opts.Color.Colorize(out.String())
+	return out.String()
 }
 
 func getStepCompleteDescription(op deploy.StepOp, isPreview bool) string {
@@ -556,74 +544,74 @@ func getStepCompleteDescription(op deploy.StepOp, isPreview bool) string {
 		return getStepDescription(op, isPreview)
 	}
 
-	return op.Prefix() + getStepCompleteDescriptionNoColor(op) + colors.Reset
-}
-
-func getStepDescription(op deploy.StepOp, isPreview bool) string {
-	return op.Prefix() + getStepDescriptionNoColor(op, isPreview) + colors.Reset
-}
-
-func getStepDescriptionNoColor(op deploy.StepOp, isPreview bool) string {
-	if isPreview {
-		switch op {
-		case deploy.OpSame:
-			return "Would not change"
-		case deploy.OpCreate:
-			return "Would create"
-		case deploy.OpUpdate:
-			return "Would update"
-		case deploy.OpDelete:
-			return "Would delete"
-		case deploy.OpReplace:
-			return "Would replace"
-		case deploy.OpCreateReplacement:
-			return "Would creating for replacement"
-		case deploy.OpDeleteReplaced:
-			return "Would delete for replacement"
-		}
-	} else {
+	getDescription := func() string {
 		switch op {
 		case deploy.OpSame:
 			return "Unchanged"
 		case deploy.OpCreate:
-			return "Creating"
+			return "Created"
 		case deploy.OpUpdate:
-			return "Updating"
+			return "Updated"
 		case deploy.OpDelete:
-			return "Deleting"
+			return "Deleted"
 		case deploy.OpReplace:
-			return "Replacing"
+			return "Replaced"
 		case deploy.OpCreateReplacement:
-			return "Creating for replacement"
+			return "Created for replacement"
 		case deploy.OpDeleteReplaced:
-			return "Deleting for replacement"
+			return "Deleted for replacement"
 		}
+
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
 	}
 
-	contract.Failf("Unrecognized resource step op: %v", op)
-	return ""
+	return op.Prefix() + getDescription() + colors.Reset
 }
 
-func getStepCompleteDescriptionNoColor(op deploy.StepOp) string {
-	switch op {
-	case deploy.OpSame:
-		return "Unchanged"
-	case deploy.OpCreate:
-		return "Created"
-	case deploy.OpUpdate:
-		return "Updated"
-	case deploy.OpDelete:
-		return "Deleted"
-	case deploy.OpReplace:
-		return "Replaced"
-	case deploy.OpCreateReplacement:
-		return "Created for replacement"
-	case deploy.OpDeleteReplaced:
-		return "Deleted for replacement"
+func getStepDescription(op deploy.StepOp, isPreview bool) string {
+	getDescription := func() string {
+		if isPreview {
+			switch op {
+			case deploy.OpSame:
+				return "Would not change"
+			case deploy.OpCreate:
+				return "Would create"
+			case deploy.OpUpdate:
+				return "Would update"
+			case deploy.OpDelete:
+				return "Would delete"
+			case deploy.OpReplace:
+				return "Would replace"
+			case deploy.OpCreateReplacement:
+				return "Would creating for replacement"
+			case deploy.OpDeleteReplaced:
+				return "Would delete for replacement"
+			}
+		} else {
+			switch op {
+			case deploy.OpSame:
+				return "Unchanged"
+			case deploy.OpCreate:
+				return "Creating"
+			case deploy.OpUpdate:
+				return "Updating"
+			case deploy.OpDelete:
+				return "Deleting"
+			case deploy.OpReplace:
+				return "Replacing"
+			case deploy.OpCreateReplacement:
+				return "Creating for replacement"
+			case deploy.OpDeleteReplaced:
+				return "Deleting for replacement"
+			}
+		}
+
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
 	}
 
-	contract.Failf("Unrecognized resource step op: %v", op)
-	return ""
+	return op.Prefix() + getDescription() + colors.Reset
 }
 
 func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {
