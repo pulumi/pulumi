@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/AlecAivazis/survey.v1"
+	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -57,6 +57,10 @@ func isLoggedIn() (bool, error) {
 
 // createStack creates a stack with the given name, and selects it as the current.
 func createStack(b backend.Backend, stackName tokens.QName, opts interface{}) (backend.Stack, error) {
+	if stackName == "" {
+		return nil, errors.New("missing stack name")
+	}
+
 	stack, err := b.CreateStack(stackName, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not create stack")
