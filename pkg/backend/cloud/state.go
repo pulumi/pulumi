@@ -184,9 +184,10 @@ func (u *cloudUpdate) recordEvent(
 func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
 
-	// Start the local display processor.
+	// Start the local display processor.  Display things however the options have been
+	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go local.DisplayDiffEvents(action, displayEvents, done, debug, opts)
+	go local.DisplayEvents(action, displayEvents, done, debug, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	for e := range events {
