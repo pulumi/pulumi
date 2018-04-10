@@ -255,6 +255,15 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 		return nil, err
 	}
 
+	// If the resource was missing, simply return a nil property map.
+	readID := resp.GetId()
+	if readID == "" {
+		return nil, nil
+	} else if readID != string(id) {
+		return nil, errors.Errorf(
+			"reading resource %s yielded an unexpected ID; expected %s, got %s", urn, id, readID)
+	}
+
 	// Finally, unmarshal the resulting state properties and return them.
 	results, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
