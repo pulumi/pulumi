@@ -9,49 +9,42 @@ export class Provider implements pulumi.dynamic.ResourceProvider {
 
     private inject: Error | undefined;
 
-    public readonly diff: (id: pulumi.ID, olds: any, news: any) => Promise<pulumi.dynamic.DiffResult>;
-    public readonly create: (inputs: any) => Promise<pulumi.dynamic.CreateResult>;
-    public readonly update: (id: pulumi.ID, olds: any, news: any) => Promise<pulumi.dynamic.UpdateResult>;
-    public readonly delete: (id: pulumi.ID, props: any) => Promise<void>;
-
-    constructor() {
-        this.diff = async (id: pulumi.ID, olds: any, news: any) => {
-            let replaces: string[] = [];
-            let deleteBeforeReplace: boolean = false;
-            if ((olds as ResourceProps).replace !== (news as ResourceProps).replace) {
-                replaces.push("replace");
-            }
-            if ((olds as ResourceProps).replaceDBR !== (news as ResourceProps).replaceDBR) {
-                replaces.push("replaceDBR");
-                deleteBeforeReplace = true;
-            }
-            return {
-                replaces: replaces,
-                deleteBeforeReplace: deleteBeforeReplace,
-            };
+    public async diff(id: pulumi.ID, olds: any, news: any) {
+        let replaces: string[] = [];
+        let deleteBeforeReplace: boolean = false;
+        if ((olds as ResourceProps).replace !== (news as ResourceProps).replace) {
+            replaces.push("replace");
+        }
+        if ((olds as ResourceProps).replaceDBR !== (news as ResourceProps).replaceDBR) {
+            replaces.push("replaceDBR");
+            deleteBeforeReplace = true;
+        }
+        return {
+            replaces: replaces,
+            deleteBeforeReplace: deleteBeforeReplace,
         };
+    }
 
-        this.create = async (inputs: any) => {
-            if (this.inject) {
-                throw this.inject;
-            }
-            return {
-                id: (currentID++).toString(),
-                outs: undefined,
-            };
+    public async create(inputs: any) {
+        if (this.inject) {
+            throw this.inject;
+        }
+        return {
+            id: (currentID++).toString(),
+            outs: undefined,
         };
+    }
 
-        this.update = async (id: pulumi.ID, olds: any, news: any) => {
-            if (this.inject) {
-                throw this.inject;
-            }
-            return {};
-        };
+    public async update(id: pulumi.ID, olds: any, news: any) {
+        if (this.inject) {
+            throw this.inject;
+        }
+        return {};
+    }
 
-        this.delete = async (id: pulumi.ID, props: any) => {
-            if (this.inject) {
-                throw this.inject;
-            }
+    public async delete(id: pulumi.ID, props: any) {
+        if (this.inject) {
+            throw this.inject;
         }
     }
 
