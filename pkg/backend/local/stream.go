@@ -14,7 +14,7 @@ import (
 )
 
 // copied from: https://github.com/docker/cli/blob/master/cli/command/out.go
-// replace with usage of that library when we can figure out hte right version story
+// replace with usage of that library when we can figure out the right version story
 
 type commonStream struct {
 	fd         uintptr
