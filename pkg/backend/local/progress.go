@@ -265,27 +265,27 @@ func DisplayProgressEvents(
 		return msg
 	}
 
-	printStatusForTopLevelResource := func(status Status) {
-		writeAction := func(msg string) {
-			extraWhitespace := 0
+	writeAction := func(id string, msg string) {
+		extraWhitespace := 0
 
-			// In the terminal we try to align the status messages for each resource.
-			// do not bother with this in the non-terminal case.
-			if isTerminal {
-				extraWhitespace = maxIDLength - len(status.ID)
-				contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, status.ID)
-			}
-
-			writeProgress(chanOutput, progress.Progress{
-				ID:     status.ID,
-				Action: strings.Repeat(" ", extraWhitespace) + msg,
-			})
+		// In the terminal we try to align the status messages for each resource.
+		// do not bother with this in the non-terminal case.
+		if isTerminal {
+			extraWhitespace = maxIDLength - len(id)
+			contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, id)
 		}
 
+		writeProgress(chanOutput, progress.Progress{
+			ID:     id,
+			Action: strings.Repeat(" ", extraWhitespace) + msg,
+		})
+	}
+
+	printStatusForTopLevelResource := func(status Status) {
 		if !status.Done {
-			writeAction(createInProgressMessage(status))
+			writeAction(status.ID, createInProgressMessage(status))
 		} else {
-			writeAction(createDoneMessage(status, isPreview))
+			writeAction(status.ID, createDoneMessage(status, isPreview))
 		}
 	}
 
