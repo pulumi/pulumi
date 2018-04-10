@@ -240,7 +240,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	if iter.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		iter.p.Diag().Errorf(diag.ErrorDuplicateResourceURN, urn)
+		iter.p.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 	iter.urns[urn] = true
 
@@ -299,7 +299,8 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		}
 		for _, failure := range failures {
 			invalid = true
-			iter.p.Diag().Errorf(diag.ErrorAnalyzeResourceFailure, a, urn, failure.Property, failure.Reason)
+			iter.p.Diag().Errorf(
+				diag.GetAnalyzeResourceFailureError(urn), a, urn, failure.Property, failure.Reason)
 		}
 	}
 
@@ -430,10 +431,11 @@ func (iter *PlanIterator) issueCheckErrors(new *resource.State, urn resource.URN
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			iter.p.Diag().Errorf(diag.ErrorResourcePropertyInvalidValue,
+			iter.p.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			iter.p.Diag().Errorf(diag.ErrorResourceInvalid, new.Type, urn.Name(), failure.Reason)
+			iter.p.Diag().Errorf(
+				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
 	return true

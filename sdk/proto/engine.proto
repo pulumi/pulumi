@@ -21,6 +21,7 @@ enum LogSeverity {
 }
 
 message LogRequest {
-    LogSeverity severity = 1; // the logging level of this message.
-    string message = 2;       // the contents of the logged message.
+    LogSeverity severity = 1;   // the logging level of this message.
+    string message = 2;         // the contents of the logged message.
+    string urn = 3;             // the (optional) resource urn this log is associated with.
 }

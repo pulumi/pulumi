@@ -176,7 +176,9 @@ class SerializedOutput<T> implements resource.Output<T> {
  * function's source code, suitable for execution. Unlike toString, it actually includes information
  * about the captured environment.
  */
-export async function createFunctionInfoAsync(func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+export async function createFunctionInfoAsync(
+    func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
+
     const context: Context = {
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),

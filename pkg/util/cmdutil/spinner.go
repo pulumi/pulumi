@@ -11,11 +11,12 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// NewSpinnerAndTicker returns a new Spinner and a ticker that will fire an event when the next call to Spinner.Tick()
-// should be called.  NewSpinnerAndTicket takes into account if stdout is connected to a tty or not and returns either
-// a nice animated spinner that updates quickly, using the specified ttyFrames, or a simple spinner that just prints a
-// dot on each tick and updates slowly.
-func NewSpinnerAndTicker(prefix string, ttyFrames []string) (Spinner, *time.Ticker) {
+// NewSpinnerAndTicker returns a new Spinner and a ticker that will fire an event when the next call
+// to Spinner.Tick() should be called.  NewSpinnerAndTicket takes into account if stdout is
+// connected to a tty or not and returns either a nice animated spinner that updates quickly, using
+// the specified ttyFrames, or a simple spinner that just prints a dot on each tick and updates
+// slowly.
+func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.Duration) (Spinner, *time.Ticker) {
 	if ttyFrames == nil {
 		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
 		if Emoji {
@@ -29,7 +30,7 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string) (Spinner, *time.Tick
 		return &ttySpinner{
 			prefix: prefix,
 			frames: ttyFrames,
-		}, time.NewTicker(time.Second / 8)
+		}, time.NewTicker(time.Second / timesPerSecond)
 	}
 
 	return &dotSpinner{

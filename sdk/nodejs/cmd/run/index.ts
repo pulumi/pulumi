@@ -5,6 +5,7 @@
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as util from "util";
 import * as pulumi from "../../";
 import { RunError } from "../../errors";
 import * as log from "../../log";
@@ -214,7 +215,7 @@ export function main(args: string[]): void {
         }
         else {
             log.error(`Running program '${program}' failed with an unhandled exception:`);
-            log.error(err);
+            log.error(util.format(err));
         }
 
         // Remember that we failed with an error.  Don't quit just yet so we have a chance to drain the message loop.

@@ -65,10 +65,10 @@ func TestEscape(t *testing.T) {
 	sink := discardSink()
 
 	// Passing % chars in the argument should not yield %!(MISSING)s.
-	s := sink.Stringify(Error, Message("%s"), "lots of %v %s %d chars")
+	s := sink.Stringify(Error, Message("", "%s"), "lots of %v %s %d chars")
 	assert.Equal(t, "error: lots of %v %s %d chars\n", s)
 
 	// Passing % chars in the format string, on the other hand, should.
-	smiss := sink.Stringify(Error, Message("lots of %v %s %d chars"))
+	smiss := sink.Stringify(Error, Message("", "lots of %v %s %d chars"))
 	assert.Equal(t, "error: lots of %!v(MISSING) %!s(MISSING) %!d(MISSING) chars\n", smiss)
 }

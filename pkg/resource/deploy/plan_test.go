@@ -359,8 +359,8 @@ func (host *testProviderHost) ServerAddr() string {
 	contract.Failf("Host RPC address not available")
 	return ""
 }
-func (host *testProviderHost) Log(sev diag.Severity, msg string) {
-	cmdutil.Diag().Logf(sev, diag.RawMessage(msg))
+func (host *testProviderHost) Log(sev diag.Severity, urn resource.URN, msg string) {
+	cmdutil.Diag().Logf(sev, diag.RawMessage(urn, msg))
 }
 func (host *testProviderHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
 	return resource.PropertyValue{}, errors.New("Invalid location")
