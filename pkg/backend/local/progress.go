@@ -185,9 +185,7 @@ func DisplayProgressEvents(
 
 		// Once we've written everything to the pipe, we're done with it can let it go.
 		err := pipeWriter.Close()
-		if err != nil {
-			contract.IgnoreError(err)
-		}
+		contract.IgnoreError(err)
 
 		ticker.Stop()
 
