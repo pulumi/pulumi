@@ -258,7 +258,7 @@ func DisplayProgressEvents(
 			msg += fmt.Sprintf(", %v error(s)", errorEvents)
 		}
 
-		return msg
+		return opts.Color.Colorize(msg)
 	}
 
 	writeAction := func(id string, msg string) {
