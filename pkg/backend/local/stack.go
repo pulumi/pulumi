@@ -50,18 +50,18 @@ func (s *localStack) Remove(force bool) (bool, error) {
 }
 
 func (s *localStack) Preview(proj *workspace.Project, root string,
-	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.PreviewStack(s, proj, root, debug, opts, displayOpts)
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.PreviewStack(s, proj, root, opts, displayOpts)
 }
 
 func (s *localStack) Update(proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.UpdateStack(s, proj, root, debug, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.UpdateStack(s, proj, root, m, opts, displayOpts)
 }
 
 func (s *localStack) Destroy(proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.DestroyStack(s, proj, root, debug, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.DestroyStack(s, proj, root, m, opts, displayOpts)
 }
 
 func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

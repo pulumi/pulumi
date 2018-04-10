@@ -64,7 +64,7 @@ func newDestroyCmd() *cobra.Command {
 				return errors.New("confirmation declined")
 			}
 
-			return s.Destroy(proj, root, debug, m, engine.UpdateOptions{
+			return s.Destroy(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				DryRun:    preview,
 				Parallel:  parallel,
@@ -75,6 +75,7 @@ func newDestroyCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				DiffDisplay:          diffDisplay,
+				Debug:                debug,
 			})
 		}),
 	}

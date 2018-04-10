@@ -52,7 +52,7 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			return s.Preview(proj, root, debug, engine.UpdateOptions{
+			return s.Preview(proj, root, engine.UpdateOptions{
 				Analyzers: analyzers,
 				DryRun:    true,
 				Parallel:  parallel,
@@ -63,6 +63,7 @@ func newPreviewCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				DiffDisplay:          diffDisplay,
+				Debug:                debug,
 			})
 		}),
 	}

@@ -24,19 +24,20 @@ import (
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func DisplayEvents(
-	action string, events <-chan engine.Event, done chan<- bool,
-	debug bool, opts backend.DisplayOptions) {
+	action string, events <-chan engine.Event,
+	done chan<- bool, opts backend.DisplayOptions) {
 
 	if opts.DiffDisplay {
-		DisplayDiffEvents(action, events, done, debug, opts)
+		DisplayDiffEvents(action, events, done, opts)
 	} else {
-		DisplayProgressEvents(action, events, done, debug, opts)
+		DisplayProgressEvents(action, events, done, opts)
 	}
 }
 
 // DisplayDiffEvents displays the engine events with the diff view.
 func DisplayDiffEvents(action string,
-	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
+	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
+
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 
@@ -63,7 +64,7 @@ func DisplayDiffEvents(action string,
 				}
 			}
 
-			msg := RenderDiffEvent(event, seen, debug, opts)
+			msg := RenderDiffEvent(event, seen, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -76,7 +77,7 @@ func DisplayDiffEvents(action string,
 }
 
 func RenderDiffEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) string {
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
 
 	switch event.Type {
 	case engine.CancelEvent:
@@ -94,15 +95,15 @@ func RenderDiffEvent(
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 	case engine.DiagEvent:
-		return renderDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
+		return renderDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
 }
 
-func renderDiagEvent(payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
-	if payload.Severity == diag.Debug && !debug {
+func renderDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Message)

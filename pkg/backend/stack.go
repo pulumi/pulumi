@@ -21,13 +21,13 @@ type Stack interface {
 
 	// Preview changes to this stack.
 	Preview(proj *workspace.Project, root string,
-		debug bool, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+		opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Update this stack.
 	Update(proj *workspace.Project, root string,
-		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Destroy this stack's resources.
 	Destroy(proj *workspace.Project, root string,
-		debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
@@ -42,20 +42,20 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 
 // PreviewStack initiates a preview of the current workspace's contents.
 func PreviewStack(s Stack, proj *workspace.Project, root string,
-	debug bool, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Preview(s.Name(), proj, root, debug, opts, displayOpts)
+	opts engine.UpdateOptions, displayOpts DisplayOptions) error {
+	return s.Backend().Preview(s.Name(), proj, root, opts, displayOpts)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(s Stack, proj *workspace.Project, root string,
-	debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Update(s.Name(), proj, root, debug, m, opts, displayOpts)
+	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
+	return s.Backend().Update(s.Name(), proj, root, m, opts, displayOpts)
 }
 
 // DestroyStack destroys all of this stack's resources.
 func DestroyStack(s Stack, proj *workspace.Project, root string,
-	debug bool, m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Destroy(s.Name(), proj, root, debug, m, opts, displayOpts)
+	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
+	return s.Backend().Destroy(s.Name(), proj, root, m, opts, displayOpts)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.

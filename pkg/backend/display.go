@@ -11,4 +11,5 @@ type DisplayOptions struct {
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
 	ShowSames            bool                // true to show the resources that aren't updated in addition to updates.
 	DiffDisplay          bool                // true if we should display things as a rich diff
+	Debug                bool
 }

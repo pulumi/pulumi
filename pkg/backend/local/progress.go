@@ -125,8 +125,8 @@ func makeID(urn resource.URN) string {
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
 func DisplayProgressEvents(
-	action string, events <-chan engine.Event, done chan<- bool,
-	debug bool, opts backend.DisplayOptions) {
+	action string, events <-chan engine.Event,
+	done chan<- bool, opts backend.DisplayOptions) {
 
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
@@ -201,7 +201,7 @@ func DisplayProgressEvents(
 		// last diagnostic to the status message.
 		if len(status.DiagEvents) > 0 {
 			diagMsg := renderProgressEvent(
-				status.DiagEvents[len(status.DiagEvents)-1], seen, debug, opts, isPreview)
+				status.DiagEvents[len(status.DiagEvents)-1], seen, opts, isPreview)
 
 			if diagMsg != "" {
 				msg += ". " + diagMsg
@@ -316,7 +316,7 @@ func DisplayProgressEvents(
 			if len(status.DiagEvents) > 0 {
 				wroteHeader := false
 				for _, v := range status.DiagEvents {
-					msg := renderProgressEvent(v, seen, debug, opts, isPreview)
+					msg := renderProgressEvent(v, seen, opts, isPreview)
 					if msg != "" {
 						if !wroteHeader {
 							wroteHeader = true
@@ -332,7 +332,7 @@ func DisplayProgressEvents(
 
 		// print the summary
 		if summaryEvent != nil {
-			msg := renderProgressEvent(*summaryEvent, seen, debug, opts, isPreview)
+			msg := renderProgressEvent(*summaryEvent, seen, opts, isPreview)
 			if msg != "" {
 				writeProgress(chanOutput, progress.Progress{Message: " "})
 				writeProgress(chanOutput, progress.Progress{Message: msg})
@@ -373,7 +373,7 @@ func DisplayProgressEvents(
 
 				// First just make a string out of the event.  If we get nothing back this isn't an
 				// interesting event and we can just skip it.
-				msg := renderProgressEvent(event, seen, debug, opts, isPreview)
+				msg := renderProgressEvent(event, seen, opts, isPreview)
 				if msg == "" {
 					continue
 				}
@@ -463,7 +463,7 @@ func DisplayProgressEvents(
 
 func renderProgressEvent(
 	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	debug bool, opts backend.DisplayOptions, isPreview bool) string {
+	opts backend.DisplayOptions, isPreview bool) string {
 
 	dispatch := func() string {
 		switch event.Type {
@@ -482,7 +482,7 @@ func renderProgressEvent(
 		case engine.StdoutColorEvent:
 			return ""
 		case engine.DiagEvent:
-			return renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
+			return renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
 		default:
 			contract.Failf("unknown event type '%s'", event.Type)
 			return ""
@@ -494,8 +494,8 @@ func renderProgressEvent(
 }
 
 func renderProgressDiagEvent(
-	payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
-	if payload.Severity == diag.Debug && !debug {
+	payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+	if payload.Severity == diag.Debug && !opts.Debug {
 		// If this was a debug diagnostic and we're not displaying debug diagnostics,
 		// then just return empty.  our callers will then filter out this message.
 		return ""

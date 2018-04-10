@@ -61,7 +61,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			return s.Update(proj, root, debug, m, engine.UpdateOptions{
+			return s.Update(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				DryRun:    preview,
 				Parallel:  parallel,
@@ -72,6 +72,7 @@ func newUpdateCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				DiffDisplay:          diffDisplay,
+				Debug:                debug,
 			})
 		}),
 	}
