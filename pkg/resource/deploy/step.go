@@ -189,7 +189,7 @@ func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingDelete boo
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!pendingDelete || old.Delete)
+	contract.Assert(!pendingDelete || old.Delete || old.Status.Condemned())
 	return &DeleteStep{
 		plan:      plan,
 		old:       old,

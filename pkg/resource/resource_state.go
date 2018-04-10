@@ -68,6 +68,17 @@ func (rs MutationStatus) Live() bool {
 	return false
 }
 
+// Condemned returns whether or not this MutationStatus represents a resource that exists but is slated
+// for deletion, i.e. condemned.
+func (rs MutationStatus) Condemned() bool {
+	switch rs {
+	case ResourceStatusPendingDeletion, ResourceStatusDeleting:
+		return true
+	}
+
+	return false
+}
+
 // State is a structure containing state associated with a resource.  This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects.  The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.

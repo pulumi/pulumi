@@ -477,7 +477,7 @@ func (iter *PlanIterator) computeDeletes() []Step {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			res := prev.Resources[i]
-			if res.Delete {
+			if res.Delete || res.Status == resource.ResourceStatusPendingDeletion {
 				glog.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(iter.p, res, true))

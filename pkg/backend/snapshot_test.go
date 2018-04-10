@@ -3,6 +3,7 @@
 package backend
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -344,52 +345,61 @@ func TestDeletion(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 }
 
-func TestDeletionPending(t *testing.T) {
-	// a is a resource that's pending deletion. this is a similar setup to the previous
-	// test, but tests a slightly different code path.
-	resourceABase := NewResource("a", resource.ResourceStatusCreated)
-	resourceA := NewResource("a", resource.ResourceStatusPendingDeletion)
-	manager, sp := MockSetup(t, "test", []*resource.State{
-		resourceABase,
-		resourceA,
-	})
-
-	// do a Same step for a so that we don't think it's deleted
-	same := deploy.NewSameStep(nil, MockRegisterResourceEvent{}, resourceABase.Clone(), resourceABase.Clone())
-	mutation, err := manager.BeginMutation(same)
-	if !assert.NoError(t, err) {
-		t.FailNow()
+func TestCondemnedInBaseSnapshot(t *testing.T) {
+	condemnedStates := []resource.MutationStatus{
+		resource.ResourceStatusPendingDeletion,
+		resource.ResourceStatusDeleting,
 	}
 
-	err = mutation.End(same)
-	if !assert.NoError(t, err) {
-		t.FailNow()
+	for _, state := range condemnedStates {
+		t.Run(fmt.Sprintf("Condemned-%s", state), func(t *testing.T) {
+			// a is a resource that's condemned. this is a similar setup to the previous
+			// test, but tests a slightly different code path.
+			resourceABase := NewResource("a", resource.ResourceStatusCreated)
+			resourceA := NewResource("a", state)
+			manager, sp := MockSetup(t, "test", []*resource.State{
+				resourceABase,
+				resourceA,
+			})
+
+			// do a Same step for a so that we don't think it's deleted
+			same := deploy.NewSameStep(nil, MockRegisterResourceEvent{}, resourceABase.Clone(), resourceABase.Clone())
+			mutation, err := manager.BeginMutation(same)
+			if !assert.NoError(t, err) {
+				t.FailNow()
+			}
+
+			err = mutation.End(same)
+			if !assert.NoError(t, err) {
+				t.FailNow()
+			}
+
+			step := deploy.NewDeleteStep(nil, resourceA)
+			mutation, err = manager.BeginMutation(step)
+			if !assert.NoError(t, err) {
+				t.FailNow()
+			}
+
+			// the begin mutation should persist a snapshot with the still-live A and the
+			// pending-delete A marked for deletion
+			snap := sp.SavedSnapshots[1]
+			assert.Len(t, snap.Resources, 2)
+			assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+			assert.Equal(t, resource.ResourceStatusCreated, snap.Resources[0].Status)
+			assert.Equal(t, resourceA.URN, snap.Resources[1].URN)
+			assert.Equal(t, resource.ResourceStatusDeleting, snap.Resources[1].Status)
+
+			err = mutation.End(step)
+			if !assert.NoError(t, err) {
+				t.FailNow()
+			}
+
+			// the end mutation should set the pending delete resourceA to the "deleted" state in the new snapshot.
+			// merge should then only put the live resourceA into the snapshot.
+			snap = sp.SavedSnapshots[2]
+			assert.Len(t, snap.Resources, 1)
+			assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
+			assert.Equal(t, resource.ResourceStatusCreated, snap.Resources[0].Status)
+		})
 	}
-
-	step := deploy.NewDeleteStep(nil, resourceA)
-	mutation, err = manager.BeginMutation(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-
-	// the begin mutation should persist a snapshot with the still-live A and the
-	// pending-delete A marked for deletion
-	snap := sp.SavedSnapshots[1]
-	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.ResourceStatusCreated, snap.Resources[0].Status)
-	assert.Equal(t, resourceA.URN, snap.Resources[1].URN)
-	assert.Equal(t, resource.ResourceStatusDeleting, snap.Resources[1].Status)
-
-	err = mutation.End(step)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-
-	// the end mutation should set the pending delete resourceA to the "deleted" state in the new snapshot.
-	// merge should then only put the live resourceA into the snapshot.
-	snap = sp.SavedSnapshots[2]
-	assert.Len(t, snap.Resources, 1)
-	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
-	assert.Equal(t, resource.ResourceStatusCreated, snap.Resources[0].Status)
 }
