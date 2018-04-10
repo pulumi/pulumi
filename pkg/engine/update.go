@@ -170,7 +170,7 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		}
 
 		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.ErrorPlanApplyFailed, err)
+		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(step.URN()), err)
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
 	} else {
 		if step.Logical() {

@@ -3,6 +3,7 @@
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
 import * as util from "util";
+import * as resourceTypes from "../resource";
 import { getEngine, rpcKeepAlive } from "../runtime/settings";
 const engproto = require("../proto/engine_pb.js");
 
@@ -19,11 +20,10 @@ export function hasErrors(): boolean {
 /**
  * debug logs a debug-level message that is generally hidden from end-users.
  */
-export function debug(format: any, ...args: any[]): void {
-    const msg: string = util.format(format, ...args);
+export async function debug(msg: string, resource?: resourceTypes.Resource) {
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.DEBUG, msg);
+        log(engine, engproto.LogSeverity.DEBUG, msg, resource);
     }
     else {
         // ignore debug messages when no engine is available.
@@ -33,57 +33,66 @@ export function debug(format: any, ...args: any[]): void {
 /**
  * info logs an informational message that is generally printed to stdout during resource operations.
  */
-export function info(format: any, ...args: any[]): void {
-    const msg: string = util.format(format, ...args);
+export function info(msg: string, resource?: resourceTypes.Resource) {
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.INFO, msg);
+        return log(engine, engproto.LogSeverity.INFO, msg, resource);
     }
     else {
         console.log(`info: [runtime] ${msg}`);
+        return Promise.resolve();
     }
 }
 
 /**
  * warn logs a warning to indicate that something went wrong, but not catastrophically so.
  */
-export function warn(format: any, ...args: any[]): void {
-    const msg: string = util.format(format, ...args);
+export function warn(msg: string, resource?: resourceTypes.Resource) {
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.WARNING, msg);
+        return log(engine, engproto.LogSeverity.WARNING, msg, resource);
     }
     else {
         console.warn(`warning: [runtime] ${msg}`);
+        return Promise.resolve();
     }
 }
 
 /**
  * error logs a fatal error to indicate that the tool should stop processing resource operations immediately.
  */
-export function error(format: any, ...args: any[]): void {
+export function error(msg: string, resource?: resourceTypes.Resource) {
     errcnt++; // remember the error so we can suppress leaks.
 
-    const msg: string = util.format(format, ...args);
     const engine: Object | undefined = getEngine();
     if (engine) {
-        log(engine, engproto.LogSeverity.ERROR, msg);
+        return log(engine, engproto.LogSeverity.ERROR, msg, resource);
     }
     else {
         console.error(`error: [runtime] ${msg}`);
+        return Promise.resolve();
     }
 }
 
-export function log(engine: any, sev: any, format: any, ...args: any[]): void {
+function log(
+        engine: any, sev: any, msg: string,
+        resource: resourceTypes.Resource | undefined): Promise<void> {
+
     // Ensure we log everything in serial order.
-    const msg: string = util.format(format, ...args);
     const keepAlive: () => void = rpcKeepAlive();
-    lastLog = lastLog.then(() => {
+
+    const urnPromise = resource
+        ? resource.urn.promise()
+        : Promise.resolve("");
+
+    lastLog = Promise.all([lastLog, urnPromise]).then(arr => {
         return new Promise((resolve, reject) => {
             try {
+                const urn = arr[1];
                 const req = new engproto.LogRequest();
                 req.setSeverity(sev);
                 req.setMessage(msg);
+                req.setUrn(urn);
                 engine.log(req, () => {
                     resolve(); // let the next log through
                     keepAlive(); // permit RPC channel tear-downs
@@ -94,5 +103,7 @@ export function log(engine: any, sev: any, format: any, ...args: any[]): void {
             }
         });
     });
+
+    return lastLog;
 }
 

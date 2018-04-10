@@ -97,9 +97,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 			}
 			msg := line[:len(line)-1]
 			if stderr {
-				ctx.Diag.Infoerrf(diag.RawMessage(msg))
+				ctx.Diag.Infoerrf(diag.RawMessage("" /*urn*/, msg))
 			} else {
-				ctx.Diag.Infof(diag.RawMessage(msg))
+				ctx.Diag.Infof(diag.RawMessage("" /*urn*/, msg))
 			}
 		}
 		close(done)

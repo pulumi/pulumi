@@ -73,12 +73,12 @@ func Exit(err error) {
 
 // ExitError issues an error and exits with a standard error exit code.
 func ExitError(msg string, args ...interface{}) {
-	ExitErrorCode(-1, msg, args...)
+	exitErrorCode(-1, msg, args...)
 }
 
-// ExitErrorCode issues an error and exists with the given error exit code.
-func ExitErrorCode(code int, msg string, args ...interface{}) {
-	Diag().Errorf(diag.Message(msg), args...)
+// exitErrorCode issues an error and exists with the given error exit code.
+func exitErrorCode(code int, msg string, args ...interface{}) {
+	Diag().Errorf(diag.Message("", msg), args...)
 	os.Exit(code)
 }
 
