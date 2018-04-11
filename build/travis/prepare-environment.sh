@@ -4,6 +4,7 @@
 # we can in a subshell.
 
 export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
+export PULUMI_SDK="$(go env GOPATH)/src/github.com/pulumi/home"
 
 (
     set -o nounset -o errexit -o pipefail
@@ -15,6 +16,9 @@ export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
 
     # We have some shared scripts in pulumi/home, and we use them in other steps
     git clone git@github.com:pulumi/home "${PULUMI_HOME}"
+
+    # We have some shared scripts in pulumi/sdk, and we use them in other steps
+    git clone git@github.com:pulumi/sdk "${PULUMI_SDK}"
 
     # If we have an NPM token, put it in the .npmrc file, so we can use it:
     if [ ! -z "${NPM_TOKEN:-}" ]; then
