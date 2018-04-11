@@ -202,7 +202,9 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 			}
 		}
 
-		opts.StackName = strings.ToLower("p-it-" + host + "-" + test)
+		lowerStackName := strings.ToLower("p-it-" + host + "-" + test)
+		legalStackName := strings.TrimRight(lowerStackName, "-_")
+		opts.StackName = legalStackName
 	}
 
 	return tokens.QName(opts.StackName)
