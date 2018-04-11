@@ -352,7 +352,7 @@ func DisplayProgressEvents(
 		return getPaddedMessage(status, msg, "")
 	}
 
-	printStatusForTopLevelResource := func(status Status) {
+	printStatusMessage := func(status Status) {
 		var msg string
 		if status.Done {
 			msg = createDoneMessage(status, isPreview)
@@ -366,13 +366,13 @@ func DisplayProgressEvents(
 		})
 	}
 
-	printStatusForTopLevelResources := func(includeDone bool) {
+	updateAllStatusMessages := func(includeDone bool) {
 		for _, v := range eventUrnToStatus {
 			if v.Done && !includeDone {
 				continue
 			}
 
-			printStatusForTopLevelResource(v)
+			printStatusMessage(v)
 		}
 	}
 
@@ -386,7 +386,7 @@ func DisplayProgressEvents(
 			if !v.Done {
 				v.Done = true
 				eventUrnToStatus[k] = v
-				printStatusForTopLevelResource(v)
+				printStatusMessage(v)
 			}
 		}
 
@@ -436,7 +436,15 @@ func DisplayProgressEvents(
 			case <-ticker.C:
 				// Got a tick.  Update all the in-progress resources.
 				currentTick++
-				printStatusForTopLevelResources(false /*includeDone:*/)
+
+				currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+				if currentTerminalWidth != terminalWidth {
+					// terminal width changed.  Update our output.
+					terminalWidth = currentTerminalWidth
+					updateAllStatusMessages(true /*includeDone*/)
+				} else {
+					updateAllStatusMessages(false /*includeDone*/)
+				}
 
 			case event := <-events:
 				if event.Type == "" || event.Type == engine.CancelEvent {
@@ -527,9 +535,9 @@ func DisplayProgressEvents(
 				// refresh the progress information for this resource.  (or update all resources if
 				// we need to realign everything)
 				if refreshAllStatuses {
-					printStatusForTopLevelResources(true /*includeDone*/)
+					updateAllStatusMessages(true /*includeDone*/)
 				} else {
-					printStatusForTopLevelResource(status)
+					printStatusMessage(status)
 				}
 			}
 		}
