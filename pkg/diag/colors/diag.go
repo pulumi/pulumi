@@ -39,3 +39,66 @@ func (c Colorization) Colorize(v string) string {
 		return ""
 	}
 }
+
+// SplitIntoTextAndTags breaks up a colorized string into alternating sections of a raw-text-chunk
+// and then a color-tag.  The returned array will always be non empty, with the first and last
+// elements in the array being (possibly empty) raw-text-chunks.  For example, if you started with
+// "<%fg 8>hello<%fg 7>", this would return:  ["", "<%fg 8>", "hello", "<%fg 7>", ""]
+func SplitIntoTextAndTags(v string) []string {
+	tagIndices := tagRegexp.FindAllStringIndex(v, -1)
+
+	currentIndex := 0
+	textAndTags := []string{}
+	for _, tagPair := range tagIndices {
+		tagStart := tagPair[0]
+		tagEnd := tagPair[1]
+		textAndTags = append(textAndTags, v[currentIndex:tagStart])
+		textAndTags = append(textAndTags, v[tagStart:tagEnd])
+		currentIndex = tagEnd
+	}
+
+	textAndTags = append(textAndTags, v[currentIndex:])
+
+	return textAndTags
+}
+
+// TrimColorizedString takes a string with embedded color tags and returns a new string (still with
+// embedded color tags) such that the length of the *non-tag* portion of the string is no greater
+// than maxLength.  This is useful for scenarios where the string has to be printed in a a context
+// where there is a max allowed width.  In these scenarios, we can't just measure the length of the
+// string as the embedded color tags would count against it, even though they end up with no length
+// when actually interpretted by the console.
+func TrimColorizedString(v string, maxLength int) string {
+	textAndTags := SplitIntoTextAndTags(v)
+
+	currentLength := 0
+	trimmed := ""
+
+	for i := 0; i < len(textAndTags); i++ {
+		textOrTag := textAndTags[i]
+
+		if i%2 == 0 {
+			contract.Assertf(!tagRegexp.MatchString(textOrTag), "Got a tag when we did not expect it")
+
+			text := textOrTag
+			if currentLength+len(text) > maxLength {
+				// adding this text chunk will cause us to go past the max length we allow.
+				// just take whatever subportion we can and stop what we're doing.
+				trimmed += text[0 : maxLength-currentLength]
+				break
+			} else {
+				// can safely add this text chunk
+				trimmed += text
+			}
+		} else {
+			contract.Assertf(tagRegexp.MatchString(textOrTag), "Should have gotten a tag")
+
+			// can safely add the tag to the trimmed string.  tags don't contribute any actual length.
+			trimmed += textOrTag
+		}
+	}
+
+	// add a trailing reset, so that any unclosed tags will be closed.
+	trimmed += Reset
+	return trimmed
+}

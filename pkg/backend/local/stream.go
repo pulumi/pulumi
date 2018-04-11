@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/docker/docker/pkg/progress"
-	"github.com/docker/docker/pkg/streamformatter"
+	// "github.com/docker/docker/pkg/progress"
+	// "github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -81,12 +81,4 @@ func (o *outStream) GetTtySize() (uint, uint) {
 func newOutStream(out io.Writer) *outStream {
 	fd, isTerminal := term.GetFdInfo(out)
 	return &outStream{commonStream: commonStream{fd: fd, isTerminal: isTerminal}, out: out}
-}
-
-func writeDistributionProgress(outStream io.Writer, progressChan <-chan progress.Progress) {
-	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(outStream, false)
-
-	for prog := range progressChan {
-		writeProgress(progressOutput, prog)
-	}
 }

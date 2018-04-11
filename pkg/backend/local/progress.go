@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/progress"
+	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -22,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Status helps us keep track for a resource as it is worked on by the engine.
@@ -42,9 +46,6 @@ type Status struct {
 
 	// If we failed this operation for any reason.
 	Failed bool
-
-	// The progress message to print.
-	Message string
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last
 	// diagnostic in the status region while a resource is in progress.  At the end we'll
@@ -79,11 +80,16 @@ func getEventUrn(event engine.Event) resource.URN {
 	return ""
 }
 
-func writeProgress(chanOutput progress.Output, progress progress.Progress) {
-	err := chanOutput.WriteProgress(progress)
-	if err != nil {
-		contract.IgnoreError(err)
+func writeProgress(opts backend.DisplayOptions, progressChan chan<- progress.Progress, progress progress.Progress) {
+	if progress.Message != "" {
+		progress.Message = opts.Color.Colorize(progress.Message)
 	}
+
+	if progress.Action != "" {
+		progress.Action = opts.Color.Colorize(progress.Action)
+	}
+
+	progressChan <- progress
 }
 
 var (
@@ -175,15 +181,25 @@ func DisplayProgressEvents(
 	// align.  We don't need to do that in non-terminal situations.
 	_, isTerminal := term.GetFdInfo(stdout)
 
+	terminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+
 	pipeReader, pipeWriter := io.Pipe()
+
+	// Channel where we actually push our raw progress messages into.  These will be then
+	// be converted by the docker pipeline into the messages printed to the terminal.
 	progressChan := make(chan progress.Progress, 100)
 
-	chanOutput := progress.ChanOutput(progressChan)
-
 	go func() {
-		// docker helper that reads progress messages in from progressChan and converts them
-		// into special formatted messages that are written to pipe-writer.
-		writeDistributionProgress(pipeWriter, progressChan)
+		progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
+
+		// read the Progress messages that are being produced as we hear about engine events. Pass
+		// them through the JSONStreamFormatter which will format them into "JSONMessages" and then
+		// write them into "pipeWriter".  These will then be be read by DisplayJSONMessagesToStream
+		// which will print them to stdout.
+		for prog := range progressChan {
+			err := progressOutput.WriteProgress(prog)
+			contract.IgnoreError(err)
+		}
 
 		// Once we've written everything to the pipe, we're done with it can let it go.
 		err := pipeWriter.Close()
@@ -195,9 +211,44 @@ func DisplayProgressEvents(
 		done <- true
 	}()
 
-	ellipses := []string{"", ".", "..", "..."}
+	getMessagePadding := func(id string) string {
+		extraWhitespace := 0
+
+		// In the terminal we try to align the status messages for each resource.
+		// do not bother with this in the non-terminal case.
+		if isTerminal {
+			extraWhitespace = maxIDLength - len(id)
+			contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, id)
+		}
+
+		return strings.Repeat(" ", extraWhitespace)
+	}
+
+	getPaddedMessage := func(status Status, msgWithColors string, suffix string) string {
+		id := status.ID
+		padding := getMessagePadding(id)
+
+		// Only include the first line of the message
+		newLineIndex := strings.Index(msgWithColors, "\n")
+		if newLineIndex >= 0 {
+			msgWithColors = msgWithColors[0:newLineIndex]
+		}
+
+		maxMsgLength := terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
+
+		// we don't want to go past the end of the terminal.  Note: this is made complex due to
+		// msgWithColors having the color code information embedded with it.  So we need to
+		// get the right substring of it, assuming that embedded colors are just markup and do
+		// not actually contribute to the length
+		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
+
+		return padding + msgWithColors + suffix
+	}
+
+	ellipsesArray := []string{"", ".", "..", "..."}
 	createInProgressMessage := func(status Status) string {
-		msg := status.Message
+		msg := getMetadataSummary(status.Step, opts, isPreview, false /*done*/, status.Failed)
+		ellipses := ellipsesArray[(status.Tick+currentTick)%len(ellipsesArray)]
 
 		// if there are any diagnostics for this resource, add information about the
 		// last diagnostic to the status message.
@@ -206,19 +257,11 @@ func DisplayProgressEvents(
 				status.DiagEvents[len(status.DiagEvents)-1], seen, opts, isPreview)
 
 			if diagMsg != "" {
-				newLineIndex := strings.Index(diagMsg, "\n")
-				if newLineIndex >= 0 {
-					diagMsg = diagMsg[0:newLineIndex]
-				}
-
 				msg += ". " + diagMsg
 			}
 		}
 
-		// Add an changing ellipses to help convey that progress is happening.
-		msg += ellipses[(status.Tick+currentTick)%len(ellipses)]
-
-		return msg
+		return getPaddedMessage(status, msg, ellipses)
 	}
 
 	createDoneMessage := func(status Status, isPreview bool) string {
@@ -266,31 +309,21 @@ func DisplayProgressEvents(
 			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
 		}
 
-		return opts.Color.Colorize(msg)
-	}
-
-	writeAction := func(id string, msg string) {
-		extraWhitespace := 0
-
-		// In the terminal we try to align the status messages for each resource.
-		// do not bother with this in the non-terminal case.
-		if isTerminal {
-			extraWhitespace = maxIDLength - len(id)
-			contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, id)
-		}
-
-		writeProgress(chanOutput, progress.Progress{
-			ID:     id,
-			Action: strings.Repeat(" ", extraWhitespace) + msg,
-		})
+		return getPaddedMessage(status, msg, "")
 	}
 
 	printStatusForTopLevelResource := func(status Status) {
-		if !status.Done {
-			writeAction(status.ID, createInProgressMessage(status))
+		var msg string
+		if status.Done {
+			msg = createDoneMessage(status, isPreview)
 		} else {
-			writeAction(status.ID, createDoneMessage(status, isPreview))
+			msg = createInProgressMessage(status)
 		}
+
+		writeProgress(opts, progressChan, progress.Progress{
+			ID:     status.ID,
+			Action: msg,
+		})
 	}
 
 	printStatusForTopLevelResources := func(includeDone bool) {
@@ -328,11 +361,11 @@ func DisplayProgressEvents(
 					if msg != "" {
 						if !wroteHeader {
 							wroteHeader = true
-							writeProgress(chanOutput, progress.Progress{Message: " "})
-							writeProgress(chanOutput, progress.Progress{ID: status.ID, Message: "Diagnostics"})
+							writeProgress(opts, progressChan, progress.Progress{Message: " "})
+							writeProgress(opts, progressChan, progress.Progress{ID: status.ID, Message: "Diagnostics"})
 						}
 
-						writeProgress(chanOutput, progress.Progress{Message: "  " + msg})
+						writeProgress(opts, progressChan, progress.Progress{Message: "  " + msg})
 					}
 				}
 			}
@@ -342,15 +375,15 @@ func DisplayProgressEvents(
 		if summaryEvent != nil {
 			msg := renderProgressEvent(*summaryEvent, seen, opts, isPreview)
 			if msg != "" {
-				writeProgress(chanOutput, progress.Progress{Message: " "})
-				writeProgress(chanOutput, progress.Progress{Message: msg})
+				writeProgress(opts, progressChan, progress.Progress{Message: " "})
+				writeProgress(opts, progressChan, progress.Progress{Message: msg})
 			}
 		}
 
 		// no more progress events from this point on.  By closing the progress channel, this will
-		// cause writeDistributionProgress to finish.  This, in turn, will close the pipeWriter.
-		// This will then cause DisplayJSONMessagesToStream to finish once it processes the last
-		// message is receives from pipeReader, causing DisplayEvents to finally complete.
+		// cause us to stop writing to the pipeWriter and will then in turn will close the
+		// pipeWriter. This will then cause DisplayJSONMessagesToStream to finish once it processes
+		// the last message is receives from pipeReader, causing DisplayEvents to finally complete.
 		close(progressChan)
 	}
 
@@ -393,7 +426,7 @@ func DisplayProgressEvents(
 					// once we start hearing about actual resource events.
 
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					writeProgress(chanOutput, progress.Progress{Message: msg})
+					writeProgress(opts, progressChan, progress.Progress{Message: msg})
 					continue
 				case engine.SummaryEvent:
 					// keep track of the summar event so that we can display it after all other
@@ -431,7 +464,6 @@ func DisplayProgressEvents(
 				}
 
 				if event.Type == engine.ResourcePreEvent {
-					status.Message = msg
 					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
 					if status.Step.Op == "" {
 						contract.Failf("Got empty op for %s %s", event.Type, msg)
@@ -466,9 +498,7 @@ func DisplayProgressEvents(
 	// Call into Docker to actually suck the progress messages out of pipeReader and display
 	// them to the console.
 	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
-	if err != nil {
-		contract.IgnoreError(err)
-	}
+	contract.IgnoreError(err)
 }
 
 func renderProgressEvent(
@@ -500,7 +530,7 @@ func renderProgressEvent(
 	}
 
 	msg := dispatch()
-	return opts.Color.Colorize(strings.TrimSpace(msg))
+	return strings.TrimSpace(msg)
 }
 
 func renderProgressDiagEvent(
