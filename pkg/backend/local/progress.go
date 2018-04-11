@@ -276,22 +276,26 @@ func DisplayProgressEvents(
 		id := status.ID
 		padding := getMessagePadding(id)
 
-		// Only include the first line of the message
-		newLineIndex := strings.Index(msgWithColors, "\n")
-		if newLineIndex >= 0 {
-			msgWithColors = msgWithColors[0:newLineIndex]
+		// In the terminal, only include the first line of the message
+		if isTerminal {
+			newLineIndex := strings.Index(msgWithColors, "\n")
+			if newLineIndex >= 0 {
+				msgWithColors = msgWithColors[0:newLineIndex]
+			}
 		}
 
-		maxMsgLength := terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
-		if maxMsgLength < 0 {
-			maxMsgLength = 0
-		}
+		if isTerminal {
+			// we don't want to go past the end of the terminal.  Note: this is made complex due to
+			// msgWithColors having the color code information embedded with it.  So we need to get
+			// the right substring of it, assuming that embedded colors are just markup and do not
+			// actually contribute to the length
+			maxMsgLength := terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
+			if maxMsgLength < 0 {
+				maxMsgLength = 0
+			}
 
-		// we don't want to go past the end of the terminal.  Note: this is made complex due to
-		// msgWithColors having the color code information embedded with it.  So we need to
-		// get the right substring of it, assuming that embedded colors are just markup and do
-		// not actually contribute to the length
-		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
+			msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
+		}
 
 		return padding + msgWithColors + suffix
 	}
@@ -559,11 +563,17 @@ func renderProgressEvent(
 		case engine.SummaryEvent:
 			return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
 		case engine.ResourceOperationFailed:
-			return renderProgressResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), seen, opts, isPreview)
+			return renderResourceMetadata(
+				event.Payload.(engine.ResourceOperationFailedPayload).Metadata,
+				seen, opts, isPreview, true /*done*/, true /*failed*/)
 		case engine.ResourceOutputsEvent:
-			return renderProgressResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts, isPreview)
+			return renderResourceMetadata(
+				event.Payload.(engine.ResourceOutputsEventPayload).Metadata,
+				seen, opts, isPreview, true /*done*/, false /*failed*/)
 		case engine.ResourcePreEvent:
-			return renderProgressResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts, isPreview)
+			return renderResourceMetadata(
+				event.Payload.(engine.ResourcePreEventPayload).Metadata,
+				seen, opts, isPreview, false /*done*/, false /*failed*/)
 		case engine.StdoutColorEvent:
 			return ""
 		case engine.DiagEvent:
@@ -737,12 +747,8 @@ func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.
 }
 
 func renderResourceMetadata(
-	metadata engine.StepEventMetadata,
-	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions,
-	isPreview bool,
-	done bool,
-	failed bool) string {
+	metadata engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata,
+	opts backend.DisplayOptions, isPreview bool, done bool, failed bool) string {
 
 	seen[metadata.URN] = metadata
 
@@ -751,39 +757,6 @@ func renderResourceMetadata(
 	}
 
 	return ""
-}
-
-func renderProgressResourcePreEvent(
-	payload engine.ResourcePreEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions,
-	isPreview bool) string {
-
-	return renderResourceMetadata(
-		payload.Metadata, seen, opts,
-		isPreview, false /*done*/, false /*failed*/)
-}
-
-func renderProgressResourceOutputsEvent(
-	payload engine.ResourceOutputsEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions,
-	isPreview bool) string {
-
-	return renderResourceMetadata(
-		payload.Metadata, seen, opts,
-		isPreview, true /*done*/, false /*failed*/)
-}
-
-func renderProgressResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions,
-	isPreview bool) string {
-
-	return renderResourceMetadata(
-		payload.Metadata, seen, opts,
-		isPreview, true /*done*/, true /*failed*/)
 }
 
 func writeString(b *bytes.Buffer, s string) {
