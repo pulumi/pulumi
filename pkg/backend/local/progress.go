@@ -103,15 +103,18 @@ func getDiagnosticInformation(status Status) (
 	infoEvents = 0
 	debugEvents = 0
 
-	var lastError, lastWarning, lastInfo, lastDebug *engine.Event
+	var lastError, lastInfoError, lastWarning, lastInfo, lastDebug *engine.Event
 
 	for _, ev := range status.DiagEvents {
 		payload := ev.Payload.(engine.DiagEventPayload)
 
 		switch payload.Severity {
-		case diag.Infoerr, diag.Error:
+		case diag.Error:
 			errorEvents++
 			lastError = &ev
+		case diag.Infoerr:
+			errorEvents++
+			lastInfoError = &ev
 		case diag.Warning:
 			warningEvents++
 			lastWarning = &ev
@@ -126,6 +129,11 @@ func getDiagnosticInformation(status Status) (
 
 	if lastError != nil {
 		worstDiag = lastError
+		return
+	}
+
+	if lastInfoError != nil {
+		worstDiag = lastInfoError
 		return
 	}
 
@@ -466,7 +474,7 @@ func DisplayProgressEvents(
 			}
 		}
 
-		if metadata != nil && !shouldShow(*metadata, opts) {
+		if metadata != nil && !shouldShow(*metadata, opts) && !isRootURN(eventUrn) {
 			return
 		}
 
@@ -499,7 +507,9 @@ func DisplayProgressEvents(
 			}
 		} else if event.Type == engine.ResourceOutputsEvent {
 			// transition the status to done.
-			status.Done = true
+			if !isRootURN(eventUrn) {
+				status.Done = true
+			}
 		} else if event.Type == engine.ResourceOperationFailed {
 			status.Done = true
 			status.Failed = true
@@ -566,9 +576,9 @@ func getMetadataSummary(
 	out := &bytes.Buffer{}
 
 	if done {
-		writeString(out, getStepDoneDescription(step.Op, isPreview, failed))
+		writeString(out, getStepDoneDescription(step, isPreview, failed))
 	} else {
-		writeString(out, getStepInProgressDescription(step.Op, isPreview))
+		writeString(out, getStepInProgressDescription(step, isPreview))
 	}
 	writeString(out, colors.Reset)
 
@@ -594,10 +604,24 @@ func getMetadataSummary(
 	return out.String()
 }
 
-func getStepDoneDescription(op deploy.StepOp, isPreview bool, failed bool) string {
-	if isPreview {
-		return getStepInProgressDescription(op, isPreview)
+func getStepDoneDescription(step engine.StepEventMetadata, isPreview bool, failed bool) string {
+	makeError := func(v string) string {
+		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
+
+	if isRootStack(step) {
+		if failed {
+			return makeError("Failed")
+		}
+
+		return "Completed"
+	}
+
+	if isPreview && !isRootStack(step) {
+		return getStepInProgressDescription(step, isPreview)
+	}
+
+	op := step.Op
 
 	getDescription := func() string {
 		if failed {
@@ -637,13 +661,19 @@ func getStepDoneDescription(op deploy.StepOp, isPreview bool, failed bool) strin
 	}
 
 	if failed {
-		return colors.SpecError + "**" + getDescription() + "**" + colors.Reset
+		return makeError(getDescription())
 	}
 
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
-func getStepInProgressDescription(op deploy.StepOp, isPreview bool) string {
+func getStepInProgressDescription(step engine.StepEventMetadata, isPreview bool) string {
+	if isRootStack(step) {
+		return "Running"
+	}
+
+	op := step.Op
+
 	getDescription := func() string {
 		if isPreview {
 			switch op {
@@ -684,7 +714,6 @@ func getStepInProgressDescription(op deploy.StepOp, isPreview bool) string {
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
