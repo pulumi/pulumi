@@ -309,7 +309,7 @@ func DisplayProgressEvents(
 		if worstDiag != nil {
 			diagMsg := renderProgressDiagEvent(*worstDiag, opts)
 			if diagMsg != "" {
-				msg += ". " + msg
+				msg += ". " + diagMsg
 			}
 		}
 
