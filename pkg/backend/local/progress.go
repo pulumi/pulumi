@@ -40,6 +40,9 @@ type Status struct {
 	// If the engine finished processing this resources.
 	Done bool
 
+	// If we failed this operation for any reason.
+	Failed bool
+
 	// The progress message to print.
 	Message string
 
@@ -64,14 +67,13 @@ func simplifyTypeName(typ tokens.Type) string {
 // event that has a URN.
 func getEventUrn(event engine.Event) resource.URN {
 	if event.Type == engine.ResourcePreEvent {
-		payload := event.Payload.(engine.ResourcePreEventPayload)
-		return payload.Metadata.URN
+		return event.Payload.(engine.ResourcePreEventPayload).Metadata.URN
 	} else if event.Type == engine.ResourceOutputsEvent {
-		payload := event.Payload.(engine.ResourceOutputsEventPayload)
-		return payload.Metadata.URN
+		return event.Payload.(engine.ResourceOutputsEventPayload).Metadata.URN
 	} else if event.Type == engine.DiagEvent {
-		payload := event.Payload.(engine.DiagEventPayload)
-		return payload.URN
+		return event.Payload.(engine.DiagEventPayload).URN
+	} else if event.Type == engine.ResourceOperationFailed {
+		return event.Payload.(engine.ResourceOperationFailedPayload).Metadata.URN
 	}
 
 	return ""
@@ -204,6 +206,11 @@ func DisplayProgressEvents(
 				status.DiagEvents[len(status.DiagEvents)-1], seen, opts, isPreview)
 
 			if diagMsg != "" {
+				newLineIndex := strings.Index(diagMsg, "\n")
+				if newLineIndex >= 0 {
+					diagMsg = diagMsg[0:newLineIndex]
+				}
+
 				msg += ". " + diagMsg
 			}
 		}
@@ -218,8 +225,6 @@ func DisplayProgressEvents(
 		if status.Step.Op == "" {
 			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 		}
-
-		msg := getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/)
 
 		debugEvents := 0
 		infoEvents := 0
@@ -242,20 +247,23 @@ func DisplayProgressEvents(
 			}
 		}
 
-		if debugEvents > 0 {
-			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
-		}
+		failed := status.Failed || errorEvents > 0
+		msg := getMetadataSummary(status.Step, opts, isPreview, true /*done*/, failed)
 
-		if infoEvents > 0 {
-			msg += fmt.Sprintf(", %v info message(s)", infoEvents)
+		if errorEvents > 0 {
+			msg += fmt.Sprintf(", %v error(s)", errorEvents)
 		}
 
 		if warningEvents > 0 {
 			msg += fmt.Sprintf(", %v warning(s)", warningEvents)
 		}
 
-		if errorEvents > 0 {
-			msg += fmt.Sprintf(", %v error(s)", errorEvents)
+		if infoEvents > 0 {
+			msg += fmt.Sprintf(", %v info message(s)", infoEvents)
+		}
+
+		if debugEvents > 0 {
+			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
 		}
 
 		return opts.Color.Colorize(msg)
@@ -385,11 +393,10 @@ func DisplayProgressEvents(
 					// once we start hearing about actual resource events.
 
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					writeProgress(chanOutput, progress.Progress{Message: " "})
 					writeProgress(chanOutput, progress.Progress{Message: msg})
 					continue
 				case engine.SummaryEvent:
-					// keep track of hte summar event so that we can display it after all other
+					// keep track of the summar event so that we can display it after all other
 					// resource-related events we receive.
 					summaryEvent = &event
 					continue
@@ -432,6 +439,9 @@ func DisplayProgressEvents(
 				} else if event.Type == engine.ResourceOutputsEvent {
 					// transition the status to done.
 					status.Done = true
+				} else if event.Type == engine.ResourceOperationFailed {
+					status.Done = true
+					status.Failed = true
 				} else if event.Type == engine.DiagEvent {
 					// also record this diagnostic so we print it at the end.
 					status.DiagEvents = append(status.DiagEvents, event)
@@ -474,7 +484,7 @@ func renderProgressEvent(
 		case engine.SummaryEvent:
 			return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
 		case engine.ResourceOperationFailed:
-			return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+			return renderProgressResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), seen, opts, isPreview)
 		case engine.ResourceOutputsEvent:
 			return renderProgressResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts, isPreview)
 		case engine.ResourcePreEvent:
@@ -506,14 +516,14 @@ func renderProgressDiagEvent(
 
 func getMetadataSummary(
 	step engine.StepEventMetadata, opts backend.DisplayOptions,
-	isPreview bool, isComplete bool) string {
+	isPreview bool, done bool, failed bool) string {
 
 	out := &bytes.Buffer{}
 
-	if isComplete {
-		writeString(out, getStepCompleteDescription(step.Op, isPreview))
+	if done {
+		writeString(out, getStepDoneDescription(step.Op, isPreview, failed))
 	} else {
-		writeString(out, getStepDescription(step.Op, isPreview))
+		writeString(out, getStepInProgressDescription(step.Op, isPreview))
 	}
 	writeString(out, colors.Reset)
 
@@ -539,37 +549,56 @@ func getMetadataSummary(
 	return out.String()
 }
 
-func getStepCompleteDescription(op deploy.StepOp, isPreview bool) string {
+func getStepDoneDescription(op deploy.StepOp, isPreview bool, failed bool) string {
 	if isPreview {
-		return getStepDescription(op, isPreview)
+		return getStepInProgressDescription(op, isPreview)
 	}
 
 	getDescription := func() string {
-		switch op {
-		case deploy.OpSame:
-			return "Unchanged"
-		case deploy.OpCreate:
-			return "Created"
-		case deploy.OpUpdate:
-			return "Updated"
-		case deploy.OpDelete:
-			return "Deleted"
-		case deploy.OpReplace:
-			return "Replaced"
-		case deploy.OpCreateReplacement:
-			return "Created for replacement"
-		case deploy.OpDeleteReplaced:
-			return "Deleted for replacement"
+		if failed {
+			switch op {
+			case deploy.OpSame:
+				return "Failed"
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				return "Creating failed"
+			case deploy.OpUpdate:
+				return "Updating failed"
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				return "Deleting failed"
+			case deploy.OpReplace:
+				return "Replacing failed"
+			}
+		} else {
+			switch op {
+			case deploy.OpSame:
+				return "Unchanged"
+			case deploy.OpCreate:
+				return "Created"
+			case deploy.OpUpdate:
+				return "Updated"
+			case deploy.OpDelete:
+				return "Deleted"
+			case deploy.OpReplace:
+				return "Replaced"
+			case deploy.OpCreateReplacement:
+				return "Created for replacement"
+			case deploy.OpDeleteReplaced:
+				return "Deleted for replacement"
+			}
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
 
+	if failed {
+		return colors.SpecError + "**" + getDescription() + "**" + colors.Reset
+	}
+
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
-func getStepDescription(op deploy.StepOp, isPreview bool) string {
+func getStepInProgressDescription(op deploy.StepOp, isPreview bool) string {
 	getDescription := func() string {
 		if isPreview {
 			switch op {
@@ -632,19 +661,32 @@ func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.
 	}
 }
 
+func renderResourceMetadata(
+	metadata engine.StepEventMetadata,
+	seen map[resource.URN]engine.StepEventMetadata,
+	opts backend.DisplayOptions,
+	isPreview bool,
+	done bool,
+	failed bool) string {
+
+	seen[metadata.URN] = metadata
+
+	if shouldShow(metadata, opts) {
+		return getMetadataSummary(metadata, opts, isPreview, done, failed)
+	}
+
+	return ""
+}
+
 func renderProgressResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts backend.DisplayOptions,
 	isPreview bool) string {
 
-	seen[payload.Metadata.URN] = payload.Metadata
-
-	if shouldShow(payload.Metadata, opts) {
-		return getMetadataSummary(payload.Metadata, opts, isPreview, false /*isComplete*/)
-	}
-
-	return ""
+	return renderResourceMetadata(
+		payload.Metadata, seen, opts,
+		isPreview, false /*done*/, false /*failed*/)
 }
 
 func renderProgressResourceOutputsEvent(
@@ -653,11 +695,20 @@ func renderProgressResourceOutputsEvent(
 	opts backend.DisplayOptions,
 	isPreview bool) string {
 
-	if shouldShow(payload.Metadata, opts) {
-		return getMetadataSummary(payload.Metadata, opts, isPreview, true /*isComplete*/)
-	}
+	return renderResourceMetadata(
+		payload.Metadata, seen, opts,
+		isPreview, true /*done*/, false /*failed*/)
+}
 
-	return ""
+func renderProgressResourceOperationFailedEvent(
+	payload engine.ResourceOperationFailedPayload,
+	seen map[resource.URN]engine.StepEventMetadata,
+	opts backend.DisplayOptions,
+	isPreview bool) string {
+
+	return renderResourceMetadata(
+		payload.Metadata, seen, opts,
+		isPreview, true /*done*/, true /*failed*/)
 }
 
 func writeString(b *bytes.Buffer, s string) {
