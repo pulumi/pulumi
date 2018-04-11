@@ -8,7 +8,11 @@ language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
 env:
-    - PULUMI_API=https://api.pulumi-staging.io
+    - PULUMI_API=https://api.pulumi-staging.io TRAVIS_NODE_VERSION=v6.10.2
+    - PULUMI_API=https://api.pulumi-staging.io TRAVIS_NODE_VERSION=v8.10.0
+matrix:
+  allow_failures:
+    - env: PULUMI_API=https://api.pulumi-staging.io TRAVIS_NODE_VERSION=v8.10.0
 git:
   depth: false
 before_install:

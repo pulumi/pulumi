@@ -1,4 +1,6 @@
-nvm install v6.10.2
+# Default to node v6.10.2 if not specified.
+echo "installing node ${TRAVIS_NODE_VERSION-v6.10.2}"
+nvm install ${TRAVIS_NODE_VERSION-v6.10.2}
 
 # Travis sources this script, so we can export variables into the
 # outer shell, so we don't want to set options like nounset because
