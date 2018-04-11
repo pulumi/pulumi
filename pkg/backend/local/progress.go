@@ -399,35 +399,121 @@ func DisplayProgressEvents(
 			}
 		}
 
-		// no more progress events from this point on.  By closing the progress channel, this will
-		// cause us to stop writing to the pipeWriter and will then in turn will close the
-		// pipeWriter. This will then cause DisplayJSONMessagesToStream to finish once it processes
-		// the last message is receives from pipeReader, causing DisplayEvents to finally complete.
-		// close(progressChan)
+		// no more progress events from this point on.  By closing the pipe, this will then cause
+		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
+		// pipeReader, causing DisplayEvents to finally complete.
 		err := pipeWriter.Close()
 		contract.IgnoreError(err)
 	}
 
 	defer func() {
-
-		// // read the Progress messages that are being produced as we hear about engine events. Pass
-		// // them through the JSONStreamFormatter which will format them into "JSONMessages" and then
-		// // write them into "pipeWriter".  These will then be be read by DisplayJSONMessagesToStream
-		// // which will print them to stdout.
-		// for prog := range progressChan {
-		// 	err := progressOutput.WriteProgress(prog)
-		// 	contract.IgnoreError(err)
-		// }
-
-		// // Once we've written everything to the pipe, we're done with it can let it go.
-		// err := pipeWriter.Close()
-		// contract.IgnoreError(err)
-
 		ticker.Stop()
 
 		// let our caller know we're done.
 		done <- true
 	}()
+
+	processTick := func() {
+		// Got a tick.  Update all the in-progress resources.
+		currentTick++
+
+		currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+		if currentTerminalWidth != terminalWidth {
+			// terminal width changed.  Update our output.
+			terminalWidth = currentTerminalWidth
+			updateAllStatusMessages(true /*includeDone*/)
+		} else {
+			updateAllStatusMessages(false /*includeDone*/)
+		}
+	}
+
+	processNormalEvent := func(event engine.Event) {
+
+		eventUrn := getEventUrn(event)
+		if isRootURN(eventUrn) {
+			stackUrn = eventUrn
+		}
+
+		// First just make a string out of the event.  If we get nothing back this isn't an
+		// interesting event and we can just skip it.
+		msg := renderProgressEvent(event, seen, opts, isPreview)
+		if msg == "" {
+			return
+		}
+
+		switch event.Type {
+		case engine.PreludeEvent:
+			// A prelude event can just be printed out directly to the console.
+			// Note: we should probably make sure we don't get any prelude events
+			// once we start hearing about actual resource events.
+
+			isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
+			colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
+			return
+		case engine.SummaryEvent:
+			// keep track of the summar event so that we can display it after all other
+			// resource-related events we receive.
+			summaryEvent = &event
+			return
+		}
+
+		// At this point, all events should relate to resources.
+
+		if eventUrn == "" {
+			// if the event doesn't have any URN associated with it, just associate
+			// it with the stack.
+			eventUrn = stackUrn
+		}
+
+		refreshAllStatuses := false
+		status, has := eventUrnToStatus[eventUrn]
+		if !has {
+			// first time we're hearing about this resource.  Create an initial nearly-empty
+			// status for it, assigning it a nice short ID.
+			status = Status{Tick: currentTick}
+			status.Step.Op = deploy.OpSame
+			status.ID = makeID(eventUrn)
+
+			if isTerminal {
+				// in the terminal we want to align the status portions of messages. If we
+				// heard about a resource with a longer id, go and update all in-flight and
+				// finished resources so that their statuses get aligned.
+				if len(status.ID) > maxIDLength {
+					maxIDLength = len(status.ID)
+					refreshAllStatuses = true
+				}
+			}
+		}
+
+		if event.Type == engine.ResourcePreEvent {
+			status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
+			if status.Step.Op == "" {
+				contract.Failf("Got empty op for %s %s", event.Type, msg)
+			}
+		} else if event.Type == engine.ResourceOutputsEvent {
+			// transition the status to done.
+			status.Done = true
+		} else if event.Type == engine.ResourceOperationFailed {
+			status.Done = true
+			status.Failed = true
+		} else if event.Type == engine.DiagEvent {
+			// also record this diagnostic so we print it at the end.
+			status.DiagEvents = append(status.DiagEvents, event)
+		} else {
+			contract.Failf("Unhandled event type '%s'", event.Type)
+		}
+
+		// Ensure that this updated status is recorded.
+		eventUrnToStatus[eventUrn] = status
+
+		// refresh the progress information for this resource.  (or update all resources if
+		// we need to realign everything)
+		if refreshAllStatuses {
+			updateAllStatusMessages(true /*includeDone*/)
+		} else {
+			printStatusMessage(status)
+		}
+	}
 
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
@@ -436,17 +522,7 @@ func DisplayProgressEvents(
 		for {
 			select {
 			case <-ticker.C:
-				// Got a tick.  Update all the in-progress resources.
-				currentTick++
-
-				currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
-				if currentTerminalWidth != terminalWidth {
-					// terminal width changed.  Update our output.
-					terminalWidth = currentTerminalWidth
-					updateAllStatusMessages(true /*includeDone*/)
-				} else {
-					updateAllStatusMessages(false /*includeDone*/)
-				}
+				processTick()
 
 			case event := <-events:
 				if event.Type == "" || event.Type == engine.CancelEvent {
@@ -457,90 +533,7 @@ func DisplayProgressEvents(
 					return
 				}
 
-				eventUrn := getEventUrn(event)
-				if isRootURN(eventUrn) {
-					stackUrn = eventUrn
-				}
-
-				// First just make a string out of the event.  If we get nothing back this isn't an
-				// interesting event and we can just skip it.
-				msg := renderProgressEvent(event, seen, opts, isPreview)
-				if msg == "" {
-					continue
-				}
-
-				switch event.Type {
-				case engine.PreludeEvent:
-					// A prelude event can just be printed out directly to the console.
-					// Note: we should probably make sure we don't get any prelude events
-					// once we start hearing about actual resource events.
-
-					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
-					continue
-				case engine.SummaryEvent:
-					// keep track of the summar event so that we can display it after all other
-					// resource-related events we receive.
-					summaryEvent = &event
-					continue
-				}
-
-				// At this point, all events should relate to resources.
-
-				if eventUrn == "" {
-					// if the event doesn't have any URN associated with it, just associate
-					// it with the stack.
-					eventUrn = stackUrn
-				}
-
-				refreshAllStatuses := false
-				status, has := eventUrnToStatus[eventUrn]
-				if !has {
-					// first time we're hearing about this resource.  Create an initial nearly-empty
-					// status for it, assigning it a nice short ID.
-					status = Status{Tick: currentTick}
-					status.Step.Op = deploy.OpSame
-					status.ID = makeID(eventUrn)
-
-					if isTerminal {
-						// in the terminal we want to align the status portions of messages. If we
-						// heard about a resource with a longer id, go and update all in-flight and
-						// finished resources so that their statuses get aligned.
-						if len(status.ID) > maxIDLength {
-							maxIDLength = len(status.ID)
-							refreshAllStatuses = true
-						}
-					}
-				}
-
-				if event.Type == engine.ResourcePreEvent {
-					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
-					if status.Step.Op == "" {
-						contract.Failf("Got empty op for %s %s", event.Type, msg)
-					}
-				} else if event.Type == engine.ResourceOutputsEvent {
-					// transition the status to done.
-					status.Done = true
-				} else if event.Type == engine.ResourceOperationFailed {
-					status.Done = true
-					status.Failed = true
-				} else if event.Type == engine.DiagEvent {
-					// also record this diagnostic so we print it at the end.
-					status.DiagEvents = append(status.DiagEvents, event)
-				} else {
-					contract.Failf("Unhandled event type '%s'", event.Type)
-				}
-
-				// Ensure that this updated status is recorded.
-				eventUrnToStatus[eventUrn] = status
-
-				// refresh the progress information for this resource.  (or update all resources if
-				// we need to realign everything)
-				if refreshAllStatuses {
-					updateAllStatusMessages(true /*includeDone*/)
-				} else {
-					printStatusMessage(status)
-				}
+				processNormalEvent(event)
 			}
 		}
 	}()
