@@ -131,6 +131,54 @@ func makeID(urn resource.URN) string {
 	}
 }
 
+func getDiagnosticInformation(status Status) (
+	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
+
+	errorEvents = 0
+	warningEvents = 0
+	infoEvents = 0
+	debugEvents = 0
+
+	var lastError, lastWarning, lastInfo, lastDebug *engine.Event
+
+	for _, ev := range status.DiagEvents {
+		payload := ev.Payload.(engine.DiagEventPayload)
+
+		switch payload.Severity {
+		case diag.Infoerr, diag.Error:
+			errorEvents++
+			lastError = &ev
+		case diag.Warning:
+			warningEvents++
+			lastWarning = &ev
+		case diag.Info:
+			infoEvents++
+			lastInfo = &ev
+		case diag.Debug:
+			debugEvents++
+			lastDebug = &ev
+		}
+	}
+
+	if lastError != nil {
+		worstDiag = lastError
+		return
+	}
+
+	if lastWarning != nil {
+		worstDiag = lastWarning
+		return
+	}
+
+	if lastInfo != nil {
+		worstDiag = lastInfo
+		return
+	}
+
+	worstDiag = lastDebug
+	return
+}
+
 // DisplayProgressEvents displays the engine events with docker's progress view.
 func DisplayProgressEvents(
 	action string, events <-chan engine.Event,
@@ -235,6 +283,12 @@ func DisplayProgressEvents(
 		}
 
 		maxMsgLength := terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
+		if maxMsgLength < 0 {
+			maxMsgLength = 0
+		}
+		// fmt.Printf("\n")
+		// fmt.Printf("Max message length: %v\n", maxMsgLength)
+		// fmt.Printf("Id length %v, padding %v, suffix %v\n", len(id), len(padding), len(suffix))
 
 		// we don't want to go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to
@@ -245,21 +299,46 @@ func DisplayProgressEvents(
 		return padding + msgWithColors + suffix
 	}
 
-	ellipsesArray := []string{"", ".", "..", "..."}
-	createInProgressMessage := func(status Status) string {
-		msg := getMetadataSummary(status.Step, opts, isPreview, false /*done*/, status.Failed)
-		ellipses := ellipsesArray[(status.Tick+currentTick)%len(ellipsesArray)]
+	getSummaryAndDiagnosticMessage := func(status Status) string {
+		if status.Step.Op == "" {
+			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
+		}
 
-		// if there are any diagnostics for this resource, add information about the
-		// last diagnostic to the status message.
-		if len(status.DiagEvents) > 0 {
-			diagMsg := renderProgressEvent(
-				status.DiagEvents[len(status.DiagEvents)-1], seen, opts, isPreview)
+		worstDiag, errors, warnings, infos, debugs := getDiagnosticInformation(status)
 
+		failed := status.Failed || errors > 0
+		msg := getMetadataSummary(status.Step, opts, isPreview, status.Done, failed)
+
+		if errors > 0 {
+			msg += fmt.Sprintf(", %v error(s)", errors)
+		}
+
+		if warnings > 0 {
+			msg += fmt.Sprintf(", %v warning(s)", warnings)
+		}
+
+		if infos > 0 {
+			msg += fmt.Sprintf(", %v info message(s)", infos)
+		}
+
+		if debugs > 0 {
+			msg += fmt.Sprintf(", %v debug message(s)", debugs)
+		}
+
+		if worstDiag != nil {
+			diagMsg := renderProgressEvent(*worstDiag, seen, opts, isPreview)
 			if diagMsg != "" {
-				msg += ". " + diagMsg
+				msg += ". " + msg
 			}
 		}
+
+		return msg
+	}
+
+	ellipsesArray := []string{"", ".", "..", "..."}
+	createInProgressMessage := func(status Status) string {
+		msg := getSummaryAndDiagnosticMessage(status)
+		ellipses := ellipsesArray[(status.Tick+currentTick)%len(ellipsesArray)]
 
 		return getPaddedMessage(status, msg, ellipses)
 	}
@@ -269,46 +348,7 @@ func DisplayProgressEvents(
 			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 		}
 
-		debugEvents := 0
-		infoEvents := 0
-		errorEvents := 0
-		warningEvents := 0
-		for _, ev := range status.DiagEvents {
-			payload := ev.Payload.(engine.DiagEventPayload)
-
-			switch payload.Severity {
-			case diag.Debug:
-				debugEvents++
-			case diag.Info:
-				infoEvents++
-			case diag.Infoerr:
-				errorEvents++
-			case diag.Warning:
-				warningEvents++
-			case diag.Error:
-				errorEvents++
-			}
-		}
-
-		failed := status.Failed || errorEvents > 0
-		msg := getMetadataSummary(status.Step, opts, isPreview, true /*done*/, failed)
-
-		if errorEvents > 0 {
-			msg += fmt.Sprintf(", %v error(s)", errorEvents)
-		}
-
-		if warningEvents > 0 {
-			msg += fmt.Sprintf(", %v warning(s)", warningEvents)
-		}
-
-		if infoEvents > 0 {
-			msg += fmt.Sprintf(", %v info message(s)", infoEvents)
-		}
-
-		if debugEvents > 0 {
-			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
-		}
-
+		msg := getSummaryAndDiagnosticMessage(status)
 		return getPaddedMessage(status, msg, "")
 	}
 

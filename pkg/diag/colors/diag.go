@@ -89,6 +89,7 @@ func TrimColorizedString(v string, maxLength int) string {
 			} else {
 				// can safely add this text chunk
 				trimmed += text
+				currentLength += len(text)
 			}
 		} else {
 			contract.Assertf(tagRegexp.MatchString(textOrTag), "Should have gotten a tag")
@@ -100,5 +101,8 @@ func TrimColorizedString(v string, maxLength int) string {
 
 	// add a trailing reset, so that any unclosed tags will be closed.
 	trimmed += Reset
+
+	// fmt.Printf("\n\n\nTrimmed:\n'%s'\n\n\n'%s'", v, trimmed)
+
 	return trimmed
 }
