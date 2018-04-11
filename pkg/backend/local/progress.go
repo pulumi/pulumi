@@ -80,7 +80,7 @@ func getEventUrn(event engine.Event) resource.URN {
 	return ""
 }
 
-func colorizeAndWriteProgress(opts backend.DisplayOptions, progressChan chan<- progress.Progress, progress progress.Progress) {
+func colorizeAndWriteProgress(opts backend.DisplayOptions, output progress.Output, progress progress.Progress) {
 	if progress.Message != "" {
 		progress.Message = opts.Color.Colorize(progress.Message)
 	}
@@ -89,7 +89,7 @@ func colorizeAndWriteProgress(opts backend.DisplayOptions, progressChan chan<- p
 		progress.Action = opts.Color.Colorize(progress.Action)
 	}
 
-	progressChan <- progress
+	output.WriteProgress(progress)
 }
 
 func getDiagnosticInformation(status Status) (
@@ -196,7 +196,9 @@ func DisplayProgressEvents(
 
 	// Channel where we actually push our raw progress messages into.  These will be then
 	// be converted by the docker pipeline into the messages printed to the terminal.
-	progressChan := make(chan progress.Progress, 100)
+	// progressChan := make(chan progress.Progress, 100)
+
+	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
 	// We want to present a trim name to users for any URN.  These maps, and the helper function
 	// below are used for that.
@@ -337,7 +339,7 @@ func DisplayProgressEvents(
 			msg = createInProgressMessage(status)
 		}
 
-		colorizeAndWriteProgress(opts, progressChan, progress.Progress{
+		colorizeAndWriteProgress(opts, progressOutput, progress.Progress{
 			ID:     status.ID,
 			Action: msg,
 		})
@@ -378,11 +380,11 @@ func DisplayProgressEvents(
 					if msg != "" {
 						if !wroteHeader {
 							wroteHeader = true
-							colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: " "})
-							colorizeAndWriteProgress(opts, progressChan, progress.Progress{ID: status.ID, Message: "Diagnostics"})
+							colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: " "})
+							colorizeAndWriteProgress(opts, progressOutput, progress.Progress{ID: status.ID, Message: "Diagnostics"})
 						}
 
-						colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: "  " + msg})
+						colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: "  " + msg})
 					}
 				}
 			}
@@ -392,8 +394,8 @@ func DisplayProgressEvents(
 		if summaryEvent != nil {
 			msg := renderProgressEvent(*summaryEvent, seen, opts, isPreview)
 			if msg != "" {
-				colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: " "})
-				colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: msg})
+				colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: " "})
+				colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
 			}
 		}
 
@@ -401,24 +403,25 @@ func DisplayProgressEvents(
 		// cause us to stop writing to the pipeWriter and will then in turn will close the
 		// pipeWriter. This will then cause DisplayJSONMessagesToStream to finish once it processes
 		// the last message is receives from pipeReader, causing DisplayEvents to finally complete.
-		close(progressChan)
-	}
-
-	go func() {
-		progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
-
-		// read the Progress messages that are being produced as we hear about engine events. Pass
-		// them through the JSONStreamFormatter which will format them into "JSONMessages" and then
-		// write them into "pipeWriter".  These will then be be read by DisplayJSONMessagesToStream
-		// which will print them to stdout.
-		for prog := range progressChan {
-			err := progressOutput.WriteProgress(prog)
-			contract.IgnoreError(err)
-		}
-
-		// Once we've written everything to the pipe, we're done with it can let it go.
+		// close(progressChan)
 		err := pipeWriter.Close()
 		contract.IgnoreError(err)
+	}
+
+	defer func() {
+
+		// // read the Progress messages that are being produced as we hear about engine events. Pass
+		// // them through the JSONStreamFormatter which will format them into "JSONMessages" and then
+		// // write them into "pipeWriter".  These will then be be read by DisplayJSONMessagesToStream
+		// // which will print them to stdout.
+		// for prog := range progressChan {
+		// 	err := progressOutput.WriteProgress(prog)
+		// 	contract.IgnoreError(err)
+		// }
+
+		// // Once we've written everything to the pipe, we're done with it can let it go.
+		// err := pipeWriter.Close()
+		// contract.IgnoreError(err)
 
 		ticker.Stop()
 
@@ -473,7 +476,7 @@ func DisplayProgressEvents(
 					// once we start hearing about actual resource events.
 
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: msg})
+					colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
 					continue
 				case engine.SummaryEvent:
 					// keep track of the summar event so that we can display it after all other
