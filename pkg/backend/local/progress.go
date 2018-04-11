@@ -92,45 +92,6 @@ func colorizeAndWriteProgress(opts backend.DisplayOptions, progressChan chan<- p
 	progressChan <- progress
 }
 
-var (
-	// We want to present a trim name to users for any URN.  These maps, and the helper functions
-	// below are used for that.
-	urnToID = make(map[resource.URN]string)
-	idToUrn = make(map[string]resource.URN)
-)
-
-func makeIDWorker(urn resource.URN, suffix int) string {
-	var id string
-	if urn == "" {
-		id = "global"
-	} else {
-		id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
-	}
-
-	if suffix > 0 {
-		id += fmt.Sprintf("-%v", suffix)
-	}
-
-	return id
-}
-
-func makeID(urn resource.URN) string {
-	if id, has := urnToID[urn]; !has {
-		for i := 0; ; i++ {
-			id = makeIDWorker(urn, i)
-
-			if _, has = idToUrn[id]; !has {
-				urnToID[urn] = id
-				idToUrn[id] = urn
-
-				return id
-			}
-		}
-	} else {
-		return id
-	}
-}
-
 func getDiagnosticInformation(status Status) (
 	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
 
@@ -237,27 +198,42 @@ func DisplayProgressEvents(
 	// be converted by the docker pipeline into the messages printed to the terminal.
 	progressChan := make(chan progress.Progress, 100)
 
-	go func() {
-		progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
+	// We want to present a trim name to users for any URN.  These maps, and the helper function
+	// below are used for that.
+	urnToID := make(map[resource.URN]string)
+	idToUrn := make(map[string]resource.URN)
 
-		// read the Progress messages that are being produced as we hear about engine events. Pass
-		// them through the JSONStreamFormatter which will format them into "JSONMessages" and then
-		// write them into "pipeWriter".  These will then be be read by DisplayJSONMessagesToStream
-		// which will print them to stdout.
-		for prog := range progressChan {
-			err := progressOutput.WriteProgress(prog)
-			contract.IgnoreError(err)
+	makeID := func(urn resource.URN) string {
+		makeSingleID := func(suffix int) string {
+			var id string
+			if urn == "" {
+				id = "global"
+			} else {
+				id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
+			}
+
+			if suffix > 0 {
+				id += fmt.Sprintf("-%v", suffix)
+			}
+
+			return id
 		}
 
-		// Once we've written everything to the pipe, we're done with it can let it go.
-		err := pipeWriter.Close()
-		contract.IgnoreError(err)
+		if id, has := urnToID[urn]; !has {
+			for i := 0; ; i++ {
+				id = makeSingleID(i)
 
-		ticker.Stop()
+				if _, has = idToUrn[id]; !has {
+					urnToID[urn] = id
+					idToUrn[id] = urn
 
-		// let our caller know we're done.
-		done <- true
-	}()
+					return id
+				}
+			}
+		} else {
+			return id
+		}
+	}
 
 	getMessagePadding := func(id string) string {
 		extraWhitespace := 0
@@ -427,6 +403,28 @@ func DisplayProgressEvents(
 		// the last message is receives from pipeReader, causing DisplayEvents to finally complete.
 		close(progressChan)
 	}
+
+	go func() {
+		progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
+
+		// read the Progress messages that are being produced as we hear about engine events. Pass
+		// them through the JSONStreamFormatter which will format them into "JSONMessages" and then
+		// write them into "pipeWriter".  These will then be be read by DisplayJSONMessagesToStream
+		// which will print them to stdout.
+		for prog := range progressChan {
+			err := progressOutput.WriteProgress(prog)
+			contract.IgnoreError(err)
+		}
+
+		// Once we've written everything to the pipe, we're done with it can let it go.
+		err := pipeWriter.Close()
+		contract.IgnoreError(err)
+
+		ticker.Stop()
+
+		// let our caller know we're done.
+		done <- true
+	}()
 
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
