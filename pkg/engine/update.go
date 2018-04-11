@@ -26,7 +26,7 @@ type UpdateOptions struct {
 // ResourceChanges contains the aggregate resource changes by operation type.
 type ResourceChanges map[deploy.StepOp]int
 
-func Deploy(u UpdateInfo, manager SnapshotManager,
+func Update(u UpdateInfo, manager SnapshotManager,
 	events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
 	contract.Require(u != nil, "update")
 	contract.Require(events != nil, "events")
