@@ -66,18 +66,21 @@ func simplifyTypeName(typ tokens.Type) string {
 
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.
-func getEventUrn(event engine.Event) resource.URN {
+func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
 	if event.Type == engine.ResourcePreEvent {
-		return event.Payload.(engine.ResourcePreEventPayload).Metadata.URN
+		payload := event.Payload.(engine.ResourcePreEventPayload)
+		return payload.Metadata.URN, &payload.Metadata
 	} else if event.Type == engine.ResourceOutputsEvent {
-		return event.Payload.(engine.ResourceOutputsEventPayload).Metadata.URN
-	} else if event.Type == engine.DiagEvent {
-		return event.Payload.(engine.DiagEventPayload).URN
+		payload := event.Payload.(engine.ResourceOutputsEventPayload)
+		return payload.Metadata.URN, &payload.Metadata
 	} else if event.Type == engine.ResourceOperationFailed {
-		return event.Payload.(engine.ResourceOperationFailedPayload).Metadata.URN
+		payload := event.Payload.(engine.ResourceOperationFailedPayload)
+		return payload.Metadata.URN, &payload.Metadata
+	} else if event.Type == engine.DiagEvent {
+		return event.Payload.(engine.DiagEventPayload).URN, nil
 	}
 
-	return ""
+	return "", nil
 }
 
 func colorizeAndWriteProgress(opts backend.DisplayOptions, output progress.Output, progress progress.Progress) {
@@ -160,7 +163,6 @@ func DisplayProgressEvents(
 
 	// The urn of the stack.
 	var stackUrn resource.URN
-	seen := make(map[resource.URN]engine.StepEventMetadata)
 
 	// The summary event from the engine.  If we get this, we'll print this after all
 	// normal resource events are heard.  That way we don't interfere with all the progress
@@ -305,7 +307,7 @@ func DisplayProgressEvents(
 		}
 
 		if worstDiag != nil {
-			diagMsg := renderProgressEvent(*worstDiag, seen, opts, isPreview)
+			diagMsg := renderProgressDiagEvent(*worstDiag, opts)
 			if diagMsg != "" {
 				msg += ". " + msg
 			}
@@ -376,7 +378,7 @@ func DisplayProgressEvents(
 			if len(status.DiagEvents) > 0 {
 				wroteHeader := false
 				for _, v := range status.DiagEvents {
-					msg := renderProgressEvent(v, seen, opts, isPreview)
+					msg := renderProgressDiagEvent(v, opts)
 					if msg != "" {
 						if !wroteHeader {
 							wroteHeader = true
@@ -392,7 +394,7 @@ func DisplayProgressEvents(
 
 		// print the summary
 		if summaryEvent != nil {
-			msg := renderProgressEvent(*summaryEvent, seen, opts, isPreview)
+			msg := renderSummaryEvent(summaryEvent.Payload.(engine.SummaryEventPayload), opts)
 			if msg != "" {
 				colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: " "})
 				colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
@@ -429,16 +431,15 @@ func DisplayProgressEvents(
 
 	processNormalEvent := func(event engine.Event) {
 
-		eventUrn := getEventUrn(event)
+		eventUrn, metadata := getEventUrnAndMetadata(event)
 		if isRootURN(eventUrn) {
 			stackUrn = eventUrn
 		}
 
-		// First just make a string out of the event.  If we get nothing back this isn't an
-		// interesting event and we can just skip it.
-		msg := renderProgressEvent(event, seen, opts, isPreview)
-		if msg == "" {
-			return
+		if eventUrn == "" {
+			// if the event doesn't have any URN associated with it, just associate
+			// it with the stack.
+			eventUrn = stackUrn
 		}
 
 		switch event.Type {
@@ -447,23 +448,29 @@ func DisplayProgressEvents(
 			// Note: we should probably make sure we don't get any prelude events
 			// once we start hearing about actual resource events.
 
-			isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-			colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
+			payload := event.Payload.(engine.PreludeEventPayload)
+			isPreview = payload.IsPreview
+			colorizeAndWriteProgress(opts, progressOutput, progress.Progress{
+				Message: renderPreludeEvent(payload, opts),
+			})
 			return
 		case engine.SummaryEvent:
 			// keep track of the summar event so that we can display it after all other
 			// resource-related events we receive.
 			summaryEvent = &event
 			return
+		case engine.DiagEvent:
+			msg := renderProgressDiagEvent(event, opts)
+			if msg == "" {
+				return
+			}
+		}
+
+		if metadata != nil && !shouldShow(*metadata, opts) {
+			return
 		}
 
 		// At this point, all events should relate to resources.
-
-		if eventUrn == "" {
-			// if the event doesn't have any URN associated with it, just associate
-			// it with the stack.
-			eventUrn = stackUrn
-		}
 
 		refreshAllStatuses := false
 		status, has := eventUrnToStatus[eventUrn]
@@ -488,7 +495,7 @@ func DisplayProgressEvents(
 		if event.Type == engine.ResourcePreEvent {
 			status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
 			if status.Step.Op == "" {
-				contract.Failf("Got empty op for %s %s", event.Type, msg)
+				contract.Failf("Got empty op for %s", event.Type)
 			}
 		} else if event.Type == engine.ResourceOutputsEvent {
 			// transition the status to done.
@@ -544,52 +551,11 @@ func DisplayProgressEvents(
 	contract.IgnoreError(err)
 }
 
-func renderProgressEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions, isPreview bool) string {
-
-	dispatch := func() string {
-		switch event.Type {
-		case engine.CancelEvent:
-			return ""
-		case engine.PreludeEvent:
-			return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
-		case engine.SummaryEvent:
-			return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
-		case engine.ResourceOperationFailed:
-			return renderResourceMetadata(
-				event.Payload.(engine.ResourceOperationFailedPayload).Metadata,
-				seen, opts, isPreview, true /*done*/, true /*failed*/)
-		case engine.ResourceOutputsEvent:
-			return renderResourceMetadata(
-				event.Payload.(engine.ResourceOutputsEventPayload).Metadata,
-				seen, opts, isPreview, true /*done*/, false /*failed*/)
-		case engine.ResourcePreEvent:
-			return renderResourceMetadata(
-				event.Payload.(engine.ResourcePreEventPayload).Metadata,
-				seen, opts, isPreview, false /*done*/, false /*failed*/)
-		case engine.StdoutColorEvent:
-			return ""
-		case engine.DiagEvent:
-			return renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
-		default:
-			contract.Failf("unknown event type '%s'", event.Type)
-			return ""
-		}
-	}
-
-	msg := dispatch()
-	return strings.TrimSpace(msg)
-}
-
-func renderProgressDiagEvent(
-	payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+func renderProgressDiagEvent(event engine.Event, opts backend.DisplayOptions) string {
+	payload := event.Payload.(engine.DiagEventPayload)
 	if payload.Severity == diag.Debug && !opts.Debug {
-		// If this was a debug diagnostic and we're not displaying debug diagnostics,
-		// then just return empty.  our callers will then filter out this message.
 		return ""
 	}
-
 	return payload.Message
 }
 
