@@ -80,7 +80,7 @@ func getEventUrn(event engine.Event) resource.URN {
 	return ""
 }
 
-func writeProgress(opts backend.DisplayOptions, progressChan chan<- progress.Progress, progress progress.Progress) {
+func colorizeAndWriteProgress(opts backend.DisplayOptions, progressChan chan<- progress.Progress, progress progress.Progress) {
 	if progress.Message != "" {
 		progress.Message = opts.Color.Colorize(progress.Message)
 	}
@@ -286,9 +286,6 @@ func DisplayProgressEvents(
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
-		// fmt.Printf("\n")
-		// fmt.Printf("Max message length: %v\n", maxMsgLength)
-		// fmt.Printf("Id length %v, padding %v, suffix %v\n", len(id), len(padding), len(suffix))
 
 		// we don't want to go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to
@@ -360,7 +357,7 @@ func DisplayProgressEvents(
 			msg = createInProgressMessage(status)
 		}
 
-		writeProgress(opts, progressChan, progress.Progress{
+		colorizeAndWriteProgress(opts, progressChan, progress.Progress{
 			ID:     status.ID,
 			Action: msg,
 		})
@@ -401,11 +398,11 @@ func DisplayProgressEvents(
 					if msg != "" {
 						if !wroteHeader {
 							wroteHeader = true
-							writeProgress(opts, progressChan, progress.Progress{Message: " "})
-							writeProgress(opts, progressChan, progress.Progress{ID: status.ID, Message: "Diagnostics"})
+							colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: " "})
+							colorizeAndWriteProgress(opts, progressChan, progress.Progress{ID: status.ID, Message: "Diagnostics"})
 						}
 
-						writeProgress(opts, progressChan, progress.Progress{Message: "  " + msg})
+						colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: "  " + msg})
 					}
 				}
 			}
@@ -415,8 +412,8 @@ func DisplayProgressEvents(
 		if summaryEvent != nil {
 			msg := renderProgressEvent(*summaryEvent, seen, opts, isPreview)
 			if msg != "" {
-				writeProgress(opts, progressChan, progress.Progress{Message: " "})
-				writeProgress(opts, progressChan, progress.Progress{Message: msg})
+				colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: " "})
+				colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: msg})
 			}
 		}
 
@@ -474,7 +471,7 @@ func DisplayProgressEvents(
 					// once we start hearing about actual resource events.
 
 					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					writeProgress(opts, progressChan, progress.Progress{Message: msg})
+					colorizeAndWriteProgress(opts, progressChan, progress.Progress{Message: msg})
 					continue
 				case engine.SummaryEvent:
 					// keep track of the summar event so that we can display it after all other
