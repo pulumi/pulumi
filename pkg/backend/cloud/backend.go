@@ -318,7 +318,7 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 		}
 	}
 
-	tags, err := getStackTags()
+	tags, err := backend.GetStackTags()
 	if err != nil {
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
@@ -453,7 +453,7 @@ func (b *cloudBackend) createAndStartUpdate(
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := getStackTags()
+	tags, err := backend.GetStackTags()
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting stack tags")
 	}
@@ -738,42 +738,6 @@ func getCloudProjectIdentifier() (client.ProjectIdentifier, error) {
 		Repository: repo.Name,
 		Project:    string(proj.Name),
 	}, nil
-}
-
-// getStackTags returns the set of tags for the "current" stack, based on the environment
-// and Pulumi.yaml file.
-func getStackTags() (map[apitype.StackTagName]string, error) {
-	tags := make(map[apitype.StackTagName]string)
-
-	// Tags based on the workspace's repository.
-	w, err := workspace.New()
-	if err != nil {
-		return nil, err
-	}
-	repo := w.Repository()
-	if repo != nil {
-		tags[apitype.GitHubOwnerNameTag] = repo.Owner
-		tags[apitype.GitHubRepositoryNameTag] = repo.Name
-	}
-
-	// Tags based on Pulumi.yaml.
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		return nil, err
-	}
-	if projPath != "" {
-		proj, err := workspace.LoadProject(projPath)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error loading project %q", projPath)
-		}
-		tags[apitype.ProjectNameTag] = proj.Name.String()
-		tags[apitype.ProjectRuntimeTag] = proj.Runtime
-		if proj.Description != nil {
-			tags[apitype.ProjectDescriptionTag] = *proj.Description
-		}
-	}
-
-	return tags, nil
 }
 
 // getCloudStackIdentifier returns information about the given stack in the current repository and project, based on

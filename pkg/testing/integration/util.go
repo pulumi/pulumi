@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,6 +17,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
+
+// ReplaceInFile does a find and replace for a given string within a file.
+func ReplaceInFile(old, new, path string) error {
+	rawContents, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	newContents := strings.Replace(string(rawContents), old, new, -1)
+	return ioutil.WriteFile(path, []byte(newContents), os.ModePerm)
+}
 
 // getCmdBin returns the binary named bin in location loc or, if it hasn't yet been initialized, will lazily
 // populate it by either using the default def or, if empty, looking on the current $PATH.

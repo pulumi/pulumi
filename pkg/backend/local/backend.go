@@ -72,6 +72,14 @@ func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 		return nil, errors.Errorf("stack '%s' already exists", stackName)
 	}
 
+	tags, err := backend.GetStackTags()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting stack tags")
+	}
+	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
+		return nil, errors.Wrap(err, "validating stack properties")
+	}
+
 	file, err := saveStack(stackName, nil, nil)
 	if err != nil {
 		return nil, err
@@ -155,6 +163,16 @@ func (b *localBackend) Preview(
 func (b *localBackend) Update(
 	stackName tokens.QName, proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
+	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
+	// paritiy with stacks managed by the Pulumi Service.
+	tags, err := backend.GetStackTags()
+	if err != nil {
+		return errors.Wrap(err, "getting stack tags")
+	}
+	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
+		return errors.Wrap(err, "validating stack properties")
+	}
 
 	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
