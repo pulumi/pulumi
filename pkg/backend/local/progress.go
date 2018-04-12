@@ -276,7 +276,7 @@ func DisplayProgressEvents(
 				msgWithColors = msgWithColors[0:newLineIndex]
 			}
 
-			// we don't want to go past the end of the terminal.  Note: this is made complex due to
+			// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 			// msgWithColors having the color code information embedded with it.  So we need to get
 			// the right substring of it, assuming that embedded colors are just markup and do not
 			// actually contribute to the length
@@ -402,7 +402,7 @@ func DisplayProgressEvents(
 		// no more progress events from this point on.  By closing the pipe, this will then cause
 		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
 		// pipeReader, causing DisplayEvents to finally complete.
-		err := pipeWriter.Close()
+		err = pipeWriter.Close()
 		contract.IgnoreError(err)
 	}
 
