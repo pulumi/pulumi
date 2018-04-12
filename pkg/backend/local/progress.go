@@ -438,7 +438,6 @@ func DisplayProgressEvents(
 	}
 
 	processNormalEvent := func(event engine.Event) {
-
 		eventUrn, metadata := getEventUrnAndMetadata(event)
 		if isRootURN(eventUrn) {
 			stackUrn = eventUrn
@@ -474,6 +473,9 @@ func DisplayProgressEvents(
 			}
 		}
 
+		// Don't bother showing certain events (for example, things that are unchanged). However
+		// always show the root 'stack' resource so we can indicate that it's still running, and
+		// also so we have something to attach unparented diagnostic events to.
 		if metadata != nil && !shouldShow(*metadata, opts) && !isRootURN(eventUrn) {
 			return
 		}
