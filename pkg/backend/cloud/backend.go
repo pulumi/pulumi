@@ -451,6 +451,77 @@ func getStack(b *cloudBackend, stackName tokens.QName) (backend.Stack, error) {
 	return stack, nil
 }
 
+func (b *cloudBackend) PreviewThenPrompt(
+	updateKind client.UpdateKind,
+	stack backend.Stack, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions) error {
+
+	events := make(chan engine.Event)
+
+	var diff string
+	go func() {
+		seen := make(map[resource.URN]engine.StepEventMetadata)
+		displayOptsCopy := displayOpts
+		displayOptsCopy.SummaryDiff = true
+
+		for e := range events {
+			if e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent {
+				msg := local.RenderDiffEvent(e, seen, displayOptsCopy)
+				if msg != "" {
+					diff += msg
+				}
+			}
+		}
+	}()
+
+	err := b.updateStack(
+		updateKind, stack, pkg, root, m,
+		opts, displayOpts, events, true /*dryRun*/)
+
+	close(events)
+
+	var message string
+	if err != nil {
+		message = colors.SpecWarning + "\n!!! Warning, errors occurred !!!" + colors.Reset
+	}
+
+	message += colors.BrightWhite + "\nDo you want to proceed?" + colors.Reset
+
+	for {
+		var response string
+
+		surveycore.DisableColor = true
+		surveycore.QuestionIcon = ""
+		surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+
+		survey.AskOne(&survey.Select{
+			Message: colors.ColorizeText(message),
+			Options: []string{string(yes), string(no), string(details)},
+			Default: string(no),
+		}, &response, nil)
+
+		if response == string(no) {
+			return err
+		}
+
+		if response == string(yes) {
+			break
+		}
+
+		if response == string(details) {
+			os.Stdout.WriteString(diff)
+			continue
+		}
+
+		// Anything else just causes us to bail out.  This can happen, for example, when
+		// ctrl-c is hit.
+		return err
+	}
+
+	return nil
+}
+
 func (b *cloudBackend) PreviewThenPromptThenExecute(
 	updateKind client.UpdateKind,
 	stackName tokens.QName, pkg *workspace.Project, root string,
@@ -463,62 +534,10 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		return err
 	}
 
-	if !opts.Commit {
-		events := make(chan engine.Event)
-
-		var diff string
-		go func() {
-			seen := make(map[resource.URN]engine.StepEventMetadata)
-			displayOptsCopy := displayOpts
-			displayOptsCopy.SummaryDiff = true
-
-			for e := range events {
-				if e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent {
-					msg := local.RenderDiffEvent(e, seen, displayOptsCopy)
-					if msg != "" {
-						diff += msg
-					}
-				}
-			}
-		}()
-
-		err := b.updateStack(
-			updateKind, stack, pkg, root, m,
-			opts, displayOpts, events, true /*dryRun*/)
-
-		close(events)
-
-		var message string
-		if err != nil {
-			message = colors.SpecWarning + "\n!!! Warning, errors occurred !!!" + colors.Reset
-		}
-
-		message += colors.BrightWhite + "\nDo you want to proceed?" + colors.Reset
-
-		for {
-			var response string
-
-			surveycore.DisableColor = true
-			surveycore.QuestionIcon = ""
-			surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
-
-			survey.AskOne(&survey.Select{
-				Message: colors.ColorizeText(message),
-				Options: []string{string(yes), string(no), string(details)},
-				Default: string(no),
-			}, &response, nil)
-
-			if response == string(no) {
-				return err
-			}
-
-			if response == string(yes) {
-				break
-			}
-
-			contract.Assertf(response == string(details), "Could not understand response '%s'", response)
-			os.Stdout.WriteString(diff)
-		}
+	if !opts.Force {
+		// If we're not forcing, then preview the operation to the user and ask them if
+		// they want to proveed.
+		b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
 	}
 
 	unused := make(chan engine.Event)

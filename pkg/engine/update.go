@@ -21,7 +21,7 @@ type UpdateOptions struct {
 	Analyzers []string
 
 	// true if we should just perform the update, without any previewing or request for confirmation.
-	Commit bool
+	Force bool
 
 	// the degree of parallelism for resource operations (<=1 for serial).
 	Parallel int

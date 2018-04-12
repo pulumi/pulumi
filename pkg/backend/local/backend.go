@@ -177,7 +177,7 @@ func (b *localBackend) Update(
 		return errors.Wrap(err, "validating stack properties")
 	}
 
-	if !opts.Commit {
+	if !opts.Force {
 		// return b.performEngineOp(
 		// 	"updating", backend.DeployUpdate,
 		// 	stackName, proj, root, m, opts, displayOpts,
