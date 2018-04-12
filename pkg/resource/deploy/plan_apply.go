@@ -324,31 +324,16 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		// and new properties don't match exactly.  It is also possible we'll need to replace the resource if the
 		// update impact assessment says so.  In this case, the resource's ID will change, which might have a
 		// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-		var diff plugin.DiffResult
-		if prov != nil {
-			if diff, err = prov.Diff(urn, old.ID, oldState, inputs, allowUnknowns); err != nil {
-				return nil, err
+		if !olds.DeepEquals(inputs) {
+			var diff plugin.DiffResult
+			if prov != nil {
+				if diff, err = prov.Diff(urn, old.ID, oldState, inputs, allowUnknowns); err != nil {
+					return nil, err
+				}
 			}
-		}
 
-		// Determine whether the change resulted in a diff.  Our legacy behavior here entailed actually performing
-		// diffs of state on the Pulumi side, whereas our new behavior is to defer to the provider to decide.
-		var hasChanges bool
-		switch diff.Changes {
-		case plugin.DiffSome:
-			hasChanges = true
-		case plugin.DiffNone:
-			hasChanges = false
-		case plugin.DiffUnknown:
-			// This is legacy behavior; just use the DeepEquals function to diff on the Pulumi side.
-			hasChanges = !olds.DeepEquals(inputs)
-		default:
-			return nil, errors.Errorf(
-				"resource provider for %s replied with unrecognized diff state: %d", urn, diff.Changes)
-		}
+			// TODO[pulumi/pulumi#1147]: reenable this once the fix to this bug is in place.
 
-		// If this is an update, create the necessary step; otherwise, it's the same.
-		if hasChanges {
 			if diff.Replace() {
 				iter.replaces[urn] = true
 
