@@ -3,6 +3,7 @@
 // tslint:disable:max-line-length
 
 import * as assert from "assert";
+import { EOL } from "os";
 import { runtime } from "../../index";
 import * as resource from "../../resource";
 import { Output, output } from "../../resource";
@@ -845,11 +846,11 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
 
 '() => os': closure.spec.js(0,0): captured
   module 'os' which indirectly referenced
-    function 'getHostname': which could not be serialized because
+      (...)
       it was a native code function.
 
 Function code:
-  function getHostname() { [native code] }
+  function (...)() { [native code] }
 
 Capturing modules can sometimes cause problems.
 Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
@@ -873,11 +874,11 @@ Consider using import('os') or require('os') inside '() => os': closure.spec.js(
 
 '(a, b, c) => { const v = os; ...': closure.spec.js(0,0): captured
   module 'os' which indirectly referenced
-    function 'getHostname': which could not be serialized because
+    (...)
       it was a native code function.
 
 Function code:
-  function getHostname() { [native code] }
+  function (...)() { [native code] }
 
 Capturing modules can sometimes cause problems.
 Consider using import('os') or require('os') inside '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)`,
@@ -903,11 +904,11 @@ Consider using import('os') or require('os') inside '(a, b, c) => { const v = os
   'handler', a function defined at
     '() => os': closure.spec.js(0,0): which captured
       module 'os' which indirectly referenced
-        function 'getHostname': which could not be serialized because
+        (...)
           it was a native code function.
 
 Function code:
-  function getHostname() { [native code] }
+  function (...)() { [native code] }
 
 Capturing modules can sometimes cause problems.
 Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
@@ -927,18 +928,11 @@ Consider using import('os') or require('os') inside '() => os': closure.spec.js(
   module './bin/tests/util.js' which indirectly referenced
     function 'assertAsyncThrows': util.js(0,0): which captured
       module 'assert' which indirectly referenced
-        function 'ok': assert.js(0,0): which referenced
-          function 'AssertionError': assert.js(0,0): which referenced
-            function 'getMessage': assert.js(0,0): which captured
-              module 'util' which indirectly referenced
-                function 'inspect': util.js(0,0): which referenced
-                  function 'formatValue': util.js(0,0): which captured
-                    variable 'binding' which indirectly referenced
-                      function 'isArrayBuffer': which could not be serialized because
-                        it was a native code function.
+        (...)
+          it was a native code function.
 
 Function code:
-  function isArrayBuffer() { [native code] }
+  function (...)() { [native code] }
 
 Capturing modules can sometimes cause problems.
 Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside '() => util': closure.spec.js(0,0)`,
@@ -3818,7 +3812,9 @@ return function /*f3*/() {
                 // updated any time this file changes.
                 const regex = /\([0-9]+,[0-9]+\)/g;
                 const withoutLocations = message.replace(regex, "(0,0)");
-                assert.equal(withoutLocations, test.error);
+                if (test.error) {
+                    compareErrorText(test.error, withoutLocations);
+                }
             }
         }));
 
@@ -3828,3 +3824,64 @@ return function /*f3*/() {
         }
     }
 });
+
+/**
+ * compareErrorText compares an "expected" error string and an "actual" error string
+ * and issues an error if they do not match.
+ *
+ * This function accepts two repetition operators to make writing tests easier against
+ * error messages that are dependent on the environment:
+ *
+ *  * (...) alone on a single line causes the matcher to accept zero or more lines
+ *    between the repetition and the next line.
+ *  * (...) within in the context of a line causes the matcher to accept zero or more characters
+ *    between the repetition and the next character.
+ *
+ * This is useful when testing error messages that you get when capturing bulit-in modules,
+ * because the specific error message differs between Node versions.
+ * @param expected The expected error message string, potentially containing repetitions
+ * @param actual The actual error message string
+ */
+function compareErrorText(expected: string, actual: string) {
+    const wildcard = "(...)";
+
+    const expectedLines = expected.split(EOL);
+    const actualLines = actual.split(EOL);
+    let actualIndex = 0;
+    for (let expectedIndex = 0; expectedIndex < expectedLines.length; expectedIndex++) {
+        const expectedLine = expectedLines[expectedIndex].trim();
+        if (expectedLine === wildcard) {
+            if (expectedIndex + 1 === expectedLines.length) {
+                return;
+            }
+
+            const nextLine = expectedLines[++expectedIndex].trim();
+            while (true) {
+                const actualLine = actualLines[actualIndex++].trim();
+                if (actualLine === nextLine) {
+                    break;
+                }
+
+                if (actualIndex === actualLines.length) {
+                    assert.fail(`repetition failed to find match: expected terminator ${nextLine}, received ${actual}`);
+                }
+            }
+        } else if (expectedLine.includes(wildcard)) {
+            const line = actualLines[actualIndex++].trim();
+            const index = expectedLine.indexOf(wildcard);
+            const indexAfter = index + wildcard.length;
+            assert.equal(line.substring(0, index), expectedLine.substring(0, index));
+
+            let repetitionIndex = index;
+            for (; repetitionIndex < line.length; repetitionIndex++) {
+                if (line[repetitionIndex] === expectedLine[indexAfter]) {
+                    break;
+                }
+            }
+
+            assert.equal(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
+        } else {
+            assert.equal(actualLines[actualIndex++].trim(), expectedLine);
+        }
+    }
+}
