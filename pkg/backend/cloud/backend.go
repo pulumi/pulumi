@@ -451,7 +451,8 @@ func getStack(b *cloudBackend, stackName tokens.QName) (backend.Stack, error) {
 	return stack, nil
 }
 
-func (b *cloudBackend) Update(
+func (b *cloudBackend) PreviewThenPromptThenExecute(
+	updateKind client.UpdateKind,
 	stackName tokens.QName, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions,
 	displayOpts backend.DisplayOptions) error {
@@ -482,8 +483,8 @@ func (b *cloudBackend) Update(
 		}()
 
 		err := b.updateStack(
-			client.UpdateKindUpdate, stack, pkg,
-			root, m, opts, displayOpts, events, true /*dryRun*/)
+			updateKind, stack, pkg, root, m,
+			opts, displayOpts, events, true /*dryRun*/)
 
 		close(events)
 
@@ -532,27 +533,24 @@ func (b *cloudBackend) Update(
 	}()
 
 	return b.updateStack(
-		client.UpdateKindUpdate, stack, pkg,
+		updateKind, stack, pkg,
 		root, m, opts, displayOpts, unused, false /*dryRun*/)
+}
+
+func (b *cloudBackend) Update(
+	stackName tokens.QName, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions) error {
+
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	// First get the stack.
-	stack, err := getStack(b, stackName)
-	if err != nil {
-		return err
-	}
-
-	unused := make(chan engine.Event)
-	defer func() {
-		close(unused)
-	}()
-
-	return b.updateStack(
-		client.UpdateKindDestroy, stack, pkg,
-		root, m, opts, displayOpts, unused, false /*dryRun*/)
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
