@@ -4,7 +4,7 @@
 # we can in a subshell.
 
 export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
-export PULUMI_SDK="$(go env GOPATH)/src/github.com/pulumi/home"
+export PULUMI_SDK="$(go env GOPATH)/src/github.com/pulumi/sdk"
 
 (
     set -o nounset -o errexit -o pipefail
