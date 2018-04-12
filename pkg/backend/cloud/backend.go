@@ -486,11 +486,14 @@ func (b *cloudBackend) PreviewThenPrompt(
 		surveycore.QuestionIcon = ""
 		surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
 
-		survey.AskOne(&survey.Select{
+		err = survey.AskOne(&survey.Select{
 			Message: colors.ColorizeText(message),
 			Options: []string{string(yes), string(no), string(details)},
 			Default: string(no),
 		}, &response, nil)
+		if err != nil {
+			return err
+		}
 
 		if response == string(no) {
 			return err
@@ -501,7 +504,8 @@ func (b *cloudBackend) PreviewThenPrompt(
 		}
 
 		if response == string(details) {
-			os.Stdout.WriteString(diff)
+			_, err = os.Stdout.WriteString(diff)
+			contract.IgnoreError(err)
 			continue
 		}
 
@@ -567,8 +571,9 @@ func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, r
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
+	action client.UpdateKind, stackName tokens.QName,
+	pkg *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := getCloudStackIdentifier(stackName)
 	if err != nil {

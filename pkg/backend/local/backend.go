@@ -52,7 +52,8 @@ func Login(d diag.Sink) (Backend, error) {
 }
 
 func (b *localBackend) Name() string {
-	name, _ := os.Hostname()
+	name, err := os.Hostname()
+	contract.IgnoreError(err)
 	if name == "" {
 		name = "local"
 	}
@@ -151,12 +152,12 @@ func (b *localBackend) Update(
 		return errors.Wrap(err, "validating stack properties")
 	}
 
-	if !opts.Force {
-		// return b.performEngineOp(
-		// 	"updating", backend.DeployUpdate,
-		// 	stackName, proj, root, m, opts, displayOpts,
-		// 	engine.Update, true /*dryRun*/)
-	}
+	// if !opts.Force {
+	// 	// return b.performEngineOp(
+	// 	// 	"updating", backend.DeployUpdate,
+	// 	// 	stackName, proj, root, m, opts, displayOpts,
+	// 	// 	engine.Update, true /*dryRun*/)
+	// }
 
 	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
@@ -178,7 +179,8 @@ func (b *localBackend) performEngineOp(
 	op string, kind backend.UpdateKind, stackName tokens.QName, proj *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
 	displayOpts backend.DisplayOptions, dryRun bool,
-	performEngineOp func(engine.UpdateInfo, engine.SnapshotManager, chan<- engine.Event, engine.UpdateOptions, bool) (engine.ResourceChanges, error)) error {
+	performEngineOp func(engine.UpdateInfo, engine.SnapshotManager, chan<- engine.Event, engine.UpdateOptions, bool) (
+		engine.ResourceChanges, error)) error {
 
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
