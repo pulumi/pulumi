@@ -53,6 +53,7 @@ func NewPulumiCmd() *cobra.Command {
 	defaultHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
+		fmt.Println("See documentation at https://docs.pulumi.com")
 
 		url, err := workspace.GetCurrentCloudURL()
 		if err == nil && url != "" && !local.IsLocalBackendURL(url) {
