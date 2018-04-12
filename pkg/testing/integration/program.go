@@ -4,6 +4,8 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -202,9 +204,11 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 			}
 		}
 
-		lowerStackName := strings.ToLower("p-it-" + host + "-" + test)
-		legalStackName := strings.TrimRight(lowerStackName, "-_")
-		opts.StackName = legalStackName
+		b := make([]byte, 4)
+		_, err = rand.Read(b)
+		contract.AssertNoError(err)
+
+		opts.StackName = strings.ToLower("p-it-" + host + "-" + test + "-" + hex.EncodeToString(b))
 	}
 
 	return tokens.QName(opts.StackName)
