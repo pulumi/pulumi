@@ -3,64 +3,59 @@
 package engine
 
 import (
-	//"github.com/pkg/errors"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	//"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// func Preview(u UpdateInfo, manager SnapshotManager, events chan<- Event, opts UpdateOptions) error {
-// 	contract.Require(u != nil, "u")
-// 	contract.Require(events != nil, "events")
+func Preview(u UpdateInfo, manager SnapshotManager, events chan<- Event, opts UpdateOptions) error {
+	contract.Require(u != nil, "u")
+	contract.Require(events != nil, "events")
 
-// 	defer func() { events <- cancelEvent() }()
+	defer func() { events <- cancelEvent() }()
 
-// 	ctx, err := newPlanContext(u, manager)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer ctx.Close()
+	ctx, err := newPlanContext(u, manager)
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
 
-// 	// Always set opts.DryRun to `true` when processing previews: if we do not do this, the engine will assume that it
-// 	// should elide unknown input/output properties when interacting with the language and resource providers and we
-// 	// will produce unexpected results.
-// 	opts.DryRun = true
+	emitter := makeEventEmitter(events, u)
+	return preview(ctx, planOptions{
+		UpdateOptions: opts,
+		SourceFunc:    newUpdateSource,
+		Events:        emitter,
+		Diag:          newEventSink(emitter),
+	})
+}
 
-// 	emitter := makeEventEmitter(events, u)
-// 	return preview(ctx, planOptions{
-// 		UpdateOptions: opts,
-// 		SourceFunc:    newUpdateSource,
-// 		Events:        emitter,
-// 		Diag:          newEventSink(emitter),
-// 	})
-// }
+func preview(ctx *planContext, opts planOptions) error {
+	result, err := plan(ctx, opts, true /*dryRun*/)
+	if err != nil {
+		return err
+	}
+	if result != nil {
+		defer contract.IgnoreClose(result)
 
-// func preview(ctx *planContext, opts planOptions) error {
-// 	result, err := plan(ctx, opts)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if result != nil {
-// 		defer contract.IgnoreClose(result)
+		// Make the current working directory the same as the program's, and restore it upon exit.
+		done, err := result.Chdir()
+		if err != nil {
+			return err
+		}
+		defer done()
 
-// 		// Make the current working directory the same as the program's, and restore it upon exit.
-// 		done, err := result.Chdir()
-// 		if err != nil {
-// 			return err
-// 		}
-// 		defer done()
-
-// 		if _, err := printPlan(result); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	if !opts.Diag.Success() {
-// 		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
-// 		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-// 		return errors.New("One or more errors occurred during the creation of this preview")
-// 	}
-// 	return nil
-// }
+		if _, err := printPlan(result, true /*dryRun*/); err != nil {
+			return err
+		}
+	}
+	if !opts.Diag.Success() {
+		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
+		// although error messages may have spewed to the output, the final lines of the plan may look fine.
+		return errors.New("One or more errors occurred during the creation of this preview")
+	}
+	return nil
+}
 
 type previewActions struct {
 	Ops  map[deploy.StepOp]int

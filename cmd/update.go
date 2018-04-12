@@ -97,7 +97,7 @@ func newUpdateCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
 		&commit, "commit", "c", false,
-		"Automatically perform update, without showing preview or asking for confirmation")
+		"Automatically perform operation, without showing preview or asking for confirmation")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -111,7 +111,7 @@ func newUpdateCmd() *cobra.Command {
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().Var(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
+		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

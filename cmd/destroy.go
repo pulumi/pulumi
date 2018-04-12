@@ -17,7 +17,6 @@ import (
 func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var stack string
-	var yes bool
 
 	var message string
 
@@ -25,7 +24,7 @@ func newDestroyCmd() *cobra.Command {
 	var analyzers []string
 	var color colorFlag
 	var parallel int
-	var preview bool
+	var commit bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -42,7 +41,7 @@ func newDestroyCmd() *cobra.Command {
 			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
 			"Warning: although old snapshots can be used to recreate a stack, this command\n" +
-			"is generally irreversable and should be used with great care.",
+			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			s, err := requireStack(tokens.QName(stack), false)
@@ -59,14 +58,17 @@ func newDestroyCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
-			if !preview && !yes && !confirmPrompt(prompt, string(s.Name())) {
-				return errors.New("confirmation declined")
+			if !commit {
+				prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
+
+				if !confirmPrompt(prompt, string(s.Name())) {
+					return errors.New("confirmation declined")
+				}
 			}
 
 			return s.Destroy(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
-				DryRun:    preview,
+				Commit:    commit,
 				Parallel:  parallel,
 				Debug:     debug,
 			}, backend.DisplayOptions{
@@ -86,17 +88,11 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
-		"Skip confirmation prompts, and proceed with the destruction anyway")
-
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
@@ -104,8 +100,8 @@ func newDestroyCmd() *cobra.Command {
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&preview, "preview", "n", false,
-		"Don't create/delete resources; just preview the planned operations")
+		&commit, "commit", "c", false,
+		"Skip confirmation prompts and preview, and proceed with the destruction anyway")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -118,6 +114,8 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().Var(
+		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }
