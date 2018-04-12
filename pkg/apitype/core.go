@@ -80,6 +80,12 @@ type Resource struct {
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	// Status has the mutation status of this resource
+	Status resource.MutationStatus `json:"status,omitempty" yaml:"status,omitempty"`
+	// CreatedAt is the time when this resource was created
+	CreatedAt time.Time `json:"created_at,omitempty" yaml:"created_at,omitempty"`
+	// UpdatedAt is the time when this resource was last updated
+	UpdatedAt time.Time `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
 }
@@ -119,6 +125,10 @@ type StackTagName = string
 const (
 	// ProjectNameTag is a tag that represents the name of a project (coresponds to the `name` property of Pulumi.yaml).
 	ProjectNameTag StackTagName = "pulumi:project"
+	// ProjectRuntimeTag is a tag that represents the runtime of a project (the `runtime` property of Pulumi.yaml).
+	ProjectRuntimeTag StackTagName = "pulumi:runtime"
+	// ProjectDescriptionTag is a tag that represents the description of a project (Pulumi.yaml's `description`).
+	ProjectDescriptionTag StackTagName = "pulumi:description"
 	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	GitHubOwnerNameTag StackTagName = "gitHub:owner"

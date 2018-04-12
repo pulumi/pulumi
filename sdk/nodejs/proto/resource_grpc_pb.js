@@ -43,6 +43,28 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ReadResourceRequest(arg) {
+  if (!(arg instanceof resource_pb.ReadResourceRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ReadResourceRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ReadResourceRequest(buffer_arg) {
+  return resource_pb.ReadResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ReadResourceResponse(arg) {
+  if (!(arg instanceof resource_pb.ReadResourceResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ReadResourceResponse');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
+  return resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
   if (!(arg instanceof resource_pb.RegisterResourceOutputsRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterResourceOutputsRequest');
@@ -89,6 +111,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestDeserialize: deserialize_pulumirpc_InvokeRequest,
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+  },
+  readResource: {
+    path: '/pulumirpc.ResourceMonitor/ReadResource',
+    requestStream: false,
+    responseStream: false,
+    requestType: resource_pb.ReadResourceRequest,
+    responseType: resource_pb.ReadResourceResponse,
+    requestSerialize: serialize_pulumirpc_ReadResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_ReadResourceRequest,
+    responseSerialize: serialize_pulumirpc_ReadResourceResponse,
+    responseDeserialize: deserialize_pulumirpc_ReadResourceResponse,
   },
   registerResource: {
     path: '/pulumirpc.ResourceMonitor/RegisterResource',

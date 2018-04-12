@@ -37,6 +37,10 @@ type Provider interface {
 		allowUnknowns bool) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
 	Create(urn resource.URN, news resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
+	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
+	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
+	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
+	Read(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.PropertyMap, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
@@ -54,8 +58,21 @@ type CheckFailure struct {
 	Reason   string               // the reason the property failed to check.
 }
 
+// DiffChanges represents the kind of changes detected by a diff operation.
+type DiffChanges int
+
+const (
+	// DiffUnknown indicates the provider didn't offer information about the changes (legacy behavior).
+	DiffUnknown DiffChanges = 0
+	// DiffNone indicates the provider performed a diff and concluded that no update is needed.
+	DiffNone DiffChanges = 1
+	// DiffSome indicates the provider performed a diff and concluded that an update or replacement is needed.
+	DiffSome DiffChanges = 2
+)
+
 // DiffResult indicates whether an operation should replace or update an existing resource.
 type DiffResult struct {
+	Changes             DiffChanges            // true if this diff represents a changed resource.
 	ReplaceKeys         []resource.PropertyKey // an optional list of replacement keys.
 	StableKeys          []resource.PropertyKey // an optional list of property keys that are stable.
 	DeleteBeforeReplace bool                   // if true, this resource must be deleted before recreating it.

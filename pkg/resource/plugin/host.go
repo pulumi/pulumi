@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -20,8 +21,9 @@ type Host interface {
 	// ServerAddr returns the address at which the host's RPC interface may be found.
 	ServerAddr() string
 
-	// Log logs a global message, including errors and warnings.
-	Log(sev diag.Severity, msg string)
+	// Log logs a message, including errors and warnings.  Messages can have a resource URN
+	// associated with them.  If no urn is provided, the message is global.
+	Log(sev diag.Severity, urn resource.URN, msg string)
 
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
 	// could not be found, or an error occurred while creating it, a non-nil error is returned.
@@ -109,8 +111,8 @@ func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
 }
 
-func (host *defaultHost) Log(sev diag.Severity, msg string) {
-	host.ctx.Diag.Logf(sev, diag.RawMessage(msg))
+func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string) {
+	host.ctx.Diag.Logf(sev, diag.RawMessage(urn, msg))
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
@@ -165,13 +167,12 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			contract.Assert(plug != nil)
 
 			// Make sure the versions match.
-			// TODO: support loading multiple plugin versions side-by-side.
 			if version != nil {
 				if plug.Info.Version == nil {
 					return nil,
 						errors.Errorf("resource plugin version %s requested, but an unknown version was found",
 							version.String())
-				} else if !version.EQ(*plug.Info.Version) {
+				} else if !plug.Info.Version.GTE(*version) {
 					return nil,
 						errors.Errorf("resource plugin version %s requested, but version %s was found",
 							version.String(), plug.Info.Version.String())
@@ -191,13 +192,15 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 
 			// Warn if the plugin version was not what we expected
 			if version != nil {
-				if info.Version == nil || !version.EQ(*info.Version) {
+				if info.Version == nil || !info.Version.GTE(*version) {
 					var v string
 					if info.Version != nil {
 						v = info.Version.String()
 					}
 					host.ctx.Diag.Warningf(
-						diag.Message("resource plugin %s mis-reported its own version, expected %s got %s"),
+						diag.Message("", /*urn*/
+							"resource plugin %s is expected to have version >=%s, but has %s; "+
+								"the wrong version may be on your path, or this may be a bug in the plugin"),
 						info.Name, version.String(), v)
 				}
 			}

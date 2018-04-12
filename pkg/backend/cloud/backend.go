@@ -318,7 +318,12 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 		}
 	}
 
-	stack, err := b.client.CreateStack(project, cloudName, string(stackName))
+	tags, err := backend.GetStackTags()
+	if err != nil {
+		return nil, errors.Wrap(err, "error determining initial tags")
+	}
+
+	stack, err := b.client.CreateStack(project, cloudName, string(stackName), tags)
 	if err != nil {
 		return nil, err
 	}
@@ -399,27 +404,27 @@ var actionLabels = map[string]string{
 }
 
 func (b *cloudBackend) Preview(stackName tokens.QName, pkg *workspace.Project, root string,
-	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(client.UpdateKindPreview, stackName, pkg, root, debug, backend.UpdateMetadata{}, opts,
+	return b.updateStack(client.UpdateKindPreview, stackName, pkg, root, backend.UpdateMetadata{}, opts,
 		displayOpts)
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(client.UpdateKindUpdate, stackName, pkg, root, debug, m, opts, displayOpts)
+	return b.updateStack(client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(client.UpdateKindDestroy, stackName, pkg, root, debug, m, opts, displayOpts)
+	return b.updateStack(client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
 }
 
-func (b *cloudBackend) createAndStartUpdate(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
-	root string, debug bool, m backend.UpdateMetadata,
-	opts engine.UpdateOptions) (client.UpdateIdentifier, int, string, error) {
+func (b *cloudBackend) createAndStartUpdate(
+	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	root string, m backend.UpdateMetadata, opts engine.UpdateOptions) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := getCloudStackIdentifier(stackName)
 	if err != nil {
@@ -446,8 +451,13 @@ func (b *cloudBackend) createAndStartUpdate(action client.UpdateKind, stackName 
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 
-	// Start the update.
-	version, token, err := b.client.StartUpdate(update)
+	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
+	// metadata changes.
+	tags, err := backend.GetStackTags()
+	if err != nil {
+		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting stack tags")
+	}
+	version, token, err := b.client.StartUpdate(update, tags)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -460,7 +470,7 @@ func (b *cloudBackend) createAndStartUpdate(action client.UpdateKind, stackName 
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
-	root string, debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
 	displayOpts backend.DisplayOptions) error {
 
 	// Print a banner so it's clear this is going to the cloud.
@@ -484,7 +494,7 @@ func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QN
 	var version int
 	var token string
 	if !stack.(Stack).RunLocally() || action != client.UpdateKindPreview {
-		update, version, token, err = b.createAndStartUpdate(action, stackName, pkg, root, debug, m, opts)
+		update, version, token, err = b.createAndStartUpdate(action, stackName, pkg, root, m, opts)
 	}
 	if err != nil {
 		return err
@@ -503,7 +513,7 @@ func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QN
 
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
 	if stack.(Stack).RunLocally() {
-		return b.runEngineAction(action, stackName, pkg, root, debug, opts, displayOpts, update, token)
+		return b.runEngineAction(action, stackName, pkg, root, opts, displayOpts, update, token)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -542,8 +552,9 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 	return archiveReader, int64(archiveContents.Len()), nil
 }
 
-func (b *cloudBackend) runEngineAction(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
-	root string, debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+func (b *cloudBackend) runEngineAction(
+	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	update client.UpdateIdentifier, token string) error {
 
 	u, err := b.newUpdate(stackName, pkg, root, update, token)
@@ -556,20 +567,21 @@ func (b *cloudBackend) runEngineAction(action client.UpdateKind, stackName token
 
 	actionLabel, ok := actionLabels[string(action)]
 	contract.Assertf(ok, "unsupported update kind: %v", action)
-	go u.RecordAndDisplayEvents(actionLabel, events, done, debug, displayOpts)
+	go u.RecordAndDisplayEvents(actionLabel, events, done, displayOpts)
 
 	switch action {
 	case client.UpdateKindPreview:
-		err = engine.Preview(u, events, opts)
+		err = engine.Preview(u, u.manager, events, opts)
 	case client.UpdateKindUpdate:
-		_, err = engine.Update(u, events, opts)
+		_, err = engine.Update(u, u.manager, events, opts)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, events, opts)
+		_, err = engine.Destroy(u, u.manager, events, opts)
 	}
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreError(u.manager.Close())
 
 	if action != client.UpdateKindPreview {
 		status := apitype.UpdateStatusSucceeded
@@ -799,7 +811,7 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 
 func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 
 	defer func() {
 		spinner.Reset()
@@ -880,8 +892,8 @@ func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, afterIndex 
 
 	// Issue a warning if appropriate.
 	if warn {
-		b.d.Warningf(diag.Message("error querying update status: %v"), err)
-		b.d.Warningf(diag.Message("retrying in %vs... ^C to stop (this will not cancel the update)"),
+		b.d.Warningf(diag.Message("" /*urn*/, "error querying update status: %v"), err)
+		b.d.Warningf(diag.Message("" /*urn*/, "retrying in %vs... ^C to stop (this will not cancel the update)"),
 			nextRetryTime.Seconds())
 	}
 

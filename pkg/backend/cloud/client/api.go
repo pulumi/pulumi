@@ -17,6 +17,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 
@@ -69,6 +70,11 @@ type accessToken interface {
 	String() string
 }
 
+type httpCallOptions struct {
+	// RetryAllMethods allows non-GET calls to be retried if the server fails to return a response.
+	RetryAllMethods bool
+}
+
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
 // accessTokenKindAPIToken)
 type apiAccessToken string
@@ -94,7 +100,8 @@ func (t updateAccessToken) String() string {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken) (string, *http.Response, error) {
+func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken,
+	opts httpCallOptions) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = strings.TrimPrefix(path, "/")
@@ -121,7 +128,13 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken) 
 		glog.V(9).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	var resp *http.Response
+	if req.Method == "GET" || opts.RetryAllMethods {
+		resp, err = httputil.DoWithRetry(req, http.DefaultClient)
+	} else {
+		resp, err = http.DefaultClient.Do(req)
+	}
+
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
@@ -159,7 +172,8 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken) 
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, tok accessToken) error {
+func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, tok accessToken,
+	opts httpCallOptions) error {
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -184,7 +198,7 @@ func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj int
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok)
+	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}

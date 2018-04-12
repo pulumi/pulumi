@@ -102,6 +102,15 @@ async function diffRPC(call: any, callback: any): Promise<void> {
             const provider = getProvider(olds);
             if (provider.diff) {
                 const result: any = await provider.diff(req.getId(), olds, news);
+
+                if (result.changes === true) {
+                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_SOME);
+                } else if (result.changes === false) {
+                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_NONE);
+                } else {
+                    resp.setChanges(provproto.DiffResponse.DiffChanges.DIFF_UNKNOWN);
+                }
+
                 if (result.replaces && result.replaces.length !== 0) {
                     resp.setReplacesList(result.replaces);
                 }
@@ -130,6 +139,27 @@ async function createRPC(call: any, callback: any): Promise<void> {
         resp.setId(result.id);
         if (result.outs) {
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+        }
+
+        callback(undefined, resp);
+    } catch (e) {
+        console.error(`${e}: ${e.stack}`);
+        callback(e, undefined);
+    }
+}
+
+async function readRPC(call: any, callback: any): Promise<void> {
+    try {
+        const req: any = call.request;
+        const resp = new provproto.ReadResponse();
+
+        const props = req.getProperties().toJavaScript();
+        const provider = getProvider(props);
+        if (provider.read) {
+            const result: any = await provider.read(req.getId(), props);
+            if (result.properties) {
+                resp.setProperties(structproto.Struct.fromJavaScript(result.properties));
+            }
         }
 
         callback(undefined, resp);
@@ -204,6 +234,7 @@ export function main(args: string[]): void {
         check: checkRPC,
         diff: diffRPC,
         create: createRPC,
+        read: readRPC,
         update: updateRPC,
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,

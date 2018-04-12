@@ -23,9 +23,10 @@ nvm install v6.10.2
         *) echo "error: unknown host os $(uname)" ; exit 1;;
     esac
 
-    # On Travis, pip is called pip2.7, so alias it.
+    # On Travis, pip is called pip2.7, so alias it, also install jq
     if [ "${TRAVIS_OS_NAME:-}" = "osx" ]; then
         sudo ln -s $(which pip2.7) /usr/local/bin/pip
+        brew install jq
     fi
 
     echo "installing yarn ${YARN_VERSION}"

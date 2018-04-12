@@ -4,6 +4,7 @@ package ints
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -90,6 +91,83 @@ func TestStackProjectName(t *testing.T) {
 		Dir:          "stack_project_name",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+	})
+}
+
+// TestStackTagValidation verifies various error scenarios related to stack names and tags.
+func TestStackTagValidation(t *testing.T) {
+	t.Run("Error_StackName", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+		e.RunCommand("pulumi", "init")
+
+		e.ImportDirectory("stack_project_name")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+
+		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr, "error: could not create stack:")
+		assert.Contains(t, stderr, "validating stack properties:")
+		assert.Contains(t, stderr, "stack name can only contain alphanumeric, hyphens, or underscores")
+	})
+
+	t.Run("Error_ProjectName", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+		e.RunCommand("pulumi", "init")
+
+		e.ImportDirectory("stack_project_name")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+
+		// Change the contents of the Name property of Pulumi.yaml.
+		yamlPath := path.Join(e.CWD, "Pulumi.yaml")
+		err := integration.ReplaceInFile("name: stack_project_name", "name: something using forbidden characters!", yamlPath)
+		assert.NoError(t, err)
+
+		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr, "error: could not create stack:")
+		assert.Contains(t, stderr, "validating stack properties:")
+		assert.Contains(t, stderr, "project name can only contain alphanumeric, hyphens, or underscores")
+	})
+
+	t.Run("Error_DescriptionLength", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+		e.RunCommand("pulumi", "init")
+
+		e.ImportDirectory("stack_project_name")
+		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+
+		prefix := "lorem ipsum dolor sit amet"     // 26
+		prefix = prefix + prefix + prefix + prefix // 104
+		prefix = prefix + prefix + prefix + prefix // 416 + the current Pulumi.yaml's description
+
+		// Change the contents of the Description property of Pulumi.yaml.
+		yamlPath := path.Join(e.CWD, "Pulumi.yaml")
+		err := integration.ReplaceInFile("description: ", "description: "+prefix, yamlPath)
+		assert.NoError(t, err)
+
+		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr, "error: could not create stack:")
+		assert.Contains(t, stderr, "validating stack properties:")
+		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 255 characters)")
 	})
 }
 

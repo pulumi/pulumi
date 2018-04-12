@@ -25,3 +25,5 @@ if [[ "${TRAVIS_OS_NAME:-}" == "linux" ]]; then
         -u pulumi -p pulumi \
         ${ROOT}/sdk/python/env/src/dist/*.whl
 fi
+
+${PULUMI_SDK}/scripts/build-sdk.sh $(${ROOT}/scripts/get-version) $(git rev-parse HEAD)

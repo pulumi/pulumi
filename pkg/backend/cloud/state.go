@@ -94,9 +94,10 @@ type cloudUpdate struct {
 	update      client.UpdateIdentifier
 	tokenSource *tokenSource
 
-	root   string
-	proj   *workspace.Project
-	target *deploy.Target
+	root    string
+	proj    *workspace.Project
+	target  *deploy.Target
+	manager *backend.SnapshotManager
 }
 
 func (u *cloudUpdate) GetRoot() string {
@@ -111,32 +112,6 @@ func (u *cloudUpdate) GetTarget() *deploy.Target {
 	return u.target
 }
 
-type cloudStackMutation struct {
-	update *cloudUpdate
-}
-
-func (u *cloudUpdate) BeginMutation() (engine.SnapshotMutation, error) {
-	// invalidate the current checkpoint
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return nil, err
-	}
-	if err = u.backend.client.InvalidateUpdateCheckpoint(u.update, token); err != nil {
-		return nil, err
-	}
-	return &cloudStackMutation{update: u}, nil
-}
-
-func (m *cloudStackMutation) End(snapshot *deploy.Snapshot) error {
-	// Upload the new checkpoint.
-	token, err := m.update.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-	deployment := stack.SerializeDeployment(snapshot)
-	return m.update.backend.client.PatchUpdateCheckpoint(m.update.update, deployment, token)
-}
-
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	defer u.tokenSource.Close()
 
@@ -148,7 +123,8 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 }
 
 func (u *cloudUpdate) recordEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) error {
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
+	opts backend.DisplayOptions) error {
 
 	// If we don't have a token source, we can't perform any mutations.
 	if u.tokenSource == nil {
@@ -163,9 +139,10 @@ func (u *cloudUpdate) recordEvent(
 		}
 	}
 
-	// Ensure we render events with raw colorization tags.
+	// Ensure we render events with raw colorization tags.  Also, render these as 'diff' events so
+	// the user has a rich diff-log they can see when the look at their logs in the service.
 	opts.Color = colors.Raw
-	msg := local.RenderEvent(event, seen, debug, opts)
+	msg := local.RenderDiffEvent(event, seen, opts)
 	if msg == "" {
 		return nil
 	}
@@ -180,20 +157,20 @@ func (u *cloudUpdate) recordEvent(
 }
 
 func (u *cloudUpdate) RecordAndDisplayEvents(action string,
-	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
+	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
 
-	// Start the local display processor.
+	// Start the local display processor.  Display things however the options have been
+	// set to display (i.e. diff vs progress).
 	displayEvents := make(chan engine.Event)
-	go local.DisplayEvents(action, displayEvents, done, debug, opts)
+	go local.DisplayEvents(action, displayEvents, done, opts)
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)
-
 	for e := range events {
 		// First echo the event to the local display.
 		displayEvents <- e
 
 		// Then render and record the event for posterity.
-		if err := u.recordEvent(e, seen, debug, opts); err != nil {
+		if err := u.recordEvent(e, seen, opts); err != nil {
 			diagEvent := engine.Event{
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
@@ -231,15 +208,22 @@ func (b *cloudBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 		return nil, err
 	}
 
+	persister := &cloudSnapshotPersister{backend: b, tokenSource: tokenSource}
+
 	// Construct and return a new update.
-	return &cloudUpdate{
+	updateImpl := &cloudUpdate{
 		backend:     b,
 		update:      update,
 		tokenSource: tokenSource,
 		root:        root,
 		proj:        proj,
 		target:      target,
-	}, nil
+		manager:     nil,
+	}
+
+	persister.update = updateImpl
+	updateImpl.manager = backend.NewSnapshotManager(persister, updateImpl)
+	return updateImpl, nil
 }
 
 func (b *cloudBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
@@ -273,4 +257,20 @@ func (b *cloudBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 		Decrypter: decrypter,
 		Snapshot:  snapshot,
 	}, nil
+}
+
+type cloudSnapshotPersister struct {
+	update      *cloudUpdate
+	backend     *cloudBackend
+	tokenSource *tokenSource
+}
+
+func (b *cloudSnapshotPersister) SaveSnapshot(snap *deploy.Snapshot) error {
+	token, err := b.tokenSource.GetToken()
+	if err != nil {
+		return err
+	}
+
+	deployment := stack.SerializeDeployment(snap)
+	return b.backend.client.PatchUpdateCheckpoint(b.update.update, deployment, token)
 }

@@ -46,6 +46,8 @@ install:
     go get -u github.com/golang/dep/cmd/dep
 
     git clone git@github.com:pulumi/home.git "%USERPROFILE%\go\src\github.com\pulumi\home"
+
+    git clone git@github.com:pulumi/sdk.git "%USERPROFILE%\go\src\github.com\pulumi\sdk"
 build_script:
 - cmd: >-
     if defined APPVEYOR_PULL_REQUEST_NUMBER ( msbuild /t:AppVeyorPullRequest /v:Detailed build.proj ) else ( msbuild /t:AppVeyorPush /v:Detailed build.proj )

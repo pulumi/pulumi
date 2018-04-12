@@ -72,6 +72,14 @@ func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 		return nil, errors.Errorf("stack '%s' already exists", stackName)
 	}
 
+	tags, err := backend.GetStackTags()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting stack tags")
+	}
+	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
+		return nil, errors.Wrap(err, "validating stack properties")
+	}
+
 	file, err := saveStack(stackName, nil, nil)
 	if err != nil {
 		return nil, err
@@ -128,7 +136,8 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return symmetricCrypter(stackName)
 }
 
-func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, root string, debug bool,
+func (b *localBackend) Preview(
+	stackName tokens.QName, proj *workspace.Project, root string,
 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
 	update, err := b.newUpdate(stackName, proj, root)
@@ -136,65 +145,82 @@ func (b *localBackend) Preview(stackName tokens.QName, proj *workspace.Project, 
 		return err
 	}
 
+	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go DisplayEvents("previewing", events, done, debug, displayOpts)
+	go DisplayEvents("previewing", events, done, displayOpts)
 
-	if err = engine.Preview(update, events, opts); err != nil {
+	if err = engine.Preview(update, manager, events, opts); err != nil {
 		return err
 	}
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreError(manager.Close())
 	return nil
 }
 
-func (b *localBackend) Update(stackName tokens.QName, proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+func (b *localBackend) Update(
+	stackName tokens.QName, proj *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
+	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
+	// paritiy with stacks managed by the Pulumi Service.
+	tags, err := backend.GetStackTags()
+	if err != nil {
+		return errors.Wrap(err, "getting stack tags")
+	}
+	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
+		return errors.Wrap(err, "validating stack properties")
+	}
+
 	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
-		stackName, proj, root, debug, m, opts, displayOpts,
-		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
-			return engine.Update(update, events, opts)
+		stackName, proj, root, m, opts, displayOpts,
+		func(update *update, manager *backend.SnapshotManager, events chan engine.Event) (engine.ResourceChanges, error) {
+			return engine.Update(update, manager, events, opts)
 		},
 	)
 }
 
 func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+
 	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
-		stackName, proj, root, debug, m, opts, displayOpts,
-		func(update *update, events chan engine.Event) (engine.ResourceChanges, error) {
-			return engine.Destroy(update, events, opts)
+		stackName, proj, root, m, opts, displayOpts,
+		func(update *update, manager *backend.SnapshotManager, events chan engine.Event) (engine.ResourceChanges, error) {
+			return engine.Destroy(update, manager, events, opts)
 		},
 	)
 }
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
-	performEngineOp func(*update, chan engine.Event) (engine.ResourceChanges, error)) error {
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	performEngineOp func(*update, *backend.SnapshotManager, chan engine.Event) (engine.ResourceChanges, error)) error {
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err
 	}
 
+	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
-	go DisplayEvents(op, events, done, debug, displayOpts)
+	go DisplayEvents(op, events, done, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, events)
+	changes, updateErr := performEngineOp(update, manager, events)
 	end := time.Now().Unix()
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreError(manager.Close())
 
 	// Save update results.
 	result := backend.SucceededResult

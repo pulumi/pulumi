@@ -51,6 +51,9 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			resource.NewPropertyMapFromMap(res.Outputs),
 			res.Parent,
 			res.Protect,
+			res.Status,
+			res.CreatedAt,
+			res.UpdatedAt,
 			// TODO(swgillespie) provide an actual list of dependencies
 			[]resource.URN{},
 		))
@@ -87,18 +90,18 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 }
 
 func (s *cloudStack) Preview(proj *workspace.Project, root string,
-	debug bool, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.PreviewStack(s, proj, root, debug, opts, displayOpts)
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.PreviewStack(s, proj, root, opts, displayOpts)
 }
 
 func (s *cloudStack) Update(proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.UpdateStack(s, proj, root, debug, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.UpdateStack(s, proj, root, m, opts, displayOpts)
 }
 
 func (s *cloudStack) Destroy(proj *workspace.Project, root string,
-	debug bool, m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.DestroyStack(s, proj, root, debug, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return backend.DestroyStack(s, proj, root, m, opts, displayOpts)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -39,13 +40,20 @@ func NewClient(apiURL, apiToken string) *Client {
 
 // apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
 func (pc *Client) apiCall(method, path string, body []byte) (string, *http.Response, error) {
-	return pulumiAPICall(pc.apiURL, method, path, body, pc.apiToken)
+	return pulumiAPICall(pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(method, path string, queryObj, reqObj, respObj interface{}) error {
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken)
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
+}
+
+// restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
+// object. If a response object is provided, the server's response is deserialized into that object.
+func (pc *Client) restCallWithOptions(method, path string, queryObj, reqObj,
+	respObj interface{}, opts httpCallOptions) error {
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -54,7 +62,7 @@ func (pc *Client) restCall(method, path string, queryObj, reqObj, respObj interf
 func (pc *Client) updateRESTCall(method, path string, queryObj, reqObj, respObj interface{},
 	token updateAccessToken) error {
 
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, token)
+	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpCallOptions{})
 }
 
 // getProjectPath returns the API path to for the given project with the given components joined with path separators
@@ -141,22 +149,26 @@ func (pc *Client) GetStack(stackID StackIdentifier) (apitype.Stack, error) {
 }
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
-func (pc *Client) CreateStack(project ProjectIdentifier, cloudName string, stackName string) (apitype.Stack, error) {
+func (pc *Client) CreateStack(
+	project ProjectIdentifier, cloudName string, stackName string,
+	tags map[apitype.StackTagName]string) (apitype.Stack, error) {
+	// Validate names and tags.
+	if err := backend.ValidateStackProperties(stackName, tags); err != nil {
+		return apitype.Stack{}, errors.Wrap(err, "validating stack properties")
+	}
+
 	stack := apitype.Stack{
 		CloudName:   cloudName,
 		StackName:   tokens.QName(stackName),
 		OrgName:     project.Owner,
 		RepoName:    project.Repository,
 		ProjectName: project.Project,
-		Tags: map[apitype.StackTagName]string{
-			apitype.GitHubOwnerNameTag:      project.Owner,
-			apitype.GitHubRepositoryNameTag: project.Repository,
-			apitype.ProjectNameTag:          project.Project,
-		},
+		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,
 		StackName: stackName,
+		Tags:      tags,
 	}
 
 	var createStackResp apitype.CreateStackResponseByName
@@ -332,10 +344,19 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 }
 
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
-// to authenticate operations on the update if any.
-func (pc *Client) StartUpdate(update UpdateIdentifier) (int, string, error) {
+// to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
+func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTagName]string) (int, string, error) {
+	// Validate names and tags.
+	if err := backend.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
+		return 0, "", errors.Wrap(err, "validating stack properties")
+	}
+
+	req := apitype.StartUpdateRequest{
+		Tags: tags,
+	}
+
 	var resp apitype.StartUpdateResponse
-	if err := pc.restCall("POST", getUpdatePath(update), nil, nil, &resp); err != nil {
+	if err := pc.restCall("POST", getUpdatePath(update), req, nil, &resp); err != nil {
 		return 0, "", err
 	}
 
@@ -361,7 +382,8 @@ func (pc *Client) RenewUpdateLease(update UpdateIdentifier, token string, durati
 		Duration: int(duration / time.Second),
 	}
 	var resp apitype.RenewUpdateLeaseResponse
-	if err := pc.restCall("POST", getUpdatePath(update, "renew_lease"), nil, req, &resp); err != nil {
+	if err := pc.restCallWithOptions("POST", getUpdatePath(update, "renew_lease"), nil,
+		req, &resp, httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil

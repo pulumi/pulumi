@@ -66,7 +66,10 @@ func newStackImportCmd() *cobra.Command {
 						res.URN, res.URN.Stack(), s.Name())
 					if force {
 						// If --force was passed, just issue a warning and proceed anyway.
-						cmdutil.Diag().Warningf(diag.Message(msg))
+						// Note: we could associate this diagnostic with the resource URN
+						// we have.  However, this sort of message seems to be better as
+						// something associated with the stack as a whole.
+						cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg))
 					} else {
 						// Otherwise, gather up an error so that we can quit before doing damage.
 						result = multierror.Append(result, errors.New(msg))

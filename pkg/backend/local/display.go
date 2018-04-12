@@ -20,13 +20,26 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as it comes in.
-// Once all events have been read from the channel and displayed, it closes the `done` channel so the caller can
-// await all the events being written.
-func DisplayEvents(action string,
-	events <-chan engine.Event, done chan<- bool, debug bool, opts backend.DisplayOptions) {
+// DisplayEvents reads events from the `events` channel until it is closed, displaying each event as
+// it comes in. Once all events have been read from the channel and displayed, it closes the `done`
+// channel so the caller can await all the events being written.
+func DisplayEvents(
+	action string, events <-chan engine.Event,
+	done chan<- bool, opts backend.DisplayOptions) {
+
+	if opts.DiffDisplay {
+		DisplayDiffEvents(action, events, done, opts)
+	} else {
+		DisplayProgressEvents(action, events, done, opts)
+	}
+}
+
+// DisplayDiffEvents displays the engine events with the diff view.
+func DisplayDiffEvents(action string,
+	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
+
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 
 	defer func() {
 		spinner.Reset()
@@ -51,7 +64,7 @@ func DisplayEvents(action string,
 				}
 			}
 
-			msg := RenderEvent(event, seen, debug, opts)
+			msg := RenderDiffEvent(event, seen, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -63,44 +76,46 @@ func DisplayEvents(action string,
 	}
 }
 
-func RenderEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, debug bool, opts backend.DisplayOptions) string {
+func RenderDiffEvent(
+	event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts backend.DisplayOptions) string {
 
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
 	case engine.PreludeEvent:
-		return RenderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
+		return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return RenderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
+		return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
 	case engine.ResourceOperationFailed:
-		return RenderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
+		return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
 	case engine.ResourceOutputsEvent:
-		return RenderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
+		return renderResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts)
 	case engine.ResourcePreEvent:
-		return RenderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
+		return renderResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts)
 	case engine.StdoutColorEvent:
-		return RenderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
+		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 	case engine.DiagEvent:
-		return RenderDiagEvent(event.Payload.(engine.DiagEventPayload), debug, opts)
+		return renderDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
 }
 
-func RenderDiagEvent(payload engine.DiagEventPayload, debug bool, opts backend.DisplayOptions) string {
-	if payload.Severity == diag.Debug && !debug {
+func renderDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Message)
 }
 
-func RenderStdoutColorEvent(payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
+func renderStdoutColorEvent(
+	payload engine.StdoutEventPayload, opts backend.DisplayOptions) string {
+
 	return opts.Color.Colorize(payload.Message)
 }
 
-func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOptions) string {
 	changes := event.ResourceChanges
 
 	changeCount := 0
@@ -165,7 +180,7 @@ func RenderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOp
 	return out.String()
 }
 
-func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions) string {
+func renderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOptions) string {
 	out := &bytes.Buffer{}
 
 	if opts.ShowConfig {
@@ -192,7 +207,7 @@ func RenderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 	return out.String()
 }
 
-func RenderResourceOperationFailedEvent(
+func renderResourceOperationFailedEvent(
 	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
 
 	// It's not actually useful or interesting to print out any details about
@@ -205,7 +220,7 @@ func RenderResourceOperationFailedEvent(
 	return ""
 }
 
-func RenderResourcePreEvent(
+func renderResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts backend.DisplayOptions) string {
@@ -220,27 +235,23 @@ func RenderResourcePreEvent(
 		details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
-
-		if !opts.Summary {
-			fprintIgnoreError(out, opts.Color.Colorize(details))
-		}
-
+		fprintIgnoreError(out, opts.Color.Colorize(details))
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 	}
 
 	return out.String()
 }
 
-func RenderResourceOutputsEvent(
+func renderResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts backend.DisplayOptions) string {
 
 	out := &bytes.Buffer{}
 
-	if (shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata)) && !opts.Summary {
+	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
-		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent, payload.Planning, payload.Debug)
+		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent+1, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))
 	}
@@ -250,7 +261,11 @@ func RenderResourceOutputsEvent(
 
 // isRootStack returns true if the step pertains to the rootmost stack component.
 func isRootStack(step engine.StepEventMetadata) bool {
-	return step.URN.Type() == resource.RootStackType
+	return isRootURN(step.URN)
+}
+
+func isRootURN(urn resource.URN) bool {
+	return urn != "" && urn.Type() == resource.RootStackType
 }
 
 // shouldShow returns true if a step should show in the output.

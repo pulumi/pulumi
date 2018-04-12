@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -11,14 +12,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newPluginInstallCmd() *cobra.Command {
 	var cloudURL string
+	var exact bool
 	var file string
 	var reinstall bool
+	var verbose bool
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME VERSION]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -83,9 +87,30 @@ func newPluginInstallCmd() *cobra.Command {
 
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
-				// If the plugin already exists, don't download it unless --reinstall was passed.
-				if !reinstall && workspace.HasPlugin(install) {
-					continue
+				label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
+				cmdutil.Diag().Infoerrf(
+					diag.Message("", "%s installing"), label)
+
+				// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
+				// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
+				if !reinstall {
+					if exact {
+						if workspace.HasPlugin(install) {
+							if verbose {
+								cmdutil.Diag().Infoerrf(
+									diag.Message("", "%s skipping install (existing == match)"), label)
+							}
+							continue
+						}
+					} else {
+						if has, _ := workspace.HasPluginGTE(install); has {
+							if verbose {
+								cmdutil.Diag().Infoerrf(
+									diag.Message("", "%s skipping install (existing >= match)"), label)
+							}
+							continue
+						}
+					}
 				}
 
 				// If we got here, actually try to do the download.
@@ -94,18 +119,29 @@ func newPluginInstallCmd() *cobra.Command {
 				var err error
 				if file == "" {
 					source = releases.CloudURL()
+					if verbose {
+						cmdutil.Diag().Infoerrf(
+							diag.Message("", "%s downloading from %s"), label, source)
+					}
 					if tarball, err = releases.DownloadPlugin(install, true); err != nil {
-						return errors.Wrapf(err,
-							"downloading %s plugin %s from %s", install.Kind, install.String(), source)
+						return errors.Wrapf(err, "%s downloading from %s", label, source)
 					}
 				} else {
 					source = file
+					if verbose {
+						cmdutil.Diag().Infoerrf(
+							diag.Message("", "%s opening tarball from %s"), label, file)
+					}
 					if tarball, err = os.Open(file); err != nil {
 						return errors.Wrapf(err, "opening file %s", source)
 					}
 				}
+				if verbose {
+					cmdutil.Diag().Infoerrf(
+						diag.Message("", "%s installing tarball ..."), label)
+				}
 				if err = install.Install(tarball); err != nil {
-					return errors.Wrapf(err, "installing %s from %s", install.String(), source)
+					return errors.Wrapf(err, "installing %s from %s", label, source)
 				}
 			}
 
@@ -115,10 +151,14 @@ func newPluginInstallCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&cloudURL,
 		"cloud-url", "c", "", "A cloud URL to download releases from")
+	cmd.PersistentFlags().BoolVar(&exact,
+		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,
 		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
+	cmd.PersistentFlags().BoolVar(&verbose,
+		"verbose", false, "Print detailed information about the installation steps")
 
 	return cmd
 }

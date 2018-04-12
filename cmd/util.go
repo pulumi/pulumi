@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/AlecAivazis/survey.v1"
+	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -57,6 +57,10 @@ func isLoggedIn() (bool, error) {
 
 // createStack creates a stack with the given name, and selects it as the current.
 func createStack(b backend.Backend, stackName tokens.QName, opts interface{}) (backend.Stack, error) {
+	if stackName == "" {
+		return nil, errors.New("missing stack name")
+	}
+
 	stack, err := b.CreateStack(stackName, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not create stack")
@@ -405,8 +409,20 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 // workspace settings and Pulumi.yaml, to the new system where configuration data is stored in Pulumi.<stack-name>.yaml
 func upgradeConfigurationFiles() error {
 	// If there's no workspace, don't even try to upgrade.
-	_, err := workspace.New()
+	w, err := workspace.New()
 	if err != nil {
+		return nil
+	}
+
+	// If we can't detect a project, also don't try to upgrade.
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return nil
+	}
+
+	// If the project does not have any workspace or project level configuration (this will be true for new projects
+	// and for any projects that have been upgraded), we can bail out early, as there is nothing to do.
+	if len(w.Settings().ConfigDeprecated) == 0 && len(proj.ConfigDeprecated) == 0 {
 		return nil
 	}
 
