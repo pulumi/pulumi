@@ -70,7 +70,7 @@ func newDestroyCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			if !force {
+			if !force && !preview {
 				prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
 
 				if !confirmPrompt(prompt, string(s.Name())) {

@@ -541,7 +541,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
-		// they want to proveed.
+		// they want to proceed.
 		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
 		if err != nil || opts.Preview {
 			return err
