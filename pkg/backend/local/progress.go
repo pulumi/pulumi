@@ -65,7 +65,8 @@ func simplifyTypeName(typ tokens.Type) string {
 }
 
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
-// event that has a URN.
+// event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
+// well.
 func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
 	if event.Type == engine.ResourcePreEvent {
 		payload := event.Payload.(engine.ResourcePreEventPayload)
@@ -83,6 +84,9 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 	return "", nil
 }
 
+// Converts the colorization tags in a progress message and then actually writes the progress
+// message to the output stream.  This should be the only place in this file where we actually
+// process colorization tags.
 func colorizeAndWriteProgress(opts backend.DisplayOptions, output progress.Output, progress progress.Progress) {
 	if progress.Message != "" {
 		progress.Message = opts.Color.Colorize(progress.Message)
@@ -95,6 +99,8 @@ func colorizeAndWriteProgress(opts backend.DisplayOptions, output progress.Outpu
 	output.WriteProgress(progress)
 }
 
+// Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
+// produce a diagnostic string to go along with any resource if it has had any issues.
 func getDiagnosticInformation(status Status) (
 	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
 
@@ -200,14 +206,13 @@ func DisplayProgressEvents(
 	// align.  We don't need to do that in non-terminal situations.
 	_, isTerminal := term.GetFdInfo(stdout)
 
+	// The width of the terminal.  Used so we can trim resource messages that are too long.
 	terminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
 
+	// The streams we used to connect to docker's progress system.  We push progress messages into
+	// progressOutput.  It pushes messages into pipeWriter.  Those are then read below in
+	// DisplayJSONMessagesToStream.
 	pipeReader, pipeWriter := io.Pipe()
-
-	// Channel where we actually push our raw progress messages into.  These will be then
-	// be converted by the docker pipeline into the messages printed to the terminal.
-	// progressChan := make(chan progress.Progress, 100)
-
 	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
 	// We want to present a trim name to users for any URN.  These maps, and the helper function
@@ -247,12 +252,15 @@ func DisplayProgressEvents(
 		}
 	}
 
-	getMessagePadding := func(id string) string {
+	// Gets the padding necessary to prepend to a message in order to keep it aligned in the
+	// terminal.
+	getMessagePadding := func(status Status) string {
 		extraWhitespace := 0
 
 		// In the terminal we try to align the status messages for each resource.
 		// do not bother with this in the non-terminal case.
 		if isTerminal {
+			id := status.ID
 			extraWhitespace = maxIDLength - len(id)
 			contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, id)
 		}
@@ -260,9 +268,13 @@ func DisplayProgressEvents(
 		return strings.Repeat(" ", extraWhitespace)
 	}
 
+	// Gets the fully padded message to be shown.  The message will always include the ID of the
+	// status, then some amount of optional padding, then some amount of msgWithColors, then the
+	// suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
+	// the msg will be truncated to try to make it fit.
 	getPaddedMessage := func(status Status, msgWithColors string, suffix string) string {
 		id := status.ID
-		padding := getMessagePadding(id)
+		padding := getMessagePadding(status)
 
 		// In the terminal, only include the first line of the message
 		if isTerminal {
@@ -270,9 +282,7 @@ func DisplayProgressEvents(
 			if newLineIndex >= 0 {
 				msgWithColors = msgWithColors[0:newLineIndex]
 			}
-		}
 
-		if isTerminal {
 			// we don't want to go past the end of the terminal.  Note: this is made complex due to
 			// msgWithColors having the color code information embedded with it.  So we need to get
 			// the right substring of it, assuming that embedded colors are just markup and do not
@@ -288,7 +298,10 @@ func DisplayProgressEvents(
 		return padding + msgWithColors + suffix
 	}
 
-	getSummaryAndDiagnosticMessage := func(status Status) string {
+	// Gets the single line summary to show for a resource.  This will include the current state of
+	// the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
+	// information if there is any.
+	getUnpaddedStatusSummary := func(status Status) string {
 		if status.Step.Op == "" {
 			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 		}
@@ -325,29 +338,15 @@ func DisplayProgressEvents(
 	}
 
 	ellipsesArray := []string{"", ".", "..", "..."}
-	createInProgressMessage := func(status Status) string {
-		msg := getSummaryAndDiagnosticMessage(status)
-		ellipses := ellipsesArray[(status.Tick+currentTick)%len(ellipsesArray)]
+	refreshSingleStatusMessage := func(status Status) {
+		unpaddedMsg := getUnpaddedStatusSummary(status)
+		suffix := ""
 
-		return getPaddedMessage(status, msg, ellipses)
-	}
-
-	createDoneMessage := func(status Status, isPreview bool) string {
-		if status.Step.Op == "" {
-			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
+		if !status.Done {
+			suffix = ellipsesArray[(status.Tick+currentTick)%len(ellipsesArray)]
 		}
 
-		msg := getSummaryAndDiagnosticMessage(status)
-		return getPaddedMessage(status, msg, "")
-	}
-
-	printStatusMessage := func(status Status) {
-		var msg string
-		if status.Done {
-			msg = createDoneMessage(status, isPreview)
-		} else {
-			msg = createInProgressMessage(status)
-		}
+		msg := getPaddedMessage(status, unpaddedMsg, suffix)
 
 		colorizeAndWriteProgress(opts, progressOutput, progress.Progress{
 			ID:     status.ID,
@@ -355,13 +354,13 @@ func DisplayProgressEvents(
 		})
 	}
 
-	updateAllStatusMessages := func(includeDone bool) {
+	refreshAllStatusMessages := func(includeDone bool) {
 		for _, v := range eventUrnToStatus {
 			if v.Done && !includeDone {
 				continue
 			}
 
-			printStatusMessage(v)
+			refreshSingleStatusMessage(v)
 		}
 	}
 
@@ -375,7 +374,7 @@ func DisplayProgressEvents(
 			if !v.Done {
 				v.Done = true
 				eventUrnToStatus[k] = v
-				printStatusMessage(v)
+				refreshSingleStatusMessage(v)
 			}
 		}
 
@@ -431,9 +430,9 @@ func DisplayProgressEvents(
 		if currentTerminalWidth != terminalWidth {
 			// terminal width changed.  Update our output.
 			terminalWidth = currentTerminalWidth
-			updateAllStatusMessages(true /*includeDone*/)
+			refreshAllStatusMessages(true /*includeDone*/)
 		} else {
-			updateAllStatusMessages(false /*includeDone*/)
+			refreshAllStatusMessages(false /*includeDone*/)
 		}
 	}
 
@@ -528,9 +527,9 @@ func DisplayProgressEvents(
 		// refresh the progress information for this resource.  (or update all resources if
 		// we need to realign everything)
 		if refreshAllStatuses {
-			updateAllStatusMessages(true /*includeDone*/)
+			refreshAllStatusMessages(true /*includeDone*/)
 		} else {
-			printStatusMessage(status)
+			refreshSingleStatusMessage(status)
 		}
 	}
 
