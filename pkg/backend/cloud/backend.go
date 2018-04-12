@@ -481,6 +481,11 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 	close(events)
 
+	if opts.Preview {
+		// if we're just previewing, then we can stop at this point.
+		return err
+	}
+
 	var message string
 	if err != nil {
 		message = colors.SpecWarning + "\n!!! Warning, errors occurred !!!" + colors.Reset
@@ -537,7 +542,10 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
 		// they want to proveed.
-		b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
+		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
+		if err != nil || opts.Preview {
+			return err
+		}
 	}
 
 	unused := make(chan engine.Event)

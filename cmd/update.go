@@ -26,6 +26,7 @@ func newUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var color colorFlag
 	var parallel int
+	var preview bool
 	var force bool
 	var showConfig bool
 	var showReplacementSteps bool
@@ -50,8 +51,12 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if !commit && !terminal.IsTerminal(int(os.Stdout.Fd())) {
-				return errors.New("'update' must either be run in a terminal or be passed the --commit flag")
+			if !force && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+				return errors.New("'update' must either be run in a terminal or be passed the --force or --preview flag")
+			}
+
+			if force && preview {
+				return errors.New("--force and --preview cannot both be specified")
 			}
 
 			s, err := requireStack(tokens.QName(stack), true)
@@ -72,6 +77,7 @@ func newUpdateCmd() *cobra.Command {
 			return s.Update(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
+				Preview:   preview,
 				Parallel:  parallel,
 				Debug:     debug,
 			}, backend.DisplayOptions{
@@ -104,8 +110,11 @@ func newUpdateCmd() *cobra.Command {
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&commit, "force", "f", false,
+		&force, "force", "f", false,
 		"Skip confirmation prompts and preview, and proceed with the update automatically")
+	cmd.PersistentFlags().BoolVar(
+		&preview, "preview", false,
+		"Only show a preview of what will happen, without prompting or making any changes")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

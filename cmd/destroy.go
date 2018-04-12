@@ -28,6 +28,7 @@ func newDestroyCmd() *cobra.Command {
 	var color colorFlag
 	var parallel int
 	var force bool
+	var preview bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -47,8 +48,12 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if !force && !terminal.IsTerminal(int(os.Stdout.Fd())) {
-				return errors.New("'destroy' must either be run in a terminal or be passed the --force flag")
+			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+				return errors.New("'destroy' must either be run in a terminal or be passed the --force or --preview flags")
+			}
+
+			if force && preview {
+				return errors.New("--force and --preview cannot both be specified")
 			}
 
 			s, err := requireStack(tokens.QName(stack), false)
@@ -76,6 +81,7 @@ func newDestroyCmd() *cobra.Command {
 			return s.Destroy(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
+				Preview:   preview,
 				Parallel:  parallel,
 				Debug:     debug,
 			}, backend.DisplayOptions{
@@ -109,6 +115,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Skip confirmation prompts and preview, and proceed with the destruction automatically")
+	cmd.PersistentFlags().BoolVar(
+		&preview, "preview", false,
+		"Only show a preview of what will happen, without prompting or making any changes")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
