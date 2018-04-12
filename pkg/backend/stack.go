@@ -23,10 +23,6 @@ type Stack interface {
 	Snapshot() *deploy.Snapshot // the latest deployment snapshot.
 	Backend() Backend           // the backend this stack belongs to.
 
-	// Preview changes to this stack.
-	// Preview(proj *workspace.Project, root string,
-	// 	opts engine.UpdateOptions, displayOpts DisplayOptions) error
-
 	// Update this stack.
 	Update(proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
