@@ -453,6 +453,7 @@ func (b *cloudBackend) Update(
 	}
 
 	if !opts.Commit {
+		// events := make(chan<- engine.Event)
 		err := b.updateStack(
 			client.UpdateKindUpdate, stack, pkg,
 			root, m, opts, displayOpts, true /*dryRun*/)
@@ -582,6 +583,7 @@ func (b *cloudBackend) updateStack(
 	if err != nil {
 		return err
 	}
+
 	if version != 0 {
 		// Print a URL afterwards to redirect to the version URL.
 		base := b.CloudConsoleStackPath(update.StackIdentifier)
@@ -673,11 +675,13 @@ func (b *cloudBackend) runEngineAction(
 		if err != nil {
 			status = apitype.UpdateStatusFailed
 		}
+
 		completeErr := u.Complete(status)
 		if completeErr != nil {
 			err = multierror.Append(err, completeErr)
 		}
 	}
+
 	return err
 }
 
@@ -896,7 +900,9 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 	}
 }
 
-func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
+func displayEvents(
+	action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
+
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 

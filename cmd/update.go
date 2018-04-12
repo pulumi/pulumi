@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -10,6 +12,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func newUpdateCmd() *cobra.Command {
@@ -46,6 +50,10 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			if !commit && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+				return errors.New("'update' must either be run in a terminal or be passed the --commit flag")
+			}
+
 			s, err := requireStack(tokens.QName(stack), true)
 			if err != nil {
 				return err

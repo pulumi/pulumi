@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -12,6 +13,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -44,6 +47,10 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			if !commit && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+				return errors.New("'destroy' must either be run in a terminal or be passed the --commit flag")
+			}
+
 			s, err := requireStack(tokens.QName(stack), false)
 			if err != nil {
 				return err
