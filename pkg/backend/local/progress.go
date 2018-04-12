@@ -6,11 +6,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/progress"
+	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/backend"
@@ -22,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Status helps us keep track for a resource as it is worked on by the engine.
@@ -40,8 +45,8 @@ type Status struct {
 	// If the engine finished processing this resources.
 	Done bool
 
-	// The progress message to print.
-	Message string
+	// If we failed this operation for any reason.
+	Failed bool
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last
 	// diagnostic in the status region while a resource is in progress.  At the end we'll
@@ -61,66 +66,132 @@ func simplifyTypeName(typ tokens.Type) string {
 }
 
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
-// event that has a URN.
-func getEventUrn(event engine.Event) resource.URN {
+// event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
+// well.
+func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
 	if event.Type == engine.ResourcePreEvent {
 		payload := event.Payload.(engine.ResourcePreEventPayload)
-		return payload.Metadata.URN
+		return payload.Metadata.URN, &payload.Metadata
 	} else if event.Type == engine.ResourceOutputsEvent {
 		payload := event.Payload.(engine.ResourceOutputsEventPayload)
-		return payload.Metadata.URN
+		return payload.Metadata.URN, &payload.Metadata
+	} else if event.Type == engine.ResourceOperationFailed {
+		payload := event.Payload.(engine.ResourceOperationFailedPayload)
+		return payload.Metadata.URN, &payload.Metadata
 	} else if event.Type == engine.DiagEvent {
-		payload := event.Payload.(engine.DiagEventPayload)
-		return payload.URN
+		return event.Payload.(engine.DiagEventPayload).URN, nil
 	}
 
-	return ""
+	return "", nil
 }
 
-func writeProgress(chanOutput progress.Output, progress progress.Progress) {
-	err := chanOutput.WriteProgress(progress)
-	if err != nil {
-		contract.IgnoreError(err)
+// Converts the colorization tags in a progress message and then actually writes the progress
+// message to the output stream.  This should be the only place in this file where we actually
+// process colorization tags.
+func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progress) {
+	if progress.Message != "" {
+		progress.Message = display.opts.Color.Colorize(progress.Message)
 	}
+
+	if progress.Action != "" {
+		progress.Action = display.opts.Color.Colorize(progress.Action)
+	}
+
+	err := display.progressOutput.WriteProgress(progress)
+	contract.IgnoreError(err)
 }
 
-var (
-	// We want to present a trim name to users for any URN.  These maps, and the helper functions
-	// below are used for that.
-	urnToID = make(map[resource.URN]string)
-	idToUrn = make(map[string]resource.URN)
-)
+// Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
+// produce a diagnostic string to go along with any resource if it has had any issues.
+func getDiagnosticInformation(status Status) (
+	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
 
-func makeIDWorker(urn resource.URN, suffix int) string {
-	var id string
-	if urn == "" {
-		id = "global"
-	} else {
-		id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
-	}
+	errors := 0
+	warnings := 0
+	infos := 0
+	debugs := 0
 
-	if suffix > 0 {
-		id += fmt.Sprintf("-%v", suffix)
-	}
+	var lastError, lastInfoError, lastWarning, lastInfo, lastDebug *engine.Event
 
-	return id
-}
+	for _, ev := range status.DiagEvents {
+		payload := ev.Payload.(engine.DiagEventPayload)
 
-func makeID(urn resource.URN) string {
-	if id, has := urnToID[urn]; !has {
-		for i := 0; ; i++ {
-			id = makeIDWorker(urn, i)
-
-			if _, has = idToUrn[id]; !has {
-				urnToID[urn] = id
-				idToUrn[id] = urn
-
-				return id
-			}
+		switch payload.Severity {
+		case diag.Error:
+			errors++
+			lastError = &ev
+		case diag.Infoerr:
+			errors++
+			lastInfoError = &ev
+		case diag.Warning:
+			warnings++
+			lastWarning = &ev
+		case diag.Info:
+			infos++
+			lastInfo = &ev
+		case diag.Debug:
+			debugs++
+			lastDebug = &ev
 		}
-	} else {
-		return id
 	}
+
+	if lastError != nil {
+		worstDiag = lastError
+	} else if lastInfoError != nil {
+		worstDiag = lastInfoError
+	} else if lastWarning != nil {
+		worstDiag = lastWarning
+	} else if lastInfo != nil {
+		worstDiag = lastInfo
+	} else {
+		worstDiag = lastDebug
+	}
+
+	return worstDiag, errors, warnings, infos, debugs
+}
+
+type ProgressDisplay struct {
+	opts           backend.DisplayOptions
+	progressOutput progress.Output
+
+	// Whether or not we're previewing.  We don't know what we are actually doing until
+	// we get the initial 'prelude' event.
+	//
+	// this flag is only used to adjust how we describe what's going on to the user.
+	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
+	isPreview bool
+
+	// The urn of the stack.
+	stackUrn resource.URN
+
+	// The summary event from the engine.  If we get this, we'll print this after all
+	// normal resource events are heard.  That way we don't interfere with all the progress
+	// messages we're outputting for them.
+	summaryEvent *engine.Event
+
+	// The length of the largest ID we've seen.  We use this so we can align status messages per
+	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
+	// everything aligns.
+	maxIDLength int
+
+	// What tick we're currently on.  Used to determine the number of ellipses to concat to
+	// a status message to help indicate that things are still working.
+	currentTick int
+
+	// A mapping from each resource URN we are told about to its current status.
+	eventUrnToStatus map[resource.URN]Status
+
+	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
+	// For example, we'll go back and update previous status messages to make sure things
+	// align.  We don't need to do that in non-terminal situations.
+	isTerminal bool
+
+	// The width of the terminal.  Used so we can trim resource messages that are too long.
+	terminalWidth int
+
+	// Maps used so we can generate short IDs for resource urns.
+	urnToID map[resource.URN]string
+	idToUrn map[string]resource.URN
 }
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
@@ -131,389 +202,395 @@ func DisplayProgressEvents(
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
-	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	_, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 1 /*timesPerSecond*/)
+	_, ticker := cmdutil.NewSpinnerAndTicker(
+		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
+		nil, 1 /*timesPerSecond*/)
 
-	// Whether or not we're previewing.  We don't know what we are actually doing until
-	// we get the initial 'prelude' event.
-	//
-	// this flag is only used to adjust how we describe what's going on to the user.
-	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
-	isPreview := false
-
-	// The urn of the stack.
-	var stackUrn resource.URN
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-
-	// The summary event from the engine.  If we get this, we'll print this after all
-	// normal resource events are heard.  That way we don't interfere with all the progress
-	// messages we're outputting for them.
-	var summaryEvent *engine.Event
-
-	// The length of the largest ID we've seen.  We use this so we can align status messages per
-	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
-	// everything aligns.
-	maxIDLength := 0
-
-	// What tick we're currently on.  Used to determine the number of ellipses to concat to
-	// a status message to help indicate that things are still working.
-	currentTick := 0
-
-	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToStatus := make(map[resource.URN]Status)
-
-	// As we receive information for the engine, we will convert them into Status objects
-	// that we track.  In turn, every time we update our status (or our ticker fires) we'll
-	// update the "progress channel".  This progress chanel is what the Docker cli listens
-	// to which it then updates the actual CLI with.
-	_, stdout, _ := term.StdStreams()
-
-	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
-	// For example, we'll go back and update previous status messages to make sure things
-	// align.  We don't need to do that in non-terminal situations.
-	_, isTerminal := term.GetFdInfo(stdout)
-
+	// The streams we used to connect to docker's progress system.  We push progress messages into
+	// progressOutput.  It pushes messages into pipeWriter.  Those are then read below in
+	// DisplayJSONMessagesToStream.
 	pipeReader, pipeWriter := io.Pipe()
-	progressChan := make(chan progress.Progress, 100)
+	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
-	chanOutput := progress.ChanOutput(progressChan)
+	display := &ProgressDisplay{
+		opts:             opts,
+		progressOutput:   progressOutput,
+		eventUrnToStatus: make(map[resource.URN]Status),
+		urnToID:          make(map[resource.URN]string),
+		idToUrn:          make(map[string]resource.URN),
+	}
+
+	display.initializeTermInfo()
 
 	go func() {
-		// docker helper that reads progress messages in from progressChan and converts them
-		// into special formatted messages that are written to pipe-writer.
-		writeDistributionProgress(pipeWriter, progressChan)
+		display.processEvents(ticker, events)
 
-		// Once we've written everything to the pipe, we're done with it can let it go.
+		// no more progress events from this point on.  By closing the pipe, this will then cause
+		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
+		// pipeReader, causing DisplayEvents to finally complete.
 		err := pipeWriter.Close()
 		contract.IgnoreError(err)
-
-		ticker.Stop()
-
-		// let our caller know we're done.
-		done <- true
-	}()
-
-	ellipses := []string{"", ".", "..", "..."}
-	createInProgressMessage := func(status Status) string {
-		msg := status.Message
-
-		// if there are any diagnostics for this resource, add information about the
-		// last diagnostic to the status message.
-		if len(status.DiagEvents) > 0 {
-			diagMsg := renderProgressEvent(
-				status.DiagEvents[len(status.DiagEvents)-1], seen, opts, isPreview)
-
-			if diagMsg != "" {
-				msg += ". " + diagMsg
-			}
-		}
-
-		// Add an changing ellipses to help convey that progress is happening.
-		msg += ellipses[(status.Tick+currentTick)%len(ellipses)]
-
-		return msg
-	}
-
-	createDoneMessage := func(status Status, isPreview bool) string {
-		if status.Step.Op == "" {
-			contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
-		}
-
-		msg := getMetadataSummary(status.Step, opts, isPreview, true /*isComplete*/)
-
-		debugEvents := 0
-		infoEvents := 0
-		errorEvents := 0
-		warningEvents := 0
-		for _, ev := range status.DiagEvents {
-			payload := ev.Payload.(engine.DiagEventPayload)
-
-			switch payload.Severity {
-			case diag.Debug:
-				debugEvents++
-			case diag.Info:
-				infoEvents++
-			case diag.Infoerr:
-				errorEvents++
-			case diag.Warning:
-				warningEvents++
-			case diag.Error:
-				errorEvents++
-			}
-		}
-
-		if debugEvents > 0 {
-			msg += fmt.Sprintf(", %v debug message(s)", debugEvents)
-		}
-
-		if infoEvents > 0 {
-			msg += fmt.Sprintf(", %v info message(s)", infoEvents)
-		}
-
-		if warningEvents > 0 {
-			msg += fmt.Sprintf(", %v warning(s)", warningEvents)
-		}
-
-		if errorEvents > 0 {
-			msg += fmt.Sprintf(", %v error(s)", errorEvents)
-		}
-
-		return opts.Color.Colorize(msg)
-	}
-
-	writeAction := func(id string, msg string) {
-		extraWhitespace := 0
-
-		// In the terminal we try to align the status messages for each resource.
-		// do not bother with this in the non-terminal case.
-		if isTerminal {
-			extraWhitespace = maxIDLength - len(id)
-			contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, id)
-		}
-
-		writeProgress(chanOutput, progress.Progress{
-			ID:     id,
-			Action: strings.Repeat(" ", extraWhitespace) + msg,
-		})
-	}
-
-	printStatusForTopLevelResource := func(status Status) {
-		if !status.Done {
-			writeAction(status.ID, createInProgressMessage(status))
-		} else {
-			writeAction(status.ID, createDoneMessage(status, isPreview))
-		}
-	}
-
-	printStatusForTopLevelResources := func(includeDone bool) {
-		for _, v := range eventUrnToStatus {
-			if v.Done && !includeDone {
-				continue
-			}
-
-			printStatusForTopLevelResource(v)
-		}
-	}
-
-	// Performs all the work at the end once we've heard about the last message
-	// from the engine. Specifically, this will update the status messages for
-	// any resources, and will also then print out all final diagnostics. and
-	// finally will print out the summary.
-	processEndSteps := func() {
-		// Mark all in progress resources as done.
-		for k, v := range eventUrnToStatus {
-			if !v.Done {
-				v.Done = true
-				eventUrnToStatus[k] = v
-				printStatusForTopLevelResource(v)
-			}
-		}
-
-		// Print all diagnostics at the end.  We only need to do this if we were summarizing.
-		// Otherwise, this would have been seen while we were receiving the events.
-
-		for _, status := range eventUrnToStatus {
-			if len(status.DiagEvents) > 0 {
-				wroteHeader := false
-				for _, v := range status.DiagEvents {
-					msg := renderProgressEvent(v, seen, opts, isPreview)
-					if msg != "" {
-						if !wroteHeader {
-							wroteHeader = true
-							writeProgress(chanOutput, progress.Progress{Message: " "})
-							writeProgress(chanOutput, progress.Progress{ID: status.ID, Message: "Diagnostics"})
-						}
-
-						writeProgress(chanOutput, progress.Progress{Message: "  " + msg})
-					}
-				}
-			}
-		}
-
-		// print the summary
-		if summaryEvent != nil {
-			msg := renderProgressEvent(*summaryEvent, seen, opts, isPreview)
-			if msg != "" {
-				writeProgress(chanOutput, progress.Progress{Message: " "})
-				writeProgress(chanOutput, progress.Progress{Message: msg})
-			}
-		}
-
-		// no more progress events from this point on.  By closing the progress channel, this will
-		// cause writeDistributionProgress to finish.  This, in turn, will close the pipeWriter.
-		// This will then cause DisplayJSONMessagesToStream to finish once it processes the last
-		// message is receives from pipeReader, causing DisplayEvents to finally complete.
-		close(progressChan)
-	}
-
-	// Main processing loop.  The purpose of this func is to read in events from the engine
-	// and translate them into Status objects and progress messages to be presented to the
-	// command line.
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				// Got a tick.  Update all the in-progress resources.
-				currentTick++
-				printStatusForTopLevelResources(false /*includeDone:*/)
-
-			case event := <-events:
-				if event.Type == "" || event.Type == engine.CancelEvent {
-					// Engine finished sending events.  Do all the final processing and return
-					// from this local func.  This will print out things like full diagnostic
-					// events, as well as the summary event from the engine.
-					processEndSteps()
-					return
-				}
-
-				eventUrn := getEventUrn(event)
-				if isRootURN(eventUrn) {
-					stackUrn = eventUrn
-				}
-
-				// First just make a string out of the event.  If we get nothing back this isn't an
-				// interesting event and we can just skip it.
-				msg := renderProgressEvent(event, seen, opts, isPreview)
-				if msg == "" {
-					continue
-				}
-
-				switch event.Type {
-				case engine.PreludeEvent:
-					// A prelude event can just be printed out directly to the console.
-					// Note: we should probably make sure we don't get any prelude events
-					// once we start hearing about actual resource events.
-
-					isPreview = event.Payload.(engine.PreludeEventPayload).IsPreview
-					writeProgress(chanOutput, progress.Progress{Message: " "})
-					writeProgress(chanOutput, progress.Progress{Message: msg})
-					continue
-				case engine.SummaryEvent:
-					// keep track of hte summar event so that we can display it after all other
-					// resource-related events we receive.
-					summaryEvent = &event
-					continue
-				}
-
-				// At this point, all events should relate to resources.
-
-				if eventUrn == "" {
-					// if the event doesn't have any URN associated with it, just associate
-					// it with the stack.
-					eventUrn = stackUrn
-				}
-
-				refreshAllStatuses := false
-				status, has := eventUrnToStatus[eventUrn]
-				if !has {
-					// first time we're hearing about this resource.  Create an initial nearly-empty
-					// status for it, assigning it a nice short ID.
-					status = Status{Tick: currentTick}
-					status.Step.Op = deploy.OpSame
-					status.ID = makeID(eventUrn)
-
-					if isTerminal {
-						// in the terminal we want to align the status portions of messages. If we
-						// heard about a resource with a longer id, go and update all in-flight and
-						// finished resources so that their statuses get aligned.
-						if len(status.ID) > maxIDLength {
-							maxIDLength = len(status.ID)
-							refreshAllStatuses = true
-						}
-					}
-				}
-
-				if event.Type == engine.ResourcePreEvent {
-					status.Message = msg
-					status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
-					if status.Step.Op == "" {
-						contract.Failf("Got empty op for %s %s", event.Type, msg)
-					}
-				} else if event.Type == engine.ResourceOutputsEvent {
-					// transition the status to done.
-					status.Done = true
-				} else if event.Type == engine.DiagEvent {
-					// also record this diagnostic so we print it at the end.
-					status.DiagEvents = append(status.DiagEvents, event)
-				} else {
-					contract.Failf("Unhandled event type '%s'", event.Type)
-				}
-
-				// Ensure that this updated status is recorded.
-				eventUrnToStatus[eventUrn] = status
-
-				// refresh the progress information for this resource.  (or update all resources if
-				// we need to realign everything)
-				if refreshAllStatuses {
-					printStatusForTopLevelResources(true /*includeDone*/)
-				} else {
-					printStatusForTopLevelResource(status)
-				}
-			}
-		}
 	}()
 
 	// Call into Docker to actually suck the progress messages out of pipeReader and display
 	// them to the console.
+	_, stdout, _ := term.StdStreams()
 	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
-	if err != nil {
-		contract.IgnoreError(err)
+	contract.IgnoreError(err)
+
+	ticker.Stop()
+
+	// let our caller know we're done.
+	done <- true
+}
+
+func (display *ProgressDisplay) initializeTermInfo() {
+	_, stdout, _ := term.StdStreams()
+	_, isTerminal := term.GetFdInfo(stdout)
+
+	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	contract.IgnoreError(err)
+
+	display.isTerminal = isTerminal
+	display.terminalWidth = terminalWidth
+}
+
+func (display *ProgressDisplay) makeID(urn resource.URN) string {
+	makeSingleID := func(suffix int) string {
+		var id string
+		if urn == "" {
+			id = "global"
+		} else {
+			id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
+		}
+
+		if suffix > 0 {
+			id += fmt.Sprintf("-%v", suffix)
+		}
+
+		return id
+	}
+
+	if id, has := display.urnToID[urn]; !has {
+		for i := 0; ; i++ {
+			id = makeSingleID(i)
+
+			if _, has = display.idToUrn[id]; !has {
+				display.urnToID[urn] = id
+				display.idToUrn[id] = urn
+
+				return id
+			}
+		}
+	} else {
+		return id
 	}
 }
 
-func renderProgressEvent(
-	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions, isPreview bool) string {
+// Gets the padding necessary to prepend to a message in order to keep it aligned in the
+// terminal.
+func (display *ProgressDisplay) getMessagePadding(status Status) string {
+	extraWhitespace := 0
 
-	dispatch := func() string {
-		switch event.Type {
-		case engine.CancelEvent:
-			return ""
-		case engine.PreludeEvent:
-			return renderPreludeEvent(event.Payload.(engine.PreludeEventPayload), opts)
-		case engine.SummaryEvent:
-			return renderSummaryEvent(event.Payload.(engine.SummaryEventPayload), opts)
-		case engine.ResourceOperationFailed:
-			return renderResourceOperationFailedEvent(event.Payload.(engine.ResourceOperationFailedPayload), opts)
-		case engine.ResourceOutputsEvent:
-			return renderProgressResourceOutputsEvent(event.Payload.(engine.ResourceOutputsEventPayload), seen, opts, isPreview)
-		case engine.ResourcePreEvent:
-			return renderProgressResourcePreEvent(event.Payload.(engine.ResourcePreEventPayload), seen, opts, isPreview)
-		case engine.StdoutColorEvent:
-			return ""
-		case engine.DiagEvent:
-			return renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
-		default:
-			contract.Failf("unknown event type '%s'", event.Type)
-			return ""
+	// In the terminal we try to align the status messages for each resource.
+	// do not bother with this in the non-terminal case.
+	if display.isTerminal {
+		id := status.ID
+		extraWhitespace = display.maxIDLength - len(id)
+		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", display.maxIDLength, id)
+	}
+
+	return strings.Repeat(" ", extraWhitespace)
+}
+
+// Gets the fully padded message to be shown.  The message will always include the ID of the
+// status, then some amount of optional padding, then some amount of msgWithColors, then the
+// suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
+// the msg will be truncated to try to make it fit.
+func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors string, suffix string) string {
+	id := status.ID
+	padding := display.getMessagePadding(status)
+
+	// In the terminal, only include the first line of the message
+	if display.isTerminal {
+		newLineIndex := strings.Index(msgWithColors, "\n")
+		if newLineIndex >= 0 {
+			msgWithColors = msgWithColors[0:newLineIndex]
+		}
+
+		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
+		// msgWithColors having the color code information embedded with it.  So we need to get
+		// the right substring of it, assuming that embedded colors are just markup and do not
+		// actually contribute to the length
+		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
+		if maxMsgLength < 0 {
+			maxMsgLength = 0
+		}
+
+		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
+	}
+
+	return padding + msgWithColors + suffix
+}
+
+// Gets the single line summary to show for a resource.  This will include the current state of
+// the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
+// information if there is any.
+func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
+	if status.Step.Op == "" {
+		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
+	}
+
+	worstDiag, errors, warnings, infos, debugs := getDiagnosticInformation(status)
+
+	failed := status.Failed || errors > 0
+	msg := display.getMetadataSummary(status.Step, status.Done, failed)
+
+	if errors > 0 {
+		msg += fmt.Sprintf(", %v error(s)", errors)
+	}
+
+	if warnings > 0 {
+		msg += fmt.Sprintf(", %v warning(s)", warnings)
+	}
+
+	if infos > 0 {
+		msg += fmt.Sprintf(", %v info message(s)", infos)
+	}
+
+	if debugs > 0 {
+		msg += fmt.Sprintf(", %v debug message(s)", debugs)
+	}
+
+	if worstDiag != nil {
+		diagMsg := display.renderProgressDiagEvent(*worstDiag)
+		if diagMsg != "" {
+			msg += ". " + diagMsg
 		}
 	}
 
-	msg := dispatch()
-	return opts.Color.Colorize(strings.TrimSpace(msg))
+	return msg
 }
 
-func renderProgressDiagEvent(
-	payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
-	if payload.Severity == diag.Debug && !opts.Debug {
-		// If this was a debug diagnostic and we're not displaying debug diagnostics,
-		// then just return empty.  our callers will then filter out this message.
-		return ""
+var ellipsesArray = []string{"", ".", "..", "..."}
+
+func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
+	unpaddedMsg := display.getUnpaddedStatusSummary(status)
+	suffix := ""
+
+	if !status.Done {
+		suffix = ellipsesArray[(status.Tick+display.currentTick)%len(ellipsesArray)]
 	}
 
+	msg := display.getPaddedMessage(status, unpaddedMsg, suffix)
+
+	display.colorizeAndWriteProgress(progress.Progress{
+		ID:     status.ID,
+		Action: msg,
+	})
+}
+
+func (display *ProgressDisplay) refreshAllStatusMessages(includeDone bool) {
+	for _, v := range display.eventUrnToStatus {
+		if v.Done && !includeDone {
+			continue
+		}
+
+		display.refreshSingleStatusMessage(v)
+	}
+}
+
+// Performs all the work at the end once we've heard about the last message from the engine.
+// Specifically, this will update the status messages for any resources, and will also then
+// print out all final diagnostics. and finally will print out the summary.
+func (display *ProgressDisplay) processEndSteps() {
+	// Mark all in progress resources as done.
+	for k, v := range display.eventUrnToStatus {
+		if !v.Done {
+			v.Done = true
+			display.eventUrnToStatus[k] = v
+			display.refreshSingleStatusMessage(v)
+		}
+	}
+
+	// Print all diagnostics we've seen.
+
+	for _, status := range display.eventUrnToStatus {
+		if len(status.DiagEvents) > 0 {
+			wroteHeader := false
+			for _, v := range status.DiagEvents {
+				msg := display.renderProgressDiagEvent(v)
+				if msg != "" {
+					if !wroteHeader {
+						wroteHeader = true
+						display.colorizeAndWriteProgress(progress.Progress{Message: " "})
+						display.colorizeAndWriteProgress(progress.Progress{ID: status.ID, Message: "Diagnostics"})
+					}
+
+					display.colorizeAndWriteProgress(progress.Progress{Message: "  " + msg})
+				}
+			}
+		}
+	}
+
+	// print the summary
+	if display.summaryEvent != nil {
+		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
+		display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+	}
+}
+
+func (display *ProgressDisplay) processTick() {
+	// Got a tick.  Update all the in-progress resources.
+	display.currentTick++
+
+	currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+	if currentTerminalWidth != display.terminalWidth {
+		// terminal width changed.  Update our output.
+		display.terminalWidth = currentTerminalWidth
+		display.refreshAllStatusMessages(true /*includeDone*/)
+	} else {
+		display.refreshAllStatusMessages(false /*includeDone*/)
+	}
+}
+
+func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	eventUrn, metadata := getEventUrnAndMetadata(event)
+	if isRootURN(eventUrn) {
+		display.stackUrn = eventUrn
+	}
+
+	if eventUrn == "" {
+		// if the event doesn't have any URN associated with it, just associate
+		// it with the stack.
+		eventUrn = display.stackUrn
+	}
+
+	switch event.Type {
+	case engine.PreludeEvent:
+		// A prelude event can just be printed out directly to the console.
+		// Note: we should probably make sure we don't get any prelude events
+		// once we start hearing about actual resource events.
+
+		payload := event.Payload.(engine.PreludeEventPayload)
+		display.isPreview = payload.IsPreview
+		display.colorizeAndWriteProgress(progress.Progress{
+			Message: renderPreludeEvent(payload, display.opts),
+		})
+		return
+	case engine.SummaryEvent:
+		// keep track of the summar event so that we can display it after all other
+		// resource-related events we receive.
+		display.summaryEvent = &event
+		return
+	case engine.DiagEvent:
+		msg := display.renderProgressDiagEvent(event)
+		if msg == "" {
+			return
+		}
+	}
+
+	// Don't bother showing certain events (for example, things that are unchanged). However
+	// always show the root 'stack' resource so we can indicate that it's still running, and
+	// also so we have something to attach unparented diagnostic events to.
+	if metadata != nil && !shouldShow(*metadata, display.opts) && !isRootURN(eventUrn) {
+		return
+	}
+
+	// At this point, all events should relate to resources.
+
+	refreshAllStatuses := false
+	status, has := display.eventUrnToStatus[eventUrn]
+	if !has {
+		// first time we're hearing about this resource.  Create an initial nearly-empty
+		// status for it, assigning it a nice short ID.
+		status = Status{Tick: display.currentTick}
+		status.Step.Op = deploy.OpSame
+		status.ID = display.makeID(eventUrn)
+
+		if display.isTerminal {
+			// in the terminal we want to align the status portions of messages. If we
+			// heard about a resource with a longer id, go and update all in-flight and
+			// finished resources so that their statuses get aligned.
+			if len(status.ID) > display.maxIDLength {
+				display.maxIDLength = len(status.ID)
+				refreshAllStatuses = true
+			}
+		}
+	}
+
+	if event.Type == engine.ResourcePreEvent {
+		status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
+		if status.Step.Op == "" {
+			contract.Failf("Got empty op for %s", event.Type)
+		}
+	} else if event.Type == engine.ResourceOutputsEvent {
+		// transition the status to done.
+		if !isRootURN(eventUrn) {
+			status.Done = true
+		}
+	} else if event.Type == engine.ResourceOperationFailed {
+		status.Done = true
+		status.Failed = true
+	} else if event.Type == engine.DiagEvent {
+		// also record this diagnostic so we print it at the end.
+		status.DiagEvents = append(status.DiagEvents, event)
+	} else {
+		contract.Failf("Unhandled event type '%s'", event.Type)
+	}
+
+	// Ensure that this updated status is recorded.
+	display.eventUrnToStatus[eventUrn] = status
+
+	// refresh the progress information for this resource.  (or update all resources if
+	// we need to realign everything)
+	if refreshAllStatuses {
+		display.refreshAllStatusMessages(true /*includeDone*/)
+	} else {
+		display.refreshSingleStatusMessage(status)
+	}
+}
+
+func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
+	// Main processing loop.  The purpose of this func is to read in events from the engine
+	// and translate them into Status objects and progress messages to be presented to the
+	// command line.
+	for {
+		select {
+		case <-ticker.C:
+			display.processTick()
+
+		case event := <-events:
+			if event.Type == "" || event.Type == engine.CancelEvent {
+				// Engine finished sending events.  Do all the final processing and return
+				// from this local func.  This will print out things like full diagnostic
+				// events, as well as the summary event from the engine.
+				display.processEndSteps()
+				return
+			}
+
+			display.processNormalEvent(event)
+		}
+	}
+}
+
+func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) string {
+	payload := event.Payload.(engine.DiagEventPayload)
+	if payload.Severity == diag.Debug && !display.opts.Debug {
+		return ""
+	}
 	return payload.Message
 }
 
-func getMetadataSummary(
-	step engine.StepEventMetadata, opts backend.DisplayOptions,
-	isPreview bool, isComplete bool) string {
+func (display *ProgressDisplay) getMetadataSummary(
+	step engine.StepEventMetadata, done bool, failed bool) string {
 
 	out := &bytes.Buffer{}
 
-	if isComplete {
-		writeString(out, getStepCompleteDescription(step.Op, isPreview))
+	if done {
+		writeString(out, display.getStepDoneDescription(step, failed))
 	} else {
-		writeString(out, getStepDescription(step.Op, isPreview))
+		writeString(out, display.getStepInProgressDescription(step))
 	}
 	writeString(out, colors.Reset)
 
@@ -539,39 +616,78 @@ func getMetadataSummary(
 	return out.String()
 }
 
-func getStepCompleteDescription(op deploy.StepOp, isPreview bool) string {
-	if isPreview {
-		return getStepDescription(op, isPreview)
+func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
+	makeError := func(v string) string {
+		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
+	if isRootStack(step) {
+		if failed {
+			return makeError("Failed")
+		}
+
+		return "Completed"
+	}
+
+	if display.isPreview && !isRootStack(step) {
+		return display.getStepInProgressDescription(step)
+	}
+
+	op := step.Op
+
 	getDescription := func() string {
-		switch op {
-		case deploy.OpSame:
-			return "Unchanged"
-		case deploy.OpCreate:
-			return "Created"
-		case deploy.OpUpdate:
-			return "Updated"
-		case deploy.OpDelete:
-			return "Deleted"
-		case deploy.OpReplace:
-			return "Replaced"
-		case deploy.OpCreateReplacement:
-			return "Created for replacement"
-		case deploy.OpDeleteReplaced:
-			return "Deleted for replacement"
+		if failed {
+			switch op {
+			case deploy.OpSame:
+				return "Failed"
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				return "Creating failed"
+			case deploy.OpUpdate:
+				return "Updating failed"
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
+				return "Deleting failed"
+			case deploy.OpReplace:
+				return "Replacing failed"
+			}
+		} else {
+			switch op {
+			case deploy.OpSame:
+				return "Unchanged"
+			case deploy.OpCreate:
+				return "Created"
+			case deploy.OpUpdate:
+				return "Updated"
+			case deploy.OpDelete:
+				return "Deleted"
+			case deploy.OpReplace:
+				return "Replaced"
+			case deploy.OpCreateReplacement:
+				return "Created for replacement"
+			case deploy.OpDeleteReplaced:
+				return "Deleted for replacement"
+			}
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
 
+	if failed {
+		return makeError(getDescription())
+	}
+
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
-func getStepDescription(op deploy.StepOp, isPreview bool) string {
+func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
+	if isRootStack(step) {
+		return "Running"
+	}
+
+	op := step.Op
+
 	getDescription := func() string {
-		if isPreview {
+		if display.isPreview {
 			switch op {
 			case deploy.OpSame:
 				return "Would not change"
@@ -610,7 +726,6 @@ func getStepDescription(op deploy.StepOp, isPreview bool) string {
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
@@ -630,34 +745,6 @@ func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.
 
 		writeString(b, colors.Reset)
 	}
-}
-
-func renderProgressResourcePreEvent(
-	payload engine.ResourcePreEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions,
-	isPreview bool) string {
-
-	seen[payload.Metadata.URN] = payload.Metadata
-
-	if shouldShow(payload.Metadata, opts) {
-		return getMetadataSummary(payload.Metadata, opts, isPreview, false /*isComplete*/)
-	}
-
-	return ""
-}
-
-func renderProgressResourceOutputsEvent(
-	payload engine.ResourceOutputsEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions,
-	isPreview bool) string {
-
-	if shouldShow(payload.Metadata, opts) {
-		return getMetadataSummary(payload.Metadata, opts, isPreview, true /*isComplete*/)
-	}
-
-	return ""
 }
 
 func writeString(b *bytes.Buffer, s string) {
