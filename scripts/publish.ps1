@@ -18,4 +18,4 @@ $PublishTargets=${ReleaseInfo}.Targets
 Remove-Item -Force $ReleaseInfo.ArchivePath
 
 $Version=& $PSScriptRoot\get-version.ps1
-& $BuildSdkScript $Version $(get rev-parse HEAD)
+& $BuildSdkScript $Version "$(git rev-parse HEAD)"
