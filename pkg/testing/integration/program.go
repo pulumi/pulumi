@@ -4,6 +4,8 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,6 +35,7 @@ import (
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
+	StackName    tokens.QName
 	Deployment   *apitype.Deployment
 	RootResource apitype.Resource
 	Outputs      map[string]interface{}
@@ -202,9 +205,11 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 			}
 		}
 
-		lowerStackName := strings.ToLower("p-it-" + host + "-" + test)
-		legalStackName := strings.TrimRight(lowerStackName, "-_")
-		opts.StackName = legalStackName
+		b := make([]byte, 4)
+		_, err = rand.Read(b)
+		contract.AssertNoError(err)
+
+		opts.StackName = strings.ToLower("p-it-" + host + "-" + test + "-" + hex.EncodeToString(b))
 	}
 
 	return tokens.QName(opts.StackName)
@@ -764,6 +769,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
+		StackName:    pt.opts.GetStackName(),
 		Deployment:   &deployment,
 		RootResource: rootResource,
 		Outputs:      outputs,
