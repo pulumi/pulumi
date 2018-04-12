@@ -101,7 +101,7 @@ func newDestroyCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
 		&commit, "commit", "c", false,
-		"Skip confirmation prompts and preview, and proceed with the destruction anyway")
+		"Skip confirmation prompts and preview, and proceed with the destruction automatically")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

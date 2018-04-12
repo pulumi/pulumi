@@ -97,7 +97,7 @@ func newUpdateCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
 		&commit, "commit", "c", false,
-		"Automatically perform operation, without showing preview or asking for confirmation")
+		"Skip confirmation prompts and preview, and proceed with the update automatically")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
