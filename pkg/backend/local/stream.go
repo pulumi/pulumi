@@ -6,8 +6,6 @@ import (
 	"io"
 	"os"
 
-	// "github.com/docker/docker/pkg/progress"
-	// "github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
