@@ -3845,6 +3845,13 @@ return function /*f3*/() {
 function compareErrorText(expected: string, actual: string) {
     const wildcard = "(...)";
 
+    if (!expected.includes(wildcard)) {
+        // We get a nice diff view if we diff the entire string, so do that
+        // if we didn't get a wildcard.
+        assert.equal(actual, expected);
+        return;
+    }
+
     const expectedLines = expected.split(EOL);
     const actualLines = actual.split(EOL);
     let actualIndex = 0;

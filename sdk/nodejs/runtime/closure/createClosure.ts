@@ -440,7 +440,7 @@ function createFunctionInfo(
         function processCapturedVariables(
                 capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
 
-            for (const name of Object.keys(capturedVariables)) {
+            for (const name of capturedVariables.keys()) {
                 let value: any;
                 try {
                     value = v8.lookupCapturedVariableValue(func, name, throwOnFailure);
@@ -481,7 +481,7 @@ function createFunctionInfo(
         function processCapturedVariable(
             capturedVariables: CapturedVariableMap, name: string, value: any) {
 
-            const properties = capturedVariables[name];
+            const properties = capturedVariables.get(name);
             const serializedName = getOrCreateEntry(name, undefined, context, serialize);
 
             // try to only serialize out the properties that were used by the user's code.

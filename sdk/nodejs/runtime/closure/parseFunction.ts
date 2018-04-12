@@ -38,8 +38,7 @@ export interface CapturedPropertyInfo {
     invoked: boolean;
 }
 
-export interface CapturedVariableMap extends Record<string, CapturedPropertyInfo[]> {
-}
+export type CapturedVariableMap = Map<string, CapturedPropertyInfo[]>;
 
 // The set of variables the function attempts to capture.  There is a required set an an optional
 // set. The optional set will not block closure-serialization if we cannot find them, while the
@@ -80,7 +79,7 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
 
-    if (result.capturedVariables.required.this) {
+    if (result.capturedVariables.required.has("this")) {
         return [
             "arrow function captured 'this'. Assign 'this' to another name outside function and capture that.",
             result,
@@ -329,8 +328,8 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
 function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     // Now that we've parsed the file, compute the free variables, and return them.
 
-    let required: CapturedVariableMap = {};
-    let optional: CapturedVariableMap = {};
+    let required: CapturedVariableMap = new Map();
+    let optional: CapturedVariableMap = new Map();
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
 
@@ -346,18 +345,18 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const result: CapturedVariables = { required: {}, optional: {} };
+    const result: CapturedVariables = { required: new Map(), optional: new Map() };
 
-    for (const key of Object.keys(required)) {
-        if (required[key] && !isBuiltIn(key)) {
-            result.required[key] = required[key].concat(
-                optional.hasOwnProperty(key) ? optional[key] : []);
+    for (const key of required.keys()) {
+        if (required.has(key) && !isBuiltIn(key)) {
+            result.required.set(key, required.get(key)!.concat(
+                optional.has(key) ? optional.get(key)! : []));
         }
     }
 
-    for (const key of Object.keys(optional)) {
-        if (optional[key] && !isBuiltIn(key) && !required[key]) {
-            result.optional[key] = optional[key];
+    for (const key of optional.keys()) {
+        if (optional.has(key) && !isBuiltIn(key) && !required.has(key)) {
+            result.optional.set(key, optional.get(key)!);
         }
     }
 
@@ -393,9 +392,9 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
             // "typeof undeclared_id" is legal in JS (and is actually used in libraries). So keep
             // track that we would like to capture this variable, but mark that capture as optional
             // so we will not throw if we aren't able to find it in scope.
-            optional[name] = combineProperties(optional[name], capturedProperty);
+            optional.set(name, combineProperties(optional.get(name), capturedProperty));
         } else {
-            required[name] = combineProperties(required[name], capturedProperty);
+            required.set(name, combineProperties(required.get(name), capturedProperty));
         }
     }
 
@@ -440,7 +439,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     }
 
     function visitThisExpression(node: ts.ThisExpression): void {
-        required["this"] = combineProperties(required["this"], determineCapturedPropertyInfo(node));
+        required.set("this", combineProperties(required.get("this"), determineCapturedPropertyInfo(node)));
     }
 
     function combineProperties(existing: CapturedPropertyInfo[] | undefined,
@@ -519,8 +518,8 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         const savedOptional = optional;
         const savedFunctionVars = functionVars;
 
-        required = {};
-        optional = {};
+        required = new Map();
+        optional = new Map();
         functionVars = new Set();
         scopes.push(new Set());
 
@@ -545,8 +544,8 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
         // Remove any function-scoped variables that we encountered during the walk.
         for (const v of functionVars) {
-            delete required[v];
-            delete optional[v];
+            required.delete(v);
+            optional.delete(v);
         }
 
         // Restore the prior context and merge our free list with the previous one.
@@ -560,11 +559,10 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         optional = savedOptional;
     }
 
-    // Record<string, CapturedPropertyInfo[]>
     function mergeMaps(target: CapturedVariableMap, source: CapturedVariableMap) {
-        for (const key of Object.keys(source)) {
-            const sourcePropInfos = source[key];
-            let targetPropInfos = target[key];
+        for (const key of source.keys()) {
+            const sourcePropInfos = source.get(key)!;
+            let targetPropInfos = target.get(key)!;
 
             if (sourcePropInfos.length === 0) {
                 // we want to capture everything.  Make sure that's reflected in the target.
@@ -578,7 +576,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
                 }
             }
 
-            target[key] = targetPropInfos;
+            target.set(key, targetPropInfos);
         }
     }
 
