@@ -37,6 +37,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
+
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
 const (
@@ -428,19 +431,82 @@ func getActionLabel(key string, dryRun bool) string {
 // 		displayOpts)
 // }
 
-func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+type response string
+
+const (
+	yes     response = "yes"
+	no      response = "no"
+	details response = "details"
+)
+
+func (b *cloudBackend) Update(
+	stackName tokens.QName, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions) error {
+
+	// First get the stack.
+	stack, err := b.GetStack(stackName)
+	if err != nil {
+		return err
+	} else if stack == nil {
+		return errors.New("stack not found")
+	}
+
+	if !opts.Commit {
+		err := b.updateStack(
+			client.UpdateKindUpdate, stack, pkg,
+			root, m, opts, displayOpts, true /*dryRun*/)
+
+		var message string
+		if err != nil {
+			message = colors.SpecWarning + "\n!!! Warning, errors occurred !!!" + colors.Reset
+		}
+
+		message += colors.BrightWhite + "\nDo you want to proceed?" + colors.Reset
+
+		for {
+			var response string
+
+			surveycore.DisableColor = true
+			surveycore.QuestionIcon = ""
+			surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+
+			survey.AskOne(&survey.Select{
+				Message: colors.ColorizeText(message),
+				Options: []string{string(yes), string(no), string(details)},
+				Default: string(no),
+			}, &response, nil)
+
+			if response == string(no) {
+				return err
+			}
+
+			if response == string(yes) {
+				break
+			}
+
+			contract.Assertf(response == string(details), "Could not understand response '%s'", response)
+		}
+	}
 
 	return b.updateStack(
-		client.UpdateKindUpdate, stackName, pkg,
+		client.UpdateKindUpdate, stack, pkg,
 		root, m, opts, displayOpts, false /*dryRun*/)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
+	// First get the stack.
+	stack, err := b.GetStack(stackName)
+	if err != nil {
+		return err
+	} else if stack == nil {
+		return errors.New("stack not found")
+	}
+
 	return b.updateStack(
-		client.UpdateKindDestroy, stackName, pkg,
+		client.UpdateKindDestroy, stack, pkg,
 		root, m, opts, displayOpts, false /*dryRun*/)
 }
 
@@ -493,7 +559,7 @@ func (b *cloudBackend) createAndStartUpdate(
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(
-	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
 	displayOpts backend.DisplayOptions, dryRun bool) error {
 
@@ -502,23 +568,16 @@ func (b *cloudBackend) updateStack(
 	fmt.Printf(
 		colors.ColorizeText(
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
-		actionLabel, stackName)
-
-	// First get the stack.
-	stack, err := b.GetStack(stackName)
-	if err != nil {
-		return err
-	} else if stack == nil {
-		return errors.New("stack not found")
-	}
+		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
 	var update client.UpdateIdentifier
 	var version int
 	var token string
+	var err error
 	if !stack.(Stack).RunLocally() || !dryRun {
 		update, version, token, err = b.createAndStartUpdate(
-			action, stackName, pkg, root, m, opts, dryRun)
+			action, stack.Name(), pkg, root, m, opts, dryRun)
 	}
 	if err != nil {
 		return err
@@ -538,7 +597,7 @@ func (b *cloudBackend) updateStack(
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
-			action, stackName, pkg, root, opts, displayOpts, update, token, dryRun)
+			action, stack.Name(), pkg, root, opts, displayOpts, update, token, dryRun)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.

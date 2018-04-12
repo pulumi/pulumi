@@ -436,6 +436,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// print the summary
 	if display.summaryEvent != nil {
 		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
+		display.colorizeAndWriteProgress(progress.Progress{Message: " "})
 		display.colorizeAndWriteProgress(progress.Progress{Message: msg})
 	}
 }
