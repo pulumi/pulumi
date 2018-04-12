@@ -82,7 +82,7 @@ func newDestroyCmd() *cobra.Command {
 				Color:                color.Colorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
-				ShowSames:            showSames,
+				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			})
@@ -117,7 +117,7 @@ func newDestroyCmd() *cobra.Command {
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
-		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

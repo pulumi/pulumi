@@ -232,7 +232,8 @@ func renderResourcePreEvent(
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
-		details := engine.GetResourcePropertiesDetails(payload.Metadata, indent, payload.Planning, payload.Debug)
+		details := engine.GetResourcePropertiesDetails(
+			payload.Metadata, indent, opts.SummaryDiff, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
 		fprintIgnoreError(out, opts.Color.Colorize(details))
@@ -276,7 +277,7 @@ func shouldShow(step engine.StepEventMetadata, opts backend.DisplayOptions) bool
 		if step.Old.Protect != step.New.Protect {
 			return true
 		}
-		return opts.ShowSames
+		return opts.ShowSameResources
 	} else if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced {
 		return opts.ShowReplacementSteps
 	} else if step.Op == deploy.OpReplace {
