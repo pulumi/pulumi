@@ -418,20 +418,6 @@ func getActionLabel(key string, dryRun bool) string {
 	return ""
 }
 
-// var actionLabels = map[string]string{
-// 	string(client.UpdateKindUpdate):  "Updating",
-// 	string(client.UpdateKindPreview): "Previewing",
-// 	string(client.UpdateKindDestroy): "Destroying",
-// 	"import": "Importing",
-// }
-
-// func (b *cloudBackend) Preview(stackName tokens.QName, pkg *workspace.Project, root string,
-// 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-
-// 	return b.updateStack(client.UpdateKindPreview, stackName, pkg, root, backend.UpdateMetadata{}, opts,
-// 		displayOpts)
-// }
-
 type response string
 
 const (
