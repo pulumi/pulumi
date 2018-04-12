@@ -24,8 +24,9 @@ type Stack interface {
 	Backend() Backend           // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(proj *workspace.Project, root string,
-		opts engine.UpdateOptions, displayOpts DisplayOptions) error
+	// Preview(proj *workspace.Project, root string,
+	// 	opts engine.UpdateOptions, displayOpts DisplayOptions) error
+
 	// Update this stack.
 	Update(proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
@@ -45,10 +46,10 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 }
 
 // PreviewStack initiates a preview of the current workspace's contents.
-func PreviewStack(s Stack, proj *workspace.Project, root string,
-	opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Preview(s.Name(), proj, root, opts, displayOpts)
-}
+// func PreviewStack(s Stack, proj *workspace.Project, root string,
+// 	opts engine.UpdateOptions, displayOpts DisplayOptions) error {
+// 	return s.Backend().Preview(s.Name(), proj, root, opts, displayOpts)
+// }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(s Stack, proj *workspace.Project, root string,

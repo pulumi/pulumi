@@ -22,7 +22,7 @@ func newUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var color colorFlag
 	var parallel int
-	var preview bool
+	var commit bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -63,7 +63,7 @@ func newUpdateCmd() *cobra.Command {
 
 			return s.Update(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
-				DryRun:    preview,
+				Commit:    commit,
 				Parallel:  parallel,
 				Debug:     debug,
 			}, backend.DisplayOptions{
@@ -89,8 +89,6 @@ func newUpdateCmd() *cobra.Command {
 		"Optional message to associate with the update operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
@@ -98,8 +96,8 @@ func newUpdateCmd() *cobra.Command {
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&preview, "preview", "n", false,
-		"Don't create/delete resources; just preview the planned operations")
+		&commit, "commit", "c", false,
+		"Automatically perform update, without showing preview or asking for confirmation")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -112,6 +110,8 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().Var(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

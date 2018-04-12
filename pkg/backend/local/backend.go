@@ -136,31 +136,31 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return symmetricCrypter(stackName)
 }
 
-func (b *localBackend) Preview(
-	stackName tokens.QName, proj *workspace.Project, root string,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+// func (b *localBackend) Preview(
+// 	stackName tokens.QName, proj *workspace.Project, root string,
+// 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	update, err := b.newUpdate(stackName, proj, root)
-	if err != nil {
-		return err
-	}
+// 	update, err := b.newUpdate(stackName, proj, root)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
-	events := make(chan engine.Event)
-	done := make(chan bool)
+// 	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
+// 	events := make(chan engine.Event)
+// 	done := make(chan bool)
 
-	go DisplayEvents("previewing", events, done, displayOpts)
+// 	go DisplayEvents("previewing", events, done, displayOpts)
 
-	if err = engine.Preview(update, manager, events, opts); err != nil {
-		return err
-	}
+// 	if err = engine.Preview(update, manager, events, opts); err != nil {
+// 		return err
+// 	}
 
-	<-done
-	close(events)
-	close(done)
-	contract.IgnoreError(manager.Close())
-	return nil
-}
+// 	<-done
+// 	close(events)
+// 	close(done)
+// 	contract.IgnoreError(manager.Close())
+// 	return nil
+// }
 
 func (b *localBackend) Update(
 	stackName tokens.QName, proj *workspace.Project, root string,
@@ -197,10 +197,12 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 	)
 }
 
-func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
-	stackName tokens.QName, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+func (b *localBackend) performEngineOp(
+	op string, kind backend.UpdateKind, stackName tokens.QName,
+	proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	performEngineOp func(*update, *backend.SnapshotManager, chan engine.Event) (engine.ResourceChanges, error)) error {
+
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
 		return err

@@ -33,11 +33,13 @@ type Backend interface {
 	GetStackCrypter(stack tokens.QName) (config.Crypter, error)
 
 	// Preview initiates a preview of the current workspace's contents.
-	Preview(stackName tokens.QName, proj *workspace.Project, root string,
-		opts engine.UpdateOptions, displayOpts DisplayOptions) error
+	// Preview(stackName tokens.QName, proj *workspace.Project, root string,
+	// 	opts engine.UpdateOptions, displayOpts DisplayOptions) error
+
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(stackName tokens.QName, proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+
 	// Destroy destroys all of this stack's resources.
 	Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
