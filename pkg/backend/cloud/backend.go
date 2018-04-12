@@ -571,16 +571,17 @@ func (b *cloudBackend) runEngineAction(
 
 	switch action {
 	case client.UpdateKindPreview:
-		err = engine.Preview(u, events, opts)
+		err = engine.Preview(u, u.manager, events, opts)
 	case client.UpdateKindUpdate:
-		_, err = engine.Update(u, events, opts)
+		_, err = engine.Update(u, u.manager, events, opts)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, events, opts)
+		_, err = engine.Destroy(u, u.manager, events, opts)
 	}
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreError(u.manager.Close())
 
 	if action != client.UpdateKindPreview {
 		status := apitype.UpdateStatusSucceeded
