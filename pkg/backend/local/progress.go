@@ -393,10 +393,7 @@ func DisplayProgressEvents(
 		// print the summary
 		if summaryEvent != nil {
 			msg := renderSummaryEvent(summaryEvent.Payload.(engine.SummaryEventPayload), opts)
-			if msg != "" {
-				colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: " "})
-				colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
-			}
+			colorizeAndWriteProgress(opts, progressOutput, progress.Progress{Message: msg})
 		}
 
 		// no more progress events from this point on.  By closing the pipe, this will then cause
