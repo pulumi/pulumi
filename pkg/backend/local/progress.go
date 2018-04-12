@@ -96,7 +96,8 @@ func colorizeAndWriteProgress(opts backend.DisplayOptions, output progress.Outpu
 		progress.Action = opts.Color.Colorize(progress.Action)
 	}
 
-	output.WriteProgress(progress)
+	err := output.WriteProgress(progress)
+	contract.IgnoreError(err)
 }
 
 // Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
@@ -104,10 +105,10 @@ func colorizeAndWriteProgress(opts backend.DisplayOptions, output progress.Outpu
 func getDiagnosticInformation(status Status) (
 	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
 
-	errorEvents = 0
-	warningEvents = 0
-	infoEvents = 0
-	debugEvents = 0
+	errors := 0
+	warnings := 0
+	infos := 0
+	debugs := 0
 
 	var lastError, lastInfoError, lastWarning, lastInfo, lastDebug *engine.Event
 
@@ -116,45 +117,36 @@ func getDiagnosticInformation(status Status) (
 
 		switch payload.Severity {
 		case diag.Error:
-			errorEvents++
+			errors++
 			lastError = &ev
 		case diag.Infoerr:
-			errorEvents++
+			errors++
 			lastInfoError = &ev
 		case diag.Warning:
-			warningEvents++
+			warnings++
 			lastWarning = &ev
 		case diag.Info:
-			infoEvents++
+			infos++
 			lastInfo = &ev
 		case diag.Debug:
-			debugEvents++
+			debugs++
 			lastDebug = &ev
 		}
 	}
 
 	if lastError != nil {
 		worstDiag = lastError
-		return
-	}
-
-	if lastInfoError != nil {
+	} else if lastInfoError != nil {
 		worstDiag = lastInfoError
-		return
-	}
-
-	if lastWarning != nil {
+	} else if lastWarning != nil {
 		worstDiag = lastWarning
-		return
-	}
-
-	if lastInfo != nil {
+	} else if lastInfo != nil {
 		worstDiag = lastInfo
-		return
+	} else {
+		worstDiag = lastDebug
 	}
 
-	worstDiag = lastDebug
-	return
+	return worstDiag, errors, warnings, infos, debugs
 }
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
@@ -207,7 +199,8 @@ func DisplayProgressEvents(
 	_, isTerminal := term.GetFdInfo(stdout)
 
 	// The width of the terminal.  Used so we can trim resource messages that are too long.
-	terminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	contract.IgnoreError(err)
 
 	// The streams we used to connect to docker's progress system.  We push progress messages into
 	// progressOutput.  It pushes messages into pipeWriter.  Those are then read below in
@@ -364,10 +357,9 @@ func DisplayProgressEvents(
 		}
 	}
 
-	// Performs all the work at the end once we've heard about the last message
-	// from the engine. Specifically, this will update the status messages for
-	// any resources, and will also then print out all final diagnostics. and
-	// finally will print out the summary.
+	// Performs all the work at the end once we've heard about the last message from the engine.
+	// Specifically, this will update the status messages for any resources, and will also then
+	// print out all final diagnostics. and finally will print out the summary.
 	processEndSteps := func() {
 		// Mark all in progress resources as done.
 		for k, v := range eventUrnToStatus {
@@ -378,8 +370,7 @@ func DisplayProgressEvents(
 			}
 		}
 
-		// Print all diagnostics at the end.  We only need to do this if we were summarizing.
-		// Otherwise, this would have been seen while we were receiving the events.
+		// Print all diagnostics we've seen.
 
 		for _, status := range eventUrnToStatus {
 			if len(status.DiagEvents) > 0 {
@@ -558,7 +549,7 @@ func DisplayProgressEvents(
 
 	// Call into Docker to actually suck the progress messages out of pipeReader and display
 	// them to the console.
-	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+	err = jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
 	contract.IgnoreError(err)
 }
 
@@ -734,19 +725,6 @@ func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.
 
 		writeString(b, colors.Reset)
 	}
-}
-
-func renderResourceMetadata(
-	metadata engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata,
-	opts backend.DisplayOptions, isPreview bool, done bool, failed bool) string {
-
-	seen[metadata.URN] = metadata
-
-	if shouldShow(metadata, opts) {
-		return getMetadataSummary(metadata, opts, isPreview, done, failed)
-	}
-
-	return ""
 }
 
 func writeString(b *bytes.Buffer, s string) {
