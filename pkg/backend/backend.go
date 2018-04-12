@@ -32,10 +32,6 @@ type Backend interface {
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stack tokens.QName) (config.Crypter, error)
 
-	// Preview initiates a preview of the current workspace's contents.
-	// Preview(stackName tokens.QName, proj *workspace.Project, root string,
-	// 	opts engine.UpdateOptions, displayOpts DisplayOptions) error
-
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(stackName tokens.QName, proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
