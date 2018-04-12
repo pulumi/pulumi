@@ -210,6 +210,12 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts backend.DisplayOp
 func renderResourceOperationFailedEvent(
 	payload engine.ResourceOperationFailedPayload, opts backend.DisplayOptions) string {
 
+	// It's not actually useful or interesting to print out any details about
+	// the resource state here, because we always assume that the resource state
+	// is unknown if an error occurs.
+	//
+	// In the future, once we get more fine-grained error messages from providers,
+	// we can provide useful diagnostics here.
 
 	return ""
 }
