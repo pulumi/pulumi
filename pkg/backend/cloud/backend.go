@@ -463,12 +463,17 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
-	eventsChannel := make(chan engine.Event)
+	var eventsChannel chan engine.Event
 	events := []engine.Event{}
 
 	// if we're previewing, we don't need to store the events as we're not going to prompt
 	// the user to get details of what's happening.
 	if !opts.Preview {
+		eventsChannel = make(chan engine.Event)
+		defer func() {
+			close(eventsChannel)
+		}()
+
 		go func() {
 			// pull the events from the channel and store them locally
 			for e := range eventsChannel {
@@ -485,8 +490,6 @@ func (b *cloudBackend) PreviewThenPrompt(
 	err := b.updateStack(
 		updateKind, stack, pkg, root, m,
 		opts, displayOpts, eventsChannel, true /*dryRun*/)
-
-	close(eventsChannel)
 
 	if opts.Preview {
 		// if we're just previewing, then we can stop at this point.
