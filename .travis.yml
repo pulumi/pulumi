@@ -18,8 +18,13 @@ install:
     - source ./build/travis/install-common-toolchain.sh
 before_script:
     - ./build/travis/ensure-dependencies
+
+    # --packet-buffered causes a crash on OSX 10.12.
+    - sudo tcpdump "port 53" --immediate-mode -w ~/dns.cap &
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
+after_script:
+    - tcpdump -r ~/dns.cap -vv | grep -B1 api.pulumi-staging.io | tail -100
 after_failure:
     - "${PULUMI_HOME}/scripts/upload-failed-tests"
 notifications:
