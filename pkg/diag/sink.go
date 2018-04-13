@@ -41,6 +41,7 @@ type Severity string
 const (
 	Debug   Severity = "debug"
 	Info    Severity = "info"
+	Infoerr Severity = "info#err"
 	Warning Severity = "warning"
 	Error   Severity = "error"
 )
@@ -64,6 +65,7 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 	return newDefaultSink(opts, map[Severity]io.Writer{
 		Debug:   debug,
 		Info:    stdout,
+		Infoerr: stderr,
 		Error:   stderr,
 		Warning: stderr,
 	})
@@ -72,6 +74,7 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
 	contract.Assert(writers[Debug] != nil)
 	contract.Assert(writers[Info] != nil)
+	contract.Assert(writers[Infoerr] != nil)
 	contract.Assert(writers[Error] != nil)
 	contract.Assert(writers[Warning] != nil)
 	return &defaultSink{
@@ -144,7 +147,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	switch sev {
 	case Debug:
 		buffer.WriteString(colors.SpecDebug)
-	case Info:
+	case Info, Infoerr:
 		buffer.WriteString(colors.SpecInfo)
 	case Error:
 		buffer.WriteString(colors.SpecError)

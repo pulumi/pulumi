@@ -17,6 +17,7 @@ func discardSink() Sink {
 	return newDefaultSink(FormatOptions{Color: colors.Never}, map[Severity]io.Writer{
 		Debug:   ioutil.Discard,
 		Info:    ioutil.Discard,
+		Infoerr: ioutil.Discard,
 		Error:   ioutil.Discard,
 		Warning: ioutil.Discard,
 	})
@@ -30,11 +31,30 @@ func TestCounts(t *testing.T) {
 	const numEach = 10
 
 	for i := 0; i < numEach; i++ {
+		assert.Equal(t, sink.Debugs(), 0, "expected debugs pre to stay at zero")
+		assert.Equal(t, sink.Infos(), 0, "expected infos pre to stay at zero")
+		assert.Equal(t, sink.Infoerrs(), 0, "expected infoerrs pre to stay at zero")
+		assert.Equal(t, sink.Errors(), 0, "expected errors pre to stay at zero")
+		assert.Equal(t, sink.Warnings(), i, "expected warnings pre to be at iteration count")
 		sink.Warningf(&Diag{Message: "A test of the emergency warning system: %v."}, i)
+		assert.Equal(t, sink.Infos(), 0, "expected infos post to stay at zero")
+		assert.Equal(t, sink.Infoerrs(), 0, "expected infoerrs post to stay at zero")
+		assert.Equal(t, sink.Errors(), 0, "expected errors post to stay at zero")
+		assert.Equal(t, sink.Warnings(), i+1, "expected warnings post to be at iteration count+1")
 	}
 
 	for i := 0; i < numEach; i++ {
+		assert.Equal(t, sink.Debugs(), 0, "expected debugs pre to stay at zero")
+		assert.Equal(t, sink.Infos(), 0, "expected infos pre to stay at zero")
+		assert.Equal(t, sink.Infoerrs(), 0, "expected infoerrs pre to stay at zero")
+		assert.Equal(t, sink.Errors(), i, "expected errors pre to be at iteration count")
+		assert.Equal(t, sink.Warnings(), numEach, "expected warnings pre to stay at numEach")
 		sink.Errorf(&Diag{Message: "A test of the emergency error system: %v."}, i)
+		assert.Equal(t, sink.Debugs(), 0, "expected deugs post to stay at zero")
+		assert.Equal(t, sink.Infos(), 0, "expected infos post to stay at zero")
+		assert.Equal(t, sink.Infoerrs(), 0, "expected infoerrs post to stay at zero")
+		assert.Equal(t, sink.Errors(), i+1, "expected errors post to be at iteration count+1")
+		assert.Equal(t, sink.Warnings(), numEach, "expected warnings post to stay at numEach")
 	}
 }
 

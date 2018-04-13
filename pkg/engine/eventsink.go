@@ -78,7 +78,7 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	switch sev {
 	case diag.Debug:
 		buffer.WriteString(colors.SpecDebug)
-	case diag.Info:
+	case diag.Info, diag.Infoerr:
 		buffer.WriteString(colors.SpecInfo)
 	case diag.Error:
 		buffer.WriteString(colors.SpecError)

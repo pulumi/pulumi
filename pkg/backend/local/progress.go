@@ -111,7 +111,7 @@ func getDiagnosticInformation(status Status) (
 	infos := 0
 	debugs := 0
 
-	var lastError, lastWarning, lastInfo, lastDebug *engine.Event
+	var lastError, lastInfoError, lastWarning, lastInfo, lastDebug *engine.Event
 
 	for _, ev := range status.DiagEvents {
 		payload := ev.Payload.(engine.DiagEventPayload)
@@ -120,6 +120,9 @@ func getDiagnosticInformation(status Status) (
 		case diag.Error:
 			errors++
 			lastError = &ev
+		case diag.Infoerr:
+			errors++
+			lastInfoError = &ev
 		case diag.Warning:
 			warnings++
 			lastWarning = &ev
@@ -134,6 +137,8 @@ func getDiagnosticInformation(status Status) (
 
 	if lastError != nil {
 		worstDiag = lastError
+	} else if lastInfoError != nil {
+		worstDiag = lastInfoError
 	} else if lastWarning != nil {
 		worstDiag = lastWarning
 	} else if lastInfo != nil {
