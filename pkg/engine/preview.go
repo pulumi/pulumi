@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -78,8 +79,9 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
 	assertSeen(acts.Seen, step)
 
-	// We let `printPlan` handle error reporting for now.
-	if err == nil {
+	if err != nil {
+		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(step.URN()), err)
+	} else {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if step.Logical() {
 			acts.Ops[step.Op()]++
@@ -87,6 +89,7 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 
 		_ = acts.OnResourceOutputs(step)
 	}
+
 	return nil
 }
 

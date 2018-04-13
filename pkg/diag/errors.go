@@ -43,3 +43,7 @@ func GetAnalyzeResourceFailureError(urn resource.URN) *Diag {
 			"\tProperty: %v\n"+
 			"\tReason: %v")
 }
+
+func GetPreviewFailedError(urn resource.URN) *Diag {
+	return newError(urn, 2005, "Preview failed: %v")
+}

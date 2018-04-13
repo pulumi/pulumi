@@ -469,9 +469,12 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// print the summary
 	if display.summaryEvent != nil {
-		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
 		display.writeBlankLine()
+
+		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
 		display.writeSimpleMessage(msg)
+	} else if wroteDiagnosticHeader {
+		display.writeBlankLine()
 	}
 }
 
@@ -609,6 +612,7 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 
 func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) string {
 	payload := event.Payload.(engine.DiagEventPayload)
+
 	if payload.Severity == diag.Debug && !display.opts.Debug {
 		return ""
 	}
