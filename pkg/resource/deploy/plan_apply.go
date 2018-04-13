@@ -460,8 +460,15 @@ func (iter *PlanIterator) computeDeletes() []Step {
 	var dels []Step
 	if prev := iter.p.prev; prev != nil {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
-			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			res := prev.Resources[i]
+			// A resource that is neither live nor condemned does not exist and therefore
+			// does not need to be deleted. It'll get removed from the snapshot upon completion
+			// of the current plan.
+			if !res.Status.Live() && !res.Status.Condemned() {
+				continue
+			}
+
+			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			if res.Delete || res.Status == resource.ResourceStatusPendingDeletion {
 				glog.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				iter.deletes[res.URN] = true
