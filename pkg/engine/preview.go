@@ -29,7 +29,7 @@ func Preview(u UpdateInfo, manager SnapshotManager, events chan<- Event, opts Up
 	emitter := makeEventEmitter(events, u)
 	return preview(ctx, planOptions{
 		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
+		SourceFunc:    newUpdateSource(manager),
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	})
