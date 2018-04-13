@@ -472,7 +472,10 @@ func (b *cloudBackend) PreviewThenPrompt(
 		go func() {
 			// pull the events from the channel and store them locally
 			for e := range eventsChannel {
-				if e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent {
+				if e.Type == engine.ResourcePreEvent ||
+					e.Type == engine.ResourceOutputsEvent ||
+					e.Type == engine.SummaryEvent {
+
 					events = append(events, e)
 				}
 			}
@@ -523,11 +526,11 @@ func (b *cloudBackend) PreviewThenPrompt(
 		}
 
 		if response == string(no) {
-			return err
+			return errors.New("confirmation declined")
 		}
 
 		if response == string(yes) {
-			break
+			return nil
 		}
 
 		if response == string(details) {
