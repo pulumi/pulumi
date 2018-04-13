@@ -152,27 +152,28 @@ func (b *localBackend) Update(
 		return errors.Wrap(err, "validating stack properties")
 	}
 
-	// if !opts.Force {
-	// 	// return b.performEngineOp(
-	// 	// 	"updating", backend.DeployUpdate,
-	// 	// 	stackName, proj, root, m, opts, displayOpts,
-	// 	// 	engine.Update, true /*dryRun*/)
-	// }
+	if !opts.Force && !opts.Preview {
+		return errors.New("--update or --preview must be passed when updating a local stack")
+	}
 
 	return b.performEngineOp(
 		"updating", backend.DeployUpdate,
 		stackName, proj, root, m, opts, displayOpts,
-		false /*dryRun*/, engine.Update)
+		opts.Preview, engine.Update)
 }
 
 func (b *localBackend) Destroy(
 	stackName tokens.QName, proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
+	if !opts.Force && !opts.Preview {
+		return errors.New("--update or --preview must be passed when destroying a local stacks")
+	}
+
 	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
 		stackName, proj, root, m, opts, displayOpts,
-		false /*dryRun*/, engine.Destroy)
+		opts.Preview, engine.Destroy)
 }
 
 func (b *localBackend) performEngineOp(
