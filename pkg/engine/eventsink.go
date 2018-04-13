@@ -29,7 +29,6 @@ type eventSink struct {
 func (s *eventSink) Count() int    { return s.Debugs() + s.Infos() + s.Errors() + s.Warnings() }
 func (s *eventSink) Debugs() int   { return s.getCount(diag.Debug) }
 func (s *eventSink) Infos() int    { return s.getCount(diag.Info) }
-func (s *eventSink) Infoerrs() int { return s.getCount(diag.Infoerr) }
 func (s *eventSink) Errors() int   { return s.getCount(diag.Error) }
 func (s *eventSink) Warnings() int { return s.getCount(diag.Warning) }
 func (s *eventSink) Success() bool { return s.Errors() == 0 }
@@ -40,8 +39,6 @@ func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
 		s.Debugf(d, args...)
 	case diag.Info:
 		s.Infof(d, args...)
-	case diag.Infoerr:
-		s.Infoerrf(d, args...)
 	case diag.Warning:
 		s.Warningf(d, args...)
 	case diag.Error:
@@ -69,15 +66,6 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	}
 	s.events.diagInfoEvent(d.URN, msg)
 	s.incrementCount(diag.Info)
-}
-
-func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
-	msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
-	}
-	s.events.diagInfoerrEvent(d.URN, msg)
-	s.incrementCount(diag.Infoerr)
 }
 
 func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
@@ -117,7 +105,7 @@ func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface
 	switch sev {
 	case diag.Debug:
 		buffer.WriteString(colors.SpecDebug)
-	case diag.Info, diag.Infoerr:
+	case diag.Info:
 		buffer.WriteString(colors.SpecInfo)
 	case diag.Error:
 		buffer.WriteString(colors.SpecError)
