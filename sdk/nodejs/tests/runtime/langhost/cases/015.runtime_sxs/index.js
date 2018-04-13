@@ -14,6 +14,8 @@ let pulumi1 = require(sdkPath);
 // Now delete the entry in the require cache, and load up the second copy:
 delete require.cache[require.resolve(sdkPath)];
 delete require.cache[require.resolve(sdkPath + "/runtime")];
+delete require.cache[require.resolve(sdkPath + "/runtime/config")];
+delete require.cache[require.resolve(sdkPath + "/runtime/settings")];
 let pulumi2 = require(sdkPath);
 
 // Make sure they are different:
@@ -25,6 +27,12 @@ assert.strictEqual(pulumi1.runtime.isDryRun(), pulumi2.runtime.isDryRun());
 assert.strictEqual(pulumi1.runtime.getProject(), pulumi2.runtime.getProject());
 assert.strictEqual(pulumi1.runtime.getStack(), pulumi2.runtime.getStack());
 assert.deepEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig());
+
+// allConfig should have caught this, but let's check individual config values too.
+let cfg1 = new pulumi1.Config("sxs");
+let cfg2 = new pulumi2.Config("sxs");
+assert.strictEqual(cfg1.get("SxS config works!"));
+assert.strictEqual(cfg1.get("message"), cfg2.get("message"));
 
 // Now do some useful things that require RPC connections:
 pulumi1.log.info("logging via Pulumi1 works!");

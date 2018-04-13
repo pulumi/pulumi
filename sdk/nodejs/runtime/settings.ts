@@ -3,7 +3,7 @@
 import * as minimist from "minimist";
 import { RunError } from "../errors";
 import { Resource } from "../resource";
-import { loadConfig } from "./config";
+import { ensureConfig } from "./config";
 import { debuggablePromise } from "./debuggable";
 
 const grpc = require("grpc");
@@ -162,7 +162,7 @@ export function setOptions(opts: Options): void {
  */
 function loadOptions(): Options {
     // Load the config from the environment.
-    loadConfig();
+    ensureConfig();
 
     // The only option that needs parsing is the parallelism flag.  Ignore any failures.
     let parallel: number | undefined;

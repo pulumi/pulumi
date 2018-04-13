@@ -146,7 +146,7 @@ export function main(args: string[]): void {
     });
 
     // Load configuration passed from the language plugin
-    runtime.loadConfig();
+    runtime.ensureConfig();
 
     // If there is a --project=p, and/or a --stack=s, use them in the options.
     const project: string | undefined = argv["project"];
