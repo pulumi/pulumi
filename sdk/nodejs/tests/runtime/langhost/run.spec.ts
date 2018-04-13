@@ -350,6 +350,9 @@ describe("rpc", () => {
         // Test that the runtime can be loaded twice.
         "runtime_sxs": {
             program: path.join(base, "015.runtime_sxs"),
+            config: {
+                "sxs:config:message": "SxS config works!",
+            },
             expectResourceCount: 2,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 return { urn: makeUrn(t, name), id: name, props: undefined };
