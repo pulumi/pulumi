@@ -658,11 +658,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
-	if isRootStack(step) {
-		if failed {
-			return makeError("failed")
-		}
-
+	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
+	if isRootStack(step) && step.Op != deploy.OpSame {
 		return "done"
 	}
 
@@ -717,7 +714,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
-	if isRootStack(step) {
+	if isRootStack(step) && step.Op != deploy.OpSame {
 		return "running"
 	}
 
