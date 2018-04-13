@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sync"
 
 	"github.com/golang/glog"
 
@@ -16,21 +17,31 @@ import (
 
 // Sink facilitates pluggable diagnostics messages.
 type Sink interface {
+	// Count fetches the total number of diagnostics issued (errors plus warnings).
+	Count() int
+	// Infos fetches the number of debug messages issued.
+	Debugs() int
+	// Infos fetches the number of stdout informational messages issued.
+	Infos() int
+	// Infos fetches the number of stderr informational messages issued.
+	Infoerrs() int
+	// Errors fetches the number of errors issued.
+	Errors() int
+	// Warnings fetches the number of warnings issued.
+	Warnings() int
+	// Success returns true if this sink is currently error-free.
+	Success() bool
+
 	// Logf issues a log message.
 	Logf(sev Severity, diag *Diag, args ...interface{})
-
 	// Debugf issues a debugging message.
 	Debugf(diag *Diag, args ...interface{})
-
 	// Infof issues an informational message (to stdout).
 	Infof(diag *Diag, args ...interface{})
-
 	// Infoerrf issues an informational message (to stderr).
 	Infoerrf(diag *Diag, args ...interface{})
-
 	// Errorf issues a new error diagnostic.
 	Errorf(diag *Diag, args ...interface{})
-
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
@@ -82,6 +93,7 @@ func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *default
 	contract.Assert(writers[Warning] != nil)
 	return &defaultSink{
 		opts:    opts,
+		counts:  make(map[Severity]int),
 		writers: writers,
 	}
 }
@@ -92,7 +104,18 @@ const DefaultSinkIDPrefix = "PU"
 type defaultSink struct {
 	opts    FormatOptions          // a set of options that control output style and content.
 	writers map[Severity]io.Writer // the writers to use for each kind of diagnostic severity.
+
+	counts map[Severity]int // the number of messages that have been issued per severity.
+	mutex  sync.RWMutex     // a mutex for guarding updates to the counts map
 }
+
+func (d *defaultSink) Count() int    { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
+func (d *defaultSink) Debugs() int   { return d.getCount(Debug) }
+func (d *defaultSink) Infos() int    { return d.getCount(Info) }
+func (d *defaultSink) Infoerrs() int { return d.getCount(Infoerr) }
+func (d *defaultSink) Errors() int   { return d.getCount(Error) }
+func (d *defaultSink) Warnings() int { return d.getCount(Warning) }
+func (d *defaultSink) Success() bool { return d.Errors() == 0 }
 
 func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 	switch sev {
@@ -119,6 +142,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 		glog.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Debug], msg)
+	d.incrementCount(Debug)
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
@@ -127,6 +151,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Info], msg)
+	d.incrementCount(Info)
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
@@ -135,6 +160,7 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Infoerr], msg)
+	d.incrementCount(Infoerr)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
@@ -143,6 +169,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Error], msg)
+	d.incrementCount(Error)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
@@ -151,6 +178,19 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Warning], msg)
+	d.incrementCount(Warning)
+}
+
+func (d *defaultSink) incrementCount(sev Severity) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	d.counts[sev]++
+}
+
+func (d *defaultSink) getCount(sev Severity) int {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+	return d.counts[sev]
 }
 
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {

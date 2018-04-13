@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -53,11 +54,11 @@ func preview(ctx *planContext, opts planOptions) error {
 			return err
 		}
 	}
-	// if !opts.Diag.Success() {
-	// 	// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
-	// 	// although error messages may have spewed to the output, the final lines of the plan may look fine.
-	// 	return errors.New("One or more errors occurred during the creation of this preview")
-	// }
+	if !opts.Diag.Success() {
+		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
+		// although error messages may have spewed to the output, the final lines of the plan may look fine.
+		return errors.New("One or more errors occurred during the creation of this preview")
+	}
 	return nil
 }
 
