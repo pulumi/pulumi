@@ -544,8 +544,6 @@ func (b *cloudBackend) PreviewThenPrompt(
 		// ctrl-c is hit.
 		return err
 	}
-
-	return nil
 }
 
 func (b *cloudBackend) PreviewThenPromptThenExecute(
