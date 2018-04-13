@@ -17,6 +17,10 @@ before_install:
 install:
     - source ./build/travis/install-common-toolchain.sh
 before_script:
+    # debugging data for https://github.com/pulumi/pulumi/issues/1178
+    - nslookup -debug api.pulumi-staging.io 1.1.1.1
+    - nslookup -debug api.pulumi-staging.io
+
     - ./build/travis/ensure-dependencies
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
