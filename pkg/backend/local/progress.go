@@ -610,7 +610,7 @@ func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) stri
 	if payload.Severity == diag.Debug && !display.opts.Debug {
 		return ""
 	}
-	return payload.Message
+	return strings.TrimRightFunc(payload.Message, unicode.IsSpace)
 }
 
 func (display *ProgressDisplay) getMetadataSummary(

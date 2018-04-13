@@ -95,14 +95,14 @@ func RenderDiffEvent(
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 	case engine.DiagEvent:
-		return renderDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
+		return renderDiffDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
 }
 
-func renderDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
+func renderDiffDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOptions) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
