@@ -69,9 +69,6 @@ func SerializeResource(res *resource.State) apitype.Resource {
 		Inputs:       inputs,
 		Outputs:      outputs,
 		Protect:      res.Protect,
-		Status:       res.Status,
-		CreatedAt:    res.CreatedAt,
-		UpdatedAt:    res.UpdatedAt,
 		Dependencies: res.Dependencies,
 	}
 }
@@ -144,15 +141,8 @@ func DeserializeResource(res apitype.Resource) (*resource.State, error) {
 		inputs = defaults.Merge(inputs)
 	}
 
-	// Earlier versions of the checkpoint didn't have `Status` - default to `created` if it's
-	// not specified.
-	if res.Status == "" {
-		res.Status = resource.ResourceStatusCreated
-	}
-
 	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs,
-		res.Parent, res.Protect, res.Status, res.CreatedAt, res.UpdatedAt, res.Dependencies), nil
+		res.Type, res.URN, res.Custom, res.Delete, res.ID, inputs, outputs, res.Parent, res.Protect, res.Dependencies), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

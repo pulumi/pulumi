@@ -39,23 +39,21 @@ func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, diag dia
 
 // newPlanContext creates a context for a subsequent planning operation.  Callers must call Close on the
 // resulting context object once they have completed the associated planning operation.
-func newPlanContext(u UpdateInfo, manager SnapshotManager) (*planContext, error) {
+func newPlanContext(u UpdateInfo) (*planContext, error) {
 	contract.Require(u != nil, "u")
 
 	// Create a root span for the operation
 	tracingSpan := opentracing.StartSpan("pulumi-plan")
 
 	return &planContext{
-		Update:          u,
-		TracingSpan:     tracingSpan,
-		SnapshotManager: manager,
+		Update:      u,
+		TracingSpan: tracingSpan,
 	}, nil
 }
 
 type planContext struct {
-	Update          UpdateInfo       // The update being processed.
-	TracingSpan     opentracing.Span // An OpenTracing span to parent plan operations within.
-	SnapshotManager SnapshotManager  // The SnapshotManager for this update
+	Update      UpdateInfo       // The update being processed.
+	TracingSpan opentracing.Span // An OpenTracing span to parent plan operations within.
 }
 
 func (ctx *planContext) Close() {
@@ -84,7 +82,6 @@ func plan(ctx *planContext, opts planOptions) (*planResult, error) {
 	contract.Assert(ctx != nil)
 	contract.Assert(ctx.Update != nil)
 	contract.Assert(opts.SourceFunc != nil)
-	contract.Assert(ctx.SnapshotManager != nil)
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.

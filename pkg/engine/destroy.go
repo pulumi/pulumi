@@ -9,14 +9,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Destroy(u UpdateInfo, manager SnapshotManager,
-	events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
+func Destroy(u UpdateInfo, events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
 	contract.Require(u != nil, "u")
-	contract.Require(manager != nil, "manager")
 
 	defer func() { events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u, manager)
+	ctx, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
