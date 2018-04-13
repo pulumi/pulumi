@@ -7,20 +7,5 @@ jobs:
 language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.
-env:
-    - PULUMI_API=https://api.pulumi-staging.io
-git:
-  depth: false
-before_install:
-    - source ./build/travis/prepare-environment.sh
-    - . "${PULUMI_HOME}/scripts/keep-failed-tests.sh"
-install:
-    - source ./build/travis/install-common-toolchain.sh
-before_script:
-    - ./build/travis/ensure-dependencies
 script:
-    - make travis_${TRAVIS_EVENT_TYPE}
-after_failure:
-    - "${PULUMI_HOME}/scripts/upload-failed-tests"
-notifications:
-    webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
+    - GODEBUG=netdns=9 go run lookup.go
