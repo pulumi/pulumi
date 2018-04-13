@@ -491,7 +491,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 		updateKind, stack, pkg, root, m,
 		opts, displayOpts, eventsChannel, true /*dryRun*/)
 
-	if opts.Preview {
+	if err != nil || opts.Preview {
 		// if we're just previewing, then we can stop at this point.
 		return err
 	}
