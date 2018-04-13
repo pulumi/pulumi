@@ -93,8 +93,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
 		reader := bufio.NewReader(t)
 		buf := &bytes.Buffer{}
-		_, err1 := buf.ReadFrom(reader)
-		contract.IgnoreError(err1)
+		buf.ReadFrom(reader)
 
 		msg := buf.String()
 		if strings.TrimSpace(msg) != "" {
