@@ -130,7 +130,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(Info /* not Infoerr, just "info: "*/, diag, args...)
+	msg := d.Stringify(Infoerr /* not Infoerr, just "info: "*/, diag, args...)
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
 	}

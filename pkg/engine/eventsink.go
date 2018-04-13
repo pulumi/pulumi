@@ -72,7 +72,7 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 }
 
 func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
-	msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
+	msg := s.Stringify(diag.Infoerr /* not Infoerr, just "info: "*/, d, args...)
 	if glog.V(5) {
 		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
