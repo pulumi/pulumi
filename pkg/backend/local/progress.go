@@ -599,7 +599,7 @@ func (display *ProgressDisplay) getMetadataSummary(
 		diff := step.Old.Inputs.Diff(step.New.Inputs)
 
 		if diff != nil {
-			writeString(out, ". Changes:")
+			writeString(out, ". changes:")
 
 			updates := make(resource.PropertyMap)
 			for k := range diff.Updates {
@@ -624,10 +624,10 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 
 	if isRootStack(step) {
 		if failed {
-			return makeError("Failed")
+			return makeError("failed")
 		}
 
-		return "Completed"
+		return "done"
 	}
 
 	if display.isPreview && !isRootStack(step) {
@@ -640,32 +640,32 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		if failed {
 			switch op {
 			case deploy.OpSame:
-				return "Failed"
+				return "failed"
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				return "Creating failed"
+				return "creating failed"
 			case deploy.OpUpdate:
-				return "Updating failed"
+				return "updating failed"
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
-				return "Deleting failed"
+				return "deleting failed"
 			case deploy.OpReplace:
-				return "Replacing failed"
+				return "replacing failed"
 			}
 		} else {
 			switch op {
 			case deploy.OpSame:
-				return "Unchanged"
+				return "unchanged"
 			case deploy.OpCreate:
-				return "Created"
+				return "created"
 			case deploy.OpUpdate:
-				return "Updated"
+				return "updated"
 			case deploy.OpDelete:
-				return "Deleted"
+				return "deleted"
 			case deploy.OpReplace:
-				return "Replaced"
+				return "replaced"
 			case deploy.OpCreateReplacement:
-				return "Created for replacement"
+				return "created for replacement"
 			case deploy.OpDeleteReplaced:
-				return "Deleted for replacement"
+				return "deleted for replacement"
 			}
 		}
 
@@ -682,7 +682,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
 	if isRootStack(step) {
-		return "Running"
+		return "running"
 	}
 
 	op := step.Op
@@ -691,36 +691,36 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		if display.isPreview {
 			switch op {
 			case deploy.OpSame:
-				return "Would not change"
+				return "[no change]"
 			case deploy.OpCreate:
-				return "Would create"
+				return "[create]"
 			case deploy.OpUpdate:
-				return "Would update"
+				return "[update]"
 			case deploy.OpDelete:
-				return "Would delete"
+				return "[delete]"
 			case deploy.OpReplace:
-				return "Would replace"
+				return "[replace]"
 			case deploy.OpCreateReplacement:
-				return "Would creating for replacement"
+				return "[create for replacement]"
 			case deploy.OpDeleteReplaced:
-				return "Would delete for replacement"
+				return "[delete for replacement]"
 			}
 		} else {
 			switch op {
 			case deploy.OpSame:
-				return "Unchanged"
+				return "unchanged"
 			case deploy.OpCreate:
-				return "Creating"
+				return "creating"
 			case deploy.OpUpdate:
-				return "Updating"
+				return "updating"
 			case deploy.OpDelete:
-				return "Deleting"
+				return "deleting"
 			case deploy.OpReplace:
-				return "Replacing"
+				return "replacing"
 			case deploy.OpCreateReplacement:
-				return "Creating for replacement"
+				return "creating for replacement"
 			case deploy.OpDeleteReplaced:
-				return "Deleting for replacement"
+				return "deleting for replacement"
 			}
 		}
 
