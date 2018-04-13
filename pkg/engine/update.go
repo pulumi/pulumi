@@ -5,8 +5,6 @@ package engine
 import (
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -122,10 +120,10 @@ func update(info *planContext, opts planOptions) (ResourceChanges, error) {
 		}
 	}
 
-	if !opts.Diag.Success() {
-		// If any error that wasn't printed above, be sure to make it evident in the output.
-		return resourceChanges, errors.New("One or more errors occurred during this update")
-	}
+	// if !opts.Diag.Success() {
+	// 	// If any error that wasn't printed above, be sure to make it evident in the output.
+	// 	return resourceChanges, errors.New("One or more errors occurred during this update")
+	// }
 	return resourceChanges, nil
 }
 

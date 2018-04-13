@@ -215,14 +215,15 @@ func printPlan(result *planResult) (ResourceChanges, error) {
 	actions := newPreviewActions(result.Options)
 	_, _, _, err := result.Walk(actions, true)
 	if err != nil {
+		// TODO(cyrusn): Why are we not returning the actual error produced by the walk.
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
 
-	if !result.Options.Diag.Success() {
-		// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
-		// although error messages may have spewed to the output, the final lines of the plan may look fine.
-		return nil, errors.New("one or more errors occurred during this preview")
-	}
+	// if !result.Options.Diag.Success() {
+	// 	// If any error occurred while walking the plan, be sure to let the developer know.  Otherwise,
+	// 	// although error messages may have spewed to the output, the final lines of the plan may look fine.
+	// 	return nil, errors.New("one or more errors occurred during this preview")
+	// }
 
 	// Emit an event with a summary of operation counts.
 	changes := ResourceChanges(actions.Ops)

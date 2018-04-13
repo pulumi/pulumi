@@ -56,6 +56,7 @@ func DisplayDiffEvents(action string,
 		case event := <-events:
 			spinner.Reset()
 
+			os.Stdout.WriteString("Type: " + string(event.Type) + "\n")
 			out := os.Stdout
 			if event.Type == engine.DiagEvent {
 				payload := event.Payload.(engine.DiagEventPayload)
@@ -106,7 +107,7 @@ func renderDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOption
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
-	return opts.Color.Colorize(payload.Message)
+	return "'" + string(payload.URN) + "': " + opts.Color.Colorize(payload.Message)
 }
 
 func renderStdoutColorEvent(
