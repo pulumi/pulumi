@@ -20,6 +20,13 @@
           WorkingDirectory="$(NodeJSSdkDirectory)" />
   </Target>
 
+  <Target Name="EnsurePrebuilt">
+    <MakeDir Directories="$(NodeJSSdkDirectory)\prebuilt" />
+    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime.node $(NodeJSSdkDirectory)\prebuilt\nativeruntime.node" />
+    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime-v0.11.0.node $(NodeJSSdkDirectory)\prebuilt\nativeruntime-v0.11.0.node" />
+    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/pulumi-language-nodejs-node.exe $(NodeJSSdkDirectory)\prebuilt\pulumi-language-nodejs-node.exe" />
+  </Target>
+
   <Target Name="TypeScriptCompileNodeSdk">
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
@@ -70,6 +77,11 @@
           DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
      <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-language-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
      <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-resource-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
+     <MakeDir Directories="$(PulumiBin)\v6.10.2" />
+     <MakeDir Directories="$(PulumiBin)\custom_node" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\prebuilt\nativeruntime.node" DestinationFolder="$(PulumiBin)\v6.10.2" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\prebuilt\nativeruntime-v0.11.0.node" DestinationFolder="$(PulumiBin)\v6.10.2" />
+     <Copy SourceFiles="$(NodeJSSdkDirectory)\prebuilt\pulumi-language-nodejs-node.exe" DestinationFiles="$(PulumiBin)\custom_node\node.exe" />
   </Target>
 
   <Target Name="BuildNodeSdk"
@@ -90,7 +102,7 @@
   </Target>
 
   <Target Name="Build"
-          DependsOnTargets="EnsureGoDependencies;EnsureNodeDependencies;BuildNodeSdk;BuildGoCmds">
+          DependsOnTargets="EnsureGoDependencies;EnsureNodeDependencies;EnsurePrebuilt;BuildNodeSdk;BuildGoCmds">
   </Target>
 
   <Target Name="IntegrationTest">

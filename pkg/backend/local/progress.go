@@ -129,12 +129,12 @@ func getDiagnosticInformation(status Status) (
 		case diag.Error:
 			errors++
 			lastError = &ev
-		case diag.Infoerr:
-			errors++
-			lastInfoError = &ev
 		case diag.Warning:
 			warnings++
 			lastWarning = &ev
+		case diag.Infoerr:
+			infos++
+			lastInfoError = &ev
 		case diag.Info:
 			infos++
 			lastInfo = &ev
@@ -146,10 +146,10 @@ func getDiagnosticInformation(status Status) (
 
 	if lastError != nil {
 		worstDiag = lastError
-	} else if lastInfoError != nil {
-		worstDiag = lastInfoError
 	} else if lastWarning != nil {
 		worstDiag = lastWarning
+	} else if lastInfoError != nil {
+		worstDiag = lastInfoError
 	} else if lastInfo != nil {
 		worstDiag = lastInfo
 	} else {
