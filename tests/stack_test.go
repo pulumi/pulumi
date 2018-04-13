@@ -210,7 +210,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi destroy.
 		before = time.Now().UnixNano()
-		e.RunCommand("pulumi", "destroy", "--yes")
+		e.RunCommand("pulumi", "destroy", "--force")
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.

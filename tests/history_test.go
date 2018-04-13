@@ -146,7 +146,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "update", "-m", "third update (successful)")
 
 		// Destroy
-		e.RunCommand("pulumi", "destroy", "-m", "fourth update (destroy)", "--yes")
+		e.RunCommand("pulumi", "destroy", "-m", "fourth update (destroy)", "--force")
 
 		// Confirm the history is as expected. Output as JSON and parse the result.
 		stdout, stderr := e.RunCommand("pulumi", "history", "--output-json")
