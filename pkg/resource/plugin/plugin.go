@@ -94,7 +94,9 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 		reader := bufio.NewReader(t)
 
 		buf := &bytes.Buffer{}
-		buf.ReadFrom(reader)
+		_, err1 := buf.ReadFrom(reader)
+		contract.IgnoreError(err1)
+
 		msg := buf.String()
 
 		if strings.TrimSpace(msg) != "" {
