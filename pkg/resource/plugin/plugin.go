@@ -95,12 +95,11 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 
 		buf := &bytes.Buffer{}
 		buf.ReadFrom(reader)
-
 		msg := buf.String()
 
 		if strings.TrimSpace(msg) != "" {
 			if stderr {
-				ctx.Diag.Infoerrf(diag.RawMessage("" /*urn*/, msg))
+				ctx.Diag.Errorf(diag.RawMessage("" /*urn*/, msg))
 			} else {
 				ctx.Diag.Infof(diag.RawMessage("" /*urn*/, msg))
 			}
