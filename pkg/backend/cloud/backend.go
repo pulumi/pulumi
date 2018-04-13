@@ -486,11 +486,20 @@ func (b *cloudBackend) PreviewThenPrompt(
 		surveycore.QuestionIcon = ""
 		surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
 
+		options := []string{string(yes), string(no)}
+
+		// if this is a managed stack, then we can get the details for the operation, as we will
+		// have been able to collect the details while the preview ran.  For ppc stacks, we don't
+		// have that information since all the PPC does is forward stdout events to us.
+		if stack.(Stack).RunLocally() {
+			options = append(options, string(details))
+		}
 		err = survey.AskOne(&survey.Select{
 			Message: colors.ColorizeText(message),
-			Options: []string{string(yes), string(no), string(details)},
+			Options: options,
 			Default: string(no),
 		}, &response, nil)
+
 		if err != nil {
 			return err
 		}
@@ -529,6 +538,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		return err
 	}
 
+	// if we're not forcing the update, then run the preview.
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
 		// they want to proceed.
