@@ -22,7 +22,7 @@
         "vetshadow"
     ],
     "Linters": {
-        "vet": "go tool vet -printfuncs=Logf,Errorf,Infof,Warningf :PATH:LINE:MESSAGE"
+        "vet": "go tool vet -printfuncs=Logf,Errorf,Infof,Infoerrf,Warningf :PATH:LINE:MESSAGE"
     },
     "LineLength": 120
 }

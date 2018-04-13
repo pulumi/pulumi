@@ -25,6 +25,9 @@ type Sink interface {
 	// Infof issues an informational message (to stdout).
 	Infof(diag *Diag, args ...interface{})
 
+	// Infoerrf issues an informational message (to stderr).
+	Infoerrf(diag *Diag, args ...interface{})
+
 	// Errorf issues a new error diagnostic.
 	Errorf(diag *Diag, args ...interface{})
 
@@ -97,6 +100,8 @@ func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 		d.Debugf(diag, args...)
 	case Info:
 		d.Infof(diag, args...)
+	case Infoerr:
+		d.Infoerrf(diag, args...)
 	case Warning:
 		d.Warningf(diag, args...)
 	case Error:
@@ -122,6 +127,14 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Info], msg)
+}
+
+func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
+	msg := d.Stringify(Info /* not Infoerr, just "info: "*/, diag, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
+	}
+	fmt.Fprint(d.writers[Infoerr], msg)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {

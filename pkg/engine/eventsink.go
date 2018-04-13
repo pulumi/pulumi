@@ -28,6 +28,8 @@ func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
 		s.Debugf(d, args...)
 	case diag.Info:
 		s.Infof(d, args...)
+	case diag.Infoerr:
+		s.Infoerrf(d, args...)
 	case diag.Warning:
 		s.Warningf(d, args...)
 	case diag.Error:
@@ -53,6 +55,14 @@ func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 		glog.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagInfoEvent(d.URN, msg)
+}
+
+func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
+	msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
+	}
+	s.events.diagInfoerrEvent(d.URN, msg)
 }
 
 func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
