@@ -175,7 +175,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 				Type: engine.DiagEvent,
 				Payload: engine.DiagEventPayload{
 					Message:  fmt.Sprintf("failed to record event: %v", err),
-					Severity: diag.Infoerr,
+					Severity: diag.Info,
 				},
 			}
 			displayEvents <- diagEvent
