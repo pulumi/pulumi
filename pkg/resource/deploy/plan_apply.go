@@ -141,6 +141,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 
 	// At this point, if err is not nil, we've already issued an error message through our
 	// diag subsystem and we need to bail.
+	// diag subsystem and we need to bail.
 	//
 	// This error message is ultimately what's going to be presented to the user at the top
 	// level, so the message here is intentionally vague; we should have already presented
