@@ -312,7 +312,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 			if m != nil {
 				match = m
 				glog.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
-					kind, name, *version, match.Version)
+					kind, name, version, match.Version)
 			}
 		}
 	}
