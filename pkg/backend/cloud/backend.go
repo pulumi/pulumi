@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -437,35 +438,52 @@ func getStack(b *cloudBackend, stackName tokens.QName) (backend.Stack, error) {
 	return stack, nil
 }
 
+func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) string {
+	buff := &bytes.Buffer{}
+
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	displayOpts.SummaryDiff = true
+
+	for _, e := range events {
+		msg := local.RenderDiffEvent(e, seen, displayOpts)
+		if msg != "" {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	return buff.String()
+}
+
 func (b *cloudBackend) PreviewThenPrompt(
 	updateKind client.UpdateKind,
 	stack backend.Stack, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions,
 	displayOpts backend.DisplayOptions) error {
 
-	events := make(chan engine.Event)
+	// create a channel to hear about the update events from the engine. this will be used so that
+	// we can build up the diff display in case the user asks to see the details of the diff
+	eventsChannel := make(chan engine.Event)
+	events := []engine.Event{}
 
-	var diff string
-	go func() {
-		seen := make(map[resource.URN]engine.StepEventMetadata)
-		displayOptsCopy := displayOpts
-		displayOptsCopy.SummaryDiff = true
-
-		for e := range events {
-			if e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent {
-				msg := local.RenderDiffEvent(e, seen, displayOptsCopy)
-				if msg != "" {
-					diff += msg
+	// if we're previewing, we don't need to store the events as we're not going to prompt
+	// the user to get details of what's happening.
+	if !opts.Preview {
+		go func() {
+			// pull the events from the channel and store them locally
+			for e := range eventsChannel {
+				if e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent {
+					events = append(events, e)
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	err := b.updateStack(
 		updateKind, stack, pkg, root, m,
-		opts, displayOpts, events, true /*dryRun*/)
+		opts, displayOpts, eventsChannel, true /*dryRun*/)
 
-	close(events)
+	close(eventsChannel)
 
 	if opts.Preview {
 		// if we're just previewing, then we can stop at this point.
@@ -513,6 +531,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 		}
 
 		if response == string(details) {
+			diff := createDiff(events, displayOpts)
 			_, err = os.Stdout.WriteString(diff)
 			contract.IgnoreError(err)
 			continue
@@ -547,6 +566,8 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		}
 	}
 
+	// Now do the real operation.  We don't care about the events it issues, so just
+	// pass a nil channel along.
 	var unused chan engine.Event
 	return b.updateStack(
 		updateKind, stack, pkg,
