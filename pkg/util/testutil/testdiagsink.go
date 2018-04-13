@@ -25,16 +25,10 @@ func NewTestDiagSink(pwd string) *TestDiagSink {
 	}
 }
 
-func (d *TestDiagSink) Count() int            { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
-func (d *TestDiagSink) Debugs() int           { return len(d.DebugMsgs()) }
 func (d *TestDiagSink) DebugMsgs() []string   { return d.messages[diag.Debug] }
-func (d *TestDiagSink) Infos() int            { return len(d.InfoMsgs()) }
 func (d *TestDiagSink) InfoMsgs() []string    { return d.messages[diag.Info] }
-func (d *TestDiagSink) Errors() int           { return len(d.ErrorMsgs()) }
 func (d *TestDiagSink) ErrorMsgs() []string   { return d.messages[diag.Error] }
-func (d *TestDiagSink) Warnings() int         { return len(d.WarningMsgs()) }
 func (d *TestDiagSink) WarningMsgs() []string { return d.messages[diag.Warning] }
-func (d *TestDiagSink) Success() bool         { return d.Errors() == 0 }
 
 func (d *TestDiagSink) Logf(sev diag.Severity, dia *diag.Diag, args ...interface{}) {
 	d.messages[sev] = append(d.messages[sev], d.Stringify(sev, dia, args...))
