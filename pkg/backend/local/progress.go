@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/progress"
@@ -99,6 +100,14 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progr
 
 	err := display.progressOutput.WriteProgress(progress)
 	contract.IgnoreError(err)
+}
+
+func (display *ProgressDisplay) writeSimpleMessage(msg string) {
+	display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+}
+
+func (display *ProgressDisplay) writeBlankLine() {
+	display.writeSimpleMessage(" ")
 }
 
 // Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
@@ -192,6 +201,9 @@ type ProgressDisplay struct {
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
 	idToUrn map[string]resource.URN
+
+	// If all progress messages are done and we can print out the final display.
+	Done bool
 }
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
@@ -362,7 +374,10 @@ func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
 		msg += fmt.Sprintf(", %v debug message(s)", debugs)
 	}
 
-	if worstDiag != nil {
+	// If we're not totally done, also print out the worst diagnostic next to the status message.
+	// This is helpful for long running tasks to know what's going on.  However, once done, we print
+	// the diagnostics at the bottom, so we don't need to show this.
+	if worstDiag != nil && !display.Done {
 		diagMsg := display.renderProgressDiagEvent(*worstDiag)
 		if diagMsg != "" {
 			msg += ". " + diagMsg
@@ -404,30 +419,49 @@ func (display *ProgressDisplay) refreshAllStatusMessages(includeDone bool) {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
+	display.Done = true
+
 	// Mark all in progress resources as done.
 	for k, v := range display.eventUrnToStatus {
 		if !v.Done {
 			v.Done = true
 			display.eventUrnToStatus[k] = v
-			display.refreshSingleStatusMessage(v)
 		}
 	}
 
+	// Make sure we refresh everything.  That way we remove any diagnostics printed on the line.
+	display.refreshAllStatusMessages(true /*includeDone*/)
+
 	// Print all diagnostics we've seen.
+
+	wroteDiagnosticHeader := false
 
 	for _, status := range display.eventUrnToStatus {
 		if len(status.DiagEvents) > 0 {
-			wroteHeader := false
+			wroteResourceHeader := false
 			for _, v := range status.DiagEvents {
 				msg := display.renderProgressDiagEvent(v)
 				if msg != "" {
-					if !wroteHeader {
-						wroteHeader = true
-						display.colorizeAndWriteProgress(progress.Progress{Message: " "})
-						display.colorizeAndWriteProgress(progress.Progress{ID: status.ID, Message: "Diagnostics"})
+					if !wroteDiagnosticHeader {
+						wroteDiagnosticHeader = true
+						display.writeBlankLine()
+						display.writeSimpleMessage("Diagnostics:")
 					}
 
-					display.colorizeAndWriteProgress(progress.Progress{Message: "  " + msg})
+					if !wroteResourceHeader {
+						wroteResourceHeader = true
+						display.writeSimpleMessage("  " + status.ID + ":")
+					}
+
+					lines := strings.Split(msg, "\n")
+					for _, line := range lines {
+						if strings.TrimSpace(msg) == "" {
+							continue
+						}
+
+						line = strings.TrimRightFunc(line, unicode.IsSpace)
+						display.writeSimpleMessage("    " + line)
+					}
 				}
 			}
 		}
@@ -436,8 +470,11 @@ func (display *ProgressDisplay) processEndSteps() {
 	// print the summary
 	if display.summaryEvent != nil {
 		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
-		display.colorizeAndWriteProgress(progress.Progress{Message: " "})
-		display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+		if !wroteDiagnosticHeader {
+			display.writeBlankLine()
+		}
+
+		display.writeSimpleMessage(msg)
 	}
 }
 
@@ -475,9 +512,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		payload := event.Payload.(engine.PreludeEventPayload)
 		display.isPreview = payload.IsPreview
-		display.colorizeAndWriteProgress(progress.Progress{
-			Message: renderPreludeEvent(payload, display.opts),
-		})
+		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
 		return
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
