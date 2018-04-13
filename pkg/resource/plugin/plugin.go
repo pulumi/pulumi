@@ -4,11 +4,13 @@ package plugin
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -90,18 +92,19 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
 		reader := bufio.NewReader(t)
-		for {
-			line, readerr := reader.ReadString('\n')
-			if readerr != nil {
-				break
-			}
-			msg := line[:len(line)-1]
+		buf := &bytes.Buffer{}
+		_, err1 := buf.ReadFrom(reader)
+		contract.IgnoreError(err1)
+
+		msg := buf.String()
+		if strings.TrimSpace(msg) != "" {
 			if stderr {
-				ctx.Diag.Infoerrf(diag.RawMessage("" /*urn*/, msg))
+				ctx.Diag.Errorf(diag.RawMessage("" /*urn*/, msg))
 			} else {
 				ctx.Diag.Infof(diag.RawMessage("" /*urn*/, msg))
 			}
 		}
+
 		close(done)
 	}
 

@@ -446,10 +446,6 @@ func (e *eventEmitter) diagInfoEvent(urn resource.URN, msg string) {
 	diagEvent(e, urn, msg, diag.Info)
 }
 
-func (e *eventEmitter) diagInfoerrEvent(urn resource.URN, msg string) {
-	diagEvent(e, urn, msg, diag.Infoerr)
-}
-
 func (e *eventEmitter) diagErrorEvent(urn resource.URN, msg string) {
 	diagEvent(e, urn, msg, diag.Error)
 }

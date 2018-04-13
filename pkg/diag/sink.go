@@ -23,8 +23,6 @@ type Sink interface {
 	Debugs() int
 	// Infos fetches the number of stdout informational messages issued.
 	Infos() int
-	// Infos fetches the number of stderr informational messages issued.
-	Infoerrs() int
 	// Errors fetches the number of errors issued.
 	Errors() int
 	// Warnings fetches the number of warnings issued.
@@ -38,8 +36,6 @@ type Sink interface {
 	Debugf(diag *Diag, args ...interface{})
 	// Infof issues an informational message (to stdout).
 	Infof(diag *Diag, args ...interface{})
-	// Infoerrf issues an informational message (to stderr).
-	Infoerrf(diag *Diag, args ...interface{})
 	// Errorf issues a new error diagnostic.
 	Errorf(diag *Diag, args ...interface{})
 	// Warningf issues a new warning diagnostic.
@@ -55,7 +51,6 @@ type Severity string
 const (
 	Debug   Severity = "debug"
 	Info    Severity = "info"
-	Infoerr Severity = "info#err"
 	Warning Severity = "warning"
 	Error   Severity = "error"
 )
@@ -79,7 +74,6 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 	return newDefaultSink(opts, map[Severity]io.Writer{
 		Debug:   debug,
 		Info:    stdout,
-		Infoerr: stderr,
 		Error:   stderr,
 		Warning: stderr,
 	})
@@ -88,7 +82,6 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
 	contract.Assert(writers[Debug] != nil)
 	contract.Assert(writers[Info] != nil)
-	contract.Assert(writers[Infoerr] != nil)
 	contract.Assert(writers[Error] != nil)
 	contract.Assert(writers[Warning] != nil)
 	return &defaultSink{
@@ -112,7 +105,6 @@ type defaultSink struct {
 func (d *defaultSink) Count() int    { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
 func (d *defaultSink) Debugs() int   { return d.getCount(Debug) }
 func (d *defaultSink) Infos() int    { return d.getCount(Info) }
-func (d *defaultSink) Infoerrs() int { return d.getCount(Infoerr) }
 func (d *defaultSink) Errors() int   { return d.getCount(Error) }
 func (d *defaultSink) Warnings() int { return d.getCount(Warning) }
 func (d *defaultSink) Success() bool { return d.Errors() == 0 }
@@ -123,8 +115,6 @@ func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 		d.Debugf(diag, args...)
 	case Info:
 		d.Infof(diag, args...)
-	case Infoerr:
-		d.Infoerrf(diag, args...)
 	case Warning:
 		d.Warningf(diag, args...)
 	case Error:
@@ -152,15 +142,6 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	}
 	fmt.Fprint(d.writers[Info], msg)
 	d.incrementCount(Info)
-}
-
-func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(Info /* not Infoerr, just "info: "*/, diag, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
-	}
-	fmt.Fprint(d.writers[Infoerr], msg)
-	d.incrementCount(Infoerr)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
@@ -200,7 +181,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	switch sev {
 	case Debug:
 		buffer.WriteString(colors.SpecDebug)
-	case Info, Infoerr:
+	case Info:
 		buffer.WriteString(colors.SpecInfo)
 	case Error:
 		buffer.WriteString(colors.SpecError)
