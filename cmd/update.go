@@ -51,7 +51,7 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if !force && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
 				return errors.New("'update' must either be run in a terminal or be passed the --force or --preview flag")
 			}
 
