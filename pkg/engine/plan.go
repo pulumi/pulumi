@@ -159,8 +159,9 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(events deploy.Events, preview bool) (deploy.PlanSummary,
-	deploy.Step, resource.Status, error) {
+func (res *planResult) Walk(events deploy.Events, preview bool) (
+	deploy.PlanSummary, deploy.Step, resource.Status, error) {
+
 	opts := deploy.Options{
 		Events:   events,
 		Parallel: res.Options.Parallel,
