@@ -88,7 +88,7 @@ func newPluginInstallCmd() *cobra.Command {
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
 				label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
-				cmdutil.Diag().Infoerrf(
+				cmdutil.Diag().Infof(
 					diag.Message("", "%s installing"), label)
 
 				// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
@@ -97,7 +97,7 @@ func newPluginInstallCmd() *cobra.Command {
 					if exact {
 						if workspace.HasPlugin(install) {
 							if verbose {
-								cmdutil.Diag().Infoerrf(
+								cmdutil.Diag().Infof(
 									diag.Message("", "%s skipping install (existing == match)"), label)
 							}
 							continue
@@ -105,7 +105,7 @@ func newPluginInstallCmd() *cobra.Command {
 					} else {
 						if has, _ := workspace.HasPluginGTE(install); has {
 							if verbose {
-								cmdutil.Diag().Infoerrf(
+								cmdutil.Diag().Infof(
 									diag.Message("", "%s skipping install (existing >= match)"), label)
 							}
 							continue
@@ -120,7 +120,7 @@ func newPluginInstallCmd() *cobra.Command {
 				if file == "" {
 					source = releases.CloudURL()
 					if verbose {
-						cmdutil.Diag().Infoerrf(
+						cmdutil.Diag().Infof(
 							diag.Message("", "%s downloading from %s"), label, source)
 					}
 					if tarball, err = releases.DownloadPlugin(install, true); err != nil {
@@ -129,7 +129,7 @@ func newPluginInstallCmd() *cobra.Command {
 				} else {
 					source = file
 					if verbose {
-						cmdutil.Diag().Infoerrf(
+						cmdutil.Diag().Infof(
 							diag.Message("", "%s opening tarball from %s"), label, file)
 					}
 					if tarball, err = os.Open(file); err != nil {
@@ -137,7 +137,7 @@ func newPluginInstallCmd() *cobra.Command {
 					}
 				}
 				if verbose {
-					cmdutil.Diag().Infoerrf(
+					cmdutil.Diag().Infof(
 						diag.Message("", "%s installing tarball ..."), label)
 				}
 				if err = install.Install(tarball); err != nil {
