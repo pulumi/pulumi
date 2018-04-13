@@ -538,7 +538,6 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		return err
 	}
 
-	// if we're not forcing the update, then run the preview.
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
 		// they want to proceed.
@@ -548,17 +547,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		}
 	}
 
-	unused := make(chan engine.Event)
-	go func() {
-		for {
-			<-unused
-		}
-	}()
-
-	defer func() {
-		close(unused)
-	}()
-
+	var unused chan engine.Event
 	return b.updateStack(
 		updateKind, stack, pkg,
 		root, m, opts, displayOpts, unused, false /*dryRun*/)
@@ -632,7 +621,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) updateStack(
 	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, callerEvents chan<- engine.Event, dryRun bool) error {
+	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
@@ -670,7 +659,7 @@ func (b *cloudBackend) updateStack(
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
 			action, stack.Name(), pkg, root, opts, displayOpts,
-			update, token, callerEvents, dryRun)
+			update, token, callerEventsOpt, dryRun)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -713,7 +702,7 @@ func (b *cloudBackend) runEngineAction(
 	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
 	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	update client.UpdateIdentifier, token string,
-	callerEvents chan<- engine.Event, dryRun bool) error {
+	callerEventsOpt chan<- engine.Event, dryRun bool) error {
 
 	u, err := b.newUpdate(stackName, pkg, root, update, token)
 	if err != nil {
@@ -731,7 +720,10 @@ func (b *cloudBackend) runEngineAction(
 		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
 			displayEvents <- e
-			callerEvents <- e
+
+			if callerEventsOpt != nil {
+				callerEventsOpt <- e
+			}
 		}
 	}()
 
