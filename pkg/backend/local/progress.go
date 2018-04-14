@@ -147,8 +147,7 @@ func (data *statusData) ClearCachedData() {
 
 func (data *statusData) Columns() []string {
 	if len(data.columns) == 0 {
-		// columns := make([]string, 2)
-		columns := data.getUnpaddedColumns(data)
+		columns := data.getUnpaddedColumns()
 		data.columns = columns
 	}
 
@@ -158,18 +157,18 @@ func (data *statusData) Columns() []string {
 // Gets the single line summary to show for a resource.  This will include the current state of
 // the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
 // information if there is any.
-func (data *statusData) getUnpaddedColumns(status Status) []string {
-	if status.Step().Op == "" {
+func (data *statusData) getUnpaddedColumns() []string {
+	step := data.step
+	if step.Op == "" {
 		contract.Failf("Finishing a resource we never heard about: '%s'", data.id)
 	}
 
-	step := status.Step()
 	columns := []string{data.id, simplifyTypeName(data.step.URN.Type())}
 
-	diagInfo := status.DiagInfo()
+	diagInfo := data.diagInfo
 
-	if status.Done() {
-		failed := status.Failed() || diagInfo.ErrorCount > 0
+	if data.done {
+		failed := data.failed || diagInfo.ErrorCount > 0
 		columns = append(columns, data.display.getStepDoneDescription(step, failed))
 	} else {
 		columns = append(columns, data.display.getStepInProgressDescription(step))
@@ -616,7 +615,6 @@ func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 	columns := status.Columns()
 	uncolorizedColumns := status.UncolorizedColumns()
 
-	// unpaddedMsg := display.getUnpaddedStatusSummary(status)
 	suffix := ""
 
 	if !status.Done() {
