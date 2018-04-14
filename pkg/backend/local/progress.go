@@ -46,7 +46,7 @@ type DiagInfo struct {
 type Status interface {
 	// The simple short ID we have generated for the resource to present it to the user.
 	// Usually similar to the form: aws.Function("name")
-	ID() string
+	// ID() string
 
 	// The change that the engine wants apply to that resource.
 	Step() engine.StepEventMetadata
@@ -71,101 +71,266 @@ type Status interface {
 
 // Status helps us keep track for a resource as it is worked on by the engine.
 type statusData struct {
-	_Display *ProgressDisplay
+	display *ProgressDisplay
 
 	// The simple short ID we have generated for the resource to present it to the user.
 	// Usually similar to the form: aws.Function("name")
-	_ID string
+	id string
 
 	// The change that the engine wants apply to that resource.
-	_Step engine.StepEventMetadata
+	step engine.StepEventMetadata
 
 	// The tick we were on when we created this status.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
-	_Tick int
+	tick int
 
 	// If the engine finished processing this resources.
-	_Done bool
+	done bool
 
 	// If we failed this operation for any reason.
-	_Failed bool
+	failed bool
 
-	_DiagInfo *DiagInfo
+	diagInfo *DiagInfo
 
-	_Columns            []string
-	_UncolorizedColumns []string
+	columns            []string
+	uncolorizedColumns []string
 }
 
 func (data *statusData) ID() string {
-	return data._ID
+	return data.id
 }
 
 func (data *statusData) Step() engine.StepEventMetadata {
-	return data._Step
+	return data.step
 }
 
 func (data *statusData) SetStep(step engine.StepEventMetadata) {
-	data._Step = step
+	data.step = step
 	data.ClearCachedData()
 }
 
 func (data *statusData) Tick() int {
-	return data._Tick
+	return data.tick
 }
 
 func (data *statusData) Done() bool {
-	return data._Done
+	return data.done
 }
 
 func (data *statusData) SetDone() {
-	data._Done = true
+	data.done = true
 	data.ClearCachedData()
 }
 
 func (data *statusData) Failed() bool {
-	return data._Failed
+	return data.failed
 }
 
 func (data *statusData) SetFailed() {
-	data._Failed = true
+	data.failed = true
 	data.ClearCachedData()
 }
 
 func (data *statusData) DiagInfo() *DiagInfo {
-	return data._DiagInfo
+	return data.diagInfo
 }
 
 func (data *statusData) RecordDiagEvent(diagEvent engine.Event) {
-	combineDiagnosticInfo(data._DiagInfo, diagEvent)
+	combineDiagnosticInfo(data.diagInfo, diagEvent)
 	data.ClearCachedData()
 }
 
 func (data *statusData) ClearCachedData() {
-	data._Columns = []string{}
-	data._UncolorizedColumns = []string{}
+	data.columns = []string{}
+	data.uncolorizedColumns = []string{}
 }
 
 func (data *statusData) Columns() []string {
-	if len(data._Columns) == 0 {
+	if len(data.columns) == 0 {
 		// columns := make([]string, 2)
-		columns := data._Display.getUnpaddedColumns(data)
-		data._Columns = columns
+		columns := data.getUnpaddedColumns(data)
+		data.columns = columns
 	}
 
-	return data._Columns
+	return data.columns
 }
 
-func (data *statusData) UncolorizedColumns() []string {
-	if len(data._UncolorizedColumns) == 0 {
-		columns := data.Columns()
-		data._UncolorizedColumns = make([]string, len(columns))
+// Gets the single line summary to show for a resource.  This will include the current state of
+// the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
+// information if there is any.
+func (data *statusData) getUnpaddedColumns(status Status) []string {
+	if status.Step().Op == "" {
+		contract.Failf("Finishing a resource we never heard about: '%s'", data.id)
+	}
 
-		for i, v := range columns {
-			data._UncolorizedColumns[i] = colors.Never.Colorize(v)
+	step := status.Step()
+	columns := []string{data.id, simplifyTypeName(data.step.URN.Type())}
+
+	diagInfo := status.DiagInfo()
+
+	if status.Done() {
+		failed := status.Failed() || diagInfo.ErrorCount > 0
+		columns = append(columns, data.display.getStepDoneDescription(step, failed))
+	} else {
+		columns = append(columns, data.display.getStepInProgressDescription(step))
+	}
+
+	changesBuf := &bytes.Buffer{}
+	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
+		diff := step.Old.Inputs.Diff(step.New.Inputs)
+
+		if diff != nil {
+			writeString(changesBuf, "changes:")
+
+			updates := make(resource.PropertyMap)
+			for k := range diff.Updates {
+				updates[k] = resource.PropertyValue{}
+			}
+
+			writePropertyKeys(changesBuf, diff.Adds, deploy.OpCreate)
+			writePropertyKeys(changesBuf, diff.Deletes, deploy.OpDelete)
+			writePropertyKeys(changesBuf, updates, deploy.OpReplace)
 		}
 	}
 
-	return data._UncolorizedColumns
+	fprintIgnoreError(changesBuf, colors.Reset)
+	changes := changesBuf.String()
+
+	diagMsg := ""
+
+	if colors.Never.Colorize(changes) != "" {
+		diagMsg += changes
+	}
+
+	appendDiagMessage := func(msg string) {
+		if diagMsg != "" {
+			diagMsg += ", "
+		}
+
+		diagMsg += msg
+	}
+
+	if diagInfo.ErrorCount == 1 {
+		appendDiagMessage("1 error")
+	} else if diagInfo.ErrorCount > 1 {
+		appendDiagMessage(fmt.Sprintf("%v errors", diagInfo.ErrorCount))
+	}
+
+	if diagInfo.WarningCount == 1 {
+		appendDiagMessage("1 warning")
+	} else if diagInfo.WarningCount > 1 {
+		appendDiagMessage(fmt.Sprintf("%v warnings", diagInfo.WarningCount))
+	}
+
+	if diagInfo.InfoCount == 1 {
+		appendDiagMessage("1 info message")
+	} else if diagInfo.InfoCount > 1 {
+		appendDiagMessage(fmt.Sprintf("%v info messages", diagInfo.InfoCount))
+	}
+
+	if diagInfo.DebugCount == 1 {
+		appendDiagMessage("1 debug message")
+	} else if diagInfo.ErrorCount > 1 {
+		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
+	}
+
+	// If we're not totally done, also print out the worst diagnostic next to the status message.
+	// This is helpful for long running tasks to know what's going on.  However, once done, we print
+	// the diagnostics at the bottom, so we don't need to show this.
+	worstDiag := getWorstDiagnostic(status)
+	if worstDiag != nil && !data.display.Done {
+		eventMsg := data.display.renderProgressDiagEvent(*worstDiag)
+		if eventMsg != "" {
+			diagMsg += ". " + eventMsg
+		}
+	}
+
+	columns = append(columns, diagMsg)
+	return columns
+}
+
+func uncolorise(columns []string) []string {
+	uncolorizedColumns := make([]string, len(columns))
+
+	for i, v := range columns {
+		uncolorizedColumns[i] = colors.Never.Colorize(v)
+	}
+
+	return uncolorizedColumns
+}
+
+func (data *statusData) UncolorizedColumns() []string {
+	if len(data.uncolorizedColumns) == 0 {
+		columns := data.Columns()
+		data.uncolorizedColumns = uncolorise(columns)
+	}
+
+	return data.uncolorizedColumns
+}
+
+// Status helps us keep track for a resource as it is worked on by the engine.
+type headerData struct {
+	columns            []string
+	uncolorizedColumns []string
+}
+
+func (data *headerData) ID() string {
+	return "Resource name"
+}
+
+func (data *headerData) Step() engine.StepEventMetadata {
+	panic("should never be called")
+}
+
+func (data *headerData) SetStep(step engine.StepEventMetadata) {
+	panic("should never be called")
+}
+
+func (data *headerData) Tick() int {
+	panic("should never be called")
+}
+
+func (data *headerData) Done() bool {
+	return true
+}
+
+func (data *headerData) SetDone() {
+}
+
+func (data *headerData) Failed() bool {
+	panic("should never be called")
+}
+
+func (data *headerData) SetFailed() {
+	panic("should never be called")
+}
+
+func (data *headerData) DiagInfo() *DiagInfo {
+	return &DiagInfo{}
+}
+
+func (data *headerData) RecordDiagEvent(diagEvent engine.Event) {
+	panic("should never be called")
+}
+
+func blue(msg string) string {
+	return colors.Blue + msg + colors.Reset
+}
+
+func (data *headerData) Columns() []string {
+	if len(data.columns) == 0 {
+		data.columns = []string{blue(data.ID()), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
+	}
+
+	return data.columns
+}
+
+func (data *headerData) UncolorizedColumns() []string {
+	if len(data.uncolorizedColumns) == 0 {
+		data.uncolorizedColumns = uncolorise(data.Columns())
+	}
+
+	return data.uncolorizedColumns
 }
 
 var (
@@ -434,7 +599,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		id := columns[0]
+		id := uncolorizedColumns[0]
 		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(suffix) - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
@@ -444,100 +609,6 @@ func (display *ProgressDisplay) getPaddedMessage(
 	}
 
 	return msgWithColors + suffix
-}
-
-// Gets the single line summary to show for a resource.  This will include the current state of
-// the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
-// information if there is any.
-func (display *ProgressDisplay) getUnpaddedColumns(status Status) []string {
-	if status.Step().Op == "" {
-		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
-	}
-
-	step := status.Step()
-	columns := []string{status.ID(), simplifyTypeName(step.URN.Type())}
-
-	diagInfo := status.DiagInfo()
-
-	if status.Done() {
-		failed := status.Failed() || diagInfo.ErrorCount > 0
-		columns = append(columns, display.getStepDoneDescription(step, failed))
-	} else {
-		columns = append(columns, display.getStepInProgressDescription(step))
-	}
-
-	changesBuf := &bytes.Buffer{}
-	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
-		diff := step.Old.Inputs.Diff(step.New.Inputs)
-
-		if diff != nil {
-			writeString(changesBuf, "changes:")
-
-			updates := make(resource.PropertyMap)
-			for k := range diff.Updates {
-				updates[k] = resource.PropertyValue{}
-			}
-
-			writePropertyKeys(changesBuf, diff.Adds, deploy.OpCreate)
-			writePropertyKeys(changesBuf, diff.Deletes, deploy.OpDelete)
-			writePropertyKeys(changesBuf, updates, deploy.OpReplace)
-		}
-	}
-
-	fprintIgnoreError(changesBuf, colors.Reset)
-	changes := changesBuf.String()
-
-	diagMsg := ""
-
-	if colors.Never.Colorize(changes) != "" {
-		diagMsg += changes
-	}
-
-	appendDiagMessage := func(msg string) {
-		if diagMsg != "" {
-			diagMsg += ", "
-		}
-
-		diagMsg += msg
-	}
-
-	if diagInfo.ErrorCount == 1 {
-		appendDiagMessage("1 error")
-	} else if diagInfo.ErrorCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v errors", diagInfo.ErrorCount))
-	}
-
-	if diagInfo.WarningCount == 1 {
-		appendDiagMessage("1 warning")
-	} else if diagInfo.WarningCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v warnings", diagInfo.WarningCount))
-	}
-
-	if diagInfo.InfoCount == 1 {
-		appendDiagMessage("1 info message")
-	} else if diagInfo.InfoCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v info messages", diagInfo.InfoCount))
-	}
-
-	if diagInfo.DebugCount == 1 {
-		appendDiagMessage("1 debug message")
-	} else if diagInfo.ErrorCount > 1 {
-		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
-	}
-
-	// If we're not totally done, also print out the worst diagnostic next to the status message.
-	// This is helpful for long running tasks to know what's going on.  However, once done, we print
-	// the diagnostics at the bottom, so we don't need to show this.
-	worstDiag := getWorstDiagnostic(status)
-	if worstDiag != nil && !display.Done {
-		eventMsg := display.renderProgressDiagEvent(*worstDiag)
-		if eventMsg != "" {
-			diagMsg += ". " + eventMsg
-		}
-	}
-
-	columns = append(columns, diagMsg)
-	return columns
 }
 
 var ellipsesArray = []string{"", ".", "..", "..."}
@@ -556,7 +627,7 @@ func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 	msg := display.getPaddedMessage(columns, uncolorizedColumns, suffix)
 
 	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     columns[0],
+		ID:     display.opts.Color.Colorize(columns[0]),
 		Action: msg,
 	})
 }
@@ -667,7 +738,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
-					display.writeSimpleMessage("  " + status.ID() + ":")
+					display.writeSimpleMessage("  " + status.Columns()[0] + ":")
 				}
 
 				for _, line := range lines {
@@ -738,6 +809,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	}
 
+	if len(display.eventUrnToStatus) == 0 {
+		// about to make our first status message.  make sure we present the header line first.
+		display.eventUrnToStatus[resource.URN("Header Entry")] = &headerData{}
+		display.refreshAllIfInTerminal()
+	}
+
 	// At this point, all events should relate to resources.
 
 	status, has := display.eventUrnToStatus[eventUrn]
@@ -745,11 +822,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
 		status = &statusData{
-			_Display:  display,
-			_ID:       display.makeID(eventUrn),
-			_Tick:     display.currentTick,
-			_DiagInfo: &DiagInfo{},
-			_Step:     engine.StepEventMetadata{Op: deploy.OpSame},
+			display:  display,
+			id:       display.makeID(eventUrn),
+			tick:     display.currentTick,
+			diagInfo: &DiagInfo{},
+			step:     engine.StepEventMetadata{Op: deploy.OpSame},
 		}
 
 		display.eventUrnToStatus[eventUrn] = status
@@ -813,6 +890,7 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
+
 	for {
 		select {
 		case <-ticker.C:
