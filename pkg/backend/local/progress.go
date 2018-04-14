@@ -614,7 +614,9 @@ func (display *ProgressDisplay) updateDimensions() bool {
 
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
-		currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+		contract.IgnoreError(err)
+
 		if currentTerminalWidth != display.terminalWidth {
 			// terminal width changed.  Refresh everything
 			display.terminalWidth = currentTerminalWidth
