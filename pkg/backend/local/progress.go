@@ -452,13 +452,45 @@ func (display *ProgressDisplay) getUnpaddedColumns(status Status) []string {
 		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 	}
 
-	diagInfo := status.DiagInfo()
-	failed := status.Failed() || diagInfo.ErrorCount > 0
-
 	columns := []string{status.ID()}
-	columns = append(columns, display.getMetadataSummary(status.Step(), status.Done(), failed))
+
+	diagInfo := status.DiagInfo()
+
+	step := status.Step()
+	if status.Done() {
+		failed := status.Failed() || diagInfo.ErrorCount > 0
+		columns = append(columns, display.getStepDoneDescription(step, failed))
+	} else {
+		columns = append(columns, display.getStepInProgressDescription(step))
+	}
+
+	changesBuf := &bytes.Buffer{}
+	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
+		diff := step.Old.Inputs.Diff(step.New.Inputs)
+
+		if diff != nil {
+			writeString(changesBuf, "changes:")
+
+			updates := make(resource.PropertyMap)
+			for k := range diff.Updates {
+				updates[k] = resource.PropertyValue{}
+			}
+
+			writePropertyKeys(changesBuf, diff.Adds, deploy.OpCreate)
+			writePropertyKeys(changesBuf, diff.Deletes, deploy.OpDelete)
+			writePropertyKeys(changesBuf, updates, deploy.OpReplace)
+		}
+	}
+
+	fprintIgnoreError(changesBuf, colors.Reset)
+	changes := changesBuf.String()
 
 	diagMsg := ""
+
+	if colors.Never.Colorize(changes) != "" {
+		diagMsg += changes
+	}
+
 	appendDiagMessage := func(msg string) {
 		if diagMsg != "" {
 			diagMsg += ", "
@@ -581,7 +613,13 @@ func (display *ProgressDisplay) processEndSteps() {
 	for _, v := range display.eventUrnToStatus {
 		if !v.Done() {
 			v.SetDone()
-			display.refreshSingleStatusMessage(v)
+
+			if display.updateDimensions() {
+				contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
+				display.refreshAllIfInTerminal()
+			} else {
+				display.refreshSingleStatusMessage(v)
+			}
 		}
 	}
 
@@ -797,40 +835,6 @@ func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) stri
 		return ""
 	}
 	return strings.TrimRightFunc(payload.Message, unicode.IsSpace)
-}
-
-func (display *ProgressDisplay) getMetadataSummary(
-	step engine.StepEventMetadata, done bool, failed bool) string {
-
-	out := &bytes.Buffer{}
-
-	if done {
-		writeString(out, display.getStepDoneDescription(step, failed))
-	} else {
-		writeString(out, display.getStepInProgressDescription(step))
-	}
-	writeString(out, colors.Reset)
-
-	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
-		diff := step.Old.Inputs.Diff(step.New.Inputs)
-
-		if diff != nil {
-			writeString(out, "  changes:")
-
-			updates := make(resource.PropertyMap)
-			for k := range diff.Updates {
-				updates[k] = resource.PropertyValue{}
-			}
-
-			writePropertyKeys(out, diff.Adds, deploy.OpCreate)
-			writePropertyKeys(out, diff.Deletes, deploy.OpDelete)
-			writePropertyKeys(out, updates, deploy.OpReplace)
-		}
-	}
-
-	fprintIgnoreError(out, colors.Reset)
-
-	return out.String()
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
