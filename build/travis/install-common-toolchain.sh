@@ -11,6 +11,7 @@ nvm install v6.10.2
     YARN_VERSION="1.3.2"
     DEP_VERSION="0.4.1"
     GOMETALINTER_VERSION="2.0.3"
+    PIP_VERSION="10.0.0"
     VIRTUALENV_VERSION="15.2.0"
     AWSCLI_VERSION="1.14.30"
     WHEEL_VERSION="0.30.0"
@@ -52,6 +53,10 @@ nvm install v6.10.2
     # gocovmerge does not publish versioned releases, but it also hasn't been updated in two years, so
     # getting HEAD is pretty safe.
     go get -v github.com/wadey/gocovmerge
+
+    echo "upgrading Pip to ${PIP_VERSION}"
+    sudo pip install --upgrade "pip>=${PIP_VERSION}"
+    pip install --user --upgrade "pip>=${PIP_VERSION}"
 
     echo "installing virtualenv ${VIRTUALENV_VERSION}"
     sudo pip install "virtualenv==${VIRTUALENV_VERSION}"
