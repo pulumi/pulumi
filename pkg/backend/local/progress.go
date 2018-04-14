@@ -360,7 +360,7 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 		if urn == "" {
 			id = "global"
 		} else {
-			id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
+			id = string(urn.Name())
 		}
 
 		if suffix > 0 {
@@ -454,11 +454,11 @@ func (display *ProgressDisplay) getUnpaddedColumns(status Status) []string {
 		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 	}
 
-	columns := []string{status.ID()}
+	step := status.Step()
+	columns := []string{status.ID(), simplifyTypeName(step.URN.Type())}
 
 	diagInfo := status.DiagInfo()
 
-	step := status.Step()
 	if status.Done() {
 		failed := status.Failed() || diagInfo.ErrorCount > 0
 		columns = append(columns, display.getStepDoneDescription(step, failed))
