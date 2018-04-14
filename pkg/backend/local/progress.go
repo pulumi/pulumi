@@ -64,10 +64,14 @@ type Status interface {
 
 	DiagInfo() *DiagInfo
 	RecordDiagEvent(diagEvent engine.Event)
+
+	Columns() []string
 }
 
 // Status helps us keep track for a resource as it is worked on by the engine.
 type statusData struct {
+	_Display *ProgressDisplay
+
 	// The simple short ID we have generated for the resource to present it to the user.
 	// Usually similar to the form: aws.Function("name")
 	_ID string
@@ -86,6 +90,8 @@ type statusData struct {
 	_Failed bool
 
 	_DiagInfo *DiagInfo
+
+	_Columns []string
 }
 
 func (data *statusData) ID() string {
@@ -133,7 +139,20 @@ func (data *statusData) RecordDiagEvent(diagEvent engine.Event) {
 }
 
 func (data *statusData) ClearCachedData() {
+	data._Columns = []string{}
+}
 
+func (data *statusData) Columns() []string {
+	if len(data._Columns) == 0 {
+		columns := make([]string, 2)
+
+		columns[0] = data._ID
+		columns[1] = data._Display.getUnpaddedStatusSummary(data)
+
+		data._Columns = columns
+	}
+
+	return data._Columns
 }
 
 var (
@@ -236,7 +255,7 @@ type ProgressDisplay struct {
 	// The length of the largest ID we've seen.  We use this so we can align status messages per
 	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
 	// everything aligns.
-	maxIDLength int
+	maxColumnLengths []int
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -356,15 +375,16 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(status Status) string {
-	extraWhitespace := 0
+func (display *ProgressDisplay) getMessagePadding(columns []string, columnIndex int) string {
+	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
 	if display.isTerminal {
-		id := status.ID()
-		extraWhitespace = display.maxIDLength - len(id)
-		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", display.maxIDLength, id)
+		column := columns[columnIndex]
+		maxIDLength := display.maxColumnLengths[columnIndex]
+		extraWhitespace = maxIDLength - len(column)
+		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
 	}
 
 	return strings.Repeat(" ", extraWhitespace)
@@ -374,9 +394,14 @@ func (display *ProgressDisplay) getMessagePadding(status Status) string {
 // status, then some amount of optional padding, then some amount of msgWithColors, then the
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors string, suffix string) string {
-	id := status.ID()
-	padding := display.getMessagePadding(status)
+func (display *ProgressDisplay) getPaddedMessage(columns []string, suffix string) string {
+
+	msgWithColors := ""
+	for i := 1; i < len(columns); i++ {
+		padding := display.getMessagePadding(columns, i-1)
+		column := padding + columns[i]
+		msgWithColors += column
+	}
 
 	// In the terminal, only include the first line of the message
 	if display.isTerminal {
@@ -389,7 +414,8 @@ func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors st
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
+		id := columns[0]
+		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(suffix) - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
@@ -397,7 +423,7 @@ func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors st
 		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
 	}
 
-	return padding + msgWithColors + suffix
+	return msgWithColors + suffix
 }
 
 // Gets the single line summary to show for a resource.  This will include the current state of
@@ -454,17 +480,19 @@ func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
 var ellipsesArray = []string{"", ".", "..", "..."}
 
 func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
-	unpaddedMsg := display.getUnpaddedStatusSummary(status)
+	columns := status.Columns()
+
+	// unpaddedMsg := display.getUnpaddedStatusSummary(status)
 	suffix := ""
 
 	if !status.Done() {
 		suffix = ellipsesArray[(status.Tick()+display.currentTick)%len(ellipsesArray)]
 	}
 
-	msg := display.getPaddedMessage(status, unpaddedMsg, suffix)
+	msg := display.getPaddedMessage(columns, suffix)
 
 	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     status.ID(),
+		ID:     columns[0],
 		Action: msg,
 	})
 }
@@ -484,9 +512,17 @@ func (display *ProgressDisplay) updateDimensions() bool {
 		}
 
 		for _, status := range display.eventUrnToStatus {
-			if len(status.ID()) > display.maxIDLength {
-				display.maxIDLength = len(status.ID())
-				updated = true
+			columns := status.Columns()
+
+			if len(display.maxColumnLengths) == 0 {
+				display.maxColumnLengths = make([]int, len(columns))
+			}
+
+			for i, column := range columns {
+				if len(column) > display.maxColumnLengths[i] {
+					display.maxColumnLengths[i] = len(column)
+					updated = true
+				}
 			}
 		}
 	}
@@ -637,6 +673,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
 		status = &statusData{
+			_Display:  display,
 			_ID:       display.makeID(eventUrn),
 			_Tick:     display.currentTick,
 			_DiagInfo: &DiagInfo{},
