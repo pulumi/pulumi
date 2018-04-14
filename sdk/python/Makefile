@@ -18,6 +18,7 @@ ensure::
 	echo "export PYTHONPATH=$${PYTHONPATH}:$(shell pwd)/$(PYENVLIB)/python2.7/site-packages" >> $(PYENVBIN)/activate
 	( \
 		source $(PYENVBIN)/activate ; \
+		pip install --upgrade 'pip>=10.0.0' ; \
 		pip install -r requirements.txt ; \
 	)
 	mkdir -p $(PYENVSRC)
