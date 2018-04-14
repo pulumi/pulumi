@@ -95,7 +95,7 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 	}
 
 	// No stack was found.  If we're in a terminal, prompt to create one.
-	if cmdutil.Interactive() {
+	if offerNew && cmdutil.Interactive() {
 		fmt.Printf("The stack '%s' does not exist.\n", stackName)
 		fmt.Printf("\n")
 		_, err = cmdutil.ReadConsole("If you would like to create this stack now, please press <ENTER>, otherwise " +
@@ -107,7 +107,7 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 		return createStack(b, stackName, nil)
 	}
 
-	return nil, errors.Errorf("no stack named '%s' found; double check that you're logged in", stackName)
+	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }
 
 func requireCurrentStack(offerNew bool) (backend.Stack, error) {
@@ -161,7 +161,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 		options = append(options, newOption)
 	} else if len(options) == 0 {
 		// If no options are available, we can't offer a choice!
-		return nil, errors.New("this command requires a stack, but there are none; are you logged in?")
+		return nil, errors.New("this command requires a stack, but there are none")
 	}
 
 	// If a stack is already selected, make that the default.
