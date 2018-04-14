@@ -399,9 +399,11 @@ func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, c
 		extraWhitespace = maxIDLength - len(column)
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
 
-		// if extraWhitespace == 0 {
-		// 	extraWhitespace = 1
-		// }
+		if columnIndex > 0 {
+			// docker puts an extra whitespace one the first column.  We replicate that for all
+			// other columns
+			extraWhitespace++
+		}
 	}
 
 	return strings.Repeat(" ", extraWhitespace)
