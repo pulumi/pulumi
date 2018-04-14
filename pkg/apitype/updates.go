@@ -121,6 +121,16 @@ const (
 type UpdateResults struct {
 	Status UpdateStatus  `json:"status"`
 	Events []UpdateEvent `json:"events"`
+
+	// ContinuationToken is an opaque value used to indiciate the end of the returned update
+	// results. Pass it in the next request to obtain subsequent update events.
+	//
+	// The same continuation token may be returned if no new update events are available, but the
+	// update is still in-progress.
+	//
+	// A value of nil means that no new updates will be available. Everything has been returned to
+	// the client and the update has completed.
+	ContinuationToken *string `json:"continuationToken,omitempty"`
 }
 
 // UpdateProgram describes the metadata associated with an update's Pulumi program. Note that this does not
