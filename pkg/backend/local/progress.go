@@ -30,6 +30,12 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+type DiagInfo struct {
+	ErrorCount, WarningCount, InfoCount, DebugCount            int
+	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.Event
+	DiagEvents                                                 []engine.Event
+}
+
 // Status helps us keep track for a resource as it is worked on by the engine.
 type Status struct {
 	// The simple short ID we have generated for the resource to present it to the user.
@@ -52,7 +58,8 @@ type Status struct {
 	// All the diagnostic events we've heard about this resource.  We'll print the last
 	// diagnostic in the status region while a resource is in progress.  At the end we'll
 	// print out all diagnostics for a resource.
-	DiagEvents []engine.Event
+	DiagInfo DiagInfo
+	// DiagEvents []engine.Event
 }
 
 var (
@@ -110,53 +117,26 @@ func (display *ProgressDisplay) writeBlankLine() {
 	display.writeSimpleMessage(" ")
 }
 
-// Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
-// produce a diagnostic string to go along with any resource if it has had any issues.
-func getDiagnosticInformation(status Status) (
-	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
-
-	errors := 0
-	warnings := 0
-	infos := 0
-	debugs := 0
-
-	var lastError, lastInfoError, lastWarning, lastInfo, lastDebug *engine.Event
-
-	for _, ev := range status.DiagEvents {
-		payload := ev.Payload.(engine.DiagEventPayload)
-
-		switch payload.Severity {
-		case diag.Error:
-			errors++
-			lastError = &ev
-		case diag.Warning:
-			warnings++
-			lastWarning = &ev
-		case diag.Infoerr:
-			infos++
-			lastInfoError = &ev
-		case diag.Info:
-			infos++
-			lastInfo = &ev
-		case diag.Debug:
-			debugs++
-			lastDebug = &ev
-		}
+// Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
+// any resource if it has had any issues.
+func getWorstDiagnostic(status Status) *engine.Event {
+	if status.DiagInfo.LastError != nil {
+		return status.DiagInfo.LastError
 	}
 
-	if lastError != nil {
-		worstDiag = lastError
-	} else if lastWarning != nil {
-		worstDiag = lastWarning
-	} else if lastInfoError != nil {
-		worstDiag = lastInfoError
-	} else if lastInfo != nil {
-		worstDiag = lastInfo
-	} else {
-		worstDiag = lastDebug
+	if status.DiagInfo.LastWarning != nil {
+		return status.DiagInfo.LastWarning
 	}
 
-	return worstDiag, errors, warnings, infos, debugs
+	if status.DiagInfo.LastInfoError != nil {
+		return status.DiagInfo.LastInfoError
+	}
+
+	if status.DiagInfo.LastInfo != nil {
+		return status.DiagInfo.LastInfo
+	}
+
+	return status.DiagInfo.LastDebug
 }
 
 type ProgressDisplay struct {
@@ -353,25 +333,34 @@ func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
 		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 	}
 
-	worstDiag, errors, warnings, infos, debugs := getDiagnosticInformation(status)
+	worstDiag := getWorstDiagnostic(status)
 
-	failed := status.Failed || errors > 0
+	diagInfo := status.DiagInfo
+	failed := status.Failed || status.DiagInfo.ErrorCount > 0
 	msg := display.getMetadataSummary(status.Step, status.Done, failed)
 
-	if errors > 0 {
-		msg += fmt.Sprintf(", %v error(s)", errors)
+	if diagInfo.ErrorCount == 1 {
+		msg += ", 1 error"
+	} else if diagInfo.ErrorCount > 1 {
+		msg += fmt.Sprintf(", %v errors", diagInfo.ErrorCount)
 	}
 
-	if warnings > 0 {
-		msg += fmt.Sprintf(", %v warning(s)", warnings)
+	if diagInfo.WarningCount == 1 {
+		msg += ", 1 warning"
+	} else if diagInfo.WarningCount > 1 {
+		msg += fmt.Sprintf(", %v warnings", diagInfo.WarningCount)
 	}
 
-	if infos > 0 {
-		msg += fmt.Sprintf(", %v info message(s)", infos)
+	if diagInfo.InfoCount == 1 {
+		msg += ", 1 info message"
+	} else if diagInfo.InfoCount > 1 {
+		msg += fmt.Sprintf(", %v info messages", diagInfo.InfoCount)
 	}
 
-	if debugs > 0 {
-		msg += fmt.Sprintf(", %v debug message(s)", debugs)
+	if diagInfo.DebugCount == 1 {
+		msg += ", 1 debug message"
+	} else if diagInfo.ErrorCount > 1 {
+		msg += fmt.Sprintf(", %v debug messages", diagInfo.DebugCount)
 	}
 
 	// If we're not totally done, also print out the worst diagnostic next to the status message.
@@ -462,9 +451,9 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteDiagnosticHeader := false
 
 	for _, status := range display.eventUrnToStatus {
-		if len(status.DiagEvents) > 0 {
+		if len(status.DiagInfo.DiagEvents) > 0 {
 			wroteResourceHeader := false
-			for _, v := range status.DiagEvents {
+			for _, v := range status.DiagInfo.DiagEvents {
 				msg := display.renderProgressDiagEvent(v)
 
 				lines := strings.Split(msg, "\n")
@@ -587,7 +576,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		status.Failed = true
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
-		status.DiagEvents = append(status.DiagEvents, event)
+		status.DiagInfo = combineDiagnosticInfo(status.DiagInfo, event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
@@ -603,6 +592,31 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else {
 		display.refreshSingleStatusMessage(status)
 	}
+}
+
+func combineDiagnosticInfo(diagInfo DiagInfo, event engine.Event) DiagInfo {
+	payload := event.Payload.(engine.DiagEventPayload)
+
+	switch payload.Severity {
+	case diag.Error:
+		diagInfo.ErrorCount++
+		diagInfo.LastError = &event
+	case diag.Warning:
+		diagInfo.WarningCount++
+		diagInfo.LastWarning = &event
+	case diag.Infoerr:
+		diagInfo.InfoCount++
+		diagInfo.LastInfoError = &event
+	case diag.Info:
+		diagInfo.InfoCount++
+		diagInfo.LastInfo = &event
+	case diag.Debug:
+		diagInfo.DebugCount++
+		diagInfo.LastDebug = &event
+	}
+
+	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
+	return diagInfo
 }
 
 func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
