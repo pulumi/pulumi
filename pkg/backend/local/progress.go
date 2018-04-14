@@ -529,7 +529,7 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 		}
 
 		if suffix > 0 {
-			id += fmt.Sprintf("-%v", suffix)
+			id += fmt.Sprintf(" (%v)", suffix)
 		}
 
 		return id
@@ -600,7 +600,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
 		id := uncolorizedColumns[0]
-		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(suffix) - 1
+		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(suffix) - 2
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
