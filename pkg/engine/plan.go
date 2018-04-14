@@ -76,11 +76,12 @@ type planOptions struct {
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
-type planSourceFunc func(opts planOptions, proj *workspace.Project, pwd, main string,
-	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error)
+type planSourceFunc func(
+	opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(ctx *planContext, opts planOptions) (*planResult, error) {
+func plan(ctx *planContext, opts planOptions, dryRun bool) (*planResult, error) {
 	contract.Assert(ctx != nil)
 	contract.Assert(ctx.Update != nil)
 	contract.Assert(opts.SourceFunc != nil)
@@ -99,7 +100,7 @@ func plan(ctx *planContext, opts planOptions) (*planResult, error) {
 
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
-	source, err := opts.SourceFunc(opts, proj, pwd, main, target, plugctx)
+	source, err := opts.SourceFunc(opts, proj, pwd, main, target, plugctx, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func plan(ctx *planContext, opts planOptions) (*planResult, error) {
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, opts.DryRun)
+	plan := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun)
 	return &planResult{
 		Ctx:     ctx,
 		Plugctx: plugctx,
@@ -207,9 +208,8 @@ func (res *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(result *planResult) (ResourceChanges, error) {
-	result.Options.Events.preludeEvent(result.Options.DryRun,
-		result.Ctx.Update.GetTarget().Config)
+func printPlan(result *planResult, dryRun bool) (ResourceChanges, error) {
+	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPreviewActions(result.Options)

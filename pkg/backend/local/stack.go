@@ -49,11 +49,6 @@ func (s *localStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *localStack) Preview(proj *workspace.Project, root string,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.PreviewStack(s, proj, root, opts, displayOpts)
-}
-
 func (s *localStack) Update(proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 	return backend.UpdateStack(s, proj, root, m, opts, displayOpts)

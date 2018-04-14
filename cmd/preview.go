@@ -3,11 +3,10 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -28,43 +27,11 @@ func newPreviewCmd() *cobra.Command {
 		Use:        "preview",
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
-		Short:      "Show a preview of updates to a stack's resources",
-		Long: "Show a preview of updates a stack's resources.\n" +
-			"\n" +
-			"This command displays a preview of the updates to an existing stack whose state is\n" +
-			"represented by an existing snapshot file. The new desired state is computed by running\n" +
-			"a Pulumi program, and extracting all resource allocations from its resulting object graph.\n" +
-			"These allocations are then compared against the existing state to determine what\n" +
-			"operations must take place to achieve the desired state. No changes to the stack will\n" +
-			"actually take place.\n" +
-			"\n" +
-			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.NoArgs,
+		Short:      "Deprecated.  Use 'pulumi update --preview' instead",
+		Long:       "Deprecated.  Use 'pulumi update --preview' instead",
+		Args:       cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			proj, root, err := readProject()
-			if err != nil {
-				return err
-			}
-
-			s, err := requireStack(tokens.QName(stack), true)
-			if err != nil {
-				return err
-			}
-
-			return s.Preview(proj, root, engine.UpdateOptions{
-				Analyzers: analyzers,
-				DryRun:    true,
-				Parallel:  parallel,
-				Debug:     debug,
-			}, backend.DisplayOptions{
-				Color:                color.Colorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSames:            showSames,
-				DiffDisplay:          diffDisplay,
-				Debug:                debug,
-			})
+			return errors.New("'pulumi preview' is deprecated.  Please use 'pulumi update --preview' instead")
 		}),
 	}
 

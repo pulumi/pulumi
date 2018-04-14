@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -37,6 +39,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
+
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
 const (
@@ -396,35 +401,200 @@ func (b *cloudBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
-var actionLabels = map[string]string{
-	string(client.UpdateKindUpdate):  "Updating",
-	string(client.UpdateKindPreview): "Previewing",
-	string(client.UpdateKindDestroy): "Destroying",
-	"import": "Importing",
+func getActionLabel(key string, dryRun bool) string {
+	if dryRun {
+		return "Previewing"
+	}
+
+	switch key {
+	case string(client.UpdateKindUpdate):
+		return "Updating"
+	case string(client.UpdateKindDestroy):
+		return "Destroying"
+	case "import":
+		return "Importing"
+	}
+
+	contract.Failf("Should not get here.")
+	return ""
 }
 
-func (b *cloudBackend) Preview(stackName tokens.QName, pkg *workspace.Project, root string,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+type response string
 
-	return b.updateStack(client.UpdateKindPreview, stackName, pkg, root, backend.UpdateMetadata{}, opts,
-		displayOpts)
+const (
+	yes     response = "yes"
+	no      response = "no"
+	details response = "details"
+)
+
+func getStack(b *cloudBackend, stackName tokens.QName) (backend.Stack, error) {
+	stack, err := b.GetStack(stackName)
+	if err != nil {
+		return nil, err
+	} else if stack == nil {
+		return nil, errors.New("stack not found")
+	}
+
+	return stack, nil
 }
 
-func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) string {
+	buff := &bytes.Buffer{}
 
-	return b.updateStack(client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+	displayOpts.SummaryDiff = true
+
+	for _, e := range events {
+		msg := local.RenderDiffEvent(e, seen, displayOpts)
+		if msg != "" {
+			if e.Type == engine.SummaryEvent {
+				msg = "\n" + msg
+			}
+
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+
+	return strings.TrimSpace(buff.String())
+}
+
+func (b *cloudBackend) PreviewThenPrompt(
+	updateKind client.UpdateKind,
+	stack backend.Stack, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions) error {
+
+	// create a channel to hear about the update events from the engine. this will be used so that
+	// we can build up the diff display in case the user asks to see the details of the diff
+	var eventsChannel chan engine.Event
+	events := []engine.Event{}
+
+	// if we're previewing, we don't need to store the events as we're not going to prompt
+	// the user to get details of what's happening.
+	if !opts.Preview {
+		eventsChannel = make(chan engine.Event)
+		defer func() {
+			close(eventsChannel)
+		}()
+
+		go func() {
+			// pull the events from the channel and store them locally
+			for e := range eventsChannel {
+				if e.Type == engine.ResourcePreEvent ||
+					e.Type == engine.ResourceOutputsEvent ||
+					e.Type == engine.SummaryEvent {
+
+					events = append(events, e)
+				}
+			}
+		}()
+	}
+
+	err := b.updateStack(
+		updateKind, stack, pkg, root, m,
+		opts, displayOpts, eventsChannel, true /*dryRun*/)
+
+	if err != nil || opts.Preview {
+		// if we're just previewing, then we can stop at this point.
+		return err
+	}
+
+	for {
+		var response string
+
+		surveycore.DisableColor = true
+		surveycore.QuestionIcon = ""
+		surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+
+		options := []string{string(yes), string(no)}
+
+		// if this is a managed stack, then we can get the details for the operation, as we will
+		// have been able to collect the details while the preview ran.  For ppc stacks, we don't
+		// have that information since all the PPC does is forward stdout events to us.
+		if stack.(Stack).RunLocally() {
+			options = append(options, string(details))
+		}
+		err = survey.AskOne(&survey.Select{
+			Message: colors.ColorizeText(colors.BrightWhite + "Do you want to proceed?" + colors.Reset),
+			Options: options,
+			Default: string(no),
+		}, &response, nil)
+
+		if err != nil {
+			return err
+		}
+
+		if response == string(no) {
+			return errors.New("confirmation declined")
+		}
+
+		if response == string(yes) {
+			return nil
+		}
+
+		if response == string(details) {
+			diff := createDiff(events, displayOpts)
+			_, err = os.Stdout.WriteString(diff + "\n\n")
+			contract.IgnoreError(err)
+			continue
+		}
+
+		// Anything else just causes us to bail out.  This can happen, for example, when
+		// ctrl-c is hit.
+		return err
+	}
+}
+
+func (b *cloudBackend) PreviewThenPromptThenExecute(
+	updateKind client.UpdateKind,
+	stackName tokens.QName, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions) error {
+
+	// First get the stack.
+	stack, err := getStack(b, stackName)
+	if err != nil {
+		return err
+	}
+
+	if !opts.Force {
+		// If we're not forcing, then preview the operation to the user and ask them if
+		// they want to proceed.
+		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
+		if err != nil || opts.Preview {
+			return err
+		}
+	}
+
+	// Now do the real operation.  We don't care about the events it issues, so just
+	// pass a nil channel along.
+	var unused chan engine.Event
+	return b.updateStack(
+		updateKind, stack, pkg,
+		root, m, opts, displayOpts, unused, false /*dryRun*/)
+}
+
+func (b *cloudBackend) Update(
+	stackName tokens.QName, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions) error {
+
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	return b.updateStack(client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts engine.UpdateOptions) (client.UpdateIdentifier, int, string, error) {
+	action client.UpdateKind, stackName tokens.QName,
+	pkg *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := getCloudStackIdentifier(stackName)
 	if err != nil {
@@ -446,7 +616,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		const showProgress = true
 		return getUpdateContents(context, pkg.UseDefaultIgnores(), showProgress)
 	}
-	update, err := b.client.CreateUpdate(action, stack, pkg, workspaceStack.Config, main, metadata, opts, getContents)
+	update, err := b.client.CreateUpdate(
+		action, stack, pkg, workspaceStack.Config, main, metadata, opts, dryRun, getContents)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -469,36 +640,31 @@ func (b *cloudBackend) createAndStartUpdate(
 }
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
-func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+func (b *cloudBackend) updateStack(
+	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions) error {
+	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool) error {
 
 	// Print a banner so it's clear this is going to the cloud.
-	actionLabel, ok := actionLabels[string(action)]
-	contract.Assertf(ok, "unsupported update kind: %v", action)
+	actionLabel := getActionLabel(string(action), dryRun)
 	fmt.Printf(
 		colors.ColorizeText(
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
-		actionLabel, stackName)
-
-	// First get the stack.
-	stack, err := b.GetStack(stackName)
-	if err != nil {
-		return err
-	} else if stack == nil {
-		return errors.New("stack not found")
-	}
+		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
 	var update client.UpdateIdentifier
 	var version int
 	var token string
-	if !stack.(Stack).RunLocally() || action != client.UpdateKindPreview {
-		update, version, token, err = b.createAndStartUpdate(action, stackName, pkg, root, m, opts)
+	var err error
+	if !stack.(Stack).RunLocally() || !dryRun {
+		update, version, token, err = b.createAndStartUpdate(
+			action, stack.Name(), pkg, root, m, opts, dryRun)
 	}
 	if err != nil {
 		return err
 	}
+
 	if version != 0 {
 		// Print a URL afterwards to redirect to the version URL.
 		base := b.CloudConsoleStackPath(update.StackIdentifier)
@@ -513,7 +679,9 @@ func (b *cloudBackend) updateStack(action client.UpdateKind, stackName tokens.QN
 
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
 	if stack.(Stack).RunLocally() {
-		return b.runEngineAction(action, stackName, pkg, root, opts, displayOpts, update, token)
+		return b.runEngineAction(
+			action, stack.Name(), pkg, root, opts, displayOpts,
+			update, token, callerEventsOpt, dryRun)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -555,44 +723,62 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 func (b *cloudBackend) runEngineAction(
 	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
 	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
-	update client.UpdateIdentifier, token string) error {
+	update client.UpdateIdentifier, token string,
+	callerEventsOpt chan<- engine.Event, dryRun bool) error {
 
 	u, err := b.newUpdate(stackName, pkg, root, update, token)
 	if err != nil {
 		return err
 	}
 
-	events := make(chan engine.Event)
-	done := make(chan bool)
+	displayEvents := make(chan engine.Event)
+	displayDone := make(chan bool)
 
-	actionLabel, ok := actionLabels[string(action)]
-	contract.Assertf(ok, "unsupported update kind: %v", action)
-	go u.RecordAndDisplayEvents(actionLabel, events, done, displayOpts)
+	go u.RecordAndDisplayEvents(
+		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
+
+	engineEvents := make(chan engine.Event)
+	go func() {
+		// Pull in all events from the engine and send to them to the two listeners.
+		for e := range engineEvents {
+			displayEvents <- e
+
+			if callerEventsOpt != nil {
+				callerEventsOpt <- e
+			}
+		}
+	}()
 
 	switch action {
-	case client.UpdateKindPreview:
-		err = engine.Preview(u, u.manager, events, opts)
 	case client.UpdateKindUpdate:
-		_, err = engine.Update(u, u.manager, events, opts)
+		if dryRun {
+			err = engine.Preview(u, u.manager, engineEvents, opts)
+		} else {
+			_, err = engine.Update(u, u.manager, engineEvents, opts, dryRun)
+		}
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, u.manager, events, opts)
+		_, err = engine.Destroy(u, u.manager, engineEvents, opts, dryRun)
 	}
 
-	<-done
-	close(events)
-	close(done)
+	// Wait for the display to finish showing all the events.
+	<-displayDone
+	close(engineEvents)
+	close(displayEvents)
+	close(displayDone)
 	contract.IgnoreError(u.manager.Close())
 
-	if action != client.UpdateKindPreview {
+	if !dryRun {
 		status := apitype.UpdateStatusSucceeded
 		if err != nil {
 			status = apitype.UpdateStatusFailed
 		}
+
 		completeErr := u.Complete(status)
 		if completeErr != nil {
 			err = multierror.Append(err, completeErr)
 		}
 	}
+
 	return err
 }
 
@@ -711,7 +897,9 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 	}
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
-	status, err := b.waitForUpdate(actionLabels["import"], update, backend.DisplayOptions{Color: colors.Always})
+	status, err := b.waitForUpdate(
+		getActionLabel("import", false /*dryRun*/), update,
+		backend.DisplayOptions{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")
 	} else if status != apitype.StatusSucceeded {
@@ -809,7 +997,9 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 	}
 }
 
-func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
+func displayEvents(
+	action string, events <-chan displayEvent, done chan<- bool, opts backend.DisplayOptions) {
+
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 

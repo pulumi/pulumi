@@ -93,7 +93,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")
-		e.RunCommand("pulumi", "update", "-m", "updating stack...")
+		e.RunCommand("pulumi", "update", "--force", "-m", "updating stack...")
 
 		// Confirm we see the update message in thie history output.
 		out, err := e.RunCommand("pulumi", "history")
@@ -125,7 +125,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")
-		e.RunCommand("pulumi", "update", "-m", "first update (successful)")
+		e.RunCommand("pulumi", "update", "--force", "-m", "first update (successful)")
 
 		// Now we "break" the program, by adding gibberish to bin/index.js.
 		indexJS := path.Join(e.CWD, "bin", "index.js")
@@ -138,15 +138,15 @@ func TestHistoryCommand(t *testing.T) {
 		err = ioutil.WriteFile(indexJS, invalidJS.Bytes(), os.ModePerm)
 		assert.NoError(t, err, "Writing bin/index.js")
 
-		e.RunCommandExpectError("pulumi", "update", "-m", "second update (failure)")
+		e.RunCommandExpectError("pulumi", "update", "--force", "-m", "second update (failure)")
 
 		// Fix it
 		err = ioutil.WriteFile(indexJS, origContents, os.ModePerm)
 		assert.NoError(t, err, "Writing bin/index.js")
-		e.RunCommand("pulumi", "update", "-m", "third update (successful)")
+		e.RunCommand("pulumi", "update", "--force", "-m", "third update (successful)")
 
 		// Destroy
-		e.RunCommand("pulumi", "destroy", "-m", "fourth update (destroy)", "--yes")
+		e.RunCommand("pulumi", "destroy", "--force", "-m", "fourth update (destroy)")
 
 		// Confirm the history is as expected. Output as JSON and parse the result.
 		stdout, stderr := e.RunCommand("pulumi", "history", "--output-json")
@@ -204,12 +204,12 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("yarn", "run", "build")
 
 		// Update 1, git repo that has no commits.
-		e.RunCommand("pulumi", "update", "-m", "first update (git repo has no commits)")
+		e.RunCommand("pulumi", "update", "--force", "-m", "first update (git repo has no commits)")
 
 		// Update 2, repo has commit, but no remote.
 		e.RunCommand("git", "add", ".")
 		e.RunCommand("git", "commit", "-m", "First commit of test files")
-		e.RunCommand("pulumi", "update", "-m", "second update (git commit, no remote)")
+		e.RunCommand("pulumi", "update", "--force", "-m", "second update (git commit, no remote)")
 
 		// Update 3, repo has remote and is dirty (by rewriting index.ts).
 		indexTS := path.Join(e.CWD, "index.ts")
@@ -220,13 +220,13 @@ func TestHistoryCommand(t *testing.T) {
 		assert.NoError(t, err, "writing index.ts")
 
 		e.RunCommand("git", "remote", "add", "origin", "git@github.com:rick/c-132")
-		e.RunCommand("pulumi", "update", "-m", "third update (is dirty, has remote)")
+		e.RunCommand("pulumi", "update", "--force", "-m", "third update (is dirty, has remote)")
 
 		// Update 4, repo is now clean again.
 		err = ioutil.WriteFile(indexTS, origContents, os.ModePerm)
 		assert.NoError(t, err, "writing index.ts")
 
-		e.RunCommand("pulumi", "update", "-m", "fourth update (is clean)")
+		e.RunCommand("pulumi", "update", "--force", "-m", "fourth update (is clean)")
 
 		// Confirm the history is as expected. Output as JSON and parse the result.
 		stdout, stderr := e.RunCommand("pulumi", "history", "--output-json")

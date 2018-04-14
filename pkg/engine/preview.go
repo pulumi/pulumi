@@ -3,6 +3,7 @@
 package engine
 
 import (
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -20,11 +21,6 @@ func Preview(u UpdateInfo, manager SnapshotManager, events chan<- Event, opts Up
 	}
 	defer ctx.Close()
 
-	// Always set opts.DryRun to `true` when processing previews: if we do not do this, the engine will assume that it
-	// should elide unknown input/output properties when interacting with the language and resource providers and we
-	// will produce unexpected results.
-	opts.DryRun = true
-
 	emitter := makeEventEmitter(events, u)
 	return preview(ctx, planOptions{
 		UpdateOptions: opts,
@@ -35,7 +31,7 @@ func Preview(u UpdateInfo, manager SnapshotManager, events chan<- Event, opts Up
 }
 
 func preview(ctx *planContext, opts planOptions) error {
-	result, err := plan(ctx, opts)
+	result, err := plan(ctx, opts, true /*dryRun*/)
 	if err != nil {
 		return err
 	}
@@ -49,7 +45,7 @@ func preview(ctx *planContext, opts planOptions) error {
 		}
 		defer done()
 
-		if _, err := printPlan(result); err != nil {
+		if _, err := printPlan(result, true /*dryRun*/); err != nil {
 			return err
 		}
 	}
@@ -83,8 +79,9 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
 	assertSeen(acts.Seen, step)
 
-	// We let `printPlan` handle error reporting for now.
-	if err == nil {
+	if err != nil {
+		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(step.URN()), err)
+	} else {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if step.Logical() {
 			acts.Ops[step.Op()]++
@@ -92,6 +89,7 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 
 		_ = acts.OnResourceOutputs(step)
 	}
+
 	return nil
 }
 

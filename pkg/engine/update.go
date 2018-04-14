@@ -15,17 +15,30 @@ import (
 
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 type UpdateOptions struct {
-	Analyzers []string // an optional set of analyzers to run as part of this deployment.
-	DryRun    bool     // true if we should just print the plan without performing it.
-	Parallel  int      // the degree of parallelism for resource operations (<=1 for serial).
-	Debug     bool     // true if debugging output it enabled
+	// an optional set of analyzers to run as part of this deployment.
+	Analyzers []string
+
+	// true if we should just perform the update, without any previewing or request for confirmation.
+	// Not valid with 'Preview'.
+	Force bool
+
+	// true if we should just show the preview and then immediately quit. Not valid with 'force'.
+	Preview bool
+
+	// the degree of parallelism for resource operations (<=1 for serial).
+	Parallel int
+
+	// true if debugging output it enabled
+	Debug bool
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
 type ResourceChanges map[deploy.StepOp]int
 
-func Update(u UpdateInfo, manager SnapshotManager,
-	events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
+func Update(
+	u UpdateInfo, manager SnapshotManager,
+	events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+
 	contract.Require(u != nil, "update")
 	contract.Require(events != nil, "events")
 
@@ -43,11 +56,13 @@ func Update(u UpdateInfo, manager SnapshotManager,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
-	})
+	}, dryRun)
 }
 
-func newUpdateSource(opts planOptions, proj *workspace.Project, pwd, main string,
-	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
+func newUpdateSource(
+	opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
+
 	// Figure out which plugins to load by inspecting the program contents.
 	plugins, err := plugctx.Host.GetRequiredPlugins(plugin.ProgInfo{
 		Proj:    proj,
@@ -70,11 +85,11 @@ func newUpdateSource(opts planOptions, proj *workspace.Project, pwd, main string
 		Pwd:     pwd,
 		Program: main,
 		Target:  target,
-	}, opts.DryRun), nil
+	}, dryRun), nil
 }
 
-func update(info *planContext, opts planOptions) (ResourceChanges, error) {
-	result, err := plan(info, opts)
+func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
+	result, err := plan(info, opts, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -90,15 +105,15 @@ func update(info *planContext, opts planOptions) (ResourceChanges, error) {
 		}
 		defer done()
 
-		if opts.DryRun {
+		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(result)
+			resourceChanges, err = printPlan(result, dryRun)
 			if err != nil {
 				return resourceChanges, err
 			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
-			opts.Events.preludeEvent(opts.DryRun, result.Ctx.Update.GetTarget().Config)
+			opts.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()

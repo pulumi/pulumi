@@ -26,7 +26,6 @@ type UpdateKind string
 
 const (
 	UpdateKindUpdate  UpdateKind = "update"
-	UpdateKindPreview UpdateKind = "preview"
 	UpdateKindDestroy UpdateKind = "destroy"
 )
 

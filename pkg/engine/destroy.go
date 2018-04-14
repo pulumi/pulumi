@@ -9,8 +9,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Destroy(u UpdateInfo, manager SnapshotManager,
-	events chan<- Event, opts UpdateOptions) (ResourceChanges, error) {
+func Destroy(
+	u UpdateInfo, manager SnapshotManager,
+	events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+
 	contract.Require(u != nil, "u")
 	contract.Require(manager != nil, "manager")
 
@@ -28,11 +30,13 @@ func Destroy(u UpdateInfo, manager SnapshotManager,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
-	})
+	}, dryRun)
 }
 
-func newDestroySource(opts planOptions, proj *workspace.Project, pwd, main string,
-	target *deploy.Target, plugctx *plugin.Context) (deploy.Source, error) {
+func newDestroySource(
+	opts planOptions, proj *workspace.Project, pwd, main string,
+	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
+
 	// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
 	if target != nil && target.Snapshot != nil {
 		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins); err != nil {

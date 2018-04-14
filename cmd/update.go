@@ -3,8 +3,11 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -23,6 +26,7 @@ func newUpdateCmd() *cobra.Command {
 	var color colorFlag
 	var parallel int
 	var preview bool
+	var force bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -46,6 +50,14 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+				return errors.New("'update' must be run interactively or be passed the --force or --preview flag")
+			}
+
+			if force && preview {
+				return errors.New("--force and --preview cannot both be specified")
+			}
+
 			s, err := requireStack(tokens.QName(stack), true)
 			if err != nil {
 				return err
@@ -63,14 +75,15 @@ func newUpdateCmd() *cobra.Command {
 
 			return s.Update(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
-				DryRun:    preview,
+				Force:     force,
+				Preview:   preview,
 				Parallel:  parallel,
 				Debug:     debug,
 			}, backend.DisplayOptions{
 				Color:                color.Colorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
-				ShowSames:            showSames,
+				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			})
@@ -89,8 +102,6 @@ func newUpdateCmd() *cobra.Command {
 		"Optional message to associate with the update operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
@@ -98,8 +109,11 @@ func newUpdateCmd() *cobra.Command {
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&preview, "preview", "n", false,
-		"Don't create/delete resources; just preview the planned operations")
+		&force, "force", "f", false,
+		"Skip confirmation prompts and preview, and proceed with the update automatically")
+	cmd.PersistentFlags().BoolVar(
+		&preview, "preview", false,
+		"Only show a preview of what will happen, without prompting or making any changes")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -108,10 +122,12 @@ func newUpdateCmd() *cobra.Command {
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
-		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+		"Show resources that don't need be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().VarP(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

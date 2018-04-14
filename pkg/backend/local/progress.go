@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/progress"
@@ -99,6 +100,14 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progr
 
 	err := display.progressOutput.WriteProgress(progress)
 	contract.IgnoreError(err)
+}
+
+func (display *ProgressDisplay) writeSimpleMessage(msg string) {
+	display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+}
+
+func (display *ProgressDisplay) writeBlankLine() {
+	display.writeSimpleMessage(" ")
 }
 
 // Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
@@ -192,6 +201,9 @@ type ProgressDisplay struct {
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
 	idToUrn map[string]resource.URN
+
+	// If all progress messages are done and we can print out the final display.
+	Done bool
 }
 
 // DisplayProgressEvents displays the engine events with docker's progress view.
@@ -362,7 +374,10 @@ func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
 		msg += fmt.Sprintf(", %v debug message(s)", debugs)
 	}
 
-	if worstDiag != nil {
+	// If we're not totally done, also print out the worst diagnostic next to the status message.
+	// This is helpful for long running tasks to know what's going on.  However, once done, we print
+	// the diagnostics at the bottom, so we don't need to show this.
+	if worstDiag != nil && !display.Done {
 		diagMsg := display.renderProgressDiagEvent(*worstDiag)
 		if diagMsg != "" {
 			msg += ". " + diagMsg
@@ -404,31 +419,62 @@ func (display *ProgressDisplay) refreshAllStatusMessages(includeDone bool) {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
+	display.Done = true
+
 	// Mark all in progress resources as done.
 	for k, v := range display.eventUrnToStatus {
 		if !v.Done {
 			v.Done = true
 			display.eventUrnToStatus[k] = v
-			display.refreshSingleStatusMessage(v)
 		}
 	}
 
+	// Make sure we refresh everything.  That way we remove any diagnostics printed on the line.
+	display.refreshAllStatusMessages(true /*includeDone*/)
+
 	// Print all diagnostics we've seen.
+
+	wroteDiagnosticHeader := false
 
 	for _, status := range display.eventUrnToStatus {
 		if len(status.DiagEvents) > 0 {
-			wroteHeader := false
+			wroteResourceHeader := false
 			for _, v := range status.DiagEvents {
 				msg := display.renderProgressDiagEvent(v)
-				if msg != "" {
-					if !wroteHeader {
-						wroteHeader = true
-						display.colorizeAndWriteProgress(progress.Progress{Message: " "})
-						display.colorizeAndWriteProgress(progress.Progress{ID: status.ID, Message: "Diagnostics"})
-					}
 
-					display.colorizeAndWriteProgress(progress.Progress{Message: "  " + msg})
+				lines := strings.Split(msg, "\n")
+
+				// Trim off any trailing blank lines in the message.
+				for len(lines) > 0 {
+					lastLine := lines[len(lines)-1]
+					if strings.TrimSpace(colors.Never.Colorize(lastLine)) == "" {
+						lines = lines[0 : len(lines)-1]
+					} else {
+						break
+					}
 				}
+
+				if len(lines) == 0 {
+					continue
+				}
+
+				if !wroteDiagnosticHeader {
+					wroteDiagnosticHeader = true
+					display.writeBlankLine()
+					display.writeSimpleMessage("Diagnostics:")
+				}
+
+				if !wroteResourceHeader {
+					wroteResourceHeader = true
+					display.writeSimpleMessage("  " + status.ID + ":")
+				}
+
+				for _, line := range lines {
+					line = strings.TrimRightFunc(line, unicode.IsSpace)
+					display.writeSimpleMessage("    " + line)
+				}
+
+				display.writeBlankLine()
 			}
 		}
 	}
@@ -436,7 +482,9 @@ func (display *ProgressDisplay) processEndSteps() {
 	// print the summary
 	if display.summaryEvent != nil {
 		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
-		display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+
+		display.writeBlankLine()
+		display.writeSimpleMessage(msg)
 	}
 }
 
@@ -474,9 +522,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		payload := event.Payload.(engine.PreludeEventPayload)
 		display.isPreview = payload.IsPreview
-		display.colorizeAndWriteProgress(progress.Progress{
-			Message: renderPreludeEvent(payload, display.opts),
-		})
+		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
 		return
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
@@ -576,10 +622,11 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 
 func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) string {
 	payload := event.Payload.(engine.DiagEventPayload)
+
 	if payload.Severity == diag.Debug && !display.opts.Debug {
 		return ""
 	}
-	return payload.Message
+	return strings.TrimRightFunc(payload.Message, unicode.IsSpace)
 }
 
 func (display *ProgressDisplay) getMetadataSummary(
@@ -598,7 +645,7 @@ func (display *ProgressDisplay) getMetadataSummary(
 		diff := step.Old.Inputs.Diff(step.New.Inputs)
 
 		if diff != nil {
-			writeString(out, ". Changes:")
+			writeString(out, "  changes:")
 
 			updates := make(resource.PropertyMap)
 			for k := range diff.Updates {
@@ -621,16 +668,15 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
-	if isRootStack(step) {
-		if failed {
-			return makeError("Failed")
-		}
-
-		return "Completed"
+	if display.isPreview {
+		// During a preview, when we transition to done, we still just print the same thing we
+		// did while running the step.
+		return step.Op.Prefix() + getPreviewText(step.Op) + colors.Reset
 	}
 
-	if display.isPreview && !isRootStack(step) {
-		return display.getStepInProgressDescription(step)
+	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
+	if isRootStack(step) && step.Op == deploy.OpSame {
+		return "done"
 	}
 
 	op := step.Op
@@ -639,32 +685,32 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		if failed {
 			switch op {
 			case deploy.OpSame:
-				return "Failed"
+				return "failed"
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				return "Creating failed"
+				return "creating failed"
 			case deploy.OpUpdate:
-				return "Updating failed"
+				return "updating failed"
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
-				return "Deleting failed"
+				return "deleting failed"
 			case deploy.OpReplace:
-				return "Replacing failed"
+				return "replacing failed"
 			}
 		} else {
 			switch op {
 			case deploy.OpSame:
-				return "Unchanged"
+				return "unchanged"
 			case deploy.OpCreate:
-				return "Created"
+				return "created"
 			case deploy.OpUpdate:
-				return "Updated"
+				return "updated"
 			case deploy.OpDelete:
-				return "Deleted"
+				return "deleted"
 			case deploy.OpReplace:
-				return "Replaced"
+				return "replaced"
 			case deploy.OpCreateReplacement:
-				return "Created for replacement"
+				return "created for replacement"
 			case deploy.OpDeleteReplaced:
-				return "Deleted for replacement"
+				return "deleted for replacement"
 			}
 		}
 
@@ -679,48 +725,57 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
-func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
-	if isRootStack(step) {
-		return "Running"
+func getPreviewText(op deploy.StepOp) string {
+	switch op {
+	case deploy.OpSame:
+		return "[no change]"
+	case deploy.OpCreate:
+		return "[create]"
+	case deploy.OpUpdate:
+		return "[update]"
+	case deploy.OpDelete:
+		return "[delete]"
+	case deploy.OpReplace:
+		return "[replace]"
+	case deploy.OpCreateReplacement:
+		return "[create for replacement]"
+	case deploy.OpDeleteReplaced:
+		return "[delete for replacement]"
 	}
 
+	contract.Failf("Unrecognized resource step op: %v", op)
+	return ""
+}
+
+func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
 	op := step.Op
+
+	if isRootStack(step) && op == deploy.OpSame {
+		// most of the time a stack is unchanged.  in that case we just show it as "running->done".
+		// otherwise, we show what is actually happening to it.
+		return "running"
+	}
 
 	getDescription := func() string {
 		if display.isPreview {
-			switch op {
-			case deploy.OpSame:
-				return "Would not change"
-			case deploy.OpCreate:
-				return "Would create"
-			case deploy.OpUpdate:
-				return "Would update"
-			case deploy.OpDelete:
-				return "Would delete"
-			case deploy.OpReplace:
-				return "Would replace"
-			case deploy.OpCreateReplacement:
-				return "Would creating for replacement"
-			case deploy.OpDeleteReplaced:
-				return "Would delete for replacement"
-			}
-		} else {
-			switch op {
-			case deploy.OpSame:
-				return "Unchanged"
-			case deploy.OpCreate:
-				return "Creating"
-			case deploy.OpUpdate:
-				return "Updating"
-			case deploy.OpDelete:
-				return "Deleting"
-			case deploy.OpReplace:
-				return "Replacing"
-			case deploy.OpCreateReplacement:
-				return "Creating for replacement"
-			case deploy.OpDeleteReplaced:
-				return "Deleting for replacement"
-			}
+			return getPreviewText(op)
+		}
+
+		switch op {
+		case deploy.OpSame:
+			return "unchanged"
+		case deploy.OpCreate:
+			return "creating"
+		case deploy.OpUpdate:
+			return "updating"
+		case deploy.OpDelete:
+			return "deleting"
+		case deploy.OpReplace:
+			return "replacing"
+		case deploy.OpCreateReplacement:
+			return "creating for replacement"
+		case deploy.OpDeleteReplaced:
+			return "deleting for replacement"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)

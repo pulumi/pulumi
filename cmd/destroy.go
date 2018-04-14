@@ -4,9 +4,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -17,7 +19,6 @@ import (
 func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var stack string
-	var yes bool
 
 	var message string
 
@@ -25,6 +26,7 @@ func newDestroyCmd() *cobra.Command {
 	var analyzers []string
 	var color colorFlag
 	var parallel int
+	var force bool
 	var preview bool
 	var showConfig bool
 	var showReplacementSteps bool
@@ -42,9 +44,17 @@ func newDestroyCmd() *cobra.Command {
 			"all of this stack's resources and associated state will be gone.\n" +
 			"\n" +
 			"Warning: although old snapshots can be used to recreate a stack, this command\n" +
-			"is generally irreversable and should be used with great care.",
+			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+				return errors.New("'destroy' must be run interactively or be passed the --force or --preview flags")
+			}
+
+			if force && preview {
+				return errors.New("--force and --preview cannot both be specified")
+			}
+
 			s, err := requireStack(tokens.QName(stack), false)
 			if err != nil {
 				return err
@@ -59,21 +69,25 @@ func newDestroyCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
-			if !preview && !yes && !confirmPrompt(prompt, string(s.Name())) {
-				return errors.New("confirmation declined")
+			if !force && !preview {
+				prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
+
+				if !confirmPrompt(prompt, string(s.Name())) {
+					return errors.New("confirmation declined")
+				}
 			}
 
 			return s.Destroy(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
-				DryRun:    preview,
+				Force:     force,
+				Preview:   preview,
 				Parallel:  parallel,
 				Debug:     debug,
 			}, backend.DisplayOptions{
 				Color:                color.Colorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
-				ShowSames:            showSames,
+				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			})
@@ -86,17 +100,11 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
-		"Skip confirmation prompts, and proceed with the destruction anyway")
-
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
 
 	// Flags for engine.UpdateOptions.
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
@@ -104,8 +112,11 @@ func newDestroyCmd() *cobra.Command {
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&preview, "preview", "n", false,
-		"Don't create/delete resources; just preview the planned operations")
+		&force, "force", "f", false,
+		"Skip confirmation prompts and preview, and proceed with the destruction automatically")
+	cmd.PersistentFlags().BoolVar(
+		&preview, "preview", false,
+		"Only show a preview of what will happen, without prompting or making any changes")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -114,10 +125,12 @@ func newDestroyCmd() *cobra.Command {
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
-		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().VarP(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

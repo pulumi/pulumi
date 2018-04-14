@@ -265,8 +265,9 @@ func (pc *Client) ImportStackDeployment(stack StackIdentifier, deployment json.R
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
-func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
-	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+func (pc *Client) CreateUpdate(
+	kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
+	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
 	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
 
 	// First create the update program request.
@@ -285,6 +286,7 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 	if pkg.Description != nil {
 		description = *pkg.Description
 	}
+
 	updateRequest := apitype.UpdateProgramRequest{
 		Name:        string(pkg.Name),
 		Runtime:     pkg.Runtime,
@@ -294,7 +296,7 @@ func (pc *Client) CreateUpdate(kind UpdateKind, stack StackIdentifier, pkg *work
 		Options: apitype.UpdateOptions{
 			Analyzers:            opts.Analyzers,
 			Color:                colors.Raw, // force raw colorization, we handle colorization in the CLI
-			DryRun:               opts.DryRun,
+			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
 			ShowConfig:           false, // This is a legacy option now, the engine will always emit config information
 			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
