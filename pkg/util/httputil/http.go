@@ -2,7 +2,9 @@ package httputil
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/util/retry"
@@ -24,8 +26,12 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 				return true, res, nil
 			}
 			if try >= (maxRetryCount - 1) {
+				fmt.Fprintf(os.Stderr, "warning: request %s %s did not succeed '%s'. failing.\n",
+					req.Method, req.URL, resErr)
 				return false, res, resErr
 			}
+			fmt.Fprintf(os.Stderr, "warning: request %s %s did not succeed '%s' on attempt %d. retrying...\n",
+				req.Method, req.URL, resErr, try)
 			return false, nil, nil
 		},
 	})
