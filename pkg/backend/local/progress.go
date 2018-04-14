@@ -31,9 +31,16 @@ import (
 )
 
 type DiagInfo struct {
-	ErrorCount, WarningCount, InfoCount, DebugCount            int
+	ErrorCount, WarningCount, InfoCount, DebugCount int
+
+	// The last event of each severity kind.  We'll print out the most significant of these next
+	// to a resource while it is in progress.
 	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.Event
-	DiagEvents                                                 []engine.Event
+
+	// All the diagnostic events we've heard about this resource.  We'll print the last
+	// diagnostic in the status region while a resource is in progress.  At the end we'll
+	// print out all diagnostics for a resource.
+	DiagEvents []engine.Event
 }
 
 // Status helps us keep track for a resource as it is worked on by the engine.
@@ -55,11 +62,7 @@ type Status struct {
 	// If we failed this operation for any reason.
 	Failed bool
 
-	// All the diagnostic events we've heard about this resource.  We'll print the last
-	// diagnostic in the status region while a resource is in progress.  At the end we'll
-	// print out all diagnostics for a resource.
 	DiagInfo DiagInfo
-	// DiagEvents []engine.Event
 }
 
 var (
