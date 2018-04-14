@@ -609,17 +609,19 @@ func (display *ProgressDisplay) refreshAllIfInTerminal() {
 func (display *ProgressDisplay) processEndSteps() {
 	display.Done = true
 
-	// Mark all in progress resources as done.
 	for _, v := range display.eventUrnToStatus {
+		// transition everything to the done state.  If we're not in an a terminal and this is a
+		// transition, then print out the transition.  Don't bother doing this in a terminal as
+		// we're going to refresh everything when we break out of the loop.
 		if !v.Done() {
 			v.SetDone()
 
-			if display.updateDimensions() {
-				contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
-				display.refreshAllIfInTerminal()
-			} else {
+			if !display.isTerminal {
 				display.refreshSingleStatusMessage(v)
 			}
+		} else {
+			// Explicitly transition the status so that we clear out any cached data for it.
+			v.SetDone()
 		}
 	}
 
