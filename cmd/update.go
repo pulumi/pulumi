@@ -52,7 +52,7 @@ func newUpdateCmd() *cobra.Command {
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
-				return errors.New("'update' must either be run in a terminal or be passed the --force or --preview flag")
+				return errors.New("'update' must be run interactively or be passed the --force or --preview flag")
 			}
 
 			if force && preview {
