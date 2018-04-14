@@ -445,8 +445,8 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Now refresh everything.  this ensures that we go back and remove things like the diagnostic
 	// messages from a status message (since we're going to print them all) below.  Note, this will
-	// not do anything in a terminal.  This i what we want, as we don't really want to reprint any
-	// finished items we've already printed.
+	// only do something in a terminal.  This i what we want, because if we're not in a terminal we
+	// don't really want to reprint any finished items we've already printed.
 	display.refreshAllIfInTerminal()
 
 	// Print all diagnostics we've seen.
