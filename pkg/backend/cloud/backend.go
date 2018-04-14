@@ -447,12 +447,16 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 	for _, e := range events {
 		msg := local.RenderDiffEvent(e, seen, displayOpts)
 		if msg != "" {
+			if e.Type == engine.SummaryEvent {
+				msg = "\n" + msg
+			}
+
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
 		}
 	}
 
-	return buff.String()
+	return strings.TrimSpace(buff.String())
 }
 
 func (b *cloudBackend) PreviewThenPrompt(
@@ -496,13 +500,6 @@ func (b *cloudBackend) PreviewThenPrompt(
 		return err
 	}
 
-	var message string
-	if err != nil {
-		message = colors.SpecWarning + "\n!!! Warning, errors occurred !!!" + colors.Reset
-	}
-
-	message += colors.BrightWhite + "\nDo you want to proceed?" + colors.Reset
-
 	for {
 		var response string
 
@@ -519,7 +516,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 			options = append(options, string(details))
 		}
 		err = survey.AskOne(&survey.Select{
-			Message: colors.ColorizeText(message),
+			Message: colors.ColorizeText(colors.BrightWhite + "Do you want to proceed?" + colors.Reset),
 			Options: options,
 			Default: string(no),
 		}, &response, nil)
@@ -538,7 +535,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 		if response == string(details) {
 			diff := createDiff(events, displayOpts)
-			_, err = os.Stdout.WriteString(diff)
+			_, err = os.Stdout.WriteString(diff + "\n\n")
 			contract.IgnoreError(err)
 			continue
 		}

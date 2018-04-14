@@ -441,40 +441,50 @@ func (display *ProgressDisplay) processEndSteps() {
 			wroteResourceHeader := false
 			for _, v := range status.DiagEvents {
 				msg := display.renderProgressDiagEvent(v)
-				if msg != "" {
-					if !wroteDiagnosticHeader {
-						wroteDiagnosticHeader = true
-						display.writeBlankLine()
-						display.writeSimpleMessage("Diagnostics:")
-					}
 
-					if !wroteResourceHeader {
-						wroteResourceHeader = true
-						display.writeSimpleMessage("  " + status.ID + ":")
-					}
+				lines := strings.Split(msg, "\n")
 
-					lines := strings.Split(msg, "\n")
-					for _, line := range lines {
-						if strings.TrimSpace(msg) == "" {
-							continue
-						}
-
-						line = strings.TrimRightFunc(line, unicode.IsSpace)
-						display.writeSimpleMessage("    " + line)
+				// Trim off any trailing blank lines in the message.
+				for len(lines) > 0 {
+					lastLine := lines[len(lines)-1]
+					if strings.TrimSpace(colors.Never.Colorize(lastLine)) == "" {
+						lines = lines[0 : len(lines)-1]
+					} else {
+						break
 					}
 				}
+
+				if len(lines) == 0 {
+					continue
+				}
+
+				if !wroteDiagnosticHeader {
+					wroteDiagnosticHeader = true
+					display.writeBlankLine()
+					display.writeSimpleMessage("Diagnostics:")
+				}
+
+				if !wroteResourceHeader {
+					wroteResourceHeader = true
+					display.writeSimpleMessage("  " + status.ID + ":")
+				}
+
+				for _, line := range lines {
+					line = strings.TrimRightFunc(line, unicode.IsSpace)
+					display.writeSimpleMessage("    " + line)
+				}
+
+				display.writeBlankLine()
 			}
 		}
 	}
 
 	// print the summary
 	if display.summaryEvent != nil {
-		display.writeBlankLine()
-
 		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
-		display.writeSimpleMessage(msg)
-	} else if wroteDiagnosticHeader {
+
 		display.writeBlankLine()
+		display.writeSimpleMessage(msg)
 	}
 }
 
@@ -635,7 +645,7 @@ func (display *ProgressDisplay) getMetadataSummary(
 		diff := step.Old.Inputs.Diff(step.New.Inputs)
 
 		if diff != nil {
-			writeString(out, ". changes:")
+			writeString(out, "  changes:")
 
 			updates := make(resource.PropertyMap)
 			for k := range diff.Updates {
@@ -658,13 +668,15 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
-	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
-	if isRootStack(step) && step.Op != deploy.OpSame {
-		return "done"
+	if display.isPreview {
+		// During a preview, when we transition to done, we still just print the same thing we
+		// did while running the step.
+		return step.Op.Prefix() + getPreviewText(step.Op) + colors.Reset
 	}
 
-	if display.isPreview && !isRootStack(step) {
-		return display.getStepInProgressDescription(step)
+	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
+	if isRootStack(step) && step.Op == deploy.OpSame {
+		return "done"
 	}
 
 	op := step.Op
@@ -713,31 +725,40 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	return op.Prefix() + getDescription() + colors.Reset
 }
 
+func getPreviewText(op deploy.StepOp) string {
+	switch op {
+	case deploy.OpSame:
+		return "[no change]"
+	case deploy.OpCreate:
+		return "[create]"
+	case deploy.OpUpdate:
+		return "[update]"
+	case deploy.OpDelete:
+		return "[delete]"
+	case deploy.OpReplace:
+		return "[replace]"
+	case deploy.OpCreateReplacement:
+		return "[create for replacement]"
+	case deploy.OpDeleteReplaced:
+		return "[delete for replacement]"
+	}
+
+	contract.Failf("Unrecognized resource step op: %v", op)
+	return ""
+}
+
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
-	if isRootStack(step) && step.Op != deploy.OpSame {
+	op := step.Op
+
+	if isRootStack(step) && op == deploy.OpSame {
+		// most of the time a stack is unchanged.  in that case we just show it as "running->done".
+		// otherwise, we show what is actually happening to it.
 		return "running"
 	}
 
-	op := step.Op
-
 	getDescription := func() string {
 		if display.isPreview {
-			switch op {
-			case deploy.OpSame:
-				return "[no change]"
-			case deploy.OpCreate:
-				return "[create]"
-			case deploy.OpUpdate:
-				return "[update]"
-			case deploy.OpDelete:
-				return "[delete]"
-			case deploy.OpReplace:
-				return "[replace]"
-			case deploy.OpCreateReplacement:
-				return "[create for replacement]"
-			case deploy.OpDeleteReplaced:
-				return "[delete for replacement]"
-			}
+			return getPreviewText(op)
 		} else {
 			switch op {
 			case deploy.OpSame:
