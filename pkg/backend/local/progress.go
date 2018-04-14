@@ -405,13 +405,34 @@ func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 	})
 }
 
-func (display *ProgressDisplay) refreshAllStatusMessages(includeDone bool) {
-	for _, v := range display.eventUrnToStatus {
-		if v.Done && !includeDone {
-			continue
+func (display *ProgressDisplay) needsRefreshAll() bool {
+	refreshAll := false
+
+	// don't do any refreshing if we're not in a terminal
+	if display.isTerminal {
+		currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
+		if currentTerminalWidth != display.terminalWidth {
+			// terminal width changed.  Refresh everything
+			display.terminalWidth = currentTerminalWidth
+			refreshAll = true
 		}
 
-		display.refreshSingleStatusMessage(v)
+		for _, status := range display.eventUrnToStatus {
+			if len(status.ID) > display.maxIDLength {
+				display.maxIDLength = len(status.ID)
+				refreshAll = true
+			}
+		}
+	}
+
+	return refreshAll
+}
+
+func (display *ProgressDisplay) refreshAllIfInTerminal() {
+	if display.isTerminal {
+		for _, v := range display.eventUrnToStatus {
+			display.refreshSingleStatusMessage(v)
+		}
 	}
 }
 
@@ -426,11 +447,15 @@ func (display *ProgressDisplay) processEndSteps() {
 		if !v.Done {
 			v.Done = true
 			display.eventUrnToStatus[k] = v
+			display.refreshSingleStatusMessage(v)
 		}
 	}
 
-	// Make sure we refresh everything.  That way we remove any diagnostics printed on the line.
-	display.refreshAllStatusMessages(true /*includeDone*/)
+	// Now refresh everything.  this ensures that we go back and remove things like the diagnostic
+	// messages from a status message (since we're going to print them all) below.  Note, this will
+	// not do anything in a terminal.  This i what we want, as we don't really want to reprint any
+	// finished items we've already printed.
+	display.refreshAllIfInTerminal()
 
 	// Print all diagnostics we've seen.
 
@@ -492,14 +517,7 @@ func (display *ProgressDisplay) processTick() {
 	// Got a tick.  Update all the in-progress resources.
 	display.currentTick++
 
-	currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
-	if currentTerminalWidth != display.terminalWidth {
-		// terminal width changed.  Update our output.
-		display.terminalWidth = currentTerminalWidth
-		display.refreshAllStatusMessages(true /*includeDone*/)
-	} else {
-		display.refreshAllStatusMessages(false /*includeDone*/)
-	}
+	display.refreshAllIfInTerminal()
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
@@ -545,7 +563,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	// At this point, all events should relate to resources.
 
-	refreshAllStatuses := false
 	status, has := display.eventUrnToStatus[eventUrn]
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
@@ -553,16 +570,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		status = Status{Tick: display.currentTick}
 		status.Step.Op = deploy.OpSame
 		status.ID = display.makeID(eventUrn)
-
-		if display.isTerminal {
-			// in the terminal we want to align the status portions of messages. If we
-			// heard about a resource with a longer id, go and update all in-flight and
-			// finished resources so that their statuses get aligned.
-			if len(status.ID) > display.maxIDLength {
-				display.maxIDLength = len(status.ID)
-				refreshAllStatuses = true
-			}
-		}
 	}
 
 	if event.Type == engine.ResourcePreEvent {
@@ -588,10 +595,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// Ensure that this updated status is recorded.
 	display.eventUrnToStatus[eventUrn] = status
 
-	// refresh the progress information for this resource.  (or update all resources if
-	// we need to realign everything)
-	if refreshAllStatuses {
-		display.refreshAllStatusMessages(true /*includeDone*/)
+	// refresh the progress information for this resource.  Or refresh everything if necessary.
+
+	if display.needsRefreshAll() {
+		contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
+		display.refreshAllIfInTerminal()
 	} else {
 		display.refreshSingleStatusMessage(status)
 	}
