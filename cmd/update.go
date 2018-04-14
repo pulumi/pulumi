@@ -7,13 +7,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 func newUpdateCmd() *cobra.Command {
