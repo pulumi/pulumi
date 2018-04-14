@@ -397,8 +397,10 @@ func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 	})
 }
 
-func (display *ProgressDisplay) needsRefreshAll() bool {
-	refreshAll := false
+// Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
+// updated.
+func (display *ProgressDisplay) updateDimensions() bool {
+	updated := false
 
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
@@ -406,22 +408,25 @@ func (display *ProgressDisplay) needsRefreshAll() bool {
 		if currentTerminalWidth != display.terminalWidth {
 			// terminal width changed.  Refresh everything
 			display.terminalWidth = currentTerminalWidth
-			refreshAll = true
+			updated = true
 		}
 
 		for _, status := range display.eventUrnToStatus {
 			if len(status.ID) > display.maxIDLength {
 				display.maxIDLength = len(status.ID)
-				refreshAll = true
+				updated = true
 			}
 		}
 	}
 
-	return refreshAll
+	return updated
 }
 
 func (display *ProgressDisplay) refreshAllIfInTerminal() {
 	if display.isTerminal {
+		// make sure our stored dimension info is up to date
+		display.updateDimensions()
+
 		for _, v := range display.eventUrnToStatus {
 			display.refreshSingleStatusMessage(v)
 		}
@@ -588,9 +593,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// Ensure that this updated status is recorded.
 	display.eventUrnToStatus[eventUrn] = status
 
-	// refresh the progress information for this resource.  Or refresh everything if necessary.
-
-	if display.needsRefreshAll() {
+	// See if this new status information causes us to have to refresh everything.  Otherwise,
+	// just refresh the info for that single status message.
+	if display.updateDimensions() {
 		contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
 		display.refreshAllIfInTerminal()
 	} else {
