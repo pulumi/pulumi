@@ -66,6 +66,7 @@ type Status interface {
 	RecordDiagEvent(diagEvent engine.Event)
 
 	Columns() []string
+	UncolorizedColumns() []string
 }
 
 // Status helps us keep track for a resource as it is worked on by the engine.
@@ -91,7 +92,8 @@ type statusData struct {
 
 	_DiagInfo *DiagInfo
 
-	_Columns []string
+	_Columns            []string
+	_UncolorizedColumns []string
 }
 
 func (data *statusData) ID() string {
@@ -140,19 +142,30 @@ func (data *statusData) RecordDiagEvent(diagEvent engine.Event) {
 
 func (data *statusData) ClearCachedData() {
 	data._Columns = []string{}
+	data._UncolorizedColumns = []string{}
 }
 
 func (data *statusData) Columns() []string {
 	if len(data._Columns) == 0 {
-		columns := make([]string, 2)
-
-		columns[0] = data._ID
-		columns[1] = data._Display.getUnpaddedStatusSummary(data)
-
+		// columns := make([]string, 2)
+		columns := data._Display.getUnpaddedColumns(data)
 		data._Columns = columns
 	}
 
 	return data._Columns
+}
+
+func (data *statusData) UncolorizedColumns() []string {
+	if len(data._UncolorizedColumns) == 0 {
+		columns := data.Columns()
+		data._UncolorizedColumns = make([]string, len(columns))
+
+		for i, v := range columns {
+			data._UncolorizedColumns[i] = colors.Never.Colorize(v)
+		}
+	}
+
+	return data._UncolorizedColumns
 }
 
 var (
@@ -375,16 +388,20 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(columns []string, columnIndex int) string {
+func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, columnIndex int) string {
 	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
 	if display.isTerminal {
-		column := columns[columnIndex]
+		column := uncolorizedColumns[columnIndex]
 		maxIDLength := display.maxColumnLengths[columnIndex]
 		extraWhitespace = maxIDLength - len(column)
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
+
+		// if extraWhitespace == 0 {
+		// 	extraWhitespace = 1
+		// }
 	}
 
 	return strings.Repeat(" ", extraWhitespace)
@@ -394,11 +411,12 @@ func (display *ProgressDisplay) getMessagePadding(columns []string, columnIndex 
 // status, then some amount of optional padding, then some amount of msgWithColors, then the
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(columns []string, suffix string) string {
+func (display *ProgressDisplay) getPaddedMessage(
+	columns, uncolorizedColumns []string, suffix string) string {
 
 	msgWithColors := ""
 	for i := 1; i < len(columns); i++ {
-		padding := display.getMessagePadding(columns, i-1)
+		padding := display.getMessagePadding(uncolorizedColumns, i-1)
 		column := padding + columns[i]
 		msgWithColors += column
 	}
@@ -429,58 +447,70 @@ func (display *ProgressDisplay) getPaddedMessage(columns []string, suffix string
 // Gets the single line summary to show for a resource.  This will include the current state of
 // the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
 // information if there is any.
-func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
+func (display *ProgressDisplay) getUnpaddedColumns(status Status) []string {
 	if status.Step().Op == "" {
 		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 	}
 
-	worstDiag := getWorstDiagnostic(status)
-
 	diagInfo := status.DiagInfo()
 	failed := status.Failed() || diagInfo.ErrorCount > 0
-	msg := display.getMetadataSummary(status.Step(), status.Done(), failed)
+
+	columns := []string{status.ID()}
+	columns = append(columns, display.getMetadataSummary(status.Step(), status.Done(), failed))
+
+	diagMsg := ""
+	appendDiagMessage := func(msg string) {
+		if diagMsg != "" {
+			diagMsg += ", "
+		}
+
+		diagMsg += msg
+	}
 
 	if diagInfo.ErrorCount == 1 {
-		msg += ", 1 error"
+		appendDiagMessage("1 error")
 	} else if diagInfo.ErrorCount > 1 {
-		msg += fmt.Sprintf(", %v errors", diagInfo.ErrorCount)
+		appendDiagMessage(fmt.Sprintf("%v errors", diagInfo.ErrorCount))
 	}
 
 	if diagInfo.WarningCount == 1 {
-		msg += ", 1 warning"
+		appendDiagMessage("1 warning")
 	} else if diagInfo.WarningCount > 1 {
-		msg += fmt.Sprintf(", %v warnings", diagInfo.WarningCount)
+		appendDiagMessage(fmt.Sprintf("%v warnings", diagInfo.WarningCount))
 	}
 
 	if diagInfo.InfoCount == 1 {
-		msg += ", 1 info message"
+		appendDiagMessage("1 info message")
 	} else if diagInfo.InfoCount > 1 {
-		msg += fmt.Sprintf(", %v info messages", diagInfo.InfoCount)
+		appendDiagMessage(fmt.Sprintf("%v info messages", diagInfo.InfoCount))
 	}
 
 	if diagInfo.DebugCount == 1 {
-		msg += ", 1 debug message"
+		appendDiagMessage("1 debug message")
 	} else if diagInfo.ErrorCount > 1 {
-		msg += fmt.Sprintf(", %v debug messages", diagInfo.DebugCount)
+		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
 	}
 
 	// If we're not totally done, also print out the worst diagnostic next to the status message.
 	// This is helpful for long running tasks to know what's going on.  However, once done, we print
 	// the diagnostics at the bottom, so we don't need to show this.
+	worstDiag := getWorstDiagnostic(status)
 	if worstDiag != nil && !display.Done {
-		diagMsg := display.renderProgressDiagEvent(*worstDiag)
-		if diagMsg != "" {
-			msg += ". " + diagMsg
+		eventMsg := display.renderProgressDiagEvent(*worstDiag)
+		if eventMsg != "" {
+			diagMsg += ". " + eventMsg
 		}
 	}
 
-	return msg
+	columns = append(columns, diagMsg)
+	return columns
 }
 
 var ellipsesArray = []string{"", ".", "..", "..."}
 
 func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 	columns := status.Columns()
+	uncolorizedColumns := status.UncolorizedColumns()
 
 	// unpaddedMsg := display.getUnpaddedStatusSummary(status)
 	suffix := ""
@@ -489,7 +519,7 @@ func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 		suffix = ellipsesArray[(status.Tick()+display.currentTick)%len(ellipsesArray)]
 	}
 
-	msg := display.getPaddedMessage(columns, suffix)
+	msg := display.getPaddedMessage(columns, uncolorizedColumns, suffix)
 
 	display.colorizeAndWriteProgress(progress.Progress{
 		ID:     columns[0],
@@ -512,7 +542,7 @@ func (display *ProgressDisplay) updateDimensions() bool {
 		}
 
 		for _, status := range display.eventUrnToStatus {
-			columns := status.Columns()
+			columns := status.UncolorizedColumns()
 
 			if len(display.maxColumnLengths) == 0 {
 				display.maxColumnLengths = make([]int, len(columns))
