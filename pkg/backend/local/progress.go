@@ -237,7 +237,7 @@ func (data *statusData) getUnpaddedColumns(status Status) []string {
 	// If we're not totally done, also print out the worst diagnostic next to the status message.
 	// This is helpful for long running tasks to know what's going on.  However, once done, we print
 	// the diagnostics at the bottom, so we don't need to show this.
-	worstDiag := getWorstDiagnostic(status)
+	worstDiag := getWorstDiagnostic(data.diagInfo)
 	if worstDiag != nil && !data.display.Done {
 		eventMsg := data.display.renderProgressDiagEvent(*worstDiag)
 		if eventMsg != "" {
@@ -247,6 +247,28 @@ func (data *statusData) getUnpaddedColumns(status Status) []string {
 
 	columns = append(columns, diagMsg)
 	return columns
+}
+
+// Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
+// any resource if it has had any issues.
+func getWorstDiagnostic(diagInfo *DiagInfo) *engine.Event {
+	if diagInfo.LastError != nil {
+		return diagInfo.LastError
+	}
+
+	if diagInfo.LastWarning != nil {
+		return diagInfo.LastWarning
+	}
+
+	if diagInfo.LastInfoError != nil {
+		return diagInfo.LastInfoError
+	}
+
+	if diagInfo.LastInfo != nil {
+		return diagInfo.LastInfo
+	}
+
+	return diagInfo.LastDebug
 }
 
 func uncolorise(columns []string) []string {
@@ -386,29 +408,6 @@ func (display *ProgressDisplay) writeSimpleMessage(msg string) {
 
 func (display *ProgressDisplay) writeBlankLine() {
 	display.writeSimpleMessage(" ")
-}
-
-// Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
-// any resource if it has had any issues.
-func getWorstDiagnostic(status Status) *engine.Event {
-	diagInfo := status.DiagInfo()
-	if diagInfo.LastError != nil {
-		return diagInfo.LastError
-	}
-
-	if diagInfo.LastWarning != nil {
-		return diagInfo.LastWarning
-	}
-
-	if diagInfo.LastInfoError != nil {
-		return diagInfo.LastInfoError
-	}
-
-	if diagInfo.LastInfo != nil {
-		return diagInfo.LastInfo
-	}
-
-	return diagInfo.LastDebug
 }
 
 type ProgressDisplay struct {
