@@ -506,7 +506,8 @@ func (display *ProgressDisplay) processEndSteps() {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all the in-progress resources.
+	// Got a tick.  Update all  resources if we're in a terminal.  If we're not, then this won't do
+	// anything.
 	display.currentTick++
 
 	display.refreshAllIfInTerminal()
