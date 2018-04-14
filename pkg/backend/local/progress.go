@@ -759,23 +759,23 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 	getDescription := func() string {
 		if display.isPreview {
 			return getPreviewText(op)
-		} else {
-			switch op {
-			case deploy.OpSame:
-				return "unchanged"
-			case deploy.OpCreate:
-				return "creating"
-			case deploy.OpUpdate:
-				return "updating"
-			case deploy.OpDelete:
-				return "deleting"
-			case deploy.OpReplace:
-				return "replacing"
-			case deploy.OpCreateReplacement:
-				return "creating for replacement"
-			case deploy.OpDeleteReplaced:
-				return "deleting for replacement"
-			}
+		}
+
+		switch op {
+		case deploy.OpSame:
+			return "unchanged"
+		case deploy.OpCreate:
+			return "creating"
+		case deploy.OpUpdate:
+			return "updating"
+		case deploy.OpDelete:
+			return "deleting"
+		case deploy.OpReplace:
+			return "replacing"
+		case deploy.OpCreateReplacement:
+			return "creating for replacement"
+		case deploy.OpDeleteReplaced:
+			return "deleting for replacement"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
