@@ -62,7 +62,7 @@ type Status struct {
 	// If we failed this operation for any reason.
 	Failed bool
 
-	DiagInfo DiagInfo
+	DiagInfo *DiagInfo
 }
 
 var (
@@ -122,7 +122,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
 // any resource if it has had any issues.
-func getWorstDiagnostic(status Status) *engine.Event {
+func getWorstDiagnostic(status *Status) *engine.Event {
 	if status.DiagInfo.LastError != nil {
 		return status.DiagInfo.LastError
 	}
@@ -171,7 +171,7 @@ type ProgressDisplay struct {
 	currentTick int
 
 	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToStatus map[resource.URN]Status
+	eventUrnToStatus map[resource.URN]*Status
 
 	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
 	// For example, we'll go back and update previous status messages to make sure things
@@ -210,7 +210,7 @@ func DisplayProgressEvents(
 	display := &ProgressDisplay{
 		opts:             opts,
 		progressOutput:   progressOutput,
-		eventUrnToStatus: make(map[resource.URN]Status),
+		eventUrnToStatus: make(map[resource.URN]*Status),
 		urnToID:          make(map[resource.URN]string),
 		idToUrn:          make(map[string]resource.URN),
 	}
@@ -284,7 +284,7 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(status Status) string {
+func (display *ProgressDisplay) getMessagePadding(status *Status) string {
 	extraWhitespace := 0
 
 	// In the terminal we try to align the status messages for each resource.
@@ -302,7 +302,7 @@ func (display *ProgressDisplay) getMessagePadding(status Status) string {
 // status, then some amount of optional padding, then some amount of msgWithColors, then the
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors string, suffix string) string {
+func (display *ProgressDisplay) getPaddedMessage(status *Status, msgWithColors string, suffix string) string {
 	id := status.ID
 	padding := display.getMessagePadding(status)
 
@@ -331,7 +331,7 @@ func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors st
 // Gets the single line summary to show for a resource.  This will include the current state of
 // the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
 // information if there is any.
-func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
+func (display *ProgressDisplay) getUnpaddedStatusSummary(status *Status) string {
 	if status.Step.Op == "" {
 		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 	}
@@ -381,7 +381,7 @@ func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
 
 var ellipsesArray = []string{"", ".", "..", "..."}
 
-func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
+func (display *ProgressDisplay) refreshSingleStatusMessage(status *Status) {
 	unpaddedMsg := display.getUnpaddedStatusSummary(status)
 	suffix := ""
 
@@ -440,10 +440,9 @@ func (display *ProgressDisplay) processEndSteps() {
 	display.Done = true
 
 	// Mark all in progress resources as done.
-	for k, v := range display.eventUrnToStatus {
+	for _, v := range display.eventUrnToStatus {
 		if !v.Done {
 			v.Done = true
-			display.eventUrnToStatus[k] = v
 			display.refreshSingleStatusMessage(v)
 		}
 	}
@@ -565,9 +564,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
-		status = Status{Tick: display.currentTick}
+		status = &Status{Tick: display.currentTick, DiagInfo: &DiagInfo{}}
 		status.Step.Op = deploy.OpSame
 		status.ID = display.makeID(eventUrn)
+		display.eventUrnToStatus[eventUrn] = status
 	}
 
 	if event.Type == engine.ResourcePreEvent {
@@ -585,13 +585,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		status.Failed = true
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
-		status.DiagInfo = combineDiagnosticInfo(status.DiagInfo, event)
+		combineDiagnosticInfo(status.DiagInfo, event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
-
-	// Ensure that this updated status is recorded.
-	display.eventUrnToStatus[eventUrn] = status
 
 	// See if this new status information causes us to have to refresh everything.  Otherwise,
 	// just refresh the info for that single status message.
@@ -603,7 +600,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	}
 }
 
-func combineDiagnosticInfo(diagInfo DiagInfo, event engine.Event) DiagInfo {
+func combineDiagnosticInfo(diagInfo *DiagInfo, event engine.Event) {
 	payload := event.Payload.(engine.DiagEventPayload)
 
 	switch payload.Severity {
@@ -625,7 +622,6 @@ func combineDiagnosticInfo(diagInfo DiagInfo, event engine.Event) DiagInfo {
 	}
 
 	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
-	return diagInfo
 }
 
 func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
