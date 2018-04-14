@@ -335,12 +335,12 @@ func (data *headerData) UncolorizedColumns() []string {
 var (
 	// simple regex to take our names like "aws:function:Function" and convert to
 	// "aws:Function"
-	typeNameRegex = regexp.MustCompile("^(.*):(.*):(.*)$")
+	typeNameRegex = regexp.MustCompile("^(.*):(.*)/(.*):(.*)$")
 )
 
 func simplifyTypeName(typ tokens.Type) string {
 	typeString := string(typ)
-	return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
+	return typeNameRegex.ReplaceAllString(typeString, "$1:$2:$4")
 }
 
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
