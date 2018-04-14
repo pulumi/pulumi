@@ -43,26 +43,97 @@ type DiagInfo struct {
 	DiagEvents []engine.Event
 }
 
-// Status helps us keep track for a resource as it is worked on by the engine.
-type Status struct {
+type Status interface {
 	// The simple short ID we have generated for the resource to present it to the user.
 	// Usually similar to the form: aws.Function("name")
-	ID string
+	ID() string
 
 	// The change that the engine wants apply to that resource.
-	Step engine.StepEventMetadata
+	Step() engine.StepEventMetadata
+	SetStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this status.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
-	Tick int
+	Tick() int
+
+	Done() bool
+	SetDone()
+
+	Failed() bool
+	SetFailed()
+
+	DiagInfo() *DiagInfo
+	RecordDiagEvent(diagEvent engine.Event)
+}
+
+// Status helps us keep track for a resource as it is worked on by the engine.
+type statusData struct {
+	// The simple short ID we have generated for the resource to present it to the user.
+	// Usually similar to the form: aws.Function("name")
+	_ID string
+
+	// The change that the engine wants apply to that resource.
+	_Step engine.StepEventMetadata
+
+	// The tick we were on when we created this status.  Purely used for generating an
+	// ellipses to show progress for in-flight resources.
+	_Tick int
 
 	// If the engine finished processing this resources.
-	Done bool
+	_Done bool
 
 	// If we failed this operation for any reason.
-	Failed bool
+	_Failed bool
 
-	DiagInfo *DiagInfo
+	_DiagInfo *DiagInfo
+}
+
+func (data *statusData) ID() string {
+	return data._ID
+}
+
+func (data *statusData) Step() engine.StepEventMetadata {
+	return data._Step
+}
+
+func (data *statusData) SetStep(step engine.StepEventMetadata) {
+	data._Step = step
+	data.ClearCachedData()
+}
+
+func (data *statusData) Tick() int {
+	return data._Tick
+}
+
+func (data *statusData) Done() bool {
+	return data._Done
+}
+
+func (data *statusData) SetDone() {
+	data._Done = true
+	data.ClearCachedData()
+}
+
+func (data *statusData) Failed() bool {
+	return data._Failed
+}
+
+func (data *statusData) SetFailed() {
+	data._Failed = true
+	data.ClearCachedData()
+}
+
+func (data *statusData) DiagInfo() *DiagInfo {
+	return data._DiagInfo
+}
+
+func (data *statusData) RecordDiagEvent(diagEvent engine.Event) {
+	combineDiagnosticInfo(data._DiagInfo, diagEvent)
+	data.ClearCachedData()
+}
+
+func (data *statusData) ClearCachedData() {
+
 }
 
 var (
@@ -122,24 +193,25 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
 // any resource if it has had any issues.
-func getWorstDiagnostic(status *Status) *engine.Event {
-	if status.DiagInfo.LastError != nil {
-		return status.DiagInfo.LastError
+func getWorstDiagnostic(status Status) *engine.Event {
+	diagInfo := status.DiagInfo()
+	if diagInfo.LastError != nil {
+		return diagInfo.LastError
 	}
 
-	if status.DiagInfo.LastWarning != nil {
-		return status.DiagInfo.LastWarning
+	if diagInfo.LastWarning != nil {
+		return diagInfo.LastWarning
 	}
 
-	if status.DiagInfo.LastInfoError != nil {
-		return status.DiagInfo.LastInfoError
+	if diagInfo.LastInfoError != nil {
+		return diagInfo.LastInfoError
 	}
 
-	if status.DiagInfo.LastInfo != nil {
-		return status.DiagInfo.LastInfo
+	if diagInfo.LastInfo != nil {
+		return diagInfo.LastInfo
 	}
 
-	return status.DiagInfo.LastDebug
+	return diagInfo.LastDebug
 }
 
 type ProgressDisplay struct {
@@ -171,7 +243,7 @@ type ProgressDisplay struct {
 	currentTick int
 
 	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToStatus map[resource.URN]*Status
+	eventUrnToStatus map[resource.URN]Status
 
 	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
 	// For example, we'll go back and update previous status messages to make sure things
@@ -210,7 +282,7 @@ func DisplayProgressEvents(
 	display := &ProgressDisplay{
 		opts:             opts,
 		progressOutput:   progressOutput,
-		eventUrnToStatus: make(map[resource.URN]*Status),
+		eventUrnToStatus: make(map[resource.URN]Status),
 		urnToID:          make(map[resource.URN]string),
 		idToUrn:          make(map[string]resource.URN),
 	}
@@ -284,13 +356,13 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(status *Status) string {
+func (display *ProgressDisplay) getMessagePadding(status Status) string {
 	extraWhitespace := 0
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
 	if display.isTerminal {
-		id := status.ID
+		id := status.ID()
 		extraWhitespace = display.maxIDLength - len(id)
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", display.maxIDLength, id)
 	}
@@ -302,8 +374,8 @@ func (display *ProgressDisplay) getMessagePadding(status *Status) string {
 // status, then some amount of optional padding, then some amount of msgWithColors, then the
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(status *Status, msgWithColors string, suffix string) string {
-	id := status.ID
+func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors string, suffix string) string {
+	id := status.ID()
 	padding := display.getMessagePadding(status)
 
 	// In the terminal, only include the first line of the message
@@ -331,16 +403,16 @@ func (display *ProgressDisplay) getPaddedMessage(status *Status, msgWithColors s
 // Gets the single line summary to show for a resource.  This will include the current state of
 // the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
 // information if there is any.
-func (display *ProgressDisplay) getUnpaddedStatusSummary(status *Status) string {
-	if status.Step.Op == "" {
+func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
+	if status.Step().Op == "" {
 		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
 	}
 
 	worstDiag := getWorstDiagnostic(status)
 
-	diagInfo := status.DiagInfo
-	failed := status.Failed || status.DiagInfo.ErrorCount > 0
-	msg := display.getMetadataSummary(status.Step, status.Done, failed)
+	diagInfo := status.DiagInfo()
+	failed := status.Failed() || diagInfo.ErrorCount > 0
+	msg := display.getMetadataSummary(status.Step(), status.Done(), failed)
 
 	if diagInfo.ErrorCount == 1 {
 		msg += ", 1 error"
@@ -381,18 +453,18 @@ func (display *ProgressDisplay) getUnpaddedStatusSummary(status *Status) string 
 
 var ellipsesArray = []string{"", ".", "..", "..."}
 
-func (display *ProgressDisplay) refreshSingleStatusMessage(status *Status) {
+func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
 	unpaddedMsg := display.getUnpaddedStatusSummary(status)
 	suffix := ""
 
-	if !status.Done {
-		suffix = ellipsesArray[(status.Tick+display.currentTick)%len(ellipsesArray)]
+	if !status.Done() {
+		suffix = ellipsesArray[(status.Tick()+display.currentTick)%len(ellipsesArray)]
 	}
 
 	msg := display.getPaddedMessage(status, unpaddedMsg, suffix)
 
 	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     status.ID,
+		ID:     status.ID(),
 		Action: msg,
 	})
 }
@@ -412,8 +484,8 @@ func (display *ProgressDisplay) updateDimensions() bool {
 		}
 
 		for _, status := range display.eventUrnToStatus {
-			if len(status.ID) > display.maxIDLength {
-				display.maxIDLength = len(status.ID)
+			if len(status.ID()) > display.maxIDLength {
+				display.maxIDLength = len(status.ID())
 				updated = true
 			}
 		}
@@ -441,8 +513,8 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Mark all in progress resources as done.
 	for _, v := range display.eventUrnToStatus {
-		if !v.Done {
-			v.Done = true
+		if !v.Done() {
+			v.SetDone()
 			display.refreshSingleStatusMessage(v)
 		}
 	}
@@ -458,9 +530,9 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteDiagnosticHeader := false
 
 	for _, status := range display.eventUrnToStatus {
-		if len(status.DiagInfo.DiagEvents) > 0 {
+		if len(status.DiagInfo().DiagEvents) > 0 {
 			wroteResourceHeader := false
-			for _, v := range status.DiagInfo.DiagEvents {
+			for _, v := range status.DiagInfo().DiagEvents {
 				msg := display.renderProgressDiagEvent(v)
 
 				lines := strings.Split(msg, "\n")
@@ -487,7 +559,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
-					display.writeSimpleMessage("  " + status.ID + ":")
+					display.writeSimpleMessage("  " + status.ID() + ":")
 				}
 
 				for _, line := range lines {
@@ -564,28 +636,32 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
-		status = &Status{Tick: display.currentTick, DiagInfo: &DiagInfo{}}
-		status.Step.Op = deploy.OpSame
-		status.ID = display.makeID(eventUrn)
+		status = &statusData{
+			_ID:       display.makeID(eventUrn),
+			_Tick:     display.currentTick,
+			_DiagInfo: &DiagInfo{},
+			_Step:     engine.StepEventMetadata{Op: deploy.OpSame},
+		}
+
 		display.eventUrnToStatus[eventUrn] = status
 	}
 
 	if event.Type == engine.ResourcePreEvent {
-		status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
-		if status.Step.Op == "" {
+		status.SetStep(event.Payload.(engine.ResourcePreEventPayload).Metadata)
+		if status.Step().Op == "" {
 			contract.Failf("Got empty op for %s", event.Type)
 		}
 	} else if event.Type == engine.ResourceOutputsEvent {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
-			status.Done = true
+			status.SetDone()
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
-		status.Done = true
-		status.Failed = true
+		status.SetDone()
+		status.SetFailed()
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
-		combineDiagnosticInfo(status.DiagInfo, event)
+		status.RecordDiagEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
