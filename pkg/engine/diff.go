@@ -441,10 +441,8 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 				b, titleFunc, update, causedReplace, planning,
 				indent, summary, debug)
 		} else if same := diff.Sames[k]; !summary && shouldPrintPropertyValue(same, planning) {
-			if !summary {
-				titleFunc(deploy.OpSame, false)
-				printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
-			}
+			titleFunc(deploy.OpSame, false)
+			printPropertyValue(b, diff.Sames[k], planning, indent, deploy.OpSame, false, debug)
 		}
 	}
 }
@@ -474,11 +472,9 @@ func printPropertyValueDiff(
 				printPropertyValueDiff(
 					b, elemTitleFunc, update, causedReplace, planning,
 					indent+2, summary, debug)
-			} else {
-				if !summary {
-					elemTitleFunc(deploy.OpSame, false)
-					printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false, debug)
-				}
+			} else if !summary {
+				elemTitleFunc(deploy.OpSame, false)
+				printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false, debug)
 			}
 		}
 		writeWithIndentNoPrefix(b, indent, op, "]\n")
