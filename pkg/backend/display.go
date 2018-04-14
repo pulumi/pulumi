@@ -10,7 +10,7 @@ type DisplayOptions struct {
 	ShowConfig           bool                // true if we should show configuration information.
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
 	ShowSameResources    bool                // true to show the resources that aren't updated in addition to updates.
-	SummaryDiff          bool                // If the diff display should be a summarized
+	SummaryDiff          bool                // If the diff display should be summarized
 	DiffDisplay          bool                // true if we should display things as a rich diff
 	Debug                bool
 }
