@@ -295,7 +295,10 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return "", "", errors.Wrapf(err, "loading plugin list")
 	}
 	var match *PluginInfo
-	for _, plugin := range plugins {
+	for _, cur := range plugins {
+		// Since the value of cur changes as we iterate, we can't save a pointer to it. So let's have a local that
+		// we can take a pointer to if this plugin is the best match yet.
+		plugin := cur
 		if plugin.Kind == kind && plugin.Name == name {
 			// Always pick the most recent version of the plugin available.  Even if this is an exact match, we
 			// keep on searching just in case there's a newer version available.
