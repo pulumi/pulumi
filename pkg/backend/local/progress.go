@@ -44,12 +44,7 @@ type DiagInfo struct {
 }
 
 type Status interface {
-	// The simple short ID we have generated for the resource to present it to the user.
-	// Usually similar to the form: aws.Function("name")
-	// ID() string
-
 	// The change that the engine wants apply to that resource.
-	Step() engine.StepEventMetadata
 	SetStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this status.  Purely used for generating an
@@ -59,7 +54,6 @@ type Status interface {
 	Done() bool
 	SetDone()
 
-	Failed() bool
 	SetFailed()
 
 	DiagInfo() *DiagInfo
@@ -94,14 +88,6 @@ type statusData struct {
 
 	columns            []string
 	uncolorizedColumns []string
-}
-
-func (data *statusData) ID() string {
-	return data.id
-}
-
-func (data *statusData) Step() engine.StepEventMetadata {
-	return data.step
 }
 
 func (data *statusData) SetStep(step engine.StepEventMetadata) {
@@ -295,14 +281,6 @@ type headerData struct {
 	uncolorizedColumns []string
 }
 
-func (data *headerData) ID() string {
-	return "Resource name"
-}
-
-func (data *headerData) Step() engine.StepEventMetadata {
-	panic("should never be called")
-}
-
 func (data *headerData) SetStep(step engine.StepEventMetadata) {
 	panic("should never be called")
 }
@@ -340,7 +318,7 @@ func blue(msg string) string {
 
 func (data *headerData) Columns() []string {
 	if len(data.columns) == 0 {
-		data.columns = []string{blue(data.ID()), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
+		data.columns = []string{blue("Resource name"), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
 	}
 
 	return data.columns
@@ -830,10 +808,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	}
 
 	if event.Type == engine.ResourcePreEvent {
-		status.SetStep(event.Payload.(engine.ResourcePreEventPayload).Metadata)
-		if status.Step().Op == "" {
+		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
+		if step.Op == "" {
 			contract.Failf("Got empty op for %s", event.Type)
 		}
+
+		status.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
