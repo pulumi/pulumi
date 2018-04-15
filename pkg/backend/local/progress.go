@@ -529,30 +529,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	}
 }
 
-func combineDiagnosticInfo(diagInfo *DiagInfo, event engine.Event) {
-	payload := event.Payload.(engine.DiagEventPayload)
-
-	switch payload.Severity {
-	case diag.Error:
-		diagInfo.ErrorCount++
-		diagInfo.LastError = &event
-	case diag.Warning:
-		diagInfo.WarningCount++
-		diagInfo.LastWarning = &event
-	case diag.Infoerr:
-		diagInfo.InfoCount++
-		diagInfo.LastInfoError = &event
-	case diag.Info:
-		diagInfo.InfoCount++
-		diagInfo.LastInfo = &event
-	case diag.Debug:
-		diagInfo.DebugCount++
-		diagInfo.LastDebug = &event
-	}
-
-	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
-}
-
 func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the

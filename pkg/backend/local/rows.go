@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -131,9 +132,31 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 	return data.diagInfo
 }
 
-func (data *resourceRowData) RecordDiagEvent(diagEvent engine.Event) {
-	combineDiagnosticInfo(data.diagInfo, diagEvent)
+func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 	data.ClearCachedData()
+
+	diagInfo := data.diagInfo
+	payload := event.Payload.(engine.DiagEventPayload)
+
+	switch payload.Severity {
+	case diag.Error:
+		diagInfo.ErrorCount++
+		diagInfo.LastError = &event
+	case diag.Warning:
+		diagInfo.WarningCount++
+		diagInfo.LastWarning = &event
+	case diag.Infoerr:
+		diagInfo.InfoCount++
+		diagInfo.LastInfoError = &event
+	case diag.Info:
+		diagInfo.InfoCount++
+		diagInfo.LastInfo = &event
+	case diag.Debug:
+		diagInfo.DebugCount++
+		diagInfo.LastDebug = &event
+	}
+
+	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
 }
 
 func (data *resourceRowData) ClearCachedData() {
