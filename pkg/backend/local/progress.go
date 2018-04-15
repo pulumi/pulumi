@@ -262,7 +262,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
 		id := uncolorizedColumns[0]
-		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(uncolorizedSuffix) - 2
+		maxMsgLength := display.terminalWidth - len(id) - len(": ") - len(uncolorizedSuffix) - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
