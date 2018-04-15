@@ -208,21 +208,6 @@ func (display *ProgressDisplay) initializeTermInfo() {
 }
 
 func (display *ProgressDisplay) makeID(urn resource.URN) string {
-	// makeSingleID := func(suffix int) string {
-	// 	var id string
-	// 	if urn == "" {
-	// 		id = "global"
-	// 	} else {
-	// 		id = string(urn.Name())
-	// 	}
-
-	// 	if suffix > 0 {
-	// 		id += fmt.Sprintf(" (%v)", suffix)
-	// 	}
-
-	// 	return id
-	// }
-
 	if id, has := display.urnToID[urn]; !has {
 		id = fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
 
@@ -230,17 +215,6 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 		display.idToUrn[id] = urn
 
 		return id
-
-		// for i := 0; ; i++ {
-		// 	id = makeSingleID(i)
-
-		// 	if _, has = display.idToUrn[id]; !has {
-		// 		display.urnToID[urn] = id
-		// 		display.idToUrn[id] = urn
-
-		// 		return id
-		// 	}
-		// }
 	} else {
 		return id
 	}
