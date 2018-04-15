@@ -140,7 +140,6 @@ type ProgressDisplay struct {
 
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
-	idToUrn map[string]resource.URN
 
 	// If all progress messages are done and we can print out the final display.
 	Done bool
@@ -169,7 +168,6 @@ func DisplayProgressEvents(
 		progressOutput:        progressOutput,
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
 		urnToID:               make(map[resource.URN]string),
-		idToUrn:               make(map[string]resource.URN),
 	}
 
 	display.initializeTermInfo()
@@ -205,19 +203,6 @@ func (display *ProgressDisplay) initializeTermInfo() {
 
 	display.isTerminal = isTerminal
 	display.terminalWidth = terminalWidth
-}
-
-func (display *ProgressDisplay) makeID(urn resource.URN) string {
-	id, has := display.urnToID[urn]
-
-	if !has {
-		id = fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
-
-		display.urnToID[urn] = id
-		display.idToUrn[id] = urn
-	}
-
-	return id
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
@@ -496,11 +481,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	row, has := display.eventUrnToResourceRow[eventUrn]
 	if !has {
+		id := fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
+
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
 		row = &resourceRowData{
 			display:  display,
-			id:       display.makeID(eventUrn),
+			id:       id,
 			tick:     display.currentTick,
 			diagInfo: &DiagInfo{},
 			step:     engine.StepEventMetadata{Op: deploy.OpSame},
