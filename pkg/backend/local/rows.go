@@ -26,7 +26,7 @@ type ResourceRow interface {
 	// The change that the engine wants apply to that resource.
 	SetStep(step engine.StepEventMetadata)
 
-	// The tick we were on when we created this status.  Purely used for generating an
+	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	Tick() int
 
@@ -39,7 +39,41 @@ type ResourceRow interface {
 	RecordDiagEvent(diagEvent engine.Event)
 }
 
-// Status helps us keep track for a resource as it is worked on by the engine.
+// Implementation of a Row, used for the header of the grid.
+type headerRowData struct {
+	columns            []string
+	uncolorizedColumns []string
+}
+
+func (data *headerRowData) ColorizedColumns() []string {
+	if len(data.columns) == 0 {
+		blue := func(msg string) string {
+			return colors.Blue + msg + colors.Reset
+		}
+
+		header := func(msg string) string {
+			return blue(msg)
+		}
+
+		data.columns = []string{"#", header("Resource Type"), header("Name"), header("Status"), header("Extra Info")}
+	}
+
+	return data.columns
+}
+
+func (data *headerRowData) UncolorizedColumns() []string {
+	if len(data.uncolorizedColumns) == 0 {
+		data.uncolorizedColumns = uncolorise(data.ColorizedColumns())
+	}
+
+	return data.uncolorizedColumns
+}
+
+func (data *headerRowData) ColorizedSuffix() string {
+	return ""
+}
+
+// Implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
 	display *ProgressDisplay
 
@@ -50,7 +84,7 @@ type resourceRowData struct {
 	// The change that the engine wants apply to that resource.
 	step engine.StepEventMetadata
 
-	// The tick we were on when we created this status.  Purely used for generating an
+	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	tick int
 
@@ -297,38 +331,4 @@ func (data *resourceRowData) UncolorizedColumns() []string {
 	}
 
 	return data.uncolorizedColumns
-}
-
-// Status helps us keep track for a resource as it is worked on by the engine.
-type headerRowData struct {
-	columns            []string
-	uncolorizedColumns []string
-}
-
-func (data *headerRowData) ColorizedColumns() []string {
-	if len(data.columns) == 0 {
-		blue := func(msg string) string {
-			return colors.Blue + msg + colors.Reset
-		}
-
-		header := func(msg string) string {
-			return blue(msg)
-		}
-
-		data.columns = []string{"#", header("Resource Type"), header("Name"), header("Status"), header("Extra Info")}
-	}
-
-	return data.columns
-}
-
-func (data *headerRowData) UncolorizedColumns() []string {
-	if len(data.uncolorizedColumns) == 0 {
-		data.uncolorizedColumns = uncolorise(data.ColorizedColumns())
-	}
-
-	return data.uncolorizedColumns
-}
-
-func (data *headerRowData) ColorizedSuffix() string {
-	return ""
 }
