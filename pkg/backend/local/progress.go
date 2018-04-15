@@ -43,7 +43,16 @@ type DiagInfo struct {
 	DiagEvents []engine.Event
 }
 
-type Status interface {
+type Row interface {
+	Columns() []string
+	UncolorizedColumns() []string
+
+	Suffix() string
+}
+
+type ResourceRow interface {
+	Row
+
 	// The change that the engine wants apply to that resource.
 	SetStep(step engine.StepEventMetadata)
 
@@ -58,13 +67,10 @@ type Status interface {
 
 	DiagInfo() *DiagInfo
 	RecordDiagEvent(diagEvent engine.Event)
-
-	Columns() []string
-	UncolorizedColumns() []string
 }
 
 // Status helps us keep track for a resource as it is worked on by the engine.
-type statusData struct {
+type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The simple short ID we have generated for the resource to present it to the user.
@@ -90,48 +96,58 @@ type statusData struct {
 	uncolorizedColumns []string
 }
 
-func (data *statusData) SetStep(step engine.StepEventMetadata) {
+func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
 	data.step = step
 	data.ClearCachedData()
 }
 
-func (data *statusData) Tick() int {
+func (data *resourceRowData) Tick() int {
 	return data.tick
 }
 
-func (data *statusData) Done() bool {
+func (data *resourceRowData) Done() bool {
 	return data.done
 }
 
-func (data *statusData) SetDone() {
+func (data *resourceRowData) SetDone() {
 	data.done = true
 	data.ClearCachedData()
 }
 
-func (data *statusData) Failed() bool {
+func (data *resourceRowData) Failed() bool {
 	return data.failed
 }
 
-func (data *statusData) SetFailed() {
+func (data *resourceRowData) SetFailed() {
 	data.failed = true
 	data.ClearCachedData()
 }
 
-func (data *statusData) DiagInfo() *DiagInfo {
+func (data *resourceRowData) DiagInfo() *DiagInfo {
 	return data.diagInfo
 }
 
-func (data *statusData) RecordDiagEvent(diagEvent engine.Event) {
+func (data *resourceRowData) RecordDiagEvent(diagEvent engine.Event) {
 	combineDiagnosticInfo(data.diagInfo, diagEvent)
 	data.ClearCachedData()
 }
 
-func (data *statusData) ClearCachedData() {
+func (data *resourceRowData) ClearCachedData() {
 	data.columns = []string{}
 	data.uncolorizedColumns = []string{}
 }
 
-func (data *statusData) Columns() []string {
+var ellipsesArray = []string{"", ".", "..", "..."}
+
+func (data *resourceRowData) Suffix() string {
+	if !data.done {
+		return ellipsesArray[(data.tick+data.display.currentTick)%len(ellipsesArray)]
+	}
+
+	return ""
+}
+
+func (data *resourceRowData) Columns() []string {
 	if len(data.columns) == 0 {
 		columns := data.getUnpaddedColumns()
 		data.columns = columns
@@ -143,7 +159,7 @@ func (data *statusData) Columns() []string {
 // Gets the single line summary to show for a resource.  This will include the current state of
 // the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
 // information if there is any.
-func (data *statusData) getUnpaddedColumns() []string {
+func (data *resourceRowData) getUnpaddedColumns() []string {
 	step := data.step
 	if step.Op == "" {
 		contract.Failf("Finishing a resource we never heard about: '%s'", data.id)
@@ -266,7 +282,7 @@ func uncolorise(columns []string) []string {
 	return uncolorizedColumns
 }
 
-func (data *statusData) UncolorizedColumns() []string {
+func (data *resourceRowData) UncolorizedColumns() []string {
 	if len(data.uncolorizedColumns) == 0 {
 		columns := data.Columns()
 		data.uncolorizedColumns = uncolorise(columns)
@@ -276,60 +292,33 @@ func (data *statusData) UncolorizedColumns() []string {
 }
 
 // Status helps us keep track for a resource as it is worked on by the engine.
-type headerData struct {
+type headerRowData struct {
 	columns            []string
 	uncolorizedColumns []string
 }
 
-func (data *headerData) SetStep(step engine.StepEventMetadata) {
-	panic("should never be called")
-}
-
-func (data *headerData) Tick() int {
-	panic("should never be called")
-}
-
-func (data *headerData) Done() bool {
-	return true
-}
-
-func (data *headerData) SetDone() {
-}
-
-func (data *headerData) Failed() bool {
-	panic("should never be called")
-}
-
-func (data *headerData) SetFailed() {
-	panic("should never be called")
-}
-
-func (data *headerData) DiagInfo() *DiagInfo {
-	return &DiagInfo{}
-}
-
-func (data *headerData) RecordDiagEvent(diagEvent engine.Event) {
-	panic("should never be called")
-}
-
-func blue(msg string) string {
-	return colors.Blue + msg + colors.Reset
-}
-
-func (data *headerData) Columns() []string {
+func (data *headerRowData) Columns() []string {
 	if len(data.columns) == 0 {
+		blue := func(msg string) string {
+			return colors.Blue + msg + colors.Reset
+		}
+
 		data.columns = []string{blue("Resource name"), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
 	}
 
 	return data.columns
 }
 
-func (data *headerData) UncolorizedColumns() []string {
+func (data *headerRowData) UncolorizedColumns() []string {
 	if len(data.uncolorizedColumns) == 0 {
 		data.uncolorizedColumns = uncolorise(data.Columns())
 	}
 
 	return data.uncolorizedColumns
+}
+
+func (data *headerRowData) Suffix() string {
+	return ""
 }
 
 var (
@@ -415,8 +404,9 @@ type ProgressDisplay struct {
 	// a status message to help indicate that things are still working.
 	currentTick int
 
+	rows []Row
 	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToStatus map[resource.URN]Status
+	eventUrnToResourceRow map[resource.URN]ResourceRow
 
 	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
 	// For example, we'll go back and update previous status messages to make sure things
@@ -453,11 +443,11 @@ func DisplayProgressEvents(
 	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
 	display := &ProgressDisplay{
-		opts:             opts,
-		progressOutput:   progressOutput,
-		eventUrnToStatus: make(map[resource.URN]Status),
-		urnToID:          make(map[resource.URN]string),
-		idToUrn:          make(map[string]resource.URN),
+		opts:                  opts,
+		progressOutput:        progressOutput,
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		urnToID:               make(map[resource.URN]string),
+		idToUrn:               make(map[string]resource.URN),
 	}
 
 	display.initializeTermInfo()
@@ -587,17 +577,10 @@ func (display *ProgressDisplay) getPaddedMessage(
 	return msgWithColors + suffix
 }
 
-var ellipsesArray = []string{"", ".", "..", "..."}
-
-func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
-	columns := status.Columns()
-	uncolorizedColumns := status.UncolorizedColumns()
-
-	suffix := ""
-
-	if !status.Done() {
-		suffix = ellipsesArray[(status.Tick()+display.currentTick)%len(ellipsesArray)]
-	}
+func (display *ProgressDisplay) refreshSingleRow(row Row) {
+	columns := row.Columns()
+	uncolorizedColumns := row.UncolorizedColumns()
+	suffix := row.Suffix()
 
 	msg := display.getPaddedMessage(columns, uncolorizedColumns, suffix)
 
@@ -623,8 +606,8 @@ func (display *ProgressDisplay) updateDimensions() bool {
 			updated = true
 		}
 
-		for _, status := range display.eventUrnToStatus {
-			columns := status.UncolorizedColumns()
+		for _, row := range display.rows {
+			columns := row.UncolorizedColumns()
 
 			if len(display.maxColumnLengths) == 0 {
 				display.maxColumnLengths = make([]int, len(columns))
@@ -642,13 +625,13 @@ func (display *ProgressDisplay) updateDimensions() bool {
 	return updated
 }
 
-func (display *ProgressDisplay) refreshAllIfInTerminal() {
+func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal {
 		// make sure our stored dimension info is up to date
 		display.updateDimensions()
 
-		for _, v := range display.eventUrnToStatus {
-			display.refreshSingleStatusMessage(v)
+		for _, row := range display.rows {
+			display.refreshSingleRow(row)
 		}
 	}
 }
@@ -659,7 +642,7 @@ func (display *ProgressDisplay) refreshAllIfInTerminal() {
 func (display *ProgressDisplay) processEndSteps() {
 	display.Done = true
 
-	for _, v := range display.eventUrnToStatus {
+	for _, v := range display.eventUrnToResourceRow {
 		// transition everything to the done state.  If we're not in an a terminal and this is a
 		// transition, then print out the transition.  Don't bother doing this in a terminal as
 		// we're going to refresh everything when we break out of the loop.
@@ -667,7 +650,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			v.SetDone()
 
 			if !display.isTerminal {
-				display.refreshSingleStatusMessage(v)
+				display.refreshSingleRow(v)
 			}
 		} else {
 			// Explicitly transition the status so that we clear out any cached data for it.
@@ -679,16 +662,17 @@ func (display *ProgressDisplay) processEndSteps() {
 	// messages from a status message (since we're going to print them all) below.  Note, this will
 	// only do something in a terminal.  This i what we want, because if we're not in a terminal we
 	// don't really want to reprint any finished items we've already printed.
-	display.refreshAllIfInTerminal()
+	display.refreshAllRowsIfInTerminal()
 
 	// Print all diagnostics we've seen.
 
 	wroteDiagnosticHeader := false
 
-	for _, status := range display.eventUrnToStatus {
-		if len(status.DiagInfo().DiagEvents) > 0 {
+	for _, row := range display.eventUrnToResourceRow {
+		events := row.DiagInfo().DiagEvents
+		if len(events) > 0 {
 			wroteResourceHeader := false
-			for _, v := range status.DiagInfo().DiagEvents {
+			for _, v := range events {
 				msg := display.renderProgressDiagEvent(v)
 
 				lines := strings.Split(msg, "\n")
@@ -715,7 +699,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
-					display.writeSimpleMessage("  " + status.Columns()[0] + ":")
+					display.writeSimpleMessage("  " + row.Columns()[0] + ":")
 				}
 
 				for _, line := range lines {
@@ -742,7 +726,7 @@ func (display *ProgressDisplay) processTick() {
 	// anything.
 	display.currentTick++
 
-	display.refreshAllIfInTerminal()
+	display.refreshAllRowsIfInTerminal()
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
@@ -786,19 +770,18 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	}
 
-	if len(display.eventUrnToStatus) == 0 {
+	if len(display.rows) == 0 {
 		// about to make our first status message.  make sure we present the header line first.
-		display.eventUrnToStatus[resource.URN("Header Entry")] = &headerData{}
-		display.refreshAllIfInTerminal()
+		display.rows = append(display.rows, &headerRowData{})
 	}
 
 	// At this point, all events should relate to resources.
 
-	status, has := display.eventUrnToStatus[eventUrn]
+	row, has := display.eventUrnToResourceRow[eventUrn]
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
-		status = &statusData{
+		row = &resourceRowData{
 			display:  display,
 			id:       display.makeID(eventUrn),
 			tick:     display.currentTick,
@@ -806,7 +789,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			step:     engine.StepEventMetadata{Op: deploy.OpSame},
 		}
 
-		display.eventUrnToStatus[eventUrn] = status
+		display.eventUrnToResourceRow[eventUrn] = row
+		display.rows = append(display.rows, row)
 	}
 
 	if event.Type == engine.ResourcePreEvent {
@@ -815,18 +799,18 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			contract.Failf("Got empty op for %s", event.Type)
 		}
 
-		status.SetStep(step)
+		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
-			status.SetDone()
+			row.SetDone()
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
-		status.SetDone()
-		status.SetFailed()
+		row.SetDone()
+		row.SetFailed()
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
-		status.RecordDiagEvent(event)
+		row.RecordDiagEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
@@ -835,9 +819,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// just refresh the info for that single status message.
 	if display.updateDimensions() {
 		contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
-		display.refreshAllIfInTerminal()
+		display.refreshAllRowsIfInTerminal()
 	} else {
-		display.refreshSingleStatusMessage(status)
+		display.refreshSingleRow(row)
 	}
 }
 
