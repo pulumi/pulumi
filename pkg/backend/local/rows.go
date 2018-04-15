@@ -273,7 +273,7 @@ func (data *headerRowData) Columns() []string {
 			return colors.Blue + msg + colors.Reset
 		}
 
-		data.columns = []string{blue("Resource name"), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
+		data.columns = []string{blue("     Resource name"), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
 	}
 
 	return data.columns

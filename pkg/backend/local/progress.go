@@ -208,7 +208,22 @@ func (display *ProgressDisplay) initializeTermInfo() {
 }
 
 func (display *ProgressDisplay) makeID(urn resource.URN) string {
-	makeSingleID := func(suffix int) string {
+	// makeSingleID := func(suffix int) string {
+	// 	var id string
+	// 	if urn == "" {
+	// 		id = "global"
+	// 	} else {
+	// 		id = string(urn.Name())
+	// 	}
+
+	// 	if suffix > 0 {
+	// 		id += fmt.Sprintf(" (%v)", suffix)
+	// 	}
+
+	// 	return id
+	// }
+
+	if id, has := display.urnToID[urn]; !has {
 		var id string
 		if urn == "" {
 			id = "global"
@@ -216,24 +231,27 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 			id = string(urn.Name())
 		}
 
-		if suffix > 0 {
-			id += fmt.Sprintf(" (%v)", suffix)
+		if len(display.eventUrnToResourceRow) < 1000 {
+			id = fmt.Sprintf("%3d: %s", len(display.eventUrnToResourceRow)+1, id)
+		} else {
+			id = fmt.Sprintf("%d: %s", len(display.eventUrnToResourceRow)+1, id)
 		}
+
+		display.urnToID[urn] = id
+		display.idToUrn[id] = urn
 
 		return id
-	}
 
-	if id, has := display.urnToID[urn]; !has {
-		for i := 0; ; i++ {
-			id = makeSingleID(i)
+		// for i := 0; ; i++ {
+		// 	id = makeSingleID(i)
 
-			if _, has = display.idToUrn[id]; !has {
-				display.urnToID[urn] = id
-				display.idToUrn[id] = urn
+		// 	if _, has = display.idToUrn[id]; !has {
+		// 		display.urnToID[urn] = id
+		// 		display.idToUrn[id] = urn
 
-				return id
-			}
-		}
+		// 		return id
+		// 	}
+		// }
 	} else {
 		return id
 	}
