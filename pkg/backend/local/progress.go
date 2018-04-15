@@ -30,24 +30,12 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// Status helps us keep track for a resource as it is worked on by the engine.
-type Status struct {
-	// The simple short ID we have generated for the resource to present it to the user.
-	// Usually similar to the form: aws.Function("name")
-	ID string
+type DiagInfo struct {
+	ErrorCount, WarningCount, InfoCount, DebugCount int
 
-	// The change that the engine wants apply to that resource.
-	Step engine.StepEventMetadata
-
-	// The tick we were on when we created this status.  Purely used for generating an
-	// ellipses to show progress for in-flight resources.
-	Tick int
-
-	// If the engine finished processing this resources.
-	Done bool
-
-	// If we failed this operation for any reason.
-	Failed bool
+	// The last event of each severity kind.  We'll print out the most significant of these next
+	// to a resource while it is in progress.
+	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.Event
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last
 	// diagnostic in the status region while a resource is in progress.  At the end we'll
@@ -58,12 +46,12 @@ type Status struct {
 var (
 	// simple regex to take our names like "aws:function:Function" and convert to
 	// "aws:Function"
-	typeNameRegex = regexp.MustCompile("^(.*):(.*):(.*)$")
+	typeNameRegex = regexp.MustCompile("^(.*):(.*)/(.*):(.*)$")
 )
 
 func simplifyTypeName(typ tokens.Type) string {
 	typeString := string(typ)
-	return typeNameRegex.ReplaceAllString(typeString, "$1:$3")
+	return typeNameRegex.ReplaceAllString(typeString, "$1:$2:$4")
 }
 
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
@@ -110,55 +98,6 @@ func (display *ProgressDisplay) writeBlankLine() {
 	display.writeSimpleMessage(" ")
 }
 
-// Returns the worst diagnostic we've seen, along with counts of all the diagnostic kinds.  Used to
-// produce a diagnostic string to go along with any resource if it has had any issues.
-func getDiagnosticInformation(status Status) (
-	worstDiag *engine.Event, errorEvents, warningEvents, infoEvents, debugEvents int) {
-
-	errors := 0
-	warnings := 0
-	infos := 0
-	debugs := 0
-
-	var lastError, lastInfoError, lastWarning, lastInfo, lastDebug *engine.Event
-
-	for _, ev := range status.DiagEvents {
-		payload := ev.Payload.(engine.DiagEventPayload)
-
-		switch payload.Severity {
-		case diag.Error:
-			errors++
-			lastError = &ev
-		case diag.Warning:
-			warnings++
-			lastWarning = &ev
-		case diag.Infoerr:
-			infos++
-			lastInfoError = &ev
-		case diag.Info:
-			infos++
-			lastInfo = &ev
-		case diag.Debug:
-			debugs++
-			lastDebug = &ev
-		}
-	}
-
-	if lastError != nil {
-		worstDiag = lastError
-	} else if lastWarning != nil {
-		worstDiag = lastWarning
-	} else if lastInfoError != nil {
-		worstDiag = lastInfoError
-	} else if lastInfo != nil {
-		worstDiag = lastInfo
-	} else {
-		worstDiag = lastDebug
-	}
-
-	return worstDiag, errors, warnings, infos, debugs
-}
-
 type ProgressDisplay struct {
 	opts           backend.DisplayOptions
 	progressOutput progress.Output
@@ -181,14 +120,15 @@ type ProgressDisplay struct {
 	// The length of the largest ID we've seen.  We use this so we can align status messages per
 	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
 	// everything aligns.
-	maxIDLength int
+	maxColumnLengths []int
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
 	currentTick int
 
+	rows []Row
 	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToStatus map[resource.URN]Status
+	eventUrnToResourceRow map[resource.URN]ResourceRow
 
 	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
 	// For example, we'll go back and update previous status messages to make sure things
@@ -200,7 +140,6 @@ type ProgressDisplay struct {
 
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
-	idToUrn map[string]resource.URN
 
 	// If all progress messages are done and we can print out the final display.
 	Done bool
@@ -225,11 +164,10 @@ func DisplayProgressEvents(
 	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
 	display := &ProgressDisplay{
-		opts:             opts,
-		progressOutput:   progressOutput,
-		eventUrnToStatus: make(map[resource.URN]Status),
-		urnToID:          make(map[resource.URN]string),
-		idToUrn:          make(map[string]resource.URN),
+		opts:                  opts,
+		progressOutput:        progressOutput,
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		urnToID:               make(map[resource.URN]string),
 	}
 
 	display.initializeTermInfo()
@@ -267,49 +205,24 @@ func (display *ProgressDisplay) initializeTermInfo() {
 	display.terminalWidth = terminalWidth
 }
 
-func (display *ProgressDisplay) makeID(urn resource.URN) string {
-	makeSingleID := func(suffix int) string {
-		var id string
-		if urn == "" {
-			id = "global"
-		} else {
-			id = simplifyTypeName(urn.Type()) + "(\"" + string(urn.Name()) + "\")"
-		}
-
-		if suffix > 0 {
-			id += fmt.Sprintf("-%v", suffix)
-		}
-
-		return id
-	}
-
-	if id, has := display.urnToID[urn]; !has {
-		for i := 0; ; i++ {
-			id = makeSingleID(i)
-
-			if _, has = display.idToUrn[id]; !has {
-				display.urnToID[urn] = id
-				display.idToUrn[id] = urn
-
-				return id
-			}
-		}
-	} else {
-		return id
-	}
-}
-
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(status Status) string {
-	extraWhitespace := 0
+func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, columnIndex int) string {
+	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
 	if display.isTerminal {
-		id := status.ID
-		extraWhitespace = display.maxIDLength - len(id)
-		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", display.maxIDLength, id)
+		column := uncolorizedColumns[columnIndex]
+		maxIDLength := display.maxColumnLengths[columnIndex]
+		extraWhitespace = maxIDLength - len(column)
+		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
+
+		if columnIndex > 0 {
+			// docker puts an extra whitespace one the first column.  We replicate that for all
+			// other columns
+			extraWhitespace++
+		}
 	}
 
 	return strings.Repeat(" ", extraWhitespace)
@@ -319,99 +232,105 @@ func (display *ProgressDisplay) getMessagePadding(status Status) string {
 // status, then some amount of optional padding, then some amount of msgWithColors, then the
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(status Status, msgWithColors string, suffix string) string {
-	id := status.ID
-	padding := display.getMessagePadding(status)
+func (display *ProgressDisplay) getPaddedMessage(
+	colorizedColumns, uncolorizedColumns []string,
+	colorizedSuffix, uncolorizedSuffix string) string {
+
+	colorizedMessage := ""
+
+	// Figure out the last column that is non-empty.  That's where we'll add the suffix to.
+	lastNonEmptyColumn := len(uncolorizedColumns)
+	for lastNonEmptyColumn > 0 && uncolorizedColumns[lastNonEmptyColumn-1] == "" {
+		lastNonEmptyColumn--
+	}
+
+	for i := 1; i < lastNonEmptyColumn; i++ {
+		padding := display.getMessagePadding(uncolorizedColumns, i-1)
+		colorizedColumn := padding + colorizedColumns[i]
+		colorizedMessage += colorizedColumn
+	}
 
 	// In the terminal, only include the first line of the message
 	if display.isTerminal {
-		newLineIndex := strings.Index(msgWithColors, "\n")
+		newLineIndex := strings.Index(colorizedMessage, "\n")
 		if newLineIndex >= 0 {
-			msgWithColors = msgWithColors[0:newLineIndex]
+			colorizedMessage = colorizedMessage[0:newLineIndex]
 		}
 
 		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(padding) - len(suffix) - 1
+		id := uncolorizedColumns[0]
+		maxMsgLength := display.terminalWidth - len(id) - len(": ") - len(uncolorizedSuffix) - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
 
-		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
+		colorizedMessage = colors.TrimColorizedString(colorizedMessage, maxMsgLength)
 	}
 
-	return padding + msgWithColors + suffix
+	return colorizedMessage + colorizedSuffix
 }
 
-// Gets the single line summary to show for a resource.  This will include the current state of
-// the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
-// information if there is any.
-func (display *ProgressDisplay) getUnpaddedStatusSummary(status Status) string {
-	if status.Step.Op == "" {
-		contract.Failf("Finishing a resource we never heard about: '%s'", status.ID)
-	}
+func (display *ProgressDisplay) refreshSingleRow(row Row) {
+	colorizedColumns := row.ColorizedColumns()
+	uncolorizedColumns := row.UncolorizedColumns()
+	colorizedSuffix := row.ColorizedSuffix()
+	uncolorizedSuffix := colors.Never.Colorize(colorizedSuffix)
 
-	worstDiag, errors, warnings, infos, debugs := getDiagnosticInformation(status)
-
-	failed := status.Failed || errors > 0
-	msg := display.getMetadataSummary(status.Step, status.Done, failed)
-
-	if errors > 0 {
-		msg += fmt.Sprintf(", %v error(s)", errors)
-	}
-
-	if warnings > 0 {
-		msg += fmt.Sprintf(", %v warning(s)", warnings)
-	}
-
-	if infos > 0 {
-		msg += fmt.Sprintf(", %v info message(s)", infos)
-	}
-
-	if debugs > 0 {
-		msg += fmt.Sprintf(", %v debug message(s)", debugs)
-	}
-
-	// If we're not totally done, also print out the worst diagnostic next to the status message.
-	// This is helpful for long running tasks to know what's going on.  However, once done, we print
-	// the diagnostics at the bottom, so we don't need to show this.
-	if worstDiag != nil && !display.Done {
-		diagMsg := display.renderProgressDiagEvent(*worstDiag)
-		if diagMsg != "" {
-			msg += ". " + diagMsg
-		}
-	}
-
-	return msg
-}
-
-var ellipsesArray = []string{"", ".", "..", "..."}
-
-func (display *ProgressDisplay) refreshSingleStatusMessage(status Status) {
-	unpaddedMsg := display.getUnpaddedStatusSummary(status)
-	suffix := ""
-
-	if !status.Done {
-		suffix = ellipsesArray[(status.Tick+display.currentTick)%len(ellipsesArray)]
-	}
-
-	msg := display.getPaddedMessage(status, unpaddedMsg, suffix)
+	msg := display.getPaddedMessage(
+		colorizedColumns, uncolorizedColumns, colorizedSuffix, uncolorizedSuffix)
 
 	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     status.ID,
+		ID:     display.opts.Color.Colorize(colorizedColumns[0]),
 		Action: msg,
 	})
 }
 
-func (display *ProgressDisplay) refreshAllStatusMessages(includeDone bool) {
-	for _, v := range display.eventUrnToStatus {
-		if v.Done && !includeDone {
-			continue
+// Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
+// updated.
+func (display *ProgressDisplay) updateDimensions() bool {
+	updated := false
+
+	// don't do any refreshing if we're not in a terminal
+	if display.isTerminal {
+		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+		contract.IgnoreError(err)
+
+		if currentTerminalWidth != display.terminalWidth {
+			// terminal width changed.  Refresh everything
+			display.terminalWidth = currentTerminalWidth
+			updated = true
 		}
 
-		display.refreshSingleStatusMessage(v)
+		for _, row := range display.rows {
+			columns := row.UncolorizedColumns()
+
+			if len(display.maxColumnLengths) == 0 {
+				display.maxColumnLengths = make([]int, len(columns))
+			}
+
+			for i, column := range columns {
+				if len(column) > display.maxColumnLengths[i] {
+					display.maxColumnLengths[i] = len(column)
+					updated = true
+				}
+			}
+		}
+	}
+
+	return updated
+}
+
+func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
+	if display.isTerminal {
+		// make sure our stored dimension info is up to date
+		display.updateDimensions()
+
+		for _, row := range display.rows {
+			display.refreshSingleRow(row)
+		}
 	}
 }
 
@@ -421,25 +340,37 @@ func (display *ProgressDisplay) refreshAllStatusMessages(includeDone bool) {
 func (display *ProgressDisplay) processEndSteps() {
 	display.Done = true
 
-	// Mark all in progress resources as done.
-	for k, v := range display.eventUrnToStatus {
-		if !v.Done {
-			v.Done = true
-			display.eventUrnToStatus[k] = v
+	for _, v := range display.eventUrnToResourceRow {
+		// transition everything to the done state.  If we're not in an a terminal and this is a
+		// transition, then print out the transition.  Don't bother doing this in a terminal as
+		// we're going to refresh everything when we break out of the loop.
+		if !v.Done() {
+			v.SetDone()
+
+			if !display.isTerminal {
+				display.refreshSingleRow(v)
+			}
+		} else {
+			// Explicitly transition the status so that we clear out any cached data for it.
+			v.SetDone()
 		}
 	}
 
-	// Make sure we refresh everything.  That way we remove any diagnostics printed on the line.
-	display.refreshAllStatusMessages(true /*includeDone*/)
+	// Now refresh everything.  this ensures that we go back and remove things like the diagnostic
+	// messages from a status message (since we're going to print them all) below.  Note, this will
+	// only do something in a terminal.  This i what we want, because if we're not in a terminal we
+	// don't really want to reprint any finished items we've already printed.
+	display.refreshAllRowsIfInTerminal()
 
 	// Print all diagnostics we've seen.
 
 	wroteDiagnosticHeader := false
 
-	for _, status := range display.eventUrnToStatus {
-		if len(status.DiagEvents) > 0 {
+	for _, row := range display.eventUrnToResourceRow {
+		events := row.DiagInfo().DiagEvents
+		if len(events) > 0 {
 			wroteResourceHeader := false
-			for _, v := range status.DiagEvents {
+			for _, v := range events {
 				msg := display.renderProgressDiagEvent(v)
 
 				lines := strings.Split(msg, "\n")
@@ -466,7 +397,11 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
-					display.writeSimpleMessage("  " + status.ID + ":")
+					columns := row.ColorizedColumns()
+					display.writeSimpleMessage("  " +
+						columns[idColumn] + ": " +
+						columns[typeColumn] + ": " +
+						columns[nameColumn])
 				}
 
 				for _, line := range lines {
@@ -489,17 +424,11 @@ func (display *ProgressDisplay) processEndSteps() {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all the in-progress resources.
+	// Got a tick.  Update all  resources if we're in a terminal.  If we're not, then this won't do
+	// anything.
 	display.currentTick++
 
-	currentTerminalWidth, _, _ := terminal.GetSize(int(os.Stdout.Fd()))
-	if currentTerminalWidth != display.terminalWidth {
-		// terminal width changed.  Update our output.
-		display.terminalWidth = currentTerminalWidth
-		display.refreshAllStatusMessages(true /*includeDone*/)
-	} else {
-		display.refreshAllStatusMessages(false /*includeDone*/)
-	}
+	display.refreshAllRowsIfInTerminal()
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
@@ -543,57 +472,60 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	}
 
+	if len(display.rows) == 0 {
+		// about to make our first status message.  make sure we present the header line first.
+		display.rows = append(display.rows, &headerRowData{})
+	}
+
 	// At this point, all events should relate to resources.
 
-	refreshAllStatuses := false
-	status, has := display.eventUrnToStatus[eventUrn]
+	row, has := display.eventUrnToResourceRow[eventUrn]
 	if !has {
+		id := fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
+
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
-		status = Status{Tick: display.currentTick}
-		status.Step.Op = deploy.OpSame
-		status.ID = display.makeID(eventUrn)
-
-		if display.isTerminal {
-			// in the terminal we want to align the status portions of messages. If we
-			// heard about a resource with a longer id, go and update all in-flight and
-			// finished resources so that their statuses get aligned.
-			if len(status.ID) > display.maxIDLength {
-				display.maxIDLength = len(status.ID)
-				refreshAllStatuses = true
-			}
+		row = &resourceRowData{
+			display:  display,
+			id:       id,
+			tick:     display.currentTick,
+			diagInfo: &DiagInfo{},
+			step:     engine.StepEventMetadata{Op: deploy.OpSame},
 		}
+
+		display.eventUrnToResourceRow[eventUrn] = row
+		display.rows = append(display.rows, row)
 	}
 
 	if event.Type == engine.ResourcePreEvent {
-		status.Step = event.Payload.(engine.ResourcePreEventPayload).Metadata
-		if status.Step.Op == "" {
+		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
+		if step.Op == "" {
 			contract.Failf("Got empty op for %s", event.Type)
 		}
+
+		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
-			status.Done = true
+			row.SetDone()
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
-		status.Done = true
-		status.Failed = true
+		row.SetDone()
+		row.SetFailed()
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
-		status.DiagEvents = append(status.DiagEvents, event)
+		row.RecordDiagEvent(event)
 	} else {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
-	// Ensure that this updated status is recorded.
-	display.eventUrnToStatus[eventUrn] = status
-
-	// refresh the progress information for this resource.  (or update all resources if
-	// we need to realign everything)
-	if refreshAllStatuses {
-		display.refreshAllStatusMessages(true /*includeDone*/)
+	// See if this new status information causes us to have to refresh everything.  Otherwise,
+	// just refresh the info for that single status message.
+	if display.updateDimensions() {
+		contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
+		display.refreshAllRowsIfInTerminal()
 	} else {
-		display.refreshSingleStatusMessage(status)
+		display.refreshSingleRow(row)
 	}
 }
 
@@ -601,6 +533,7 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
+
 	for {
 		select {
 		case <-ticker.C:
@@ -627,40 +560,6 @@ func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) stri
 		return ""
 	}
 	return strings.TrimRightFunc(payload.Message, unicode.IsSpace)
-}
-
-func (display *ProgressDisplay) getMetadataSummary(
-	step engine.StepEventMetadata, done bool, failed bool) string {
-
-	out := &bytes.Buffer{}
-
-	if done {
-		writeString(out, display.getStepDoneDescription(step, failed))
-	} else {
-		writeString(out, display.getStepInProgressDescription(step))
-	}
-	writeString(out, colors.Reset)
-
-	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
-		diff := step.Old.Inputs.Diff(step.New.Inputs)
-
-		if diff != nil {
-			writeString(out, "  changes:")
-
-			updates := make(resource.PropertyMap)
-			for k := range diff.Updates {
-				updates[k] = resource.PropertyValue{}
-			}
-
-			writePropertyKeys(out, diff.Adds, deploy.OpCreate)
-			writePropertyKeys(out, diff.Deletes, deploy.OpDelete)
-			writePropertyKeys(out, updates, deploy.OpReplace)
-		}
-	}
-
-	fprintIgnoreError(out, colors.Reset)
-
-	return out.String()
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {

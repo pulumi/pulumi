@@ -165,6 +165,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, opts backend.DisplayOp
 			}
 		}
 	}
+
 	if c := changes[deploy.OpSame]; c > 0 {
 		fprintfIgnoreError(out, "      %v %v unchanged\n", c, plural("resource", c))
 	}
