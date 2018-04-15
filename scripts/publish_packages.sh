@@ -3,7 +3,7 @@
 set -o nounset -o errexit -o pipefail
 ROOT=$(dirname $0)/..
 
-if [[ "${TRAVIS_OS_NAME:-}" == "linux" ]]; then
+if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     echo "Publishing NPM package to NPMjs.com:"
     NPM_TAG="dev"
 
