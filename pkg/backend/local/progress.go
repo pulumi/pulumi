@@ -224,18 +224,7 @@ func (display *ProgressDisplay) makeID(urn resource.URN) string {
 	// }
 
 	if id, has := display.urnToID[urn]; !has {
-		var id string
-		if urn == "" {
-			id = "global"
-		} else {
-			id = string(urn.Name())
-		}
-
-		if len(display.eventUrnToResourceRow) < 1000 {
-			id = fmt.Sprintf("%3d: %s", len(display.eventUrnToResourceRow)+1, id)
-		} else {
-			id = fmt.Sprintf("%d: %s", len(display.eventUrnToResourceRow)+1, id)
-		}
+		id = fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
 
 		display.urnToID[urn] = id
 		display.idToUrn[id] = urn

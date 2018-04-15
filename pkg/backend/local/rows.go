@@ -135,7 +135,17 @@ func (data *resourceRowData) getUnpaddedColumns() []string {
 		contract.Failf("Finishing a resource we never heard about: '%s'", data.id)
 	}
 
-	columns := []string{data.id, simplifyTypeName(data.step.URN.Type())}
+	var name string
+	var typ string
+	if data.step.URN == "" {
+		name = "global"
+		typ = "global"
+	} else {
+		name = string(data.step.URN.Name())
+		typ = simplifyTypeName(data.step.URN.Type())
+	}
+
+	columns := []string{data.id, name, typ}
 
 	diagInfo := data.diagInfo
 
@@ -273,7 +283,7 @@ func (data *headerRowData) Columns() []string {
 			return colors.Blue + msg + colors.Reset
 		}
 
-		data.columns = []string{blue("     Resource name"), blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
+		data.columns = []string{"#", blue("Resource name") + ":", blue("Type") + ":", blue("Status") + ":", blue("Extra Info") + ":"}
 	}
 
 	return data.columns
