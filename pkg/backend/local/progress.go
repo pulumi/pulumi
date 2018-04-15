@@ -248,12 +248,19 @@ func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, c
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
 func (display *ProgressDisplay) getPaddedMessage(
-	columns, uncolorizedColumns []string, suffix string) string {
+	colorizedColumns, uncolorizedColumns []string,
+	colorizedSuffix, uncolorizedSuffix string) string {
 
 	msgWithColors := ""
-	for i := 1; i < len(columns); i++ {
+
+	lastNonEmptyColumn := len(uncolorizedColumns)
+	for lastNonEmptyColumn > 0 && uncolorizedColumns[lastNonEmptyColumn-1] == "" {
+		lastNonEmptyColumn--
+	}
+
+	for i := 1; i < lastNonEmptyColumn; i++ {
 		padding := display.getMessagePadding(uncolorizedColumns, i-1)
-		column := padding + columns[i]
+		column := padding + colorizedColumns[i]
 		msgWithColors += column
 	}
 
@@ -269,7 +276,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
 		id := uncolorizedColumns[0]
-		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(suffix) - 2
+		maxMsgLength := display.terminalWidth - len(id) - len(":") - len(uncolorizedSuffix) - 2
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
@@ -277,18 +284,20 @@ func (display *ProgressDisplay) getPaddedMessage(
 		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
 	}
 
-	return msgWithColors + suffix
+	return msgWithColors + colorizedSuffix
 }
 
 func (display *ProgressDisplay) refreshSingleRow(row Row) {
-	columns := row.Columns()
+	colorizedColumns := row.ColorizedColumns()
 	uncolorizedColumns := row.UncolorizedColumns()
-	suffix := row.Suffix()
+	colorizedSuffix := row.ColorizedSuffix()
+	uncolorizedSuffix := colors.Never.Colorize(colorizedSuffix)
 
-	msg := display.getPaddedMessage(columns, uncolorizedColumns, suffix)
+	msg := display.getPaddedMessage(
+		colorizedColumns, uncolorizedColumns, colorizedSuffix, uncolorizedSuffix)
 
 	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     display.opts.Color.Colorize(columns[0]),
+		ID:     display.opts.Color.Colorize(colorizedColumns[0]),
 		Action: msg,
 	})
 }
@@ -402,7 +411,10 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
-					display.writeSimpleMessage("  " + row.Columns()[0] + ":")
+					display.writeSimpleMessage("  " +
+						row.ColorizedColumns()[0] + ": " +
+						row.ColorizedColumns()[1] + ": " +
+						row.ColorizedColumns()[2])
 				}
 
 				for _, line := range lines {

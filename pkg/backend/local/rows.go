@@ -14,10 +14,10 @@ import (
 )
 
 type Row interface {
-	Columns() []string
+	ColorizedColumns() []string
 	UncolorizedColumns() []string
 
-	Suffix() string
+	ColorizedSuffix() string
 }
 
 type ResourceRow interface {
@@ -107,17 +107,34 @@ func (data *resourceRowData) ClearCachedData() {
 	data.uncolorizedColumns = []string{}
 }
 
+type column int
+
+const (
+	idColumn     column = 0
+	typeColumn   column = 1
+	nameColumn   column = 2
+	statusColumn column = 3
+	infoColumn   column = 4
+)
+
 var ellipsesArray = []string{"", ".", "..", "..."}
 
-func (data *resourceRowData) Suffix() string {
+func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.done {
-		return ellipsesArray[(data.tick+data.display.currentTick)%len(ellipsesArray)]
+		uncolorizedColumns := data.UncolorizedColumns()
+		ellipses := ellipsesArray[(data.tick+data.display.currentTick)%len(ellipsesArray)]
+
+		if uncolorizedColumns[infoColumn] == "" {
+			return data.step.Op.Color() + ellipses + colors.Reset
+		}
+
+		return ellipses
 	}
 
 	return ""
 }
 
-func (data *resourceRowData) Columns() []string {
+func (data *resourceRowData) ColorizedColumns() []string {
 	if len(data.columns) == 0 {
 		columns := data.getUnpaddedColumns()
 		data.columns = columns
@@ -145,18 +162,28 @@ func (data *resourceRowData) getUnpaddedColumns() []string {
 		typ = simplifyTypeName(data.step.URN.Type())
 	}
 
-	columns := []string{data.id, typ, name}
+	columns := make([]string, 5)
+	columns[idColumn] = data.id
+	columns[typeColumn] = typ
+	columns[nameColumn] = name
 
 	diagInfo := data.diagInfo
 
 	if data.done {
 		failed := data.failed || diagInfo.ErrorCount > 0
-		columns = append(columns, data.display.getStepDoneDescription(step, failed))
+		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
 	} else {
-		columns = append(columns, data.display.getStepInProgressDescription(step))
+		columns[statusColumn] = data.display.getStepInProgressDescription(step)
 	}
 
+	columns[infoColumn] = data.getInfo()
+	return columns
+}
+
+func (data *resourceRowData) getInfo() string {
+	step := data.step
 	changesBuf := &bytes.Buffer{}
+
 	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
 		diff := step.Old.Inputs.Diff(step.New.Inputs)
 
@@ -190,6 +217,8 @@ func (data *resourceRowData) getUnpaddedColumns() []string {
 
 		diagMsg += msg
 	}
+
+	diagInfo := data.diagInfo
 
 	if diagInfo.ErrorCount == 1 {
 		appendDiagMessage("1 error")
@@ -226,8 +255,7 @@ func (data *resourceRowData) getUnpaddedColumns() []string {
 		}
 	}
 
-	columns = append(columns, diagMsg)
-	return columns
+	return diagMsg
 }
 
 // Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
@@ -264,7 +292,7 @@ func uncolorise(columns []string) []string {
 
 func (data *resourceRowData) UncolorizedColumns() []string {
 	if len(data.uncolorizedColumns) == 0 {
-		columns := data.Columns()
+		columns := data.ColorizedColumns()
 		data.uncolorizedColumns = uncolorise(columns)
 	}
 
@@ -277,7 +305,7 @@ type headerRowData struct {
 	uncolorizedColumns []string
 }
 
-func (data *headerRowData) Columns() []string {
+func (data *headerRowData) ColorizedColumns() []string {
 	if len(data.columns) == 0 {
 		blue := func(msg string) string {
 			return colors.Blue + msg + colors.Reset
@@ -295,12 +323,12 @@ func (data *headerRowData) Columns() []string {
 
 func (data *headerRowData) UncolorizedColumns() []string {
 	if len(data.uncolorizedColumns) == 0 {
-		data.uncolorizedColumns = uncolorise(data.Columns())
+		data.uncolorizedColumns = uncolorise(data.ColorizedColumns())
 	}
 
 	return data.uncolorizedColumns
 }
 
-func (data *headerRowData) Suffix() string {
+func (data *headerRowData) ColorizedSuffix() string {
 	return ""
 }
