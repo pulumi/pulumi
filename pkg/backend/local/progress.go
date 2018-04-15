@@ -208,16 +208,16 @@ func (display *ProgressDisplay) initializeTermInfo() {
 }
 
 func (display *ProgressDisplay) makeID(urn resource.URN) string {
-	if id, has := display.urnToID[urn]; !has {
+	id, has := display.urnToID[urn]
+
+	if !has {
 		id = fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
 
 		display.urnToID[urn] = id
 		display.idToUrn[id] = urn
-
-		return id
-	} else {
-		return id
 	}
+
+	return id
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
