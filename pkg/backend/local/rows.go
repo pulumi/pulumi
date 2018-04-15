@@ -145,7 +145,7 @@ func (data *resourceRowData) getUnpaddedColumns() []string {
 		typ = simplifyTypeName(data.step.URN.Type())
 	}
 
-	columns := []string{data.id, name, typ}
+	columns := []string{data.id, typ, name}
 
 	diagInfo := data.diagInfo
 
@@ -287,7 +287,7 @@ func (data *headerRowData) Columns() []string {
 			return blue(msg)
 		}
 
-		data.columns = []string{"#", header("Resource name"), header("Type"), header("Status"), header("Extra Info")}
+		data.columns = []string{"#", header("Resource Type"), header("Name"), header("Status"), header("Extra Info")}
 	}
 
 	return data.columns
