@@ -251,8 +251,9 @@ func (display *ProgressDisplay) getPaddedMessage(
 	colorizedColumns, uncolorizedColumns []string,
 	colorizedSuffix, uncolorizedSuffix string) string {
 
-	msgWithColors := ""
+	colorizedMessage := ""
 
+	// Figure out the last column that is non-empty.  That's where we'll add the suffix to.
 	lastNonEmptyColumn := len(uncolorizedColumns)
 	for lastNonEmptyColumn > 0 && uncolorizedColumns[lastNonEmptyColumn-1] == "" {
 		lastNonEmptyColumn--
@@ -260,15 +261,15 @@ func (display *ProgressDisplay) getPaddedMessage(
 
 	for i := 1; i < lastNonEmptyColumn; i++ {
 		padding := display.getMessagePadding(uncolorizedColumns, i-1)
-		column := padding + colorizedColumns[i]
-		msgWithColors += column
+		colorizedColumn := padding + colorizedColumns[i]
+		colorizedMessage += colorizedColumn
 	}
 
 	// In the terminal, only include the first line of the message
 	if display.isTerminal {
-		newLineIndex := strings.Index(msgWithColors, "\n")
+		newLineIndex := strings.Index(colorizedMessage, "\n")
 		if newLineIndex >= 0 {
-			msgWithColors = msgWithColors[0:newLineIndex]
+			colorizedMessage = colorizedMessage[0:newLineIndex]
 		}
 
 		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
@@ -281,10 +282,10 @@ func (display *ProgressDisplay) getPaddedMessage(
 			maxMsgLength = 0
 		}
 
-		msgWithColors = colors.TrimColorizedString(msgWithColors, maxMsgLength)
+		colorizedMessage = colors.TrimColorizedString(colorizedMessage, maxMsgLength)
 	}
 
-	return msgWithColors + colorizedSuffix
+	return colorizedMessage + colorizedSuffix
 }
 
 func (display *ProgressDisplay) refreshSingleRow(row Row) {
