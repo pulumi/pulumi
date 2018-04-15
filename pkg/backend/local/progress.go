@@ -412,10 +412,11 @@ func (display *ProgressDisplay) processEndSteps() {
 
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
+					columns := row.ColorizedColumns()
 					display.writeSimpleMessage("  " +
-						row.ColorizedColumns()[0] + ": " +
-						row.ColorizedColumns()[1] + ": " +
-						row.ColorizedColumns()[2])
+						columns[idColumn] + ": " +
+						columns[typeColumn] + ": " +
+						columns[nameColumn])
 				}
 
 				for _, line := range lines {
