@@ -5,7 +5,7 @@ matrix:
     - os: linux
       env: NODE_VERSION=v6.10.3
     - os: linux
-      env: NODE_VERSION=v8.11.1
+      env: NODE_VERSION=v8.11.1 TRAVIS_PUBLISH_PACKAGES=true
     - os: osx
       env: NODE_VERSION=v9.11.1
 language: go
