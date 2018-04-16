@@ -184,11 +184,25 @@ func TestDiffs(t *testing.T) {
 }
 
 func assertPreviewOutput(t *testing.T, expected, outputWithControlSeqeunces string) {
-	// Remove the first two and last lines.  The first contains the local 	path that the test is running
-	// in and last lines contain the duration and permalink.
 	lines := strings.Split(outputWithControlSeqeunces, "\n")
-	outputWithControlSeqeunces = strings.Join(lines[2:len(lines)-4], "\n")
 
+	// Remove lines from the output that differ across runs. The first two lines of the output are the command line
+	// we ran, the second is a message about updating the stack in the cloud, so we drop them.
+	lines = lines[2:]
+
+	// The last two lines include a call to stack export and a blank line. Drop them as well.
+	lines = lines[:len(lines)-2]
+
+	// If we are connected to a cloud who's URL scheme we recognize, the CLI prints a Permalink for the update, let's
+	// drop that (but only if it exists)
+	if strings.Index(lines[len(lines)-1], "Permalink: ") != -1 {
+		lines = lines[:len(lines)-1]
+	}
+
+	// Finally, we have information about how long the update took, which we also drop.
+	lines = lines[:len(lines)-1]
+
+	outputWithControlSeqeunces = strings.Join(lines, "\n")
 	assertProgramOutput(t, expected, outputWithControlSeqeunces)
 }
 
