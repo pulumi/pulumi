@@ -14,21 +14,10 @@ export abstract class Archive {
     private readonly __pulumiArchive: boolean = true;
 
     /**
-     * If a given object is an instance of Archive, returns it as one; otherwise, returns undefined.  This is
-     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static asInstance(obj: any): Archive | undefined {
-        if (Archive.isInstance(obj)) {
-            return obj as Archive;
-        }
-        return undefined;
-    }
-
-    /**
      * Returns true if the given object is an instance of an Archive.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
-    public static isInstance(obj: any): boolean {
+    public static isInstance(obj: any): obj is Archive {
         return obj && obj.__pulumiArchive;
     }
 }

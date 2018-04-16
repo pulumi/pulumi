@@ -229,9 +229,8 @@ async function resolveOutputs(res: Resource, t: string, name: string,
             // output for it, we want resource B to expose depProp as a DependencyProp
             // pointing to B and not A.
             const inputProp = props[key];
-            const inputPropAsOut = Output.asInstance(inputProp);
-            if (inputPropAsOut) {
-                allProps[key] = await inputPropAsOut.promise();
+            if (Output.isInstance(inputProp)) {
+                allProps[key] = await inputProp.promise();
             } else {
                 allProps[key] = inputProp;
             }

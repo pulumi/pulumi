@@ -12,21 +12,10 @@ export class RunError extends Error {
     private readonly __pulumiRunError: boolean = true;
 
     /**
-     * If a given object is an instance of RunError, returns it as one; otherwise, returns undefined.  This is
-     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static asInstance(obj: any): RunError | undefined {
-        if (RunError.isInstance(obj)) {
-            return obj as RunError;
-        }
-        return undefined;
-    }
-
-    /**
      * Returns true if the given object is an instance of a RunError.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
-    public static isInstance(obj: any): boolean {
+    public static isInstance(obj: any): obj is RunError {
         return obj && obj.__pulumiRunError;
     }
 

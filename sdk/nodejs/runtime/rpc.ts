@@ -299,7 +299,7 @@ export function deserializeProperty(prop: any): any {
                     }
                 case specialArchiveSig:
                     if (prop["assets"]) {
-                        const assets: Record<string, asset.Asset> = {};
+                        const assets: asset.AssetMap = {};
                         for (const name of Object.keys(prop["assets"])) {
                             const a = deserializeProperty(prop["assets"][name]);
                             if (!(asset.Asset.isInstance(a)) && !(asset.Archive.isInstance(a))) {

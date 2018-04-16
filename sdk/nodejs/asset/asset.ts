@@ -13,21 +13,10 @@ export abstract class Asset {
     private readonly __pulumiAsset: boolean = true;
 
     /**
-     * If a given object is an instance of Asset, returns it as one; otherwise, returns undefined.  This is
-     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static asInstance(obj: any): Asset | undefined {
-        if (Asset.isInstance(obj)) {
-            return obj as Asset;
-        }
-        return undefined;
-    }
-
-    /**
      * Returns true if the given object is an instance of an Asset.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
-    public static isInstance(obj: any): boolean {
+    public static isInstance(obj: any): obj is Asset {
         return obj && obj.__pulumiAsset;
     }
 }

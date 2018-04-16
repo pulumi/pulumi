@@ -106,21 +106,10 @@ export abstract class CustomResource extends Resource {
     public readonly id: Output<ID>;
 
     /**
-     * If a given object is an instance of CustomResource, returns it as one; otherwise, returns undefined.  This is
-     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static asInstance(obj: any): CustomResource | undefined {
-        if (CustomResource.isInstance(obj)) {
-            return obj as CustomResource;
-        }
-        return undefined;
-    }
-
-    /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
-    public static isInstance(obj: any): boolean {
+    public static isInstance(obj: any): obj is CustomResource {
         return obj && obj.__pulumiCustomResource;
     }
 
@@ -261,21 +250,10 @@ export class Output<T> {
     // Statics
 
     /**
-     * If a given object is an instance of Output<T>, returns it as one; otherwise, returns undefined.  This is
-     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
-     */
-    public static asInstance<T>(obj: any): Output<T> | undefined {
-        if (Output.isInstance(obj)) {
-            return obj as Output<T>;
-        }
-        return undefined;
-    }
-
-    /**
      * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
      */
-    public static isInstance(obj: any): boolean {
+    public static isInstance<T>(obj: any): obj is Output<T> {
         return obj && obj.__pulumiOutput;
     }
 
@@ -303,16 +281,15 @@ export class Output<T> {
                 }
 
                 const transformed = await func(v);
-                const transformedAsOut = Output.asInstance<U>(transformed);
-                if (transformedAsOut) {
+                if (Output.isInstance(transformed)) {
                     // Note: if the func returned a Output, we unwrap that to get the inner value
                     // returned by that Output.  Note that we are *not* capturing the Resources of
                     // this inner Output.  That's intentional.  As the Output returned is only
                     // supposed to be related this *this* Output object, those resources should
                     // already be in our transitively reachable resource graph.
-                    return await transformedAsOut.promise();
+                    return await transformed.promise();
                 } else {
-                    return transformed as U | Promise<U>;
+                    return transformed;
                 }
             }), performApply);
         };
@@ -328,12 +305,8 @@ export function output<T>(cv: Input<T>): Output<T>;
 export function output<T>(cv: Input<T> | undefined): Output<T | undefined>;
 export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
     // outputs created from simply inputs are always stable.
-    const cvOut = Output.asInstance<T | undefined>(cv);
-    if (cvOut) {
-        return cvOut;
-    }
-    return new Output<T | undefined>(
-        new Set<Resource>(), Promise.resolve(cv as T | Promise<T>), Promise.resolve(true));
+    return Output.isInstance<T | undefined>(cv) ? cv :
+        new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv), Promise.resolve(true));
 }
 
 /**
