@@ -306,7 +306,21 @@ func (pc *Client) CreateUpdate(
 	}
 
 	// Create the initial update object.
-	path := getStackPath(stack, string(kind))
+	var endpoint string
+	switch kind {
+	case UpdateKindUpdate:
+		if dryRun {
+			endpoint = "preview"
+		} else {
+			endpoint = "update"
+		}
+	case UpdateKindDestroy:
+		endpoint = "destroy"
+	default:
+		contract.Failf("Unknown kind: %s", kind)
+	}
+
+	path := getStackPath(stack, endpoint)
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err
