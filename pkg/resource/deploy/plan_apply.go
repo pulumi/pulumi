@@ -14,6 +14,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/version"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Options controls the planning and deployment process.
@@ -62,6 +64,7 @@ type PlanSummary interface {
 	Deletes() map[resource.URN]bool
 	Sames() map[resource.URN]bool
 	Resources() []*resource.State
+	Snap() *Snapshot
 }
 
 // PlanIterator can be used to step through and/or execute a plan's proposed actions.
@@ -243,10 +246,8 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 
 	// Produce a new state object that we'll build up as operations are performed.  It begins with empty outputs.
 	// Ultimately, this is what will get serialized into the checkpoint file.
-	var createdAt time.Time
-	var updatedAt time.Time
 	new := resource.NewState(res.Type, urn, res.Custom, false, "", res.Properties, nil,
-		res.Parent, res.Protect, resource.ResourceStatusUnspecified, createdAt, updatedAt, res.Dependencies)
+		res.Parent, res.Protect, res.Dependencies)
 
 	// Check for an old resource before going any further.
 	old, hasOld := iter.p.Olds()[urn]
@@ -386,15 +387,15 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 
 				if diff.DeleteBeforeReplace {
 					return []Step{
-						NewDeleteReplacementStep(iter.p, old, false),
-						NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, false),
-						NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, false),
+						NewDeleteReplacementStep(iter, old, false),
+						NewReplaceStep(iter, old, new, diff.ReplaceKeys, false),
+						NewCreateReplacementStep(iter, e, old, new, diff.ReplaceKeys, false),
 					}, nil
 				}
 
 				return []Step{
-					NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, true),
-					NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, true),
+					NewCreateReplacementStep(iter, e, old, new, diff.ReplaceKeys, true),
+					NewReplaceStep(iter, old, new, diff.ReplaceKeys, true),
 					// note that the delete step is generated "later" on, after all creates/updates finish.
 				}, nil
 			}
@@ -404,7 +405,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 			if glog.V(7) {
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, olds, new.Inputs)
 			}
-			return []Step{NewUpdateStep(iter.p, e, old, new, diff.StableKeys)}, nil
+			return []Step{NewUpdateStep(iter, e, old, new, diff.StableKeys)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -412,13 +413,13 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		if glog.V(7) {
 			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
 		}
-		return []Step{NewSameStep(iter.p, e, old, new)}, nil
+		return []Step{NewSameStep(iter, e, old, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
-	return []Step{NewCreateStep(iter.p, e, new)}, nil
+	return []Step{NewCreateStep(iter, e, new)}, nil
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
@@ -477,14 +478,14 @@ func (iter *PlanIterator) computeDeletes() []Step {
 		for i := len(prev.Resources) - 1; i >= 0; i-- {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			res := prev.Resources[i]
-			if res.Delete || res.Status == resource.ResourceStatusPendingDeletion {
+			if res.Delete {
 				glog.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				iter.deletes[res.URN] = true
-				dels = append(dels, NewDeleteReplacementStep(iter.p, res, true))
+				dels = append(dels, NewDeleteReplacementStep(iter, res, true))
 			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] {
 				glog.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				iter.deletes[res.URN] = true
-				dels = append(dels, NewDeleteStep(iter.p, res))
+				dels = append(dels, NewDeleteStep(iter, res))
 			}
 		}
 	}
@@ -499,6 +500,89 @@ func (iter *PlanIterator) nextDeleteStep() Step {
 		return del
 	}
 	return nil
+}
+
+// Snap returns a fresh snapshot that takes into account everything that has happened up till this point.  Namely, if a
+// failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
+// preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
+func (iter *PlanIterator) Snap() *Snapshot {
+	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
+	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
+	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
+	//
+	// - Begin with an empty merged DAG.
+	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG.
+	// - For each resource r in the base DAG:
+	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the
+	//       current DAG, which accurately captures its current dependencies.
+	//     - If r is not in the merged DAG, insert it and its outgoing edges into the merged DAG.
+	//
+	// Physically, however, each DAG is represented as list of resources without explicit dependency edges. In place of
+	// edges, it is assumed that the list represents a valid topological sort of its source DAG. Thus, any resource r at
+	// index i in a list L must be assumed to be dependent on all resources in L with index j s.t. j < i. Due to this
+	// representation, we implement the algorithm above as follows to produce a merged list that represents a valid
+	// topological sort of the merged DAG:
+	//
+	// - Begin with an empty merged list.
+	// - For each resource r in the current list, append r to the merged list. r must be in a correct location in the
+	//   merged list, as its position relative to its assumed dependencies has not changed.
+	// - For each resource r in the base list:
+	//     - If r is in the merged list, we are done by the logic given in the original algorithm.
+	//     - If r is not in the merged list, append r to the merged list. r must be in a correct location in the merged
+	//       list:
+	//         - If any of r's dependencies were in the current list, they must already be in the merged list and their
+	//           relative order w.r.t. r has not changed.
+	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
+	//           they would have been appended to the list before r.
+
+	// Start with a copy of the resources produced during the evaluation of the current plan.
+	resources := make([]*resource.State, len(iter.resources))
+	copy(resources, iter.resources)
+
+	// If the plan has not finished executing, append any resources from the base plan that were not produced by the
+	// current plan.
+	if !iter.done {
+		if prev := iter.p.prev; prev != nil {
+			for _, res := range prev.Resources {
+				if !iter.dones[res] {
+					resources = append(resources, res)
+				}
+			}
+		}
+	}
+
+	// Now produce a manifest and snapshot.
+	v, plugs := iter.SnapVersions()
+	manifest := Manifest{
+		Time:    time.Now(),
+		Version: v,
+		Plugins: plugs,
+	}
+	manifest.Magic = manifest.NewMagic()
+	return NewSnapshot(iter.p.Target().Name, manifest, resources)
+}
+
+// SnapVersions returns all versions used in the generation of this snapshot.  Note that no attempt is made to
+// "merge" with old version information.  So, if a checkpoint doesn't end up loading all of the possible plugins
+// it could ever load -- e.g., due to a failure -- there will be some resources in the checkpoint snapshot that
+// were loaded by plugins that never got loaded this time around.  In other words, this list is not stable.
+func (iter *PlanIterator) SnapVersions() (string, []workspace.PluginInfo) {
+	return version.Version, iter.p.ctx.Host.ListPlugins()
+}
+
+// MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway
+// through the application of a deployment plan.  Any old state that has not yet been recovered needs to be kept.
+func (iter *PlanIterator) MarkStateSnapshot(state *resource.State) {
+	contract.Assert(state != nil)
+	iter.dones[state] = true
+	glog.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
+}
+
+// AppendStateSnapshot appends a resource's state to the current snapshot.
+func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
+	contract.Assert(state != nil)
+	iter.resources = append(iter.resources, state)
+	glog.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
