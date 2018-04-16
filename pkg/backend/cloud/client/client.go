@@ -11,6 +11,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -325,6 +326,8 @@ func (pc *Client) CreateUpdate(
 	// Create the initial update object.
 	path := getStackPath(stack, endpoint)
 	var updateResponse apitype.UpdateProgramResponse
+
+	glog.V(7).Infof("Update posting to path: %s", path)
 	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err
 	}
