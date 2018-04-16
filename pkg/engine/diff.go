@@ -426,11 +426,11 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 		}
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
-				printAdd(b, add, titleFunc, true, planning, indent, debug)
+				printAdd(b, add, titleFunc, planning, indent, debug)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
-				printDelete(b, delete, titleFunc, true, planning, indent, debug)
+				printDelete(b, delete, titleFunc, planning, indent, debug)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
 			if !causedReplace && replaceMap != nil {
@@ -465,9 +465,9 @@ func printPropertyValueDiff(
 				writeWithIndent(b, indent+1, eop, eprefix, "[%d]: ", i)
 			}
 			if add, isadd := a.Adds[i]; isadd {
-				printAdd(b, add, elemTitleFunc, true, planning, indent+2, debug)
+				printAdd(b, add, elemTitleFunc, planning, indent+2, debug)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				printDelete(b, delete, elemTitleFunc, true, planning, indent+2, debug)
+				printDelete(b, delete, elemTitleFunc, planning, indent+2, debug)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(
 					b, elemTitleFunc, update, causedReplace, planning,
@@ -501,17 +501,17 @@ func printPropertyValueDiff(
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintOld {
-			printDelete(b, diff.Old, titleFunc, causedReplace, planning, indent, debug)
+			printDelete(b, diff.Old, titleFunc, planning, indent, debug)
 		}
 		if shouldPrintNew {
-			printAdd(b, diff.New, titleFunc, causedReplace, planning, indent, debug)
+			printAdd(b, diff.New, titleFunc, planning, indent, debug)
 		}
 	}
 }
 
 func printDelete(
 	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp, bool),
-	causedReplace bool, planning bool, indent int, debug bool) {
+	planning bool, indent int, debug bool) {
 	op := deploy.OpDelete
 	title(op, true)
 	printPropertyValue(b, v, planning, indent, op, true, debug)
@@ -519,7 +519,7 @@ func printDelete(
 
 func printAdd(
 	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp, bool),
-	causedReplace bool, planning bool, indent int, debug bool) {
+	planning bool, indent int, debug bool) {
 	op := deploy.OpCreate
 	title(op, true)
 	printPropertyValue(b, v, planning, indent, op, true, debug)
@@ -565,10 +565,10 @@ func printArchiveDiff(
 	// Type of archive changed, print this out as an remove and an add.
 	printDelete(
 		b, assetOrArchiveToPropertyValue(oldArchive),
-		titleFunc, false /*causedReplace*/, planning, indent, debug)
+		titleFunc, planning, indent, debug)
 	printAdd(
 		b, assetOrArchiveToPropertyValue(newArchive),
-		titleFunc, false /*causedReplace*/, planning, indent, debug)
+		titleFunc, planning, indent, debug)
 }
 
 func printAssetsDiff(
@@ -657,7 +657,9 @@ func printAssetsDiff(
 			titleFunc := func(top deploy.StepOp, tprefix bool) {
 				printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, top, tprefix)
 			}
-			printDelete(b, assetOrArchiveToPropertyValue(oldAssets[oldName]), titleFunc, false, planning, newIndent, debug)
+			printDelete(
+				b, assetOrArchiveToPropertyValue(oldAssets[oldName]),
+				titleFunc, planning, newIndent, debug)
 			i++
 			continue
 		} else {
@@ -666,7 +668,9 @@ func printAssetsDiff(
 			titleFunc := func(top deploy.StepOp, tprefix bool) {
 				printPropertyTitle(b, "\""+newName+"\"", maxkey, indent, top, tprefix)
 			}
-			printAdd(b, assetOrArchiveToPropertyValue(newAssets[newName]), titleFunc, false, planning, newIndent, debug)
+			printAdd(
+				b, assetOrArchiveToPropertyValue(newAssets[newName]),
+				titleFunc, planning, newIndent, debug)
 			j++
 		}
 	}
@@ -751,10 +755,10 @@ func printAssetDiff(
 	// Type of asset changed, print this out as an remove and an add.
 	printDelete(
 		b, assetOrArchiveToPropertyValue(oldAsset),
-		titleFunc, false /*causedReplace*/, planning, indent, debug)
+		titleFunc, planning, indent, debug)
 	printAdd(
 		b, assetOrArchiveToPropertyValue(newAsset),
-		titleFunc, false /*causedReplace*/, planning, indent, debug)
+		titleFunc, planning, indent, debug)
 }
 
 func getTextChangeString(old string, new string) string {
