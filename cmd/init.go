@@ -55,7 +55,7 @@ func newInitCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Initialized Pulumi repository in %s\n", repo.Root)
+			fmt.Printf("Initialized Pulumi repository\n")
 
 			return nil
 		}),

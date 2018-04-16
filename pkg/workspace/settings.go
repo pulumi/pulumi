@@ -13,3 +13,9 @@ type Settings struct {
 	Stack            tokens.QName                `json:"stack,omitempty" yaml:"env,omitempty"`     // an optional default stack to use.
 	ConfigDeprecated map[tokens.QName]config.Map `json:"config,omitempty" yaml:"config,omitempty"` // optional workspace local configuration (overrides values in a project)
 }
+
+// IsEmpty returns true when the settings object is logically empty (no selected stack and nothing in the deprecated
+// configuration bag).
+func (s *Settings) IsEmpty() bool {
+	return s.Stack == "" && len(s.ConfigDeprecated) == 0
+}

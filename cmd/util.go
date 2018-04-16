@@ -35,7 +35,7 @@ func currentBackend() (backend.Backend, error) {
 		return nil, err
 	}
 	if local.IsLocalBackendURL(creds.Current) {
-		return local.New(cmdutil.Diag()), nil
+		return local.New(cmdutil.Diag(), creds.Current), nil
 	}
 	return cloud.Login(cmdutil.Diag(), creds.Current)
 }

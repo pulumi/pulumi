@@ -20,12 +20,9 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings                        // returns a mutable pointer to the optional workspace settings info.
-	Repository() *Repository                    // returns the repository this project belongs to.
-	StackPath(stack tokens.QName) string        // returns the path to store stack information.
-	BackupDirectory() (string, error)           // returns the directory to store backup stack files.
-	HistoryDirectory(stack tokens.QName) string // returns the directory to store a stack's history information.
-	Save() error                                // saves any modifications to the workspace.
+	Settings() *Settings     // returns a mutable pointer to the optional workspace settings info.
+	Repository() *Repository // (optional) returns the repository this project belongs to.
+	Save() error             // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
@@ -48,7 +45,9 @@ func New() (W, error) {
 // folder hierarchy between dir and the .pulumi folder.
 func NewFrom(dir string) (W, error) {
 	repo, err := GetRepository(dir)
-	if err != nil {
+	if err == ErrNoRepository {
+		repo = nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -100,7 +99,17 @@ func (pw *projectWorkspace) Save() error {
 
 	settingsFile := pw.settingsPath()
 
-	// ensure the path exists
+	// If the settings file is empty, don't write an new one, and delete the old one if present. Since we put workspaces
+	// under ~/.pulumi/workspaces, cleaning them out when possible prevents us from littering a bunch of files in the
+	// home directory.
+	if pw.settings.IsEmpty() {
+		err := os.Remove(settingsFile)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+
 	err := os.MkdirAll(filepath.Dir(settingsFile), 0700)
 	if err != nil {
 		return err
@@ -112,34 +121,6 @@ func (pw *projectWorkspace) Save() error {
 	}
 
 	return ioutil.WriteFile(settingsFile, b, 0600)
-}
-
-func (pw *projectWorkspace) StackPath(stack tokens.QName) string {
-	path := filepath.Join(pw.Repository().Root, StackDir, pw.name.String())
-	if stack != "" {
-		path = filepath.Join(path, qnamePath(stack)+".json")
-	}
-	return path
-}
-
-func (pw *projectWorkspace) BackupDirectory() (string, error) {
-	user, err := user.Current()
-	if user == nil || err != nil {
-		return "", errors.New("failed to get current user")
-	}
-
-	projectDir := filepath.Dir(pw.project)
-	projectBackupDirName := filepath.Base(projectDir) + "-" + sha1HexString(projectDir)
-
-	return filepath.Join(user.HomeDir, BookkeepingDir, BackupDir, projectBackupDirName), nil
-}
-
-func (pw *projectWorkspace) HistoryDirectory(stack tokens.QName) string {
-	path := filepath.Join(pw.Repository().Root, HistoryDir, pw.name.String())
-	if stack != "" {
-		return filepath.Join(path, qnamePath(stack))
-	}
-	return path
 }
 
 func (pw *projectWorkspace) readSettings() error {
@@ -166,7 +147,11 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	return filepath.Join(pw.Repository().Root, WorkspaceDir, pw.name.String(), WorkspaceFile)
+	user, err := user.Current()
+	contract.AssertNoErrorf(err, "could not get current user")
+
+	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + WorkspaceFile
+	return filepath.Join(user.HomeDir, BookkeepingDir, WorkspaceDir, uniqueFileName)
 }
 
 // sha1HexString returns a hex string of the sha1 hash of value.
@@ -180,14 +165,4 @@ func sha1HexString(value string) string {
 // qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
 func qnameFileName(nm tokens.QName) string {
 	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
-}
-
-// qnamePath just cleans a name and makes sure it's appropriate to use as a path.
-func qnamePath(nm tokens.QName) string {
-	return stringNamePath(string(nm))
-}
-
-// stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
-func stringNamePath(nm string) string {
-	return strings.Replace(nm, tokens.QNameDelimiter, string(os.PathSeparator), -1)
 }

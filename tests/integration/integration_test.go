@@ -55,11 +55,8 @@ func TestProjectMain(t *testing.T) {
 				e.DeleteEnvironment()
 			}
 		}()
-		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
-
 		e.ImportDirectory("project_main_abs")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
 		assert.Equal(t, "", stdout)
@@ -74,11 +71,8 @@ func TestProjectMain(t *testing.T) {
 				e.DeleteEnvironment()
 			}
 		}()
-		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
-
 		e.ImportDirectory("project_main_parent")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
 		assert.Equal(t, "", stdout)
@@ -109,7 +103,7 @@ func TestStackTagValidation(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
@@ -129,7 +123,7 @@ func TestStackTagValidation(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		// Change the contents of the Name property of Pulumi.yaml.
 		yamlPath := path.Join(e.CWD, "Pulumi.yaml")
@@ -154,7 +148,7 @@ func TestStackTagValidation(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		prefix := "lorem ipsum dolor sit amet"     // 26
 		prefix = prefix + prefix + prefix + prefix // 104
@@ -294,9 +288,7 @@ func TestConfigSave(t *testing.T) {
 		Runtime: "nodejs",
 	}).Save(path)
 	assert.NoError(t, err)
-	e.RunCommand("git", "init")
-	e.RunCommand("pulumi", "init")
-	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "testing-2")
 	e.RunCommand("pulumi", "stack", "init", "testing-1")
 

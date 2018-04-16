@@ -6,7 +6,6 @@ package stack
 
 import (
 	"encoding/json"
-	"io/ioutil"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -20,18 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func GetCheckpoint(w workspace.W, stack tokens.QName) (*apitype.CheckpointV1, error) {
-	chkpath := w.StackPath(stack)
-	bytes, err := ioutil.ReadFile(chkpath)
-	if err != nil {
-		return nil, err
-	}
-
-	return unmarshalVersionedCheckpointToLatestCheckpoint(bytes)
-}
-
-func unmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV1, error) {
+func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV1, error) {
 	var versionedCheckpoint apitype.VersionedCheckpoint
 	if err := json.Unmarshal(bytes, &versionedCheckpoint); err != nil {
 		return nil, err

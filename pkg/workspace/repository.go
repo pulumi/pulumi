@@ -9,32 +9,35 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 )
 
 type Repository struct {
 	Owner string `json:"owner" yaml:"owner"` // the owner of this repository
 	Name  string `json:"name" yaml:"name"`   // the name of the repository
-	Root  string `json:"-" yaml:"-"`         // storage location
+	root  string // storage location
 }
 
 func (r *Repository) Save() error {
+	contract.Requiref(r.root != "", "r", "needs non empty root")
+
 	b, err := json.MarshalIndent(r, "", "    ")
 	if err != nil {
 		return err
 	}
 
 	// nolint: gas
-	err = os.MkdirAll(r.Root, 0755)
+	err = os.MkdirAll(r.root, 0755)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(r.Root, RepoFile), b, 0644)
+	return ioutil.WriteFile(filepath.Join(r.root, RepoFile), b, 0644)
 }
 
 func NewRepository(root string) *Repository {
-	return &Repository{Root: getDotPulumiDirectoryPath(root)}
+	return &Repository{root: getDotPulumiDirectoryPath(root)}
 }
 
 var ErrNoRepository = errors.New("no repository detected; did you forget to run 'pulumi init'?")
@@ -65,7 +68,7 @@ func GetRepository(root string) (*Repository, error) {
 		return nil, errors.New("invalid repo.json file, missing name property")
 	}
 
-	repo.Root = dotPulumiPath
+	repo.root = dotPulumiPath
 
 	return &repo, nil
 }

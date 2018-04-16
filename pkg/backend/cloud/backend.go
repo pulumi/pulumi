@@ -921,6 +921,11 @@ func getCloudProjectIdentifier() (client.ProjectIdentifier, error) {
 	}
 
 	repo := w.Repository()
+
+	if w == nil {
+		return client.ProjectIdentifier{}, workspace.ErrNoRepository
+	}
+
 	return client.ProjectIdentifier{
 		Owner:      repo.Owner,
 		Repository: repo.Name,

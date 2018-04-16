@@ -61,7 +61,7 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		out, err := e.RunCommandExpectError("pulumi", "history")
 		assert.Equal(t, "", out)
 		assert.NotEqual(t, err, "")
@@ -73,7 +73,7 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "no-updates-test")
 		assertHasNoHistory(e)
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -86,7 +86,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 
@@ -120,7 +120,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 
 		// Update the history-test stack.
@@ -199,7 +199,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")

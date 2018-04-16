@@ -19,7 +19,7 @@ func newLogoutCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if local.IsLocalBackendURL(cloudURL) {
-				return local.New(cmdutil.Diag()).Logout()
+				return local.New(cmdutil.Diag(), cloudURL).Logout()
 			}
 
 			b, err := cloud.New(cmdutil.Diag(), cloudURL)
