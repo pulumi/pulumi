@@ -401,18 +401,16 @@ func (b *cloudBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
-func getActionLabel(key string, dryRun bool) string {
+func getActionLabel(kind client.UpdateKind, dryRun bool) string {
 	if dryRun {
 		return "Previewing"
 	}
 
-	switch key {
-	case string(client.UpdateKindUpdate):
+	switch kind {
+	case client.UpdateKindUpdate:
 		return "Updating"
-	case string(client.UpdateKindDestroy):
+	case client.UpdateKindDestroy:
 		return "Destroying"
-	case "import":
-		return "Importing"
 	}
 
 	contract.Failf("Should not get here.")
@@ -647,7 +645,7 @@ func (b *cloudBackend) updateStack(
 	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event) error {
 
 	// Print a banner so it's clear this is going to the cloud.
-	actionLabel := getActionLabel(string(action), dryRun)
+	actionLabel := getActionLabel(action, dryRun)
 	fmt.Printf(
 		colors.ColorizeText(
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
@@ -736,7 +734,7 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
+		getActionLabel(action, dryRun), displayEvents, displayDone, displayOpts)
 
 	engineEvents := make(chan engine.Event)
 	go func() {
@@ -899,7 +897,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	status, err := b.waitForUpdate(
-		getActionLabel("import", false /*dryRun*/), update,
+		"Importing", update,
 		backend.DisplayOptions{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")

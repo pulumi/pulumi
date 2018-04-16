@@ -312,13 +312,13 @@ func (pc *Client) CreateUpdate(
 				// TODO(cyrusn): for compatability reasons, use a special endpoint when doing a
 				// preview. ideally, we would just call the UpdateKindUpdate endpoint and just pass
 				// along the dryRun bit to it so it would do the right thing on its end.
-				return "UpdateKindPreview"
+				return "preview"
 			}
 
-			return "UpdateKindUpdate"
+			return "update"
 		}
 
-		return "UpdateKindDestroy"
+		return "destroy"
 	}
 
 	path := getStackPath(stack, getEndpoint())
