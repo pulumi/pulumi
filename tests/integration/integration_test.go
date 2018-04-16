@@ -64,6 +64,7 @@ func TestProjectMain(t *testing.T) {
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
 	t.Run("Error_ParentFolder", func(t *testing.T) {
@@ -82,6 +83,7 @@ func TestProjectMain(t *testing.T) {
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 }
 
@@ -348,6 +350,8 @@ func TestConfigSave(t *testing.T) {
 
 	validate("configB", "value2", testStack2.Config)
 	validate("configD", "value4", testStack2.Config)
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
 // Tests basic configuration from the perspective of a Pulumi program.

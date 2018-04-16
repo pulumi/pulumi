@@ -105,6 +105,7 @@ func TestStackCommands(t *testing.T) {
 		// local: "no stack with name 'anor-londo' found"
 		// cloud: "Stack 'integration-test-59f645ba/pulumi-test/anor-londo' not found"
 		assert.Contains(t, err, "anor-londo")
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
 	t.Run("StackRm", func(t *testing.T) {
@@ -227,6 +228,8 @@ func TestStackBackups(t *testing.T) {
 
 			assertBackupStackFile(t, stackName, file, before, after)
 		}
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 }
 

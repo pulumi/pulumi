@@ -76,6 +76,7 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
 		e.RunCommand("pulumi", "stack", "init", "no-updates-test")
 		assertHasNoHistory(e)
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
 	// The "history" command uses the currently selected stack.
@@ -109,6 +110,7 @@ func TestHistoryCommand(t *testing.T) {
 		out, err = e.RunCommand("pulumi", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "updating stack...")
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 	})
 
 	// That the history command contains accurate data about the update history.
@@ -240,6 +242,7 @@ func TestHistoryCommand(t *testing.T) {
 		if len(updateRecords) != 4 {
 			t.Fatalf("didn't get expected number of updates from testcase. Raw history output:\n%v", stdout)
 		}
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 
 		// The first update doesn't have any git information, since
 		// nothing has been committed yet.
