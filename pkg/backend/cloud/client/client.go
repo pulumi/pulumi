@@ -305,23 +305,23 @@ func (pc *Client) CreateUpdate(
 		Metadata: m,
 	}
 
-	// Create the initial update object.
-	getEndpoint := func() string {
-		if kind == UpdateKindUpdate {
-			if dryRun {
-				// TODO(cyrusn): for compatability reasons, use a special endpoint when doing a
-				// preview. ideally, we would just call the UpdateKindUpdate endpoint and just pass
-				// along the dryRun bit to it so it would do the right thing on its end.
-				return "preview"
-			}
-
-			return "update"
+	var updatePathComponent string
+	switch kind {
+	case UpdateKindUpdate:
+		if dryRun {
+			// TODO(cyrusn): for compatibility reasons, use a special endpoint when doing a
+			// preview. ideally, we would just call the UpdateKindUpdate endpoint and just pass
+			// along the dryRun bit to it so it would do the right thing on its end.
+			updatePathComponent = "preview"
+		} else {
+			updatePathComponent = "update"
 		}
-
-		return "destroy"
+	case UpdateKindDestroy:
+		updatePathComponent = "destroy"
 	}
 
-	path := getStackPath(stack, getEndpoint())
+	// Create the initial update object.
+	path := getStackPath(stack, updatePathComponent)
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err

@@ -685,10 +685,23 @@ func (b *cloudBackend) updateStack(
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
 	status, err := b.waitForUpdate(actionLabel, update, displayOpts)
+
+	var actionText string
+	switch action {
+	case client.UpdateKindUpdate:
+		if dryRun {
+			actionText = "preview"
+		} else {
+			actionText = "update"
+		}
+	case client.UpdateKindDestroy:
+		actionText = "destroy"
+	}
+
 	if err != nil {
-		return errors.Wrapf(err, "waiting for %s", action)
+		return errors.Wrapf(err, "waiting for %s", actionText)
 	} else if status != apitype.StatusSucceeded {
-		return errors.Errorf("%s unsuccessful: status %v", action, status)
+		return errors.Errorf("%s unsuccessful: status %v", actionText, status)
 	}
 
 	return nil
