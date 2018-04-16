@@ -157,9 +157,8 @@ func (b *localBackend) Update(
 	}
 
 	return b.performEngineOp(
-		"updating", backend.DeployUpdate,
-		stackName, proj, root, m, opts, displayOpts,
-		opts.Preview, engine.Update)
+		"updating", backend.DeployUpdate, opts.Preview,
+		stackName, proj, root, m, opts, displayOpts, engine.Update)
 }
 
 func (b *localBackend) Destroy(
@@ -171,15 +170,15 @@ func (b *localBackend) Destroy(
 	}
 
 	return b.performEngineOp(
-		"destroying", backend.DestroyUpdate,
+		"destroying", backend.DestroyUpdate, opts.Preview,
 		stackName, proj, root, m, opts, displayOpts,
-		opts.Preview, engine.Destroy)
+		engine.Destroy)
 }
 
 func (b *localBackend) performEngineOp(
-	op string, kind backend.UpdateKind, stackName tokens.QName, proj *workspace.Project,
-	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, dryRun bool,
+	op string, kind backend.UpdateKind, dryRun bool, stackName tokens.QName,
+	proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions,
 	performEngineOp func(engine.UpdateInfo, engine.SnapshotManager, chan<- engine.Event, engine.UpdateOptions, bool) (
 		engine.ResourceChanges, error)) error {
 

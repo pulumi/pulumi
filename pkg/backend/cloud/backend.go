@@ -492,8 +492,8 @@ func (b *cloudBackend) PreviewThenPrompt(
 	}
 
 	err := b.updateStack(
-		updateKind, stack, pkg, root, m,
-		opts, displayOpts, eventsChannel, true /*dryRun*/)
+		updateKind, true /*dryRun*/, stack, pkg, root, m,
+		opts, displayOpts, eventsChannel)
 
 	if err != nil || opts.Preview {
 		// if we're just previewing, then we can stop at this point.
@@ -571,8 +571,8 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	// pass a nil channel along.
 	var unused chan engine.Event
 	return b.updateStack(
-		updateKind, stack, pkg,
-		root, m, opts, displayOpts, unused, false /*dryRun*/)
+		updateKind, false /*dryRun*/, stack, pkg,
+		root, m, opts, displayOpts, unused)
 }
 
 func (b *cloudBackend) Update(
@@ -592,9 +592,9 @@ func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, r
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	action client.UpdateKind, stackName tokens.QName,
+	action client.UpdateKind, dryRun bool, stackName tokens.QName,
 	pkg *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
+	opts engine.UpdateOptions) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := getCloudStackIdentifier(stackName)
 	if err != nil {
@@ -616,8 +616,9 @@ func (b *cloudBackend) createAndStartUpdate(
 		const showProgress = true
 		return getUpdateContents(context, pkg.UseDefaultIgnores(), showProgress)
 	}
+
 	update, err := b.client.CreateUpdate(
-		action, stack, pkg, workspaceStack.Config, main, metadata, opts, dryRun, getContents)
+		action, dryRun, stack, pkg, workspaceStack.Config, main, metadata, opts, getContents)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -641,9 +642,9 @@ func (b *cloudBackend) createAndStartUpdate(
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(
-	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
+	action client.UpdateKind, dryRun bool, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
@@ -659,7 +660,7 @@ func (b *cloudBackend) updateStack(
 	var err error
 	if !stack.(Stack).RunLocally() || !dryRun {
 		update, version, token, err = b.createAndStartUpdate(
-			action, stack.Name(), pkg, root, m, opts, dryRun)
+			action, dryRun, stack.Name(), pkg, root, m, opts)
 	}
 	if err != nil {
 		return err
@@ -680,8 +681,8 @@ func (b *cloudBackend) updateStack(
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
-			action, stack.Name(), pkg, root, opts, displayOpts,
-			update, token, callerEventsOpt, dryRun)
+			action, dryRun, stack.Name(), pkg, root, opts,
+			displayOpts, update, token, callerEventsOpt)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -721,10 +722,10 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 }
 
 func (b *cloudBackend) runEngineAction(
-	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	action client.UpdateKind, dryRun bool, stackName tokens.QName, pkg *workspace.Project,
 	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	callerEventsOpt chan<- engine.Event) error {
 
 	u, err := b.newUpdate(stackName, pkg, root, update, token)
 	if err != nil {

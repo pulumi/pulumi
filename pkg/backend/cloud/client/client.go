@@ -266,8 +266,8 @@ func (pc *Client) ImportStackDeployment(stack StackIdentifier, deployment json.R
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
-	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
+	kind UpdateKind, dryRun bool, stack StackIdentifier, pkg *workspace.Project,
+	cfg config.Map, main string, m apitype.UpdateMetadata, opts engine.UpdateOptions,
 	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
 
 	// First create the update program request.
@@ -306,7 +306,22 @@ func (pc *Client) CreateUpdate(
 	}
 
 	// Create the initial update object.
-	path := getStackPath(stack, string(kind))
+	getEndpoint := func() string {
+		if kind == UpdateKindUpdate {
+			if dryRun {
+				// TODO(cyrusn): for compatability reasons, use a special endpoint when doing a
+				// preview. ideally, we would just call the UpdateKindUpdate endpoint and just pass
+				// along the dryRun bit to it so it would do the right thing on its end.
+				return "UpdateKindPreview"
+			}
+
+			return "UpdateKindUpdate"
+		}
+
+		return "UpdateKindDestroy"
+	}
+
+	path := getStackPath(stack, getEndpoint())
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err

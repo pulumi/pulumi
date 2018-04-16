@@ -208,7 +208,8 @@ func (res *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(result *planResult, dryRun bool) (ResourceChanges, error) {
+func printPlan(result *planResult,
+	dryRun bool) (ResourceChanges, error) {
 	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
