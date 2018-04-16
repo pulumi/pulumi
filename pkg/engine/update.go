@@ -193,11 +193,10 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 
 		// Also show outputs here, since there might be some from the initial registration.
 		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		return ctx.(SnapshotMutation).End(step)
 	}
 
-	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
-	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	return ctx.(SnapshotMutation).End(step)
+	return nil
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {

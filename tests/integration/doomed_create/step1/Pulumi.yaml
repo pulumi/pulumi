@@ -1,0 +1,3 @@
+name: doomed_create
+description: A Pulumi project.
+runtime: nodejs
