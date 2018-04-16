@@ -94,10 +94,35 @@ export interface ResourceOptions {
  */
 export abstract class CustomResource extends Resource {
     /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+    // tslint:disable-next-line:variable-name
+    private readonly __pulumiCustomResource: boolean = true;
+
+    /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
      * deployments and may be missing (undefined) during planning phases.
      */
     public readonly id: Output<ID>;
+
+    /**
+     * If a given object is an instance of CustomResource, returns it as one; otherwise, returns undefined.  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static asInstance(obj: any): CustomResource | undefined {
+        if (CustomResource.isInstance(obj)) {
+            return obj as CustomResource;
+        }
+        return undefined;
+    }
+
+    /**
+     * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): boolean {
+        return obj && obj.__pulumiCustomResource;
+    }
 
     /**
      * Creates and registers a new managed resource.  t is the fully qualified type token and name
@@ -162,22 +187,36 @@ export class ComponentResource extends Resource {
  * dependency graph' to be created, which properly tracks the relationship between resources.
  */
 export class Output<T> {
-    // Whether or not this 'Output' should actually perform .apply calls.  During a preview,
-    // an Output value may not be known (because it would have to actually be computed by doing an
-    // 'update').  In that case, we don't want to perform any .apply calls as the callbacks
-    // may not expect an undefined value.  So, instead, we just transition to another Output
-    // value that itself knows it should not perform .apply calls.
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     *
+     * This is internal instead of being truly private, to support mixins and our serialization model.
+     */
+    // tslint:disable-next-line:variable-name
+    /* @internal */ public readonly __pulumiOutput?: boolean = true;
+
+    /**
+     * Whether or not this 'Output' should actually perform .apply calls.  During a preview,
+     * an Output value may not be known (because it would have to actually be computed by doing an
+     * 'update').  In that case, we don't want to perform any .apply calls as the callbacks
+     * may not expect an undefined value.  So, instead, we just transition to another Output
+     * value that itself knows it should not perform .apply calls.
+     */
     /* @internal */ public performApply: Promise<boolean>;
 
-    // Method that actually produces the concrete value of this output, as well as the total
-    // deployment-time set of resources this output depends on.
-    //
-    // Only callable on the outside.
+    /**
+     * Method that actually produces the concrete value of this output, as well as the total
+     * deployment-time set of resources this output depends on.
+     *
+     * Only callable on the outside.
+     */
     /* @internal */ public readonly promise: () => Promise<T>;
 
-    // The list of resource that this output value depends on.
-    //
-    // Only callable on the outside.
+    /**
+     * The list of resource that this output value depends on.
+     *
+     * Only callable on the outside.
+     */
     /* @internal */ public readonly resources: () => Set<Resource>;
 
     /**
@@ -220,6 +259,26 @@ export class Output<T> {
      public readonly get: () => T;
 
     // Statics
+
+    /**
+     * If a given object is an instance of Output<T>, returns it as one; otherwise, returns undefined.  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static asInstance<T>(obj: any): Output<T> | undefined {
+        if (Output.isInstance(obj)) {
+            return obj as Output<T>;
+        }
+        return undefined;
+    }
+
+    /**
+     * Returns true if the given object is an instance of Output<T>.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): boolean {
+        return obj && obj.__pulumiOutput;
+    }
+
     /* @internal */ public static create<T>(
             resource: Resource, promise: Promise<T>, performApply: Promise<boolean>): Output<T> {
         return new Output<T>(new Set<Resource>([resource]), promise, performApply);
@@ -244,19 +303,19 @@ export class Output<T> {
                 }
 
                 const transformed = await func(v);
-                if (transformed instanceof Output) {
+                const transformedAsOut = Output.asInstance<U>(transformed);
+                if (transformedAsOut) {
                     // Note: if the func returned a Output, we unwrap that to get the inner value
                     // returned by that Output.  Note that we are *not* capturing the Resources of
                     // this inner Output.  That's intentional.  As the Output returned is only
                     // supposed to be related this *this* Output object, those resources should
                     // already be in our transitively reachable resource graph.
-                    return await transformed.promise();
+                    return await transformedAsOut.promise();
                 } else {
-                    return transformed;
+                    return transformed as U | Promise<U>;
                 }
             }), performApply);
         };
-
 
         this.get = () => {
             throw new Error(`Cannot call during deployment or preview.
@@ -269,9 +328,12 @@ export function output<T>(cv: Input<T>): Output<T>;
 export function output<T>(cv: Input<T> | undefined): Output<T | undefined>;
 export function output<T>(cv: Input<T | undefined>): Output<T | undefined> {
     // outputs created from simply inputs are always stable.
-    return cv instanceof Output
-        ? cv
-        : new Output<T | undefined>(new Set<Resource>(), Promise.resolve(cv), Promise.resolve(true));
+    const cvOut = Output.asInstance<T | undefined>(cv);
+    if (cvOut) {
+        return cvOut;
+    }
+    return new Output<T | undefined>(
+        new Set<Resource>(), Promise.resolve(cv as T | Promise<T>), Promise.resolve(true));
 }
 
 /**
