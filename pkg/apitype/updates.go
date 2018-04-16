@@ -271,8 +271,8 @@ type CompleteUpdateRequest struct {
 // PatchUpdateCheckpointRequest defines the body of a request to the patch update checkpoint endpoint of the service
 // API.
 type PatchUpdateCheckpointRequest struct {
-	IsInvalid  bool        `json:"isInvalid"`
-	Deployment *Deployment `json:"deployment,omitempty"`
+	IsInvalid  bool          `json:"isInvalid"`
+	Deployment *DeploymentV1 `json:"deployment,omitempty"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.

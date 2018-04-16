@@ -60,13 +60,13 @@ type GetStackResponse struct {
 	UnknownState bool `json:"unknownState"`
 
 	// Resources provides the list of cloud resources managed by this stack.
-	Resources []Resource `json:"resources"`
+	Resources []ResourceV1 `json:"resources"`
 
 	// Manifest is the Manifest from the last rendered checkpoint.
-	Manifest Manifest `json:"manifest"`
+	Manifest ManifestV1 `json:"manifest"`
 
 	// Deployment provides a view of the stack as an opaque Pulumi deployment.
-	Deployment *Deployment `json:"deployment,omitempty"`
+	Deployment *DeploymentV1 `json:"deployment,omitempty"`
 }
 
 // EncryptValueRequest defines the request body for encrypting a value.
