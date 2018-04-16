@@ -401,18 +401,16 @@ func (b *cloudBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
-func getActionLabel(key string, dryRun bool) string {
+func getActionLabel(kind client.UpdateKind, dryRun bool) string {
 	if dryRun {
 		return "Previewing"
 	}
 
-	switch key {
-	case string(client.UpdateKindUpdate):
+	switch kind {
+	case client.UpdateKindUpdate:
 		return "Updating"
-	case string(client.UpdateKindDestroy):
+	case client.UpdateKindDestroy:
 		return "Destroying"
-	case "import":
-		return "Importing"
 	}
 
 	contract.Failf("Should not get here.")
@@ -492,8 +490,8 @@ func (b *cloudBackend) PreviewThenPrompt(
 	}
 
 	err := b.updateStack(
-		updateKind, stack, pkg, root, m,
-		opts, displayOpts, eventsChannel, true /*dryRun*/)
+		updateKind, true /*dryRun*/, stack, pkg, root, m,
+		opts, displayOpts, eventsChannel)
 
 	if err != nil || opts.Preview {
 		// if we're just previewing, then we can stop at this point.
@@ -571,8 +569,8 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	// pass a nil channel along.
 	var unused chan engine.Event
 	return b.updateStack(
-		updateKind, stack, pkg,
-		root, m, opts, displayOpts, unused, false /*dryRun*/)
+		updateKind, false /*dryRun*/, stack, pkg,
+		root, m, opts, displayOpts, unused)
 }
 
 func (b *cloudBackend) Update(
@@ -592,9 +590,9 @@ func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, r
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	action client.UpdateKind, stackName tokens.QName,
+	action client.UpdateKind, dryRun bool, stackName tokens.QName,
 	pkg *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
+	opts engine.UpdateOptions) (client.UpdateIdentifier, int, string, error) {
 
 	stack, err := getCloudStackIdentifier(stackName)
 	if err != nil {
@@ -616,8 +614,9 @@ func (b *cloudBackend) createAndStartUpdate(
 		const showProgress = true
 		return getUpdateContents(context, pkg.UseDefaultIgnores(), showProgress)
 	}
+
 	update, err := b.client.CreateUpdate(
-		action, stack, pkg, workspaceStack.Config, main, metadata, opts, dryRun, getContents)
+		action, dryRun, stack, pkg, workspaceStack.Config, main, metadata, opts, getContents)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -641,12 +640,12 @@ func (b *cloudBackend) createAndStartUpdate(
 
 // updateStack performs a the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) updateStack(
-	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
+	action client.UpdateKind, dryRun bool, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event) error {
 
 	// Print a banner so it's clear this is going to the cloud.
-	actionLabel := getActionLabel(string(action), dryRun)
+	actionLabel := getActionLabel(action, dryRun)
 	fmt.Printf(
 		colors.ColorizeText(
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
@@ -659,7 +658,7 @@ func (b *cloudBackend) updateStack(
 	var err error
 	if !stack.(Stack).RunLocally() || !dryRun {
 		update, version, token, err = b.createAndStartUpdate(
-			action, stack.Name(), pkg, root, m, opts, dryRun)
+			action, dryRun, stack.Name(), pkg, root, m, opts)
 	}
 	if err != nil {
 		return err
@@ -680,16 +679,31 @@ func (b *cloudBackend) updateStack(
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
-			action, stack.Name(), pkg, root, opts, displayOpts,
-			update, token, callerEventsOpt, dryRun)
+			action, dryRun, stack.Name(), pkg, root, opts,
+			displayOpts, update, token, callerEventsOpt)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
 	status, err := b.waitForUpdate(actionLabel, update, displayOpts)
+
+	var actionText string
+	switch action {
+	case client.UpdateKindUpdate:
+		if dryRun {
+			actionText = "preview"
+		} else {
+			actionText = "update"
+		}
+	case client.UpdateKindDestroy:
+		actionText = "destroy"
+	default:
+		contract.Failf("Unknown update kind %v", action)
+	}
+
 	if err != nil {
-		return errors.Wrapf(err, "waiting for %s", action)
+		return errors.Wrapf(err, "waiting for %s", actionText)
 	} else if status != apitype.StatusSucceeded {
-		return errors.Errorf("%s unsuccessful: status %v", action, status)
+		return errors.Errorf("%s unsuccessful: status %v", actionText, status)
 	}
 
 	return nil
@@ -721,10 +735,10 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 }
 
 func (b *cloudBackend) runEngineAction(
-	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	action client.UpdateKind, dryRun bool, stackName tokens.QName, pkg *workspace.Project,
 	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	callerEventsOpt chan<- engine.Event) error {
 
 	u, err := b.newUpdate(stackName, pkg, root, update, token)
 	if err != nil {
@@ -735,7 +749,7 @@ func (b *cloudBackend) runEngineAction(
 	displayDone := make(chan bool)
 
 	go u.RecordAndDisplayEvents(
-		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
+		getActionLabel(action, dryRun), displayEvents, displayDone, displayOpts)
 
 	engineEvents := make(chan engine.Event)
 	go func() {
@@ -898,7 +912,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	status, err := b.waitForUpdate(
-		getActionLabel("import", false /*dryRun*/), update,
+		"Importing", update,
 		backend.DisplayOptions{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")

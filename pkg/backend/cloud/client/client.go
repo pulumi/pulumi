@@ -11,6 +11,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -266,8 +267,8 @@ func (pc *Client) ImportStackDeployment(stack StackIdentifier, deployment json.R
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
-	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
+	kind UpdateKind, dryRun bool, stack StackIdentifier, pkg *workspace.Project,
+	cfg config.Map, main string, m apitype.UpdateMetadata, opts engine.UpdateOptions,
 	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
 
 	// First create the update program request.
@@ -305,11 +306,30 @@ func (pc *Client) CreateUpdate(
 		Metadata: m,
 	}
 
+	var endpoint string
+	switch kind {
+	case UpdateKindUpdate:
+		if dryRun {
+			// TODO(cyrusn): for compatibility reasons, use a special endpoint when doing a
+			// preview. ideally, we would just call the UpdateKindUpdate endpoint and just pass
+			// along the dryRun bit to it so it would do the right thing on its end.
+			endpoint = "preview"
+		} else {
+			endpoint = "update"
+		}
+	case UpdateKindDestroy:
+		endpoint = "destroy"
+	default:
+		contract.Failf("Unknown update kind %v", kind)
+	}
+
 	// Create the initial update object.
-	path := getStackPath(stack, string(kind))
+	path := getStackPath(stack, endpoint)
 	var updateResponse apitype.UpdateProgramResponse
+
+	glog.V(7).Infof("Update posting to path: %s", path)
 	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
-		return UpdateIdentifier{}, err
+		return UpdateIdentifier{}, errors.Wrapf(err, "Error occurred posting to: %s", path)
 	}
 
 	// Now upload the program if necessary.
@@ -321,7 +341,7 @@ func (pc *Client) CreateUpdate(
 
 		contents, size, err := getContents()
 		if err != nil {
-			return UpdateIdentifier{}, err
+			return UpdateIdentifier{}, errors.Wrapf(err, "Error occurred posting to: %s", path)
 		}
 
 		resp, err := http.DefaultClient.Do(&http.Request{
@@ -331,7 +351,7 @@ func (pc *Client) CreateUpdate(
 			Body:          contents,
 		})
 		if err != nil {
-			return UpdateIdentifier{}, err
+			return UpdateIdentifier{}, errors.Wrapf(err, "Error occurred posting to: %s", path)
 		}
 		if resp.StatusCode != http.StatusOK {
 			return UpdateIdentifier{}, errors.Errorf("upload failed: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))

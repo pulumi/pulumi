@@ -22,11 +22,11 @@ import (
 )
 
 // UpdateKind is an enum for describing the kinds of updates we support.
-type UpdateKind string
+type UpdateKind int
 
 const (
-	UpdateKindUpdate  UpdateKind = "update"
-	UpdateKindDestroy UpdateKind = "destroy"
+	UpdateKindUpdate  UpdateKind = 0
+	UpdateKindDestroy UpdateKind = 1
 )
 
 // ProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
