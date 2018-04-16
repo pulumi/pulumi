@@ -696,6 +696,8 @@ func (b *cloudBackend) updateStack(
 		}
 	case client.UpdateKindDestroy:
 		actionText = "destroy"
+	default:
+		contract.Failf("Unknown update kind %v", action)
 	}
 
 	if err != nil {
