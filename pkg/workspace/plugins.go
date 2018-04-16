@@ -395,26 +395,27 @@ func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 }
 
 // getPluginSize recursively computes how much space is devoted to a given plugin.
-func getPluginSize(dir string) (int64, error) {
-	files, err := ioutil.ReadDir(dir)
+func getPluginSize(path string) (int64, error) {
+	file, err := os.Stat(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, nil
-		}
-		return 0, err
+		return 0, nil
 	}
 
 	size := int64(0)
-	for _, file := range files {
-		if file.IsDir() {
-			sub, err := getPluginSize(filepath.Join(dir, file.Name()))
-			if err != nil {
-				return size, err
-			}
-			size += sub
-		} else {
-			size += file.Size()
+	if file.IsDir() {
+		subs, err := ioutil.ReadDir(path)
+		if err != nil {
+			return 0, err
 		}
+		for _, child := range subs {
+			add, err := getPluginSize(filepath.Join(path, child.Name()))
+			if err != nil {
+				return 0, err
+			}
+			size += add
+		}
+	} else {
+		size += file.Size()
 	}
 	return size, nil
 }
