@@ -329,7 +329,7 @@ func (pc *Client) CreateUpdate(
 
 	glog.V(7).Infof("Update posting to path: %s", path)
 	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
-		return UpdateIdentifier{}, err
+		return UpdateIdentifier{}, errors.Wrapf(err, "Error occurred posting to: %s", path)
 	}
 
 	// Now upload the program if necessary.
