@@ -341,7 +341,7 @@ func (pc *Client) CreateUpdate(
 
 		contents, size, err := getContents()
 		if err != nil {
-			return UpdateIdentifier{}, err
+			return UpdateIdentifier{}, errors.Wrapf(err, "Error occurred posting to: %s", path)
 		}
 
 		resp, err := http.DefaultClient.Do(&http.Request{
@@ -351,7 +351,7 @@ func (pc *Client) CreateUpdate(
 			Body:          contents,
 		})
 		if err != nil {
-			return UpdateIdentifier{}, err
+			return UpdateIdentifier{}, errors.Wrapf(err, "Error occurred posting to: %s", path)
 		}
 		if resp.StatusCode != http.StatusOK {
 			return UpdateIdentifier{}, errors.Errorf("upload failed: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
