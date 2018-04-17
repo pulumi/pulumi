@@ -339,7 +339,7 @@ func (display *ProgressDisplay) updateDimensions() bool {
 
 			for i, column := range uncolorizedColumns {
 				var columnLength = len(column)
-				if i == int(display.suffixColumn) {
+				if i == display.suffixColumn {
 					columnLength += display.maxSuffixLength
 				}
 
