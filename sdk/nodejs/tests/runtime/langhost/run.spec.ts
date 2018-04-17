@@ -234,6 +234,7 @@ describe("rpc", () => {
                 assert.deepEqual(res, {
                     data: {
                         [runtime.specialSigKey]: runtime.specialAssetSig,
+                        __pulumiAsset: true,
                         path: "./testdata.txt",
                     },
                 });

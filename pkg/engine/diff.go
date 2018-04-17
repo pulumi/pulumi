@@ -516,7 +516,7 @@ func printPrimitivePropertyValue(b *bytes.Buffer, v resource.PropertyValue, plan
 	} else if v.IsNumber() {
 		write(b, op, "%v", v.NumberValue())
 	} else if v.IsString() {
-		write(b, op, "\"%s\"", v.StringValue())
+		write(b, op, "%q", v.StringValue())
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
 		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;

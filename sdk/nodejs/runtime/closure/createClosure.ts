@@ -130,7 +130,7 @@ interface Context {
     // __awaiter per .js file that uses 'async/await'.  Instead of needing to generate serialized
     // functions for each of those, we can just serialize out the function once.
     simpleFunctions: FunctionInfo[];
- }
+}
 
 interface FunctionLocation {
     func: Function;
@@ -148,10 +148,12 @@ interface ContextFrame {
     capturedModuleName?: string;
 }
 
-// SerializedOutput is the type we convert real deployment time outputs to when we serialize them
-// into the environment for a closure.  The output will go from something you call 'apply' on to
-// transform during deployment, to something you call .get on to get the raw underlying value from
-// inside a cloud callback.
+/*
+ * SerializedOutput is the type we convert real deployment time outputs to when we serialize them
+ * into the environment for a closure.  The output will go from something you call 'apply' on to
+ * transform during deployment, to something you call .get on to get the raw underlying value from
+ * inside a cloud callback.
+ */
 class SerializedOutput<T> implements resource.Output<T> {
     /* @internal */ public performApply: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
@@ -714,7 +716,7 @@ function getOrCreateEntry(
             // Serialize functions recursively, and store them in a closure property.
             entry.function = createFunctionInfo(obj, context, serialize);
         }
-        else if (obj instanceof resource.Output) {
+        else if (resource.Output.isInstance(obj)) {
             // captures the frames up to this point. so we can give a good message if we
             // fail when we resume serializing this promise.
             const framesCopy = context.frames.slice();
@@ -723,7 +725,6 @@ function getOrCreateEntry(
             // after we've walked as much of the graph synchronously as possible.
             context.asyncWorkQueue.push(async () => {
                 const val = await obj.promise();
-
                 const oldFrames = context.frames;
                 context.frames = framesCopy;
                 entry.output = getOrCreateEntry(new SerializedOutput(val), undefined, context, serialize);
@@ -739,7 +740,6 @@ function getOrCreateEntry(
             // after we've walked as much of the graph synchronously as possible.
             context.asyncWorkQueue.push(async () => {
                 const val = await obj;
-
                 const oldFrames = context.frames;
                 context.frames = framesCopy;
                 entry.promise = getOrCreateEntry(val, undefined, context, serialize);

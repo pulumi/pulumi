@@ -160,8 +160,8 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
-		token, readerr := cmdutil.ReadConsole(
-			fmt.Sprintf("Enter your Pulumi access token (located at %s)", cloudConsoleURL(cloudURL, "account")))
+		token, readerr := cmdutil.ReadConsoleNoEcho(
+			fmt.Sprintf("Enter your Pulumi access token from %s", cloudConsoleURL(cloudURL, "account")))
 		if readerr != nil {
 			return nil, readerr
 		}
@@ -752,12 +752,12 @@ func (b *cloudBackend) runEngineAction(
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
-			err = engine.Preview(u, u.manager, engineEvents, opts)
+			err = engine.Preview(u, engineEvents, opts)
 		} else {
-			_, err = engine.Update(u, u.manager, engineEvents, opts, dryRun)
+			_, err = engine.Update(u, engineEvents, opts, dryRun)
 		}
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, u.manager, engineEvents, opts, dryRun)
+		_, err = engine.Destroy(u, engineEvents, opts, dryRun)
 	}
 
 	// Wait for the display to finish showing all the events.
@@ -765,7 +765,6 @@ func (b *cloudBackend) runEngineAction(
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)
-	contract.IgnoreError(u.manager.Close())
 
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded

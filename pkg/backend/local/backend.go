@@ -180,7 +180,7 @@ func (b *localBackend) performEngineOp(
 	op string, kind backend.UpdateKind, stackName tokens.QName, proj *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
 	displayOpts backend.DisplayOptions, dryRun bool,
-	performEngineOp func(engine.UpdateInfo, engine.SnapshotManager, chan<- engine.Event, engine.UpdateOptions, bool) (
+	performEngineOp func(engine.UpdateInfo, chan<- engine.Event, engine.UpdateOptions, bool) (
 		engine.ResourceChanges, error)) error {
 
 	update, err := b.newUpdate(stackName, proj, root)
@@ -188,7 +188,6 @@ func (b *localBackend) performEngineOp(
 		return err
 	}
 
-	manager := backend.NewSnapshotManager(b.newSnapshotPersister(), update)
 	events := make(chan engine.Event)
 	done := make(chan bool)
 
@@ -196,13 +195,12 @@ func (b *localBackend) performEngineOp(
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, manager, events, opts, dryRun)
+	changes, updateErr := performEngineOp(update, events, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done
 	close(events)
 	close(done)
-	contract.IgnoreError(manager.Close())
 
 	// Save update results.
 	result := backend.SucceededResult

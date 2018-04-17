@@ -4,7 +4,6 @@ package deploy
 
 import (
 	"testing"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -146,8 +145,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 	mod := tokens.Module(pkg + ":index")
 	pkgname := pkg.Name()
 	parentType := tokens.Type("")
-	fakeCreateTime := time.Unix(1521574268, 0)
-	fakeUpdateTime := time.Unix(1521574331, 0)
 
 	// Some shared tokens and names.
 	typA := tokens.Type(mod + ":A")
@@ -172,9 +169,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		"",
 		false,
-		resource.ResourceStatusCreated,
-		fakeCreateTime,
-		fakeUpdateTime,
 		nil,
 	)
 	oldResC := resource.NewState(typC, urnC, true, false, resource.ID("c-c-c"),
@@ -188,9 +182,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 		},
 		"",
 		false,
-		resource.ResourceStatusCreated,
-		fakeCreateTime,
-		fakeUpdateTime,
 		nil,
 	)
 	oldResD := resource.NewState(typD, urnD, true, false, resource.ID("d-d-d"),
@@ -201,9 +192,6 @@ func TestBasicCRUDPlan(t *testing.T) {
 		nil,
 		"",
 		false,
-		resource.ResourceStatusCreated,
-		fakeCreateTime,
-		fakeUpdateTime,
 		nil,
 	)
 	oldsnap := NewSnapshot(ns, Manifest{}, []*resource.State{oldResB, oldResC, oldResD})

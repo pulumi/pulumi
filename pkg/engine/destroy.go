@@ -10,15 +10,13 @@ import (
 )
 
 func Destroy(
-	u UpdateInfo, manager SnapshotManager,
-	events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+	u UpdateInfo, events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 
 	contract.Require(u != nil, "u")
-	contract.Require(manager != nil, "manager")
 
 	defer func() { events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u, manager)
+	ctx, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}

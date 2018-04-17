@@ -59,7 +59,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 
 /**
  * serializeAllProperties walks the props object passed in, awaiting all interior promises,
- * creating a reaosnable POJO object that can be remoted over to registerResource.
+ * creating a reasonable POJO object that can be remoted over to registerResource.
  */
 export async function serializeProperties(
         label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
@@ -209,7 +209,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
         return elems;
     }
-    else if (prop instanceof CustomResource) {
+    else if (CustomResource.isInstance(prop)) {
         // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: resource ID`);
@@ -218,11 +218,11 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         dependentResources.push(prop);
         return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
     }
-    else if (prop instanceof asset.Asset || prop instanceof asset.Archive) {
+    else if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
         // Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
         // like any old weakly typed object/map when received by the other side of the RPC boundary.
         const obj: any = {
-            [specialSigKey]: prop instanceof asset.Asset ? specialAssetSig : specialArchiveSig,
+            [specialSigKey]: asset.Asset.isInstance(prop) ? specialAssetSig : specialArchiveSig,
         };
 
         return await serializeAllKeys(prop, obj);
@@ -236,7 +236,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         return serializeProperty(subctx,
             await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
     }
-    else if (prop instanceof Output) {
+    else if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Dependency<T>`);
         }
@@ -299,10 +299,10 @@ export function deserializeProperty(prop: any): any {
                     }
                 case specialArchiveSig:
                     if (prop["assets"]) {
-                        const assets: Record<string, asset.Asset> = {};
+                        const assets: asset.AssetMap = {};
                         for (const name of Object.keys(prop["assets"])) {
                             const a = deserializeProperty(prop["assets"][name]);
-                            if (!(a instanceof asset.Asset) && !(a instanceof asset.Archive)) {
+                            if (!(asset.Asset.isInstance(a)) && !(asset.Archive.isInstance(a))) {
                                 throw new Error(
                                     "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects");
                             }
