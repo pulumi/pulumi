@@ -881,7 +881,7 @@ func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.Untype
 		return nil, err
 	}
 
-	return &apitype.UntypedDeployment{Deployment: deployment}, nil
+	return &deployment, nil
 }
 
 func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error {

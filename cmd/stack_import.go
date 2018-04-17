@@ -55,7 +55,10 @@ func newStackImportCmd() *cobra.Command {
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			var typed apitype.Deployment
+			if deployment.Version > 1 {
+				return errors.New("unsupported deployment version")
+			}
+			var typed apitype.DeploymentV1
 			if err = json.Unmarshal(deployment.Deployment, &typed); err != nil {
 				return err
 			}
