@@ -43,6 +43,63 @@ type DiagInfo struct {
 	DiagEvents []engine.Event
 }
 
+type ProgressDisplay struct {
+	opts           backend.DisplayOptions
+	progressOutput progress.Output
+
+	// Whether or not we're previewing.  We don't know what we are actually doing until
+	// we get the initial 'prelude' event.
+	//
+	// this flag is only used to adjust how we describe what's going on to the user.
+	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
+	isPreview bool
+
+	// The urn of the stack.
+	stackUrn resource.URN
+
+	// The summary event from the engine.  If we get this, we'll print this after all
+	// normal resource events are heard.  That way we don't interfere with all the progress
+	// messages we're outputting for them.
+	summaryEvent *engine.Event
+
+	// What tick we're currently on.  Used to determine the number of ellipses to concat to
+	// a status message to help indicate that things are still working.
+	currentTick int
+
+	rows []Row
+
+	// A mapping from each resource URN we are told about to its current status.
+	eventUrnToResourceRow map[resource.URN]ResourceRow
+
+	// The length of the largest ID we've seen.  We use this so we can align status messages per
+	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
+	// everything aligns.
+	maxColumnLengths []int
+
+	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
+	// For example, we'll go back and update previous status messages to make sure things
+	// align.  We don't need to do that in non-terminal situations.
+	isTerminal bool
+
+	// The width of the terminal.  Used so we can trim resource messages that are too long.
+	terminalWidth int
+
+	// Maps used so we can generate short IDs for resource urns.
+	urnToID map[resource.URN]string
+
+	// If all progress messages are done and we can print out the final display.
+	Done bool
+
+	// The column that the suffix should be added to
+	suffixColumn int
+
+	// the list of suffixes to rotate through
+	suffixesArray []string
+
+	// the length of the longest suffix
+	maxSuffixLength int
+}
+
 var (
 	// simple regex to take our names like "aws:function:Function" and convert to
 	// "aws:Function"
@@ -98,53 +155,6 @@ func (display *ProgressDisplay) writeBlankLine() {
 	display.writeSimpleMessage(" ")
 }
 
-type ProgressDisplay struct {
-	opts           backend.DisplayOptions
-	progressOutput progress.Output
-
-	// Whether or not we're previewing.  We don't know what we are actually doing until
-	// we get the initial 'prelude' event.
-	//
-	// this flag is only used to adjust how we describe what's going on to the user.
-	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
-	isPreview bool
-
-	// The urn of the stack.
-	stackUrn resource.URN
-
-	// The summary event from the engine.  If we get this, we'll print this after all
-	// normal resource events are heard.  That way we don't interfere with all the progress
-	// messages we're outputting for them.
-	summaryEvent *engine.Event
-
-	// The length of the largest ID we've seen.  We use this so we can align status messages per
-	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
-	// everything aligns.
-	maxColumnLengths []int
-
-	// What tick we're currently on.  Used to determine the number of ellipses to concat to
-	// a status message to help indicate that things are still working.
-	currentTick int
-
-	rows []Row
-	// A mapping from each resource URN we are told about to its current status.
-	eventUrnToResourceRow map[resource.URN]ResourceRow
-
-	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
-	// For example, we'll go back and update previous status messages to make sure things
-	// align.  We don't need to do that in non-terminal situations.
-	isTerminal bool
-
-	// The width of the terminal.  Used so we can trim resource messages that are too long.
-	terminalWidth int
-
-	// Maps used so we can generate short IDs for resource urns.
-	urnToID map[resource.URN]string
-
-	// If all progress messages are done and we can print out the final display.
-	Done bool
-}
-
 // DisplayProgressEvents displays the engine events with docker's progress view.
 func DisplayProgressEvents(
 	action string, events <-chan engine.Event,
@@ -168,6 +178,14 @@ func DisplayProgressEvents(
 		progressOutput:        progressOutput,
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
 		urnToID:               make(map[resource.URN]string),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+	}
+
+	for _, v := range display.suffixesArray {
+		if len(v) > display.maxSuffixLength {
+			display.maxSuffixLength = len(v)
+		}
 	}
 
 	display.initializeTermInfo()
@@ -233,36 +251,22 @@ func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, c
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
 func (display *ProgressDisplay) getPaddedMessage(
-	colorizedColumns, uncolorizedColumns []string,
-	colorizedSuffix, uncolorizedSuffix string) string {
+	colorizedColumns, uncolorizedColumns []string) string {
 
 	colorizedMessage := ""
 
-	// Figure out the last column that is non-empty.  That's where we'll add the suffix to.
-	lastNonEmptyColumn := len(uncolorizedColumns)
-	for lastNonEmptyColumn > 0 && uncolorizedColumns[lastNonEmptyColumn-1] == "" {
-		lastNonEmptyColumn--
-	}
-
-	for i := 1; i < lastNonEmptyColumn; i++ {
+	for i := 1; i < len(colorizedColumns); i++ {
 		padding := display.getMessagePadding(uncolorizedColumns, i-1)
-		colorizedColumn := padding + colorizedColumns[i]
-		colorizedMessage += colorizedColumn
+		colorizedMessage += padding + colorizedColumns[i]
 	}
 
-	// In the terminal, only include the first line of the message
 	if display.isTerminal {
-		newLineIndex := strings.Index(colorizedMessage, "\n")
-		if newLineIndex >= 0 {
-			colorizedMessage = colorizedMessage[0:newLineIndex]
-		}
-
 		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
 		id := uncolorizedColumns[0]
-		maxMsgLength := display.terminalWidth - len(id) - len(": ") - len(uncolorizedSuffix) - 1
+		maxMsgLength := display.terminalWidth - len(id) - len(": ") - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
@@ -270,17 +274,38 @@ func (display *ProgressDisplay) getPaddedMessage(
 		colorizedMessage = colors.TrimColorizedString(colorizedMessage, maxMsgLength)
 	}
 
-	return colorizedMessage + colorizedSuffix
+	return colorizedMessage
+}
+
+func uncolorise(columns []string) []string {
+	uncolorizedColumns := make([]string, len(columns))
+
+	for i, v := range columns {
+		uncolorizedColumns[i] = colors.Never.Colorize(v)
+	}
+
+	return uncolorizedColumns
+}
+
+func (display *ProgressDisplay) getColorizedColumnsCopy(row Row) []string {
+	colorizedColumns := row.ColorizedColumns()
+	colorizedColumnsCopy := make([]string, len(colorizedColumns))
+	copy(colorizedColumnsCopy, colorizedColumns)
+
+	return colorizedColumnsCopy
 }
 
 func (display *ProgressDisplay) refreshSingleRow(row Row) {
-	colorizedColumns := row.ColorizedColumns()
-	uncolorizedColumns := row.UncolorizedColumns()
-	colorizedSuffix := row.ColorizedSuffix()
-	uncolorizedSuffix := colors.Never.Colorize(colorizedSuffix)
+	colorizedColumns := display.getColorizedColumnsCopy(row)
+	uncolorizedColumns := make([]string, len(colorizedColumns))
 
-	msg := display.getPaddedMessage(
-		colorizedColumns, uncolorizedColumns, colorizedSuffix, uncolorizedSuffix)
+	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
+
+	for i := range uncolorizedColumns {
+		uncolorizedColumns[i] = colors.Never.Colorize(colorizedColumns[i])
+	}
+
+	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
 
 	display.colorizeAndWriteProgress(progress.Progress{
 		ID:     display.opts.Color.Colorize(colorizedColumns[0]),
@@ -305,15 +330,21 @@ func (display *ProgressDisplay) updateDimensions() bool {
 		}
 
 		for _, row := range display.rows {
-			columns := row.UncolorizedColumns()
+			colorizedColumns := row.ColorizedColumns()
+			uncolorizedColumns := uncolorise(colorizedColumns)
 
 			if len(display.maxColumnLengths) == 0 {
-				display.maxColumnLengths = make([]int, len(columns))
+				display.maxColumnLengths = make([]int, len(uncolorizedColumns))
 			}
 
-			for i, column := range columns {
-				if len(column) > display.maxColumnLengths[i] {
-					display.maxColumnLengths[i] = len(column)
+			for i, column := range uncolorizedColumns {
+				var columnLength = len(column)
+				if i == int(display.suffixColumn) {
+					columnLength += display.maxSuffixLength
+				}
+
+				if columnLength > display.maxColumnLengths[i] {
+					display.maxColumnLengths[i] = columnLength
 					updated = true
 				}
 			}
