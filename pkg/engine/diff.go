@@ -275,14 +275,8 @@ func printPropertyValue(
 	b *bytes.Buffer, v resource.PropertyValue, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
-	if v.IsNull() {
-		writeVerbatim(b, op, "<null>")
-	} else if v.IsBool() {
-		write(b, op, "%t", v.BoolValue())
-	} else if v.IsNumber() {
-		write(b, op, "%v", v.NumberValue())
-	} else if v.IsString() {
-		write(b, op, "%q", v.StringValue())
+	if isPrimitive(v) {
+		printPrimitivePropertyValue(b, v, planning, op)
 	} else if v.IsArray() {
 		arr := v.ArrayValue()
 		if len(arr) == 0 {
@@ -334,18 +328,6 @@ func printPropertyValue(
 		} else {
 			contract.Assert(a.IsURI())
 			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
-		}
-	} else if v.IsComputed() || v.IsOutput() {
-		// We render computed and output values differently depending on whether or not we are planning or deploying:
-		// in the former case, we display `computed<type>` or `output<type>`; in the former we display `undefined`.
-		// This is because we currently cannot distinguish between user-supplied undefined values and input properties
-		// that are undefined because they were sourced from undefined values in other resources' output properties.
-		// Once we have richer information about the dataflow between resources, we should be able to do a better job
-		// here (pulumi/pulumi#234).
-		if planning {
-			writeVerbatim(b, op, v.TypeString())
-		} else {
-			write(b, op, "undefined")
 		}
 	} else {
 		contract.Assert(v.IsObject())
@@ -487,15 +469,25 @@ func printPropertyValueDiff(
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
 		shouldPrintNew := shouldPrintPropertyValue(diff.New, false)
 
-		if diff.Old.IsArchive() &&
-			diff.New.IsArchive() &&
-			!causedReplace &&
-			shouldPrintOld &&
-			shouldPrintNew {
-			printArchiveDiff(
-				b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(),
-				planning, indent, summary, debug)
-			return
+		if shouldPrintOld && shouldPrintNew {
+			if diff.Old.IsArchive() &&
+				diff.New.IsArchive() &&
+				!causedReplace {
+
+				printArchiveDiff(
+					b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(),
+					planning, indent, summary, debug)
+				return
+			}
+
+			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
+				titleFunc(deploy.OpUpdate, true /*indent*/)
+				printPrimitivePropertyValue(b, diff.Old, planning, deploy.OpDelete)
+				writeVerbatim(b, deploy.OpUpdate, " => ")
+				printPrimitivePropertyValue(b, diff.New, planning, deploy.OpCreate)
+				writeVerbatim(b, deploy.OpUpdate, "\n")
+				return
+			}
 		}
 
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
@@ -506,6 +498,40 @@ func printPropertyValueDiff(
 		if shouldPrintNew {
 			printAdd(b, diff.New, titleFunc, planning, indent, debug)
 		}
+	}
+}
+
+func isPrimitive(value resource.PropertyValue) bool {
+	return value.IsNull() || value.IsString() || value.IsNumber() ||
+		value.IsBool() || value.IsComputed() || value.IsOutput()
+}
+
+func printPrimitivePropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool, op deploy.StepOp) {
+	contract.Assert(isPrimitive(v))
+
+	if v.IsNull() {
+		writeVerbatim(b, op, "<null>")
+	} else if v.IsBool() {
+		write(b, op, "%t", v.BoolValue())
+	} else if v.IsNumber() {
+		write(b, op, "%v", v.NumberValue())
+	} else if v.IsString() {
+		write(b, op, "%q", v.StringValue())
+	} else if v.IsComputed() || v.IsOutput() {
+		// We render computed and output values differently depending on whether or not we are
+		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;
+		// in the former we display `undefined`. This is because we currently cannot distinguish
+		// between user-supplied undefined values and input properties that are undefined because
+		// they were sourced from undefined values in other resources' output properties. Once we
+		// have richer information about the dataflow between resources, we should be able to do a
+		// better job here (pulumi/pulumi#234).
+		if planning {
+			writeVerbatim(b, op, v.TypeString())
+		} else {
+			write(b, op, "undefined")
+		}
+	} else {
+		contract.Failf("Unexpected property value kind")
 	}
 }
 
