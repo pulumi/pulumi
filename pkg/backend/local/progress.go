@@ -451,7 +451,10 @@ func (display *ProgressDisplay) processEndSteps() {
 	if display.summaryEvent != nil {
 		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
 
-		display.writeBlankLine()
+		if !wroteDiagnosticHeader {
+			display.writeBlankLine()
+		}
+
 		display.writeSimpleMessage(msg)
 	}
 }
