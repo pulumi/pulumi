@@ -208,7 +208,7 @@ export function main(args: string[]): void {
     let uncaught: Error | undefined;
     const uncaughtHandler = (err: Error) => {
         // First, log the error.
-        if (err instanceof RunError) {
+        if (RunError.isInstance(err)) {
             // For errors that are subtypes of RunError, we will print the message without hitting the unhandled error
             // logic, which will dump all sorts of verbose spew like the origin source and stack trace.
             log.error(err.message);

@@ -6,6 +6,19 @@ import { Input } from "../resource";
  * Asset represents a single blob of text or data that is managed as a first class entity.
  */
 export abstract class Asset {
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+    // tslint:disable-next-line:variable-name
+    private readonly __pulumiAsset: boolean = true;
+
+    /**
+     * Returns true if the given object is an instance of an Asset.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is Asset {
+        return obj && obj.__pulumiAsset;
+    }
 }
 
 /**
@@ -23,7 +36,10 @@ export class Blob extends Asset {
  * FileAsset is a kind of asset produced from a given path to a file on the local filesystem.
  */
 export class FileAsset extends Asset {
-    public readonly path: Promise<string>; // the path to the asset file.
+    /**
+     * The path to the asset file.
+     */
+    public readonly path: Promise<string>;
 
     constructor(path: string | Promise<string>) {
         super();
@@ -35,7 +51,10 @@ export class FileAsset extends Asset {
  * StringAsset is a kind of asset produced from an in-memory UTF8-encoded string.
  */
 export class StringAsset extends Asset {
-    public readonly text: Promise<string>; // the string contents.
+    /**
+     * The string contents.
+     */
+    public readonly text: Promise<string>;
 
     constructor(text: string | Promise<string>) {
         super();
@@ -49,7 +68,10 @@ export class StringAsset extends Asset {
  * specific providers may recognize alternative schemes; this is merely the base-most set that all providers support.
  */
 export class RemoteAsset extends Asset {
-    public readonly uri: Promise<string>; // the URI where the asset lives.
+    /**
+     * The URI where the asset lives.
+     */
+    public readonly uri: Promise<string>;
 
     constructor(uri: string | Promise<string>) {
         super();

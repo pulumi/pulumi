@@ -7,6 +7,19 @@ import { Asset } from "./asset";
  * An Archive represents a collection of named assets.
  */
 export abstract class Archive {
+    /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+    // tslint:disable-next-line:variable-name
+    private readonly __pulumiArchive: boolean = true;
+
+    /**
+     * Returns true if the given object is an instance of an Archive.  This is designed to work even when
+     * multiple copies of the Pulumi SDK have been loaded into the same process.
+     */
+    public static isInstance(obj: any): obj is Archive {
+        return obj && obj.__pulumiArchive;
+    }
 }
 
 /**
@@ -18,7 +31,10 @@ export type AssetMap = {[name: string]: Asset | Archive};
  * An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
  */
 export class AssetArchive extends Archive {
-    public readonly assets: Promise<AssetMap>; // a map of name to asset.
+    /**
+     * A map of names to assets.
+     */
+    public readonly assets: Promise<AssetMap>;
 
     constructor(assets: AssetMap | Promise<AssetMap>) {
         super();
@@ -31,7 +47,10 @@ export class AssetArchive extends Archive {
  * single archive file in one of the supported formats (.tar, .tar.gz, or .zip).
  */
 export class FileArchive extends Archive {
-    public readonly path: Promise<string>; // the path to the asset file.
+    /**
+     * The path to the asset file.
+     */
+    public readonly path: Promise<string>;
 
     constructor(path: string | Promise<string>) {
         super();
@@ -45,7 +64,10 @@ export class FileArchive extends Archive {
  * `https://` specify HTTP and HTTPS, respectively, and specific providers may recognize custom schemes.
  */
 export class RemoteArchive extends Archive {
-    public readonly uri: Promise<string>; // the URI where the archive lives.
+    /**
+     * The URI where the archive lives.
+     */
+    public readonly uri: Promise<string>;
 
     constructor(uri: string | Promise<string>) {
         super();
