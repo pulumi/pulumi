@@ -986,14 +986,17 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 		updateResults := results.(apitype.UpdateResults)
 		for _, event := range updateResults.Events {
 			events <- displayEvent{Kind: UpdateEvent, Payload: event}
-			eventIndex = event.Index
 		}
 
-		// Check if in termal state and if so return.
-		switch updateResults.Status {
-		case apitype.StatusFailed, apitype.StatusSucceeded:
-			return updateResults.Status, nil
+		// The update result could indicate the update is in a terminal status, but we haven't gotten and displayed
+		// all of the logs. So we first check if there is no ContinuationToken, meaning there are no more logs to get.
+		if updateResults.ContinuationToken == nil {
+			switch updateResults.Status {
+			case apitype.StatusFailed, apitype.StatusSucceeded:
+				return updateResults.Status, nil
+			}
 		}
+		eventIndex = *updateResults.ContinuationToken
 	}
 }
 
