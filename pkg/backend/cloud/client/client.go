@@ -414,7 +414,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(update UpdateIdentifier, token stri
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *apitype.Deployment, token string) error {
+func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *apitype.DeploymentV1, token string) error {
 	rawDeployment, err := json.Marshal(deployment)
 	if err != nil {
 		return err
