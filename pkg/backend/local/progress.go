@@ -237,9 +237,9 @@ func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, c
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
 
 		if columnIndex > 0 {
-			// docker puts an extra whitespace one the first column.  We replicate that for all
-			// other columns
-			extraWhitespace++
+			// Place two spaces between all columns (except after the first column).  The first
+			// column already has a ": " so it doesn't need the extra space.
+			extraWhitespace += 2
 		}
 	}
 
@@ -369,6 +369,8 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
+	display.maxColumnLengths = []int{}
+	display.maxSuffixLength = 0
 	display.Done = true
 
 	for _, v := range display.eventUrnToResourceRow {

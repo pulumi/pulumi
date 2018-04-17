@@ -170,7 +170,7 @@ const (
 )
 
 func (data *resourceRowData) ColorizedSuffix() string {
-	if !data.done {
+	if !data.display.Done && !data.done {
 		suffixes := data.display.suffixesArray
 		ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
