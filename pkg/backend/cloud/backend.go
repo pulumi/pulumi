@@ -969,13 +969,13 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 	}()
 	go displayEvents(strings.ToLower(actionLabel), events, done, displayOpts)
 
-	// Events occur in sequence, filter out all the ones we have seen before in each request.
-	eventIndex := "0"
+	// The UpdateEvents API returns a continuation token to only get events after the previous call.
+	var continuationToken *string
 	for {
 		// Query for the latest update results, including log entries so we can provide active status updates.
 		_, results, err := retry.Until(context.Background(), retry.Acceptor{
 			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
-				return b.tryNextUpdate(update, eventIndex, try, nextRetryTime)
+				return b.tryNextUpdate(update, continuationToken, try, nextRetryTime)
 			},
 		})
 		if err != nil {
@@ -988,15 +988,11 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 			events <- displayEvent{Kind: UpdateEvent, Payload: event}
 		}
 
-		// The update result could indicate the update is in a terminal status, but we haven't gotten and displayed
-		// all of the logs. So we first check if there is no ContinuationToken, meaning there are no more logs to get.
-		if updateResults.ContinuationToken == nil {
-			switch updateResults.Status {
-			case apitype.StatusFailed, apitype.StatusSucceeded:
-				return updateResults.Status, nil
-			}
+		continuationToken = updateResults.ContinuationToken
+		// A nil continuation token means there are no more events to read and the update has finished.
+		if continuationToken == nil {
+			return updateResults.Status, nil
 		}
-		eventIndex = *updateResults.ContinuationToken
 	}
 }
 
@@ -1045,13 +1041,13 @@ func displayEvents(
 	}
 }
 
-// tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which resutls in a
+// tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which results in a
 // false returned in the first return value.  If a non-nil error is returned, this operation should fail.
-func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, afterIndex string, try int,
+func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, continuationToken *string, try int,
 	nextRetryTime time.Duration) (bool, interface{}, error) {
 
 	// If there is no error, we're done.
-	results, err := b.client.GetUpdateEvents(update, afterIndex)
+	results, err := b.client.GetUpdateEvents(update, continuationToken)
 	if err == nil {
 		return true, results, nil
 	}
