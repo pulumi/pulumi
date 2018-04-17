@@ -72,7 +72,7 @@ type UpdateInfo struct {
 	// Information obtained from an update completing.
 	Result          UpdateResult   `json:"result"`
 	EndTime         int64          `json:"endTime"`
-	Deployment      *Deployment    `json:"deployment,omitempty"`
+	Deployment      *DeploymentV1  `json:"deployment,omitempty"`
 	ResourceChanges map[OpType]int `json:"resourceChanges,omitempty"`
 }
 

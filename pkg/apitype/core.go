@@ -24,6 +24,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// We alias the latest versions of the various types below to their friendly names here.
+
+type Checkpoint = CheckpointV1
+type Deployment = DeploymentV1
+type Manifest = ManifestV1
+type PluginInfo = PluginInfoV1
+type Resource = ResourceV1
+
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
 // version of the Checkpoint structure the Checkpoint member's json document can decode into.
 type VersionedCheckpoint struct {
@@ -38,28 +46,28 @@ type CheckpointV1 struct {
 	// Config contains a bag of optional configuration keys/values.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
-	Latest *Deployment `json:"latest,omitempty" yaml:"latest,omitempty"`
+	Latest *DeploymentV1 `json:"latest,omitempty" yaml:"latest,omitempty"`
 }
 
-// Deployment represents a deployment that has actually occurred.   It is similar to the engine's snapshot structure,
+// DeploymentV1 represents a deployment that has actually occurred. It is similar to the engine's snapshot structure,
 // except that it flattens and rearranges a few data structures for serializability.
-type Deployment struct {
+type DeploymentV1 struct {
 	// Manifest contains metadata about this deployment.
-	Manifest Manifest `json:"manifest" yaml:"manifest"`
+	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
-	Resources []Resource `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Resources []ResourceV1 `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // UntypedDeployment contains an inner, untyped deployment structure.
 type UntypedDeployment struct {
-	// The opaque Pulumi deployment.  This is conceptually of type `Deployment`, but we use `json.Message` to
+	// The opaque Pulumi deployment. This is conceptually of type `Deployment`, but we use `json.Message` to
 	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
 	// the contents, and then remarshaled them, we could end up losing important information.
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
-// Resource describes a Cloud resource constructed by Pulumi.
-type Resource struct {
+// ResourceV1 describes a Cloud resource constructed by Pulumi.
+type ResourceV1 struct {
 	// URN uniquely identifying this resource.
 	URN resource.URN `json:"urn" yaml:"urn"`
 	// Custom is true when it is managed by a plugin.
@@ -84,8 +92,8 @@ type Resource struct {
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
 }
 
-// Manifest captures meta-information about this checkpoint file, such as versions of binaries, etc.
-type Manifest struct {
+// ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
+type ManifestV1 struct {
 	// Time of the update.
 	Time time.Time `json:"time" yaml:"time"`
 	// Magic number, used to identify integrity of the checkpoint.
@@ -93,11 +101,11 @@ type Manifest struct {
 	// Version of the Pulumi engine used to render the checkpoint.
 	Version string `json:"version" yaml:"version"`
 	// Plugins contains the binary version info of plug-ins used.
-	Plugins []PluginInfo `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Plugins []PluginInfoV1 `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
-// PluginInfo captures the version and information about a plugin.
-type PluginInfo struct {
+// PluginInfoV1 captures the version and information about a plugin.
+type PluginInfoV1 struct {
 	Name    string               `json:"name" yaml:"name"`
 	Path    string               `json:"path" yaml:"path"`
 	Type    workspace.PluginKind `json:"type" yaml:"type"`
@@ -141,7 +149,7 @@ type Stack struct {
 	StackName   tokens.QName `json:"stackName"`
 
 	ActiveUpdate string                  `json:"activeUpdate"`
-	Resources    []Resource              `json:"resources,omitempty"`
+	Resources    []ResourceV1            `json:"resources,omitempty"`
 	Tags         map[StackTagName]string `json:"tags,omitempty"`
 
 	Version int `json:"version"`
