@@ -14,7 +14,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -40,10 +39,10 @@ func newStackLsCmd() *cobra.Command {
 			}
 
 			// Get the current stack so we can print a '*' next to it.
-			var current tokens.QName
+			var current string
 			if s, _ := state.CurrentStack(b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Name()
+				current = s.Name().String()
 			}
 
 			// Now produce a list of summaries, and enumerate them sorted by name.
@@ -55,7 +54,7 @@ func newStackLsCmd() *cobra.Command {
 				return err
 			}
 			for _, stack := range bs {
-				name := string(stack.Name())
+				name := stack.Name().String()
 				stacks[name] = stack
 				stackNames = append(stackNames, name)
 			}
@@ -74,7 +73,7 @@ func newStackLsCmd() *cobra.Command {
 			for _, name := range stackNames {
 				// Mark the name as current '*' if we've selected it.
 				stack := stacks[name]
-				if name == string(current) {
+				if name == current {
 					name += "*"
 				}
 

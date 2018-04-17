@@ -12,7 +12,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -33,7 +32,7 @@ func newLogsCmd() *cobra.Command {
 		Short: "Show aggregated logs for a project",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack), false)
+			s, err := requireStack(stack, false)
 			if err != nil {
 				return err
 			}

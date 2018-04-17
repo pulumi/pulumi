@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -32,16 +31,19 @@ func newStackSelectCmd() *cobra.Command {
 
 			if len(args) > 0 {
 				// A stack was given, ask all known backends about it
-				stackName := tokens.QName(args[0])
+				stackRef, stackErr := b.ParseStackReference(args[0])
+				if stackErr != nil {
+					return stackErr
+				}
 
-				stack, stackErr := b.GetStack(stackName)
+				stack, stackErr := b.GetStack(stackRef)
 				if stackErr != nil {
 					return stackErr
 				} else if stack != nil {
-					return state.SetCurrentStack(stackName)
+					return state.SetCurrentStack(stackRef.String())
 				}
 
-				return errors.Errorf("no stack named '%s' found", stackName)
+				return errors.Errorf("no stack named '%s' found", stackRef)
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
@@ -49,7 +51,7 @@ func newStackSelectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return state.SetCurrentStack(stack.Name())
+			return state.SetCurrentStack(stack.Name().String())
 
 		}),
 	}

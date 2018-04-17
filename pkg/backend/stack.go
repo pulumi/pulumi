@@ -12,13 +12,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a stack associated with a particular backend implementation.
 type Stack interface {
-	Name() tokens.QName         // this stack's name.
+	Name() StackReference       // this stack's identity.
 	Config() config.Map         // the current config map.
 	Snapshot() *deploy.Snapshot // the latest deployment snapshot.
 	Backend() Backend           // the backend this stack belongs to.

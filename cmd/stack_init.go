@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -32,22 +31,27 @@ func newStackInitCmd() *cobra.Command {
 				opts = cloud.CreateStackOptions{CloudName: ppc}
 			}
 
-			var stackName tokens.QName
+			var stackName string
 			if len(args) > 0 {
-				stackName = tokens.QName(args[0])
+				stackName = args[0]
 			} else if cmdutil.Interactive() {
 				name, nameErr := cmdutil.ReadConsole("Enter a stack name")
 				if nameErr != nil {
 					return nameErr
 				}
-				stackName = tokens.QName(name)
+				stackName = name
 			}
 
 			if stackName == "" {
 				return errors.New("missing stack name")
 			}
 
-			_, err = createStack(b, stackName, opts)
+			stackRef, err := b.ParseStackReference(stackName)
+			if err != nil {
+				return err
+			}
+
+			_, err = createStack(b, stackRef, opts)
 			return err
 		}),
 	}

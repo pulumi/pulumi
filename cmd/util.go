@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -41,17 +40,13 @@ func currentBackend() (backend.Backend, error) {
 }
 
 // createStack creates a stack with the given name, and selects it as the current.
-func createStack(b backend.Backend, stackName tokens.QName, opts interface{}) (backend.Stack, error) {
-	if stackName == "" {
-		return nil, errors.New("missing stack name")
-	}
-
-	stack, err := b.CreateStack(stackName, opts)
+func createStack(b backend.Backend, stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+	stack, err := b.CreateStack(stackRef, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
-	if err = state.SetCurrentStack(stackName); err != nil {
+	if err = state.SetCurrentStack(stackRef.String()); err != nil {
 		return nil, err
 	}
 
@@ -61,17 +56,22 @@ func createStack(b backend.Backend, stackName tokens.QName, opts interface{}) (b
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) {
+func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
 	if stackName == "" {
 		return requireCurrentStack(offerNew)
 	}
 
-	// Search all known backends for this stack.
 	b, err := currentBackend()
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.Stack(stackName, b)
+
+	stackRef, err := b.ParseStackReference(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	stack, err := b.GetStack(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func requireStack(stackName tokens.QName, offerNew bool) (backend.Stack, error) 
 			return nil, err
 		}
 
-		return createStack(b, stackName, nil)
+		return createStack(b, stackRef, nil)
 	}
 
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
@@ -134,7 +134,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
 	for _, stack := range allStacks {
-		name := string(stack.Name())
+		name := stack.Name().String()
 		options = append(options, name)
 		stacks[name] = stack
 	}
@@ -154,7 +154,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	currStack, currErr := state.CurrentStack(b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
-		current = string(currStack.Name())
+		current = currStack.Name().String()
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -184,7 +184,12 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 			return nil, err
 		}
 
-		return createStack(b, tokens.QName(stackName), nil)
+		stackRef, err := b.ParseStackReference(stackName)
+		if err != nil {
+			return nil, err
+		}
+
+		return createStack(b, stackRef, nil)
 	}
 
 	return stacks[option], nil

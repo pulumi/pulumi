@@ -34,7 +34,7 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stack, err := requireStack(tokens.QName(stack), true)
+			stack, err := requireStack(stack, true)
 			if err != nil {
 				return err
 			}
@@ -63,7 +63,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(*stack), true)
+			s, err := requireStack(*stack, true)
 			if err != nil {
 				return err
 			}
@@ -89,13 +89,12 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Short: "Remove configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(*stack)
-			if all && stackName != "" {
+			if all && *stack != "" {
 				return errors.New("if --all is specified, an explicit stack can not be provided")
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(stackName, true)
+			s, err := requireStack(*stack, true)
 			if err != nil {
 				return err
 			}
@@ -105,7 +104,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name())
+			ps, err := workspace.DetectProjectStack(s.Name().EngineName())
 			if err != nil {
 				return err
 			}
@@ -114,7 +113,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				delete(ps.Config, key)
 			}
 
-			return workspace.SaveProjectStack(s.Name(), ps)
+			return workspace.SaveProjectStack(s.Name().EngineName(), ps)
 		}),
 	}
 
@@ -140,10 +139,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"may be set by piping a file to standard in.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stackName := tokens.QName(*stack)
 
 			// Ensure the stack exists.
-			s, err := requireStack(stackName, true)
+			s, err := requireStack(*stack, true)
 			if err != nil {
 				return err
 			}
@@ -191,14 +189,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewValue(value)
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name())
+			ps, err := workspace.DetectProjectStack(s.Name().EngineName())
 			if err != nil {
 				return err
 			}
 
 			ps.Config[key] = v
 
-			err = workspace.SaveProjectStack(s.Name(), ps)
+			err = workspace.SaveProjectStack(s.Name().EngineName(), ps)
 			if err != nil {
 				return err
 			}
@@ -260,7 +258,7 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	ps, err := workspace.DetectProjectStack(stack.Name())
+	ps, err := workspace.DetectProjectStack(stack.Name().EngineName())
 	if err != nil {
 		return err
 	}
@@ -311,7 +309,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key config.Key) error {
-	ps, err := workspace.DetectProjectStack(stack.Name())
+	ps, err := workspace.DetectProjectStack(stack.Name().EngineName())
 	if err != nil {
 		return err
 	}

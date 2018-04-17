@@ -11,7 +11,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -31,9 +30,9 @@ func newStackRmCmd() *cobra.Command {
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Use the stack provided or, if missing, default to the current one.
-			var stack tokens.QName
+			var stack string
 			if len(args) > 0 {
-				stack = tokens.QName(args[0])
+				stack = args[0]
 			}
 			s, err := requireStack(stack, false)
 			if err != nil {
@@ -42,7 +41,7 @@ func newStackRmCmd() *cobra.Command {
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Name())
-			if !yes && !confirmPrompt(prompt, string(s.Name())) {
+			if !yes && !confirmPrompt(prompt, s.Name().String()) {
 				return errors.New("confirmation declined")
 			}
 
@@ -50,13 +49,13 @@ func newStackRmCmd() *cobra.Command {
 			if err != nil {
 				if hasResources {
 					return errors.Errorf(
-						"'%v' still has resources; removal rejected; pass --force to override", s.Name())
+						"'%s' still has resources; removal rejected; pass --force to override", s.Name())
 				}
 				return err
 			}
 
 			// Blow away stack specific settings if they exist
-			path, err := workspace.DetectProjectStackPath(s.Name())
+			path, err := workspace.DetectProjectStackPath(s.Name().EngineName())
 			if err != nil {
 				return err
 			}

@@ -25,13 +25,25 @@ type Stack interface {
 
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
-	name      tokens.QName     // the stack's name.
-	cloudURL  string           // the URL to the cloud containing this stack.
-	orgName   string           // the organization that owns this stack.
-	cloudName string           // the PPC in which this stack is running.
-	config    config.Map       // the stack's config bag.
-	snapshot  *deploy.Snapshot // a snapshot representing the latest deployment state.
-	b         *cloudBackend    // a pointer to the backend this stack belongs to.
+	name      backend.StackReference // the stack's name.
+	cloudURL  string                 // the URL to the cloud containing this stack.
+	orgName   string                 // the organization that owns this stack.
+	cloudName string                 // the PPC in which this stack is running.
+	config    config.Map             // the stack's config bag.
+	snapshot  *deploy.Snapshot       // a snapshot representing the latest deployment state.
+	b         *cloudBackend          // a pointer to the backend this stack belongs to.
+}
+
+type cloudBackendReference struct {
+	name tokens.QName
+}
+
+func (c cloudBackendReference) String() string {
+	return string(c.name)
+}
+
+func (c cloudBackendReference) EngineName() tokens.QName {
+	return c.name
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
@@ -59,7 +71,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
-		name:      stackName,
+		name:      cloudBackendReference{name: stackName},
 		cloudURL:  b.CloudURL(),
 		orgName:   apistack.OrgName,
 		cloudName: apistack.CloudName,
@@ -73,14 +85,14 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 // managed stacks. All engine operations for a managed stack--previews, updates, destroys, etc.--run locally.
 const managedCloudName = "pulumi"
 
-func (s *cloudStack) Name() tokens.QName         { return s.name }
-func (s *cloudStack) Config() config.Map         { return s.config }
-func (s *cloudStack) Snapshot() *deploy.Snapshot { return s.snapshot }
-func (s *cloudStack) Backend() backend.Backend   { return s.b }
-func (s *cloudStack) CloudURL() string           { return s.cloudURL }
-func (s *cloudStack) OrgName() string            { return s.orgName }
-func (s *cloudStack) CloudName() string          { return s.cloudName }
-func (s *cloudStack) RunLocally() bool           { return s.cloudName == managedCloudName }
+func (s *cloudStack) Name() backend.StackReference { return s.name }
+func (s *cloudStack) Config() config.Map           { return s.config }
+func (s *cloudStack) Snapshot() *deploy.Snapshot   { return s.snapshot }
+func (s *cloudStack) Backend() backend.Backend     { return s.b }
+func (s *cloudStack) CloudURL() string             { return s.cloudURL }
+func (s *cloudStack) OrgName() string              { return s.orgName }
+func (s *cloudStack) CloudName() string            { return s.cloudName }
+func (s *cloudStack) RunLocally() bool             { return s.cloudName == managedCloudName }
 
 func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
