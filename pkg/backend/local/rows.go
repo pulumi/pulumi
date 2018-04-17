@@ -5,6 +5,7 @@ package local
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
@@ -16,8 +17,6 @@ import (
 
 type Row interface {
 	ColorizedColumns() []string
-	UncolorizedColumns() []string
-
 	ColorizedSuffix() string
 }
 
@@ -42,9 +41,8 @@ type ResourceRow interface {
 
 // Implementation of a Row, used for the header of the grid.
 type headerRowData struct {
-	display            *ProgressDisplay
-	columns            []string
-	uncolorizedColumns []string
+	display *ProgressDisplay
+	columns []string
 }
 
 func (data *headerRowData) ColorizedColumns() []string {
@@ -67,14 +65,6 @@ func (data *headerRowData) ColorizedColumns() []string {
 	}
 
 	return data.columns
-}
-
-func (data *headerRowData) UncolorizedColumns() []string {
-	if len(data.uncolorizedColumns) == 0 {
-		data.uncolorizedColumns = uncolorise(data.ColorizedColumns())
-	}
-
-	return data.uncolorizedColumns
 }
 
 func (data *headerRowData) ColorizedSuffix() string {
@@ -104,8 +94,7 @@ type resourceRowData struct {
 
 	diagInfo *DiagInfo
 
-	columns            []string
-	uncolorizedColumns []string
+	columns []string
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
@@ -168,7 +157,6 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 
 func (data *resourceRowData) ClearCachedData() {
 	data.columns = []string{}
-	data.uncolorizedColumns = []string{}
 }
 
 type column int
@@ -181,18 +169,12 @@ const (
 	infoColumn   column = 4
 )
 
-var ellipsesArray = []string{"", ".", "..", "..."}
-
 func (data *resourceRowData) ColorizedSuffix() string {
-	if !data.done {
-		uncolorizedColumns := data.UncolorizedColumns()
-		ellipses := ellipsesArray[(data.tick+data.display.currentTick)%len(ellipsesArray)]
+	if !data.display.Done && !data.done {
+		suffixes := data.display.suffixesArray
+		ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-		if uncolorizedColumns[infoColumn] == "" {
-			return data.step.Op.Color() + ellipses + colors.Reset
-		}
-
-		return ellipses
+		return data.step.Op.Color() + ellipses + colors.Reset
 	}
 
 	return ""
@@ -319,6 +301,11 @@ func (data *resourceRowData) getInfo() string {
 		}
 	}
 
+	newLineIndex := strings.Index(diagMsg, "\n")
+	if newLineIndex >= 0 {
+		diagMsg = diagMsg[0:newLineIndex]
+	}
+
 	return diagMsg
 }
 
@@ -342,23 +329,4 @@ func getWorstDiagnostic(diagInfo *DiagInfo) *engine.Event {
 	}
 
 	return diagInfo.LastDebug
-}
-
-func uncolorise(columns []string) []string {
-	uncolorizedColumns := make([]string, len(columns))
-
-	for i, v := range columns {
-		uncolorizedColumns[i] = colors.Never.Colorize(v)
-	}
-
-	return uncolorizedColumns
-}
-
-func (data *resourceRowData) UncolorizedColumns() []string {
-	if len(data.uncolorizedColumns) == 0 {
-		columns := data.ColorizedColumns()
-		data.uncolorizedColumns = uncolorise(columns)
-	}
-
-	return data.uncolorizedColumns
 }
