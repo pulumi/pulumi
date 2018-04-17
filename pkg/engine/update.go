@@ -36,15 +36,14 @@ type UpdateOptions struct {
 type ResourceChanges map[deploy.StepOp]int
 
 func Update(
-	u UpdateInfo, manager SnapshotManager,
-	events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+	u UpdateInfo, events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 
 	contract.Require(u != nil, "update")
 	contract.Require(events != nil, "events")
 
 	defer func() { events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u, manager)
+	ctx, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +116,7 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := newUpdateActions(info.Update, info.SnapshotManager, opts)
+			actions := newUpdateActions(info.Update, opts)
 			summary, _, _, err := result.Walk(actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
@@ -140,22 +139,20 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
-	Steps           int
-	Ops             map[deploy.StepOp]int
-	Seen            map[resource.URN]deploy.Step
-	MaybeCorrupt    bool
-	Update          UpdateInfo
-	Opts            planOptions
-	SnapshotManager SnapshotManager
+	Steps        int
+	Ops          map[deploy.StepOp]int
+	Seen         map[resource.URN]deploy.Step
+	MaybeCorrupt bool
+	Update       UpdateInfo
+	Opts         planOptions
 }
 
-func newUpdateActions(u UpdateInfo, manager SnapshotManager, opts planOptions) *updateActions {
+func newUpdateActions(u UpdateInfo, opts planOptions) *updateActions {
 	return &updateActions{
-		Ops:             make(map[deploy.StepOp]int),
-		Seen:            make(map[resource.URN]deploy.Step),
-		Update:          u,
-		Opts:            opts,
-		SnapshotManager: manager,
+		Ops:    make(map[deploy.StepOp]int),
+		Seen:   make(map[resource.URN]deploy.Step),
+		Update: u,
+		Opts:   opts,
 	}
 }
 
@@ -166,7 +163,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.SnapshotManager.BeginMutation(step)
+	return acts.Update.BeginMutation()
 }
 
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
@@ -197,12 +194,20 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	return ctx.(SnapshotMutation).End(step)
+	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	acts.Opts.Events.resourceOutputsEvent(step, false /* planning */, acts.Opts.Debug)
-	return acts.SnapshotManager.RegisterResourceOutputs(step)
+	acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+
+	// There's a chance there are new outputs that weren't written out last time.
+	// We need to perform another snapshot write to ensure they get written out.
+	mutation, err := acts.Update.BeginMutation()
+	if err != nil {
+		return err
+	}
+
+	return mutation.End(step.Iterator().Snap())
 }

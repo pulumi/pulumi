@@ -46,13 +46,8 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		for _, oldres := range prev.Resources {
-			// Ignore resources that are condemned; these should not be recorded in the LUT.
-			if oldres.Delete || oldres.Status.Condemned() {
-				continue
-			}
-
-			// Ignore non-live resources, they do not exist and should not be considered.
-			if !oldres.Status.Live() {
+			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
+			if oldres.Delete {
 				continue
 			}
 

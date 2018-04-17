@@ -17,6 +17,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/encoding"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -52,6 +53,27 @@ func (u *update) GetTarget() *deploy.Target {
 	return u.target
 }
 
+type localStackMutation struct {
+	name tokens.QName
+}
+
+func (u *update) BeginMutation() (engine.SnapshotMutation, error) {
+	return &localStackMutation{name: u.target.Name}, nil
+}
+
+func (m *localStackMutation) End(snapshot *deploy.Snapshot) error {
+	stack := snapshot.Stack
+	contract.Assert(m.name == stack)
+
+	config, _, _, err := getStack(stack)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	_, err = saveStack(stack, config, snapshot)
+	return err
+}
+
 func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
@@ -67,10 +89,6 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 		proj:   proj,
 		target: target,
 	}, nil
-}
-
-func (b *localBackend) newSnapshotPersister() *localSnapshotPersister {
-	return &localSnapshotPersister{}
 }
 
 func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
@@ -119,7 +137,7 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
-	if !DisableIntegrityChecking && snapshot != nil {
+	if !DisableIntegrityChecking {
 		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
 			return nil, nil, file,
 				errors.Wrapf(verifyerr, "%s: snapshot integrity failure; refusing to use it", file)
@@ -172,7 +190,7 @@ func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *depl
 		}
 	}
 
-	if !DisableIntegrityChecking && snap != nil {
+	if !DisableIntegrityChecking {
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
