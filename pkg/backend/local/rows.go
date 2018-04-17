@@ -42,6 +42,7 @@ type ResourceRow interface {
 
 // Implementation of a Row, used for the header of the grid.
 type headerRowData struct {
+	display            *ProgressDisplay
 	columns            []string
 	uncolorizedColumns []string
 }
@@ -56,7 +57,13 @@ func (data *headerRowData) ColorizedColumns() []string {
 			return blue(msg)
 		}
 
-		data.columns = []string{"#", header("Resource Type"), header("Name"), header("Status"), header("Extra Info")}
+		var statusColumn string
+		if data.display.isPreview {
+			statusColumn = header("Plan")
+		} else {
+			statusColumn = header("Status")
+		}
+		data.columns = []string{"#", header("Resource Type"), header("Name"), statusColumn, header("Extra Info")}
 	}
 
 	return data.columns

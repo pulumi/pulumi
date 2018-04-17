@@ -474,7 +474,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	if len(display.rows) == 0 {
 		// about to make our first status message.  make sure we present the header line first.
-		display.rows = append(display.rows, &headerRowData{})
+		display.rows = append(display.rows, &headerRowData{display: display})
 	}
 
 	// At this point, all events should relate to resources.
@@ -627,19 +627,19 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 func getPreviewText(op deploy.StepOp) string {
 	switch op {
 	case deploy.OpSame:
-		return "[no change]"
+		return "no change"
 	case deploy.OpCreate:
-		return "[create]"
+		return "create"
 	case deploy.OpUpdate:
-		return "[update]"
+		return "update"
 	case deploy.OpDelete:
-		return "[delete]"
+		return "delete"
 	case deploy.OpReplace:
-		return "[replace]"
+		return "replace"
 	case deploy.OpCreateReplacement:
-		return "[create for replacement]"
+		return "create for replacement"
 	case deploy.OpDeleteReplaced:
-		return "[delete for replacement]"
+		return "delete for replacement"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
