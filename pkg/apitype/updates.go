@@ -3,6 +3,8 @@
 package apitype
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
@@ -269,10 +271,12 @@ type CompleteUpdateRequest struct {
 }
 
 // PatchUpdateCheckpointRequest defines the body of a request to the patch update checkpoint endpoint of the service
-// API.
+// API. The `Deployment` field is expected to contain a serialized `Deployment` value, the schema of which is indicated
+// by the `Version` field.
 type PatchUpdateCheckpointRequest struct {
-	IsInvalid  bool          `json:"isInvalid"`
-	Deployment *DeploymentV1 `json:"deployment,omitempty"`
+	IsInvalid  bool            `json:"isInvalid"`
+	Version    int             `json:"version"`
+	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
