@@ -25,6 +25,7 @@ import (
 )
 
 // We alias the latest versions of the various types below to their friendly names here.
+
 type Checkpoint = CheckpointV1
 type Deployment = DeploymentV1
 type Manifest = ManifestV1
@@ -65,7 +66,7 @@ type UntypedDeployment struct {
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
-// Resource describes a Cloud resource constructed by Pulumi.
+// ResourceV1 describes a Cloud resource constructed by Pulumi.
 type ResourceV1 struct {
 	// URN uniquely identifying this resource.
 	URN resource.URN `json:"urn" yaml:"urn"`
@@ -97,7 +98,7 @@ type ResourceV1 struct {
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
 }
 
-// Manifest captures meta-information about this checkpoint file, such as versions of binaries, etc.
+// ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
 type ManifestV1 struct {
 	// Time of the update.
 	Time time.Time `json:"time" yaml:"time"`
@@ -109,7 +110,7 @@ type ManifestV1 struct {
 	Plugins []PluginInfoV1 `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
-// PluginInfo captures the version and information about a plugin.
+// PluginInfoV1 captures the version and information about a plugin.
 type PluginInfoV1 struct {
 	Name    string               `json:"name" yaml:"name"`
 	Path    string               `json:"path" yaml:"path"`
