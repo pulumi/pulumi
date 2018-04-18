@@ -119,6 +119,8 @@ type Backend interface {
 	DownloadPlugin(info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
 	DownloadTemplate(name string, progress bool) (io.ReadCloser, error)
 	ListTemplates() ([]workspace.Template, error)
+
+	CancelCurrentUpdate(stackName tokens.QName) error
 }
 
 type cloudBackend struct {
@@ -786,6 +788,27 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	return err
+}
+
+func (b *cloudBackend) CancelCurrentUpdate(stackName tokens.QName) error {
+	stackID, err := getCloudStackIdentifier(stackName)
+	if err != nil {
+		return err
+	}
+	stack, err := b.client.GetStack(stackID)
+	if err != nil {
+		return err
+	}
+
+	// Compute the update identifier and attempt to cancel the update.
+	//
+	// NOTE: the update kind is not relevant; the same endpoint will work for updates of all kinds.
+	updateID := client.UpdateIdentifier{
+		StackIdentifier: stackID,
+		UpdateKind:      client.UpdateKindUpdate,
+		UpdateID:        stack.ActiveUpdate,
+	}
+	return b.client.CancelUpdate(updateID)
 }
 
 func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
