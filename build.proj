@@ -106,13 +106,17 @@
   </Target>
 
   <Target Name="NodeSDKTest">
+      <ItemGroup>
+          <NodeSDKTestFiles Include="$(NodeJSSdkDirectory)\bin\tests\**\*.spec.js" />
+      </ItemGroup>
+
       <Exec Command="yarn bin 2> nul"
             ConsoleToMSBuild="true"
             WorkingDirectory="$(NodeJSSdkDirectory)">
           <Output TaskParameter="ConsoleOutput" PropertyName="YarnBin" />
       </Exec>
 
-      <Exec Command="$(YarnBin)\mocha --timeout 15000 '$(NodeJSSdkDirectory)\bin\tests\**\*.spec.js'"
+      <Exec Command="$(YarnBin)\mocha --timeout 15000 $(NodeSdkTestFiles)"
             IgnoreExitCode="true">
           <Output TaskParameter="ExitCode" PropertyName="NodeTestExitCode" />
       </Exec>
