@@ -315,7 +315,8 @@ func (pc *Client) CreateUpdate(
 			endpoint = "update"
 		}
 	case UpdateKindRefresh:
-		contract.Failf("Refresh not yet supported for managed stacks [pulumi/pulumi#1081]")
+		return UpdateIdentifier{},
+			errors.New("'refresh' not yet supported for managed stacks [pulumi/pulumi#1081]")
 	case UpdateKindDestroy:
 		endpoint = "destroy"
 	default:

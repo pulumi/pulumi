@@ -147,7 +147,7 @@ func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	if !preview {
-		if s.new.Custom && !s.iter.p.Refresh() {
+		if s.new.Custom && !s.iter.p.IsRefresh() {
 			// Invoke the Create RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -231,7 +231,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	if !preview {
-		if s.old.Custom && !s.iter.p.Refresh() {
+		if s.old.Custom && !s.iter.p.IsRefresh() {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -295,7 +295,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	s.new.ID = s.old.ID
 
 	if !preview {
-		if s.new.Custom && !s.iter.p.Refresh() {
+		if s.new.Custom && !s.iter.p.IsRefresh() {
 			// Invoke the Update RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {

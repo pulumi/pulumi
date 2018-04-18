@@ -85,7 +85,7 @@ type errorSource struct {
 func (src *errorSource) Close() error                { return nil }
 func (src *errorSource) Project() tokens.PackageName { return "" }
 func (src *errorSource) Info() interface{}           { return nil }
-func (src *errorSource) Refresh() bool               { return false }
+func (src *errorSource) IsRefresh() bool             { return false }
 
 func (src *errorSource) Iterate(opts Options) (SourceIterator, error) {
 	if src.duringIterate {

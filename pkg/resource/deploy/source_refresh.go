@@ -33,7 +33,7 @@ type refreshSource struct {
 func (src *refreshSource) Close() error                { return nil }
 func (src *refreshSource) Project() tokens.PackageName { return src.proj.Name }
 func (src *refreshSource) Info() interface{}           { return nil }
-func (src *refreshSource) Refresh() bool               { return true }
+func (src *refreshSource) IsRefresh() bool             { return true }
 
 func (src *refreshSource) Iterate(opts Options) (SourceIterator, error) {
 	var states []*resource.State

@@ -20,7 +20,7 @@ type fixedSource struct {
 func (src *fixedSource) Close() error                { return nil }
 func (src *fixedSource) Project() tokens.PackageName { return src.ctx }
 func (src *fixedSource) Info() interface{}           { return nil }
-func (src *fixedSource) Refresh() bool               { return false }
+func (src *fixedSource) IsRefresh() bool             { return false }
 
 func (src *fixedSource) Iterate(opts Options) (SourceIterator, error) {
 	return &fixedSourceIterator{

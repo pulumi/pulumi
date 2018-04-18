@@ -17,7 +17,7 @@ type nullSource struct {
 func (src *nullSource) Close() error                { return nil }
 func (src *nullSource) Project() tokens.PackageName { return "" }
 func (src *nullSource) Info() interface{}           { return nil }
-func (src *nullSource) Refresh() bool               { return false }
+func (src *nullSource) IsRefresh() bool             { return false }
 
 func (src *nullSource) Iterate(opts Options) (SourceIterator, error) {
 	return &nullSourceIterator{}, nil

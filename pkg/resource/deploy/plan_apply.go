@@ -236,8 +236,7 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		parentType = p.QualifiedType()
 	}
 
-	t := goal.Type
-	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Project(), parentType, t, goal.Name)
+	urn := resource.NewURN(iter.p.Target().Name, iter.p.source.Project(), parentType, goal.Type, goal.Name)
 	if iter.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
@@ -254,35 +253,21 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 		oldOutputs = old.Outputs
 	}
 
-	// See if we're performing a refresh update, which takes slightly different code-paths.
-	refresh := iter.p.Refresh()
-
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.  Normally there are no outputs, unless this is a refresh.
-	props := goal.Properties
-	var inputs resource.PropertyMap
-	var outputs resource.PropertyMap
-	if refresh {
-		// In the case of a refresh, we will preserve the old inputs (since we won't have any new ones).  Note
-		// that this can lead to a state in which inputs could not have possibly produced the outputs, but this
-		// will need to be reconciled manually by the programmer updating the program accordingly.
-		inputs = oldInputs
-		outputs = props
-	} else {
-		// In the case of non-refreshes, outputs remain empty (they will be computed), but inputs are present.
-		inputs = props
-	}
-	new := resource.NewState(t, urn, goal.Custom, false, "",
-		inputs, outputs, goal.Parent, goal.Protect, goal.Dependencies)
+	props, inputs, outputs, new := iter.getResourcePropertyStates(urn, goal)
 
 	// Fetch the provider for this resource type, assuming it isn't just a logical one.
 	var prov plugin.Provider
 	var err error
 	if goal.Custom {
-		if prov, err = iter.Provider(t); err != nil {
+		if prov, err = iter.Provider(goal.Type); err != nil {
 			return nil, err
 		}
 	}
+
+	// See if we're performing a refresh update, which takes slightly different code-paths.
+	refresh := iter.p.IsRefresh()
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := iter.p.preview && !refresh
@@ -442,6 +427,29 @@ func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]S
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(iter, e, new)}, nil
+}
+
+// getResourcePropertyStates returns the properties, inputs, outputs, and new resource state, given a goal state.
+func (iter *PlanIterator) getResourcePropertyStates(urn resource.URN, goal *resource.Goal) (resource.PropertyMap,
+	resource.PropertyMap, resource.PropertyMap, *resource.State) {
+	props := goal.Properties
+	var inputs resource.PropertyMap
+	var outputs resource.PropertyMap
+	if iter.p.IsRefresh() {
+		// In the case of a refresh, we will preserve the old inputs (since we won't have any new ones).  Note
+		// that this can lead to a state in which inputs could not have possibly produced the outputs, but this
+		// will need to be reconciled manually by the programmer updating the program accordingly.
+		if old, ok := iter.p.Olds()[urn]; ok {
+			inputs = old.Inputs
+		}
+		outputs = props
+	} else {
+		// In the case of non-refreshes, outputs remain empty (they will be computed), but inputs are present.
+		inputs = props
+	}
+	return props, inputs, outputs,
+		resource.NewState(goal.Type, urn, goal.Custom, false, "",
+			inputs, outputs, goal.Parent, goal.Protect, goal.Dependencies)
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
