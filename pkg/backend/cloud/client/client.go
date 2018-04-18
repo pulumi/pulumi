@@ -238,13 +238,13 @@ func (pc *Client) GetStackUpdates(stack StackIdentifier) ([]apitype.UpdateInfo, 
 }
 
 // ExportStackDeployment exports the indicated stack's deployment as a raw JSON message.
-func (pc *Client) ExportStackDeployment(stack StackIdentifier) (json.RawMessage, error) {
+func (pc *Client) ExportStackDeployment(stack StackIdentifier) (apitype.UntypedDeployment, error) {
 	var resp apitype.ExportStackResponse
 	if err := pc.restCall("GET", getStackPath(stack, "export"), nil, nil, &resp); err != nil {
-		return nil, err
+		return apitype.UntypedDeployment{}, err
 	}
 
-	return resp.Deployment, nil
+	return apitype.UntypedDeployment(resp), nil
 }
 
 // ImportStackDeployment imports a new deployment into the indicated stack.

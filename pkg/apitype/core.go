@@ -60,6 +60,8 @@ type DeploymentV1 struct {
 
 // UntypedDeployment contains an inner, untyped deployment structure.
 type UntypedDeployment struct {
+	// Version indicates the schema of the encoded deployment.
+	Version int `json:"version,omitempty"`
 	// The opaque Pulumi deployment. This is conceptually of type `Deployment`, but we use `json.Message` to
 	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
 	// the contents, and then remarshaled them, we could end up losing important information.

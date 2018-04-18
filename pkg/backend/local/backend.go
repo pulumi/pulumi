@@ -285,7 +285,10 @@ func (b *localBackend) ExportDeployment(stackName tokens.QName) (*apitype.Untype
 		return nil, err
 	}
 
-	return &apitype.UntypedDeployment{Deployment: json.RawMessage(data)}, nil
+	return &apitype.UntypedDeployment{
+		Version:    1,
+		Deployment: json.RawMessage(data),
+	}, nil
 }
 
 func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error {
