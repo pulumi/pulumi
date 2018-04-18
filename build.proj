@@ -108,7 +108,7 @@
   <Target Name="NodeSDKTest">
       <Exec Command="yarn bin"
             ConsoleToMSBuild="true"
-            WorkingDirector="$(NodeJSSdkDirectory)">
+            WorkingDirectory="$(NodeJSSdkDirectory)">
           <Output TaskParameter="ConsoleOutput" PropertyName="YarnBin" />
       </Exec>
 
