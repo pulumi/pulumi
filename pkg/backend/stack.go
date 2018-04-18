@@ -26,6 +26,9 @@ type Stack interface {
 	// Update this stack.
 	Update(proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+	// Refresh this stack's state from the cloud provider.
+	Refresh(proj *workspace.Project, root string,
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Destroy this stack's resources.
 	Destroy(proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
@@ -45,6 +48,12 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 func UpdateStack(s Stack, proj *workspace.Project, root string,
 	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
 	return s.Backend().Update(s.Name(), proj, root, m, opts, displayOpts)
+}
+
+// RefreshStack refresh's the stack's state from the cloud provider.
+func RefreshStack(s Stack, proj *workspace.Project, root string,
+	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
+	return s.Backend().Refresh(s.Name(), proj, root, m, opts, displayOpts)
 }
 
 // DestroyStack destroys all of this stack's resources.

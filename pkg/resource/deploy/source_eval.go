@@ -60,9 +60,8 @@ func (src *evalSource) Stack() tokens.QName {
 	return src.runinfo.Target.Name
 }
 
-func (src *evalSource) Info() interface{} {
-	return src.runinfo
-}
+func (src *evalSource) Info() interface{} { return src.runinfo }
+func (src *evalSource) IsRefresh() bool   { return false }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {

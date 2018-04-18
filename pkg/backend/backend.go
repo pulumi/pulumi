@@ -35,7 +35,9 @@ type Backend interface {
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(stackName tokens.QName, proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
-
+	// Refresh refreshes the stack's state from the cloud provider.
+	Refresh(stackName tokens.QName, proj *workspace.Project, root string,
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
 	// Destroy destroys all of this stack's resources.
 	Destroy(stackName tokens.QName, proj *workspace.Project, root string,
 		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error

@@ -152,36 +152,31 @@ func (b *localBackend) Update(
 		return errors.Wrap(err, "validating stack properties")
 	}
 
-	if !opts.Force && !opts.Preview {
-		return errors.New("--update or --preview must be passed when updating a local stack")
-	}
-
-	return b.performEngineOp(
-		"updating", backend.DeployUpdate,
-		stackName, proj, root, m, opts, displayOpts,
-		opts.Preview, engine.Update)
+	return b.performEngineOp("updating", backend.DeployUpdate,
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Update)
 }
 
-func (b *localBackend) Destroy(
-	stackName tokens.QName, proj *workspace.Project, root string,
+func (b *localBackend) Refresh(stackName tokens.QName, proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-
-	if !opts.Force && !opts.Preview {
-		return errors.New("--update or --preview must be passed when destroying a local stacks")
-	}
-
-	return b.performEngineOp(
-		"destroying", backend.DestroyUpdate,
-		stackName, proj, root, m, opts, displayOpts,
-		opts.Preview, engine.Destroy)
+	return b.performEngineOp("refreshing", backend.RefreshUpdate,
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Refresh)
 }
 
-func (b *localBackend) performEngineOp(
-	op string, kind backend.UpdateKind, stackName tokens.QName, proj *workspace.Project,
-	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, dryRun bool,
-	performEngineOp func(engine.UpdateInfo, chan<- engine.Event, engine.UpdateOptions, bool) (
-		engine.ResourceChanges, error)) error {
+func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return b.performEngineOp("destroying", backend.DestroyUpdate,
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Destroy)
+}
+
+type engineOpFunc func(
+	engine.UpdateInfo, chan<- engine.Event, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
+
+func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
+	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, dryRun bool, performEngineOp engineOpFunc) error {
+	if !opts.Force && !dryRun {
+		return errors.Errorf("--force or --preview must be passed when %s a local stack", op)
+	}
 
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {

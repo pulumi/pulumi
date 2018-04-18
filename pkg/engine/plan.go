@@ -68,9 +68,10 @@ type planOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc planSourceFunc
 
-	DOT    bool         // true if we should print the DOT file for this plan.
-	Events eventEmitter // the channel to write events from the engine to.
-	Diag   diag.Sink    // the sink to use for diag'ing.
+	SkipOutputs bool         // true if we we should skip printing outputs separately.
+	DOT         bool         // true if we should print the DOT file for this plan.
+	Events      eventEmitter // the channel to write events from the engine to.
+	Diag        diag.Sink    // the sink to use for diag'ing.
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.

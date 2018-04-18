@@ -25,6 +25,8 @@ const (
 	DeployUpdate UpdateKind = "update"
 	// PreviewUpdate is a preview of an update, without impacting resources.
 	PreviewUpdate UpdateKind = "preview"
+	// RefreshUpdate is an update that adopts a cloud's existing resource state.
+	RefreshUpdate UpdateKind = "refresh"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"
 )

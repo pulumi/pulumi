@@ -409,9 +409,11 @@ func getActionLabel(key string, dryRun bool) string {
 	switch key {
 	case string(client.UpdateKindUpdate):
 		return "Updating"
+	case string(client.UpdateKindRefresh):
+		return "Refreshing"
 	case string(client.UpdateKindDestroy):
 		return "Destroying"
-	case "import":
+	case string(client.UpdateKindImport):
 		return "Importing"
 	}
 
@@ -575,20 +577,19 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		root, m, opts, displayOpts, unused, false /*dryRun*/)
 }
 
-func (b *cloudBackend) Update(
-	stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions) error {
+func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return b.PreviewThenPromptThenExecute(client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
+}
 
-	return b.PreviewThenPromptThenExecute(
-		client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
+func (b *cloudBackend) Refresh(stackName tokens.QName, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	return b.PreviewThenPromptThenExecute(client.UpdateKindRefresh, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-
-	return b.PreviewThenPromptThenExecute(
-		client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
+	return b.PreviewThenPromptThenExecute(client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -749,6 +750,8 @@ func (b *cloudBackend) runEngineAction(
 		}
 	}()
 
+	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
+	// return error conditions, because we will do so below after waiting for the display channels to close.
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
@@ -756,8 +759,12 @@ func (b *cloudBackend) runEngineAction(
 		} else {
 			_, err = engine.Update(u, engineEvents, opts, dryRun)
 		}
+	case client.UpdateKindRefresh:
+		_, err = engine.Refresh(u, engineEvents, opts, dryRun)
 	case client.UpdateKindDestroy:
 		_, err = engine.Destroy(u, engineEvents, opts, dryRun)
+	default:
+		contract.Failf("Unrecognized action type: %s", action)
 	}
 
 	// Wait for the display to finish showing all the events.
@@ -1017,8 +1024,8 @@ func displayEvents(
 				return
 			}
 
-			payload := event.Payload.(apitype.UpdateEvent)
 			// Pluck out the string.
+			payload := event.Payload.(apitype.UpdateEvent)
 			if raw, ok := payload.Fields["text"]; ok && raw != nil {
 				if text, ok := raw.(string); ok {
 					text = opts.Color.Colorize(text)
