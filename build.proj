@@ -116,7 +116,7 @@
           <Output TaskParameter="ConsoleOutput" PropertyName="YarnBin" />
       </Exec>
 
-      <Exec Command="$(YarnBin)\mocha --timeout 15000 $(NodeSdkTestFiles)"
+      <Exec Command="$(YarnBin)\mocha --timeout 15000 @(NodeSDKTestFiles -> '%(Identity)', ' ')"
             IgnoreExitCode="true">
           <Output TaskParameter="ExitCode" PropertyName="NodeTestExitCode" />
       </Exec>
