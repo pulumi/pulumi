@@ -112,7 +112,7 @@
           <Output TaskParameter="ConsoleOutput" PropertyName="YarnBin" />
       </Exec>
 
-      <Exec Command="$(YarnBin)\mocha --timeout 15000 'bin\tests\**\*.spec.js'"
+      <Exec Command="$(YarnBin)\mocha --timeout 15000 '$(NodeJSSdkDirectory)\bin\tests\**\*.spec.js'"
             IgnoreExitCode="true">
           <Output TaskParameter="ExitCode" PropertyName="NodeTestExitCode" />
       </Exec>
