@@ -10,7 +10,6 @@ branches:
 init:
 - ps: Install-Product node 8.10 x64
 environment:
-  APPVEYOR_RDP_PASSWORD: makeitstop
   PULUMI_API: https://api.pulumi-staging.io
   PULUMI_ACCESS_TOKEN:
     secure: +c7s1GgUunQl8QlLZs7zafFv6lJbZp40fx1kJl7v+n0qa8oq3ssBlVEl9gfoMBgH
@@ -53,5 +52,3 @@ build_script:
 - cmd: >-
     if defined APPVEYOR_PULL_REQUEST_NUMBER ( msbuild /t:AppVeyorPullRequest /v:Detailed build.proj ) else ( msbuild /t:AppVeyorPush /v:Detailed build.proj )
 test: off
-on_finish:
-  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
