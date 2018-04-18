@@ -14,22 +14,29 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackLsCmd() *cobra.Command {
-	return &cobra.Command{
+	var allStacks bool
+	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List all known stacks",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Ensure we are in a project; if not, we will fail.
-			proj, err := workspace.DetectProjectPath()
+			projPath, err := workspace.DetectProjectPath()
 			if err != nil {
 				return errors.Wrapf(err, "could not detect current project")
-			} else if proj == "" {
+			} else if projPath == "" {
 				return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+			}
+
+			proj, err := workspace.LoadProject(projPath)
+			if err != nil {
+				return errors.Wrap(err, "could not load current project")
 			}
 
 			// Get a list of all known backends, as we will query them all.
@@ -45,11 +52,16 @@ func newStackLsCmd() *cobra.Command {
 				current = s.Name().String()
 			}
 
+			var packageFilter *tokens.PackageName
+			if !allStacks {
+				packageFilter = &proj.Name
+			}
+
 			// Now produce a list of summaries, and enumerate them sorted by name.
 			var result error
 			var stackNames []string
 			stacks := make(map[string]backend.Stack)
-			bs, err := b.ListStacks()
+			bs, err := b.ListStacks(packageFilter)
 			if err != nil {
 				return err
 			}
@@ -103,4 +115,8 @@ func newStackLsCmd() *cobra.Command {
 			return result
 		}),
 	}
+	cmd.PersistentFlags().BoolVar(
+		&allStacks, "all", false, "List all stacks instead of just stacks for the current project")
+
+	return cmd
 }

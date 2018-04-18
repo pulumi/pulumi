@@ -18,7 +18,8 @@ func CurrentStack(backend backend.Backend) (backend.Stack, error) {
 	if stackName == "" {
 		return nil, nil
 	}
-	ref, err := backend.ParseStackReference(stackName)
+
+	ref, err := backend.ParseStackReference(stackName, nil)
 	if err != nil {
 		return nil, err
 	}

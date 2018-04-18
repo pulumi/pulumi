@@ -28,6 +28,7 @@ import (
 type Client struct {
 	apiURL   string
 	apiToken apiAccessToken
+	apiUser  string
 }
 
 // NewClient creates a new Pulumi API client with the given URL and API token.
@@ -68,6 +69,8 @@ func (pc *Client) updateRESTCall(method, path string, queryObj, reqObj, respObj 
 // getProjectPath returns the API path to for the given project with the given components joined with path separators
 // and appended to the project root.
 func getProjectPath(project ProjectIdentifier, components ...string) string {
+	contract.Assertf(project.Repository != "", "need repository in ProjectIdentifier")
+
 	projectRoot := fmt.Sprintf("/api/orgs/%s/programs/%s/%s", project.Owner, project.Repository, project.Project)
 	return path.Join(append([]string{projectRoot}, components...)...)
 }
@@ -75,6 +78,10 @@ func getProjectPath(project ProjectIdentifier, components ...string) string {
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the stack root.
 func getStackPath(stack StackIdentifier, components ...string) string {
+	if stack.Repository == "" {
+		return path.Join(append([]string{fmt.Sprintf("/api/stacks/%s/%s", stack.Owner, stack.Stack)}, components...)...)
+	}
+
 	components = append([]string{"stacks", stack.Stack}, components...)
 	return getProjectPath(stack.ProjectIdentifier, components...)
 }
@@ -88,13 +95,18 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 
 // DescribeUser describes the user implied by the API token associated with this client.
 func (pc *Client) DescribeUser() (string, error) {
-	resp := struct {
-		GitHubLogin string `json:"githubLogin"`
-	}{}
-	if err := pc.restCall("GET", "/api/user", nil, nil, &resp); err != nil {
-		return "", err
+	if pc.apiUser == "" {
+		resp := struct {
+			GitHubLogin string `json:"githubLogin"`
+		}{}
+		if err := pc.restCall("GET", "/api/user", nil, nil, &resp); err != nil {
+			return "", err
+		}
+
+		pc.apiUser = resp.GitHubLogin
 	}
-	return resp.GitHubLogin, nil
+
+	return pc.apiUser, nil
 }
 
 // DownloadPlugin downloads the indicated plugin from the Pulumi API.
@@ -130,12 +142,27 @@ func (pc *Client) DownloadTemplate(name string) (io.ReadCloser, int64, error) {
 }
 
 // ListStacks lists all stacks for the indicated project.
-func (pc *Client) ListStacks(project ProjectIdentifier) ([]apitype.Stack, error) {
+func (pc *Client) ListStacks(project ProjectIdentifier, projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
-	if err := pc.restCall("GET", getProjectPath(project, "stacks"), nil, nil, &stacks); err != nil {
-		return nil, err
+
+	if project.Repository != "" {
+		if err := pc.restCall("GET", getProjectPath(project, "stacks"), nil, nil, &stacks); err != nil {
+			return nil, err
+		}
+	} else {
+		var queryFilter interface{}
+		if projectFilter != nil {
+			queryFilter = struct {
+				ProjectFilter string `url:"project"`
+			}{ProjectFilter: project.Project}
+		}
+
+		if err := pc.restCall("GET", "/api/user/stacks", queryFilter, nil, &stacks); err != nil {
+			return nil, err
+		}
 	}
+
 	return stacks, nil
 }
 
@@ -172,8 +199,16 @@ func (pc *Client) CreateStack(
 	}
 
 	var createStackResp apitype.CreateStackResponseByName
-	if err := pc.restCall("POST", getProjectPath(project, "stacks"), nil, &createStackReq, &createStackResp); err != nil {
-		return apitype.Stack{}, err
+	if project.Repository != "" {
+		if err := pc.restCall("POST", getProjectPath(project, "stacks"), nil,
+			&createStackReq, &createStackResp); err != nil {
+			return apitype.Stack{}, err
+		}
+	} else {
+		if err := pc.restCall("POST", fmt.Sprintf("/api/stacks/%s", project.Owner), nil,
+			&createStackReq, &createStackResp); err != nil {
+			return apitype.Stack{}, err
+		}
 	}
 
 	stack.CloudName = createStackResp.CloudName

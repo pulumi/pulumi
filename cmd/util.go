@@ -46,7 +46,7 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
-	if err = state.SetCurrentStack(stackRef.String()); err != nil {
+	if err = state.SetCurrentStack(stack.Name().String()); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
 		return nil, err
 	}
 
-	stackRef, err := b.ParseStackReference(stackName)
+	stackRef, err := b.ParseStackReference(stackName, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -126,10 +126,15 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 		return nil, errors.New(chooseStackErr)
 	}
 
+	proj, err := workspace.DetectProject()
+	if err != nil {
+		return nil, err
+	}
+
 	// First create a list and map of stack names.
 	var options []string
 	stacks := make(map[string]backend.Stack)
-	allStacks, err := b.ListStacks()
+	allStacks, err := b.ListStacks(&proj.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
@@ -184,7 +189,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 			return nil, err
 		}
 
-		stackRef, err := b.ParseStackReference(stackName)
+		stackRef, err := b.ParseStackReference(stackName, nil)
 		if err != nil {
 			return nil, err
 		}

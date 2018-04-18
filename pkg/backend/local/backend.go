@@ -86,7 +86,7 @@ func (b *localBackend) Name() string {
 	return name
 }
 
-func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
+func (b *localBackend) ParseStackReference(stackRefName string, opts interface{}) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
 }
 
@@ -133,7 +133,7 @@ func (b *localBackend) GetStack(stackRef backend.StackReference) (backend.Stack,
 	}
 }
 
-func (b *localBackend) ListStacks() ([]backend.Stack, error) {
+func (b *localBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.Stack, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, err

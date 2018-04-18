@@ -3,6 +3,8 @@
 package cloud
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -35,11 +37,22 @@ type cloudStack struct {
 }
 
 type cloudBackendReference struct {
-	name tokens.QName
+	name  tokens.QName
+	owner string
+	b     *cloudBackend
 }
 
 func (c cloudBackendReference) String() string {
-	return string(c.name)
+	curUser, err := c.b.client.DescribeUser()
+	if err != nil {
+		curUser = ""
+	}
+
+	if c.owner == curUser {
+		return string(c.name)
+	}
+
+	return fmt.Sprintf("%s/%s", c.owner, c.name)
 }
 
 func (c cloudBackendReference) EngineName() tokens.QName {
@@ -71,7 +84,11 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
-		name:      cloudBackendReference{name: stackName},
+		name: cloudBackendReference{
+			owner: apistack.OrgName,
+			name:  stackName,
+			b:     b,
+		},
 		cloudURL:  b.CloudURL(),
 		orgName:   apistack.OrgName,
 		cloudName: apistack.CloudName,

@@ -27,7 +27,7 @@ type Backend interface {
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
-	ParseStackReference(s string) (StackReference, error)
+	ParseStackReference(s string, opts interface{}) (StackReference, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(stackRef StackReference) (Stack, error)
@@ -38,7 +38,7 @@ type Backend interface {
 	// first boolean return value will be set to true.
 	RemoveStack(stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks() ([]Stack, error)
+	ListStacks(projectFilter *tokens.PackageName) ([]Stack, error)
 
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)

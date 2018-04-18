@@ -335,5 +335,5 @@ func getConfig(stack backend.Stack, key config.Key) error {
 	}
 
 	return errors.Errorf(
-		"configuration key '%v' not found for stack '%v'", prettyKey(key), stack.Name())
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Name())
 }

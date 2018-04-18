@@ -187,8 +187,41 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 func (b *cloudBackend) Name() string     { return b.url }
 func (b *cloudBackend) CloudURL() string { return b.url }
 
-func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
-	return cloudBackendReference{name: tokens.QName(s)}, nil
+func (b *cloudBackend) ParseStackReference(s string, opts interface{}) (backend.StackReference, error) {
+	var owner string
+
+	if opts != nil {
+		parseOpts, ok := opts.(StackReferenceParseOptions)
+		if !ok {
+			return nil, errors.New("expected a StackReferenceParseOptions value for opts parameter")
+		}
+		owner = parseOpts.DefaultOwner
+	}
+
+	split := strings.Split(s, "/")
+	var stackName tokens.QName
+
+	if len(split) == 1 {
+		stackName = tokens.QName(split[0])
+	} else if len(split) == 2 {
+		owner = split[0]
+		stackName = tokens.QName(split[1])
+	} else {
+		return nil, errors.Errorf("could not parse stack name '%s'", s)
+	}
+
+	if owner == "" {
+		currentUser, userErr := b.client.DescribeUser()
+		if userErr != nil {
+			return nil, userErr
+		}
+		owner = currentUser
+	}
+
+	return cloudBackendReference{
+		owner: owner,
+		name:  stackName,
+		b:     b}, nil
 }
 
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
@@ -207,16 +240,16 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	return cloudURL[:ix] + path.Join(append([]string{cloudURL[ix+len(defaultAPIURLPrefix):]}, paths...)...)
 }
 
-// CloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
+// cloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
-func (b *cloudBackend) CloudConsoleProjectPath(projID client.ProjectIdentifier) string {
+func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
 	return path.Join(projID.Owner, projID.Repository, projID.Project)
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
-func (b *cloudBackend) CloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(b.CloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
+	return path.Join(b.cloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
 }
 
 // Logout logs out of the target cloud URL.
@@ -289,7 +322,7 @@ func (b *cloudBackend) DownloadTemplate(name string, progress bool) (io.ReadClos
 }
 
 func (b *cloudBackend) GetStack(stackRef backend.StackReference) (backend.Stack, error) {
-	stackID, err := getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -312,19 +345,31 @@ type CreateStackOptions struct {
 	CloudName string
 }
 
-func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
-	project, err := getCloudProjectIdentifier()
-	if err != nil {
-		return nil, err
+// StackReferenceParseOptions is an optional bag of options specific to parsing stack references.
+type StackReferenceParseOptions struct {
+	// DefaultOwner is an optional username to use when parsing a reference. It is used when the string reference does
+	// not include an owner.
+	DefaultOwner string
+}
+
+func ownerFromRef(stackRef backend.StackReference) string {
+	if r, ok := stackRef.(cloudBackendReference); ok {
+		return r.owner
 	}
 
-	var cloudName string
-	if opts != nil {
-		if cloudOpts, ok := opts.(CreateStackOptions); ok {
-			cloudName = cloudOpts.CloudName
-		} else {
-			return nil, errors.New("expected a CloudStackOptions value for opts parameter")
-		}
+	contract.Failf("bad StackReference type")
+	return ""
+}
+
+func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+	cloudOpts, ok := opts.(CreateStackOptions)
+	if !ok {
+		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
+	}
+
+	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
+	if err != nil {
+		return nil, err
 	}
 
 	tags, err := backend.GetStackTags()
@@ -332,7 +377,7 @@ func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interfa
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	stack, err := b.client.CreateStack(project, cloudName, string(stackRef.EngineName()), tags)
+	stack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.EngineName()), tags)
 	if err != nil {
 		return nil, err
 	}
@@ -341,13 +386,13 @@ func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interfa
 	return newStack(stack, b), nil
 }
 
-func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
-	project, err := getCloudProjectIdentifier()
+func (b *cloudBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.Stack, error) {
+	project, err := b.getCloudProjectIdentifier("")
 	if err != nil {
 		return nil, err
 	}
 
-	stacks, err := b.client.ListStacks(project)
+	stacks, err := b.client.ListStacks(project, projectFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +407,7 @@ func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
 }
 
 func (b *cloudBackend) RemoveStack(stackRef backend.StackReference, force bool) (bool, error) {
-	stack, err := getCloudStackIdentifier(stackRef)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return false, err
 	}
@@ -397,7 +442,7 @@ func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
 }
 
 func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	stack, err := getCloudStackIdentifier(stackRef)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -600,7 +645,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	pkg *workspace.Project, root string, m backend.UpdateMetadata,
 	opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
-	stack, err := getCloudStackIdentifier(stackRef)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -654,7 +699,7 @@ func (b *cloudBackend) updateStack(
 	fmt.Printf(
 		colors.ColorizeText(
 			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
-		actionLabel, stack)
+		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
 	var update client.UpdateIdentifier
@@ -671,7 +716,7 @@ func (b *cloudBackend) updateStack(
 
 	if version != 0 {
 		// Print a URL afterwards to redirect to the version URL.
-		base := b.CloudConsoleStackPath(update.StackIdentifier)
+		base := b.cloudConsoleStackPath(update.StackIdentifier)
 		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
 			defer func() {
 				fmt.Printf(
@@ -786,7 +831,7 @@ func (b *cloudBackend) runEngineAction(
 }
 
 func (b *cloudBackend) GetHistory(stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
-	stack, err := getCloudStackIdentifier(stackRef)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -869,7 +914,7 @@ func (b *cloudBackend) GetLogs(stackRef backend.StackReference,
 	}
 
 	// Otherwise, fetch the logs from the service.
-	stackID, err := getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -877,7 +922,7 @@ func (b *cloudBackend) GetLogs(stackRef backend.StackReference,
 }
 
 func (b *cloudBackend) ExportDeployment(stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
-	stack, err := getCloudStackIdentifier(stackRef)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -891,7 +936,7 @@ func (b *cloudBackend) ExportDeployment(stackRef backend.StackReference) (*apity
 }
 
 func (b *cloudBackend) ImportDeployment(stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
-	stack, err := getCloudStackIdentifier(stackRef)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return err
 	}
@@ -915,7 +960,7 @@ func (b *cloudBackend) ImportDeployment(stackRef backend.StackReference, deploym
 
 // getCloudProjectIdentifier returns information about the current repository and project, based on the current
 // working directory.
-func getCloudProjectIdentifier() (client.ProjectIdentifier, error) {
+func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectIdentifier, error) {
 	w, err := workspace.New()
 	if err != nil {
 		return client.ProjectIdentifier{}, err
@@ -927,22 +972,33 @@ func getCloudProjectIdentifier() (client.ProjectIdentifier, error) {
 	}
 
 	repo := w.Repository()
-
-	if w == nil {
-		return client.ProjectIdentifier{}, workspace.ErrNoRepository
+	// If we have repository information (this is the case when `pulumi init` has been run, use that)
+	if repo != nil {
+		return client.ProjectIdentifier{
+			Owner:      repo.Owner,
+			Repository: repo.Name,
+			Project:    string(proj.Name),
+		}, nil
 	}
 
+	if owner == "" {
+		owner, err = b.client.DescribeUser()
+		if err != nil {
+			return client.ProjectIdentifier{}, err
+		}
+	}
+
+	// Otherwise, we are on the new plan.
 	return client.ProjectIdentifier{
-		Owner:      repo.Owner,
-		Repository: repo.Name,
-		Project:    string(proj.Name),
+		Owner:   owner,
+		Project: string(proj.Name),
 	}, nil
 }
 
 // getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
 // the current working directory.
-func getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	project, err := getCloudProjectIdentifier()
+func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
+	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
 	if err != nil {
 		return client.StackIdentifier{}, errors.Wrap(err, "failed to detect project")
 	}
