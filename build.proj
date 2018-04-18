@@ -112,7 +112,7 @@
           <Output TaskParameter="ConsoleOutput" PropertyName="YarnBin" />
       </Exec>
 
-      <Exec Command="$(YarnBin)\istanbul test --print none $(YarnBin)\_mocha -- --timeout 15000 'bin\tests\**\*.spec.js'"
+      <Exec Command="$(YarnBin)\istanbul test --print none $(YarnBin)\mocha -- --timeout 15000 'bin\tests\**\*.spec.js'"
             IgnoreExitCode="true">
           <Output TaskParameter="ExitCode" PropertyName="NodeTestExitCode" />
       </Exec>
