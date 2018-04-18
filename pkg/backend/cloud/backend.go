@@ -775,6 +775,7 @@ func (b *cloudBackend) runEngineAction(
 		return err
 	}
 
+	manager := b.newSnapshotManager(u.update, u.tokenSource)
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 
@@ -803,14 +804,14 @@ func (b *cloudBackend) runEngineAction(
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
-			err = engine.Preview(u, engineCtx, opts)
+			err = engine.Preview(u, manager, engineCtx, opts)
 		} else {
-			_, err = engine.Update(u, engineCtx, opts, dryRun)
+			_, err = engine.Update(u, manager, engineCtx, opts, dryRun)
 		}
 	case client.UpdateKindRefresh:
-		_, err = engine.Refresh(u, engineCtx, opts, dryRun)
+		_, err = engine.Refresh(u, manager, engineCtx, opts, dryRun)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, engineCtx, opts, dryRun)
+		_, err = engine.Destroy(u, manager, engineCtx, opts, dryRun)
 	default:
 		contract.Failf("Unrecognized action type: %s", action)
 	}
@@ -820,6 +821,7 @@ func (b *cloudBackend) runEngineAction(
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)
+	contract.IgnoreClose(manager)
 
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded
