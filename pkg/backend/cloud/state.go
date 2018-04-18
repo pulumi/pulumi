@@ -242,7 +242,7 @@ func (b *cloudBackend) newUpdate(stackRef backend.StackReference, proj *workspac
 
 func (b *cloudBackend) getTarget(stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
-	stk, err := workspace.DetectProjectStack(stackRef.EngineName())
+	stk, err := workspace.DetectProjectStack(stackRef.StackName())
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func (b *cloudBackend) getTarget(stackRef backend.StackReference) (*deploy.Targe
 	}
 
 	return &deploy.Target{
-		Name:      stackRef.EngineName(),
+		Name:      stackRef.StackName(),
 		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,

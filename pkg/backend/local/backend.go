@@ -51,7 +51,7 @@ func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) EngineName() tokens.QName {
+func (r localBackendReference) StackName() tokens.QName {
 	return r.name
 }
 
@@ -95,7 +95,7 @@ func (b *localBackend) local() {}
 func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
@@ -121,7 +121,7 @@ func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interfa
 }
 
 func (b *localBackend) GetStack(stackRef backend.StackReference) (backend.Stack, error) {
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	config, snapshot, path, err := b.getStack(stackName)
 	switch {
 	case os.IsNotExist(errors.Cause(err)):
@@ -152,7 +152,7 @@ func (b *localBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.
 }
 
 func (b *localBackend) RemoveStack(stackRef backend.StackReference, force bool) (bool, error) {
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	_, snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return false, err
@@ -167,14 +167,14 @@ func (b *localBackend) RemoveStack(stackRef backend.StackReference, force bool) 
 }
 
 func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
-	return symmetricCrypter(stackRef.EngineName())
+	return symmetricCrypter(stackRef.StackName())
 }
 
 func (b *localBackend) Update(
 	stackRef backend.StackReference, proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
 
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
 	// parity with stacks managed by the Pulumi Service.
@@ -206,7 +206,7 @@ func (b *localBackend) Destroy(
 
 	return b.performEngineOp(
 		"destroying", backend.DestroyUpdate,
-		stackRef.EngineName(), proj, root, m, opts, displayOpts,
+		stackRef.StackName(), proj, root, m, opts, displayOpts,
 		opts.Preview, engine.Destroy)
 }
 
@@ -273,7 +273,7 @@ func (b *localBackend) performEngineOp(
 }
 
 func (b *localBackend) GetHistory(stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	updates, err := b.getHistory(stackName)
 	if err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (b *localBackend) GetHistory(stackRef backend.StackReference) ([]backend.Up
 func (b *localBackend) GetLogs(stackRef backend.StackReference,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	target, err := b.getTarget(stackName)
 	if err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 }
 
 func (b *localBackend) ExportDeployment(stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	_, snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
@@ -331,7 +331,7 @@ func (b *localBackend) ExportDeployment(stackRef backend.StackReference) (*apity
 }
 
 func (b *localBackend) ImportDeployment(stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
-	stackName := stackRef.EngineName()
+	stackName := stackRef.StackName()
 	config, _, _, err := b.getStack(stackName)
 	if err != nil {
 		return err

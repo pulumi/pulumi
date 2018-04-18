@@ -64,9 +64,9 @@ func newStackImportCmd() *cobra.Command {
 			}
 			var result error
 			for _, res := range typed.Resources {
-				if res.URN.Stack() != s.Name().EngineName() {
+				if res.URN.Stack() != s.Name().StackName() {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
-						res.URN, res.URN.Stack(), s.Name().EngineName())
+						res.URN, res.URN.Stack(), s.Name().StackName())
 					if force {
 						// If --force was passed, just issue a warning and proceed anyway.
 						// Note: we could associate this diagnostic with the resource URN

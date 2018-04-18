@@ -199,19 +199,19 @@ func (b *cloudBackend) ParseStackReference(s string, opts interface{}) (backend.
 	}
 
 	split := strings.Split(s, "/")
-	var stackName tokens.QName
+	var stackName string
 
 	if len(split) == 1 {
-		stackName = tokens.QName(split[0])
+		stackName = split[0]
 	} else if len(split) == 2 {
 		owner = split[0]
-		stackName = tokens.QName(split[1])
+		stackName = split[1]
 	} else {
 		return nil, errors.Errorf("could not parse stack name '%s'", s)
 	}
 
 	if owner == "" {
-		currentUser, userErr := b.client.DescribeUser()
+		currentUser, userErr := b.client.GetPulumiAccountName()
 		if userErr != nil {
 			return nil, userErr
 		}
@@ -220,8 +220,9 @@ func (b *cloudBackend) ParseStackReference(s string, opts interface{}) (backend.
 
 	return cloudBackendReference{
 		owner: owner,
-		name:  stackName,
-		b:     b}, nil
+		name:  tokens.QName(stackName),
+		b:     b,
+	}, nil
 }
 
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
@@ -377,7 +378,7 @@ func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interfa
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	stack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.EngineName()), tags)
+	stack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
 	if err != nil {
 		return nil, err
 	}
@@ -653,7 +654,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	workspaceStack, err := workspace.DetectProjectStack(stackRef.EngineName())
+	workspaceStack, err := workspace.DetectProjectStack(stackRef.StackName())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
 	}
@@ -972,7 +973,7 @@ func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectId
 	}
 
 	repo := w.Repository()
-	// If we have repository information (this is the case when `pulumi init` has been run, use that)
+	// If we have repository information (this is the case when `pulumi init` has been run, use that.)
 	if repo != nil {
 		return client.ProjectIdentifier{
 			Owner:      repo.Owner,
@@ -982,7 +983,7 @@ func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectId
 	}
 
 	if owner == "" {
-		owner, err = b.client.DescribeUser()
+		owner, err = b.client.GetPulumiAccountName()
 		if err != nil {
 			return client.ProjectIdentifier{}, err
 		}
@@ -1005,7 +1006,7 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 
 	return client.StackIdentifier{
 		ProjectIdentifier: project,
-		Stack:             string(stackRef.EngineName()),
+		Stack:             string(stackRef.StackName()),
 	}, nil
 }
 
@@ -1162,16 +1163,12 @@ func IsValidAccessToken(cloudURL, accessToken string) (bool, error) {
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	githubLogin, err := client.NewClient(cloudURL, accessToken).DescribeUser()
+	_, err := client.NewClient(cloudURL, accessToken).GetPulumiAccountName()
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "getting user info from %v", cloudURL)
-	}
-
-	if githubLogin == "" {
-		return false, errors.New("unexpected response from cloud API")
 	}
 
 	return true, nil

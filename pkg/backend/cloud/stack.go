@@ -43,7 +43,7 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
-	curUser, err := c.b.client.DescribeUser()
+	curUser, err := c.b.client.GetPulumiAccountName()
 	if err != nil {
 		curUser = ""
 	}
@@ -55,7 +55,7 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s", c.owner, c.name)
 }
 
-func (c cloudBackendReference) EngineName() tokens.QName {
+func (c cloudBackendReference) StackName() tokens.QName {
 	return c.name
 }
 

@@ -55,7 +55,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			// Blow away stack specific settings if they exist
-			path, err := workspace.DetectProjectStackPath(s.Name().EngineName())
+			path, err := workspace.DetectProjectStackPath(s.Name().StackName())
 			if err != nil {
 				return err
 			}

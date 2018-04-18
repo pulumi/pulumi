@@ -93,14 +93,18 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 	return getStackPath(update.StackIdentifier, components...)
 }
 
-// DescribeUser describes the user implied by the API token associated with this client.
-func (pc *Client) DescribeUser() (string, error) {
+// GetPulumiAccountName returns the user implied by the API token associated with this client.
+func (pc *Client) GetPulumiAccountName() (string, error) {
 	if pc.apiUser == "" {
 		resp := struct {
 			GitHubLogin string `json:"githubLogin"`
 		}{}
 		if err := pc.restCall("GET", "/api/user", nil, nil, &resp); err != nil {
 			return "", err
+		}
+
+		if resp.GitHubLogin == "" {
+			return "", errors.New("unexpected response from server")
 		}
 
 		pc.apiUser = resp.GitHubLogin
@@ -200,13 +204,13 @@ func (pc *Client) CreateStack(
 
 	var createStackResp apitype.CreateStackResponseByName
 	if project.Repository != "" {
-		if err := pc.restCall("POST", getProjectPath(project, "stacks"), nil,
-			&createStackReq, &createStackResp); err != nil {
+		if err := pc.restCall(
+			"POST", getProjectPath(project, "stacks"), nil, &createStackReq, &createStackResp); err != nil {
 			return apitype.Stack{}, err
 		}
 	} else {
-		if err := pc.restCall("POST", fmt.Sprintf("/api/stacks/%s", project.Owner), nil,
-			&createStackReq, &createStackResp); err != nil {
+		if err := pc.restCall(
+			"POST", fmt.Sprintf("/api/stacks/%s", project.Owner), nil, &createStackReq, &createStackResp); err != nil {
 			return apitype.Stack{}, err
 		}
 	}

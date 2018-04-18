@@ -104,7 +104,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return errors.Wrap(err, "invalid configuration key")
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name().EngineName())
+			ps, err := workspace.DetectProjectStack(s.Name().StackName())
 			if err != nil {
 				return err
 			}
@@ -113,7 +113,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				delete(ps.Config, key)
 			}
 
-			return workspace.SaveProjectStack(s.Name().EngineName(), ps)
+			return workspace.SaveProjectStack(s.Name().StackName(), ps)
 		}),
 	}
 
@@ -189,14 +189,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewValue(value)
 			}
 
-			ps, err := workspace.DetectProjectStack(s.Name().EngineName())
+			ps, err := workspace.DetectProjectStack(s.Name().StackName())
 			if err != nil {
 				return err
 			}
 
 			ps.Config[key] = v
 
-			err = workspace.SaveProjectStack(s.Name().EngineName(), ps)
+			err = workspace.SaveProjectStack(s.Name().StackName(), ps)
 			if err != nil {
 				return err
 			}
@@ -258,7 +258,7 @@ func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
 }
 
 func listConfig(stack backend.Stack, showSecrets bool) error {
-	ps, err := workspace.DetectProjectStack(stack.Name().EngineName())
+	ps, err := workspace.DetectProjectStack(stack.Name().StackName())
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func listConfig(stack backend.Stack, showSecrets bool) error {
 }
 
 func getConfig(stack backend.Stack, key config.Key) error {
-	ps, err := workspace.DetectProjectStack(stack.Name().EngineName())
+	ps, err := workspace.DetectProjectStack(stack.Name().StackName())
 	if err != nil {
 		return err
 	}

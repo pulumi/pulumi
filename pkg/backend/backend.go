@@ -14,9 +14,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
+// method to turn a string like "my-great-stack" or "pulumi/my-great-stack" into a stack reference that can be used to
+// interact with the stack via the backend. Stack references are specific to a given backend and different back ends
+// may interpret the string passed to ParseStackReference differently
 type StackReference interface {
+	// fmt.Stringer's String() method returns a string of the stack identity, suitable for display in the CLI
 	fmt.Stringer
-	EngineName() tokens.QName
+	// StackName is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
+	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
+	// but that informaion is not part of the StackName() we pass to the engine.
+	StackName() tokens.QName
 }
 
 // Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
