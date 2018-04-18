@@ -8,7 +8,7 @@ branches:
         - master
         - /release\/.*/
 init:
-- ps: Install-Product node 6.10.2 x64
+- ps: Install-Product node 8.11.1 x64
 environment:
   PULUMI_API: https://api.pulumi-staging.io
   PULUMI_ACCESS_TOKEN:
