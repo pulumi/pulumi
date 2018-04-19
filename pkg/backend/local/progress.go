@@ -175,13 +175,7 @@ func DisplayProgressEvents(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
 		nil, 1 /*timesPerSecond*/)
 
-	// The streams we used to connect to docker's progress system.  We push progress messages into
-	// progressOutput.  It pushes messages into pipeWriter.  Those are then read below in
-	// DisplayJSONMessagesToStream.
-
 	progressOutput := make(chan Progress)
-	// pipeReader, pipeWriter := io.Pipe()
-	// progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
 	display := &ProgressDisplay{
 		opts:                   opts,
@@ -199,7 +193,14 @@ func DisplayProgressEvents(
 		}
 	}
 
-	display.initializeTermInfo()
+	_, stdout, _ := term.StdStreams()
+	_, isTerminal := term.GetFdInfo(stdout)
+
+	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
+	contract.IgnoreError(err)
+
+	display.isTerminal = isTerminal
+	display.terminalWidth = terminalWidth
 
 	go func() {
 		display.processEvents(ticker, events)
@@ -210,27 +211,12 @@ func DisplayProgressEvents(
 		close(progressOutput)
 	}()
 
-	// Call into Docker to actually suck the progress messages out of pipeReader and display
-	// them to the console.
-	_, stdout, _ := term.StdStreams()
-	err := DisplayProgressToStream(progressOutput, stdout, display.isTerminal)
-	contract.IgnoreError(err)
+	DisplayProgressToStream(progressOutput, stdout, isTerminal)
 
 	ticker.Stop()
 
 	// let our caller know we're done.
 	done <- true
-}
-
-func (display *ProgressDisplay) initializeTermInfo() {
-	_, stdout, _ := term.StdStreams()
-	_, isTerminal := term.GetFdInfo(stdout)
-
-	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
-	contract.IgnoreError(err)
-
-	display.isTerminal = isTerminal
-	display.terminalWidth = terminalWidth
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
@@ -539,7 +525,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload.(engine.PreludeEventPayload)
 		display.isPreview = payload.IsPreview
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
-		display.handleSystemEvent(engine.StdoutEventPayload{Message: "a long message\nover multiple lines", Color: colors.Never})
+
+		// for testing out system messages.
+		// display.handleSystemEvent(engine.StdoutEventPayload{Message: "a long message\nover multiple lines", Color: colors.Never})
 		return
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other

@@ -63,7 +63,7 @@ func cursorDown(out io.Writer, ti termInfo, l int) {
 }
 
 // Display displays the Progress to `out`. `termInfo` is non-nil if `out` is a terminal.
-func (jm *Progress) Display(out io.Writer, termInfo termInfo) error {
+func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 	var endl string
 	if termInfo != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
 		clearLine(out, termInfo)
@@ -87,13 +87,12 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) error {
 
 		fmt.Fprintf(out, "%s%s\n", msg, endl)
 	}
-	return nil
 }
 
 // DisplayProgressToStream displays a Progress  stream from `in` to `out`, `isTerminal` describes if
 // `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
 // cursor while displaying.
-func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool) error {
+func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool) {
 	var (
 		ids = make(map[string]int)
 	)
@@ -146,13 +145,9 @@ func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool)
 			// with multiple tags).
 			ids = make(map[string]int)
 		}
-		err := jm.Display(out, termInfo)
+		jm.Display(out, termInfo)
 		if jm.Action != "" && termInfo != nil {
 			cursorDown(out, termInfo, diff)
 		}
-		if err != nil {
-			return err
-		}
 	}
-	return nil
 }
