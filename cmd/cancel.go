@@ -20,7 +20,7 @@ func newCancelCmd() *cobra.Command {
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Cancel a stack's currently running update, if any",
-		Long: "Cancel a stack's currently running, if any \n" +
+		Long: "Cancel a stack's currently running, if any.\n" +
 			"\n" +
 			"This command cancels the update currently being applied to a stack if any exists.\n" +
 			"Note that this operation is _very dangerous_, and may leave the stack in an\n" +
