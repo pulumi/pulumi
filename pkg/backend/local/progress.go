@@ -62,8 +62,8 @@ type ProgressDisplay struct {
 	// messages we're outputting for them.
 	summaryEventPayload *engine.SummaryEventPayload
 
-	// Any system events we've received.
-	systemEventPayloads []engine.SystemEventPayload
+	// Any system events we've received.  They will be printed at the bottom of all the status rows
+	systemEventPayloads []engine.StdoutEventPayload
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -384,6 +384,12 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 				printedHeader = true
 				display.colorizeAndWriteProgress(progress.Progress{
 					ID:     fmt.Sprintf("%v", systemID),
+					Action: " ",
+				})
+				systemID++
+
+				display.colorizeAndWriteProgress(progress.Progress{
+					ID:     fmt.Sprintf("%v", systemID),
 					Action: colors.Yellow + "System Messages" + colors.Reset,
 				})
 				systemID++
@@ -528,12 +534,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload.(engine.PreludeEventPayload)
 		display.isPreview = payload.IsPreview
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
-
-		msg := "^C received; cancelling. If you would like to terminate immediately, press\n" +
-			"again. Note that terminating immediately may lead to orphaned resources and other inconsistent\n" +
-			"states."
-
-		display.handleSystemEvent(engine.SystemEventPayload{Message: msg, Color: colors.Never})
 		return
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
@@ -546,8 +546,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if msg == "" {
 			return
 		}
-	case engine.SystemEvent:
-		display.handleSystemEvent(event.Payload.(engine.SystemEventPayload))
+	case engine.StdoutColorEvent:
+		display.handleSystemEvent(event.Payload.(engine.StdoutEventPayload))
 		return
 	}
 
@@ -610,7 +610,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	}
 }
 
-func (display *ProgressDisplay) handleSystemEvent(payload engine.SystemEventPayload) {
+func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
 	// Make sure we have a header to display
 	display.ensureHeaderRow()
 
@@ -622,7 +622,7 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.SystemEventPayl
 		display.refreshAllRowsIfInTerminal()
 	} else {
 		// otherwise, in a non-terminal, just print out the actual event.
-		display.writeSimpleMessage(renderSystemEvent(payload, display.opts))
+		display.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
 	}
 }
 

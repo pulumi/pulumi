@@ -96,8 +96,6 @@ func RenderDiffEvent(
 		return renderStdoutColorEvent(event.Payload.(engine.StdoutEventPayload), opts)
 	case engine.DiagEvent:
 		return renderDiffDiagEvent(event.Payload.(engine.DiagEventPayload), opts)
-	case engine.SystemEvent:
-		return renderSystemEvent(event.Payload.(engine.SystemEventPayload), opts)
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
@@ -108,12 +106,6 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts backend.DisplayOp
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
-	return opts.Color.Colorize(payload.Message)
-}
-
-func renderSystemEvent(
-	payload engine.SystemEventPayload, opts backend.DisplayOptions) string {
-
 	return opts.Color.Colorize(payload.Message)
 }
 

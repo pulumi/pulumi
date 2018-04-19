@@ -36,7 +36,6 @@ const (
 	ResourcePreEvent        EventType = "resource-pre"
 	ResourceOutputsEvent    EventType = "resource-outputs"
 	ResourceOperationFailed EventType = "resource-operationfailed"
-	SystemEvent             EventType = "system"
 )
 
 func cancelEvent() Event {
@@ -95,11 +94,6 @@ type StepEventMetadata struct {
 	Res     *StepEventStateMetadata // the latest state for the resource that is known (worst case, old).
 	Keys    []resource.PropertyKey  // the keys causing replacement (only for CreateStep and ReplaceStep).
 	Logical bool                    // true if this step represents a logical operation in the program.
-}
-
-type SystemEventPayload struct {
-	Message string
-	Color   colors.Colorization
 }
 
 type StepEventStateMetadata struct {
