@@ -1,5 +1,8 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+// copied from: https://github.com/docker/cli/blob/master/cli/command/out.go
+// replace with usage of that library when we can figure out the right version story
+
 package local
 
 import (
@@ -10,9 +13,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
-
-// copied from: https://github.com/docker/cli/blob/master/cli/command/out.go
-// replace with usage of that library when we can figure out the right version story
 
 type commonStream struct {
 	fd         uintptr

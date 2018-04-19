@@ -11,6 +11,12 @@
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
+  name = "github.com/Nvveen/Gotty"
+  packages = ["."]
+  revision = "a8b993ba6abdb0e0c12b0125c603323a71c7790c"
+  source = "https://github.com/ijc25/Gotty"
+
+[[projects]]
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
@@ -525,6 +531,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bd2f79a09b9058e1d57ad165c4ae96028620c3521b994e66e615f505b47a7fa4"
+  inputs-digest = "dbccbcf51a1ec8a6805535c0777c7d9d79bad66c637951b116269b51de66c0a6"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -12,7 +12,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/progress"
 	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/term"
@@ -211,7 +210,7 @@ func DisplayProgressEvents(
 	// Call into Docker to actually suck the progress messages out of pipeReader and display
 	// them to the console.
 	_, stdout, _ := term.StdStreams()
-	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
+	err := DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
 	contract.IgnoreError(err)
 
 	ticker.Stop()
@@ -383,14 +382,16 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 			if !printedHeader {
 				printedHeader = true
 				display.colorizeAndWriteProgress(progress.Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					Action: " ",
+					ID:        fmt.Sprintf("%v", systemID),
+					DisplayID: false,
+					Action:    " ",
 				})
 				systemID++
 
 				display.colorizeAndWriteProgress(progress.Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					Action: colors.Yellow + "System Messages" + colors.Reset,
+					ID:        fmt.Sprintf("%v", systemID),
+					DisplayID: false,
+					Action:    colors.Yellow + "System Messages" + colors.Reset,
 				})
 				systemID++
 			}
@@ -534,6 +535,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload.(engine.PreludeEventPayload)
 		display.isPreview = payload.IsPreview
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
+		display.handleSystemEvent(engine.StdoutEventPayload{Message: "a long message\nover multiple lines", Color: colors.Never})
 		return
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
