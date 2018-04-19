@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -614,7 +615,7 @@ type cancellationScopeSource int
 var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
 func (cancellationScopeSource) NewScope() backend.CancellationScope {
-	cancelContext, cancelSource := cancel.NewContext(nil)
+	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
 		context: cancelContext,

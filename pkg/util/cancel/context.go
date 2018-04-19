@@ -2,6 +2,8 @@ package cancel
 
 import (
 	"context"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Context provides the ability to observe cancellation and termination requests from a Source. A termination request
@@ -22,14 +24,10 @@ type Source struct {
 	cancel    context.CancelFunc
 }
 
-// NewContext creates a new cancellation context and source parented to the given context. If no context is supplied,
-// the background context will be used. The given cancellation context will be terminated when the supplied context is
-// canceled.
+// NewContext creates a new cancellation context and source parented to the given context. The returned cancellation
+// context will be terminated when the supplied root context is canceled.
 func NewContext(ctx context.Context) (*Context, *Source) {
-	// If no context was provided, use the background context.
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	contract.Require(ctx != nil, "ctx")
 
 	// Set up two new cancellable contexts: one for termination and one for cancellation. The cancellation context is a
 	// child context of the termination context and will therefore be automatically cancelled when termination is

@@ -198,7 +198,8 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, &engine.Context{Cancel: cancelScope.Context(), Events: events}, opts, dryRun)
+	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events}
+	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done
