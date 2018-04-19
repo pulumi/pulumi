@@ -62,9 +62,7 @@ func cursorDown(out io.Writer, ti termInfo, l int) {
 	}
 }
 
-// Display displays the JSONMessage to `out`. `termInfo` is non-nil if `out`
-// is a terminal. If this is the case, it will erase the entire current line
-// when displaying the progressbar.
+// Display displays the Progress to `out`. `termInfo` is non-nil if `out` is a terminal.
 func (jm *Progress) Display(out io.Writer, termInfo termInfo) error {
 	var endl string
 	if termInfo != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
@@ -92,10 +90,10 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) error {
 	return nil
 }
 
-// DisplayJSONMessagesStream displays a json message stream from `in` to `out`, `isTerminal`
-// describes if `out` is a terminal. If this is the case, it will print `\n` at the end of
-// each line and move the cursor while displaying.
-func DisplayJSONMessagesStream(in <-chan Progress, out io.Writer, isTerminal bool) error {
+// DisplayProgressToStream displays a Progress  stream from `in` to `out`, `isTerminal` describes if
+// `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
+// cursor while displaying.
+func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool) error {
 	var (
 		ids = make(map[string]int)
 	)
@@ -157,14 +155,4 @@ func DisplayJSONMessagesStream(in <-chan Progress, out io.Writer, isTerminal boo
 		}
 	}
 	return nil
-}
-
-type stream interface {
-	io.Writer
-	IsTerminal() bool
-}
-
-// DisplayJSONMessagesToStream prints json messages to the output stream
-func DisplayJSONMessagesToStream(in <-chan Progress, stream stream) error {
-	return DisplayJSONMessagesStream(in, stream, stream.IsTerminal())
 }

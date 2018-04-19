@@ -213,7 +213,7 @@ func DisplayProgressEvents(
 	// Call into Docker to actually suck the progress messages out of pipeReader and display
 	// them to the console.
 	_, stdout, _ := term.StdStreams()
-	err := DisplayJSONMessagesToStream(progressOutput, newOutStream(stdout))
+	err := DisplayProgressToStream(progressOutput, stdout, display.isTerminal)
 	contract.IgnoreError(err)
 
 	ticker.Stop()
