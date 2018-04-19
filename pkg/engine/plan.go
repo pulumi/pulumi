@@ -181,13 +181,18 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 	var rst resource.Status
 	done := make(chan bool)
 	go func() {
-		defer close(done)
+		defer func() {
+			// Close the iterator. If we have already observed another error, that error trumps the close error.
+			closeErr := iter.Close()
+			if err == nil {
+				err = closeErr
+			}
+			close(done)
+		}()
 
 		for step != nil {
 			// Check for cancellation and termination.
-			if cancelErr := ctx.cancellationErr(); cancelErr != nil {
-				closeErr := iter.Close() // ignore close errors; the context error trumps
-				contract.IgnoreError(closeErr)
+			if cancelErr := ctx.Cancel.CancelErr(); cancelErr != nil {
 				rst, err = resource.StatusOK, cancelErr
 				return
 			}
@@ -197,27 +202,23 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 
 			// If an error occurred, exit early.
 			if err != nil {
-				closeErr := iter.Close() // ignore close errors; the action error trumps
-				contract.IgnoreError(closeErr)
 				return
 			}
 			contract.Assert(rst == resource.StatusOK)
 
 			step, err = iter.Next()
 			if err != nil {
-				closeErr := iter.Close() // ignore close errors; the action error trumps
-				contract.IgnoreError(closeErr)
 				return
 			}
 		}
 
 		// Finally, return a summary and the resulting plan information.
-		rst, err = resource.StatusOK, iter.Close()
+		rst, err = resource.StatusOK, nil
 	}()
 
 	select {
-	case <-ctx.terminationContext.Done():
-		return iter, step, rst, ctx.terminationContext.Err()
+	case <-ctx.Cancel.Terminated():
+		return iter, step, rst, ctx.Cancel.TerminateErr()
 
 	case <-done:
 		return iter, step, rst, err

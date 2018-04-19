@@ -3,10 +3,8 @@
 package engine
 
 import (
-	"context"
-
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -45,45 +43,6 @@ type SnapshotMutation interface {
 
 // Context provides cancellation, termination, and eventing options for an engine operation.
 type Context struct {
-	// cancellationContext is a context that when cancelled will cause the engine to drive its current operation to a
-	// safe point and then return.
-	cancellationContext context.Context
-
-	// terminationContext is a context that when cancelled will cause the engine to immediately return without driving
-	// its current operation to a safe point.
-	terminationContext context.Context
-
-	// events is a channel over which to deliver engine events.
-	events chan<- Event
-}
-
-// NewContext creates a new engine operation context from the given cancellation and termination context and event
-// sink.
-func NewContext(cancellationContext, terminationContext context.Context, events chan<- Event) *Context {
-	contract.Require(events != nil, "events")
-
-	// If no termination context was provided, use the background context as the termination context.
-	if terminationContext == nil {
-		terminationContext = context.Background()
-	}
-
-	// If no cancellation context was provided, use the termination context as the cancellation context.
-	if cancellationContext == nil {
-		cancellationContext = terminationContext
-	}
-
-	return &Context{
-		cancellationContext: cancellationContext,
-		terminationContext:  terminationContext,
-		events:              events,
-	}
-}
-
-// cancellationErr returns a non-nil error if the context has been cancelled or terminated.
-func (c *Context) cancellationErr() error {
-	if err := c.cancellationContext.Err(); err != nil {
-		return err
-	}
-
-	return c.terminationContext.Err()
+	Cancel *cancel.Context
+	Events chan<- Event
 }

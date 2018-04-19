@@ -1,0 +1,85 @@
+package cancel
+
+import (
+	"context"
+)
+
+// Context provides the ability to observe cancellation and termination requests from a Source. A termination request
+// automatically triggers a corresponding cancellation request. This can be used to implement cancellation with two
+// priority levels.
+type Context struct {
+	terminate context.Context
+	cancel context.Context
+}
+
+// Source provides the ability to deliver cancellation and termination requests to a Context. A termination request
+// automatically triggers a corresponding cancellation request. This can be used to implement cancellation with two
+// priority levels.
+type Source struct {
+	context *Context
+
+	terminate context.CancelFunc
+	cancel context.CancelFunc
+}
+
+// NewContext creates a new cancellation context and source parented to the given context. If no context is supplied,
+// the background context will be used. The given cancellation context will be terminated when the supplied context is
+// canceled.
+func NewContext(ctx context.Context) (*Context, *Source) {
+	// If no context was provided, use the background context.
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Set up two new cancellable contexts: one for termination and one for cancellation. The cancellation context is a
+	// child context of the termination context and will therefore be automatically cancelled when termination is
+	// requested. Both are children of the supplied context--cancelling the supplied context will cause termination.
+	terminationContext, terminate := context.WithCancel(ctx)
+	cancellationContext, cancel := context.WithCancel(terminationContext)
+
+	c := &Context{
+		terminate: terminationContext,
+		cancel: cancellationContext,
+	}
+	s := &Source{
+		context: c,
+		terminate: terminate,
+		cancel: cancel,
+	}
+	return c, s
+}
+
+// Canceled returns a channel that will be closed when the context is canceled or terminated.
+func (c *Context) Canceled() <-chan struct{} {
+	return c.cancel.Done()
+}
+
+// CancelErr returns a non-nil error iff the context has been canceled or terminated.
+func (c *Context) CancelErr() error {
+	return c.cancel.Err()
+}
+
+// Terminated returns a channel that will be closed when the context is terminated.
+func (c *Context) Terminated() <-chan struct{} {
+	return c.terminate.Done()
+}
+
+// TerminateErr returns a non-nil error iff the context has been terminated.
+func (c *Context) TerminateErr() error {
+	return c.terminate.Err()
+}
+
+// Context returns the Context to which this source will deliver cancellation and termination requests.
+func (s *Source) Context() *Context {
+	return s.context
+}
+
+// Cancel cancels this source's context.
+func (s *Source) Cancel() {
+	s.cancel()
+}
+
+// Terminate terminates this source's context (which also cancels this context).
+func (s *Source) Terminate() {
+	s.terminate()
+}

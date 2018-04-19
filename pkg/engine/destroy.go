@@ -14,7 +14,7 @@ func Destroy(
 
 	contract.Require(u != nil, "u")
 
-	defer func() { ctx.events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
 	info, err := newPlanContext(u)
 	if err != nil {
@@ -22,7 +22,7 @@ func Destroy(
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.events, u)
+	emitter := makeEventEmitter(ctx.Events, u)
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,

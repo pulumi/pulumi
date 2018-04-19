@@ -13,7 +13,7 @@ func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
-	defer func() { ctx.events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
 	info, err := newPlanContext(u)
 	if err != nil {
@@ -21,7 +21,7 @@ func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.events, u)
+	emitter := makeEventEmitter(ctx.Events, u)
 	return preview(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,

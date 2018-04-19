@@ -13,7 +13,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	contract.Require(u != nil, "u")
 
-	defer func() { ctx.events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
 	info, err := newPlanContext(u)
 	if err != nil {
@@ -21,7 +21,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.events, u)
+	emitter := makeEventEmitter(ctx.Events, u)
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SkipOutputs:   true, // refresh is exclusively about outputs

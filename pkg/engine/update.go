@@ -39,7 +39,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
-	defer func() { ctx.events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
 	info, err := newPlanContext(u)
 	if err != nil {
@@ -47,7 +47,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}
 	defer info.Close()
 
-	emitter := makeEventEmitter(ctx.events, u)
+	emitter := makeEventEmitter(ctx.Events, u)
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
