@@ -6,17 +6,11 @@ package local
 //
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	// "strings"
-	// "time"
 
 	gotty "github.com/Nvveen/Gotty"
-	// "github.com/docker/docker/pkg/term"
-	// units "github.com/docker/go-units"
-
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -264,7 +258,7 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) error {
 // DisplayJSONMessagesStream displays a json message stream from `in` to `out`, `isTerminal`
 // describes if `out` is a terminal. If this is the case, it will print `\n` at the end of
 // each line and move the cursor while displaying.
-func DisplayJSONMessagesStream(in <-chan Progress, out io.Writer, terminalFd uintptr, isTerminal bool, auxCallback func(*json.RawMessage)) error {
+func DisplayJSONMessagesStream(in <-chan Progress, out io.Writer, terminalFd uintptr, isTerminal bool) error {
 	var (
 		ids = make(map[string]int)
 	)
@@ -345,6 +339,6 @@ type stream interface {
 }
 
 // DisplayJSONMessagesToStream prints json messages to the output stream
-func DisplayJSONMessagesToStream(in <-chan Progress, stream stream, auxCallback func(*json.RawMessage)) error {
-	return DisplayJSONMessagesStream(in, stream, stream.FD(), stream.IsTerminal(), auxCallback)
+func DisplayJSONMessagesToStream(in <-chan Progress, stream stream) error {
+	return DisplayJSONMessagesStream(in, stream, stream.FD(), stream.IsTerminal())
 }

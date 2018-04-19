@@ -5,16 +5,11 @@ package local
 import (
 	"bytes"
 	"fmt"
-	// "io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
-
-	// "github.com/docker/docker/pkg/progress"
-	// "github.com/docker/docker/pkg/streamformatter"
-	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -26,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
+	"github.com/docker/docker/pkg/term"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -217,7 +213,7 @@ func DisplayProgressEvents(
 	// Call into Docker to actually suck the progress messages out of pipeReader and display
 	// them to the console.
 	_, stdout, _ := term.StdStreams()
-	err := DisplayJSONMessagesToStream(progressOutput, newOutStream(stdout), nil)
+	err := DisplayJSONMessagesToStream(progressOutput, newOutStream(stdout))
 	contract.IgnoreError(err)
 
 	ticker.Stop()
