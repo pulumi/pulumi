@@ -93,13 +93,10 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo *DiagInfo
-
-	columns []string
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
 	data.step = step
-	data.ClearCachedData()
 }
 
 func (data *resourceRowData) Tick() int {
@@ -112,7 +109,6 @@ func (data *resourceRowData) Done() bool {
 
 func (data *resourceRowData) SetDone() {
 	data.done = true
-	data.ClearCachedData()
 }
 
 func (data *resourceRowData) Failed() bool {
@@ -121,7 +117,6 @@ func (data *resourceRowData) Failed() bool {
 
 func (data *resourceRowData) SetFailed() {
 	data.failed = true
-	data.ClearCachedData()
 }
 
 func (data *resourceRowData) DiagInfo() *DiagInfo {
@@ -129,8 +124,6 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 }
 
 func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	data.ClearCachedData()
-
 	diagInfo := data.diagInfo
 	payload := event.Payload.(engine.DiagEventPayload)
 
@@ -155,10 +148,6 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
 }
 
-func (data *resourceRowData) ClearCachedData() {
-	data.columns = []string{}
-}
-
 type column int
 
 const (
@@ -181,18 +170,6 @@ func (data *resourceRowData) ColorizedSuffix() string {
 }
 
 func (data *resourceRowData) ColorizedColumns() []string {
-	if len(data.columns) == 0 {
-		columns := data.getUnpaddedColumns()
-		data.columns = columns
-	}
-
-	return data.columns
-}
-
-// Gets the single line summary to show for a resource.  This will include the current state of
-// the resource (i.e. "Creating", "Replaced", "Failed", etc.) as well as relevant diagnostic
-// information if there is any.
-func (data *resourceRowData) getUnpaddedColumns() []string {
 	step := data.step
 	if step.Op == "" {
 		contract.Failf("Finishing a resource we never heard about: '%s'", data.id)
