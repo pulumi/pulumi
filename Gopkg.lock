@@ -102,21 +102,11 @@
 [[projects]]
   name = "github.com/docker/docker"
   packages = [
-    "pkg/jsonlog",
-    "pkg/jsonmessage",
-    "pkg/progress",
-    "pkg/streamformatter",
     "pkg/term",
     "pkg/term/windows"
   ]
   revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
   version = "v1.13.1"
-
-[[projects]]
-  name = "github.com/docker/go-units"
-  packages = ["."]
-  revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
-  version = "v0.3.2"
 
 [[projects]]
   branch = "master"
@@ -411,12 +401,6 @@
 
 [[projects]]
   branch = "master"
-  name = "golang.org/x/time"
-  packages = ["rate"]
-  revision = "26559e0f760e39c24d730d3224364aef164ee23f"
-
-[[projects]]
-  branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   revision = "11c7f9e547da6db876260ce49ea7536985904c9b"
@@ -531,6 +515,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dbccbcf51a1ec8a6805535c0777c7d9d79bad66c637951b116269b51de66c0a6"
+  inputs-digest = "7a1988f8833c49c39c76307ba85f88edfe15c49be02e473e0479ae64220f0430"
   solver-name = "gps-cdcl"
   solver-version = 1
