@@ -564,9 +564,16 @@ function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Pr
     // In order to work around this problem, the langhost is explicitly instructed
     // (through --use-executor) to use a specific executor which will load modules from
     // the source directory and not the install directory.
+    let execName: string;
+    if (os.platform() === "win32") {
+        execName = "pulumi-language-nodejs-exec-test.cmd";
+    } else {
+        execName = "pulumi-language-nodejs-exec-test";
+    }
+
     const proc = childProcess.spawn("pulumi-language-nodejs", [
         "--use-executor",
-        path.join(__filename, "..", "..", "..", "..", "pulumi-language-nodejs-exec-test"),
+        path.join(__filename, "..", "..", "..", "..", execName),
     ]);
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.

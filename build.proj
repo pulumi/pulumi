@@ -105,6 +105,26 @@
           DependsOnTargets="EnsureGoDependencies;EnsureNodeDependencies;EnsurePrebuilt;BuildNodeSdk;BuildGoCmds">
   </Target>
 
+  <Target Name="NodeSDKTest">
+      <ItemGroup>
+          <NodeSDKTestFiles Include="$(NodeJSSdkDirectory)\bin\tests\**\*.spec.js" />
+      </ItemGroup>
+
+      <Exec Command="yarn bin 2> nul"
+            ConsoleToMSBuild="true"
+            WorkingDirectory="$(NodeJSSdkDirectory)">
+          <Output TaskParameter="ConsoleOutput" PropertyName="YarnBin" />
+      </Exec>
+
+      <Exec Command="$(YarnBin)\mocha --timeout 15000 @(NodeSDKTestFiles -> '%(Identity)', ' ')"
+            IgnoreExitCode="true">
+          <Output TaskParameter="ExitCode" PropertyName="NodeTestExitCode" />
+      </Exec>
+
+      <Error Text="node tests failed, exit code: $(NodeTestExitCode)"
+             Condition="'$(GoTestExitCode)' != '0'" />
+  </Target>
+
   <Target Name="IntegrationTest">
     <Exec Command="where pulumi-language-nodejs-exec.cmd"
           IgnoreExitCode="true">
@@ -148,9 +168,9 @@
   </Target>
 
   <Target Name="AppVeyorPush"
-          DependsOnTargets="Build;Publish;IntegrationTest" />
+          DependsOnTargets="Build;NodeSDKTest;IntegrationTest;Publish" />
 
   <Target Name="AppVeyorPullRequest"
-          DependsOnTargets="Build;IntegrationTest" />
+          DependsOnTargets="Build;NodeSDKTest;IntegrationTest" />
 
 </Project>

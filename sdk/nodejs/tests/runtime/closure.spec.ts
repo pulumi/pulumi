@@ -3812,8 +3812,12 @@ return function /*f3*/() {
                 // updated any time this file changes.
                 const regex = /\([0-9]+,[0-9]+\)/g;
                 const withoutLocations = message.replace(regex, "(0,0)");
+
+                // Our error messages have line endings in them, standardize all of them to \n
+                // so we don't fail tests on Windows
+                const withStandardLineEndings = withoutLocations.replace(EOL, "\n");
                 if (test.error) {
-                    compareErrorText(test.error, withoutLocations);
+                    compareErrorText(test.error, withStandardLineEndings);
                 }
             }
         }));
