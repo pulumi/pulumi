@@ -84,9 +84,6 @@ type ProgressDisplay struct {
 	// The width of the terminal.  Used so we can trim resource messages that are too long.
 	terminalWidth int
 
-	// Maps used so we can generate short IDs for resource urns.
-	urnToID map[resource.URN]string
-
 	// If all progress messages are done and we can print out the final display.
 	Done bool
 
@@ -98,6 +95,13 @@ type ProgressDisplay struct {
 
 	// the length of the longest suffix
 	maxSuffixLength int
+
+	// Maps used so we can generate short IDs for resource urns.
+	urnToID map[resource.URN]string
+
+	// Cache of colorized to uncolorized text.  We go between the two a lot, so caching helps
+	// prevent lots of recomputation
+	colorizedToUncolorized map[string]string
 }
 
 var (
@@ -174,12 +178,13 @@ func DisplayProgressEvents(
 	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
 
 	display := &ProgressDisplay{
-		opts:                  opts,
-		progressOutput:        progressOutput,
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		urnToID:               make(map[resource.URN]string),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
+		opts:                   opts,
+		progressOutput:         progressOutput,
+		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
+		suffixColumn:           int(statusColumn),
+		suffixesArray:          []string{"", ".", "..", "..."},
+		urnToID:                make(map[resource.URN]string),
+		colorizedToUncolorized: make(map[string]string),
 	}
 
 	for _, v := range display.suffixesArray {
@@ -277,38 +282,36 @@ func (display *ProgressDisplay) getPaddedMessage(
 	return colorizedMessage
 }
 
-func uncolorise(columns []string) []string {
+func (display *ProgressDisplay) uncolorizeString(v string) string {
+	uncolorized, has := display.colorizedToUncolorized[v]
+	if !has {
+		uncolorized = colors.Never.Colorize(v)
+		display.colorizedToUncolorized[v] = uncolorized
+	}
+
+	return uncolorized
+}
+
+func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	uncolorizedColumns := make([]string, len(columns))
 
 	for i, v := range columns {
-		uncolorizedColumns[i] = colors.Never.Colorize(v)
+		uncolorizedColumns[i] = display.uncolorizeString(v)
 	}
 
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) getColorizedColumnsCopy(row Row) []string {
-	colorizedColumns := row.ColorizedColumns()
-	colorizedColumnsCopy := make([]string, len(colorizedColumns))
-	copy(colorizedColumnsCopy, colorizedColumns)
-
-	return colorizedColumnsCopy
-}
-
 func (display *ProgressDisplay) refreshSingleRow(row Row) {
-	colorizedColumns := display.getColorizedColumnsCopy(row)
-	uncolorizedColumns := make([]string, len(colorizedColumns))
-
+	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
-	for i := range uncolorizedColumns {
-		uncolorizedColumns[i] = colors.Never.Colorize(colorizedColumns[i])
-	}
+	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
 
 	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     display.opts.Color.Colorize(colorizedColumns[0]),
+		ID:     uncolorizedColumns[0],
 		Action: msg,
 	})
 }
@@ -331,7 +334,7 @@ func (display *ProgressDisplay) updateDimensions() bool {
 
 		for _, row := range display.rows {
 			colorizedColumns := row.ColorizedColumns()
-			uncolorizedColumns := uncolorise(colorizedColumns)
+			uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
 			if len(display.maxColumnLengths) == 0 {
 				display.maxColumnLengths = make([]int, len(uncolorizedColumns))
@@ -555,12 +558,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
-	// See if this new status information causes us to have to refresh everything.  Otherwise,
-	// just refresh the info for that single status message.
-	if display.updateDimensions() {
-		contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
+	if display.isTerminal {
+		// if we're in a terminal, then refresh everything so that all our columns line up
 		display.refreshAllRowsIfInTerminal()
 	} else {
+		// otherwise, just print out this single row.
 		display.refreshSingleRow(row)
 	}
 }
