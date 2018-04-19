@@ -5,17 +5,11 @@ package local
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/progress"
-	"github.com/docker/docker/pkg/streamformatter"
-	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -27,8 +21,31 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
+	"github.com/docker/docker/pkg/term"
 	"golang.org/x/crypto/ssh/terminal"
 )
+
+// Progress describes a message we want to show in the display.  There are two types of messages,
+// simple 'Messages' which just get printed out as a single uninterpreted line, and 'Actions' which
+// are placed and updated in the progress-grid based on their ID.  Messages do not need an ID, while
+// Actions must have an ID.
+type Progress struct {
+	ID      string
+	ShowID  bool
+	Message string
+	Action  string
+}
+
+func makeMessageProgress(message string) Progress {
+	return Progress{Message: message}
+}
+
+func makeActionProgress(id string, action string, showID bool) Progress {
+	contract.Assertf(id != "", "id must be non empty for action %s", action)
+	contract.Assertf(action != "", "action must be non empty")
+
+	return Progress{ID: id, Action: action, ShowID: showID}
+}
 
 type DiagInfo struct {
 	ErrorCount, WarningCount, InfoCount, DebugCount int
@@ -45,7 +62,7 @@ type DiagInfo struct {
 
 type ProgressDisplay struct {
 	opts           backend.DisplayOptions
-	progressOutput progress.Output
+	progressOutput chan<- Progress
 
 	// Whether or not we're previewing.  We don't know what we are actually doing until
 	// we get the initial 'prelude' event.
@@ -141,7 +158,7 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 // Converts the colorization tags in a progress message and then actually writes the progress
 // message to the output stream.  This should be the only place in this file where we actually
 // process colorization tags.
-func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progress) {
+func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 	if progress.Message != "" {
 		progress.Message = display.opts.Color.Colorize(progress.Message)
 	}
@@ -150,12 +167,11 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progr
 		progress.Action = display.opts.Color.Colorize(progress.Action)
 	}
 
-	err := display.progressOutput.WriteProgress(progress)
-	contract.IgnoreError(err)
+	display.progressOutput <- progress
 }
 
 func (display *ProgressDisplay) writeSimpleMessage(msg string) {
-	display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+	display.colorizeAndWriteProgress(makeMessageProgress(msg))
 }
 
 func (display *ProgressDisplay) writeBlankLine() {
@@ -174,11 +190,9 @@ func DisplayProgressEvents(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
 		nil, 1 /*timesPerSecond*/)
 
-	// The streams we used to connect to docker's progress system.  We push progress messages into
-	// progressOutput.  It pushes messages into pipeWriter.  Those are then read below in
-	// DisplayJSONMessagesToStream.
-	pipeReader, pipeWriter := io.Pipe()
-	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
+	// The channel we push progress messages into, and which DisplayProgressToStream pulls
+	// from to display to the console.
+	progressOutput := make(chan Progress)
 
 	display := &ProgressDisplay{
 		opts:                   opts,
@@ -196,31 +210,6 @@ func DisplayProgressEvents(
 		}
 	}
 
-	display.initializeTermInfo()
-
-	go func() {
-		display.processEvents(ticker, events)
-
-		// no more progress events from this point on.  By closing the pipe, this will then cause
-		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
-		// pipeReader, causing DisplayEvents to finally complete.
-		err := pipeWriter.Close()
-		contract.IgnoreError(err)
-	}()
-
-	// Call into Docker to actually suck the progress messages out of pipeReader and display
-	// them to the console.
-	_, stdout, _ := term.StdStreams()
-	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
-	contract.IgnoreError(err)
-
-	ticker.Stop()
-
-	// let our caller know we're done.
-	done <- true
-}
-
-func (display *ProgressDisplay) initializeTermInfo() {
 	_, stdout, _ := term.StdStreams()
 	_, isTerminal := term.GetFdInfo(stdout)
 
@@ -229,6 +218,22 @@ func (display *ProgressDisplay) initializeTermInfo() {
 
 	display.isTerminal = isTerminal
 	display.terminalWidth = terminalWidth
+
+	go func() {
+		display.processEvents(ticker, events)
+
+		// no more progress events from this point on.  By closing the pipe, this will then cause
+		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
+		// pipeReader, causing DisplayEvents to finally complete.
+		close(progressOutput)
+	}()
+
+	DisplayProgressToStream(progressOutput, stdout, isTerminal)
+
+	ticker.Stop()
+
+	// let our caller know we're done.
+	done <- true
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
@@ -313,10 +318,8 @@ func (display *ProgressDisplay) refreshSingleRow(row Row) {
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
 
-	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     uncolorizedColumns[0],
-		Action: msg,
-	})
+	display.colorizeAndWriteProgress(makeActionProgress(
+		uncolorizedColumns[0], msg, true /*showID*/))
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
@@ -382,24 +385,20 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 			if !printedHeader {
 				printedHeader = true
-				display.colorizeAndWriteProgress(progress.Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					Action: " ",
-				})
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID), " ", false /*showID*/))
 				systemID++
 
-				display.colorizeAndWriteProgress(progress.Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					Action: colors.Yellow + "System Messages" + colors.Reset,
-				})
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID),
+					colors.Yellow+"System Messages"+colors.Reset,
+					false /*showID*/))
 				systemID++
 			}
 
 			for _, line := range lines {
-				display.colorizeAndWriteProgress(progress.Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					Action: fmt.Sprintf("  %s", line),
-				})
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line), false /*showID*/))
 				systemID++
 			}
 		}
