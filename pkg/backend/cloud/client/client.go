@@ -430,6 +430,11 @@ func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *api
 	return pc.updateRESTCall("PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
 }
 
+// CancelUpdate cancels the indicated update.
+func (pc *Client) CancelUpdate(update UpdateIdentifier) error {
+	return pc.restCall("POST", getUpdatePath(update, "cancel"), nil, nil, nil)
+}
+
 // CompleteUpdate completes the indicated update with the given status.
 func (pc *Client) CompleteUpdate(update UpdateIdentifier, status apitype.UpdateStatus, token string) error {
 	req := apitype.CompleteUpdateRequest{
