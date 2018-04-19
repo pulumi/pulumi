@@ -97,7 +97,7 @@ func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool)
 		ids = make(map[string]int)
 	)
 
-	var termInfo termInfo
+	var info termInfo
 
 	if isTerminal {
 		term := os.Getenv("TERM")
@@ -106,8 +106,8 @@ func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool)
 		}
 
 		var err error
-		if termInfo, err = gotty.OpenTermInfo(term); err != nil {
-			termInfo = &noTermInfo{}
+		if info, err = gotty.OpenTermInfo(term); err != nil {
+			info = &noTermInfo{}
 		}
 	}
 
@@ -129,13 +129,13 @@ func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool)
 				// with no ID.
 				line = len(ids)
 				ids[jm.ID] = line
-				if termInfo != nil {
+				if info != nil {
 					fmt.Fprintf(out, "\n")
 				}
 			}
 			diff = len(ids) - line
-			if termInfo != nil {
-				cursorUp(out, termInfo, diff)
+			if info != nil {
+				cursorUp(out, info, diff)
 			}
 		} else {
 			// When outputting something that isn't progress
@@ -145,9 +145,9 @@ func DisplayProgressToStream(in <-chan Progress, out io.Writer, isTerminal bool)
 			// with multiple tags).
 			ids = make(map[string]int)
 		}
-		jm.Display(out, termInfo)
-		if jm.Action != "" && termInfo != nil {
-			cursorDown(out, termInfo, diff)
+		jm.Display(out, info)
+		if jm.Action != "" && info != nil {
+			cursorDown(out, info, diff)
 		}
 	}
 }

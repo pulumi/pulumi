@@ -190,6 +190,8 @@ func DisplayProgressEvents(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
 		nil, 1 /*timesPerSecond*/)
 
+	// The channel we push progress messages into, and which DisplayProgressToStream pulls
+	// from to display to the console.
 	progressOutput := make(chan Progress)
 
 	display := &ProgressDisplay{
@@ -531,9 +533,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload.(engine.PreludeEventPayload)
 		display.isPreview = payload.IsPreview
 		display.writeSimpleMessage(renderPreludeEvent(payload, display.opts))
-
-		// for testing out system messages.
-		// display.handleSystemEvent(engine.StdoutEventPayload{Message: "a long message\nover multiple lines", Color: colors.Never})
 		return
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
