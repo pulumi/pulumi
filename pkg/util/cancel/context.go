@@ -9,7 +9,7 @@ import (
 // priority levels.
 type Context struct {
 	terminate context.Context
-	cancel context.Context
+	cancel    context.Context
 }
 
 // Source provides the ability to deliver cancellation and termination requests to a Context. A termination request
@@ -19,7 +19,7 @@ type Source struct {
 	context *Context
 
 	terminate context.CancelFunc
-	cancel context.CancelFunc
+	cancel    context.CancelFunc
 }
 
 // NewContext creates a new cancellation context and source parented to the given context. If no context is supplied,
@@ -39,12 +39,12 @@ func NewContext(ctx context.Context) (*Context, *Source) {
 
 	c := &Context{
 		terminate: terminationContext,
-		cancel: cancellationContext,
+		cancel:    cancellationContext,
 	}
 	s := &Source{
-		context: c,
+		context:   c,
 		terminate: terminate,
-		cancel: cancel,
+		cancel:    cancel,
 	}
 	return c, s
 }

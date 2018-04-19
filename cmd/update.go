@@ -86,7 +86,7 @@ func newUpdateCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
-			})
+			}, cancellationScopes)
 			if err == context.Canceled {
 				return errors.New("update cancelled")
 			}

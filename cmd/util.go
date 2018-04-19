@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"os/user"
 	"path"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -591,4 +593,53 @@ func removeOldProjectConfiguration() error {
 	}
 
 	return workspace.SaveProject(proj)
+}
+
+type cancellationScope struct {
+	context *cancel.Context
+	sigint  chan os.Signal
+}
+
+func (s *cancellationScope) Context() *cancel.Context {
+	return s.context
+}
+
+func (s *cancellationScope) Close() {
+	signal.Stop(s.sigint)
+	close(s.sigint)
+}
+
+type cancellationScopeSource int
+
+var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
+
+func (cancellationScopeSource) NewScope() backend.CancellationScope {
+	cancelContext, cancelSource := cancel.NewContext(nil)
+
+	c := &cancellationScope{
+		context: cancelContext,
+		sigint:  make(chan os.Signal),
+	}
+
+	go func() {
+		for range c.sigint {
+			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
+			// func.
+			if cancelContext.CancelErr() == nil {
+				const message = "^C received; cancelling. If you would like to terminate immediately, press\n" +
+					"again. Note that terminating immediately may lead to orphaned resources and other inconsistent\n" +
+					"states."
+				_, err := fmt.Fprintf(os.Stderr, message)
+				contract.IgnoreError(err)
+				cancelSource.Cancel()
+			} else {
+				_, err := fmt.Fprintf(os.Stderr, "^C received; terminating.")
+				contract.IgnoreError(err)
+				cancelSource.Terminate()
+			}
+		}
+	}()
+	signal.Notify(c.sigint, os.Interrupt)
+
+	return c
 }

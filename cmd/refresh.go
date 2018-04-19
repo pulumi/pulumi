@@ -82,7 +82,7 @@ func newRefreshCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
-			})
+			}, cancellationScopes)
 			if err == context.Canceled {
 				return errors.New("refresh cancelled")
 			}
