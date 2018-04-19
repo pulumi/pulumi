@@ -25,11 +25,26 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+// Progress describes a message we want to show in the display.  There are two types of messages,
+// simple 'Messages' which just get printed out as a single uninterpreted line, and 'Actions' which
+// are placed and updated in the progress-grid based on their ID.  Messages do not need an ID, while
+// Actions must have an ID.
 type Progress struct {
 	ID      string
-	HideID  bool
+	ShowID  bool
 	Message string
 	Action  string
+}
+
+func makeMessageProgress(message string) Progress {
+	return Progress{Message: message}
+}
+
+func makeActionProgress(id string, action string, showID bool) Progress {
+	contract.Assertf(id != "", "id must be non empty for action %s", action)
+	contract.Assertf(action != "", "action must be non empty")
+
+	return Progress{ID: id, Action: action, ShowID: showID}
 }
 
 type DiagInfo struct {
@@ -156,7 +171,7 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 }
 
 func (display *ProgressDisplay) writeSimpleMessage(msg string) {
-	display.colorizeAndWriteProgress(Progress{Message: msg})
+	display.colorizeAndWriteProgress(makeMessageProgress(msg))
 }
 
 func (display *ProgressDisplay) writeBlankLine() {
@@ -301,10 +316,8 @@ func (display *ProgressDisplay) refreshSingleRow(row Row) {
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
 
-	display.colorizeAndWriteProgress(Progress{
-		ID:     uncolorizedColumns[0],
-		Action: msg,
-	})
+	display.colorizeAndWriteProgress(makeActionProgress(
+		uncolorizedColumns[0], msg, true /*showID*/))
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
@@ -370,27 +383,20 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 			if !printedHeader {
 				printedHeader = true
-				display.colorizeAndWriteProgress(Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					HideID: true,
-					Action: " ",
-				})
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID), " ", false /*showID*/))
 				systemID++
 
-				display.colorizeAndWriteProgress(Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					HideID: true,
-					Action: colors.Yellow + "System Messages" + colors.Reset,
-				})
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID),
+					colors.Yellow+"System Messages"+colors.Reset,
+					false /*showID*/))
 				systemID++
 			}
 
 			for _, line := range lines {
-				display.colorizeAndWriteProgress(Progress{
-					ID:     fmt.Sprintf("%v", systemID),
-					HideID: true,
-					Action: fmt.Sprintf("  %s", line),
-				})
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line), false /*showID*/))
 				systemID++
 			}
 		}

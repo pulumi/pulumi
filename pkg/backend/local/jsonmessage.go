@@ -71,7 +71,7 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 		fmt.Fprintf(out, endl)
 	}
 
-	if jm.ID != "" && !jm.HideID {
+	if jm.ID != "" && jm.ShowID {
 		fmt.Fprintf(out, "%s: ", jm.ID)
 	}
 
