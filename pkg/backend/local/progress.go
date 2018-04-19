@@ -60,7 +60,10 @@ type ProgressDisplay struct {
 	// The summary event from the engine.  If we get this, we'll print this after all
 	// normal resource events are heard.  That way we don't interfere with all the progress
 	// messages we're outputting for them.
-	summaryEvent *engine.Event
+	summaryEventPayload *engine.SummaryEventPayload
+
+	// Any system events we've received.  They will be printed at the bottom of all the status rows
+	systemEventPayloads []engine.StdoutEventPayload
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -365,6 +368,41 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		for _, row := range display.rows {
 			display.refreshSingleRow(row)
 		}
+
+		systemID := len(display.rows)
+
+		printedHeader := false
+		for _, payload := range display.systemEventPayloads {
+			msg := payload.Color.Colorize(payload.Message)
+			lines := splitIntoDisplayableLines(msg)
+
+			if len(lines) == 0 {
+				continue
+			}
+
+			if !printedHeader {
+				printedHeader = true
+				display.colorizeAndWriteProgress(progress.Progress{
+					ID:     fmt.Sprintf("%v", systemID),
+					Action: " ",
+				})
+				systemID++
+
+				display.colorizeAndWriteProgress(progress.Progress{
+					ID:     fmt.Sprintf("%v", systemID),
+					Action: colors.Yellow + "System Messages" + colors.Reset,
+				})
+				systemID++
+			}
+
+			for _, line := range lines {
+				display.colorizeAndWriteProgress(progress.Progress{
+					ID:     fmt.Sprintf("%v", systemID),
+					Action: fmt.Sprintf("  %s", line),
+				})
+				systemID++
+			}
+		}
 	}
 }
 
@@ -409,18 +447,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			for _, v := range events {
 				msg := display.renderProgressDiagEvent(v)
 
-				lines := strings.Split(msg, "\n")
-
-				// Trim off any trailing blank lines in the message.
-				for len(lines) > 0 {
-					lastLine := lines[len(lines)-1]
-					if strings.TrimSpace(colors.Never.Colorize(lastLine)) == "" {
-						lines = lines[0 : len(lines)-1]
-					} else {
-						break
-					}
-				}
-
+				lines := splitIntoDisplayableLines(msg)
 				if len(lines) == 0 {
 					continue
 				}
@@ -451,8 +478,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 
 	// print the summary
-	if display.summaryEvent != nil {
-		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
+	if display.summaryEventPayload != nil {
+		msg := renderSummaryEvent(*display.summaryEventPayload, display.opts)
 
 		if !wroteDiagnosticHeader {
 			display.writeBlankLine()
@@ -460,6 +487,22 @@ func (display *ProgressDisplay) processEndSteps() {
 
 		display.writeSimpleMessage(msg)
 	}
+}
+
+func splitIntoDisplayableLines(msg string) []string {
+	lines := strings.Split(msg, "\n")
+
+	// Trim off any trailing blank lines in the message.
+	for len(lines) > 0 {
+		lastLine := lines[len(lines)-1]
+		if strings.TrimSpace(colors.Never.Colorize(lastLine)) == "" {
+			lines = lines[0 : len(lines)-1]
+		} else {
+			break
+		}
+	}
+
+	return lines
 }
 
 func (display *ProgressDisplay) processTick() {
@@ -495,13 +538,17 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
 		// resource-related events we receive.
-		display.summaryEvent = &event
+		payload := event.Payload.(engine.SummaryEventPayload)
+		display.summaryEventPayload = &payload
 		return
 	case engine.DiagEvent:
 		msg := display.renderProgressDiagEvent(event)
 		if msg == "" {
 			return
 		}
+	case engine.StdoutColorEvent:
+		display.handleSystemEvent(event.Payload.(engine.StdoutEventPayload))
+		return
 	}
 
 	// Don't bother showing certain events (for example, things that are unchanged). However
@@ -509,11 +556,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// also so we have something to attach unparented diagnostic events to.
 	if metadata != nil && !shouldShow(*metadata, display.opts) && !isRootURN(eventUrn) {
 		return
-	}
-
-	if len(display.rows) == 0 {
-		// about to make our first status message.  make sure we present the header line first.
-		display.rows = append(display.rows, &headerRowData{display: display})
 	}
 
 	// At this point, all events should relate to resources.
@@ -533,6 +575,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row
+		display.ensureHeaderRow()
 		display.rows = append(display.rows, row)
 	}
 
@@ -564,6 +607,29 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	} else {
 		// otherwise, just print out this single row.
 		display.refreshSingleRow(row)
+	}
+}
+
+func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
+	// Make sure we have a header to display
+	display.ensureHeaderRow()
+
+	display.systemEventPayloads = append(display.systemEventPayloads, payload)
+
+	if display.isTerminal {
+		// if we're in a terminal, then refresh everything.  The system events will come after
+		// all the normal rows
+		display.refreshAllRowsIfInTerminal()
+	} else {
+		// otherwise, in a non-terminal, just print out the actual event.
+		display.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
+	}
+}
+
+func (display *ProgressDisplay) ensureHeaderRow() {
+	if len(display.rows) == 0 {
+		// about to make our first status message.  make sure we present the header line first.
+		display.rows = append(display.rows, &headerRowData{display: display})
 	}
 }
 
