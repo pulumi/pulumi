@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -77,7 +78,7 @@ func newDestroyCmd() *cobra.Command {
 				}
 			}
 
-			return s.Destroy(proj, root, m, engine.UpdateOptions{
+			err = s.Destroy(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
 				Preview:   preview,
@@ -91,6 +92,10 @@ func newDestroyCmd() *cobra.Command {
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			})
+			if err == context.Canceled {
+				return errors.New("destroy cancelled")
+			}
+			return err
 		}),
 	}
 

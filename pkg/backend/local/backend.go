@@ -169,7 +169,7 @@ func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, 
 }
 
 type engineOpFunc func(
-	engine.UpdateInfo, chan<- engine.Event, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
+	engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
@@ -183,18 +183,18 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 		return err
 	}
 
-	events := make(chan engine.Event)
+	ctx, engineCtx := NewEngineOperationContext()
 	done := make(chan bool)
 
-	go DisplayEvents(op, events, done, displayOpts)
+	go DisplayEvents(op, ctx.Events(), done, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, events, opts, dryRun)
+	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done
-	close(events)
+	ctx.Close()
 	close(done)
 
 	// Save update results.

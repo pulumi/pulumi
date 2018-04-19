@@ -35,22 +35,20 @@ type UpdateOptions struct {
 // ResourceChanges contains the aggregate resource changes by operation type.
 type ResourceChanges map[deploy.StepOp]int
 
-func Update(
-	u UpdateInfo, events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
-
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 	contract.Require(u != nil, "update")
-	contract.Require(events != nil, "events")
+	contract.Require(ctx != nil, "ctx")
 
-	defer func() { events <- cancelEvent() }()
+	defer func() { ctx.events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.Close()
+	defer info.Close()
 
-	emitter := makeEventEmitter(events, u)
-	return update(ctx, planOptions{
+	emitter := makeEventEmitter(ctx.events, u)
+	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
@@ -87,7 +85,7 @@ func newUpdateSource(
 	}, dryRun), nil
 }
 
-func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
+func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
 	result, err := plan(info, opts, dryRun)
 	if err != nil {
 		return nil, err
@@ -106,7 +104,7 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(result, dryRun)
+			resourceChanges, err = printPlan(ctx, result, dryRun)
 			if err != nil {
 				return resourceChanges, err
 			}
@@ -117,7 +115,7 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(info.Update, opts)
-			summary, _, _, err := result.Walk(actions, false)
+			summary, _, _, err := result.Walk(ctx, actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return resourceChanges, err

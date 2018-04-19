@@ -740,10 +740,10 @@ func (b *cloudBackend) runEngineAction(
 	go u.RecordAndDisplayEvents(
 		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
 
-	engineEvents := make(chan engine.Event)
+	ctx, engineCtx := local.NewEngineOperationContext()
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
-		for e := range engineEvents {
+		for e := range ctx.Events() {
 			displayEvents <- e
 
 			if callerEventsOpt != nil {
@@ -757,21 +757,21 @@ func (b *cloudBackend) runEngineAction(
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
-			err = engine.Preview(u, engineEvents, opts)
+			err = engine.Preview(u, engineCtx, opts)
 		} else {
-			_, err = engine.Update(u, engineEvents, opts, dryRun)
+			_, err = engine.Update(u, engineCtx, opts, dryRun)
 		}
 	case client.UpdateKindRefresh:
-		_, err = engine.Refresh(u, engineEvents, opts, dryRun)
+		_, err = engine.Refresh(u, engineCtx, opts, dryRun)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, engineEvents, opts, dryRun)
+		_, err = engine.Destroy(u, engineCtx, opts, dryRun)
 	default:
 		contract.Failf("Unrecognized action type: %s", action)
 	}
 
 	// Wait for the display to finish showing all the events.
 	<-displayDone
-	close(engineEvents)
+	ctx.Close()
 	close(displayEvents)
 	close(displayDone)
 

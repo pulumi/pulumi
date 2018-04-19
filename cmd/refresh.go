@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"github.com/pkg/errors"
@@ -68,7 +69,7 @@ func newRefreshCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			return s.Refresh(proj, root, m, engine.UpdateOptions{
+			err = s.Refresh(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
 				Preview:   preview,
@@ -82,6 +83,10 @@ func newRefreshCmd() *cobra.Command {
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			})
+			if err == context.Canceled {
+				return errors.New("refresh cancelled")
+			}
+			return err
 		}),
 	}
 

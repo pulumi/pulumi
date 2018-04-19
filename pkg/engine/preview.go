@@ -9,20 +9,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
+func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 	contract.Require(u != nil, "u")
-	contract.Require(events != nil, "events")
+	contract.Require(ctx != nil, "ctx")
 
-	defer func() { events <- cancelEvent() }()
+	defer func() { ctx.events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return err
 	}
-	defer ctx.Close()
+	defer info.Close()
 
-	emitter := makeEventEmitter(events, u)
-	return preview(ctx, planOptions{
+	emitter := makeEventEmitter(ctx.events, u)
+	return preview(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
@@ -30,8 +30,8 @@ func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
 	})
 }
 
-func preview(ctx *planContext, opts planOptions) error {
-	result, err := plan(ctx, opts, true /*dryRun*/)
+func preview(ctx *Context, info *planContext, opts planOptions) error {
+	result, err := plan(info, opts, true /*dryRun*/)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func preview(ctx *planContext, opts planOptions) error {
 		}
 		defer done()
 
-		if _, err := printPlan(result, true /*dryRun*/); err != nil {
+		if _, err := printPlan(ctx, result, true /*dryRun*/); err != nil {
 			return err
 		}
 	}

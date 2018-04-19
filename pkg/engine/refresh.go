@@ -9,19 +9,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Refresh(u UpdateInfo, events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+
 	contract.Require(u != nil, "u")
 
-	defer func() { events <- cancelEvent() }()
+	defer func() { ctx.events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.Close()
+	defer info.Close()
 
-	emitter := makeEventEmitter(events, u)
-	return update(ctx, planOptions{
+	emitter := makeEventEmitter(ctx.events, u)
+	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SkipOutputs:   true, // refresh is exclusively about outputs
 		SourceFunc:    newRefreshSource,
