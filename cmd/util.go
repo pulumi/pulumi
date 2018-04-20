@@ -630,25 +630,25 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 			if cancelContext.CancelErr() == nil {
 				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
 				if !isPreview {
-					message += colors.BrightRed+"Note that terminating immediately may lead to orphaned resources " +
-						"and other inconsistencies.\n"+colors.Reset
+					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
+						"and other inconsistencies.\n" + colors.Reset
 				}
 				events <- engine.Event{
 					Type: engine.StdoutColorEvent,
 					Payload: engine.StdoutEventPayload{
 						Message: message,
-						Color: colors.Always,
+						Color:   colors.Always,
 					},
 				}
 
 				cancelSource.Cancel()
 			} else {
-				message := colors.BrightRed+"^C received; terminating"+colors.Reset
+				message := colors.BrightRed + "^C received; terminating" + colors.Reset
 				events <- engine.Event{
 					Type: engine.StdoutColorEvent,
 					Payload: engine.StdoutEventPayload{
 						Message: message,
-						Color: colors.Always,
+						Color:   colors.Always,
 					},
 				}
 
