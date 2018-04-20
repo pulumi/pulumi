@@ -9,20 +9,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
+func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 	contract.Require(u != nil, "u")
-	contract.Require(events != nil, "events")
+	contract.Require(ctx != nil, "ctx")
 
-	defer func() { events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return err
 	}
-	defer ctx.Close()
+	defer info.Close()
 
-	emitter := makeEventEmitter(events, u)
-	return preview(ctx, planOptions{
+	emitter := makeEventEmitter(ctx.Events, u)
+	return preview(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
@@ -30,8 +30,8 @@ func Preview(u UpdateInfo, events chan<- Event, opts UpdateOptions) error {
 	})
 }
 
-func preview(ctx *planContext, opts planOptions) error {
-	result, err := plan(ctx, opts, true /*dryRun*/)
+func preview(ctx *Context, info *planContext, opts planOptions) error {
+	result, err := plan(info, opts, true /*dryRun*/)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func preview(ctx *planContext, opts planOptions) error {
 		}
 		defer done()
 
-		if _, err := printPlan(result, true /*dryRun*/); err != nil {
+		if _, err := printPlan(ctx, result, true /*dryRun*/); err != nil {
 			return err
 		}
 	}
@@ -54,9 +54,10 @@ func preview(ctx *planContext, opts planOptions) error {
 }
 
 type previewActions struct {
-	Ops  map[deploy.StepOp]int
-	Opts planOptions
-	Seen map[resource.URN]deploy.Step
+	Refresh bool
+	Ops     map[deploy.StepOp]int
+	Opts    planOptions
+	Seen    map[resource.URN]deploy.Step
 }
 
 func newPreviewActions(opts planOptions) *previewActions {
@@ -69,9 +70,7 @@ func newPreviewActions(opts planOptions) *previewActions {
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	acts.Seen[step.URN()] = step
-
 	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
-
 	return nil, nil
 }
 
@@ -96,7 +95,10 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	assertSeen(acts.Seen, step)
 
-	acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
+	// Print the resource outputs separately, unless this is a refresh in which case they are already printed.
+	if !acts.Opts.SkipOutputs {
+		acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
+	}
 
 	return nil
 }

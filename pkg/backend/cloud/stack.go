@@ -115,14 +115,19 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *cloudStack) Update(proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.UpdateStack(s, proj, root, m, opts, displayOpts)
+func (s *cloudStack) Update(proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	return backend.UpdateStack(s, proj, root, m, opts, displayOpts, scopes)
 }
 
-func (s *cloudStack) Destroy(proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return backend.DestroyStack(s, proj, root, m, opts, displayOpts)
+func (s *cloudStack) Refresh(proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	return backend.RefreshStack(s, proj, root, m, opts, displayOpts, scopes)
+}
+
+func (s *cloudStack) Destroy(proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	return backend.DestroyStack(s, proj, root, m, opts, displayOpts, scopes)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

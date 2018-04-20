@@ -171,8 +171,8 @@ func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 }
 
 func (b *localBackend) Update(
-	stackRef backend.StackReference, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	stackName := stackRef.StackName()
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
@@ -186,36 +186,39 @@ func (b *localBackend) Update(
 		return errors.Wrap(err, "validating stack properties")
 	}
 
-	if !opts.Force && !opts.Preview {
-		return errors.New("--update or --preview must be passed when updating a local stack")
-	}
+	return b.performEngineOp("updating", backend.DeployUpdate,
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Update, scopes)
+}
 
-	return b.performEngineOp(
-		"updating", backend.DeployUpdate,
-		stackName, proj, root, m, opts, displayOpts,
-		opts.Preview, engine.Update)
+func (b *localBackend) Refresh(
+	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+
+	stackName := stackRef.StackName()
+	return b.performEngineOp("refreshing", backend.RefreshUpdate,
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Refresh, scopes)
 }
 
 func (b *localBackend) Destroy(
-	stackRef backend.StackReference, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
-	if !opts.Force && !opts.Preview {
-		return errors.New("--update or --preview must be passed when destroying a local stacks")
-	}
-
-	return b.performEngineOp(
-		"destroying", backend.DestroyUpdate,
-		stackRef.StackName(), proj, root, m, opts, displayOpts,
-		opts.Preview, engine.Destroy)
+	stackName := stackRef.StackName()
+	return b.performEngineOp("destroying", backend.DestroyUpdate,
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Destroy, scopes)
 }
 
-func (b *localBackend) performEngineOp(
-	op string, kind backend.UpdateKind, stackName tokens.QName, proj *workspace.Project,
-	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, dryRun bool,
-	performEngineOp func(engine.UpdateInfo, chan<- engine.Event, engine.UpdateOptions, bool) (
-		engine.ResourceChanges, error)) error {
+type engineOpFunc func(
+	engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
+
+func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
+	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, dryRun bool, performEngineOp engineOpFunc,
+	scopes backend.CancellationScopeSource) error {
+
+	if !opts.Force && !dryRun {
+		return errors.Errorf("--force or --preview must be passed when %s a local stack", op)
+	}
 
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
@@ -223,13 +226,18 @@ func (b *localBackend) performEngineOp(
 	}
 
 	events := make(chan engine.Event)
+
+	cancelScope := scopes.NewScope(events, dryRun)
+	defer cancelScope.Close()
+
 	done := make(chan bool)
 
 	go DisplayEvents(op, events, done, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, events, opts, dryRun)
+	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events}
+	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done

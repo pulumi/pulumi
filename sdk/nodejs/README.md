@@ -10,22 +10,20 @@ For now, we only support developers building from source.  Eventually we will ha
 
 To build and install the SDK, you will first need a few things.
 
-First, install Node.js 6.10.2.  We recommend [nvm](https://github.com/creationix/nvm), since it makes it easier
-to switch between versions of Node.js.  Afterwards, run `nvm install 6.10.2`. As part of the build, a custom build
-of Node.js 6.10.2 will be downloaded and installed alongside the SDK. This Node binary is identical to Node.js 6.10.2,
-except that it has one extra builtin module containing code that is used by the SDK to serialize JavaScript closures.
-The custom binary is built from [this repo](https://github.com/pulumi/node).
+First, you will need a version of Node. We officially support the current node Active LTS releases and
+the most recent Current release, as defined by [this table](https://github.com/nodejs/Release#release-schedule).
 
 Next, we suggest using [Yarn](https://yarnpkg.com/lang/en/docs/install/) for package management.  NPM works too, but
 Yarn is faster and therefore preferred.  Please follow the directions on Yarn's website.
 
 ### Building and Testing
 
-The first time you build, you must `make configure` to install and prepare native plugins for V8:
+The first time you build, you can `make ensure` to install and prepare native plugins for V8:
 
     $ make configure
 
-Make sure to run this after installing the right version of Node.js above, otherwise it may bind to the wrong version.
+This is only necessary if you intend to produce a build that is capable of running older versions of the SDK
+contained in this directory. If you do intend to do this, you must have node `6.10.2` installed.
 
 To build the SDK, simply run `make` from the root directory (`sdk/nodejs/`).  This will build the code, run tests, and
 then "install" the package (by `yarn link`ing the resulting `bin/` directory).

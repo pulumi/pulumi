@@ -47,6 +47,16 @@ func TestSteps(t *testing.T) {
 				Additive: true,
 				// This step will fail because the resource is protected.
 				ExpectFailure: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// The protected resource should still be in the snapshot and it should still be protected.
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+					stackRes := stackInfo.Deployment.Resources[0]
+					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+					a := stackInfo.Deployment.Resources[1]
+					assert.Equal(t, "eternal", string(a.URN.Name()))
+					assert.True(t, a.Protect)
+				},
 			},
 			{
 				Dir:      "step4",

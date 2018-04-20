@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -24,13 +25,13 @@ func newDestroyCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
 	var color colorFlag
+	var diffDisplay bool
 	var parallel int
 	var force bool
 	var preview bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var diffDisplay bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -76,7 +77,7 @@ func newDestroyCmd() *cobra.Command {
 				}
 			}
 
-			return s.Destroy(proj, root, m, engine.UpdateOptions{
+			err = s.Destroy(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
 				Preview:   preview,
@@ -89,7 +90,11 @@ func newDestroyCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
-			})
+			}, cancellationScopes)
+			if err == context.Canceled {
+				return errors.New("destroy cancelled")
+			}
+			return err
 		}),
 	}
 
@@ -107,6 +112,11 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
+	cmd.PersistentFlags().VarP(
+		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().BoolVar(
+		&diffDisplay, "diff", false,
+		"Display operation as a rich diff showing the overall change")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
@@ -125,11 +135,6 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVar(
-		&diffDisplay, "diff", false,
-		"Display operation as a rich diff showing the overall change")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 
 	return cmd
 }

@@ -9,8 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Destroy(
-	u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 
 	contract.Require(u != nil, "u")
 
@@ -25,24 +24,24 @@ func Destroy(
 	emitter := makeEventEmitter(ctx.Events, u)
 	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
-		SourceFunc:    newDestroySource,
+		SkipOutputs:   true, // refresh is exclusively about outputs
+		SourceFunc:    newRefreshSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
 	}, dryRun)
 }
 
-func newDestroySource(
-	opts planOptions, proj *workspace.Project, pwd, main string,
+func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
+	// First, consult the manifest for the plugins we will need to ask to refresh the state.
 	if target != nil && target.Snapshot != nil {
 		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins); err != nil {
 			return nil, err
 		}
 	}
 
-	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
-	// engine to destroy the entire existing state.
-	return deploy.NullSource, nil
+	// Now create a refresh source.  This source simply loads up the current checkpoint state, enumerates it,
+	// and refreshes each state with the current cloud provider's view of it.
+	return deploy.NewRefreshSource(plugctx, proj, target, dryRun), nil
 }

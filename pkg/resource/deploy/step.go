@@ -147,7 +147,7 @@ func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	if !preview {
-		if s.new.Custom {
+		if s.new.Custom && !s.iter.p.IsRefresh() {
 			// Invoke the Create RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -195,6 +195,7 @@ func NewDeleteStep(iter *PlanIterator, old *resource.State) Step {
 		old:  old,
 	}
 }
+
 func NewDeleteReplacementStep(iter *PlanIterator, old *resource.State, pendingDelete bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -230,7 +231,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	if !preview {
-		if s.old.Custom {
+		if s.old.Custom && !s.iter.p.IsRefresh() {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -289,12 +290,12 @@ func (s *UpdateStep) Res() *resource.State    { return s.new }
 func (s *UpdateStep) Logical() bool           { return true }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
-	if preview {
-		// In the case of an update, the URN and ID are the same, however, the outputs remain unknown.
-		s.new.URN = s.old.URN
-		s.new.ID = s.old.ID
-	} else {
-		if s.new.Custom {
+	// Always propagate the URN and ID, even in previews and refreshes.
+	s.new.URN = s.old.URN
+	s.new.ID = s.old.ID
+
+	if !preview {
+		if s.new.Custom && !s.iter.p.IsRefresh() {
 			// Invoke the Update RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -308,7 +309,6 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 			}
 
 			// Now copy any output state back in case the update triggered cascading updates to other properties.
-			s.new.ID = s.old.ID
 			s.new.Outputs = outs
 		}
 

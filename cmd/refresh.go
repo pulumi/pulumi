@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newUpdateCmd() *cobra.Command {
+func newRefreshCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var stack string
@@ -24,33 +24,29 @@ func newUpdateCmd() *cobra.Command {
 	var analyzers []string
 	var color colorFlag
 	var diffDisplay bool
+	var force bool
 	var parallel int
 	var preview bool
-	var force bool
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 
 	var cmd = &cobra.Command{
-		Use:        "update",
-		Aliases:    []string{"up"},
-		SuggestFor: []string{"deploy", "push"},
-		Short:      "Update the resources in a stack",
-		Long: "Update the resources in a stack.\n" +
+		Use:   "refresh",
+		Short: "Refresh the resources in a stack",
+		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
-			"This command updates an existing stack whose state is represented by the existing checkpoint\n" +
-			"file. The new desired state is computed by running a Pulumi program, and extracting all resource\n" +
-			"allocations from its resulting object graph. These allocations are then compared against the\n" +
-			"existing state to determine what operations must take place to achieve the desired state. This\n" +
-			"command results in a checkpoint containing a full snapshot of the stack's new resource state, so\n" +
-			"that it may be updated incrementally again later.\n" +
+			"This command compares the current stack's resource state with the state known to exist in\n" +
+			"the actual cloud provider. Any such changes are adopted into the current stack. Note that if\n" +
+			"the program text isn't updated accordingly, subsequent updates may still appear to be out of\n" +
+			"synch with respect to the cloud provider's source of truth.\n" +
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
-				return errors.New("'update' must be run interactively or be passed the --force or --preview flag")
+				return errors.New("'refresh' must be run interactively or be passed the --force or --preview flag")
 			}
 
 			if force && preview {
@@ -72,7 +68,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			err = s.Update(proj, root, m, engine.UpdateOptions{
+			err = s.Refresh(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
 				Preview:   preview,
@@ -87,7 +83,7 @@ func newUpdateCmd() *cobra.Command {
 				Debug:                debug,
 			}, cancellationScopes)
 			if err == context.Canceled {
-				return errors.New("update cancelled")
+				return errors.New("refresh cancelled")
 			}
 			return err
 		}),
@@ -106,31 +102,28 @@ func newUpdateCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
+		&analyzers, "analyzer", nil,
 		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().VarP(
 		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().BoolVarP(
+		&force, "force", "f", false,
+		"Skip confirmation prompts and preview, and proceed with the update automatically")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
 	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
-		"Skip confirmation prompts and preview, and proceed with the update automatically")
-	cmd.PersistentFlags().BoolVar(
-		&preview, "preview", false,
-		"Only show a preview of what will happen, without prompting or making any changes")
-	cmd.PersistentFlags().BoolVar(
-		&showConfig, "show-config", false,
-		"Show configuration keys and variables")
+		&preview, "preview", "n", false,
+		"Don't create/delete resources; just preview the planned operations")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
-		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 
 	return cmd
 }

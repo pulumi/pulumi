@@ -5,17 +5,11 @@ package local
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/progress"
-	"github.com/docker/docker/pkg/streamformatter"
-	"github.com/docker/docker/pkg/term"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -27,8 +21,31 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 
+	"github.com/docker/docker/pkg/term"
 	"golang.org/x/crypto/ssh/terminal"
 )
+
+// Progress describes a message we want to show in the display.  There are two types of messages,
+// simple 'Messages' which just get printed out as a single uninterpreted line, and 'Actions' which
+// are placed and updated in the progress-grid based on their ID.  Messages do not need an ID, while
+// Actions must have an ID.
+type Progress struct {
+	ID      string
+	ShowID  bool
+	Message string
+	Action  string
+}
+
+func makeMessageProgress(message string) Progress {
+	return Progress{Message: message}
+}
+
+func makeActionProgress(id string, action string, showID bool) Progress {
+	contract.Assertf(id != "", "id must be non empty for action %s", action)
+	contract.Assertf(action != "", "action must be non empty")
+
+	return Progress{ID: id, Action: action, ShowID: showID}
+}
 
 type DiagInfo struct {
 	ErrorCount, WarningCount, InfoCount, DebugCount int
@@ -45,7 +62,7 @@ type DiagInfo struct {
 
 type ProgressDisplay struct {
 	opts           backend.DisplayOptions
-	progressOutput progress.Output
+	progressOutput chan<- Progress
 
 	// Whether or not we're previewing.  We don't know what we are actually doing until
 	// we get the initial 'prelude' event.
@@ -60,7 +77,10 @@ type ProgressDisplay struct {
 	// The summary event from the engine.  If we get this, we'll print this after all
 	// normal resource events are heard.  That way we don't interfere with all the progress
 	// messages we're outputting for them.
-	summaryEvent *engine.Event
+	summaryEventPayload *engine.SummaryEventPayload
+
+	// Any system events we've received.  They will be printed at the bottom of all the status rows
+	systemEventPayloads []engine.StdoutEventPayload
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -84,9 +104,6 @@ type ProgressDisplay struct {
 	// The width of the terminal.  Used so we can trim resource messages that are too long.
 	terminalWidth int
 
-	// Maps used so we can generate short IDs for resource urns.
-	urnToID map[resource.URN]string
-
 	// If all progress messages are done and we can print out the final display.
 	Done bool
 
@@ -98,6 +115,13 @@ type ProgressDisplay struct {
 
 	// the length of the longest suffix
 	maxSuffixLength int
+
+	// Maps used so we can generate short IDs for resource urns.
+	urnToID map[resource.URN]string
+
+	// Cache of colorized to uncolorized text.  We go between the two a lot, so caching helps
+	// prevent lots of recomputation
+	colorizedToUncolorized map[string]string
 }
 
 var (
@@ -134,7 +158,7 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 // Converts the colorization tags in a progress message and then actually writes the progress
 // message to the output stream.  This should be the only place in this file where we actually
 // process colorization tags.
-func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progress) {
+func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 	if progress.Message != "" {
 		progress.Message = display.opts.Color.Colorize(progress.Message)
 	}
@@ -143,12 +167,11 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress progress.Progr
 		progress.Action = display.opts.Color.Colorize(progress.Action)
 	}
 
-	err := display.progressOutput.WriteProgress(progress)
-	contract.IgnoreError(err)
+	display.progressOutput <- progress
 }
 
 func (display *ProgressDisplay) writeSimpleMessage(msg string) {
-	display.colorizeAndWriteProgress(progress.Progress{Message: msg})
+	display.colorizeAndWriteProgress(makeMessageProgress(msg))
 }
 
 func (display *ProgressDisplay) writeBlankLine() {
@@ -167,19 +190,18 @@ func DisplayProgressEvents(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
 		nil, 1 /*timesPerSecond*/)
 
-	// The streams we used to connect to docker's progress system.  We push progress messages into
-	// progressOutput.  It pushes messages into pipeWriter.  Those are then read below in
-	// DisplayJSONMessagesToStream.
-	pipeReader, pipeWriter := io.Pipe()
-	progressOutput := streamformatter.NewJSONStreamFormatter().NewProgressOutput(pipeWriter, false)
+	// The channel we push progress messages into, and which DisplayProgressToStream pulls
+	// from to display to the console.
+	progressOutput := make(chan Progress)
 
 	display := &ProgressDisplay{
-		opts:                  opts,
-		progressOutput:        progressOutput,
-		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		urnToID:               make(map[resource.URN]string),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
+		opts:                   opts,
+		progressOutput:         progressOutput,
+		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
+		suffixColumn:           int(statusColumn),
+		suffixesArray:          []string{"", ".", "..", "..."},
+		urnToID:                make(map[resource.URN]string),
+		colorizedToUncolorized: make(map[string]string),
 	}
 
 	for _, v := range display.suffixesArray {
@@ -188,31 +210,6 @@ func DisplayProgressEvents(
 		}
 	}
 
-	display.initializeTermInfo()
-
-	go func() {
-		display.processEvents(ticker, events)
-
-		// no more progress events from this point on.  By closing the pipe, this will then cause
-		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
-		// pipeReader, causing DisplayEvents to finally complete.
-		err := pipeWriter.Close()
-		contract.IgnoreError(err)
-	}()
-
-	// Call into Docker to actually suck the progress messages out of pipeReader and display
-	// them to the console.
-	_, stdout, _ := term.StdStreams()
-	err := jsonmessage.DisplayJSONMessagesToStream(pipeReader, newOutStream(stdout), nil)
-	contract.IgnoreError(err)
-
-	ticker.Stop()
-
-	// let our caller know we're done.
-	done <- true
-}
-
-func (display *ProgressDisplay) initializeTermInfo() {
 	_, stdout, _ := term.StdStreams()
 	_, isTerminal := term.GetFdInfo(stdout)
 
@@ -221,6 +218,22 @@ func (display *ProgressDisplay) initializeTermInfo() {
 
 	display.isTerminal = isTerminal
 	display.terminalWidth = terminalWidth
+
+	go func() {
+		display.processEvents(ticker, events)
+
+		// no more progress events from this point on.  By closing the pipe, this will then cause
+		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
+		// pipeReader, causing DisplayEvents to finally complete.
+		close(progressOutput)
+	}()
+
+	DisplayProgressToStream(progressOutput, stdout, isTerminal)
+
+	ticker.Stop()
+
+	// let our caller know we're done.
+	done <- true
 }
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
@@ -277,40 +290,36 @@ func (display *ProgressDisplay) getPaddedMessage(
 	return colorizedMessage
 }
 
-func uncolorise(columns []string) []string {
+func (display *ProgressDisplay) uncolorizeString(v string) string {
+	uncolorized, has := display.colorizedToUncolorized[v]
+	if !has {
+		uncolorized = colors.Never.Colorize(v)
+		display.colorizedToUncolorized[v] = uncolorized
+	}
+
+	return uncolorized
+}
+
+func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	uncolorizedColumns := make([]string, len(columns))
 
 	for i, v := range columns {
-		uncolorizedColumns[i] = colors.Never.Colorize(v)
+		uncolorizedColumns[i] = display.uncolorizeString(v)
 	}
 
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) getColorizedColumnsCopy(row Row) []string {
-	colorizedColumns := row.ColorizedColumns()
-	colorizedColumnsCopy := make([]string, len(colorizedColumns))
-	copy(colorizedColumnsCopy, colorizedColumns)
-
-	return colorizedColumnsCopy
-}
-
 func (display *ProgressDisplay) refreshSingleRow(row Row) {
-	colorizedColumns := display.getColorizedColumnsCopy(row)
-	uncolorizedColumns := make([]string, len(colorizedColumns))
-
+	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
-	for i := range uncolorizedColumns {
-		uncolorizedColumns[i] = colors.Never.Colorize(colorizedColumns[i])
-	}
+	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
 
-	display.colorizeAndWriteProgress(progress.Progress{
-		ID:     display.opts.Color.Colorize(colorizedColumns[0]),
-		Action: msg,
-	})
+	display.colorizeAndWriteProgress(makeActionProgress(
+		uncolorizedColumns[0], msg, true /*showID*/))
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
@@ -331,7 +340,7 @@ func (display *ProgressDisplay) updateDimensions() bool {
 
 		for _, row := range display.rows {
 			colorizedColumns := row.ColorizedColumns()
-			uncolorizedColumns := uncolorise(colorizedColumns)
+			uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
 			if len(display.maxColumnLengths) == 0 {
 				display.maxColumnLengths = make([]int, len(uncolorizedColumns))
@@ -361,6 +370,37 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 		for _, row := range display.rows {
 			display.refreshSingleRow(row)
+		}
+
+		systemID := len(display.rows)
+
+		printedHeader := false
+		for _, payload := range display.systemEventPayloads {
+			msg := payload.Color.Colorize(payload.Message)
+			lines := splitIntoDisplayableLines(msg)
+
+			if len(lines) == 0 {
+				continue
+			}
+
+			if !printedHeader {
+				printedHeader = true
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID), " ", false /*showID*/))
+				systemID++
+
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID),
+					colors.Yellow+"System Messages"+colors.Reset,
+					false /*showID*/))
+				systemID++
+			}
+
+			for _, line := range lines {
+				display.colorizeAndWriteProgress(makeActionProgress(
+					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line), false /*showID*/))
+				systemID++
+			}
 		}
 	}
 }
@@ -406,18 +446,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			for _, v := range events {
 				msg := display.renderProgressDiagEvent(v)
 
-				lines := strings.Split(msg, "\n")
-
-				// Trim off any trailing blank lines in the message.
-				for len(lines) > 0 {
-					lastLine := lines[len(lines)-1]
-					if strings.TrimSpace(colors.Never.Colorize(lastLine)) == "" {
-						lines = lines[0 : len(lines)-1]
-					} else {
-						break
-					}
-				}
-
+				lines := splitIntoDisplayableLines(msg)
 				if len(lines) == 0 {
 					continue
 				}
@@ -448,8 +477,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 
 	// print the summary
-	if display.summaryEvent != nil {
-		msg := renderSummaryEvent(display.summaryEvent.Payload.(engine.SummaryEventPayload), display.opts)
+	if display.summaryEventPayload != nil {
+		msg := renderSummaryEvent(*display.summaryEventPayload, display.opts)
 
 		if !wroteDiagnosticHeader {
 			display.writeBlankLine()
@@ -457,6 +486,22 @@ func (display *ProgressDisplay) processEndSteps() {
 
 		display.writeSimpleMessage(msg)
 	}
+}
+
+func splitIntoDisplayableLines(msg string) []string {
+	lines := strings.Split(msg, "\n")
+
+	// Trim off any trailing blank lines in the message.
+	for len(lines) > 0 {
+		lastLine := lines[len(lines)-1]
+		if strings.TrimSpace(colors.Never.Colorize(lastLine)) == "" {
+			lines = lines[0 : len(lines)-1]
+		} else {
+			break
+		}
+	}
+
+	return lines
 }
 
 func (display *ProgressDisplay) processTick() {
@@ -492,13 +537,17 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.SummaryEvent:
 		// keep track of the summar event so that we can display it after all other
 		// resource-related events we receive.
-		display.summaryEvent = &event
+		payload := event.Payload.(engine.SummaryEventPayload)
+		display.summaryEventPayload = &payload
 		return
 	case engine.DiagEvent:
 		msg := display.renderProgressDiagEvent(event)
 		if msg == "" {
 			return
 		}
+	case engine.StdoutColorEvent:
+		display.handleSystemEvent(event.Payload.(engine.StdoutEventPayload))
+		return
 	}
 
 	// Don't bother showing certain events (for example, things that are unchanged). However
@@ -506,11 +555,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// also so we have something to attach unparented diagnostic events to.
 	if metadata != nil && !shouldShow(*metadata, display.opts) && !isRootURN(eventUrn) {
 		return
-	}
-
-	if len(display.rows) == 0 {
-		// about to make our first status message.  make sure we present the header line first.
-		display.rows = append(display.rows, &headerRowData{display: display})
 	}
 
 	// At this point, all events should relate to resources.
@@ -530,6 +574,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row
+		display.ensureHeaderRow()
 		display.rows = append(display.rows, row)
 	}
 
@@ -555,13 +600,35 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
-	// See if this new status information causes us to have to refresh everything.  Otherwise,
-	// just refresh the info for that single status message.
-	if display.updateDimensions() {
-		contract.Assertf(display.isTerminal, "we should only need to refresh if we're in a terminal")
+	if display.isTerminal {
+		// if we're in a terminal, then refresh everything so that all our columns line up
 		display.refreshAllRowsIfInTerminal()
 	} else {
+		// otherwise, just print out this single row.
 		display.refreshSingleRow(row)
+	}
+}
+
+func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
+	// Make sure we have a header to display
+	display.ensureHeaderRow()
+
+	display.systemEventPayloads = append(display.systemEventPayloads, payload)
+
+	if display.isTerminal {
+		// if we're in a terminal, then refresh everything.  The system events will come after
+		// all the normal rows
+		display.refreshAllRowsIfInTerminal()
+	} else {
+		// otherwise, in a non-terminal, just print out the actual event.
+		display.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
+	}
+}
+
+func (display *ProgressDisplay) ensureHeaderRow() {
+	if len(display.rows) == 0 {
+		// about to make our first status message.  make sure we present the header line first.
+		display.rows = append(display.rows, &headerRowData{display: display})
 	}
 }
 

@@ -6,7 +6,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
 
-// Goal is a desired state for a resource object.
+// Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
+// a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type Goal struct {
 	Type         tokens.Type  // the type of resource.
 	Name         tokens.QName // the name for the resource's URN.

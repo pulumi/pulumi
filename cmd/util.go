@@ -3,8 +3,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"os/user"
 	"path"
 	"path/filepath"
@@ -22,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
@@ -398,4 +402,68 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	return m, nil
+}
+
+type cancellationScope struct {
+	context *cancel.Context
+	sigint  chan os.Signal
+}
+
+func (s *cancellationScope) Context() *cancel.Context {
+	return s.context
+}
+
+func (s *cancellationScope) Close() {
+	signal.Stop(s.sigint)
+	close(s.sigint)
+}
+
+type cancellationScopeSource int
+
+var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
+
+func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+	cancelContext, cancelSource := cancel.NewContext(context.Background())
+
+	c := &cancellationScope{
+		context: cancelContext,
+		sigint:  make(chan os.Signal),
+	}
+
+	go func() {
+		for range c.sigint {
+			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
+			// func.
+			if cancelContext.CancelErr() == nil {
+				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
+				if !isPreview {
+					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
+						"and other inconsistencies.\n" + colors.Reset
+				}
+				events <- engine.Event{
+					Type: engine.StdoutColorEvent,
+					Payload: engine.StdoutEventPayload{
+						Message: message,
+						Color:   colors.Always,
+					},
+				}
+
+				cancelSource.Cancel()
+			} else {
+				message := colors.BrightRed + "^C received; terminating" + colors.Reset
+				events <- engine.Event{
+					Type: engine.StdoutColorEvent,
+					Payload: engine.StdoutEventPayload{
+						Message: message,
+						Color:   colors.Always,
+					},
+				}
+
+				cancelSource.Terminate()
+			}
+		}
+	}()
+	signal.Notify(c.sigint, os.Interrupt)
+
+	return c
 }

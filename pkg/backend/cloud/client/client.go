@@ -353,6 +353,9 @@ func (pc *Client) CreateUpdate(
 		} else {
 			endpoint = "update"
 		}
+	case UpdateKindRefresh:
+		return UpdateIdentifier{},
+			errors.New("'refresh' not yet supported for managed stacks [pulumi/pulumi#1081]")
 	case UpdateKindDestroy:
 		endpoint = "destroy"
 	default:
@@ -464,6 +467,11 @@ func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *api
 		Deployment: rawDeployment,
 	}
 	return pc.updateRESTCall("PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+}
+
+// CancelUpdate cancels the indicated update.
+func (pc *Client) CancelUpdate(update UpdateIdentifier) error {
+	return pc.restCall("POST", getUpdatePath(update, "cancel"), nil, nil, nil)
 }
 
 // CompleteUpdate completes the indicated update with the given status.

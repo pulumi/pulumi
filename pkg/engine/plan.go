@@ -68,9 +68,10 @@ type planOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc planSourceFunc
 
-	DOT    bool         // true if we should print the DOT file for this plan.
-	Events eventEmitter // the channel to write events from the engine to.
-	Diag   diag.Sink    // the sink to use for diag'ing.
+	SkipOutputs bool         // true if we we should skip printing outputs separately.
+	DOT         bool         // true if we should print the DOT file for this plan.
+	Events      eventEmitter // the channel to write events from the engine to.
+	Diag        diag.Sink    // the sink to use for diag'ing.
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -156,7 +157,7 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(events deploy.Events, preview bool) (deploy.PlanSummary,
+func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (deploy.PlanSummary,
 	deploy.Step, resource.Status, error) {
 	opts := deploy.Options{
 		Events:   events,
@@ -171,33 +172,57 @@ func (res *planResult) Walk(events deploy.Events, preview bool) (deploy.PlanSumm
 
 	step, err := iter.Next()
 	if err != nil {
-		closeerr := iter.Close() // ignore close errors; the Next error trumps
-		contract.IgnoreError(closeerr)
+		closeErr := iter.Close() // ignore close errors; the Next error trumps
+		contract.IgnoreError(closeErr)
 		return nil, nil, resource.StatusOK, err
 	}
 
-	for step != nil {
-		// Perform any per-step actions.
-		rst, err := iter.Apply(step, preview)
+	// Iterate the plan in a goroutine while listening for termination.
+	var rst resource.Status
+	done := make(chan bool)
+	go func() {
+		defer func() {
+			// Close the iterator. If we have already observed another error, that error trumps the close error.
+			closeErr := iter.Close()
+			if err == nil {
+				err = closeErr
+			}
+			close(done)
+		}()
 
-		// If an error occurred, exit early.
-		if err != nil {
-			closeerr := iter.Close() // ignore close errors; the action error trumps
-			contract.IgnoreError(closeerr)
-			return iter, step, rst, err
-		}
-		contract.Assert(rst == resource.StatusOK)
+		for step != nil {
+			// Check for cancellation and termination.
+			if cancelErr := ctx.Cancel.CancelErr(); cancelErr != nil {
+				rst, err = resource.StatusOK, cancelErr
+				return
+			}
 
-		step, err = iter.Next()
-		if err != nil {
-			closeerr := iter.Close() // ignore close errors; the action error trumps
-			contract.IgnoreError(closeerr)
-			return iter, step, resource.StatusOK, err
+			// Perform any per-step actions.
+			rst, err = iter.Apply(step, preview)
+
+			// If an error occurred, exit early.
+			if err != nil {
+				return
+			}
+			contract.Assert(rst == resource.StatusOK)
+
+			step, err = iter.Next()
+			if err != nil {
+				return
+			}
 		}
+
+		// Finally, return a summary and the resulting plan information.
+		rst, err = resource.StatusOK, nil
+	}()
+
+	select {
+	case <-ctx.Cancel.Terminated():
+		return iter, step, rst, ctx.Cancel.TerminateErr()
+
+	case <-done:
+		return iter, step, rst, err
 	}
-
-	// Finally, return a summary and the resulting plan information.
-	return iter, nil, resource.StatusOK, iter.Close()
 }
 
 func (res *planResult) Close() error {
@@ -205,12 +230,12 @@ func (res *planResult) Close() error {
 }
 
 // printPlan prints the plan's result to the plan's Options.Events stream.
-func printPlan(result *planResult, dryRun bool) (ResourceChanges, error) {
+func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, error) {
 	result.Options.Events.preludeEvent(dryRun, result.Ctx.Update.GetTarget().Config)
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPreviewActions(result.Options)
-	_, _, _, err := result.Walk(actions, true)
+	_, _, _, err := result.Walk(ctx, actions, true)
 	if err != nil {
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
