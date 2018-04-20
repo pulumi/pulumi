@@ -13,11 +13,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -50,17 +48,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
 		fmt.Println("See documentation at https://docs.pulumi.com")
-
-		url, err := workspace.GetCurrentCloudURL()
-		if err == nil && url != "" && !local.IsLocalBackendURL(url) {
-			fmt.Printf("\n")
-			suffix := ""
-			if url != cloud.PulumiCloudURL {
-				suffix = fmt.Sprintf(" (%s)", url)
-			}
-
-			fmt.Printf("Currently logged into the Pulumi Cloud%s%s\n", cmdutil.EmojiOr(" ☁️", ""), suffix)
-		}
 	})
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")

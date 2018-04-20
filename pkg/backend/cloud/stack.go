@@ -5,6 +5,7 @@ package cloud
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -19,10 +20,11 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	CloudURL() string  // the URL to the cloud containing this stack.
-	OrgName() string   // the organization that owns this stack.
-	CloudName() string // the PPC in which this stack is running.
-	RunLocally() bool  // true if previews/updates/destroys targeting this stack run locally.
+	CloudURL() string            // the URL to the cloud containing this stack.
+	OrgName() string             // the organization that owns this stack.
+	CloudName() string           // the PPC in which this stack is running.
+	RunLocally() bool            // true if previews/updates/destroys targeting this stack run locally.
+	ConsoleURL() (string, error) // the URL to view the stack's information on Pulumi.com
 }
 
 // cloudStack is a cloud stack descriptor.
@@ -140,4 +142,16 @@ func (s *cloudStack) ExportDeployment() (*apitype.UntypedDeployment, error) {
 
 func (s *cloudStack) ImportDeployment(deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(s, deployment)
+}
+
+func (s *cloudStack) ConsoleURL() (string, error) {
+	path, err := s.b.StackConsoleURL(s.Name())
+	if err != nil {
+		return "", nil
+	}
+	url := s.b.CloudConsoleURL(path)
+	if url == "" {
+		return "", errors.New("could not determine clould console URL")
+	}
+	return url, nil
 }

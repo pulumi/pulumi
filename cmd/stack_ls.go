@@ -65,6 +65,8 @@ func newStackLsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			showPPCColumn := hasAnyPPCStacks(bs)
+
 			for _, stack := range bs {
 				name := stack.Name().String()
 				stacks[name] = stack
@@ -80,8 +82,16 @@ func newStackLsCmd() *cobra.Command {
 				}
 			}
 
-			fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
-				"NAME", "LAST UPDATE", "RESOURCE COUNT", "CLOUD")
+			formatDirective := "%-" + strconv.Itoa(maxname) + "s %-24s %-18s"
+			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
+
+			if showPPCColumn {
+				formatDirective = formatDirective + " %-25s"
+				headers = append(headers, "PPC")
+			}
+			formatDirective = formatDirective + "\n"
+
+			fmt.Printf(formatDirective, headers...)
 			for _, name := range stackNames {
 				// Mark the name as current '*' if we've selected it.
 				stack := stacks[name]
@@ -100,16 +110,19 @@ func newStackLsCmd() *cobra.Command {
 					resourceCount = strconv.Itoa(len(snap.Resources))
 				}
 
-				// Print out the cloud URL.
-				var cloudInfo string
-				if cs, ok := stack.(cloud.Stack); ok {
-					cloudInfo = fmt.Sprintf("%s:%s/%s", cs.CloudURL(), cs.OrgName(), cs.CloudName())
-				} else {
-					cloudInfo = none
+				values := []interface{}{name, lastUpdate, resourceCount}
+				if showPPCColumn {
+					// Print out the PPC name.
+					var cloudInfo string
+					if cs, ok := stack.(cloud.Stack); ok && !cs.RunLocally() {
+						cloudInfo = cs.CloudName()
+					} else {
+						cloudInfo = none
+					}
+					values = append(values, cloudInfo)
 				}
 
-				fmt.Printf("%-"+strconv.Itoa(maxname)+"s %-24s %-18s %-25s\n",
-					name, lastUpdate, resourceCount, cloudInfo)
+				fmt.Printf(formatDirective, values...)
 			}
 
 			return result
@@ -119,4 +132,16 @@ func newStackLsCmd() *cobra.Command {
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
 	return cmd
+}
+
+func hasAnyPPCStacks(stacks []backend.Stack) bool {
+	for _, s := range stacks {
+		if cs, ok := s.(cloud.Stack); ok {
+			if !cs.RunLocally() {
+				return true
+			}
+		}
+	}
+
+	return false
 }
