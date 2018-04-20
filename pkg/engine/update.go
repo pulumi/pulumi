@@ -114,7 +114,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := newUpdateActions(info.Update, opts)
+			actions := newUpdateActions(ctx, info.Update, opts)
 			summary, _, _, err := result.Walk(ctx, actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
@@ -137,6 +137,7 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
+	Context      *Context
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
@@ -145,12 +146,13 @@ type updateActions struct {
 	Opts         planOptions
 }
 
-func newUpdateActions(u UpdateInfo, opts planOptions) *updateActions {
+func newUpdateActions(context *Context, u UpdateInfo, opts planOptions) *updateActions {
 	return &updateActions{
-		Ops:    make(map[deploy.StepOp]int),
-		Seen:   make(map[resource.URN]deploy.Step),
-		Update: u,
-		Opts:   opts,
+		Context: context,
+		Ops:     make(map[deploy.StepOp]int),
+		Seen:    make(map[resource.URN]deploy.Step),
+		Update:  u,
+		Opts:    opts,
 	}
 }
 
@@ -168,6 +170,12 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
 
 	assertSeen(acts.Seen, step)
+
+	// If we've already been terminated, exit without writing the checkpoint. We explicitly want to leave the
+	// checkpoint in an inconsistent state in this event.
+	if acts.Context.Cancel.TerminateErr() != nil {
+		return nil
+	}
 
 	// Report the result of the step.
 	stepop := step.Op()
