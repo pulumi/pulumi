@@ -194,7 +194,9 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			acts.Ops[stepop]++
 		}
 
-		// Also show outputs here for custom resources, since there might be some from the initial registration.
+		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
+		// not show outputs for component resources at this point: any that exist must be from a previous execution of
+		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		if step.Res().Custom {
 			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
 		}
