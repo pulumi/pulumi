@@ -183,7 +183,7 @@ outer:
 				switch e := event.(type) {
 				case RegisterResourceEvent:
 					// If the intent is to register a resource, compute the plan steps necessary to do so.
-					steps, steperr := iter.makeRegisterResouceSteps(e)
+					steps, steperr := iter.makeRegisterResourceSteps(e)
 					if steperr != nil {
 						return nil, steperr
 					}
@@ -222,10 +222,10 @@ outer:
 	return nil, nil
 }
 
-// makeRegisterResouceSteps produces one or more steps required to achieve the desired resource goal state, or nil if
+// makeRegisterResourceSteps produces one or more steps required to achieve the desired resource goal state, or nil if
 // there aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
 // possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
-func (iter *PlanIterator) makeRegisterResouceSteps(e RegisterResourceEvent) ([]Step, error) {
+func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]Step, error) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	// Use the resource goal state name to produce a globally unique URN.
