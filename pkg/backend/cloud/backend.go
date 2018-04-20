@@ -121,6 +121,7 @@ type Backend interface {
 	ListTemplates() ([]workspace.Template, error)
 
 	CancelCurrentUpdate(stackRef backend.StackReference) error
+	StackConsoleURL(stackRef backend.StackReference) (string, error)
 }
 
 type cloudBackend struct {
@@ -186,7 +187,23 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 	return New(d, cloudURL)
 }
 
-func (b *cloudBackend) Name() string     { return b.url }
+func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return "", err
+	}
+
+	return b.cloudConsoleStackPath(stackID), nil
+}
+
+func (b *cloudBackend) Name() string {
+	if b.url == PulumiCloudURL {
+		return "pulumi.com"
+	}
+
+	return b.url
+}
+
 func (b *cloudBackend) CloudURL() string { return b.url }
 
 func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
@@ -364,13 +381,19 @@ func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interfa
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	stack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
+	apistack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Created stack '%s' hosted in Pulumi Cloud PPC %s\n", stackRef, stack.CloudName)
 
-	return newStack(stack, b), nil
+	stack := newStack(apistack, b)
+	fmt.Printf("Created stack '%s'", stack.Name())
+	if !stack.RunLocally() {
+		fmt.Printf(" in PPC %s", stack.CloudName())
+	}
+	fmt.Println()
+
+	return stack, nil
 }
 
 func (b *cloudBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.Stack, error) {
@@ -692,8 +715,7 @@ func (b *cloudBackend) updateStack(
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
 	fmt.Printf(
-		colors.ColorizeText(
-			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
+		colors.ColorizeText(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
