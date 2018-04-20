@@ -426,9 +426,12 @@ func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTag
 	return resp.Version, resp.Token, nil
 }
 
-// GetUpdateEvents returns all events for the indicated update after the given index.
-func (pc *Client) GetUpdateEvents(update UpdateIdentifier, afterIndex string) (apitype.UpdateResults, error) {
-	path := fmt.Sprintf("%s?afterIndex=%s", getUpdatePath(update), afterIndex)
+// GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
+func (pc *Client) GetUpdateEvents(update UpdateIdentifier, continuationToken *string) (apitype.UpdateResults, error) {
+	path := getUpdatePath(update)
+	if continuationToken != nil {
+		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
+	}
 
 	var results apitype.UpdateResults
 	if err := pc.restCall("GET", path, nil, nil, &results); err != nil {
