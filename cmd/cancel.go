@@ -10,7 +10,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -30,9 +29,9 @@ func newCancelCmd() *cobra.Command {
 			"updates.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Use the stack provided or, if missing, default to the current one.
-			var stack tokens.QName
+			stack := ""
 			if len(args) > 0 {
-				stack = tokens.QName(args[0])
+				stack = args[0]
 			}
 			s, err := requireStack(stack, false)
 			if err != nil {
@@ -47,7 +46,7 @@ func newCancelCmd() *cobra.Command {
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will irreversably cancel the currently running update for '%s'!", s.Name())
-			if !yes && !confirmPrompt(prompt, string(s.Name())) {
+			if !yes && !confirmPrompt(prompt, s.Name().String()) {
 				return errors.New("confirmation declined")
 			}
 

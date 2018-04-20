@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -75,6 +76,12 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
 	e.Helper()
 	return e.runCommand(e.T, false, cmd, e.CWD, args...)
+}
+
+// LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
+// may reuse stack names.
+func (e *Environment) LocalURL() string {
+	return "local://" + filepath.Join(e.RootPath, workspace.BookkeepingDir)
 }
 
 func (e *Environment) runCommand(t *testing.T, expectSuccess bool, command,

@@ -36,7 +36,7 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %v:\n", s.Name())
+			fmt.Printf("Current stack is %s:\n", s.Name())
 
 			be := s.Backend()
 			fmt.Printf("    Managed by %s", be.Name())

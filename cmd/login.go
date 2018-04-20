@@ -19,7 +19,7 @@ func newLoginCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if local.IsLocalBackendURL(cloudURL) {
-				_, err := local.Login(cmdutil.Diag())
+				_, err := local.Login(cmdutil.Diag(), cloudURL)
 				return err
 			}
 

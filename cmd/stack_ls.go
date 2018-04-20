@@ -20,17 +20,23 @@ import (
 )
 
 func newStackLsCmd() *cobra.Command {
-	return &cobra.Command{
+	var allStacks bool
+	cmd := &cobra.Command{
 		Use:   "ls",
 		Short: "List all known stacks",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Ensure we are in a project; if not, we will fail.
-			proj, err := workspace.DetectProjectPath()
+			projPath, err := workspace.DetectProjectPath()
 			if err != nil {
 				return errors.Wrapf(err, "could not detect current project")
-			} else if proj == "" {
+			} else if projPath == "" {
 				return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+			}
+
+			proj, err := workspace.LoadProject(projPath)
+			if err != nil {
+				return errors.Wrap(err, "could not load current project")
 			}
 
 			// Get a list of all known backends, as we will query them all.
@@ -40,22 +46,27 @@ func newStackLsCmd() *cobra.Command {
 			}
 
 			// Get the current stack so we can print a '*' next to it.
-			var current tokens.QName
+			var current string
 			if s, _ := state.CurrentStack(b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Name()
+				current = s.Name().String()
+			}
+
+			var packageFilter *tokens.PackageName
+			if !allStacks {
+				packageFilter = &proj.Name
 			}
 
 			// Now produce a list of summaries, and enumerate them sorted by name.
 			var result error
 			var stackNames []string
 			stacks := make(map[string]backend.Stack)
-			bs, err := b.ListStacks()
+			bs, err := b.ListStacks(packageFilter)
 			if err != nil {
 				return err
 			}
 			for _, stack := range bs {
-				name := string(stack.Name())
+				name := stack.Name().String()
 				stacks[name] = stack
 				stackNames = append(stackNames, name)
 			}
@@ -74,7 +85,7 @@ func newStackLsCmd() *cobra.Command {
 			for _, name := range stackNames {
 				// Mark the name as current '*' if we've selected it.
 				stack := stacks[name]
-				if name == string(current) {
+				if name == current {
 					name += "*"
 				}
 
@@ -104,4 +115,8 @@ func newStackLsCmd() *cobra.Command {
 			return result
 		}),
 	}
+	cmd.PersistentFlags().BoolVarP(
+		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
+
+	return cmd
 }

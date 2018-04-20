@@ -3,12 +3,8 @@
 package tests
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,22 +19,6 @@ import (
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 )
 
-func TestStackErrors(t *testing.T) {
-	t.Run("NoRepository", func(t *testing.T) {
-		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
-
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "does-not-exist", "--yes")
-		assert.Empty(t, stdout, "expected nothing to be written to stdout")
-		assert.Contains(t, stderr, "error: no repository")
-	})
-}
-
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
@@ -50,7 +30,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
 
 		stacks, current := integration.GetStacks(e)
@@ -79,7 +59,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
@@ -105,6 +85,7 @@ func TestStackCommands(t *testing.T) {
 		// local: "no stack with name 'anor-londo' found"
 		// cloud: "Stack 'integration-test-59f645ba/pulumi-test/anor-londo' not found"
 		assert.Contains(t, err, "anor-londo")
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
 	t.Run("StackRm", func(t *testing.T) {
@@ -117,7 +98,7 @@ func TestStackCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
@@ -166,16 +147,10 @@ func TestStackBackups(t *testing.T) {
 			defer os.Setenv(local.DisableCheckpointBackupsEnvVar, env)
 		}
 
-		// On macOS, e.RootPath will be something like:
-		//     /var/folders/00/wttg611s0fl_91hpm8ff6g6c0000gn/T/test-env756909896
-		// However, `/var` is actually a symbolic link to `/private/var`.
-		// We evaluate the symbolic links to ensure the root path the test uses is
-		// the same path that `pulumi` commands see.
-		root, err := filepath.EvalSymlinks(e.RootPath)
-		assert.NoError(t, err, "evaluating symbolic links of e.RootPath")
+		const stackName = "imulup"
 
 		// Get the path to the backup directory for this project.
-		backupDir, err := getStackProjectBackupDir(root)
+		backupDir, err := getStackProjectBackupDir(e, stackName)
 		assert.NoError(t, err, "getting stack project backup path")
 		defer func() {
 			if !t.Failed() {
@@ -184,9 +159,7 @@ func TestStackBackups(t *testing.T) {
 			}
 		}()
 
-		// Create a stack.
-		const stackName = "imulup"
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
@@ -227,6 +200,8 @@ func TestStackBackups(t *testing.T) {
 
 			assertBackupStackFile(t, stackName, file, before, after)
 		}
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 }
 
@@ -242,23 +217,10 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, bef
 	assert.True(t, parsedTime < after)
 }
 
-func getStackProjectBackupDir(projectDir string) (string, error) {
-	user, err := user.Current()
-	if user == nil || err != nil {
-		return "", fmt.Errorf("failed to get current user")
-	}
-
-	h := sha1.New()
-	_, err = h.Write([]byte(projectDir))
-	if err != nil {
-		return "", fmt.Errorf("failed generating sha1")
-	}
-	hash := hex.EncodeToString(h.Sum(nil))
-
-	return filepath.Join(
-		user.HomeDir,
+func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string, error) {
+	return filepath.Join(e.RootPath,
 		workspace.BookkeepingDir,
 		workspace.BackupDir,
-		filepath.Base(projectDir)+"-"+hash,
+		stackName,
 	), nil
 }

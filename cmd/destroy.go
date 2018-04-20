@@ -13,7 +13,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -56,7 +55,7 @@ func newDestroyCmd() *cobra.Command {
 				return errors.New("--force and --preview cannot both be specified")
 			}
 
-			s, err := requireStack(tokens.QName(stack), false)
+			s, err := requireStack(stack, false)
 			if err != nil {
 				return err
 			}
@@ -73,7 +72,7 @@ func newDestroyCmd() *cobra.Command {
 			if !force && !preview {
 				prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
 
-				if !confirmPrompt(prompt, string(s.Name())) {
+				if !confirmPrompt(prompt, s.Name().String()) {
 					return errors.New("confirmation declined")
 				}
 			}

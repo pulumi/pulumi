@@ -36,10 +36,6 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if err := upgradeConfigurationFiles(); err != nil {
-				cmdutil.ExitError(err.Error())
-			}
-
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", tracing)
 		},

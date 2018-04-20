@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -26,8 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// localBackendURL is fake URL we use to signal we want to use the local backend vs a cloud one.
-const localBackendURL = "local://"
+// localBackendURL is fake URL scheme we use to signal we want to use the local backend vs a cloud one.
+const localBackendURLPrefix = "local://"
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -36,19 +38,43 @@ type Backend interface {
 }
 
 type localBackend struct {
-	d diag.Sink
+	d         diag.Sink
+	url       string
+	stateRoot string
+}
+
+type localBackendReference struct {
+	name tokens.QName
+}
+
+func (r localBackendReference) String() string {
+	return string(r.name)
+}
+
+func (r localBackendReference) StackName() tokens.QName {
+	return r.name
+}
+
+func stateRootFromLocalURL(localURL string) string {
+	if localURL == localBackendURLPrefix {
+		user, err := user.Current()
+		contract.AssertNoErrorf(err, "could not determine current user")
+		return filepath.Join(user.HomeDir, workspace.BookkeepingDir)
+	}
+
+	return localURL[len(localBackendURLPrefix):]
 }
 
 func IsLocalBackendURL(url string) bool {
-	return url == localBackendURL
+	return strings.HasPrefix(url, localBackendURLPrefix)
 }
 
-func New(d diag.Sink) Backend {
-	return &localBackend{d: d}
+func New(d diag.Sink, localURL string) Backend {
+	return &localBackend{d: d, url: localURL, stateRoot: stateRootFromLocalURL(localURL)}
 }
 
-func Login(d diag.Sink) (Backend, error) {
-	return &localBackend{d: d}, workspace.StoreAccessToken("local://", "", true)
+func Login(d diag.Sink, localURL string) (Backend, error) {
+	return New(d, localURL), workspace.StoreAccessToken(localURL, "", true)
 }
 
 func (b *localBackend) Name() string {
@@ -60,16 +86,21 @@ func (b *localBackend) Name() string {
 	return name
 }
 
+func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
+	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+}
+
 func (b *localBackend) local() {}
 
-func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (backend.Stack, error) {
+func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
+	stackName := stackRef.StackName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, _, err := getStack(stackName); err == nil {
+	if _, _, _, err := b.getStack(stackName); err == nil {
 		return nil, errors.Errorf("stack '%s' already exists", stackName)
 	}
 
@@ -81,35 +112,36 @@ func (b *localBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
 
-	file, err := saveStack(stackName, nil, nil)
+	file, err := b.saveStack(stackName, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return newStack(stackName, file, nil, nil, b), nil
+	return newStack(stackRef, file, nil, nil, b), nil
 }
 
-func (b *localBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
-	config, snapshot, path, err := getStack(stackName)
+func (b *localBackend) GetStack(stackRef backend.StackReference) (backend.Stack, error) {
+	stackName := stackRef.StackName()
+	config, snapshot, path, err := b.getStack(stackName)
 	switch {
 	case os.IsNotExist(errors.Cause(err)):
 		return nil, nil
 	case err != nil:
 		return nil, err
 	default:
-		return newStack(stackName, path, config, snapshot, b), nil
+		return newStack(stackRef, path, config, snapshot, b), nil
 	}
 }
 
-func (b *localBackend) ListStacks() ([]backend.Stack, error) {
-	stacks, err := getLocalStacks()
+func (b *localBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.Stack, error) {
+	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, err
 	}
 
 	var results []backend.Stack
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(stackName)
+		stack, err := b.GetStack(localBackendReference{name: stackName})
 		if err != nil {
 			return nil, err
 		}
@@ -119,8 +151,9 @@ func (b *localBackend) ListStacks() ([]backend.Stack, error) {
 	return results, nil
 }
 
-func (b *localBackend) RemoveStack(stackName tokens.QName, force bool) (bool, error) {
-	_, snapshot, _, err := getStack(stackName)
+func (b *localBackend) RemoveStack(stackRef backend.StackReference, force bool) (bool, error) {
+	stackName := stackRef.StackName()
+	_, snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return false, err
 	}
@@ -130,17 +163,18 @@ func (b *localBackend) RemoveStack(stackName tokens.QName, force bool) (bool, er
 		return true, errors.New("refusing to remove stack because it still contains resources")
 	}
 
-	return false, removeStack(stackName)
+	return false, b.removeStack(stackName)
 }
 
-func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, error) {
-	return symmetricCrypter(stackName)
+func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
+	return symmetricCrypter(stackRef.StackName())
 }
 
 func (b *localBackend) Update(
-	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
+	stackName := stackRef.StackName()
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
 	// parity with stacks managed by the Pulumi Service.
@@ -157,16 +191,19 @@ func (b *localBackend) Update(
 }
 
 func (b *localBackend) Refresh(
-	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
+	stackName := stackRef.StackName()
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
 		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Refresh, scopes)
 }
 
-func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (b *localBackend) Destroy(
+	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
+	stackName := stackRef.StackName()
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
 		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Destroy, scopes)
 }
@@ -228,8 +265,8 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	var saveErr error
 	var backupErr error
 	if !dryRun {
-		saveErr = addToHistory(stackName, info)
-		backupErr = backupStack(stackName)
+		saveErr = b.addToHistory(stackName, info)
+		backupErr = b.backupStack(stackName)
 	}
 
 	if updateErr != nil {
@@ -243,15 +280,19 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	return errors.Wrap(backupErr, "saving backup")
 }
 
-func (b *localBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
-	updates, err := getHistory(stackName)
+func (b *localBackend) GetHistory(stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+	stackName := stackRef.StackName()
+	updates, err := b.getHistory(stackName)
 	if err != nil {
 		return nil, err
 	}
 	return updates, nil
 }
 
-func (b *localBackend) GetLogs(stackName tokens.QName, query operations.LogQuery) ([]operations.LogEntry, error) {
+func (b *localBackend) GetLogs(stackRef backend.StackReference,
+	query operations.LogQuery) ([]operations.LogEntry, error) {
+
+	stackName := stackRef.StackName()
 	target, err := b.getTarget(stackName)
 	if err != nil {
 		return nil, err
@@ -279,8 +320,9 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 	return *logs, err
 }
 
-func (b *localBackend) ExportDeployment(stackName tokens.QName) (*apitype.UntypedDeployment, error) {
-	_, snap, _, err := getStack(stackName)
+func (b *localBackend) ExportDeployment(stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+	stackName := stackRef.StackName()
+	_, snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -296,8 +338,9 @@ func (b *localBackend) ExportDeployment(stackName tokens.QName) (*apitype.Untype
 	}, nil
 }
 
-func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error {
-	config, _, _, err := getStack(stackName)
+func (b *localBackend) ImportDeployment(stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
+	stackName := stackRef.StackName()
+	config, _, _, err := b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -317,24 +360,19 @@ func (b *localBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 		return err
 	}
 
-	_, err = saveStack(stackName, config, snap)
+	_, err = b.saveStack(stackName, config, snap)
 	return err
 }
 
 func (b *localBackend) Logout() error {
-	return workspace.DeleteAccessToken(localBackendURL)
+	return workspace.DeleteAccessToken(b.url)
 }
 
-func getLocalStacks() ([]tokens.QName, error) {
+func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	var stacks []tokens.QName
 
-	w, err := workspace.New()
-	if err != nil {
-		return nil, err
-	}
-
 	// Read the stack directory.
-	path := w.StackPath("")
+	path := b.stackPath("")
 
 	files, err := ioutil.ReadDir(path)
 	if err != nil && !os.IsNotExist(err) {
@@ -356,7 +394,7 @@ func getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, _, err := getStack(name)
+		_, _, _, err := b.getStack(name)
 		if err != nil {
 			glog.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.

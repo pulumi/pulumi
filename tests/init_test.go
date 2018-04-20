@@ -77,7 +77,6 @@ func TestPulumiInit(t *testing.T) {
 		testRootName := path.Base(e.RootPath)
 		assert.Equal(t, os.Getenv("USER"), repo.Owner)
 		assert.Equal(t, testRootName, repo.Name)
-		assert.Equal(t, "", repo.Root)
 	})
 
 	t.Run("ReadRemoteInfo", func(t *testing.T) {
@@ -97,6 +96,5 @@ func TestPulumiInit(t *testing.T) {
 		repo := integration.GetRepository(e)
 		assert.Equal(t, "pulumi", repo.Owner)
 		assert.Equal(t, "pulumi-cloud", repo.Name)
-		assert.Equal(t, "", repo.Root)
 	})
 }

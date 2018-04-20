@@ -12,7 +12,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -58,7 +57,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.New("--force and --preview cannot both be specified")
 			}
 
-			s, err := requireStack(tokens.QName(stack), true)
+			s, err := requireStack(stack, true)
 			if err != nil {
 				return err
 			}
