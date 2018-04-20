@@ -68,5 +68,5 @@ type CancellationScope interface {
 // CancellationScopeSource provides a source for cancellation scopes.
 type CancellationScopeSource interface {
 	// NewScope creates a new cancellation scope.
-	NewScope() CancellationScope
+	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
 }

@@ -747,10 +747,11 @@ func (b *cloudBackend) runEngineAction(
 	go u.RecordAndDisplayEvents(
 		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
 
-	scope := scopes.NewScope()
+	engineEvents := make(chan engine.Event)
+
+	scope := scopes.NewScope(engineEvents, dryRun)
 	defer scope.Close()
 
-	engineEvents := make(chan engine.Event)
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
@@ -614,7 +615,7 @@ type cancellationScopeSource int
 
 var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cancellationScopeSource) NewScope() backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -627,15 +628,30 @@ func (cancellationScopeSource) NewScope() backend.CancellationScope {
 			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
 			// func.
 			if cancelContext.CancelErr() == nil {
-				const message = "^C received; cancelling. If you would like to terminate immediately, press\n" +
-					"again. Note that terminating immediately may lead to orphaned resources and other inconsistent\n" +
-					"states."
-				_, err := fmt.Fprintf(os.Stderr, message)
-				contract.IgnoreError(err)
+				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
+				if !isPreview {
+					message += colors.BrightRed+"Note that terminating immediately may lead to orphaned resources " +
+						"and other inconsistencies.\n"+colors.Reset
+				}
+				events <- engine.Event{
+					Type: engine.StdoutColorEvent,
+					Payload: engine.StdoutEventPayload{
+						Message: message,
+						Color: colors.Always,
+					},
+				}
+
 				cancelSource.Cancel()
 			} else {
-				_, err := fmt.Fprintf(os.Stderr, "^C received; terminating.")
-				contract.IgnoreError(err)
+				message := colors.BrightRed+"^C received; terminating"+colors.Reset
+				events <- engine.Event{
+					Type: engine.StdoutColorEvent,
+					Payload: engine.StdoutEventPayload{
+						Message: message,
+						Color: colors.Always,
+					},
+				}
+
 				cancelSource.Terminate()
 			}
 		}

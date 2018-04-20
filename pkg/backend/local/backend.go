@@ -188,10 +188,11 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 		return err
 	}
 
-	cancelScope := scopes.NewScope()
+	events := make(chan engine.Event)
+
+	cancelScope := scopes.NewScope(events, dryRun)
 	defer cancelScope.Close()
 
-	events := make(chan engine.Event)
 	done := make(chan bool)
 
 	go DisplayEvents(op, events, done, displayOpts)
