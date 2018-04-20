@@ -11,7 +11,6 @@ import (
 )
 
 func newStackInitCmd() *cobra.Command {
-	var owner string
 	var ppc string
 	cmd := &cobra.Command{
 		Use:   "init <stack-name>",
@@ -27,14 +26,10 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			var parseOpts interface{}
 			var createOpts interface{}
 			if _, ok := b.(cloud.Backend); ok {
 				createOpts = cloud.CreateStackOptions{
 					CloudName: ppc,
-				}
-				parseOpts = cloud.StackReferenceParseOptions{
-					DefaultOwner: owner,
 				}
 			}
 
@@ -53,7 +48,7 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			stackRef, err := b.ParseStackReference(stackName, parseOpts)
+			stackRef, err := b.ParseStackReference(stackName)
 			if err != nil {
 				return err
 			}
@@ -62,8 +57,6 @@ func newStackInitCmd() *cobra.Command {
 			return err
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&owner, "owner", "o", "", "The owner for the new stack (defaults to current user)")
 	cmd.PersistentFlags().StringVarP(
 		&ppc, "ppc", "p", "", "An optional Pulumi Private Cloud (PPC) name to initialize this stack in")
 	return cmd

@@ -36,7 +36,7 @@ type Backend interface {
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
-	ParseStackReference(s string, opts interface{}) (StackReference, error)
+	ParseStackReference(s string) (StackReference, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(stackRef StackReference) (Stack, error)

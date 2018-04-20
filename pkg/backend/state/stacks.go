@@ -19,7 +19,7 @@ func CurrentStack(backend backend.Backend) (backend.Stack, error) {
 		return nil, nil
 	}
 
-	ref, err := backend.ParseStackReference(stackName, nil)
+	ref, err := backend.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}

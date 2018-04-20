@@ -115,8 +115,8 @@ func newStackLsCmd() *cobra.Command {
 			return result
 		}),
 	}
-	cmd.PersistentFlags().BoolVar(
-		&allStacks, "all", false, "List all stacks instead of just stacks for the current project")
+	cmd.PersistentFlags().BoolVarP(
+		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
 	return cmd
 }

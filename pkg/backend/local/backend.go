@@ -86,7 +86,7 @@ func (b *localBackend) Name() string {
 	return name
 }
 
-func (b *localBackend) ParseStackReference(stackRefName string, opts interface{}) (backend.StackReference, error) {
+func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
 	return localBackendReference{name: tokens.QName(stackRefName)}, nil
 }
 

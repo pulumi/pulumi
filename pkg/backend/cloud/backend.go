@@ -189,18 +189,9 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 func (b *cloudBackend) Name() string     { return b.url }
 func (b *cloudBackend) CloudURL() string { return b.url }
 
-func (b *cloudBackend) ParseStackReference(s string, opts interface{}) (backend.StackReference, error) {
-	var owner string
-
-	if opts != nil {
-		parseOpts, ok := opts.(StackReferenceParseOptions)
-		if !ok {
-			return nil, errors.New("expected a StackReferenceParseOptions value for opts parameter")
-		}
-		owner = parseOpts.DefaultOwner
-	}
-
+func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
 	split := strings.Split(s, "/")
+	var owner string
 	var stackName string
 
 	if len(split) == 1 {
@@ -346,13 +337,6 @@ func (b *cloudBackend) GetStack(stackRef backend.StackReference) (backend.Stack,
 type CreateStackOptions struct {
 	// CloudName is the optional PPC name to create the stack in.  If omitted, the organization's default PPC is used.
 	CloudName string
-}
-
-// StackReferenceParseOptions is an optional bag of options specific to parsing stack references.
-type StackReferenceParseOptions struct {
-	// DefaultOwner is an optional username to use when parsing a reference. It is used when the string reference does
-	// not include an owner.
-	DefaultOwner string
 }
 
 func ownerFromRef(stackRef backend.StackReference) string {
@@ -1015,7 +999,12 @@ func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectId
 	}
 
 	repo := w.Repository()
-	// If we have repository information (this is the case when `pulumi init` has been run, use that.)
+
+	// If we have repository information (this is the case when `pulumi init` has been run, use that.) To support the
+	// old and new model, we either set the Repository field in ProjectIdentifer or keep it as the empty string. The
+	// client type uses this to decide what REST endpoints to hit.
+	//
+	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
 	if repo != nil {
 		return client.ProjectIdentifier{
 			Owner:      repo.Owner,

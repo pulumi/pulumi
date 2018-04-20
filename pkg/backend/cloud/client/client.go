@@ -78,6 +78,11 @@ func getProjectPath(project ProjectIdentifier, components ...string) string {
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the stack root.
 func getStackPath(stack StackIdentifier, components ...string) string {
+
+	// When stack.Repository is not empty, we are on the old pulumi init based identity plan, and we hit different REST
+	// endpoints.
+	//
+	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
 	if stack.Repository == "" {
 		return path.Join(append([]string{fmt.Sprintf("/api/stacks/%s/%s", stack.Owner, stack.Stack)}, components...)...)
 	}

@@ -31,7 +31,7 @@ func newStackSelectCmd() *cobra.Command {
 
 			if len(args) > 0 {
 				// A stack was given, ask all known backends about it
-				stackRef, stackErr := b.ParseStackReference(args[0], nil)
+				stackRef, stackErr := b.ParseStackReference(args[0])
 				if stackErr != nil {
 					return stackErr
 				}

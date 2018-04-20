@@ -70,7 +70,7 @@ func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
 		return nil, err
 	}
 
-	stackRef, err := b.ParseStackReference(stackName, nil)
+	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 			return nil, err
 		}
 
-		stackRef, err := b.ParseStackReference(stackName, nil)
+		stackRef, err := b.ParseStackReference(stackName)
 		if err != nil {
 			return nil, err
 		}

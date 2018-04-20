@@ -490,9 +490,8 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Stack init
-	stackInitArgs := []string{"stack", "init", string(stackName)}
+	stackInitArgs := []string{"stack", "init", fmt.Sprintf("%s/%s", pt.opts.Owner, string(stackName))}
 	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
-	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--owner", pt.opts.Owner)
 
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
 		return err
