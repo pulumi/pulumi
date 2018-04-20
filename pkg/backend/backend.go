@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -34,13 +35,13 @@ type Backend interface {
 
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(stackName tokens.QName, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(stackName tokens.QName, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
 	// Destroy destroys all of this stack's resources.
 	Destroy(stackName tokens.QName, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -54,4 +55,18 @@ type Backend interface {
 	ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
+}
+
+// CancellationScope provides a scoped source of cancellation and termination requests.
+type CancellationScope interface {
+	// Context returns the cancellation context used to observe cancellation and termination requests for this scope.
+	Context() *cancel.Context
+	// Close closes the cancellation scope.
+	Close()
+}
+
+// CancellationScopeSource provides a source for cancellation scopes.
+type CancellationScopeSource interface {
+	// NewScope creates a new cancellation scope.
+	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
 }

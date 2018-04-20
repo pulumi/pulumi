@@ -138,8 +138,8 @@ func (b *localBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, 
 }
 
 func (b *localBackend) Update(
-	stackName tokens.QName, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
@@ -153,27 +153,32 @@ func (b *localBackend) Update(
 	}
 
 	return b.performEngineOp("updating", backend.DeployUpdate,
-		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Update)
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Update, scopes)
 }
 
-func (b *localBackend) Refresh(stackName tokens.QName, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+func (b *localBackend) Refresh(
+	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
-		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Refresh)
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Refresh, scopes)
 }
 
-func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
+func (b *localBackend) Destroy(stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
-		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Destroy)
+		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Destroy, scopes)
 }
 
 type engineOpFunc func(
-	engine.UpdateInfo, chan<- engine.Event, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
+	engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, dryRun bool, performEngineOp engineOpFunc) error {
+	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, dryRun bool, performEngineOp engineOpFunc,
+	scopes backend.CancellationScopeSource) error {
+
 	if !opts.Force && !dryRun {
 		return errors.Errorf("--force or --preview must be passed when %s a local stack", op)
 	}
@@ -184,13 +189,18 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	}
 
 	events := make(chan engine.Event)
+
+	cancelScope := scopes.NewScope(events, dryRun)
+	defer cancelScope.Close()
+
 	done := make(chan bool)
 
 	go DisplayEvents(op, events, done, displayOpts)
 
 	// Perform the update
 	start := time.Now().Unix()
-	changes, updateErr := performEngineOp(update, events, opts, dryRun)
+	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events}
+	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done

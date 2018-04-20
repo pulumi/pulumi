@@ -10,20 +10,20 @@ import (
 )
 
 func Destroy(
-	u UpdateInfo, events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+	u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 
 	contract.Require(u != nil, "u")
 
-	defer func() { events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.Close()
+	defer info.Close()
 
-	emitter := makeEventEmitter(events, u)
-	return update(ctx, planOptions{
+	emitter := makeEventEmitter(ctx.Events, u)
+	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,

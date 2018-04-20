@@ -467,7 +467,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 	updateKind client.UpdateKind,
 	stack backend.Stack, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions) error {
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -497,7 +497,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 	err := b.updateStack(
 		updateKind, stack, pkg, root, m,
-		opts, displayOpts, eventsChannel, true /*dryRun*/)
+		opts, displayOpts, eventsChannel, true /*dryRun*/, scopes)
 
 	if err != nil || opts.Preview {
 		// if we're just previewing, then we can stop at this point.
@@ -554,7 +554,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	updateKind client.UpdateKind,
 	stackName tokens.QName, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions) error {
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	// First get the stack.
 	stack, err := getStack(b, stackName)
@@ -565,7 +565,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
 		// they want to proceed.
-		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
+		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts, scopes)
 		if err != nil || opts.Preview {
 			return err
 		}
@@ -576,22 +576,28 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	var unused chan engine.Event
 	return b.updateStack(
 		updateKind, stack, pkg,
-		root, m, opts, displayOpts, unused, false /*dryRun*/)
+		root, m, opts, displayOpts, unused, false /*dryRun*/, scopes)
 }
 
 func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.PreviewThenPromptThenExecute(client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	scopes backend.CancellationScopeSource) error {
+
+	return b.PreviewThenPromptThenExecute(client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts, scopes)
 }
 
 func (b *cloudBackend) Refresh(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.PreviewThenPromptThenExecute(client.UpdateKindRefresh, stackName, pkg, root, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	scopes backend.CancellationScopeSource) error {
+
+	return b.PreviewThenPromptThenExecute(client.UpdateKindRefresh, stackName, pkg, root, m, opts, displayOpts, scopes)
 }
 
 func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.PreviewThenPromptThenExecute(client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	scopes backend.CancellationScopeSource) error {
+
+	return b.PreviewThenPromptThenExecute(client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts, scopes)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
@@ -646,7 +652,8 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) updateStack(
 	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool,
+	scopes backend.CancellationScopeSource) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
@@ -684,7 +691,7 @@ func (b *cloudBackend) updateStack(
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
 			action, stack.Name(), pkg, root, opts, displayOpts,
-			update, token, callerEventsOpt, dryRun)
+			update, token, callerEventsOpt, dryRun, scopes)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -727,7 +734,7 @@ func (b *cloudBackend) runEngineAction(
 	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
 	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	callerEventsOpt chan<- engine.Event, dryRun bool, scopes backend.CancellationScopeSource) error {
 
 	u, err := b.newUpdate(stackName, pkg, root, update, token)
 	if err != nil {
@@ -741,6 +748,10 @@ func (b *cloudBackend) runEngineAction(
 		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
 
 	engineEvents := make(chan engine.Event)
+
+	scope := scopes.NewScope(engineEvents, dryRun)
+	defer scope.Close()
+
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
@@ -754,17 +765,18 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
+	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents}
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
-			err = engine.Preview(u, engineEvents, opts)
+			err = engine.Preview(u, engineCtx, opts)
 		} else {
-			_, err = engine.Update(u, engineEvents, opts, dryRun)
+			_, err = engine.Update(u, engineCtx, opts, dryRun)
 		}
 	case client.UpdateKindRefresh:
-		_, err = engine.Refresh(u, engineEvents, opts, dryRun)
+		_, err = engine.Refresh(u, engineCtx, opts, dryRun)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, engineEvents, opts, dryRun)
+		_, err = engine.Destroy(u, engineCtx, opts, dryRun)
 	default:
 		contract.Failf("Unrecognized action type: %s", action)
 	}

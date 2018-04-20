@@ -4,6 +4,7 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -38,4 +39,10 @@ type SnapshotMutation interface {
 	// End indicates that the current mutation has completed and that its results (given by snapshot) should be
 	// persisted. See the comments on SnapshotProvider.BeginMutation for more details.
 	End(snapshot *deploy.Snapshot) error
+}
+
+// Context provides cancellation, termination, and eventing options for an engine operation.
+type Context struct {
+	Cancel *cancel.Context
+	Events chan<- Event
 }
