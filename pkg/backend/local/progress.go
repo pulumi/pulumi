@@ -420,7 +420,7 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 
 func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, indentation string) {
 	for _, node := range treeNodes {
-		node.colorizedColumns[1] = indentation + node.colorizedColumns[1]
+		node.colorizedColumns[typeColumn] = indentation + node.colorizedColumns[typeColumn]
 
 		display.addIndentations(node.childNodes, indentation+"  ")
 	}
