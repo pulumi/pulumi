@@ -12,7 +12,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 type Row interface {
@@ -61,7 +60,7 @@ func (data *headerRowData) ColorizedColumns() []string {
 		} else {
 			statusColumn = header("Status")
 		}
-		data.columns = []string{"#", header("Resource Type"), header("Name"), statusColumn, header("Extra Info")}
+		data.columns = []string{header("Resource Type"), header("Name"), statusColumn, header("Extra Info")}
 	}
 
 	return data.columns
@@ -74,10 +73,6 @@ func (data *headerRowData) ColorizedSuffix() string {
 // Implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
 	display *ProgressDisplay
-
-	// The simple short ID we have generated for the resource to present it to the user.
-	// Usually similar to the form: aws.Function("name")
-	id string
 
 	// The change that the engine wants apply to that resource.
 	step engine.StepEventMetadata
@@ -155,11 +150,10 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 type column int
 
 const (
-	idColumn     column = 0
-	typeColumn   column = 1
-	nameColumn   column = 2
-	statusColumn column = 3
-	infoColumn   column = 4
+	typeColumn   column = 0
+	nameColumn   column = 1
+	statusColumn column = 2
+	infoColumn   column = 3
 )
 
 func (data *resourceRowData) ColorizedSuffix() string {
@@ -175,9 +169,6 @@ func (data *resourceRowData) ColorizedSuffix() string {
 
 func (data *resourceRowData) ColorizedColumns() []string {
 	step := data.step
-	if step.Op == "" {
-		contract.Failf("Finishing a resource we never heard about: '%s'", data.id)
-	}
 
 	var name string
 	var typ string
@@ -189,8 +180,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		typ = simplifyTypeName(data.step.URN.Type())
 	}
 
-	columns := make([]string, 5)
-	columns[idColumn] = data.id
+	columns := make([]string, 4)
 	columns[typeColumn] = typ
 	columns[nameColumn] = name
 
