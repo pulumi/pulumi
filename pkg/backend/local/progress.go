@@ -239,20 +239,30 @@ func DisplayProgressEvents(
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, columnIndex int) string {
+func (display *ProgressDisplay) getMessagePadding(
+	id string, maxIDLength int, uncolorizedColumns []string, columnIndex int) string {
+
 	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
 	if display.isTerminal {
-		column := uncolorizedColumns[columnIndex]
-		maxIDLength := display.maxColumnLengths[columnIndex]
-		extraWhitespace = maxIDLength - len(column)
+		var column string
+		var maxLength int
+		if columnIndex == -1 {
+			column = id
+			maxLength = maxIDLength
+		} else {
+			column = uncolorizedColumns[columnIndex]
+			maxLength = display.maxColumnLengths[columnIndex]
+		}
+
+		extraWhitespace = maxLength - len(column)
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
 
-		if columnIndex > 0 {
-			// Place two spaces between all columns (except after the first column).  The first
-			// column already has a ": " so it doesn't need the extra space.
+		// Place two spaces between all columns (except after the first column).  The first
+		// column already has a ": " so it doesn't need the extra space.
+		if columnIndex >= 0 {
 			extraWhitespace += 2
 		}
 	}
@@ -265,12 +275,12 @@ func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, c
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
 func (display *ProgressDisplay) getPaddedMessage(
-	colorizedColumns, uncolorizedColumns []string) string {
+	id string, maxIDLength int, colorizedColumns, uncolorizedColumns []string) string {
 
 	colorizedMessage := ""
 
-	for i := 1; i < len(colorizedColumns); i++ {
-		padding := display.getMessagePadding(uncolorizedColumns, i-1)
+	for i := 0; i < len(colorizedColumns); i++ {
+		padding := display.getMessagePadding(id, maxIDLength, uncolorizedColumns, i-1)
 		colorizedMessage += padding + colorizedColumns[i]
 	}
 
@@ -279,7 +289,6 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		id := uncolorizedColumns[0]
 		maxMsgLength := display.terminalWidth - len(id) - len(": ") - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
@@ -311,16 +320,16 @@ func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) refreshSingleRow(row Row) {
+func (display *ProgressDisplay) refreshSingleRow(id string, maxIdLength int, row Row) {
 	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
 	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
-	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
+	msg := display.getPaddedMessage(id, maxIdLength, colorizedColumns, uncolorizedColumns)
 
 	display.colorizeAndWriteProgress(makeActionProgress(
-		uncolorizedColumns[0], msg, true /*showID*/))
+		id, msg, true /*showID*/))
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
@@ -386,8 +395,16 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 		// tree := display.generateTree()
 
-		for _, row := range rows {
-			display.refreshSingleRow(row)
+		maxIdLength := len(fmt.Sprintf("%v", len(rows)-1))
+		for i, row := range rows {
+			var id string
+			if i == 0 {
+				id = "#"
+			} else {
+				id = fmt.Sprintf("%v", i)
+			}
+
+			display.refreshSingleRow(id, maxIdLength, row)
 		}
 
 		systemID := len(rows)
@@ -439,7 +456,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			v.SetDone()
 
 			if !display.isTerminal {
-				display.refreshSingleRow(v)
+				display.refreshSingleRow("", 0, v)
 			}
 		} else {
 			// Explicitly transition the status so that we clear out any cached data for it.
@@ -479,7 +496,7 @@ func (display *ProgressDisplay) processEndSteps() {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
 					display.writeSimpleMessage("  " +
-						columns[idColumn] + ": " +
+						// columns[idColumn] + ": " +
 						columns[typeColumn] + ": " +
 						columns[nameColumn])
 				}
@@ -579,13 +596,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	row, has := display.eventUrnToResourceRow[eventUrn]
 	if !has {
-		id := fmt.Sprintf("%v", len(display.eventUrnToResourceRow)+1)
-
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
 		row = &resourceRowData{
 			display:  display,
-			id:       id,
 			tick:     display.currentTick,
 			diagInfo: &DiagInfo{},
 			step:     engine.StepEventMetadata{Op: deploy.OpSame},
@@ -623,7 +637,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.refreshAllRowsIfInTerminal()
 	} else {
 		// otherwise, just print out this single row.
-		display.refreshSingleRow(row)
+		display.refreshSingleRow("", 0, row)
 	}
 }
 
