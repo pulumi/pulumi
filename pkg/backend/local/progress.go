@@ -324,9 +324,7 @@ func (display *ProgressDisplay) refreshSingleRow(row Row) {
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
 // updated.
-func (display *ProgressDisplay) updateDimensions() bool {
-	updated := false
-
+func (display *ProgressDisplay) updateDimensions() {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
 		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
@@ -335,7 +333,6 @@ func (display *ProgressDisplay) updateDimensions() bool {
 		if currentTerminalWidth != display.terminalWidth {
 			// terminal width changed.  Refresh everything
 			display.terminalWidth = currentTerminalWidth
-			updated = true
 		}
 
 		for _, row := range display.rows {
@@ -354,13 +351,10 @@ func (display *ProgressDisplay) updateDimensions() bool {
 
 				if columnLength > display.maxColumnLengths[i] {
 					display.maxColumnLengths[i] = columnLength
-					updated = true
 				}
 			}
 		}
 	}
-
-	return updated
 }
 
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
