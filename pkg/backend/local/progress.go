@@ -367,12 +367,6 @@ func (display *ProgressDisplay) updateDimensions(rows []Row) {
 	}
 }
 
-// func (display *ProgressDisplay) generateTree() {
-// 	for _, row := range display.rows {
-// 		display.refreshSingleRow(row)
-// 	}
-// }
-
 func (display *ProgressDisplay) allRows() []Row {
 	result := []Row{}
 	if display.headerRow != nil {

@@ -74,10 +74,6 @@ func (data *headerRowData) ColorizedSuffix() string {
 type resourceRowData struct {
 	display *ProgressDisplay
 
-	// The simple short ID we have generated for the resource to present it to the user.
-	// Usually similar to the form: aws.Function("name")
-	// id string
-
 	// The change that the engine wants apply to that resource.
 	step engine.StepEventMetadata
 
