@@ -86,7 +86,8 @@ type ProgressDisplay struct {
 	// a status message to help indicate that things are still working.
 	currentTick int
 
-	rows []Row
+	headerRow    Row
+	resourceRows []ResourceRow
 
 	// A mapping from each resource URN we are told about to its current status.
 	eventUrnToResourceRow map[resource.URN]ResourceRow
@@ -324,7 +325,7 @@ func (display *ProgressDisplay) refreshSingleRow(row Row) {
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
 // updated.
-func (display *ProgressDisplay) updateDimensions() {
+func (display *ProgressDisplay) updateDimensions(rows []Row) {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
 		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
@@ -335,7 +336,7 @@ func (display *ProgressDisplay) updateDimensions() {
 			display.terminalWidth = currentTerminalWidth
 		}
 
-		for _, row := range display.rows {
+		for _, row := range rows {
 			colorizedColumns := row.ColorizedColumns()
 			uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
@@ -357,16 +358,39 @@ func (display *ProgressDisplay) updateDimensions() {
 	}
 }
 
-func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
-	if display.isTerminal {
-		// make sure our stored dimension info is up to date
-		display.updateDimensions()
+// func (display *ProgressDisplay) generateTree() {
+// 	for _, row := range display.rows {
+// 		display.refreshSingleRow(row)
+// 	}
+// }
 
-		for _, row := range display.rows {
+func (display *ProgressDisplay) allRows() []Row {
+	result := []Row{}
+	if display.headerRow != nil {
+		result = append(result, display.headerRow)
+	}
+
+	for _, row := range display.resourceRows {
+		result = append(result, row)
+	}
+
+	return result
+}
+
+func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
+	if display.isTerminal && display.headerRow != nil {
+		// make sure our stored dimension info is up to date
+
+		rows := display.allRows()
+		display.updateDimensions(rows)
+
+		// tree := display.generateTree()
+
+		for _, row := range rows {
 			display.refreshSingleRow(row)
 		}
 
-		systemID := len(display.rows)
+		systemID := len(rows)
 
 		printedHeader := false
 		for _, payload := range display.systemEventPayloads {
@@ -569,7 +593,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		display.eventUrnToResourceRow[eventUrn] = row
 		display.ensureHeaderRow()
-		display.rows = append(display.rows, row)
+		display.resourceRows = append(display.resourceRows, row)
 	}
 
 	if event.Type == engine.ResourcePreEvent {
@@ -620,9 +644,9 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 }
 
 func (display *ProgressDisplay) ensureHeaderRow() {
-	if len(display.rows) == 0 {
+	if display.headerRow == nil {
 		// about to make our first status message.  make sure we present the header line first.
-		display.rows = append(display.rows, &headerRowData{display: display})
+		display.headerRow = &headerRowData{display: display}
 	}
 }
 
