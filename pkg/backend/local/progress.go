@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -81,6 +82,10 @@ type ProgressDisplay struct {
 
 	// Any system events we've received.  They will be printed at the bottom of all the status rows
 	systemEventPayloads []engine.StdoutEventPayload
+
+	// Used to record the order that rows are created in.  That way, when we present in a tree, we
+	// can keep things ordered so they will not jump around.
+	currentTime int
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -370,6 +375,8 @@ func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 }
 
 type treeNode struct {
+	creationTime int
+
 	colorizedColumns []string
 
 	childNodes []*treeNode
@@ -383,7 +390,10 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 		return node
 	}
 
-	node = &treeNode{colorizedColumns: row.ColorizedColumns()}
+	node = &treeNode{
+		creationTime:     row.CreationTime(),
+		colorizedColumns: row.ColorizedColumns(),
+	}
 	node.colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
 	urnToTreeNode[urn] = node
@@ -408,7 +418,10 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	result := []*treeNode{}
 
-	result = append(result, &treeNode{colorizedColumns: display.headerRow.ColorizedColumns()})
+	result = append(result, &treeNode{
+		creationTime:     display.headerRow.CreationTime(),
+		colorizedColumns: display.headerRow.ColorizedColumns(),
+	})
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
 	for urn, row := range display.eventUrnToResourceRow {
@@ -434,11 +447,36 @@ func (display *ProgressDisplay) addColorizedColumnsFromTreeNodes(nodes []*treeNo
 	}
 }
 
+type sortable []*treeNode
+
+func (sortable sortable) Len() int {
+	return len(sortable)
+}
+
+func (sortable sortable) Less(i, j int) bool {
+	return sortable[i].creationTime < sortable[j].creationTime
+}
+
+func (sortable sortable) Swap(i, j int) {
+	sortable[i], sortable[j] = sortable[j], sortable[i]
+}
+
+func sortNodes(nodes []*treeNode) {
+	sort.Sort(sortable(nodes))
+
+	for _, node := range nodes {
+		childNodes := node.childNodes
+		sortNodes(childNodes)
+		node.childNodes = childNodes
+	}
+}
+
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal && display.headerRow != nil {
 		// make sure our stored dimension info is up to date
 
 		rootNodes := display.generateTreeNodes()
+		sortNodes(rootNodes)
 		display.addIndentations(rootNodes, "")
 
 		var rows [][]string
@@ -648,11 +686,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
+		display.currentTime++
 		row = &resourceRowData{
-			display:  display,
-			tick:     display.currentTick,
-			diagInfo: &DiagInfo{},
-			step:     engine.StepEventMetadata{Op: deploy.OpSame},
+			creationTime: display.currentTime,
+			display:      display,
+			tick:         display.currentTick,
+			diagInfo:     &DiagInfo{},
+			step:         engine.StepEventMetadata{Op: deploy.OpSame},
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row

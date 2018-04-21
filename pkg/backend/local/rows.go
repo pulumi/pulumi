@@ -15,6 +15,7 @@ import (
 )
 
 type Row interface {
+	CreationTime() int
 	ColorizedColumns() []string
 	ColorizedSuffix() string
 }
@@ -42,6 +43,11 @@ type ResourceRow interface {
 type headerRowData struct {
 	display *ProgressDisplay
 	columns []string
+}
+
+func (data *headerRowData) CreationTime() int {
+	// sort the header before all other rows
+	return -1
 }
 
 func (data *headerRowData) ColorizedColumns() []string {
@@ -72,6 +78,8 @@ func (data *headerRowData) ColorizedSuffix() string {
 
 // Implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
+	creationTime int
+
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
@@ -88,6 +96,10 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo *DiagInfo
+}
+
+func (data *resourceRowData) CreationTime() int {
+	return data.creationTime
 }
 
 func (data *resourceRowData) Step() engine.StepEventMetadata {
