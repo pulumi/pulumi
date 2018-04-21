@@ -239,13 +239,19 @@ func DisplayProgressEvents(
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, columnIndex int) string {
+func (display *ProgressDisplay) getMessagePadding(
+	id string, uncolorizedColumns []string, columnIndex int) string {
+
 	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
 	if display.isTerminal {
 		column := uncolorizedColumns[columnIndex]
+		if columnIndex == 0 {
+			column = id
+		}
+
 		maxIDLength := display.maxColumnLengths[columnIndex]
 		extraWhitespace = maxIDLength - len(column)
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
@@ -265,12 +271,12 @@ func (display *ProgressDisplay) getMessagePadding(uncolorizedColumns []string, c
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
 func (display *ProgressDisplay) getPaddedMessage(
-	colorizedColumns, uncolorizedColumns []string) string {
+	id string, colorizedColumns, uncolorizedColumns []string) string {
 
 	colorizedMessage := ""
 
 	for i := 1; i < len(colorizedColumns); i++ {
-		padding := display.getMessagePadding(uncolorizedColumns, i-1)
+		padding := display.getMessagePadding(id, uncolorizedColumns, i-1)
 		colorizedMessage += padding + colorizedColumns[i]
 	}
 
@@ -279,7 +285,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		id := uncolorizedColumns[0]
+		// id := uncolorizedColumns[0]
 		maxMsgLength := display.terminalWidth - len(id) - len(": ") - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
@@ -314,18 +320,20 @@ func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 func (display *ProgressDisplay) refreshSingleRow(row Row) {
 	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
+	display.refreshColumns(colorizedColumns[0], colorizedColumns)
+}
 
+func (display *ProgressDisplay) refreshColumns(id string, colorizedColumns []string) {
 	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
-	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
+	msg := display.getPaddedMessage(id, colorizedColumns, uncolorizedColumns)
 
-	display.colorizeAndWriteProgress(makeActionProgress(
-		uncolorizedColumns[0], msg, true /*showID*/))
+	display.colorizeAndWriteProgress(makeActionProgress(id, msg, true /*showID*/))
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
 // updated.
-func (display *ProgressDisplay) updateDimensions(rows []Row) {
+func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
 		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
@@ -336,8 +344,8 @@ func (display *ProgressDisplay) updateDimensions(rows []Row) {
 			display.terminalWidth = currentTerminalWidth
 		}
 
-		for _, row := range rows {
-			colorizedColumns := row.ColorizedColumns()
+		for _, colorizedColumns := range rows {
+			// colorizedColumns := row.ColorizedColumns()
 			uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
 			if len(display.maxColumnLengths) == 0 {
@@ -358,36 +366,114 @@ func (display *ProgressDisplay) updateDimensions(rows []Row) {
 	}
 }
 
-// func (display *ProgressDisplay) generateTree() {
-// 	for _, row := range display.rows {
-// 		display.refreshSingleRow(row)
-// 	}
-// }
+type treeNode struct {
+	colorizedColumns []string
 
-func (display *ProgressDisplay) allRows() []Row {
-	result := []Row{}
-	if display.headerRow != nil {
-		result = append(result, display.headerRow)
+	childNodes []*treeNode
+}
+
+func (display *ProgressDisplay) getOrCreateTreeNode(
+	result *[]*treeNode, urn resource.URN, row ResourceRow, urnToTreeNode map[resource.URN]*treeNode) *treeNode {
+
+	node, has := urnToTreeNode[urn]
+	if has {
+		return node
 	}
 
-	for _, row := range display.resourceRows {
-		result = append(result, row)
+	node = &treeNode{colorizedColumns: row.ColorizedColumns()}
+	node.colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
+
+	urnToTreeNode[urn] = node
+
+	res := row.Step().Res
+
+	if res != nil && urn != "" && urn != display.stackUrn {
+		parentURN := res.Parent
+		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
+
+		if hasParentRow {
+			parentNode := display.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
+			parentNode.childNodes = append(parentNode.childNodes, node)
+			return node
+		}
+	}
+
+	*result = append(*result, node)
+	return node
+}
+
+func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
+	result := []*treeNode{}
+
+	result = append(result, &treeNode{colorizedColumns: display.headerRow.ColorizedColumns()})
+
+	urnToTreeNode := make(map[resource.URN]*treeNode)
+	for urn, row := range display.eventUrnToResourceRow {
+		display.getOrCreateTreeNode(&result, urn, row, urnToTreeNode)
 	}
 
 	return result
+}
+
+func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, indentation string) {
+	for _, node := range treeNodes {
+		node.colorizedColumns[1] = indentation + node.colorizedColumns[1]
+
+		display.addIndentations(node.childNodes, indentation+"  ")
+	}
+}
+
+// func (display *ProgressDisplay) allRows() []Row {
+// 	result := []Row{}
+// 	if display.headerRow != nil {
+// 		result = append(result, display.headerRow)
+// 	}
+
+// 	for _, row := range display.resourceRows {
+// 		result = append(result, row)
+// 	}
+
+// 	return result
+// }
+
+func (display *ProgressDisplay) addColorizedColumnsFromTreeNodes(nodes []*treeNode, rows *[][]string) {
+	for _, node := range nodes {
+		*rows = append(*rows, node.colorizedColumns)
+
+		display.addColorizedColumnsFromTreeNodes(node.childNodes, rows)
+	}
+	// result := []Row{}
+	// if display.headerRow != nil {
+	// 	result = append(result, display.headerRow)
+	// }
+
+	// for _, row := range display.resourceRows {
+	// 	result = append(result, row)
+	// }
+
+	// return result
 }
 
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal && display.headerRow != nil {
 		// make sure our stored dimension info is up to date
 
-		rows := display.allRows()
+		rootNodes := display.generateTreeNodes()
+		display.addIndentations(rootNodes, "")
+
+		var rows [][]string
+		display.addColorizedColumnsFromTreeNodes(rootNodes, &rows)
 		display.updateDimensions(rows)
 
-		// tree := display.generateTree()
+		for i, row := range rows {
+			var id string
+			if i == 0 {
+				id = "#"
+			} else {
+				id = fmt.Sprintf("%v", i)
+			}
 
-		for _, row := range rows {
-			display.refreshSingleRow(row)
+			display.refreshColumns(id, row)
 		}
 
 		systemID := len(rows)

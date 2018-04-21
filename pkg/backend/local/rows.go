@@ -23,7 +23,7 @@ type Row interface {
 type ResourceRow interface {
 	Row
 
-	// The change that the engine wants apply to that resource.
+	Step() engine.StepEventMetadata
 	SetStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
@@ -93,6 +93,10 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo *DiagInfo
+}
+
+func (data *resourceRowData) Step() engine.StepEventMetadata {
+	return data.step
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
