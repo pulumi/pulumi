@@ -328,8 +328,12 @@ func (display *ProgressDisplay) refreshSingleRow(id string, maxIDLength int, row
 
 	msg := display.getPaddedMessage(id, maxIDLength, colorizedColumns, uncolorizedColumns)
 
-	display.colorizeAndWriteProgress(makeActionProgress(
-		id, msg, true /*showID*/))
+	if display.isTerminal {
+		display.colorizeAndWriteProgress(makeActionProgress(
+			id, msg, true /*showID*/))
+	} else {
+		display.writeSimpleMessage(msg)
+	}
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
