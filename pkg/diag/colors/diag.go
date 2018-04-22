@@ -4,6 +4,7 @@ package colors
 
 import (
 	"regexp"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -81,7 +82,9 @@ func TrimColorizedString(v string, maxLength int) string {
 			contract.Assertf(!tagRegexp.MatchString(textOrTag), "Got a tag when we did not expect it")
 
 			text := textOrTag
-			if currentLength+len(text) > maxLength {
+			textLen := utf8.RuneCountInString(text)
+
+			if currentLength+textLen > maxLength {
 				// adding this text chunk will cause us to go past the max length we allow.
 				// just take whatever subportion we can and stop what we're doing.
 				trimmed += text[0 : maxLength-currentLength]
@@ -89,7 +92,7 @@ func TrimColorizedString(v string, maxLength int) string {
 			} else {
 				// can safely add this text chunk
 				trimmed += text
-				currentLength += len(text)
+				currentLength += textLen
 			}
 		} else {
 			contract.Assertf(tagRegexp.MatchString(textOrTag), "Should have gotten a tag")
