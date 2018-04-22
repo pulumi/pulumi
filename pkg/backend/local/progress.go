@@ -336,7 +336,11 @@ func (display *ProgressDisplay) refreshColumns(
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
-	display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+	if display.isTerminal {
+		display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+	} else {
+		display.writeSimpleMessage(msg)
+	}
 }
 
 // Ensure our stored dimension info is up to date.
