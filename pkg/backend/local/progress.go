@@ -358,9 +358,11 @@ func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
 		contract.IgnoreError(err)
 
+		changed := false
 		if currentTerminalWidth != display.terminalWidth {
 			// terminal width changed.  Refresh everything
 			display.terminalWidth = currentTerminalWidth
+			changed = true
 		}
 
 		for _, colorizedColumns := range rows {
@@ -379,8 +381,13 @@ func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 
 				if columnLength > display.maxColumnLengths[i] {
 					display.maxColumnLengths[i] = columnLength
+					changed = true
 				}
 			}
+		}
+
+		if changed {
+			display.printedProgressCache = make(map[string]Progress)
 		}
 	}
 }
