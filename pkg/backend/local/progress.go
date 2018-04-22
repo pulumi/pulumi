@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -211,8 +212,9 @@ func DisplayProgressEvents(
 	}
 
 	for _, v := range display.suffixesArray {
-		if len(v) > display.maxSuffixLength {
-			display.maxSuffixLength = len(v)
+		runeCount := utf8.RuneCountInString(v)
+		if runeCount > display.maxSuffixLength {
+			display.maxSuffixLength = runeCount
 		}
 	}
 
@@ -262,7 +264,7 @@ func (display *ProgressDisplay) getMessagePadding(
 			maxLength = display.maxColumnLengths[columnIndex]
 		}
 
-		extraWhitespace = maxLength - len(column)
+		extraWhitespace = maxLength - utf8.RuneCountInString(column)
 		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
 
 		// Place two spaces between all columns (except after the first column).  The first
@@ -361,7 +363,7 @@ func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 			}
 
 			for i, column := range uncolorizedColumns {
-				var columnLength = len(column)
+				var columnLength = utf8.RuneCountInString(column)
 				if i == display.suffixColumn {
 					columnLength += display.maxSuffixLength
 				}
