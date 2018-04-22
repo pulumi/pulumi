@@ -15,7 +15,9 @@ import (
 )
 
 type Row interface {
-	CreationTime() int
+	FirstDisplayTime() int
+	SetFirstDisplayTime(time int)
+
 	ColorizedColumns() []string
 	ColorizedSuffix() string
 	HideRowIfUnnecessary() bool
@@ -50,9 +52,13 @@ func (data *headerRowData) HideRowIfUnnecessary() bool {
 	return false
 }
 
-func (data *headerRowData) CreationTime() int {
+func (data *headerRowData) FirstDisplayTime() int {
 	// sort the header before all other rows
 	return -1
+}
+
+func (data *headerRowData) SetFirstDisplayTime(time int) {
+	// Nothing to do here.   Header is always at the same time.
 }
 
 func (data *headerRowData) ColorizedColumns() []string {
@@ -83,7 +89,7 @@ func (data *headerRowData) ColorizedSuffix() string {
 
 // Implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
-	creationTime int
+	firstDisplayTime int
 
 	display *ProgressDisplay
 
@@ -107,12 +113,20 @@ type resourceRowData struct {
 	hideRowIfUnnecessary bool
 }
 
-func (data *resourceRowData) HideRowIfUnnecessary() bool {
-	return data.hideRowIfUnnecessary
+func (data *resourceRowData) FirstDisplayTime() int {
+	// sort the header before all other rows
+	return data.firstDisplayTime
 }
 
-func (data *resourceRowData) CreationTime() int {
-	return data.creationTime
+func (data *resourceRowData) SetFirstDisplayTime(time int) {
+	// only set this if it's the first time.
+	if data.firstDisplayTime == 0 {
+		data.firstDisplayTime = time
+	}
+}
+
+func (data *resourceRowData) HideRowIfUnnecessary() bool {
+	return data.hideRowIfUnnecessary
 }
 
 func (data *resourceRowData) Step() engine.StepEventMetadata {

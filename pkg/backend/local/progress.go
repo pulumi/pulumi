@@ -86,7 +86,7 @@ type ProgressDisplay struct {
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
-	currentTime int
+	displayTime int
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -209,6 +209,7 @@ func DisplayProgressEvents(
 		suffixesArray:          []string{"", ".", "..", "..."},
 		urnToID:                make(map[resource.URN]string),
 		colorizedToUncolorized: make(map[string]string),
+		displayTime:            1,
 	}
 
 	for _, v := range display.suffixesArray {
@@ -377,8 +378,7 @@ func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 }
 
 type treeNode struct {
-	creationTime         int
-	hideRowIfUnnecessary bool
+	row Row
 
 	colorizedColumns []string
 
@@ -394,9 +394,8 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	}
 
 	node = &treeNode{
-		hideRowIfUnnecessary: row.HideRowIfUnnecessary(),
-		creationTime:         row.CreationTime(),
-		colorizedColumns:     row.ColorizedColumns(),
+		row:              row,
+		colorizedColumns: row.ColorizedColumns(),
 	}
 	node.colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
@@ -431,9 +430,8 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	result := []*treeNode{}
 
 	result = append(result, &treeNode{
-		hideRowIfUnnecessary: display.headerRow.HideRowIfUnnecessary(),
-		creationTime:         display.headerRow.CreationTime(),
-		colorizedColumns:     display.headerRow.ColorizedColumns(),
+		row:              display.headerRow,
+		colorizedColumns: display.headerRow.ColorizedColumns(),
 	})
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
@@ -485,7 +483,7 @@ func (sortable sortable) Len() int {
 }
 
 func (sortable sortable) Less(i, j int) bool {
-	return sortable[i].creationTime < sortable[j].creationTime
+	return sortable[i].row.FirstDisplayTime() < sortable[j].row.FirstDisplayTime()
 }
 
 func (sortable sortable) Swap(i, j int) {
@@ -502,16 +500,18 @@ func sortNodes(nodes []*treeNode) {
 	}
 }
 
-func filterOutUnnecessaryNodes(nodes []*treeNode) []*treeNode {
+func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(nodes []*treeNode) []*treeNode {
 	result := []*treeNode{}
 
 	for _, node := range nodes {
-		node.childNodes = filterOutUnnecessaryNodes(node.childNodes)
+		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
 
-		if node.hideRowIfUnnecessary && len(node.childNodes) == 0 {
+		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
 			continue
 		}
 
+		display.displayTime++
+		node.row.SetFirstDisplayTime(display.displayTime)
 		result = append(result, node)
 	}
 
@@ -523,7 +523,7 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		// make sure our stored dimension info is up to date
 
 		rootNodes := display.generateTreeNodes()
-		rootNodes = filterOutUnnecessaryNodes(rootNodes)
+		rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 		sortNodes(rootNodes)
 		display.addIndentations(rootNodes, true /*isRoot*/, "")
 
@@ -735,9 +735,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
-		display.currentTime++
 		row = &resourceRowData{
-			creationTime:         display.currentTime,
 			display:              display,
 			tick:                 display.currentTick,
 			diagInfo:             &DiagInfo{},
