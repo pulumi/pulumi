@@ -128,6 +128,10 @@ type ProgressDisplay struct {
 	// Cache of colorized to uncolorized text.  We go between the two a lot, so caching helps
 	// prevent lots of recomputation
 	colorizedToUncolorized map[string]string
+
+	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
+	// changed between the last time we printed and now.
+	printedProgressCache map[string]Progress
 }
 
 var (
@@ -173,6 +177,17 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 		progress.Action = display.opts.Color.Colorize(progress.Action)
 	}
 
+	if progress.ID != "" {
+		// don't repeat the same output if there is no difference between the last time we
+		// printed it and now.
+		lastProgress, has := display.printedProgressCache[progress.ID]
+		if has && lastProgress.Message == progress.Message && lastProgress.Action == progress.Action {
+			return
+		}
+
+		display.printedProgressCache[progress.ID] = progress
+	}
+
 	display.progressOutput <- progress
 }
 
@@ -208,6 +223,7 @@ func DisplayProgressEvents(
 		suffixesArray:          []string{"", ".", "..", "..."},
 		urnToID:                make(map[resource.URN]string),
 		colorizedToUncolorized: make(map[string]string),
+		printedProgressCache:   make(map[string]Progress),
 		displayTime:            1,
 	}
 
