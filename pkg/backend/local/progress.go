@@ -461,8 +461,8 @@ U+257x ╰ ╱ ╲ ╳ ╴ ╵ ╶ ╷ ╸ ╹ ╺ ╻ ╼ ╽ ╾ ╿
 
 func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
 
-	childIndentation := indentation + " │  "
-	lastChildIndentation := indentation + "    "
+	childIndentation := indentation + "│  "
+	lastChildIndentation := indentation + "   "
 
 	for i, node := range treeNodes {
 		isLast := i == len(treeNodes)-1
@@ -472,10 +472,10 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 		var nestedIndentation string
 		if !isRoot {
 			if isLast {
-				prefix += " └─ "
+				prefix += "└─ "
 				nestedIndentation = lastChildIndentation
 			} else {
-				prefix += " ├─ "
+				prefix += "├─ "
 				nestedIndentation = childIndentation
 			}
 		}
