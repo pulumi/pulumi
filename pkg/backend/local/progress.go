@@ -424,11 +424,13 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 			parentURN = res.Parent
 		}
 
-		if parentURN == "" {
-			parentURN = display.stackUrn
-		}
-
 		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
+		if !hasParentRow {
+			// if we couldn't find a parent for this yet, parent this to the stack if we
+			// have an entry for that.  Otherwise, we'll just make this a top level item.
+			parentURN = display.stackUrn
+			parentRow, hasParentRow = display.eventUrnToResourceRow[parentURN]
+		}
 
 		if hasParentRow {
 			parentNode := display.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
