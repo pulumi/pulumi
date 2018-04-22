@@ -398,10 +398,21 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 
 	urnToTreeNode[urn] = node
 
-	res := row.Step().Res
+	if urn != "" && urn != display.stackUrn {
+		var parentURN resource.URN
 
-	if res != nil && urn != "" && urn != display.stackUrn {
-		parentURN := res.Parent
+		res := row.Step().Res
+		if res != nil {
+			parentURN = res.Parent
+		}
+
+		if parentURN == "" {
+			parentURN = display.stackUrn
+		}
+
+		display.writeSimpleMessage(
+			fmt.Sprintf("%s:%s parent is %s\n", node.colorizedColumns[0], node.colorizedColumns[1], parentURN))
+
 		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
 
 		if hasParentRow {
