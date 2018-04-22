@@ -442,11 +442,30 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	return result
 }
 
-func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, indentation string) {
-	for _, node := range treeNodes {
-		node.colorizedColumns[typeColumn] = indentation + node.colorizedColumns[typeColumn]
+func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
+	prefix := indentation
+	if !isRoot {
+		prefix += " `--"
+	}
 
-		display.addIndentations(node.childNodes, indentation+"  ")
+	childIndentation := indentation + " |  "
+	lastChildIndentation := indentation + "    "
+
+	for i, node := range treeNodes {
+
+		node.colorizedColumns[typeColumn] = prefix + node.colorizedColumns[typeColumn]
+
+		isLast := i == len(treeNodes)-1
+		var nestedIndentation string
+		if !isRoot {
+			if isLast {
+				nestedIndentation = lastChildIndentation
+			} else {
+				nestedIndentation = childIndentation
+			}
+		}
+
+		display.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
 	}
 }
 
@@ -505,7 +524,7 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		rootNodes := display.generateTreeNodes()
 		rootNodes = filterOutUnnecessaryNodes(rootNodes)
 		sortNodes(rootNodes)
-		display.addIndentations(rootNodes, "")
+		display.addIndentations(rootNodes, true, "")
 
 		var rows [][]string
 		display.addColorizedColumnsFromTreeNodes(rootNodes, &rows)
