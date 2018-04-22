@@ -320,13 +320,13 @@ func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) refreshSingleRow(id string, maxIdLength int, row Row) {
+func (display *ProgressDisplay) refreshSingleRow(id string, maxIDLength int, row Row) {
 	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
 	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
-	msg := display.getPaddedMessage(id, maxIdLength, colorizedColumns, uncolorizedColumns)
+	msg := display.getPaddedMessage(id, maxIDLength, colorizedColumns, uncolorizedColumns)
 
 	display.colorizeAndWriteProgress(makeActionProgress(
 		id, msg, true /*showID*/))
@@ -389,7 +389,7 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 		// tree := display.generateTree()
 
-		maxIdLength := len(fmt.Sprintf("%v", len(rows)-1))
+		maxIDLength := len(fmt.Sprintf("%v", len(rows)-1))
 		for i, row := range rows {
 			var id string
 			if i == 0 {
@@ -398,7 +398,7 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 				id = fmt.Sprintf("%v", i)
 			}
 
-			display.refreshSingleRow(id, maxIdLength, row)
+			display.refreshSingleRow(id, maxIDLength, row)
 		}
 
 		systemID := len(rows)
