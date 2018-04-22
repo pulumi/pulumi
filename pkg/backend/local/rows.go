@@ -18,6 +18,7 @@ type Row interface {
 	CreationTime() int
 	ColorizedColumns() []string
 	ColorizedSuffix() string
+	HideRowIfUnnecessary() bool
 }
 
 type ResourceRow interface {
@@ -43,6 +44,10 @@ type ResourceRow interface {
 type headerRowData struct {
 	display *ProgressDisplay
 	columns []string
+}
+
+func (data *headerRowData) HideRowIfUnnecessary() bool {
+	return false
 }
 
 func (data *headerRowData) CreationTime() int {
@@ -96,6 +101,14 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo *DiagInfo
+
+	// If this row should be hidden by default.  We will hide unless we have any child nodes
+	// we need to show.
+	hideRowIfUnnecessary bool
+}
+
+func (data *resourceRowData) HideRowIfUnnecessary() bool {
+	return data.hideRowIfUnnecessary
 }
 
 func (data *resourceRowData) CreationTime() int {

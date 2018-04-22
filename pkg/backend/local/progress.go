@@ -375,7 +375,8 @@ func (display *ProgressDisplay) updateDimensions(rows [][]string) {
 }
 
 type treeNode struct {
-	creationTime int
+	creationTime         int
+	hideRowIfUnnecessary bool
 
 	colorizedColumns []string
 
@@ -391,8 +392,9 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	}
 
 	node = &treeNode{
-		creationTime:     row.CreationTime(),
-		colorizedColumns: row.ColorizedColumns(),
+		hideRowIfUnnecessary: row.HideRowIfUnnecessary(),
+		creationTime:         row.CreationTime(),
+		colorizedColumns:     row.ColorizedColumns(),
 	}
 	node.colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
 
@@ -409,9 +411,6 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 		if parentURN == "" {
 			parentURN = display.stackUrn
 		}
-
-		display.writeSimpleMessage(
-			fmt.Sprintf("%s:%s parent is %s\n", node.colorizedColumns[0], node.colorizedColumns[1], parentURN))
 
 		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
 
@@ -430,8 +429,9 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	result := []*treeNode{}
 
 	result = append(result, &treeNode{
-		creationTime:     display.headerRow.CreationTime(),
-		colorizedColumns: display.headerRow.ColorizedColumns(),
+		hideRowIfUnnecessary: display.headerRow.HideRowIfUnnecessary(),
+		creationTime:         display.headerRow.CreationTime(),
+		colorizedColumns:     display.headerRow.ColorizedColumns(),
 	})
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
@@ -482,11 +482,28 @@ func sortNodes(nodes []*treeNode) {
 	}
 }
 
+func filterOutUnnecessaryNodes(nodes []*treeNode) []*treeNode {
+	result := []*treeNode{}
+
+	for _, node := range nodes {
+		node.childNodes = filterOutUnnecessaryNodes(node.childNodes)
+
+		if node.hideRowIfUnnecessary && len(node.childNodes) == 0 {
+			continue
+		}
+
+		result = append(result, node)
+	}
+
+	return result
+}
+
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal && display.headerRow != nil {
 		// make sure our stored dimension info is up to date
 
 		rootNodes := display.generateTreeNodes()
+		rootNodes = filterOutUnnecessaryNodes(rootNodes)
 		sortNodes(rootNodes)
 		display.addIndentations(rootNodes, "")
 
@@ -687,8 +704,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// Don't bother showing certain events (for example, things that are unchanged). However
 	// always show the root 'stack' resource so we can indicate that it's still running, and
 	// also so we have something to attach unparented diagnostic events to.
+	hideRowIfUnnecessary := false
 	if metadata != nil && !shouldShow(*metadata, display.opts) && !isRootURN(eventUrn) {
-		return
+		hideRowIfUnnecessary = true
 	}
 
 	// At this point, all events should relate to resources.
@@ -699,11 +717,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// status for it, assigning it a nice short ID.
 		display.currentTime++
 		row = &resourceRowData{
-			creationTime: display.currentTime,
-			display:      display,
-			tick:         display.currentTick,
-			diagInfo:     &DiagInfo{},
-			step:         engine.StepEventMetadata{Op: deploy.OpSame},
+			creationTime:         display.currentTime,
+			display:              display,
+			tick:                 display.currentTick,
+			diagInfo:             &DiagInfo{},
+			step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+			hideRowIfUnnecessary: hideRowIfUnnecessary,
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row
