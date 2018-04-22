@@ -33,7 +33,6 @@ import (
 // Actions must have an ID.
 type Progress struct {
 	ID      string
-	ShowID  bool
 	Message string
 	Action  string
 }
@@ -42,11 +41,11 @@ func makeMessageProgress(message string) Progress {
 	return Progress{Message: message}
 }
 
-func makeActionProgress(id string, action string, showID bool) Progress {
+func makeActionProgress(id string, action string) Progress {
 	contract.Assertf(id != "", "id must be non empty for action %s", action)
 	contract.Assertf(action != "", "action must be non empty")
 
-	return Progress{ID: id, Action: action, ShowID: showID}
+	return Progress{ID: id, Action: action}
 }
 
 type DiagInfo struct {
@@ -248,25 +247,18 @@ func DisplayProgressEvents(
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
 func (display *ProgressDisplay) getMessagePadding(
-	id string, maxIDLength int, uncolorizedColumns []string, columnIndex int) string {
+	uncolorizedColumns []string, columnIndex int) string {
 
 	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
-	if display.isTerminal {
-		var column string
-		var maxLength int
-		if columnIndex == -1 {
-			column = id
-			maxLength = maxIDLength
-		} else {
-			column = uncolorizedColumns[columnIndex]
-			maxLength = display.maxColumnLengths[columnIndex]
-		}
+	if columnIndex >= 0 && display.isTerminal {
+		column := uncolorizedColumns[columnIndex]
+		maxLength := display.maxColumnLengths[columnIndex]
 
 		extraWhitespace = maxLength - utf8.RuneCountInString(column)
-		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
+		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxLength, column)
 
 		// Place two spaces between all columns (except after the first column).  The first
 		// column already has a ": " so it doesn't need the extra space.
@@ -283,12 +275,12 @@ func (display *ProgressDisplay) getMessagePadding(
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
 func (display *ProgressDisplay) getPaddedMessage(
-	id string, maxIDLength int, colorizedColumns, uncolorizedColumns []string) string {
+	colorizedColumns, uncolorizedColumns []string) string {
 
 	colorizedMessage := ""
 
 	for i := 0; i < len(colorizedColumns); i++ {
-		padding := display.getMessagePadding(id, maxIDLength, uncolorizedColumns, i-1)
+		padding := display.getMessagePadding(uncolorizedColumns, i-1)
 		colorizedMessage += padding + colorizedColumns[i]
 	}
 
@@ -297,7 +289,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		maxMsgLength := display.terminalWidth - len(id) - len(": ") - 1
+		maxMsgLength := display.terminalWidth - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
@@ -328,18 +320,18 @@ func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) refreshSingleRow(id string, maxIDLength int, row Row) {
+func (display *ProgressDisplay) refreshSingleRow(id string, row Row) {
 	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
-	display.refreshColumns(id, maxIDLength, colorizedColumns)
+	display.refreshColumns(id, colorizedColumns)
 }
 
-func (display *ProgressDisplay) refreshColumns(id string, maxIDLength int, colorizedColumns []string) {
+func (display *ProgressDisplay) refreshColumns(id string, colorizedColumns []string) {
 	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
-	msg := display.getPaddedMessage(id, maxIDLength, colorizedColumns, uncolorizedColumns)
+	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns)
 
-	display.colorizeAndWriteProgress(makeActionProgress(id, msg, true /*showID*/))
+	display.colorizeAndWriteProgress(makeActionProgress(id, msg))
 }
 
 // Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
@@ -531,7 +523,6 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		display.addColorizedColumnsFromTreeNodes(rootNodes, &rows)
 		display.updateDimensions(rows)
 
-		maxIDLength := len(fmt.Sprintf("%v", len(rows)-1))
 		for i, row := range rows {
 			var id string
 			if i == 0 {
@@ -540,7 +531,7 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 				id = fmt.Sprintf("%v", i)
 			}
 
-			display.refreshColumns(id, maxIDLength, row)
+			display.refreshColumns(id, row)
 		}
 
 		systemID := len(rows)
@@ -557,19 +548,18 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 			if !printedHeader {
 				printedHeader = true
 				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID), " ", false /*showID*/))
+					fmt.Sprintf("%v", systemID), " "))
 				systemID++
 
 				display.colorizeAndWriteProgress(makeActionProgress(
 					fmt.Sprintf("%v", systemID),
-					colors.Yellow+"System Messages"+colors.Reset,
-					false /*showID*/))
+					colors.Yellow+"System Messages"+colors.Reset))
 				systemID++
 			}
 
 			for _, line := range lines {
 				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line), false /*showID*/))
+					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
 				systemID++
 			}
 		}
@@ -592,7 +582,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			v.SetDone()
 
 			if !display.isTerminal {
-				display.refreshSingleRow("", 0, v)
+				display.refreshSingleRow("", v)
 			}
 		} else {
 			// Explicitly transition the status so that we clear out any cached data for it.
@@ -775,7 +765,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.refreshAllRowsIfInTerminal()
 	} else {
 		// otherwise, just print out this single row.
-		display.refreshSingleRow("", 0, row)
+		display.refreshSingleRow("", row)
 	}
 }
 
