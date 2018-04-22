@@ -114,9 +114,6 @@ type ProgressDisplay struct {
 	// the list of suffixes to rotate through
 	suffixesArray []string
 
-	// the length of the longest suffix
-	maxSuffixLength int
-
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
 
@@ -220,13 +217,6 @@ func DisplayProgressEvents(
 		colorizedToUncolorized: make(map[string]string),
 		printedProgressCache:   make(map[string]Progress),
 		displayTime:            1,
-	}
-
-	for _, v := range display.suffixesArray {
-		runeCount := utf8.RuneCountInString(v)
-		if runeCount > display.maxSuffixLength {
-			display.maxSuffixLength = runeCount
-		}
 	}
 
 	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
@@ -463,7 +453,7 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 }
 
 func (display *ProgressDisplay) convertNodesToRows(
-	nodes []*treeNode, rows *[][]string, maxColumnLengths *[]int) {
+	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int) {
 
 	for _, node := range nodes {
 		if len(*maxColumnLengths) == 0 {
@@ -477,7 +467,7 @@ func (display *ProgressDisplay) convertNodesToRows(
 			columnWidth := utf8.RuneCountInString(uncolorisedColumns[i])
 
 			if i == display.suffixColumn {
-				columnWidth += display.maxSuffixLength
+				columnWidth += maxSuffixLength
 				colorizedColumns[i] = colorizedColumn + node.colorizedSuffix
 			} else {
 				colorizedColumns[i] = colorizedColumn
@@ -490,7 +480,7 @@ func (display *ProgressDisplay) convertNodesToRows(
 
 		*rows = append(*rows, colorizedColumns)
 
-		display.convertNodesToRows(node.childNodes, rows, maxColumnLengths)
+		display.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths)
 	}
 }
 
@@ -546,9 +536,17 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 		sortNodes(rootNodes)
 		display.addIndentations(rootNodes, true /*isRoot*/, "")
 
+		maxSuffixLength := 0
+		for _, v := range display.suffixesArray {
+			runeCount := utf8.RuneCountInString(v)
+			if runeCount > maxSuffixLength {
+				maxSuffixLength = runeCount
+			}
+		}
+
 		var rows [][]string
 		var maxColumnLengths []int
-		display.convertNodesToRows(rootNodes, &rows, &maxColumnLengths)
+		display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
 
 		for i, row := range rows {
 			var id string
@@ -597,7 +595,6 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
-	display.maxSuffixLength = 0
 	display.Done = true
 
 	for _, v := range display.eventUrnToResourceRow {
