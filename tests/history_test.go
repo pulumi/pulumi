@@ -5,6 +5,7 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -205,12 +206,19 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("yarn", "run", "build")
 
+		// Configure the git repo used for the test, so it doesn't use global defaults.
+		gitUserName := "R. Sanchez"
+		gitUserEmail := "rs@example.com"
+		e.RunCommand("git", "config", "user.name", gitUserName)
+		e.RunCommand("git", "config", "user.email", gitUserEmail)
+
 		// Update 1, git repo that has no commits.
 		e.RunCommand("pulumi", "update", "--force", "-m", "first update (git repo has no commits)")
 
 		// Update 2, repo has commit, but no remote.
 		e.RunCommand("git", "add", ".")
-		e.RunCommand("git", "commit", "-m", "First commit of test files")
+		update2GitCommitMessage := "First commit of test files"
+		e.RunCommand("git", "commit", "-m", update2GitCommitMessage)
 		e.RunCommand("pulumi", "update", "--force", "-m", "second update (git commit, no remote)")
 
 		// Update 3, repo has remote and is dirty (by rewriting index.ts).
@@ -224,10 +232,18 @@ func TestHistoryCommand(t *testing.T) {
 		e.RunCommand("git", "remote", "add", "origin", "git@github.com:rick/c-132")
 		e.RunCommand("pulumi", "update", "--force", "-m", "third update (is dirty, has remote)")
 
-		// Update 4, repo is now clean again.
+		// Update 4, replaces index.ts and adds some other random data. Since the update is after the commit,
+		// the git repo should be marked as clean.
 		err = ioutil.WriteFile(indexTS, origContents, os.ModePerm)
 		assert.NoError(t, err, "writing index.ts")
+		ioutil.WriteFile(path.Join(e.CWD, "new-file.txt"), []byte("data"), os.ModePerm)
 
+		gitAuthorName := "B. Man"
+		gitAuthorEmail := "bm@example.com"
+		authorInfo := fmt.Sprintf("%s <%s>", gitAuthorName, gitAuthorEmail)
+		update4GitCommitMessage := "git commit #4\nmulti-line even!"
+		e.RunCommand("git", "add", ".")
+		e.RunCommand("git", "commit", "-m", update4GitCommitMessage, "--author", authorInfo)
 		e.RunCommand("pulumi", "update", "--force", "-m", "fourth update (is clean)")
 
 		// Confirm the history is as expected. Output as JSON and parse the result.
@@ -259,6 +275,13 @@ func TestHistoryCommand(t *testing.T) {
 		assert.True(t, ok, "Didn't find %s in environment", backend.GitHead)
 		assert.Equal(t, 40, len(headSHA), "Commit SHA was not expected length")
 		assertEnvValue(e.T, update, backend.GitDirty, "false")
+		assertEnvValue(e.T, update, backend.GitCommitMessage, update2GitCommitMessage)
+		assertEnvValue(e.T, update, backend.GitCommitter, gitUserName)
+		assertEnvValue(e.T, update, backend.GitCommitterEmail, gitUserEmail)
+		// Author defaults to committer if not specified.
+		assertEnvValue(e.T, update, backend.GitAuthor, gitUserName)
+		assertEnvValue(e.T, update, backend.GitAuthorEmail, gitUserEmail)
+
 		// The github-related info is still not set though.
 		assertEnvKeyNotFound(e.T, update, backend.GitHubLogin)
 		assertEnvKeyNotFound(e.T, update, backend.GitHubRepo)
@@ -268,14 +291,34 @@ func TestHistoryCommand(t *testing.T) {
 		update = updateRecords[1]
 		assertEnvValue(e.T, update, backend.GitHead, headSHA)
 		assertEnvValue(e.T, update, backend.GitDirty, "true")
+		// No git commits made since previous update, only repo dirtied. So the environment data is the same.
+		assertEnvValue(e.T, update, backend.GitCommitMessage, update2GitCommitMessage)
+		assertEnvValue(e.T, update, backend.GitCommitter, gitUserName)
+		assertEnvValue(e.T, update, backend.GitCommitterEmail, gitUserEmail)
+		assertEnvValue(e.T, update, backend.GitAuthor, gitUserName)
+		assertEnvValue(e.T, update, backend.GitAuthorEmail, gitUserEmail)
+
+		// However, a git remote was added. So it should be available now.
 		assertEnvValue(e.T, update, backend.GitHubLogin, "rick")
 		assertEnvValue(e.T, update, backend.GitHubRepo, "c-132")
 
 		// The fourth commit is clean (by restoring to the previous commit).
 		t.Log("Checking fourth update...")
 		update = updateRecords[0]
-		assertEnvValue(e.T, update, backend.GitHead, headSHA)
+
+		// Confirm the HEAD SHA has changed because of the new commit.
+		newHeadSHA, newSHAOK := update.Environment[backend.GitHead]
+		assert.True(t, newSHAOK, "Didn't find git.head for last update")
+		assert.NotEqual(t, headSHA, newHeadSHA)
+
 		assertEnvValue(e.T, update, backend.GitDirty, "false")
+		assertEnvValue(e.T, update, backend.GitCommitMessage, update4GitCommitMessage)
+		assertEnvValue(e.T, update, backend.GitCommitter, gitUserName)
+		assertEnvValue(e.T, update, backend.GitCommitterEmail, gitUserEmail)
+		// Author was specified for this commit, so check it is set.
+		assertEnvValue(e.T, update, backend.GitAuthor, gitAuthorName)
+		assertEnvValue(e.T, update, backend.GitAuthorEmail, gitAuthorEmail)
+
 		assertEnvValue(e.T, update, backend.GitHubLogin, "rick")
 		assertEnvValue(e.T, update, backend.GitHubRepo, "c-132")
 
