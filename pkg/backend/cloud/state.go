@@ -109,32 +109,6 @@ func (u *cloudUpdate) GetTarget() *deploy.Target {
 	return u.target
 }
 
-type cloudStackMutation struct {
-	update *cloudUpdate
-}
-
-func (u *cloudUpdate) BeginMutation() (engine.SnapshotMutation, error) {
-	// invalidate the current checkpoint
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return nil, err
-	}
-	if err = u.backend.client.InvalidateUpdateCheckpoint(u.update, token); err != nil {
-		return nil, err
-	}
-	return &cloudStackMutation{update: u}, nil
-}
-
-func (m *cloudStackMutation) End(snapshot *deploy.Snapshot) error {
-	// Upload the new checkpoint.
-	token, err := m.update.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-	deployment := stack.SerializeDeployment(snapshot)
-	return m.update.backend.client.PatchUpdateCheckpoint(m.update.update, deployment, token)
-}
-
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	defer u.tokenSource.Close()
 

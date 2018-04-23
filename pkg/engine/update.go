@@ -163,7 +163,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Update.BeginMutation()
+	return acts.Context.SnapshotManager.BeginMutation()
 }
 
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
@@ -214,7 +214,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	mutation, err := acts.Update.BeginMutation()
+	mutation, err := acts.Context.SnapshotManager.BeginMutation()
 	if err != nil {
 		return err
 	}

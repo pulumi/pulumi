@@ -802,6 +802,7 @@ func (b *cloudBackend) runEngineAction(
 		return err
 	}
 
+	manager := b.newSnapshotManager(u.update, u.tokenSource)
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 
@@ -826,7 +827,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents}
+	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
@@ -847,6 +848,7 @@ func (b *cloudBackend) runEngineAction(
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)
+	contract.IgnoreClose(manager)
 
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded
