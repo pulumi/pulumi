@@ -12,26 +12,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a stack associated with a particular backend implementation.
 type Stack interface {
-	Name() tokens.QName         // this stack's name.
+	Name() StackReference       // this stack's identity.
 	Config() config.Map         // the current config map.
 	Snapshot() *deploy.Snapshot // the latest deployment snapshot.
 	Backend() Backend           // the backend this stack belongs to.
 
 	// Update this stack.
-	Update(proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+	Update(proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+		displayOpts DisplayOptions, scopes CancellationScopeSource) error
 	// Refresh this stack's state from the cloud provider.
-	Refresh(proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+	Refresh(proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+		displayOpts DisplayOptions, scopes CancellationScopeSource) error
 	// Destroy this stack's resources.
-	Destroy(proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error
+	Destroy(proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+		displayOpts DisplayOptions, scopes CancellationScopeSource) error
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
 	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
@@ -45,21 +44,21 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(s Stack, proj *workspace.Project, root string,
-	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Update(s.Name(), proj, root, m, opts, displayOpts)
+func UpdateStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts DisplayOptions, scopes CancellationScopeSource) error {
+	return s.Backend().Update(s.Name(), proj, root, m, opts, displayOpts, scopes)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(s Stack, proj *workspace.Project, root string,
-	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Refresh(s.Name(), proj, root, m, opts, displayOpts)
+func RefreshStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts DisplayOptions, scopes CancellationScopeSource) error {
+	return s.Backend().Refresh(s.Name(), proj, root, m, opts, displayOpts, scopes)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(s Stack, proj *workspace.Project, root string,
-	m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions) error {
-	return s.Backend().Destroy(s.Name(), proj, root, m, opts, displayOpts)
+func DestroyStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+	displayOpts DisplayOptions, scopes CancellationScopeSource) error {
+	return s.Backend().Destroy(s.Name(), proj, root, m, opts, displayOpts, scopes)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.

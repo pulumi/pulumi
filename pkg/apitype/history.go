@@ -2,6 +2,8 @@
 
 package apitype
 
+import "encoding/json"
+
 // UpdateKind is an enum for the type of update performed.
 //
 // Should generally mirror backend.UpdateKind, but we clone it in this package to add
@@ -70,10 +72,11 @@ type UpdateInfo struct {
 	Config      map[string]ConfigValue `json:"config"`
 
 	// Information obtained from an update completing.
-	Result          UpdateResult   `json:"result"`
-	EndTime         int64          `json:"endTime"`
-	Deployment      *DeploymentV1  `json:"deployment,omitempty"`
-	ResourceChanges map[OpType]int `json:"resourceChanges,omitempty"`
+	Result          UpdateResult    `json:"result"`
+	EndTime         int64           `json:"endTime"`
+	Version         int             `json:"version"`
+	Deployment      json.RawMessage `json:"deployment,omitempty"`
+	ResourceChanges map[OpType]int  `json:"resourceChanges,omitempty"`
 }
 
 // GetHistoryResponse is the response from the Pulumi Service when requesting

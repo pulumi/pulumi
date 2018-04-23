@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -27,31 +26,38 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
-			var opts interface{}
+			var createOpts interface{}
 			if _, ok := b.(cloud.Backend); ok {
-				opts = cloud.CreateStackOptions{CloudName: ppc}
+				createOpts = cloud.CreateStackOptions{
+					CloudName: ppc,
+				}
 			}
 
-			var stackName tokens.QName
+			var stackName string
 			if len(args) > 0 {
-				stackName = tokens.QName(args[0])
+				stackName = args[0]
 			} else if cmdutil.Interactive() {
 				name, nameErr := cmdutil.ReadConsole("Enter a stack name")
 				if nameErr != nil {
 					return nameErr
 				}
-				stackName = tokens.QName(name)
+				stackName = name
 			}
 
 			if stackName == "" {
 				return errors.New("missing stack name")
 			}
 
-			_, err = createStack(b, stackName, opts)
+			stackRef, err := b.ParseStackReference(stackName)
+			if err != nil {
+				return err
+			}
+
+			_, err = createStack(b, stackRef, createOpts)
 			return err
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&ppc, "ppc", "p", "", "A Pulumi Private Cloud (PPC) name to initialize this stack in (if not --local)")
+		&ppc, "ppc", "p", "", "An optional Pulumi Private Cloud (PPC) name to initialize this stack in")
 	return cmd
 }

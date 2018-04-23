@@ -350,13 +350,10 @@ func (display *ProgressDisplay) updateTerminalWidth() {
 		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
 		contract.IgnoreError(err)
 
-		changed := false
 		if currentTerminalWidth != display.terminalWidth {
 			display.terminalWidth = currentTerminalWidth
-			changed = true
-		}
 
-		if changed {
+			// also clear our display cache as we want to reprint all lines.
 			display.printedProgressCache = make(map[string]Progress)
 		}
 	}

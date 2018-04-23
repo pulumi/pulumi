@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -29,7 +28,7 @@ func newHistoryCmd() *cobra.Command {
 			"This command lists data about previous updates for a stack.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(tokens.QName(stack), false)
+			s, err := requireStack(stack, false)
 			if err != nil {
 				return err
 			}

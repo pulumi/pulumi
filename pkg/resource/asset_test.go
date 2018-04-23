@@ -165,6 +165,7 @@ func TestAssetSerialize(t *testing.T) {
 	{
 		file, err := tempArchive("test", true)
 		assert.Nil(t, err)
+		defer func() { contract.IgnoreError(os.Remove(file)) }()
 		arch1, err := NewPathArchive(file)
 		assert.Nil(t, err)
 		assert.Nil(t, arch1.EnsureHash())

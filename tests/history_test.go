@@ -61,7 +61,7 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		out, err := e.RunCommandExpectError("pulumi", "history")
 		assert.Equal(t, "", out)
 		assert.NotEqual(t, err, "")
@@ -73,9 +73,10 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "no-updates-test")
 		assertHasNoHistory(e)
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
 	// The "history" command uses the currently selected stack.
@@ -85,7 +86,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 
@@ -109,6 +110,7 @@ func TestHistoryCommand(t *testing.T) {
 		out, err = e.RunCommand("pulumi", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "updating stack...")
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 	})
 
 	// That the history command contains accurate data about the update history.
@@ -118,7 +120,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 
 		// Update the history-test stack.
@@ -197,7 +199,7 @@ func TestHistoryCommand(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_outputs")
 
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "history-test")
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -240,6 +242,7 @@ func TestHistoryCommand(t *testing.T) {
 		if len(updateRecords) != 4 {
 			t.Fatalf("didn't get expected number of updates from testcase. Raw history output:\n%v", stdout)
 		}
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 
 		// The first update doesn't have any git information, since
 		// nothing has been committed yet.

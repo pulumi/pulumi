@@ -3,8 +3,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -18,13 +21,21 @@ func newLoginCmd() *cobra.Command {
 		Long:  "Log into the Pulumi Cloud.  You can script by using PULUMI_ACCESS_TOKEN environment variable.",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			var b backend.Backend
+			var err error
+
 			if local.IsLocalBackendURL(cloudURL) {
-				_, err := local.Login(cmdutil.Diag())
+				b, err = local.Login(cmdutil.Diag(), cloudURL)
+			} else {
+				b, err = cloud.Login(cmdutil.Diag(), cloudURL)
+			}
+
+			if err != nil {
 				return err
 			}
 
-			_, err := cloud.Login(cmdutil.Diag(), cloudURL)
-			return err
+			fmt.Printf("Logged into %s\n", b.Name())
+			return nil
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log into")

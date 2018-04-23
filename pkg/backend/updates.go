@@ -75,6 +75,6 @@ type UpdateInfo struct {
 	// Information obtained from an update completing.
 	Result          UpdateResult           `json:"result"`
 	EndTime         int64                  `json:"endTime"`
-	Deployment      *apitype.Deployment    `json:"deployment,omitempty"`
+	Deployment      *apitype.DeploymentV1  `json:"deployment,omitempty"`
 	ResourceChanges engine.ResourceChanges `json:"resourceChanges,omitempty"`
 }

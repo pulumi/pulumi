@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"github.com/pkg/errors"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -53,7 +53,7 @@ func newRefreshCmd() *cobra.Command {
 				return errors.New("--force and --preview cannot both be specified")
 			}
 
-			s, err := requireStack(tokens.QName(stack), true)
+			s, err := requireStack(stack, true)
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func newRefreshCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			return s.Refresh(proj, root, m, engine.UpdateOptions{
+			err = s.Refresh(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
 				Preview:   preview,
@@ -81,7 +81,11 @@ func newRefreshCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
-			})
+			}, cancellationScopes)
+			if err == context.Canceled {
+				return errors.New("refresh cancelled")
+			}
+			return err
 		}),
 	}
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -16,23 +15,14 @@ import (
 
 // CreateBasicPulumiRepo will initialize the environment with a basic Pulumi repository and
 // project file definition. Returns the repo owner and name used.
-func CreateBasicPulumiRepo(e *testing.Environment) (string, string) {
+func CreateBasicPulumiRepo(e *testing.Environment) {
 	e.RunCommand("git", "init")
-
-	// We need to specify a well-known owner so that commands don't fail for reasons like
-	// the organization isn't in the private beta. The repository name is randomly generated
-	// so that testcases can assume no stacks, etc.
-	const owner = "pulumi"
-	name := fmt.Sprintf("integration-test-%x", time.Now().Unix())
-	e.RunCommand("pulumi", "init", "--owner", owner, "--name", name)
 
 	contents := "name: pulumi-test\ndescription: a test\nruntime: nodejs\n"
 	filePath := fmt.Sprintf("%s.yaml", workspace.ProjectFile)
 	filePath = path.Join(e.CWD, filePath)
 	err := ioutil.WriteFile(filePath, []byte(contents), os.ModePerm)
 	assert.NoError(e, err, "writing %s file", filePath)
-
-	return owner, name
 }
 
 // GetRepository returns the contents of the workspace's repository settings file. Assumes the

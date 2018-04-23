@@ -4,6 +4,8 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,6 +35,7 @@ import (
 
 // RuntimeValidationStackInfo contains details related to the stack that runtime validation logic may want to use.
 type RuntimeValidationStackInfo struct {
+	StackName    tokens.QName
 	Deployment   *apitype.Deployment
 	RootResource apitype.Resource
 	Outputs      map[string]interface{}
@@ -117,10 +120,9 @@ type ProgramTestOptions struct {
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
-	// Owner and Repo are optional values to specify during calls to `pulumi init`. Otherwise the --owner and
-	// --repo flags will not be set.
+	// Owner is an optional value to specify during calls to `pulumi stack init`. Otherwise the --owner flag will
+	// not be set
 	Owner string
-	Repo  string
 	// PPCName is the name of the PPC to use when running a test against the hosted service. If
 	// not set, the --ppc flag will not be set on `pulumi stack init`.
 	PPCName string
@@ -202,9 +204,11 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 			}
 		}
 
-		lowerStackName := strings.ToLower("p-it-" + host + "-" + test)
-		legalStackName := strings.TrimRight(lowerStackName, "-_")
-		opts.StackName = legalStackName
+		b := make([]byte, 4)
+		_, err = rand.Read(b)
+		contract.AssertNoError(err)
+
+		opts.StackName = strings.ToLower("p-it-" + host + "-" + test + "-" + hex.EncodeToString(b))
 	}
 
 	return tokens.QName(opts.StackName)
@@ -235,9 +239,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Owner != "" {
 		opts.Owner = overrides.Owner
-	}
-	if overrides.Repo != "" {
-		opts.Repo = overrides.Repo
 	}
 	if overrides.PPCName != "" {
 		opts.PPCName = overrides.PPCName
@@ -472,13 +473,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	// Ensure all links are present, the stack is created, and all configs are applied.
 	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
 
-	initArgs := []string{"init"}
-	initArgs = addFlagIfNonNil(initArgs, "--owner", pt.opts.Owner)
-	initArgs = addFlagIfNonNil(initArgs, "--name", pt.opts.Repo)
-	if err := pt.runPulumiCommand("pulumi-init", initArgs, dir); err != nil {
-		return err
-	}
-
 	// Login as needed.
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" && pt.opts.CloudURL == "" {
 		fmt.Printf("Using existing logged in user for tests.  Set PULUMI_ACCESS_TOKEN and/or PULUMI_API to override.\n")
@@ -496,7 +490,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 	}
 
 	// Stack init
-	stackInitArgs := []string{"stack", "init", string(stackName)}
+	stackInitArgs := []string{"stack", "init", fmt.Sprintf("%s/%s", pt.opts.Owner, string(stackName))}
 	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
 
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
@@ -521,8 +515,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 }
 
 func (pt *programTester) testLifeCycleDestroy(dir string) error {
-	stackName := pt.opts.GetStackName()
-
 	// Destroy and remove the stack.
 	fprintf(pt.opts.Stdout, "Destroying stack\n")
 	destroy := []string{"destroy", "--force"}
@@ -533,7 +525,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 		return err
 	}
 
-	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes", string(stackName)}, dir)
+	err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, dir)
 
 	return err
 }
@@ -764,6 +756,7 @@ func (pt *programTester) performExtraRuntimeValidation(
 
 	// Populate stack info object with all of this data to pass to the validation function
 	stackInfo := RuntimeValidationStackInfo{
+		StackName:    pt.opts.GetStackName(),
 		Deployment:   &deployment,
 		RootResource: rootResource,
 		Outputs:      outputs,

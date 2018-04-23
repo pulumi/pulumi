@@ -17,8 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -111,32 +109,6 @@ func (u *cloudUpdate) GetTarget() *deploy.Target {
 	return u.target
 }
 
-type cloudStackMutation struct {
-	update *cloudUpdate
-}
-
-func (u *cloudUpdate) BeginMutation() (engine.SnapshotMutation, error) {
-	// invalidate the current checkpoint
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return nil, err
-	}
-	if err = u.backend.client.InvalidateUpdateCheckpoint(u.update, token); err != nil {
-		return nil, err
-	}
-	return &cloudStackMutation{update: u}, nil
-}
-
-func (m *cloudStackMutation) End(snapshot *deploy.Snapshot) error {
-	// Upload the new checkpoint.
-	token, err := m.update.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-	deployment := stack.SerializeDeployment(snapshot)
-	return m.update.backend.client.PatchUpdateCheckpoint(m.update.update, deployment, token)
-}
-
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	defer u.tokenSource.Close()
 
@@ -212,10 +184,8 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 	}
 }
 
-func (b *cloudBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string,
+func (b *cloudBackend) newUpdate(stackRef backend.StackReference, proj *workspace.Project, root string,
 	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
-
-	contract.Require(stackName != "", "stackName")
 
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
@@ -228,7 +198,7 @@ func (b *cloudBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 	}
 
 	// Construct the deployment target.
-	target, err := b.getTarget(stackName)
+	target, err := b.getTarget(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -244,19 +214,19 @@ func (b *cloudBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 	}, nil
 }
 
-func (b *cloudBackend) getTarget(stackName tokens.QName) (*deploy.Target, error) {
+func (b *cloudBackend) getTarget(stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
-	stk, err := workspace.DetectProjectStack(stackName)
+	stk, err := workspace.DetectProjectStack(stackRef.StackName())
 	if err != nil {
 		return nil, err
 	}
 
-	decrypter, err := b.GetStackCrypter(stackName)
+	decrypter, err := b.GetStackCrypter(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	untypedDeployment, err := b.ExportDeployment(stackName)
+	untypedDeployment, err := b.ExportDeployment(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +240,7 @@ func (b *cloudBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 	}
 
 	return &deploy.Target{
-		Name:      stackName,
+		Name:      stackRef.StackName(),
 		Config:    stk.Config,
 		Decrypter: decrypter,
 		Snapshot:  snapshot,

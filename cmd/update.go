@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"github.com/pkg/errors"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -57,7 +57,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.New("--force and --preview cannot both be specified")
 			}
 
-			s, err := requireStack(tokens.QName(stack), true)
+			s, err := requireStack(stack, true)
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			return s.Update(proj, root, m, engine.UpdateOptions{
+			err = s.Update(proj, root, m, engine.UpdateOptions{
 				Analyzers: analyzers,
 				Force:     force,
 				Preview:   preview,
@@ -85,7 +85,11 @@ func newUpdateCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
-			})
+			}, cancellationScopes)
+			if err == context.Canceled {
+				return errors.New("update cancelled")
+			}
+			return err
 		}),
 	}
 

@@ -15,15 +15,16 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -36,9 +37,10 @@ var DisableIntegrityChecking bool
 
 // update is an implementation of engine.Update backed by local state.
 type update struct {
-	root   string
-	proj   *workspace.Project
-	target *deploy.Target
+	root    string
+	proj    *workspace.Project
+	target  *deploy.Target
+	backend *localBackend
 }
 
 func (u *update) GetRoot() string {
@@ -53,27 +55,6 @@ func (u *update) GetTarget() *deploy.Target {
 	return u.target
 }
 
-type localStackMutation struct {
-	name tokens.QName
-}
-
-func (u *update) BeginMutation() (engine.SnapshotMutation, error) {
-	return &localStackMutation{name: u.target.Name}, nil
-}
-
-func (m *localStackMutation) End(snapshot *deploy.Snapshot) error {
-	stack := snapshot.Stack
-	contract.Assert(m.name == stack)
-
-	config, _, _, err := getStack(stack)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	_, err = saveStack(stack, config, snapshot)
-	return err
-}
-
 func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
@@ -85,9 +66,10 @@ func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project
 
 	// Construct and return a new update.
 	return &update{
-		root:   root,
-		proj:   proj,
-		target: target,
+		root:    root,
+		proj:    proj,
+		target:  target,
+		backend: b,
 	}, nil
 }
 
@@ -100,7 +82,7 @@ func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 	if err != nil {
 		return nil, err
 	}
-	_, snapshot, _, err := getStack(stackName)
+	_, snapshot, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -112,20 +94,14 @@ func (b *localBackend) getTarget(stackName tokens.QName) (*deploy.Target, error)
 	}, nil
 }
 
-func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
+func (b *localBackend) getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	if name == "" {
 		return nil, nil, "", errors.New("invalid empty stack name")
 	}
 
-	// Find a path to the stack file.
-	w, err := workspace.New()
-	if err != nil {
-		return nil, nil, "", err
-	}
+	file := b.stackPath(name)
 
-	file := w.StackPath(name)
-
-	chk, err := stack.GetCheckpoint(w, name)
+	chk, err := b.getCheckpoint(name)
 	if err != nil {
 		return nil, nil, file, errors.Wrap(err, "failed to load checkpoint")
 	}
@@ -147,14 +123,21 @@ func getStack(name tokens.QName) (config.Map, *deploy.Snapshot, string, error) {
 	return chk.Config, snapshot, file, nil
 }
 
-func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *deploy.Snapshot) (string, error) {
-	w, err := workspace.New()
+// GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
+func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.CheckpointV1, error) {
+	chkpath := b.stackPath(stackName)
+	bytes, err := ioutil.ReadFile(chkpath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
+}
+
+func (b *localBackend) saveStack(name tokens.QName,
+	config map[config.Key]config.Value, snap *deploy.Snapshot) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
-	file := w.StackPath(name)
+	file := b.stackPath(name)
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		return "", errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
@@ -163,7 +146,7 @@ func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *depl
 		file = file + ext
 	}
 	chk := stack.SerializeCheckpoint(name, config, snap)
-	b, err := m.Marshal(chk)
+	byts, err := m.Marshal(chk)
 	if err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
@@ -177,7 +160,7 @@ func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *depl
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
-	if err = ioutil.WriteFile(file, b, 0600); err != nil {
+	if err = ioutil.WriteFile(file, byts, 0600); err != nil {
 		return "", errors.Wrap(err, "An IO error occurred during the current operation")
 	}
 
@@ -185,7 +168,7 @@ func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *depl
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
-		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), b, 0600); err != nil {
+		if err = ioutil.WriteFile(fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, 0600); err != nil {
 			return "", errors.Wrap(err, "An IO error occurred during the current operation")
 		}
 	}
@@ -205,19 +188,14 @@ func saveStack(name tokens.QName, config map[config.Key]config.Value, snap *depl
 }
 
 // removeStack removes information about a stack from the current workspace.
-func removeStack(name tokens.QName) error {
+func (b *localBackend) removeStack(name tokens.QName) error {
 	contract.Require(name != "", "name")
 
-	w, err := workspace.New()
-	if err != nil {
-		return err
-	}
-
 	// Just make a backup of the file and don't write out anything new.
-	file := w.StackPath(name)
+	file := b.stackPath(name)
 	backupTarget(file)
 
-	historyDir := w.HistoryDirectory(name)
+	historyDir := b.historyDirectory(name)
 	return os.RemoveAll(historyDir)
 }
 
@@ -233,7 +211,7 @@ func backupTarget(file string) string {
 }
 
 // backupStack copies the current Checkpoint file to ~/.pulumi/backups.
-func backupStack(name tokens.QName) error {
+func (b *localBackend) backupStack(name tokens.QName) error {
 	contract.Require(name != "", "name")
 
 	// Exit early if backups are disabled.
@@ -241,23 +219,15 @@ func backupStack(name tokens.QName) error {
 		return nil
 	}
 
-	w, err := workspace.New()
-	if err != nil {
-		return err
-	}
-
 	// Read the current checkpoint file. (Assuming it aleady exists.)
-	stackPath := w.StackPath(name)
-	b, err := ioutil.ReadFile(stackPath)
+	stackPath := b.stackPath(name)
+	byts, err := ioutil.ReadFile(stackPath)
 	if err != nil {
 		return err
 	}
 
 	// Get the backup directory.
-	backupDir, err := w.BackupDirectory()
-	if err != nil {
-		return err
-	}
+	backupDir := b.backupDirectory(name)
 
 	// Ensure the backup directory exists.
 	if err = os.MkdirAll(backupDir, 0700); err != nil {
@@ -269,19 +239,36 @@ func backupStack(name tokens.QName) error {
 	ext := filepath.Ext(stackFile)
 	base := strings.TrimSuffix(stackFile, ext)
 	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
-	return ioutil.WriteFile(filepath.Join(backupDir, backupFile), b, 0600)
+	return ioutil.WriteFile(filepath.Join(backupDir, backupFile), byts, 0600)
+}
+
+func (b *localBackend) stackPath(stack tokens.QName) string {
+	path := filepath.Join(b.stateRoot, workspace.StackDir)
+	if stack != "" {
+		path = filepath.Join(path, fsutil.QnamePath(stack)+".json")
+	}
+
+	return path
+}
+
+func (b *localBackend) historyDirectory(stack tokens.QName) string {
+	contract.Require(stack != "", "stack")
+
+	return filepath.Join(b.stateRoot, workspace.HistoryDir, fsutil.QnamePath(stack))
+}
+
+func (b *localBackend) backupDirectory(stack tokens.QName) string {
+	contract.Require(stack != "", "stack")
+
+	return filepath.Join(b.stateRoot, workspace.BackupDir, fsutil.QnamePath(stack))
 }
 
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
-func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
-	w, err := workspace.New()
-	if err != nil {
-		return nil, err
-	}
+func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 	contract.Require(name != "", "name")
 
-	dir := w.HistoryDirectory(name)
+	dir := b.historyDirectory(name)
 	allFiles, err := ioutil.ReadDir(dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
@@ -321,16 +308,11 @@ func getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 }
 
 // addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.
-func addToHistory(name tokens.QName, update backend.UpdateInfo) error {
+func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo) error {
 	contract.Require(name != "", "name")
 
-	w, err := workspace.New()
-	if err != nil {
-		return err
-	}
-
-	dir := w.HistoryDirectory(name)
-	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+	dir := b.historyDirectory(name)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
 
@@ -338,22 +320,22 @@ func addToHistory(name tokens.QName, update backend.UpdateInfo) error {
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
 
 	// Save the history file.
-	b, err := json.MarshalIndent(&update, "", "    ")
+	byts, err := json.MarshalIndent(&update, "", "    ")
 	if err != nil {
 		return err
 	}
 
 	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
-	if err = ioutil.WriteFile(historyFile, b, os.ModePerm); err != nil {
+	if err = ioutil.WriteFile(historyFile, byts, os.ModePerm); err != nil {
 		return err
 	}
 
 	// Make a copy of the checkpoint file. (Assuming it aleady exists.)
-	b, err = ioutil.ReadFile(w.StackPath(name))
+	byts, err = ioutil.ReadFile(b.stackPath(name))
 	if err != nil {
 		return err
 	}
 
 	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
-	return ioutil.WriteFile(checkpointFile, b, os.ModePerm)
+	return ioutil.WriteFile(checkpointFile, byts, os.ModePerm)
 }

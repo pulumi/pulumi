@@ -11,7 +11,7 @@ For now, we only support developers building from source.  Eventually we will ha
 To build and install the SDK, you will first need a few things.
 
 First, you will need a version of Node. We officially support the current node Active LTS releases and
-the current Current release, as defined by [this table](https://github.com/nodejs/Release#release-schedule).
+the most recent Current release, as defined by [this table](https://github.com/nodejs/Release#release-schedule).
 
 Next, we suggest using [Yarn](https://yarnpkg.com/lang/en/docs/install/) for package management.  NPM works too, but
 Yarn is faster and therefore preferred.  Please follow the directions on Yarn's website.

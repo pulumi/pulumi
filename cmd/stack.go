@@ -36,18 +36,20 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// First print general info about the current stack.
-			fmt.Printf("Current stack is %v:\n", s.Name())
+			fmt.Printf("Current stack is %s:\n", s.Name())
 
 			be := s.Backend()
-			fmt.Printf("    Managed by %s", be.Name())
-			if _, isCloud := be.(cloud.Backend); isCloud {
-				fmt.Printf(" ☁️\n")
+			cloudBe, isCloud := be.(cloud.Backend)
+			if !isCloud || cloudBe.CloudURL() != cloud.PulumiCloudURL {
+				fmt.Printf("    Managed by %s\n", be.Name())
+			}
+			if isCloud {
 				if cs, ok := s.(cloud.Stack); ok {
-					fmt.Printf("    Organization %s\n", cs.OrgName())
-					fmt.Printf("    PPC %s\n", cs.CloudName())
+					fmt.Printf("    Owner: %s\n", cs.OrgName())
+					if !cs.RunLocally() {
+						fmt.Printf("    PPC: %s\n", cs.CloudName())
+					}
 				}
-			} else {
-				fmt.Printf("\n")
 			}
 
 			snap := s.Snapshot()
@@ -55,7 +57,7 @@ func newStackCmd() *cobra.Command {
 				if t := snap.Manifest.Time; t.IsZero() {
 					fmt.Printf("    Last update time unknown\n")
 				} else {
-					fmt.Printf("    Last updated %s (%v)\n", humanize.Time(t), t)
+					fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
 				}
 				var cliver string
 				if snap.Manifest.Version == "" {
@@ -63,7 +65,7 @@ func newStackCmd() *cobra.Command {
 				} else {
 					cliver = snap.Manifest.Version
 				}
-				fmt.Printf("    Pulumi version %s\n", cliver)
+				fmt.Printf("    Pulumi version: %s\n", cliver)
 				for _, plugin := range snap.Manifest.Plugins {
 					var plugver string
 					if plugin.Version == nil {
@@ -71,7 +73,7 @@ func newStackCmd() *cobra.Command {
 					} else {
 						plugver = plugin.Version.String()
 					}
-					fmt.Printf("    Plugin %s [%s] version %s\n", plugin.Name, plugin.Kind, plugver)
+					fmt.Printf("    Plugin %s [%s] version: %s\n", plugin.Name, plugin.Kind, plugver)
 				}
 			} else {
 				fmt.Printf("    No updates yet; run 'pulumi update'\n")
@@ -112,6 +114,15 @@ func newStackCmd() *cobra.Command {
 					printStackOutputs(outputs)
 				}
 			}
+
+			// Add a link to the pulumi.com console page for this stack, if it has one.
+			if cs, ok := s.(cloud.Stack); ok {
+				if consoleURL, err := cs.ConsoleURL(); err == nil {
+					fmt.Printf("\n")
+					fmt.Printf("More information at: %s\n", consoleURL)
+				}
+			}
+
 			fmt.Printf("\n")
 
 			fmt.Printf("Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones\n")

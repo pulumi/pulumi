@@ -2,6 +2,8 @@
 
 package apitype
 
+import "encoding/json"
+
 // StackSummary presents an overview of a particular stack without enumerating its current resource set.
 type StackSummary struct {
 	// ID is the unique identifier for a stack in the context of its PPC.
@@ -59,6 +61,9 @@ type GetStackResponse struct {
 	// TODO: [pulumi/pulumi-ppc#29]: make this state recoverable. This could be as simple as import/export.
 	UnknownState bool `json:"unknownState"`
 
+	// Version indicates the schema of the Resources, Manifest, and Deployment fields below.
+	Version int `json:"version"`
+
 	// Resources provides the list of cloud resources managed by this stack.
 	Resources []ResourceV1 `json:"resources"`
 
@@ -66,7 +71,7 @@ type GetStackResponse struct {
 	Manifest ManifestV1 `json:"manifest"`
 
 	// Deployment provides a view of the stack as an opaque Pulumi deployment.
-	Deployment *DeploymentV1 `json:"deployment,omitempty"`
+	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
 // EncryptValueRequest defines the request body for encrypting a value.

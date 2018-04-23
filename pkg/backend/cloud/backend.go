@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -120,7 +121,8 @@ type Backend interface {
 	DownloadTemplate(name string, progress bool) (io.ReadCloser, error)
 	ListTemplates() ([]workspace.Template, error)
 
-	CancelCurrentUpdate(stackName tokens.QName) error
+	CancelCurrentUpdate(stackRef backend.StackReference) error
+	StackConsoleURL(stackRef backend.StackReference) (string, error)
 }
 
 type cloudBackend struct {
@@ -186,8 +188,53 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 	return New(d, cloudURL)
 }
 
-func (b *cloudBackend) Name() string     { return b.url }
+func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return "", err
+	}
+
+	return b.cloudConsoleStackPath(stackID), nil
+}
+
+func (b *cloudBackend) Name() string {
+	if b.url == PulumiCloudURL {
+		return "pulumi.com"
+	}
+
+	return b.url
+}
+
 func (b *cloudBackend) CloudURL() string { return b.url }
+
+func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
+	split := strings.Split(s, "/")
+	var owner string
+	var stackName string
+
+	if len(split) == 1 {
+		stackName = split[0]
+	} else if len(split) == 2 {
+		owner = split[0]
+		stackName = split[1]
+	} else {
+		return nil, errors.Errorf("could not parse stack name '%s'", s)
+	}
+
+	if owner == "" {
+		currentUser, userErr := b.client.GetPulumiAccountName()
+		if userErr != nil {
+			return nil, userErr
+		}
+		owner = currentUser
+	}
+
+	return cloudBackendReference{
+		owner: owner,
+		name:  tokens.QName(stackName),
+		b:     b,
+	}, nil
+}
 
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
 // created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
@@ -205,16 +252,16 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	return cloudURL[:ix] + path.Join(append([]string{cloudURL[ix+len(defaultAPIURLPrefix):]}, paths...)...)
 }
 
-// CloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
+// cloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
-func (b *cloudBackend) CloudConsoleProjectPath(projID client.ProjectIdentifier) string {
+func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
 	return path.Join(projID.Owner, projID.Repository, projID.Project)
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
-func (b *cloudBackend) CloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(b.CloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
+	return path.Join(b.cloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
 }
 
 // Logout logs out of the target cloud URL.
@@ -286,8 +333,8 @@ func (b *cloudBackend) DownloadTemplate(name string, progress bool) (io.ReadClos
 	return result, nil
 }
 
-func (b *cloudBackend) GetStack(stackName tokens.QName) (backend.Stack, error) {
-	stackID, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) GetStack(stackRef backend.StackReference) (backend.Stack, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -310,19 +357,28 @@ type CreateStackOptions struct {
 	CloudName string
 }
 
-func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (backend.Stack, error) {
-	project, err := getCloudProjectIdentifier()
-	if err != nil {
-		return nil, err
+func ownerFromRef(stackRef backend.StackReference) string {
+	if r, ok := stackRef.(cloudBackendReference); ok {
+		return r.owner
 	}
 
-	var cloudName string
-	if opts != nil {
-		if cloudOpts, ok := opts.(CreateStackOptions); ok {
-			cloudName = cloudOpts.CloudName
-		} else {
-			return nil, errors.New("expected a CloudStackOptions value for opts parameter")
-		}
+	contract.Failf("bad StackReference type")
+	return ""
+}
+
+func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+	if opts == nil {
+		opts = CreateStackOptions{}
+	}
+
+	cloudOpts, ok := opts.(CreateStackOptions)
+	if !ok {
+		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
+	}
+
+	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
+	if err != nil {
+		return nil, err
 	}
 
 	tags, err := backend.GetStackTags()
@@ -330,22 +386,28 @@ func (b *cloudBackend) CreateStack(stackName tokens.QName, opts interface{}) (ba
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	stack, err := b.client.CreateStack(project, cloudName, string(stackName), tags)
+	apistack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Created stack '%s' hosted in Pulumi Cloud PPC %s\n", stackName, stack.CloudName)
 
-	return newStack(stack, b), nil
+	stack := newStack(apistack, b)
+	fmt.Printf("Created stack '%s'", stack.Name())
+	if !stack.RunLocally() {
+		fmt.Printf(" in PPC %s", stack.CloudName())
+	}
+	fmt.Println()
+
+	return stack, nil
 }
 
-func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
-	project, err := getCloudProjectIdentifier()
+func (b *cloudBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.Stack, error) {
+	project, err := b.getCloudProjectIdentifier("")
 	if err != nil {
 		return nil, err
 	}
 
-	stacks, err := b.client.ListStacks(project)
+	stacks, err := b.client.ListStacks(project, projectFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -359,8 +421,8 @@ func (b *cloudBackend) ListStacks() ([]backend.Stack, error) {
 	return results, nil
 }
 
-func (b *cloudBackend) RemoveStack(stackName tokens.QName, force bool) (bool, error) {
-	stack, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) RemoveStack(stackRef backend.StackReference, force bool) (bool, error) {
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return false, err
 	}
@@ -394,8 +456,8 @@ func (c *cloudCrypter) DecryptValue(cipherstring string) (string, error) {
 	return string(plaintext), nil
 }
 
-func (b *cloudBackend) GetStackCrypter(stackName tokens.QName) (config.Crypter, error) {
-	stack, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.Crypter, error) {
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -431,8 +493,8 @@ const (
 	details response = "details"
 )
 
-func getStack(b *cloudBackend, stackName tokens.QName) (backend.Stack, error) {
-	stack, err := b.GetStack(stackName)
+func getStack(b *cloudBackend, stackRef backend.StackReference) (backend.Stack, error) {
+	stack, err := b.GetStack(stackRef)
 	if err != nil {
 		return nil, err
 	} else if stack == nil {
@@ -467,7 +529,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 	updateKind client.UpdateKind,
 	stack backend.Stack, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions) error {
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -497,7 +559,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 	err := b.updateStack(
 		updateKind, stack, pkg, root, m,
-		opts, displayOpts, eventsChannel, true /*dryRun*/)
+		opts, displayOpts, eventsChannel, true /*dryRun*/, scopes)
 
 	if err != nil || opts.Preview {
 		// if we're just previewing, then we can stop at this point.
@@ -552,12 +614,12 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 func (b *cloudBackend) PreviewThenPromptThenExecute(
 	updateKind client.UpdateKind,
-	stackName tokens.QName, pkg *workspace.Project, root string,
+	stackRef backend.StackReference, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions) error {
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	// First get the stack.
-	stack, err := getStack(b, stackName)
+	stack, err := getStack(b, stackRef)
 	if err != nil {
 		return err
 	}
@@ -565,7 +627,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
 		// they want to proceed.
-		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts)
+		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts, scopes)
 		if err != nil || opts.Preview {
 			return err
 		}
@@ -576,30 +638,36 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	var unused chan engine.Event
 	return b.updateStack(
 		updateKind, stack, pkg,
-		root, m, opts, displayOpts, unused, false /*dryRun*/)
+		root, m, opts, displayOpts, unused, false /*dryRun*/, scopes)
 }
 
-func (b *cloudBackend) Update(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.PreviewThenPromptThenExecute(client.UpdateKindUpdate, stackName, pkg, root, m, opts, displayOpts)
+func (b *cloudBackend) Update(stackRef backend.StackReference, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	scopes backend.CancellationScopeSource) error {
+
+	return b.PreviewThenPromptThenExecute(client.UpdateKindUpdate, stackRef, pkg, root, m, opts, displayOpts, scopes)
 }
 
-func (b *cloudBackend) Refresh(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.PreviewThenPromptThenExecute(client.UpdateKindRefresh, stackName, pkg, root, m, opts, displayOpts)
+func (b *cloudBackend) Refresh(stackRef backend.StackReference, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	scopes backend.CancellationScopeSource) error {
+
+	return b.PreviewThenPromptThenExecute(client.UpdateKindRefresh, stackRef, pkg, root, m, opts, displayOpts, scopes)
 }
 
-func (b *cloudBackend) Destroy(stackName tokens.QName, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions) error {
-	return b.PreviewThenPromptThenExecute(client.UpdateKindDestroy, stackName, pkg, root, m, opts, displayOpts)
+func (b *cloudBackend) Destroy(stackRef backend.StackReference, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
+	scopes backend.CancellationScopeSource) error {
+
+	return b.PreviewThenPromptThenExecute(client.UpdateKindDestroy, stackRef, pkg, root, m, opts, displayOpts, scopes)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
-	action client.UpdateKind, stackName tokens.QName,
+	action client.UpdateKind, stackRef backend.StackReference,
 	pkg *workspace.Project, root string, m backend.UpdateMetadata,
 	opts engine.UpdateOptions, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
-	stack, err := getCloudStackIdentifier(stackName)
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
@@ -607,7 +675,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	workspaceStack, err := workspace.DetectProjectStack(stackName)
+	workspaceStack, err := workspace.DetectProjectStack(stackRef.StackName())
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", errors.Wrap(err, "getting configuration")
 	}
@@ -636,7 +704,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 	if action == client.UpdateKindUpdate {
-		glog.V(7).Infof("Stack %s being updated to version %d", stackName, version)
+		glog.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
 	return update, version, token, nil
@@ -646,13 +714,13 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) updateStack(
 	action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool,
+	scopes backend.CancellationScopeSource) error {
 
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
 	fmt.Printf(
-		colors.ColorizeText(
-			colors.BrightMagenta+"%s stack '%s' in the Pulumi Cloud"+colors.Reset+cmdutil.EmojiOr(" ☁️", "")+"\n"),
+		colors.ColorizeText(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
@@ -670,7 +738,7 @@ func (b *cloudBackend) updateStack(
 
 	if version != 0 {
 		// Print a URL afterwards to redirect to the version URL.
-		base := b.CloudConsoleStackPath(update.StackIdentifier)
+		base := b.cloudConsoleStackPath(update.StackIdentifier)
 		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
 			defer func() {
 				fmt.Printf(
@@ -684,7 +752,7 @@ func (b *cloudBackend) updateStack(
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
 			action, stack.Name(), pkg, root, opts, displayOpts,
-			update, token, callerEventsOpt, dryRun)
+			update, token, callerEventsOpt, dryRun, scopes)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -724,16 +792,17 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 }
 
 func (b *cloudBackend) runEngineAction(
-	action client.UpdateKind, stackName tokens.QName, pkg *workspace.Project,
+	action client.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project,
 	root string, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
 	update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) error {
+	callerEventsOpt chan<- engine.Event, dryRun bool, scopes backend.CancellationScopeSource) error {
 
-	u, err := b.newUpdate(stackName, pkg, root, update, token)
+	u, err := b.newUpdate(stackRef, pkg, root, update, token)
 	if err != nil {
 		return err
 	}
 
+	manager := b.newSnapshotManager(u.update, u.tokenSource)
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 
@@ -741,6 +810,10 @@ func (b *cloudBackend) runEngineAction(
 		getActionLabel(string(action), dryRun), displayEvents, displayDone, displayOpts)
 
 	engineEvents := make(chan engine.Event)
+
+	scope := scopes.NewScope(engineEvents, dryRun)
+	defer scope.Close()
+
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
@@ -754,17 +827,18 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
+	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
-			err = engine.Preview(u, engineEvents, opts)
+			err = engine.Preview(u, engineCtx, opts)
 		} else {
-			_, err = engine.Update(u, engineEvents, opts, dryRun)
+			_, err = engine.Update(u, engineCtx, opts, dryRun)
 		}
 	case client.UpdateKindRefresh:
-		_, err = engine.Refresh(u, engineEvents, opts, dryRun)
+		_, err = engine.Refresh(u, engineCtx, opts, dryRun)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, engineEvents, opts, dryRun)
+		_, err = engine.Destroy(u, engineCtx, opts, dryRun)
 	default:
 		contract.Failf("Unrecognized action type: %s", action)
 	}
@@ -774,6 +848,7 @@ func (b *cloudBackend) runEngineAction(
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)
+	contract.IgnoreClose(manager)
 
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded
@@ -790,8 +865,8 @@ func (b *cloudBackend) runEngineAction(
 	return err
 }
 
-func (b *cloudBackend) CancelCurrentUpdate(stackName tokens.QName) error {
-	stackID, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) CancelCurrentUpdate(stackRef backend.StackReference) error {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return err
 	}
@@ -811,8 +886,8 @@ func (b *cloudBackend) CancelCurrentUpdate(stackName tokens.QName) error {
 	return b.client.CancelUpdate(updateID)
 }
 
-func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo, error) {
-	stack, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) GetHistory(stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -825,6 +900,15 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
 	for _, update := range updates {
+		// Decode the deployment.
+		if update.Version > 1 {
+			return nil, errors.Errorf("unsupported checkpoint version %v", update.Version)
+		}
+		var deployment apitype.DeploymentV1
+		if err := json.Unmarshal([]byte(update.Deployment), &deployment); err != nil {
+			return nil, err
+		}
+
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)
 		if err != nil {
@@ -839,7 +923,7 @@ func (b *cloudBackend) GetHistory(stackName tokens.QName) ([]backend.UpdateInfo,
 			Result:          backend.UpdateResult(update.Result),
 			StartTime:       update.StartTime,
 			EndTime:         update.EndTime,
-			Deployment:      update.Deployment,
+			Deployment:      &deployment,
 			ResourceChanges: convertResourceChanges(update.ResourceChanges),
 		})
 	}
@@ -873,8 +957,10 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(stackName tokens.QName, logQuery operations.LogQuery) ([]operations.LogEntry, error) {
-	stack, err := b.GetStack(stackName)
+func (b *cloudBackend) GetLogs(stackRef backend.StackReference,
+	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
+
+	stack, err := b.GetStack(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -885,7 +971,7 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName, logQuery operations.LogQu
 	// If we're dealing with a stack that runs its operations locally, get the stack's target and fetch the logs
 	// directly
 	if stack.(Stack).RunLocally() {
-		target, targetErr := b.getTarget(stackName)
+		target, targetErr := b.getTarget(stackRef)
 		if targetErr != nil {
 			return nil, targetErr
 		}
@@ -893,15 +979,15 @@ func (b *cloudBackend) GetLogs(stackName tokens.QName, logQuery operations.LogQu
 	}
 
 	// Otherwise, fetch the logs from the service.
-	stackID, err := getCloudStackIdentifier(stackName)
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 	return b.client.GetStackLogs(stackID, logQuery)
 }
 
-func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.UntypedDeployment, error) {
-	stack, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) ExportDeployment(stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -914,8 +1000,8 @@ func (b *cloudBackend) ExportDeployment(stackName tokens.QName) (*apitype.Untype
 	return &deployment, nil
 }
 
-func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apitype.UntypedDeployment) error {
-	stack, err := getCloudStackIdentifier(stackName)
+func (b *cloudBackend) ImportDeployment(stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
+	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return err
 	}
@@ -939,7 +1025,7 @@ func (b *cloudBackend) ImportDeployment(stackName tokens.QName, deployment *apit
 
 // getCloudProjectIdentifier returns information about the current repository and project, based on the current
 // working directory.
-func getCloudProjectIdentifier() (client.ProjectIdentifier, error) {
+func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectIdentifier, error) {
 	w, err := workspace.New()
 	if err != nil {
 		return client.ProjectIdentifier{}, err
@@ -951,24 +1037,45 @@ func getCloudProjectIdentifier() (client.ProjectIdentifier, error) {
 	}
 
 	repo := w.Repository()
+
+	// If we have repository information (this is the case when `pulumi init` has been run, use that.) To support the
+	// old and new model, we either set the Repository field in ProjectIdentifer or keep it as the empty string. The
+	// client type uses this to decide what REST endpoints to hit.
+	//
+	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
+	if repo != nil {
+		return client.ProjectIdentifier{
+			Owner:      repo.Owner,
+			Repository: repo.Name,
+			Project:    string(proj.Name),
+		}, nil
+	}
+
+	if owner == "" {
+		owner, err = b.client.GetPulumiAccountName()
+		if err != nil {
+			return client.ProjectIdentifier{}, err
+		}
+	}
+
+	// Otherwise, we are on the new plan.
 	return client.ProjectIdentifier{
-		Owner:      repo.Owner,
-		Repository: repo.Name,
-		Project:    string(proj.Name),
+		Owner:   owner,
+		Project: string(proj.Name),
 	}, nil
 }
 
 // getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
 // the current working directory.
-func getCloudStackIdentifier(stackName tokens.QName) (client.StackIdentifier, error) {
-	project, err := getCloudProjectIdentifier()
+func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
+	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
 	if err != nil {
 		return client.StackIdentifier{}, errors.Wrap(err, "failed to detect project")
 	}
 
 	return client.StackIdentifier{
 		ProjectIdentifier: project,
-		Stack:             string(stackName),
+		Stack:             string(stackRef.StackName()),
 	}, nil
 }
 
@@ -998,13 +1105,13 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 	}()
 	go displayEvents(strings.ToLower(actionLabel), events, done, displayOpts)
 
-	// Events occur in sequence, filter out all the ones we have seen before in each request.
-	eventIndex := "0"
+	// The UpdateEvents API returns a continuation token to only get events after the previous call.
+	var continuationToken *string
 	for {
 		// Query for the latest update results, including log entries so we can provide active status updates.
 		_, results, err := retry.Until(context.Background(), retry.Acceptor{
 			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
-				return b.tryNextUpdate(update, eventIndex, try, nextRetryTime)
+				return b.tryNextUpdate(update, continuationToken, try, nextRetryTime)
 			},
 		})
 		if err != nil {
@@ -1015,12 +1122,11 @@ func (b *cloudBackend) waitForUpdate(actionLabel string, update client.UpdateIde
 		updateResults := results.(apitype.UpdateResults)
 		for _, event := range updateResults.Events {
 			events <- displayEvent{Kind: UpdateEvent, Payload: event}
-			eventIndex = event.Index
 		}
 
-		// Check if in termal state and if so return.
-		switch updateResults.Status {
-		case apitype.StatusFailed, apitype.StatusSucceeded:
+		continuationToken = updateResults.ContinuationToken
+		// A nil continuation token means there are no more events to read and the update has finished.
+		if continuationToken == nil {
 			return updateResults.Status, nil
 		}
 	}
@@ -1071,13 +1177,13 @@ func displayEvents(
 	}
 }
 
-// tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which resutls in a
+// tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which results in a
 // false returned in the first return value.  If a non-nil error is returned, this operation should fail.
-func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, afterIndex string, try int,
+func (b *cloudBackend) tryNextUpdate(update client.UpdateIdentifier, continuationToken *string, try int,
 	nextRetryTime time.Duration) (bool, interface{}, error) {
 
 	// If there is no error, we're done.
-	results, err := b.client.GetUpdateEvents(update, afterIndex)
+	results, err := b.client.GetUpdateEvents(update, continuationToken)
 	if err == nil {
 		return true, results, nil
 	}
@@ -1125,16 +1231,12 @@ func IsValidAccessToken(cloudURL, accessToken string) (bool, error) {
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	githubLogin, err := client.NewClient(cloudURL, accessToken).DescribeUser()
+	_, err := client.NewClient(cloudURL, accessToken).GetPulumiAccountName()
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "getting user info from %v", cloudURL)
-	}
-
-	if githubLogin == "" {
-		return false, errors.New("unexpected response from cloud API")
 	}
 
 	return true, nil

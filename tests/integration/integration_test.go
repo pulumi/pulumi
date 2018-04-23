@@ -55,15 +55,13 @@ func TestProjectMain(t *testing.T) {
 				e.DeleteEnvironment()
 			}
 		}()
-		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
-
 		e.ImportDirectory("project_main_abs")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
 	t.Run("Error_ParentFolder", func(t *testing.T) {
@@ -73,15 +71,13 @@ func TestProjectMain(t *testing.T) {
 				e.DeleteEnvironment()
 			}
 		}()
-		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
-
 		e.ImportDirectory("project_main_parent")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
 		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 }
 
@@ -107,7 +103,7 @@ func TestStackTagValidation(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
@@ -127,7 +123,7 @@ func TestStackTagValidation(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		// Change the contents of the Name property of Pulumi.yaml.
 		yamlPath := path.Join(e.CWD, "Pulumi.yaml")
@@ -152,7 +148,7 @@ func TestStackTagValidation(t *testing.T) {
 		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		prefix := "lorem ipsum dolor sit amet"     // 26
 		prefix = prefix + prefix + prefix + prefix // 104
@@ -292,9 +288,7 @@ func TestConfigSave(t *testing.T) {
 		Runtime: "nodejs",
 	}).Save(path)
 	assert.NoError(t, err)
-	e.RunCommand("git", "init")
-	e.RunCommand("pulumi", "init")
-	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "testing-2")
 	e.RunCommand("pulumi", "stack", "init", "testing-1")
 
@@ -348,6 +342,8 @@ func TestConfigSave(t *testing.T) {
 
 	validate("configB", "value2", testStack2.Config)
 	validate("configD", "value4", testStack2.Config)
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
 // Tests basic configuration from the perspective of a Pulumi program.
@@ -377,61 +373,4 @@ func TestConfigBasicPython(t *testing.T) {
 			"bEncryptedSecret": "this super Pythonic secret is encrypted",
 		},
 	})
-}
-
-// Tests that when `pulumi` is run, configuration is upgraded from the old format to the new format.
-func TestConfigUpgrade(t *testing.T) {
-	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
-		}
-	}()
-
-	e.ImportDirectory("config_upgrade")
-
-	// Run a pulumi command, which will upgrade everything (but we have to be logged in first!)
-	e.RunCommand("pulumi", "login", "--cloud-url", "local://")
-	e.RunCommand("pulumi", "config")
-
-	validate := func(k string, v string, cfg config.Map) {
-		key, err := config.ParseKey("config_upgrade:config:" + k)
-		assert.NoError(t, err)
-		d, ok := cfg[key]
-		assert.True(t, ok, "config key %v should be set", k)
-		dv, err := d.Value(nil)
-		assert.NoError(t, err)
-		assert.Equal(t, v, dv)
-	}
-
-	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.local1.yaml"))
-	assert.NoError(t, err)
-	assert.Equal(t, 4, len(testStack1.Config))
-	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.local2.yaml"))
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(testStack2.Config))
-
-	validate("allKey", "allValue", testStack1.Config)
-	validate("allKeyOverride", "local1Overridden", testStack1.Config)
-	validate("allWorkspaceKey", "allWorkspaceValue", testStack1.Config)
-	validate("local1ProjectKey", "local1ProjectValue", testStack1.Config)
-
-	validate("allKey", "allValue", testStack2.Config)
-	validate("allKeyOverride", "local2Overridden", testStack2.Config)
-	validate("allWorkspaceKey", "allWorkspaceValue", testStack2.Config)
-	validate("local2WorkspaceKey", "local2WorkspaceValue", testStack2.Config)
-
-	// The stack local2 had an encrypted configuration value, ensure the EncryptionSalt was copied over
-	assert.NotEmpty(t, testStack2.EncryptionSalt)
-
-	// Ensure config has been removed from the old files:
-	w, err := workspace.NewFrom(e.CWD)
-	assert.NoError(t, err)
-
-	proj, err := workspace.LoadProject(filepath.Join(e.CWD, "Pulumi.yaml"))
-	assert.NoError(t, err)
-
-	assert.Empty(t, w.Settings().ConfigDeprecated)
-	assert.Empty(t, proj.ConfigDeprecated)
-	assert.Empty(t, proj.EncryptionSaltDeprecated)
 }

@@ -35,22 +35,20 @@ type UpdateOptions struct {
 // ResourceChanges contains the aggregate resource changes by operation type.
 type ResourceChanges map[deploy.StepOp]int
 
-func Update(
-	u UpdateInfo, events chan<- Event, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
-
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 	contract.Require(u != nil, "update")
-	contract.Require(events != nil, "events")
+	contract.Require(ctx != nil, "ctx")
 
-	defer func() { events <- cancelEvent() }()
+	defer func() { ctx.Events <- cancelEvent() }()
 
-	ctx, err := newPlanContext(u)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.Close()
+	defer info.Close()
 
-	emitter := makeEventEmitter(events, u)
-	return update(ctx, planOptions{
+	emitter := makeEventEmitter(ctx.Events, u)
+	return update(ctx, info, planOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
@@ -87,7 +85,7 @@ func newUpdateSource(
 	}, dryRun), nil
 }
 
-func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
+func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
 	result, err := plan(info, opts, dryRun)
 	if err != nil {
 		return nil, err
@@ -106,7 +104,7 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 
 		if dryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, err = printPlan(result, dryRun)
+			resourceChanges, err = printPlan(ctx, result, dryRun)
 			if err != nil {
 				return resourceChanges, err
 			}
@@ -116,8 +114,8 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
-			actions := newUpdateActions(info.Update, opts)
-			summary, _, _, err := result.Walk(actions, false)
+			actions := newUpdateActions(ctx, info.Update, opts)
+			summary, _, _, err := result.Walk(ctx, actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return resourceChanges, err
@@ -139,6 +137,7 @@ func update(info *planContext, opts planOptions, dryRun bool) (ResourceChanges, 
 
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
+	Context      *Context
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	Seen         map[resource.URN]deploy.Step
@@ -147,12 +146,13 @@ type updateActions struct {
 	Opts         planOptions
 }
 
-func newUpdateActions(u UpdateInfo, opts planOptions) *updateActions {
+func newUpdateActions(context *Context, u UpdateInfo, opts planOptions) *updateActions {
 	return &updateActions{
-		Ops:    make(map[deploy.StepOp]int),
-		Seen:   make(map[resource.URN]deploy.Step),
-		Update: u,
-		Opts:   opts,
+		Context: context,
+		Ops:     make(map[deploy.StepOp]int),
+		Seen:    make(map[resource.URN]deploy.Step),
+		Update:  u,
+		Opts:    opts,
 	}
 }
 
@@ -163,13 +163,19 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Update.BeginMutation()
+	return acts.Context.SnapshotManager.BeginMutation()
 }
 
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
 
 	assertSeen(acts.Seen, step)
+
+	// If we've already been terminated, exit without writing the checkpoint. We explicitly want to leave the
+	// checkpoint in an inconsistent state in this event.
+	if acts.Context.Cancel.TerminateErr() != nil {
+		return nil
+	}
 
 	// Report the result of the step.
 	stepop := step.Op()
@@ -188,8 +194,12 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 			acts.Ops[stepop]++
 		}
 
-		// Also show outputs here, since there might be some from the initial registration.
-		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
+		// not show outputs for component resources at this point: any that exist must be from a previous execution of
+		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
+		if step.Res().Custom {
+			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		}
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -204,7 +214,7 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	mutation, err := acts.Update.BeginMutation()
+	mutation, err := acts.Context.SnapshotManager.BeginMutation()
 	if err != nil {
 		return err
 	}
