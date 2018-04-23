@@ -15,7 +15,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, ctx.SnapshotManager)
+	info, err := newPlanContext(u)
 	if err != nil {
 		return nil, err
 	}
