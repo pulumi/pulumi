@@ -350,6 +350,10 @@ func ownerFromRef(stackRef backend.StackReference) string {
 }
 
 func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+	if opts == nil {
+		opts = CreateStackOptions{}
+	}
+
 	cloudOpts, ok := opts.(CreateStackOptions)
 	if !ok {
 		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
