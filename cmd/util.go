@@ -380,8 +380,6 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 			m.Environment[backend.GitCommitMessage] = strings.TrimSpace(commit.Message)
 			m.Environment[backend.GitCommitter] = commit.Committer.Name
 			m.Environment[backend.GitAuthor] = commit.Author.Name
-			// For more information about how emails are surfaced from GitHub repos, see:
-			// https://help.github.com/articles/about-commit-email-addresses/
 			m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
 			m.Environment[backend.GitAuthorEmail] = commit.Author.Email
 		} else {
