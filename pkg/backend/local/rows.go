@@ -197,10 +197,12 @@ const (
 
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.display.Done && !data.done {
-		suffixes := data.display.suffixesArray
-		ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
+		if data.step.Op != deploy.OpSame || isRootURN(data.step.URN) {
+			suffixes := data.display.suffixesArray
+			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-		return data.step.Op.Color() + ellipses + colors.Reset
+			return data.step.Op.Color() + ellipses + colors.Reset
+		}
 	}
 
 	return ""
