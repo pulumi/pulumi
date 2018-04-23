@@ -175,9 +175,7 @@ func TestStackBackups(t *testing.T) {
 		// Verify the backup directory contains a single backup.
 		files, err := ioutil.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
-		if len(files) != 1 {
-			t.Fatalf("Didn't find any files in backup directory.")
-		}
+		assert.Equal(t, 1, len(files))
 		fileName := files[0].Name()
 
 		// Verify the backup file.
