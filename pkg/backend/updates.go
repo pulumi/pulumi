@@ -47,17 +47,6 @@ const (
 const (
 	// GitHead is the commit hash of HEAD.
 	GitHead = "git.head"
-	// GitCommitMessage is the message for the commit at HEAD.
-	GitCommitMessage = "git.message"
-	// GitCommitter is the name of the person who committed the commit at HEAD.
-	GitCommitter = "git.committer"
-	// GitCommitterEmail is the Email address associated with the committer.
-	GitCommitterEmail = "git.committer.email"
-	// GitAuthor is the name of the person who authored the commit at HEAD.
-	GitAuthor = "git.author"
-	// GitAuthorEmail is the email address associated with the commit's author.
-	GitAuthorEmail = "git.author.email"
-
 	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
 	GitDirty = "git.dirty"
 

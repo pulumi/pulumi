@@ -372,16 +372,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		// Commit at HEAD.
 		head, err := repo.Head()
 		if err == nil {
-			commit, getCommitErr := repo.CommitObject(head.Hash())
-			if err != nil {
-				return m, errors.Wrapf(getCommitErr, gitErrCtx, "getting HEAD commit")
-			}
 			m.Environment[backend.GitHead] = head.Hash().String()
-			m.Environment[backend.GitCommitMessage] = strings.TrimSpace(commit.Message)
-			m.Environment[backend.GitCommitter] = commit.Committer.Name
-			m.Environment[backend.GitAuthor] = commit.Author.Name
-			m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
-			m.Environment[backend.GitAuthorEmail] = commit.Author.Email
 		} else {
 			// Ignore "reference not found" in the odd case where the HEAD commit doesn't exist.
 			// (git init, but no commits yet.)
