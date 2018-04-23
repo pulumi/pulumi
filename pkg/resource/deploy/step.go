@@ -70,12 +70,6 @@ func (s *SameStep) Apply(preview bool) (resource.Status, error) {
 	s.new.URN = s.old.URN
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
-
-	if !preview {
-		s.iter.MarkStateSnapshot(s.old)
-		s.iter.AppendStateSnapshot(s.new)
-	}
-
 	s.reg.Done(&RegisterResult{State: s.new, Stable: true})
 	return resource.StatusOK, nil
 }
@@ -163,8 +157,6 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 			s.new.ID = id
 			s.new.Outputs = outs
 		}
-
-		s.iter.AppendStateSnapshot(s.new)
 	}
 
 	// Mark the old resource as pending deletion if necessary.
@@ -241,8 +233,6 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 				return rst, err
 			}
 		}
-
-		s.iter.MarkStateSnapshot(s.old)
 	}
 
 	return resource.StatusOK, nil
@@ -311,10 +301,6 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 			// Now copy any output state back in case the update triggered cascading updates to other properties.
 			s.new.Outputs = outs
 		}
-
-		// Mark the old state as having been processed, and add the new state.
-		s.iter.MarkStateSnapshot(s.old)
-		s.iter.AppendStateSnapshot(s.new)
 	}
 
 	// Finally, mark this operation as complete.

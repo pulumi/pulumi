@@ -163,7 +163,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Context.SnapshotManager.BeginMutation()
+	return acts.Context.SnapshotManager.BeginMutation(step)
 }
 
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
@@ -187,6 +187,11 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(step.URN()), err)
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
+
+		// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
+		// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
+		// reported above.
+		return ctx.(SnapshotMutation).Abort(step)
 	} else {
 		if step.Logical() {
 			// Increment the counters.
@@ -200,11 +205,9 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		if step.Res().Custom {
 			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
 		}
-	}
 
-	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
-	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+		return ctx.(SnapshotMutation).End(step)
+	}
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
@@ -214,10 +217,5 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	mutation, err := acts.Context.SnapshotManager.BeginMutation()
-	if err != nil {
-		return err
-	}
-
-	return mutation.End(step.Iterator().Snap())
+	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }

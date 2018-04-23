@@ -802,7 +802,8 @@ func (b *cloudBackend) runEngineAction(
 		return err
 	}
 
-	manager := b.newSnapshotManager(u.update, u.tokenSource)
+	persister := b.newSnapshotPersister(u.update, u.tokenSource)
+	manager := backend.NewSnapshotManager(stackRef.StackName(), persister, u.GetTarget().Snapshot)
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 

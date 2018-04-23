@@ -15,7 +15,9 @@ type SnapshotManager interface {
 	// snapshot. It provides the step that it intends to execute. Based on that step, BeginMutation
 	// will record this intent in the global snapshot and return a `SnapshotMutation` that, when ended,
 	// will complete the transaction.
-	BeginMutation() (SnapshotMutation, error)
+	BeginMutation(step deploy.Step) (SnapshotMutation, error)
+
+	RegisterResourceOutputs(step deploy.Step) error
 }
 
 // SnapshotMutation represents an outstanding mutation that is yet to be completed. When the engine completes
@@ -23,5 +25,9 @@ type SnapshotManager interface {
 type SnapshotMutation interface {
 	// End terminates the transaction and commits the results to the snapshot, returning an error if this
 	// failed to complete.
-	End(snapshot *deploy.Snapshot) error
+	End(step deploy.Step) error
+
+	// Abort termiantes the transaction without committing the result to the snapshot, returning an
+	// error if this failed to complete.
+	Abort(step deploy.Step) error
 }
