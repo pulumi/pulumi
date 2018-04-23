@@ -21,8 +21,10 @@ type UpdateInfo interface {
 	GetTarget() *deploy.Target
 }
 
-// Context provides cancellation, termination, and eventing options for an engine operation.
+// Context provides cancellation, termination, and eventing options for an engine operation. It also provides
+// a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
-	Cancel *cancel.Context
-	Events chan<- Event
+	Cancel          *cancel.Context
+	Events          chan<- Event
+	SnapshotManager SnapshotManager
 }

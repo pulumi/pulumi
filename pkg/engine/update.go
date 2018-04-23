@@ -35,14 +35,13 @@ type UpdateOptions struct {
 // ResourceChanges contains the aggregate resource changes by operation type.
 type ResourceChanges map[deploy.StepOp]int
 
-func Update(u UpdateInfo, sm SnapshotManager, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 	contract.Require(u != nil, "update")
-	contract.Require(sm != nil, "SnapshotManager")
 	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, sm)
+	info, err := newPlanContext(u, ctx.SnapshotManager)
 	if err != nil {
 		return nil, err
 	}

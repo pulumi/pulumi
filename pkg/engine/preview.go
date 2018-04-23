@@ -9,14 +9,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Preview(u UpdateInfo, sm SnapshotManager, ctx *Context, opts UpdateOptions) error {
+func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 	contract.Require(u != nil, "u")
-	contract.Require(sm != nil, "SnapshotManager")
 	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, sm)
+	info, err := newPlanContext(u, ctx.SnapshotManager)
 	if err != nil {
 		return err
 	}

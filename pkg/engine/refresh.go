@@ -9,14 +9,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Refresh(u UpdateInfo, sm SnapshotManager, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
+func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 	contract.Require(u != nil, "u")
-	contract.Require(sm != nil, "SnapshotManager")
 	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, sm)
+	info, err := newPlanContext(u, ctx.SnapshotManager)
 	if err != nil {
 		return nil, err
 	}

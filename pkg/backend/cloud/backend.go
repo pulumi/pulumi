@@ -800,18 +800,18 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents}
+	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
-			err = engine.Preview(u, manager, engineCtx, opts)
+			err = engine.Preview(u, engineCtx, opts)
 		} else {
-			_, err = engine.Update(u, manager, engineCtx, opts, dryRun)
+			_, err = engine.Update(u, engineCtx, opts, dryRun)
 		}
 	case client.UpdateKindRefresh:
-		_, err = engine.Refresh(u, manager, engineCtx, opts, dryRun)
+		_, err = engine.Refresh(u, engineCtx, opts, dryRun)
 	case client.UpdateKindDestroy:
-		_, err = engine.Destroy(u, manager, engineCtx, opts, dryRun)
+		_, err = engine.Destroy(u, engineCtx, opts, dryRun)
 	default:
 		contract.Failf("Unrecognized action type: %s", action)
 	}

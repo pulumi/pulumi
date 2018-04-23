@@ -209,7 +209,7 @@ func (b *localBackend) Destroy(
 }
 
 type engineOpFunc func(
-	engine.UpdateInfo, engine.SnapshotManager, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
+	engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
@@ -238,8 +238,8 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 
 	// Perform the update
 	start := time.Now().Unix()
-	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events}
-	changes, updateErr := performEngineOp(update, manager, engineCtx, opts, dryRun)
+	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events, SnapshotManager: manager}
+	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done
