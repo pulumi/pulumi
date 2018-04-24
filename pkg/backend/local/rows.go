@@ -15,8 +15,8 @@ import (
 )
 
 type Row interface {
-	FirstDisplayTime() int
-	SetFirstDisplayTime(time int)
+	DisplayOrderIndex() int
+	SetDisplayOrderIndex(index int)
 
 	ColorizedColumns() []string
 	ColorizedSuffix() string
@@ -52,13 +52,13 @@ func (data *headerRowData) HideRowIfUnnecessary() bool {
 	return false
 }
 
-func (data *headerRowData) FirstDisplayTime() int {
+func (data *headerRowData) DisplayOrderIndex() int {
 	// sort the header before all other rows
 	return -1
 }
 
-func (data *headerRowData) SetFirstDisplayTime(time int) {
-	// Nothing to do here.   Header is always at the same time.
+func (data *headerRowData) SetDisplayOrderIndex(time int) {
+	// Nothing to do here.   Header is always at the same index.
 }
 
 func (data *headerRowData) ColorizedColumns() []string {
@@ -89,7 +89,7 @@ func (data *headerRowData) ColorizedSuffix() string {
 
 // Implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
-	firstDisplayTime int
+	displayOrderIndex int
 
 	display *ProgressDisplay
 
@@ -113,15 +113,15 @@ type resourceRowData struct {
 	hideRowIfUnnecessary bool
 }
 
-func (data *resourceRowData) FirstDisplayTime() int {
+func (data *resourceRowData) DisplayOrderIndex() int {
 	// sort the header before all other rows
-	return data.firstDisplayTime
+	return data.displayOrderIndex
 }
 
-func (data *resourceRowData) SetFirstDisplayTime(time int) {
+func (data *resourceRowData) SetDisplayOrderIndex(index int) {
 	// only set this if it's the first time.
-	if data.firstDisplayTime == 0 {
-		data.firstDisplayTime = time
+	if data.displayOrderIndex == 0 {
+		data.displayOrderIndex = index
 	}
 }
 

@@ -85,7 +85,7 @@ type ProgressDisplay struct {
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
-	displayTime int
+	displayOrderCounter int
 
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
@@ -216,7 +216,7 @@ func DisplayProgressEvents(
 		urnToID:                make(map[resource.URN]string),
 		colorizedToUncolorized: make(map[string]string),
 		printedProgressCache:   make(map[string]Progress),
-		displayTime:            1,
+		displayOrderCounter:    1,
 	}
 
 	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
@@ -492,7 +492,7 @@ func (sortable sortable) Len() int {
 }
 
 func (sortable sortable) Less(i, j int) bool {
-	return sortable[i].row.FirstDisplayTime() < sortable[j].row.FirstDisplayTime()
+	return sortable[i].row.DisplayOrderIndex() < sortable[j].row.DisplayOrderIndex()
 }
 
 func (sortable sortable) Swap(i, j int) {
@@ -519,8 +519,8 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 			continue
 		}
 
-		display.displayTime++
-		node.row.SetFirstDisplayTime(display.displayTime)
+		display.displayOrderCounter++
+		node.row.SetDisplayOrderIndex(display.displayOrderCounter)
 		result = append(result, node)
 	}
 
