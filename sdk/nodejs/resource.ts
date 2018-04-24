@@ -57,7 +57,7 @@ export abstract class Resource {
         }
 
         if (opts.parent && !Resource.isInstance(opts.parent)) {
-            throw new Error("Resource parent was not a Resource as well")
+            throw new Error("Resource parent was not a Resource as well");
         }
 
         if (opts.id) {
