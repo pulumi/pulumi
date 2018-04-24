@@ -68,10 +68,10 @@ func SplitIntoTextAndTags(v string) []string {
 // where there is a max allowed width.  In these scenarios, we can't just measure the length of the
 // string as the embedded color tags would count against it, even though they end up with no length
 // when actually interpretted by the console.
-func TrimColorizedString(v string, maxLength int) string {
+func TrimColorizedString(v string, maxRuneLength int) string {
 	textAndTags := SplitIntoTextAndTags(v)
 
-	currentLength := 0
+	currentRuneLength := 0
 	trimmed := ""
 
 	for i := 0; i < len(textAndTags); i++ {
@@ -80,16 +80,19 @@ func TrimColorizedString(v string, maxLength int) string {
 		if i%2 == 0 {
 			contract.Assertf(!tagRegexp.MatchString(textOrTag), "Got a tag when we did not expect it")
 
-			text := textOrTag
-			if currentLength+len(text) > maxLength {
+			chunk := textOrTag
+			chunkRunes := []rune(chunk)
+			chunkRunesLen := len(chunkRunes)
+
+			if currentRuneLength+chunkRunesLen > maxRuneLength {
 				// adding this text chunk will cause us to go past the max length we allow.
 				// just take whatever subportion we can and stop what we're doing.
-				trimmed += text[0 : maxLength-currentLength]
+				trimmed += string(chunkRunes[0 : maxRuneLength-currentRuneLength])
 				break
 			} else {
 				// can safely add this text chunk
-				trimmed += text
-				currentLength += len(text)
+				trimmed += chunk
+				currentRuneLength += chunkRunesLen
 			}
 		} else {
 			contract.Assertf(tagRegexp.MatchString(textOrTag), "Should have gotten a tag")
