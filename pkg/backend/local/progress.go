@@ -222,12 +222,11 @@ func DisplayProgressEvents(
 	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
 
 	_, stdout, _ := term.StdStreams()
-	_, isTerminal := term.GetFdInfo(stdout)
 
 	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
 	contract.IgnoreError(err)
 
-	display.isTerminal = isTerminal
+	display.isTerminal = opts.IsInteractive
 	display.terminalWidth = terminalWidth
 
 	go func() {
@@ -239,7 +238,7 @@ func DisplayProgressEvents(
 		close(progressOutput)
 	}()
 
-	DisplayProgressToStream(progressOutput, stdout, isTerminal)
+	DisplayProgressToStream(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
 
