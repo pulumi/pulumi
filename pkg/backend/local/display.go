@@ -6,9 +6,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -34,12 +36,30 @@ func DisplayEvents(
 	}
 }
 
+type nopSpinner struct {
+}
+
+func (s *nopSpinner) Tick() {
+}
+
+func (s *nopSpinner) Reset() {
+}
+
 // DisplayDiffEvents displays the engine events with the diff view.
 func DisplayDiffEvents(action string,
 	events <-chan engine.Event, done chan<- bool, opts backend.DisplayOptions) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
+
+	var spinner cmdutil.Spinner
+	var ticker *time.Ticker
+
+	if opts.IsInteractive {
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
+	} else {
+		spinner = &nopSpinner{}
+		ticker = time.NewTicker(math.MaxInt64)
+	}
 
 	defer func() {
 		spinner.Reset()

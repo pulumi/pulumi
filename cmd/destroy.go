@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -32,6 +33,7 @@ func newDestroyCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var noInteractive bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -47,7 +49,8 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+			isInteractive := !noInteractive && terminal.IsTerminal(int(os.Stdout.Fd()))
+			if !force && !preview && !isInteractive {
 				return errors.New("'destroy' must be run interactively or be passed the --force or --preview flags")
 			}
 
@@ -88,6 +91,7 @@ func newDestroyCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				IsInteractive:        isInteractive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			}, cancellationScopes)
@@ -135,6 +139,13 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
+
+	// Hidden testing flag.  Jenkins creates an interactive terminal, but that isn't a
+	// great experience for tests which want to just dump output to the console to be
+	// perused later.
+	cmd.PersistentFlags().BoolVar(&noInteractive, "no-interactive", false, "Disable interactive mode")
+	err := cmd.PersistentFlags().MarkHidden("no-interactive")
+	contract.IgnoreError(err)
 
 	return cmd
 }
