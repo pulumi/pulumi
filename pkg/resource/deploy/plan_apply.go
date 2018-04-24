@@ -222,6 +222,45 @@ outer:
 	return nil, nil
 }
 
+// diff returns a DiffResult for the given resource.
+func (iter *PlanIterator) diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs, newOutputs,
+	newProps resource.PropertyMap, prov plugin.Provider, refresh, allowUnknowns bool) (plugin.DiffResult, error) {
+
+	// Workaround #1251: unexpected replaces.
+	//
+	// The legacy/desired behavior here is that if the provider-calculated inputs for a resource did not change,
+	// then the resource itself should not change. Unfortunately, we (correctly?) pass the entire current state
+	// of the resource to Diff, which includes calculated/output properties that may differ from those present
+	// in the input properties. This can cause unexpected diffs.
+	//
+	// For now, simply apply the legacy diffing behavior before deferring to the provider.
+	var hasChanges bool
+	if refresh {
+		hasChanges = !oldOutputs.DeepEquals(newOutputs)
+	} else {
+		hasChanges = !oldInputs.DeepEquals(newInputs)
+	}
+	if !hasChanges {
+		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	}
+
+	// If there is no provider for this resource, simply return a "diffs exist" result.
+	if prov == nil {
+		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+	}
+
+	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
+	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
+	diff, err := prov.Diff(urn, id, oldOutputs, newProps, allowUnknowns)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+	if diff.Changes == plugin.DiffUnknown {
+		diff.Changes = plugin.DiffSome
+	}
+	return diff, nil
+}
+
 // makeRegisterResourceSteps produces one or more steps required to achieve the desired resource goal state, or nil if
 // there aren't any steps to perform (in other words, the actual known state is equivalent to the goal state).  It is
 // possible to return multiple steps if the current resource state necessitates it (e.g., replacements).
@@ -324,39 +363,21 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	if hasOld {
 		contract.Assert(old != nil && old.Type == new.Type)
 
-		// The resource exists in both new and old; it could be an update.  This constitutes an update if the old
-		// and new properties don't match exactly.  It is also possible we'll need to replace the resource if the
-		// update impact assessment says so.  In this case, the resource's ID will change, which might have a
-		// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-		var diff plugin.DiffResult
-		if prov != nil {
-			if diff, err = prov.Diff(urn, old.ID, oldOutputs, props, allowUnknowns); err != nil {
-				return nil, err
-			}
+		// Determine whether the change resulted in a diff.
+		diff, err := iter.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, refresh,
+			allowUnknowns)
+		if err != nil {
+			return nil, err
 		}
 
-		// Determine whether the change resulted in a diff.  Our legacy behavior here entailed actually performing
-		// diffs of state on the Pulumi side, whereas our new behavior is to defer to the provider to decide.
-		var hasChanges bool
-		switch diff.Changes {
-		case plugin.DiffSome:
-			hasChanges = true
-		case plugin.DiffNone:
-			hasChanges = false
-		case plugin.DiffUnknown:
-			// This is legacy behavior; just use the DeepEquals function to diff on the Pulumi side.
-			if refresh {
-				hasChanges = !oldOutputs.DeepEquals(outputs)
-			} else {
-				hasChanges = !oldInputs.DeepEquals(inputs)
-			}
-		default:
+		// Ensure that we received a sensible response.
+		if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
 			return nil, errors.Errorf(
-				"resource provider for %s replied with unrecognized diff state: %d", urn, diff.Changes)
+				"unrecognized diff state for %s: %d", urn, diff.Changes)
 		}
 
-		// If this is an update, create the necessary step; otherwise, it's the same.
-		if hasChanges {
+		// If there were changes, check for a replacement vs. an in-place update.
+		if diff.Changes == plugin.DiffSome {
 			if diff.Replace() {
 				iter.replaces[urn] = true
 
