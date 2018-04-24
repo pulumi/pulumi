@@ -16,10 +16,20 @@ export type URN = string; // an automatically generated logical URN, used to sta
  */
 export abstract class Resource {
     /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+     // tslint:disable-next-line:variable-name
+    private readonly __pulumiResource: boolean = true;
+
+    /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
      */
     public readonly urn: Output<URN>;
+
+    public static isInstance(obj: any): obj is Resource {
+        return obj && obj.__pulumiResource;
+    }
 
     /**
      * Creates and registers a new resource object.  t is the fully qualified type token and name is
@@ -44,6 +54,10 @@ export abstract class Resource {
         // If there wasn't an explicit parent, and a root resource exists, parent to that.
         if (!opts.parent) {
             opts.parent = getRootResource();
+        }
+
+        if (opts.parent && !Resource.isInstance(opts.parent)) {
+            throw new Error("Resource parent was not a Resource as well")
         }
 
         if (opts.id) {
