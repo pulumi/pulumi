@@ -81,19 +81,11 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 }
 
 func newConfigRmCmd(stack *string) *cobra.Command {
-	var all bool
-	var save bool
-
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
 		Short: "Remove configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if all && *stack != "" {
-				return errors.New("if --all is specified, an explicit stack can not be provided")
-			}
-
-			// Ensure the stack exists.
 			s, err := requireStack(*stack, true)
 			if err != nil {
 				return err
@@ -116,13 +108,6 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			return workspace.SaveProjectStack(s.Name().StackName(), ps)
 		}),
 	}
-
-	rmCmd.PersistentFlags().BoolVar(
-		&all, "all", false,
-		"Remove a project wide configuration value that applies to all stacks")
-	rmCmd.PersistentFlags().BoolVar(
-		&save, "save", true,
-		"Remove the configuration value from the project file (if false, it is private to your workspace)")
 
 	return rmCmd
 }
