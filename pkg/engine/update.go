@@ -142,8 +142,8 @@ type pluginActions struct {
 	Context *Context
 }
 
-func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo, allPlugins []workspace.PluginInfo) error {
-	return p.Context.SnapshotManager.RecordPlugins(allPlugins)
+func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
+	return p.Context.SnapshotManager.RecordPlugin(loadedPlug)
 }
 
 // updateActions pretty-prints the plan application process as it goes.

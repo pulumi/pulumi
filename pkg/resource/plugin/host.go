@@ -51,9 +51,8 @@ type Host interface {
 // plugin load events.
 type Events interface {
 	// OnPluginLoad is fired by the plugin host whenever a new plugin is successfully loaded.
-	// newPlugin is the plugin that was loaded, while plugins is the full list of plugins currently
-	// loaded by the host.
-	OnPluginLoad(newPlugin workspace.PluginInfo, plugins []workspace.PluginInfo) error
+	// newPlugin is the plugin that was loaded.
+	OnPluginLoad(newPlugin workspace.PluginInfo) error
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
@@ -162,7 +161,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 			host.plugins = append(host.plugins, info)
 			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
 			if host.events != nil {
-				if eventerr := host.events.OnPluginLoad(info, host.plugins); eventerr != nil {
+				if eventerr := host.events.OnPluginLoad(info); eventerr != nil {
 					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
 				}
 			}
@@ -238,7 +237,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			host.plugins = append(host.plugins, info)
 			host.resourcePlugins[pkg] = &resourcePlugin{Plugin: plug, Info: info}
 			if host.events != nil {
-				if eventerr := host.events.OnPluginLoad(info, host.plugins); eventerr != nil {
+				if eventerr := host.events.OnPluginLoad(info); eventerr != nil {
 					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
 				}
 			}
@@ -272,7 +271,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 			host.plugins = append(host.plugins, info)
 			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info}
 			if host.events != nil {
-				if eventerr := host.events.OnPluginLoad(info, host.plugins); eventerr != nil {
+				if eventerr := host.events.OnPluginLoad(info); eventerr != nil {
 					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
 				}
 			}

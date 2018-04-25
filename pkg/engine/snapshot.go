@@ -22,8 +22,8 @@ type SnapshotManager interface {
 	// given step. These outputs are persisted in the snapshot.
 	RegisterResourceOutputs(step deploy.Step) error
 
-	// RecordPlugins records the set of plugins currently loaded by the plan in the snapshot.
-	RecordPlugins(plugins []workspace.PluginInfo) error
+	// RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
+	RecordPlugin(plugin workspace.PluginInfo) error
 }
 
 // SnapshotMutation represents an outstanding mutation that is yet to be completed. When the engine completes

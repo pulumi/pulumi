@@ -107,11 +107,10 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.refresh()
 }
 
-// RecordPlugins records the current set of plugins that were loaded to execute the current plan.
-func (sm *SnapshotManager) RecordPlugins(plugins []workspace.PluginInfo) error {
+// RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
+func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
 	return sm.mutate(func() {
-		sm.plugins = make([]workspace.PluginInfo, len(plugins))
-		copy(sm.plugins, plugins)
+		sm.plugins = append(sm.plugins, plugin)
 	})
 }
 
