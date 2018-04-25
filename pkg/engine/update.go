@@ -53,6 +53,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
+		PluginEvents:  &pluginActions{ctx},
 	}, dryRun)
 }
 
@@ -135,6 +136,16 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	return resourceChanges, nil
 }
 
+// pluginActions listens for plugin events and persists the set of loaded plugins
+// to the snapshot.
+type pluginActions struct {
+	Context *Context
+}
+
+func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo, allPlugins []workspace.PluginInfo) error {
+	return p.Context.SnapshotManager.RecordPlugins(allPlugins)
+}
+
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context      *Context
@@ -192,22 +203,22 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
 		// reported above.
 		return ctx.(SnapshotMutation).Abort(step)
-	} else {
-		if step.Logical() {
-			// Increment the counters.
-			acts.Steps++
-			acts.Ops[stepop]++
-		}
-
-		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
-		// not show outputs for component resources at this point: any that exist must be from a previous execution of
-		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
-		if step.Res().Custom {
-			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
-		}
-
-		return ctx.(SnapshotMutation).End(step)
 	}
+
+	if step.Logical() {
+		// Increment the counters.
+		acts.Steps++
+		acts.Ops[stepop]++
+	}
+
+	// Also show outputs here for custom resources, since there might be some from the initial registration. We do
+	// not show outputs for component resources at this point: any that exist must be from a previous execution of
+	// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
+	if step.Res().Custom {
+		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+	}
+
+	return ctx.(SnapshotMutation).End(step)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {

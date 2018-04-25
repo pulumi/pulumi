@@ -47,11 +47,16 @@ type Host interface {
 	Close() error
 }
 
+type Events interface {
+	OnPluginLoad(newPlugin workspace.PluginInfo, plugins []workspace.PluginInfo) error
+}
+
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource, events Events) (Host, error) {
 	host := &defaultHost{
 		ctx:             ctx,
 		config:          config,
+		events:          events,
 		analyzerPlugins: make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins: make(map[string]*languagePlugin),
 		resourcePlugins: make(map[tokens.Package]*resourcePlugin),
@@ -84,6 +89,7 @@ type pluginLoadRequest struct {
 type defaultHost struct {
 	ctx             *Context                           // the shared context for this host.
 	config          ConfigSource                       // the source for provider configuration parameters.
+	events          Events                             // optional callbacks for plugin load events
 	analyzerPlugins map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
 	languagePlugins map[string]*languagePlugin         // a cache of language plugins and their processes.
 	resourcePlugins map[tokens.Package]*resourcePlugin // a cache of resource plugins and their processes.
@@ -150,6 +156,11 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 			// Memoize the result.
 			host.plugins = append(host.plugins, info)
 			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
+			if host.events != nil {
+				if eventerr := host.events.OnPluginLoad(info, host.plugins); eventerr != nil {
+					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
+				}
+			}
 		}
 
 		return plug, err
@@ -221,6 +232,11 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			// Memoize the result.
 			host.plugins = append(host.plugins, info)
 			host.resourcePlugins[pkg] = &resourcePlugin{Plugin: plug, Info: info}
+			if host.events != nil {
+				if eventerr := host.events.OnPluginLoad(info, host.plugins); eventerr != nil {
+					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
+				}
+			}
 		}
 
 		return plug, err
@@ -250,6 +266,11 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 			// Memoize the result.
 			host.plugins = append(host.plugins, info)
 			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info}
+			if host.events != nil {
+				if eventerr := host.events.OnPluginLoad(info, host.plugins); eventerr != nil {
+					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
+				}
+			}
 		}
 
 		return plug, err

@@ -116,6 +116,14 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.refresh()
 }
 
+// RecordPlugins records the current set of plugins that were loaded to execute the current plan.
+func (sm *SnapshotManager) RecordPlugins(plugins []workspace.PluginInfo) error {
+	return sm.mutate(func() {
+		sm.plugins = make([]workspace.PluginInfo, len(plugins))
+		copy(sm.plugins, plugins)
+	})
+}
+
 // BeginMutation signals to the SnapshotManager that the engine intends to mutate the global snapshot
 // by performing the given Step. This function gives the SnapshotManager a chance to record the
 // intent to mutate before the mutation occurs.
