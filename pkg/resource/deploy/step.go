@@ -23,14 +23,12 @@ type Step interface {
 	New() *resource.State // the state of the resource after performing this step.
 	Res() *resource.State // the latest state for the resource that is known (worst case, old).
 	Logical() bool        // true if this step represents a logical operation in the program.
-
-	Plan() *Plan             // the owning plan.
-	Iterator() *PlanIterator // the current plan iterator.
+	Plan() *Plan          // the owning plan.
 }
 
 // SameStep is a mutating step that does nothing.
 type SameStep struct {
-	iter *PlanIterator         // the current plan iteration.
+	plan *Plan                 // the current plan.
 	reg  RegisterResourceEvent // the registration intent to convey a URN back to.
 	old  *resource.State       // the state of the resource before this step.
 	new  *resource.State       // the state of the resource after this step.
@@ -38,7 +36,7 @@ type SameStep struct {
 
 var _ Step = (*SameStep)(nil)
 
-func NewSameStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.State, new *resource.State) Step {
+func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -48,22 +46,21 @@ func NewSameStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.St
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &SameStep{
-		iter: iter,
+		plan: plan,
 		reg:  reg,
 		old:  old,
 		new:  new,
 	}
 }
 
-func (s *SameStep) Op() StepOp              { return OpSame }
-func (s *SameStep) Plan() *Plan             { return s.iter.p }
-func (s *SameStep) Iterator() *PlanIterator { return s.iter }
-func (s *SameStep) Type() tokens.Type       { return s.old.Type }
-func (s *SameStep) URN() resource.URN       { return s.old.URN }
-func (s *SameStep) Old() *resource.State    { return s.old }
-func (s *SameStep) New() *resource.State    { return s.new }
-func (s *SameStep) Res() *resource.State    { return s.new }
-func (s *SameStep) Logical() bool           { return true }
+func (s *SameStep) Op() StepOp           { return OpSame }
+func (s *SameStep) Plan() *Plan          { return s.plan }
+func (s *SameStep) Type() tokens.Type    { return s.old.Type }
+func (s *SameStep) URN() resource.URN    { return s.old.URN }
+func (s *SameStep) Old() *resource.State { return s.old }
+func (s *SameStep) New() *resource.State { return s.new }
+func (s *SameStep) Res() *resource.State { return s.new }
+func (s *SameStep) Logical() bool        { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, error) {
 	// Retain the URN, ID, and outputs:
@@ -76,7 +73,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, error) {
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	iter          *PlanIterator          // the current plan iteration.
+	plan          *Plan                  // the current plan.
 	reg           RegisterResourceEvent  // the registration intent to convey a URN back to.
 	old           *resource.State        // the state of the existing resource (only for replacements).
 	new           *resource.State        // the state of the resource after this step.
@@ -87,20 +84,20 @@ type CreateStep struct {
 
 var _ Step = (*CreateStep)(nil)
 
-func NewCreateStep(iter *PlanIterator, reg RegisterResourceEvent, new *resource.State) Step {
+func NewCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) Step {
 	contract.Assert(reg != nil)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &CreateStep{
-		iter: iter,
+		plan: plan,
 		reg:  reg,
 		new:  new,
 	}
 }
 
-func NewCreateReplacementStep(iter *PlanIterator, reg RegisterResourceEvent,
+func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	old *resource.State, new *resource.State, keys []resource.PropertyKey, pendingDelete bool) Step {
 	contract.Assert(reg != nil)
 	contract.Assert(old != nil)
@@ -113,7 +110,7 @@ func NewCreateReplacementStep(iter *PlanIterator, reg RegisterResourceEvent,
 	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
 	return &CreateStep{
-		iter:          iter,
+		plan:          plan,
 		reg:           reg,
 		old:           old,
 		new:           new,
@@ -129,8 +126,7 @@ func (s *CreateStep) Op() StepOp {
 	}
 	return OpCreate
 }
-func (s *CreateStep) Plan() *Plan                  { return s.iter.p }
-func (s *CreateStep) Iterator() *PlanIterator      { return s.iter }
+func (s *CreateStep) Plan() *Plan                  { return s.plan }
 func (s *CreateStep) Type() tokens.Type            { return s.new.Type }
 func (s *CreateStep) URN() resource.URN            { return s.new.URN }
 func (s *CreateStep) Old() *resource.State         { return s.old }
@@ -141,7 +137,7 @@ func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	if !preview {
-		if s.new.Custom && !s.iter.p.IsRefresh() {
+		if s.new.Custom && !s.plan.IsRefresh() {
 			// Invoke the Create RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -170,31 +166,31 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 
 // DeleteStep is a mutating step that deletes an existing resource.
 type DeleteStep struct {
-	iter      *PlanIterator   // the current plan iteration.
+	plan      *Plan           // the current plan.
 	old       *resource.State // the state of the existing resource.
 	replacing bool            // true if part of a replacement.
 }
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(iter *PlanIterator, old *resource.State) Step {
+func NewDeleteStep(plan *Plan, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Delete)
 	return &DeleteStep{
-		iter: iter,
+		plan: plan,
 		old:  old,
 	}
 }
 
-func NewDeleteReplacementStep(iter *PlanIterator, old *resource.State, pendingDelete bool) Step {
+func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingDelete bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!pendingDelete || old.Delete)
 	return &DeleteStep{
-		iter:      iter,
+		plan:      plan,
 		old:       old,
 		replacing: true,
 	}
@@ -206,14 +202,13 @@ func (s *DeleteStep) Op() StepOp {
 	}
 	return OpDelete
 }
-func (s *DeleteStep) Plan() *Plan             { return s.iter.p }
-func (s *DeleteStep) Iterator() *PlanIterator { return s.iter }
-func (s *DeleteStep) Type() tokens.Type       { return s.old.Type }
-func (s *DeleteStep) URN() resource.URN       { return s.old.URN }
-func (s *DeleteStep) Old() *resource.State    { return s.old }
-func (s *DeleteStep) New() *resource.State    { return nil }
-func (s *DeleteStep) Res() *resource.State    { return s.old }
-func (s *DeleteStep) Logical() bool           { return !s.replacing }
+func (s *DeleteStep) Plan() *Plan          { return s.plan }
+func (s *DeleteStep) Type() tokens.Type    { return s.old.Type }
+func (s *DeleteStep) URN() resource.URN    { return s.old.URN }
+func (s *DeleteStep) Old() *resource.State { return s.old }
+func (s *DeleteStep) New() *resource.State { return nil }
+func (s *DeleteStep) Res() *resource.State { return s.old }
+func (s *DeleteStep) Logical() bool        { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 	// Refuse to delete protected resources.
@@ -223,7 +218,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	if !preview {
-		if s.old.Custom && !s.iter.p.IsRefresh() {
+		if s.old.Custom && !s.plan.IsRefresh() {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -240,7 +235,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	iter    *PlanIterator          // the current plan iteration.
+	plan    *Plan                  // the current plan.
 	reg     RegisterResourceEvent  // the registration intent to convey a URN back to.
 	old     *resource.State        // the state of the existing resource.
 	new     *resource.State        // the newly computed state of the resource after updating.
@@ -249,7 +244,7 @@ type UpdateStep struct {
 
 var _ Step = (*UpdateStep)(nil)
 
-func NewUpdateStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.State,
+func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	new *resource.State, stables []resource.PropertyKey) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -261,7 +256,7 @@ func NewUpdateStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.
 	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
 	return &UpdateStep{
-		iter:    iter,
+		plan:    plan,
 		reg:     reg,
 		old:     old,
 		new:     new,
@@ -269,15 +264,14 @@ func NewUpdateStep(iter *PlanIterator, reg RegisterResourceEvent, old *resource.
 	}
 }
 
-func (s *UpdateStep) Op() StepOp              { return OpUpdate }
-func (s *UpdateStep) Plan() *Plan             { return s.iter.p }
-func (s *UpdateStep) Iterator() *PlanIterator { return s.iter }
-func (s *UpdateStep) Type() tokens.Type       { return s.old.Type }
-func (s *UpdateStep) URN() resource.URN       { return s.old.URN }
-func (s *UpdateStep) Old() *resource.State    { return s.old }
-func (s *UpdateStep) New() *resource.State    { return s.new }
-func (s *UpdateStep) Res() *resource.State    { return s.new }
-func (s *UpdateStep) Logical() bool           { return true }
+func (s *UpdateStep) Op() StepOp           { return OpUpdate }
+func (s *UpdateStep) Plan() *Plan          { return s.plan }
+func (s *UpdateStep) Type() tokens.Type    { return s.old.Type }
+func (s *UpdateStep) URN() resource.URN    { return s.old.URN }
+func (s *UpdateStep) Old() *resource.State { return s.old }
+func (s *UpdateStep) New() *resource.State { return s.new }
+func (s *UpdateStep) Res() *resource.State { return s.new }
+func (s *UpdateStep) Logical() bool        { return true }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	// Always propagate the URN and ID, even in previews and refreshes.
@@ -285,7 +279,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	s.new.ID = s.old.ID
 
 	if !preview {
-		if s.new.Custom && !s.iter.p.IsRefresh() {
+		if s.new.Custom && !s.plan.IsRefresh() {
 			// Invoke the Update RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
@@ -312,7 +306,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
 type ReplaceStep struct {
-	iter          *PlanIterator          // the current plan iteration.
+	plan          *Plan                  // the current plan.
 	old           *resource.State        // the state of the existing resource.
 	new           *resource.State        // the new state snapshot.
 	keys          []resource.PropertyKey // the keys causing replacement.
@@ -321,7 +315,7 @@ type ReplaceStep struct {
 
 var _ Step = (*ReplaceStep)(nil)
 
-func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State,
+func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 	keys []resource.PropertyKey, pendingDelete bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -332,7 +326,7 @@ func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &ReplaceStep{
-		iter:          iter,
+		plan:          plan,
 		old:           old,
 		new:           new,
 		keys:          keys,
@@ -341,8 +335,7 @@ func NewReplaceStep(iter *PlanIterator, old *resource.State, new *resource.State
 }
 
 func (s *ReplaceStep) Op() StepOp                   { return OpReplace }
-func (s *ReplaceStep) Plan() *Plan                  { return s.iter.p }
-func (s *ReplaceStep) Iterator() *PlanIterator      { return s.iter }
+func (s *ReplaceStep) Plan() *Plan                  { return s.plan }
 func (s *ReplaceStep) Type() tokens.Type            { return s.old.Type }
 func (s *ReplaceStep) URN() resource.URN            { return s.old.URN }
 func (s *ReplaceStep) Old() *resource.State         { return s.old }
