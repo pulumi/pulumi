@@ -47,7 +47,12 @@ type Host interface {
 	Close() error
 }
 
+// Events provides higher-level consumers of the plugin model to attach callbacks on
+// plugin load events.
 type Events interface {
+	// OnPluginLoad is fired by the plugin host whenever a new plugin is successfully loaded.
+	// newPlugin is the plugin that was loaded, while plugins is the full list of plugins currently
+	// loaded by the host.
 	OnPluginLoad(newPlugin workspace.PluginInfo, plugins []workspace.PluginInfo) error
 }
 
