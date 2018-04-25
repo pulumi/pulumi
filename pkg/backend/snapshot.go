@@ -80,10 +80,9 @@ func (sm *SnapshotManager) mutate(mutator func()) error {
 
 		snap := sm.snap()
 		err := sm.persister.Save(snap)
-		if err != nil && sm.doVerify {
-			if verifyErr := snap.VerifyIntegrity(); verifyErr != nil {
-				responseChan <- errors.Wrapf(verifyErr, "after mutation of snapshot")
-				return
+		if err == nil && sm.doVerify {
+			if err = snap.VerifyIntegrity(); err != nil {
+				err = errors.Wrapf(err, "after mutation of snapshot")
 			}
 		}
 
@@ -91,14 +90,6 @@ func (sm *SnapshotManager) mutate(mutator func()) error {
 	}
 
 	return <-responseChan
-}
-
-// doMutations retires all incoming mutation requests. It is meant to run in its own
-// goroutine that will exit when the SnapshotManager is closed.
-func (sm *SnapshotManager) doMutations() {
-	for request := range sm.mutationRequests {
-		request()
-	}
 }
 
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
@@ -328,6 +319,11 @@ func NewSnapshotManager(stackName tokens.QName, persister SnapshotPersister,
 		mutationRequests: make(chan func()),
 	}
 
-	go manager.doMutations()
+	go func() {
+		for request := range manager.mutationRequests {
+			request()
+		}
+	}()
+
 	return manager
 }

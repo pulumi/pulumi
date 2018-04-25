@@ -341,7 +341,7 @@ func TestDeletion(t *testing.T) {
 	assert.Len(t, lastSnap.Resources, 0)
 }
 
-func TestAbortedDelete(t *testing.T) {
+func TestFailedDelete(t *testing.T) {
 	resourceA := NewResource("a")
 
 	name := tokens.QName("test")
@@ -356,12 +356,12 @@ func TestAbortedDelete(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = mutation.End(step, false)
+	err = mutation.End(step, false /* successful */)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
-	// since we aborted the mutation, the snapshot should still contain
+	// since we marked the mutation as not successful, the snapshot should still contain
 	// the resource we failed to delete.
 	lastSnap := sp.SavedSnapshots[len(sp.SavedSnapshots)-1]
 	assert.Len(t, lastSnap.Resources, 1)
