@@ -1,5 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+import { RunError } from "./errors";
 import * as runtime from "./runtime";
 import {
     readResource,
@@ -16,10 +17,20 @@ export type URN = string; // an automatically generated logical URN, used to sta
  */
 export abstract class Resource {
     /**
+     * A private field to help with RTTI that works in SxS scenarios.
+     */
+     // tslint:disable-next-line:variable-name
+    private readonly __pulumiResource: boolean = true;
+
+    /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
      */
     public readonly urn: Output<URN>;
+
+    public static isInstance(obj: any): obj is Resource {
+        return obj && obj.__pulumiResource;
+    }
 
     /**
      * Creates and registers a new resource object.  t is the fully qualified type token and name is
@@ -35,10 +46,10 @@ export abstract class Resource {
      */
     constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {}) {
         if (!t) {
-            throw new Error("Missing resource type argument");
+            throw new RunError("Missing resource type argument");
         }
         if (!name) {
-            throw new Error("Missing resource name argument (for URN creation)");
+            throw new RunError("Missing resource name argument (for URN creation)");
         }
 
         // If there wasn't an explicit parent, and a root resource exists, parent to that.
@@ -46,10 +57,14 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
 
+        if (opts.parent && !Resource.isInstance(opts.parent)) {
+            throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
+        }
+
         if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
             if (!custom) {
-                throw new Error("Cannot read an existing resource unless it has a custom provider");
+                throw new RunError("Cannot read an existing resource unless it has a custom provider");
             }
             readResource(this, t, name, props, opts);
         } else {
@@ -295,7 +310,7 @@ export class Output<T> {
         };
 
         this.get = () => {
-            throw new Error(`Cannot call during deployment or preview.
+            throw new RunError(`Cannot call during deployment or preview.
 To manipulate the value of this dependency, use 'apply' instead.`);
         };
     }
