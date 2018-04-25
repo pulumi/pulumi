@@ -29,11 +29,8 @@ type SnapshotManager interface {
 // SnapshotMutation represents an outstanding mutation that is yet to be completed. When the engine completes
 // a mutation, it must call `End` in order to record the successful completion of the mutation.
 type SnapshotMutation interface {
-	// End terminates the transaction and commits the results to the snapshot, returning an error if this
-	// failed to complete.
-	End(step deploy.Step) error
-
-	// Abort termiantes the transaction without committing the result to the snapshot, returning an
-	// error if this failed to complete.
-	Abort(step deploy.Step) error
+	// End marks the end of a transaction initiated by the given step, given whether or not the step
+	// completed successfully. If the step did not complete successfully, the snapshot will still be persisted
+	// but the state on the given step will not be saved along with it.
+	End(step deploy.Step, successful bool) error
 }

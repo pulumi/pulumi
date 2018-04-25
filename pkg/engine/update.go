@@ -198,27 +198,25 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 		// Issue a true, bonafide error.
 		acts.Opts.Diag.Errorf(diag.GetPlanApplyFailedError(step.URN()), err)
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, acts.Steps, acts.Opts.Debug)
+	} else {
+		if step.Logical() {
+			// Increment the counters.
+			acts.Steps++
+			acts.Ops[stepop]++
+		}
 
-		// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
-		// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
-		// reported above.
-		return ctx.(SnapshotMutation).Abort(step)
+		// Also show outputs here for custom resources, since there might be some from the initial registration. We do
+		// not show outputs for component resources at this point: any that exist must be from a previous execution of
+		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
+		if step.Res().Custom {
+			acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
+		}
 	}
 
-	if step.Logical() {
-		// Increment the counters.
-		acts.Steps++
-		acts.Ops[stepop]++
-	}
-
-	// Also show outputs here for custom resources, since there might be some from the initial registration. We do
-	// not show outputs for component resources at this point: any that exist must be from a previous execution of
-	// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
-	if step.Res().Custom {
-		acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
-	}
-
-	return ctx.(SnapshotMutation).End(step)
+	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
+	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
+	// reported above.
+	return ctx.(SnapshotMutation).End(step, err == nil)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {

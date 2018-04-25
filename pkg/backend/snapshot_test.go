@@ -86,7 +86,7 @@ func TestIdenticalSames(t *testing.T) {
 	// No mutation was made
 	assert.Empty(t, sp.SavedSnapshots)
 
-	err = mutation.End(same)
+	err = mutation.End(same, true)
 	assert.NoError(t, err)
 	assert.True(t, sp.Valid)
 
@@ -132,7 +132,7 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	mutation, err := manager.BeginMutation(bSame)
 	assert.NoError(t, err)
 	assert.False(t, sp.Valid)
-	err = mutation.End(bSame)
+	err = mutation.End(bSame, true)
 	assert.NoError(t, err)
 	assert.True(t, sp.Valid)
 
@@ -154,7 +154,7 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	mutation, err = manager.BeginMutation(aSame)
 	assert.NoError(t, err)
 	assert.False(t, sp.Valid)
-	err = mutation.End(aSame)
+	err = mutation.End(aSame, true)
 	assert.NoError(t, err)
 	assert.True(t, sp.Valid)
 
@@ -251,7 +251,7 @@ func TestVexingDeployment(t *testing.T) {
 			t.FailNow()
 		}
 
-		err = mutation.End(step)
+		err = mutation.End(step, true)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -304,7 +304,7 @@ func TestVexingDeployment(t *testing.T) {
 	// this is a critical operation of snap and the crux of this test:
 	// merge MUST put c after a in the snapshot, despite never having seen a in the current plan
 	assert.Equal(t, c.URN, res[4].URN)
-	assert.True(t, c.Delete)
+	assert.True(t, res[4].Delete)
 	assert.Len(t, res[4].Dependencies, 2)
 	assert.Contains(t, res[4].Dependencies, a.URN)
 	assert.Contains(t, res[4].Dependencies, b.URN)
@@ -330,7 +330,7 @@ func TestDeletion(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = mutation.End(step)
+	err = mutation.End(step, true)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
@@ -356,7 +356,7 @@ func TestAbortedDelete(t *testing.T) {
 		t.FailNow()
 	}
 
-	err = mutation.Abort(step)
+	err = mutation.End(step, false)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}

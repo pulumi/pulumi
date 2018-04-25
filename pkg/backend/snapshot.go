@@ -168,78 +168,69 @@ type sameSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
-func (ssm *sameSnapshotMutation) End(step deploy.Step) error {
+func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	return ssm.manager.mutate(func() {
-		ssm.manager.markDone(step.Old())
-		ssm.manager.markNew(step.New())
+		if successful {
+			ssm.manager.markDone(step.Old())
+			ssm.manager.markNew(step.New())
+		}
 	})
-}
-
-func (ssm *sameSnapshotMutation) Abort(step deploy.Step) error {
-	return ssm.manager.refresh()
 }
 
 type createSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
-func (csm *createSnapshotMutation) End(step deploy.Step) error {
+func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	return csm.manager.mutate(func() {
-		// There is some very subtle behind-the-scenes magic here that
-		// comes into play whenever this create is a CreateReplacement.
-		//
-		// Despite intending for the base snapshot to be immutable, the engine
-		// does in fact mutate it by setting a `Delete` flag on resources
-		// being replaced as part of a Create-Before-Delete replacement sequence.
-		// Since we are storing the base snapshot and all resources by reference
-		// (we have pointers to engine-allocated objects), this transparently
-		// "just works" for the SnapshotManager.
-		csm.manager.markNew(step.New())
+		if successful {
+			// There is some very subtle behind-the-scenes magic here that
+			// comes into play whenever this create is a CreateReplacement.
+			//
+			// Despite intending for the base snapshot to be immutable, the engine
+			// does in fact mutate it by setting a `Delete` flag on resources
+			// being replaced as part of a Create-Before-Delete replacement sequence.
+			// Since we are storing the base snapshot and all resources by reference
+			// (we have pointers to engine-allocated objects), this transparently
+			// "just works" for the SnapshotManager.
+			csm.manager.markNew(step.New())
+		}
 	})
-}
-
-func (csm *createSnapshotMutation) Abort(step deploy.Step) error {
-	return csm.manager.refresh()
 }
 
 type updateSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
-func (usm *updateSnapshotMutation) End(step deploy.Step) error {
+func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	return usm.manager.mutate(func() {
-		usm.manager.markDone(step.Old())
-		usm.manager.markNew(step.New())
+		if successful {
+			usm.manager.markDone(step.Old())
+			usm.manager.markNew(step.New())
+		}
 	})
-}
-
-func (usm *updateSnapshotMutation) Abort(step deploy.Step) error {
-	return usm.manager.refresh()
 }
 
 type deleteSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
-func (dsm *deleteSnapshotMutation) End(step deploy.Step) error {
+func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
-	contract.Assert(!step.Old().Protect) // this should have caused the engine to call `Abort` instead
 	return dsm.manager.mutate(func() {
-		dsm.manager.markDone(step.Old())
+		if successful {
+			contract.Assert(!step.Old().Protect)
+			dsm.manager.markDone(step.Old())
+		}
 	})
-}
-
-func (dsm *deleteSnapshotMutation) Abort(step deploy.Step) error {
-	return dsm.manager.refresh()
 }
 
 type replaceSnapshotMutation struct{}
 
-func (rsm *replaceSnapshotMutation) End(step deploy.Step) error   { return nil }
-func (rsm *replaceSnapshotMutation) Abort(step deploy.Step) error { return nil }
+func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }
 
 // refresh does a no-op mutation that forces the SnapshotManager to persist the
 // snapshot exactly as it is currently to disk. This is useful when a mutation
