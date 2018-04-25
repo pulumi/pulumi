@@ -473,24 +473,28 @@ func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
+var (
+	updateTextMap = map[string]struct {
+		previewText string
+		text        string
+	}{
+		string(client.UpdateKindUpdate):  {"update of", "Updating"},
+		string(client.UpdateKindRefresh): {"refresh of", "Refreshing"},
+		string(client.UpdateKindDestroy): {"destroy of", "Destroying"},
+		string(client.UpdateKindImport):  {"import to", "Importing into"},
+	}
+)
+
 func getActionLabel(key string, dryRun bool) string {
+	v := updateTextMap[key]
+	contract.Assert(v.previewText != "")
+	contract.Assert(v.text != "")
+
 	if dryRun {
-		return "Previewing"
+		return "Previewing " + v.previewText
 	}
 
-	switch key {
-	case string(client.UpdateKindUpdate):
-		return "Updating"
-	case string(client.UpdateKindRefresh):
-		return "Refreshing"
-	case string(client.UpdateKindDestroy):
-		return "Destroying"
-	case string(client.UpdateKindImport):
-		return "Importing"
-	}
-
-	contract.Failf("Should not get here.")
-	return ""
+	return v.text
 }
 
 type response string
