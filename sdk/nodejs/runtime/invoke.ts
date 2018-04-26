@@ -3,7 +3,7 @@
 import * as log from "../log";
 import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
-import { deserializeProperties, serializeProperties } from "./rpc";
+import { deserializeProperties, serializeAllProperties } from "./rpc";
 import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -22,7 +22,7 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
     const done = rpcKeepAlive();
     try {
         const obj = gstruct.Struct.fromJavaScript(
-            await serializeProperties(`invoke:${tok}`, props));
+            await serializeAllProperties(`invoke:${tok}`, props));
         log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(obj)}` : ``);
 
         // Fetch the monitor and make an RPC request.

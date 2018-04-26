@@ -286,6 +286,8 @@ describe("rpc", () => {
                     a: "hello",
                     b: true,
                     c: [ 0.99, 42, { z: "x" } ],
+                    id: "some-id",
+                    urn: "some-urn",
                 });
                 return { failures: undefined, ret: args };
             },

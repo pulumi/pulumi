@@ -7,6 +7,8 @@ let args = {
     a: "hello",
     b: true,
     c: [ 0.99, 42, { z: "x" } ],
+    id: "some-id",
+    urn: "some-urn",
 };
 let result = pulumi.runtime.invoke("invoke:index:echo", args);
 result.then((v) => {
