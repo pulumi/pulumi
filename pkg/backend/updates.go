@@ -3,7 +3,6 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 )
@@ -84,6 +83,5 @@ type UpdateInfo struct {
 	// Information obtained from an update completing.
 	Result          UpdateResult           `json:"result"`
 	EndTime         int64                  `json:"endTime"`
-	Deployment      *apitype.DeploymentV1  `json:"deployment,omitempty"`
 	ResourceChanges engine.ResourceChanges `json:"resourceChanges,omitempty"`
 }

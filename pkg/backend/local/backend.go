@@ -177,6 +177,20 @@ func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 	return symmetricCrypter(stackRef.StackName())
 }
 
+func (b *localBackend) GetLatestConfiguration(ctx context.Context,
+	stackRef backend.StackReference) (config.Map, error) {
+
+	hist, err := b.GetHistory(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	if len(hist) == 0 {
+		return nil, errors.New("no previous deployment")
+	}
+
+	return hist[0].Config, nil
+}
+
 func (b *localBackend) Preview(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string,
 	m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {

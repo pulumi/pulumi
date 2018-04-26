@@ -79,6 +79,11 @@ func GetStackCrypter(s Stack) (config.Crypter, error) {
 	return s.Backend().GetStackCrypter(s.Name())
 }
 
+// GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
+func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
+	return s.Backend().GetLatestConfiguration(ctx, s.Name())
+}
+
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
 func GetStackLogs(ctx context.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
 	return s.Backend().GetLogs(ctx, s.Name(), query)

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -936,15 +935,6 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
 	for _, update := range updates {
-		// Decode the deployment.
-		if update.Version > 1 {
-			return nil, errors.Errorf("unsupported checkpoint version %v", update.Version)
-		}
-		var deployment apitype.DeploymentV1
-		if err := json.Unmarshal([]byte(update.Deployment), &deployment); err != nil {
-			return nil, err
-		}
-
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)
 		if err != nil {
@@ -959,12 +949,22 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 			Result:          backend.UpdateResult(update.Result),
 			StartTime:       update.StartTime,
 			EndTime:         update.EndTime,
-			Deployment:      &deployment,
 			ResourceChanges: convertResourceChanges(update.ResourceChanges),
 		})
 	}
 
 	return beUpdates, nil
+}
+
+func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
+	stackRef backend.StackReference) (config.Map, error) {
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.client.GetLatestConfiguration(ctx, stackID)
 }
 
 // convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.

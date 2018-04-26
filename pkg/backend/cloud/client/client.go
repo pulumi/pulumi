@@ -180,6 +180,38 @@ func (pc *Client) ListStacks(ctx context.Context, project ProjectIdentifier,
 	return stacks, nil
 }
 
+// GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
+func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
+	latest := struct {
+		Info apitype.UpdateInfo `json:"info,allowEmpty"`
+	}{}
+
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
+		if restErr, ok := err.(*apitype.ErrorResponse); ok {
+			if restErr.Code == http.StatusNotFound {
+				return nil, errors.New("no previous deployment")
+			}
+		}
+
+		return nil, err
+	}
+
+	cfg := make(config.Map)
+	for k, v := range latest.Info.Config {
+		newKey, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		if v.Secret {
+			cfg[newKey] = config.NewSecureValue(v.String)
+		} else {
+			cfg[newKey] = config.NewValue(v.String)
+		}
+	}
+
+	return cfg, nil
+}
+
 // GetStack retrieves the stack with the given name.
 func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error) {
 	var stack apitype.Stack
