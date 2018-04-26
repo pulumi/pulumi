@@ -53,6 +53,7 @@ func newConfigCmd() *cobra.Command {
 	cmd.AddCommand(newConfigGetCmd(&stack))
 	cmd.AddCommand(newConfigRmCmd(&stack))
 	cmd.AddCommand(newConfigSetCmd(&stack))
+	cmd.AddCommand(newConfigRefreshCmd(&stack))
 
 	return cmd
 }
@@ -110,6 +111,73 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	}
 
 	return rmCmd
+}
+
+func newConfigRefreshCmd(stack *string) *cobra.Command {
+	var force bool
+	refreshCmd := &cobra.Command{
+		Use:   "refresh",
+		Short: "Update the local configuration based on the most recent deployment of the stack",
+		Args:  cmdutil.NoArgs,
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// Ensure the stack exists.
+			s, err := requireStack(*stack, false)
+			if err != nil {
+				return err
+			}
+
+			c, err := backend.GetLatestConfiguration(commandContext(), s)
+			if err != nil {
+				return err
+			}
+
+			configPath, err := workspace.DetectProjectStackPath(s.Name().StackName())
+			if err != nil {
+				return err
+			}
+
+			ps, err := workspace.LoadProjectStack(configPath)
+			if err != nil {
+				return err
+			}
+
+			ps.Config = c
+
+			// If the configuration file doesn't exist, or force has been passed, save it in place.
+			if _, err = os.Stat(configPath); os.IsNotExist(err) || force {
+				return ps.Save(configPath)
+			}
+
+			// Otherwise we'll create a backup, let's figure out what name to use by adding ".bak" over and over
+			// until we get to a name not in use.
+			backupFile := configPath + ".bak"
+			for {
+				_, err = os.Stat(backupFile)
+				if os.IsNotExist(err) {
+					if err = os.Rename(configPath, backupFile); err != nil {
+						return errors.Wrap(err, "backing up existing configuration file")
+					}
+
+					fmt.Printf("backed up existing configuration file to %s\n", backupFile)
+					break
+				} else if err != nil {
+					return errors.Wrap(err, "backing up existing configuration file")
+				}
+
+				backupFile = backupFile + ".bak"
+			}
+
+			err = ps.Save(configPath)
+			if err == nil {
+				fmt.Printf("refreshed configuration for stack '%s'\n", s.Name().String())
+			}
+			return err
+		}),
+	}
+	refreshCmd.PersistentFlags().BoolVarP(
+		&force, "force", "f", false, "Overwrite configuration file, if it exists, without creating a backup")
+
+	return refreshCmd
 }
 
 func newConfigSetCmd(stack *string) *cobra.Command {
