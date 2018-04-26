@@ -65,7 +65,8 @@ func newStackLsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			showPPCColumn := hasAnyPPCStacks(bs)
+			showPPCColumn, maxPPC := hasAnyPPCStacks(bs)
+			_, showURLColumn := b.(cloud.Backend)
 
 			for _, stack := range bs {
 				name := stack.Name().String()
@@ -86,9 +87,14 @@ func newStackLsCmd() *cobra.Command {
 			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 
 			if showPPCColumn {
-				formatDirective = formatDirective + " %-25s"
+				formatDirective += " %-" + strconv.Itoa(maxPPC) + "s"
 				headers = append(headers, "PPC")
 			}
+			if showURLColumn {
+				formatDirective += " %s"
+				headers = append(headers, "URL")
+			}
+
 			formatDirective = formatDirective + "\n"
 
 			fmt.Printf(formatDirective, headers...)
@@ -121,6 +127,18 @@ func newStackLsCmd() *cobra.Command {
 					}
 					values = append(values, cloudInfo)
 				}
+				if showURLColumn {
+					var url string
+					if cs, ok := stack.(cloud.Stack); ok {
+						if u, urlErr := cs.ConsoleURL(); urlErr == nil {
+							url = u
+						}
+					}
+					if url == "" {
+						url = none
+					}
+					values = append(values, url)
+				}
 
 				fmt.Printf(formatDirective, values...)
 			}
@@ -134,14 +152,16 @@ func newStackLsCmd() *cobra.Command {
 	return cmd
 }
 
-func hasAnyPPCStacks(stacks []backend.Stack) bool {
+func hasAnyPPCStacks(stacks []backend.Stack) (bool, int) {
+	res, maxLen := false, 0
 	for _, s := range stacks {
 		if cs, ok := s.(cloud.Stack); ok {
 			if !cs.RunLocally() {
-				return true
+				res = true
+				maxLen = len(cs.CloudName())
 			}
 		}
 	}
 
-	return false
+	return res, maxLen
 }
