@@ -53,6 +53,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
+		PluginEvents:  &pluginActions{ctx},
 	}, dryRun)
 }
 
@@ -135,6 +136,16 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	return resourceChanges, nil
 }
 
+// pluginActions listens for plugin events and persists the set of loaded plugins
+// to the snapshot.
+type pluginActions struct {
+	Context *Context
+}
+
+func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
+	return p.Context.SnapshotManager.RecordPlugin(loadedPlug)
+}
+
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
 	Context      *Context
@@ -163,7 +174,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Context.SnapshotManager.BeginMutation()
+	return acts.Context.SnapshotManager.BeginMutation(step)
 }
 
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
@@ -203,8 +214,9 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
-	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
+	// reported above.
+	return ctx.(SnapshotMutation).End(step, err == nil)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
@@ -214,10 +226,5 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	mutation, err := acts.Context.SnapshotManager.BeginMutation()
-	if err != nil {
-		return err
-	}
-
-	return mutation.End(step.Iterator().Snap())
+	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }

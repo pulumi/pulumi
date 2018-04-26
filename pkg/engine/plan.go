@@ -18,8 +18,8 @@ import (
 )
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, diag diag.Sink,
-	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
+func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, pluginEvents plugin.Events,
+	diag diag.Sink, tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 	contract.Require(projinfo != nil, "projinfo")
 
 	// If the package contains an override for the main entrypoint, use it.
@@ -29,7 +29,7 @@ func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, diag dia
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(diag, nil, config, pwd, tracingSpan)
+	ctx, err := plugin.NewContext(diag, nil, config, pluginEvents, pwd, tracingSpan)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -68,10 +68,11 @@ type planOptions struct {
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc planSourceFunc
 
-	SkipOutputs bool         // true if we we should skip printing outputs separately.
-	DOT         bool         // true if we should print the DOT file for this plan.
-	Events      eventEmitter // the channel to write events from the engine to.
-	Diag        diag.Sink    // the sink to use for diag'ing.
+	SkipOutputs  bool          // true if we we should skip printing outputs separately.
+	DOT          bool          // true if we should print the DOT file for this plan.
+	Events       eventEmitter  // the channel to write events from the engine to.
+	Diag         diag.Sink     // the sink to use for diag'ing.
+	PluginEvents plugin.Events // an optional listener for plugin events
 }
 
 // planSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -91,7 +92,7 @@ func plan(ctx *planContext, opts planOptions, dryRun bool) (*planResult, error) 
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: ctx.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, target, opts.Diag, ctx.TracingSpan)
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, target, opts.PluginEvents, opts.Diag, ctx.TracingSpan)
 	if err != nil {
 		return nil, err
 	}

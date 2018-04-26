@@ -225,7 +225,8 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 		return err
 	}
 
-	manager := b.newSnapshotManager(stackName)
+	persister := b.newSnapshotPersister(stackName)
+	manager := backend.NewSnapshotManager(stackName, persister, update.GetTarget().Snapshot)
 
 	events := make(chan engine.Event)
 
