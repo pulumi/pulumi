@@ -15,7 +15,8 @@ import (
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
-var Emoji = (runtime.GOOS != "windows")
+// While some Linux systems can display Emoji's in the terminal by default, we restrict this to just macOS, like Yarn.
+var Emoji = (runtime.GOOS == "darwin")
 
 // EmojiOr returns the emoji string e if emojis are enabled, or the string or if emojis are disabled.
 func EmojiOr(e, or string) string {
