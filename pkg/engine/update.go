@@ -116,12 +116,21 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
-			summary, _, _, err := result.Walk(ctx, actions, false)
+			summary, step, _, err := result.Walk(ctx, actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return resourceChanges, err
 			}
+
 			contract.Assert(summary != nil)
+			if err != nil {
+				var failedUrn resource.URN
+				if step != nil {
+					failedUrn = step.URN()
+				}
+
+				opts.Diag.Errorf(diag.Message(failedUrn, err.Error()))
+			}
 
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			resourceChanges = ResourceChanges(actions.Ops)
