@@ -77,8 +77,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the local cloud.
-	creds, err := workspace.GetStoredCredentials()
-	if err != nil {
+	if creds, err := workspace.GetStoredCredentials(); err == nil {
 		if creds.Current != "" && !local.IsLocalBackendURL(creds.Current) {
 			return creds.Current
 		}
@@ -154,6 +153,11 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 	existingToken, err := workspace.GetAccessToken(cloudURL)
 	if err == nil && existingToken != "" {
 		if valid, _ := IsValidAccessToken(cloudURL, existingToken); valid {
+			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
+			if err = workspace.StoreAccessToken(cloudURL, existingToken, true); err != nil {
+				return nil, err
+			}
+
 			return New(d, cloudURL)
 		}
 	}
