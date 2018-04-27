@@ -4,7 +4,7 @@
 # path here.
 export NODE_PATH="$NODE_PATH:`dirname $0`/v6.10.2"
 PULUMI_RUN=./node_modules/@pulumi/pulumi/cmd/run
-if [ ! -f $PULUMI_RUN ]; then
+if [ ! -e $PULUMI_RUN ]; then
     echo "It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?"
     exit 1
 fi
