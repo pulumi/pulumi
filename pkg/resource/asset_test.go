@@ -4,6 +4,7 @@ package resource
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"fmt"
 	"io"
@@ -303,6 +304,45 @@ func TestArchiveZipFiles(t *testing.T) {
 
 	err = arch.Archive(ZIPArchive, ioutil.Discard)
 	assert.Nil(t, err)
+}
+
+func TestNestedArchive(t *testing.T) {
+	// Create temp dir and place some files.
+	dirName, err := ioutil.TempDir("", "")
+	assert.Nil(t, err)
+	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0777))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0777))
+
+	// Construct an AssetArchive with a nested PathArchive.
+	innerArch, err := NewPathArchive(filepath.Join(dirName, "./foo"))
+	assert.Nil(t, err)
+	textAsset, err := NewTextAsset("hello world")
+	assert.Nil(t, err)
+	arch, err := NewAssetArchive(map[string]interface{}{
+		"./foo":    innerArch,
+		"fake.txt": textAsset,
+	})
+	assert.Nil(t, err)
+
+	// Write a ZIP of the AssetArchive to disk.
+	tmpFile, err := ioutil.TempFile("", "")
+	fileName := tmpFile.Name()
+	assert.Nil(t, err)
+	err = arch.Archive(ZIPArchive, tmpFile)
+	assert.Nil(t, err)
+	tmpFile.Close()
+
+	// Read the ZIP back into memory, and validate its contents.
+	zipReader, err := zip.OpenReader(fileName)
+	defer contract.IgnoreClose(zipReader)
+	assert.Nil(t, err)
+	files := zipReader.File
+	assert.Len(t, files, 3)
+	assert.Equal(t, "foo/a.txt", files[0].Name)
+	assert.Equal(t, "foo/bar/b.txt", files[1].Name)
+	assert.Equal(t, "fake.txt", files[2].Name)
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive) {
