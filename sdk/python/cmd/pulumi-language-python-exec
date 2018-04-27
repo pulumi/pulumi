@@ -3,10 +3,16 @@
 
 import argparse
 import os
-import pulumi
-import pulumi.runtime
-import runpy
 import sys
+import runpy
+
+try:
+    import pulumi
+    import pulumi.runtime
+except ImportError:
+    sys.stderr.write("It looks like the Pulumi SDK has not been installed. Have you run pip install?")
+    sys.exit(1)
+
 
 if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
