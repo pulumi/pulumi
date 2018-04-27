@@ -3,7 +3,6 @@
 package operations
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -174,7 +173,7 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 			}, func(resp *cloudwatchlogs.FilterLogEventsOutput, lastPage bool) bool {
 				ret = append(ret, resp.Events...)
 				if !lastPage {
-					fmt.Printf("Getting more logs for %v...\n", logGroup)
+					glog.V(5).Infof("[getLogs] Getting more logs for %v...\n", logGroup)
 				}
 				return true
 			})
