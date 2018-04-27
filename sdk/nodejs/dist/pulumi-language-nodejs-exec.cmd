@@ -7,4 +7,4 @@ if not exist %PULUMI_RUN% (
     exit /b 1
 )
 
-node ./node_modules/@pulumi/pulumi/cmd/run %*
+node %PULUMI_RUN% %*
