@@ -20,52 +20,62 @@ import (
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
+	var cwd string
 	var logFlow bool
 	var logToStderr bool
 	var tracing string
 	var verbose int
-	var cwd string
+
 	cmd := &cobra.Command{
 		Use: "pulumi",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if cwd != "" {
 				if err := os.Chdir(cwd); err != nil {
-					cmdutil.ExitError(err.Error())
+					return err
 				}
 			}
 
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", tracing)
-		},
+			return nil
+		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()
 			cmdutil.CloseTracing()
 		},
 	}
 
-	// Add additional help that includes which clouds we are logged into.
+	// Add additional help that includes a link to the docs website.
 	defaultHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
-		fmt.Println("See documentation at https://docs.pulumi.com")
+		fmt.Println("")
+		fmt.Println("Additional documentation available at https://docs.pulumi.com")
 	})
 
-	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "", "Run pulumi as if it had been started in another directory")
-	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e",
-		runtime.GOOS == "darwin", "Enable emojis in the output")
+	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
+		"Run pulumi as if it had been started in another directory")
+	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
+		"Enable emojis in the output")
 	cmd.PersistentFlags().BoolVar(&local.DisableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
-	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false, "Flow log settings to child processes (like plugins)")
-	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
-	cmd.PersistentFlags().StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	cmd.PersistentFlags().IntVarP(
-		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
+		"Flow log settings to child processes (like plugins)")
+	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false,
+		"Log to stderr instead of to files")
+	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
+		"Emit tracing to a Zipkin-compatible tracing endpoint")
+	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
+		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
+	// Common commands:
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDestroyCmd())
 	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newInitCmd())
+	cmd.AddCommand(newLoginCmd())
+	cmd.AddCommand(newLogoutCmd())
 	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newNewCmd())
 	cmd.AddCommand(newPluginCmd())
@@ -75,9 +85,9 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newUpdateCmd())
 	cmd.AddCommand(newVersionCmd())
 
-	// Commands specific to the Pulumi Cloud Management Console.
-	cmd.AddCommand(newLoginCmd())
-	cmd.AddCommand(newLogoutCmd())
+	// Less common, and thus hidden, commands:
+	cmd.AddCommand(newGenBashCompletionCmd(cmd))
+	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
 	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
