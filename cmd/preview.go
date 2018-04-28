@@ -31,7 +31,8 @@ func newPreviewCmd() *cobra.Command {
 		Long:       "Deprecated.  Use 'pulumi update --preview' instead",
 		Args:       cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return errors.New("'pulumi preview' is deprecated.  Please use 'pulumi update --preview' instead")
+			return errors.New(
+				"`pulumi preview` is deprecated; `pulumi update` now perform previews by default")
 		}),
 	}
 

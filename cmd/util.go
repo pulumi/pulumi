@@ -500,10 +500,27 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	return c
 }
 
-// IsInteractive returns true if the environment and command line options indicate we should
+// isInteractive returns true if the environment and command line options indicate we should
 // do things interactively
-func IsInteractive(cmd *cobra.Command) bool {
+func isInteractive(cmd *cobra.Command) bool {
 	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 	contract.IgnoreError(err)
 	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !isCI()
+}
+
+// previewFlagsToBehavior turns the CLI preview flag into a backend behavior enum.
+func previewFlagsToBehavior(interactive bool, preview string) (backend.PreviewBehavior, error) {
+	behavior := backend.PreviewBehavior(preview)
+	switch behavior {
+	case backend.DefaultPreview, backend.OnlyPreview, backend.SkipPreview, backend.AutoPreview:
+		// ok
+	default:
+		return "", errors.Errorf("unrecognized preview behavior: '%s'", preview)
+	}
+
+	if !interactive && behavior.Interactive() {
+		return "", errors.New("--preview must be only, skip, or auto when run in non-interactive mode")
+	}
+
+	return behavior, nil
 }

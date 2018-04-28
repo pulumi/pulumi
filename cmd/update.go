@@ -23,8 +23,7 @@ func newUpdateCmd() *cobra.Command {
 	var color colorFlag
 	var diffDisplay bool
 	var parallel int
-	var preview bool
-	var force bool
+	var preview string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -48,13 +47,10 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			isInteractive := IsInteractive(cmd)
-			if !force && !preview && !isInteractive {
-				return errors.New("'update' must be run interactively or be passed the --force or --preview flag")
-			}
-
-			if force && preview {
-				return errors.New("--force and --preview cannot both be specified")
+			interactive := isInteractive(cmd)
+			behavior, err := previewFlagsToBehavior(interactive, preview)
+			if err != nil {
+				return err
 			}
 
 			s, err := requireStack(stack, true)
@@ -72,21 +68,25 @@ func newUpdateCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			err = s.Update(proj, root, m, engine.UpdateOptions{
-				Analyzers: analyzers,
-				Force:     force,
-				Preview:   preview,
-				Parallel:  parallel,
-				Debug:     debug,
-			}, backend.DisplayOptions{
-				Color:                color.Colorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				IsInteractive:        isInteractive,
-				DiffDisplay:          diffDisplay,
-				Debug:                debug,
-			}, cancellationScopes)
+			err = s.Update(
+				proj, root, m,
+				engine.UpdateOptions{
+					Analyzers: analyzers,
+					Parallel:  parallel,
+					Debug:     debug,
+				},
+				behavior,
+				backend.DisplayOptions{
+					Color:                color.Colorization(),
+					ShowConfig:           showConfig,
+					ShowReplacementSteps: showReplacementSteps,
+					ShowSameResources:    showSames,
+					IsInteractive:        interactive,
+					DiffDisplay:          diffDisplay,
+					Debug:                debug,
+				},
+				cancellationScopes,
+			)
 			if err == context.Canceled {
 				return errors.New("update cancelled")
 			}
@@ -114,15 +114,12 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().StringVar(
+		&preview, "preview", "",
+		"Preview behavior. Choices are: only (dry-run), skip (no preview, just update), auto (auto-accept)")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
-	cmd.PersistentFlags().BoolVarP(
-		&force, "force", "f", false,
-		"Skip confirmation prompts and preview, and proceed with the update automatically")
-	cmd.PersistentFlags().BoolVar(
-		&preview, "preview", false,
-		"Only show a preview of what will happen, without prompting or making any changes")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

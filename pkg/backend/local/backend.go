@@ -172,9 +172,8 @@ func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 
 func (b *localBackend) Update(
 	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-
-	stackName := stackRef.StackName()
+	opts engine.UpdateOptions, preview backend.PreviewBehavior,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
 	// parity with stacks managed by the Pulumi Service.
@@ -182,42 +181,39 @@ func (b *localBackend) Update(
 	if err != nil {
 		return errors.Wrap(err, "getting stack tags")
 	}
+	stackName := stackRef.StackName()
 	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
 		return errors.Wrap(err, "validating stack properties")
 	}
-
 	return b.performEngineOp("updating", backend.DeployUpdate,
-		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Update, scopes)
+		stackName, proj, root, m, opts, preview, displayOpts, engine.Update, scopes)
 }
 
 func (b *localBackend) Refresh(
 	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-
-	stackName := stackRef.StackName()
+	opts engine.UpdateOptions, preview backend.PreviewBehavior,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
-		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Refresh, scopes)
+		stackRef.StackName(), proj, root, m, opts, preview, displayOpts, engine.Refresh, scopes)
 }
 
 func (b *localBackend) Destroy(
 	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-
-	stackName := stackRef.StackName()
+	opts engine.UpdateOptions, preview backend.PreviewBehavior,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
-		stackName, proj, root, m, opts, displayOpts, opts.Preview, engine.Destroy, scopes)
+		stackRef.StackName(), proj, root, m, opts, preview, displayOpts, engine.Destroy, scopes)
 }
 
-type engineOpFunc func(
-	engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
+type engineOpFunc func(engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, displayOpts backend.DisplayOptions, dryRun bool, performEngineOp engineOpFunc,
-	scopes backend.CancellationScopeSource) error {
-
-	if !opts.Force && !dryRun {
-		return errors.Errorf("--force or --preview must be passed when %s a local stack", op)
+	opts engine.UpdateOptions, preview backend.PreviewBehavior, displayOpts backend.DisplayOptions,
+	performEngineOp engineOpFunc, scopes backend.CancellationScopeSource) error {
+	// At the moment, we don't support preview-confirm-update flows for local stacks.
+	if preview == backend.DefaultPreview {
+		return errors.Errorf("--preview or --skip-preview must be passed when %s a local stack", op)
 	}
 
 	update, err := b.newUpdate(stackName, proj, root)
@@ -225,21 +221,22 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 		return err
 	}
 
-	persister := b.newSnapshotPersister(stackName)
-	manager := backend.NewSnapshotManager(stackName, persister, update.GetTarget().Snapshot)
-
 	events := make(chan engine.Event)
+	dryRun := preview.Only()
 
 	cancelScope := scopes.NewScope(events, dryRun)
 	defer cancelScope.Close()
 
 	done := make(chan bool)
-
 	go DisplayEvents(op, events, done, displayOpts)
+
+	// Create the management machinery.
+	persister := b.newSnapshotPersister(stackName)
+	manager := backend.NewSnapshotManager(stackName, persister, update.GetTarget().Snapshot)
+	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events, SnapshotManager: manager}
 
 	// Perform the update
 	start := time.Now().Unix()
-	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events, SnapshotManager: manager}
 	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 

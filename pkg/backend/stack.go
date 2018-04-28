@@ -23,13 +23,16 @@ type Stack interface {
 	Backend() Backend           // the backend this stack belongs to.
 
 	// Update this stack.
-	Update(proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+	Update(proj *workspace.Project, root string, m UpdateMetadata,
+		opts engine.UpdateOptions, preview PreviewBehavior,
 		displayOpts DisplayOptions, scopes CancellationScopeSource) error
 	// Refresh this stack's state from the cloud provider.
-	Refresh(proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+	Refresh(proj *workspace.Project, root string, m UpdateMetadata,
+		opts engine.UpdateOptions, preview PreviewBehavior,
 		displayOpts DisplayOptions, scopes CancellationScopeSource) error
 	// Destroy this stack's resources.
-	Destroy(proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+	Destroy(proj *workspace.Project, root string, m UpdateMetadata,
+		opts engine.UpdateOptions, preview PreviewBehavior,
 		displayOpts DisplayOptions, scopes CancellationScopeSource) error
 
 	Remove(force bool) (bool, error)                                  // remove this stack.
@@ -44,21 +47,24 @@ func RemoveStack(s Stack, force bool) (bool, error) {
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+func UpdateStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+	opts engine.UpdateOptions, preview PreviewBehavior,
 	displayOpts DisplayOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Update(s.Name(), proj, root, m, opts, displayOpts, scopes)
+	return s.Backend().Update(s.Name(), proj, root, m, opts, preview, displayOpts, scopes)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+func RefreshStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+	opts engine.UpdateOptions, preview PreviewBehavior,
 	displayOpts DisplayOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Refresh(s.Name(), proj, root, m, opts, displayOpts, scopes)
+	return s.Backend().Refresh(s.Name(), proj, root, m, opts, preview, displayOpts, scopes)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts engine.UpdateOptions,
+func DestroyStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+	opts engine.UpdateOptions, preview PreviewBehavior,
 	displayOpts DisplayOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Destroy(s.Name(), proj, root, m, opts, displayOpts, scopes)
+	return s.Backend().Destroy(s.Name(), proj, root, m, opts, preview, displayOpts, scopes)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.

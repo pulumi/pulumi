@@ -18,13 +18,6 @@ type UpdateOptions struct {
 	// an optional set of analyzers to run as part of this deployment.
 	Analyzers []string
 
-	// true if we should just perform the update, without any previewing or request for confirmation.
-	// Not valid with 'Preview'.
-	Force bool
-
-	// true if we should just show the preview and then immediately quit. Not valid with 'force'.
-	Preview bool
-
 	// the degree of parallelism for resource operations (<=1 for serial).
 	Parallel int
 

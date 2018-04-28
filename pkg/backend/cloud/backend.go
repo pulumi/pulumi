@@ -542,9 +542,8 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 }
 
 func (b *cloudBackend) PreviewThenPrompt(
-	updateKind client.UpdateKind,
-	stack backend.Stack, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, preview backend.PreviewBehavior,
 	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
@@ -554,7 +553,7 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 	// if we're previewing, we don't need to store the events as we're not going to prompt
 	// the user to get details of what's happening.
-	if !opts.Preview {
+	if !preview.Only() {
 		eventsChannel = make(chan engine.Event)
 		defer func() {
 			close(eventsChannel)
@@ -573,15 +572,28 @@ func (b *cloudBackend) PreviewThenPrompt(
 		}()
 	}
 
+	// Perform the update operations, passing true for dryRun, so that we get a preview.
 	err := b.updateStack(
 		updateKind, stack, pkg, root, m,
 		opts, displayOpts, eventsChannel, true /*dryRun*/, scopes)
-
-	if err != nil || opts.Preview {
+	if err != nil || preview.Only() {
 		// if we're just previewing, then we can stop at this point.
 		return err
 	}
 
+	// Ensure the user wants to proceed.
+	return confirmBeforeUpdating(stack, preview, events, displayOpts)
+}
+
+// confirmBeforeUpdating asks the user whether to proceed.  A nil error means yes.
+func confirmBeforeUpdating(stack backend.Stack, preview backend.PreviewBehavior,
+	events []engine.Event, displayOpts backend.DisplayOptions) error {
+	// If auto-accept is true, we can exit right away.
+	if preview.AutoAccept() {
+		return nil
+	}
+
+	// Otherwise, we will ask the user for confirmation before proceeding.
 	for {
 		var response string
 
@@ -597,13 +609,12 @@ func (b *cloudBackend) PreviewThenPrompt(
 		if stack.(Stack).RunLocally() {
 			options = append(options, string(details))
 		}
-		err = survey.AskOne(&survey.Select{
+
+		if err := survey.AskOne(&survey.Select{
 			Message: colors.ColorizeText(colors.BrightWhite + "Do you want to proceed?" + colors.Reset),
 			Options: options,
 			Default: string(no),
-		}, &response, nil)
-
-		if err != nil {
+		}, &response, nil); err != nil {
 			return err
 		}
 
@@ -617,23 +628,17 @@ func (b *cloudBackend) PreviewThenPrompt(
 
 		if response == string(details) {
 			diff := createDiff(events, displayOpts)
-			_, err = os.Stdout.WriteString(diff + "\n\n")
+			_, err := os.Stdout.WriteString(diff + "\n\n")
 			contract.IgnoreError(err)
 			continue
 		}
-
-		// Anything else just causes us to bail out.  This can happen, for example, when
-		// ctrl-c is hit.
-		return err
 	}
 }
 
 func (b *cloudBackend) PreviewThenPromptThenExecute(
-	updateKind client.UpdateKind,
-	stackRef backend.StackReference, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions,
+	updateKind client.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project, root string,
+	m backend.UpdateMetadata, opts engine.UpdateOptions, preview backend.PreviewBehavior,
 	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-
 	// First get the stack.
 	stack, err := getStack(b, stackRef)
 	if err != nil {
@@ -646,11 +651,11 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		opts.Force = true
 	}
 
-	if !opts.Force {
-		// If we're not forcing, then preview the operation to the user and ask them if
+	if preview.Should() {
+		// If we're not skipping the preview, then preview the operation to the user and ask them if
 		// they want to proceed.
-		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, displayOpts, scopes)
-		if err != nil || opts.Preview {
+		err = b.PreviewThenPrompt(updateKind, stack, pkg, root, m, opts, preview, displayOpts, scopes)
+		if err != nil || preview.Only() {
 			return err
 		}
 	}
@@ -665,24 +670,24 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 }
 
 func (b *cloudBackend) Update(stackRef backend.StackReference, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
-	scopes backend.CancellationScopeSource) error {
-
-	return b.PreviewThenPromptThenExecute(client.UpdateKindUpdate, stackRef, pkg, root, m, opts, displayOpts, scopes)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, preview backend.PreviewBehavior,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindUpdate, stackRef, pkg, root, m, opts, preview, displayOpts, scopes)
 }
 
 func (b *cloudBackend) Refresh(stackRef backend.StackReference, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
-	scopes backend.CancellationScopeSource) error {
-
-	return b.PreviewThenPromptThenExecute(client.UpdateKindRefresh, stackRef, pkg, root, m, opts, displayOpts, scopes)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, preview backend.PreviewBehavior,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindRefresh, stackRef, pkg, root, m, opts, preview, displayOpts, scopes)
 }
 
 func (b *cloudBackend) Destroy(stackRef backend.StackReference, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, displayOpts backend.DisplayOptions,
-	scopes backend.CancellationScopeSource) error {
-
-	return b.PreviewThenPromptThenExecute(client.UpdateKindDestroy, stackRef, pkg, root, m, opts, displayOpts, scopes)
+	m backend.UpdateMetadata, opts engine.UpdateOptions, preview backend.PreviewBehavior,
+	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
+	return b.PreviewThenPromptThenExecute(
+		client.UpdateKindDestroy, stackRef, pkg, root, m, opts, preview, displayOpts, scopes)
 }
 
 func (b *cloudBackend) createAndStartUpdate(
