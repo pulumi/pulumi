@@ -24,6 +24,9 @@ export PULUMI_SDK="$(go env GOPATH)/src/github.com/pulumi/sdk"
     if [ ! -z "${NPM_TOKEN:-}" ]; then
         echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
     fi
+
+    # Put static entries for Pulumi backends in /etc/hosts
+    "${PULUMI_HOME}/scripts/pulumi-hosts" | sudo tee -a /etc/hosts
 ) || exit 1  # Abort outer script if subshell fails.
 
 export PULUMI_ROOT=/opt/pulumi
