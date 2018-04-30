@@ -236,8 +236,14 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPreviewActions(result.Options)
-	_, _, _, err := result.Walk(ctx, actions, true)
+	_, step, _, err := result.Walk(ctx, actions, true)
 	if err != nil {
+		var failedUrn resource.URN
+		if step != nil {
+			failedUrn = step.URN()
+		}
+
+		result.Options.Diag.Errorf(diag.Message(failedUrn, err.Error()))
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
 
