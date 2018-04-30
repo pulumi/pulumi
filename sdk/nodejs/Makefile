@@ -36,7 +36,6 @@ build::
 
 install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	cp dist/pulumi-language-nodejs-exec "$(PULUMI_BIN)"
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/v6.10.2"
 	cp ./prebuilt/*.node "$(PULUMI_BIN)/v6.10.2/"

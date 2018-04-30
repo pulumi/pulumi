@@ -22,9 +22,9 @@
 
   <Target Name="EnsurePrebuilt">
     <MakeDir Directories="$(NodeJSSdkDirectory)\prebuilt" />
-    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime.node $(NodeJSSdkDirectory)\prebuilt\nativeruntime.node" />
-    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime-v0.11.0.node $(NodeJSSdkDirectory)\prebuilt\nativeruntime-v0.11.0.node" />
-    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/pulumi-language-nodejs-node.exe $(NodeJSSdkDirectory)\prebuilt\pulumi-language-nodejs-node.exe" />
+    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime.node &quot;$(NodeJSSdkDirectory)\prebuilt\nativeruntime.node&quot;" />
+    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime-v0.11.0.node &quot;$(NodeJSSdkDirectory)\prebuilt\nativeruntime-v0.11.0.node&quot;" />
+    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/pulumi-language-nodejs-node.exe &quot;$(NodeJSSdkDirectory)\prebuilt\pulumi-language-nodejs-node.exe&quot;" />
   </Target>
 
   <Target Name="TypeScriptCompileNodeSdk">
@@ -33,8 +33,8 @@
     </Exec>
     <Exec Command="yarn run tsc" WorkingDirectory="$(NodeJSSdkDirectory)" />
     <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json" DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
-    <Exec Command="node $(RepoRootDirectory)\scripts\reversion.js $(NodeJSSdkDirectory)\bin\package.json $(Version)" />
-    <Exec Command="node $(RepoRootDirectory)\scripts\reversion.js $(NodeJSSdkDirectory)\bin\version.js $(Version)" />
+    <Exec Command="node &quot;$(RepoRootDirectory)\scripts\reversion.js&quot; &quot;$(NodeJSSdkDirectory)\bin\package.json&quot; $(Version)" />
+    <Exec Command="node &quot;$(RepoRootDirectory)\scripts\reversion.js&quot; &quot;$(NodeJSSdkDirectory)\bin\version.js&quot; $(Version)" />
   </Target>
 
   <Target Name="GoCompileNodeSdk">
@@ -75,7 +75,6 @@
 
   <Target Name="BinPlaceNodeSdk"
           DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-language-nodejs-exec.cmd" DestinationFolder="$(PulumiBin)" />
      <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-resource-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
      <MakeDir Directories="$(PulumiBin)\v6.10.2" />
      <MakeDir Directories="$(PulumiBin)\custom_node" />
@@ -106,11 +105,6 @@
   </Target>
 
   <Target Name="IntegrationTest">
-    <Exec Command="where pulumi-language-nodejs-exec.cmd"
-          IgnoreExitCode="true">
-      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExecExitCode" />
-    </Exec>
-
     <Exec Command="where pulumi-language-nodejs"
           IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
@@ -118,11 +112,11 @@
 
     <Exec Command="where pulumi-resource-pulumi-nodejs.cmd"
           IgnoreExitCode="true">
-      <Output TaskParameter="ExitCode" PropertyName="WhereLangHostExitCode" />
+      <Output TaskParameter="ExitCode" PropertyName="WhereDynamicProviderExitCode" />
     </Exec>
 
     <Error Text="Please add &quot;$(PulumiRoot)\bin&quot; to your path before running integration tests."
-           Condition="$(WhereLangHostExitCode) != 0 Or $(WhereLangHostExecExitCode) != 0"/>
+           Condition="$(WhereLangHostExitCode) != 0 Or $(WhereDynamicProviderExitCode) != 0"/>
 
     <!-- Ignore the exit code (but retain it) so we can kill all the lingering node processes even when go test
          fails. Otherwise, the AppVeyor job would hang until it reached the timeout -->

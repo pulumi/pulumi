@@ -544,32 +544,17 @@ function createMockResourceMonitor(
 function serveLanguageHostProcess(): { proc: childProcess.ChildProcess, addr: Promise<string> } {
     // A quick note about this:
     //
-    // Normally, pulumi-language-nodejs probes the path in order to
-    // find the nodejs executor, pulumi-language-nodejs-exec. This works
-    // great in all scenarios other than testing within this file. If the executor
-    // that it founds resides in the Pulumi install dir (which it will, if these tests
-    // are being executed by `make`), then Node will execute it by resolving our relative
-    // path requires to the Pulumi install directory. However, the programs being evaluated
-    // by the language host are using the current directory to resolve relative path requires.
+    // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible
+    // for setting up some state and then running the actual user program.  However, in this case, we don't
+    // have a folder structure like the above because we are seting the package as we've built it, not it installed
+    // in another application.
     //
-    // Normally, this isn't a problem - ostensibly the stuff in the Pulumi install directory
-    // is the same as the stuff that we are currently testing. However, the "settings.ts" module
-    // contains some global state that is expected to be shared between the language host stub
-    // that is connecting to our RPC endpoints (run/index.ts) and the Pulumi program being
-    // evaluated. Node, when resolving the require, will pick different modules to load depending
-    // on which context the require occured; if it happened in run/index.ts, it'll load
-    // from Pulumi install directory, while requires coming from anywhere else will load
-    // from the source directory. Because these are two different files, Node instantiates two
-    // separate module objects and the state that we are expecting to share is not actually shared,
-    // ultimately resulting in extremely wacky errors.
-    //
-    // In order to work around this problem, the langhost is explicitly instructed
-    // (through --use-executor) to use a specific executor which will load modules from
-    // the source directory and not the install directory.
-    const proc = childProcess.spawn("pulumi-language-nodejs", [
-        "--use-executor",
-        path.join(__filename, "..", "..", "..", "..", "pulumi-language-nodejs-exec-test"),
-    ]);
+    // `pulumi-language-nodejs` allows us to set `PULUMI_LANGUAGE_NODEJS_RUN_PATH` in the environment, and when
+    // set, it will use that path instead of the default value. For our tests here, we set it and point at the
+    // just built version of run.
+    process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = "./bin/cmd/run";
+    const proc = childProcess.spawn("pulumi-language-nodejs");
+
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and
     // hand back the resulting process object plus the address we plucked out.
     let addrResolve: ((addr: string) => void) | undefined;
