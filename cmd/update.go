@@ -4,16 +4,13 @@ package cmd
 
 import (
 	"context"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 func newUpdateCmd() *cobra.Command {
@@ -31,7 +28,7 @@ func newUpdateCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
-	var noInteractive bool
+	var nonInteractive bool
 
 	var cmd = &cobra.Command{
 		Use:        "update",
@@ -51,7 +48,7 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			isInteractive := !noInteractive && terminal.IsTerminal(int(os.Stdout.Fd()))
+			isInteractive := IsInteractive(cmd)
 			if !force && !preview && !isInteractive {
 				return errors.New("'update' must be run interactively or be passed the --force or --preview flag")
 			}
@@ -135,13 +132,7 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
-
-	// Hidden testing flag.  Jenkins creates an interactive terminal, but that isn't a
-	// great experience for tests which want to just dump output to the console to be
-	// perused later.
-	cmd.PersistentFlags().BoolVar(&noInteractive, "no-interactive", false, "Disable interactive mode")
-	err := cmd.PersistentFlags().MarkHidden("no-interactive")
-	contract.IgnoreError(err)
+	cmd.PersistentFlags().BoolVar(&nonInteractive, "non-interactive", false, "Disable interactive mode")
 
 	return cmd
 }

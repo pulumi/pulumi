@@ -26,7 +26,7 @@ func TestDiffs(t *testing.T) {
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-		UpdateCommandlineFlags: []string{"--color=raw", "--no-interactive", "--diff"},
+		UpdateCommandlineFlags: []string{"--color=raw", "--non-interactive", "--diff"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Deployment)
 			assert.Equal(t, 5, len(stack.Deployment.Resources))
