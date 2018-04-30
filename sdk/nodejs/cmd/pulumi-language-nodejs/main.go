@@ -39,9 +39,9 @@ import (
 )
 
 const (
-	// By convention, the executor is the name of the current program
-	// (pulumi-language-nodejs) plus this suffix.
-	nodeExecSuffix = "-exec" // the exec shim for Pulumi to run Node programs.
+	// The path to the "run" program which will spawn the rest of the language host. This may be overriden with
+	// PULUMI_LANGUAGE_NODEJS_RUN_PATH, which we do in some testing cases.
+	defaultRunPath = "./node_modules/@pulumi/pulumi/cmd/run"
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -52,40 +52,27 @@ const (
 // endpoint.
 func main() {
 	var tracing string
-	var givenExecutor string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-
-	// You can use the below flag to request that the language host load
-	// a specific executor instead of probing the PATH. This is used specifically
-	// in run.spec.ts to work around some unfortunate Node module loading behavior.
-	flag.StringVar(&givenExecutor, "use-executor", "",
-		"Use the given program as the executor instead of looking for one on PATH")
 
 	flag.Parse()
 	args := flag.Args()
 	cmdutil.InitLogging(false, 0, false)
 	cmdutil.InitTracing(os.Args[0], tracing)
-	var nodeExec string
-	if givenExecutor == "" {
-		// The -exec binary is the same name as the current language host, except that we must trim off
-		// the file extension (if any) and then append -exec to it.
-		bin := os.Args[0]
-		if ext := filepath.Ext(bin); ext != "" {
-			bin = bin[:len(bin)-len(ext)]
-		}
-		bin += nodeExecSuffix
-		pathExec, err := exec.LookPath(bin)
-		if err != nil {
-			err = errors.Wrapf(err, "could not find `%s` on the $PATH", bin)
-			cmdutil.Exit(err)
-		}
 
-		glog.V(3).Infof("language host identified executor from path: `%s`", pathExec)
-		nodeExec = pathExec
-	} else {
-		glog.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
-		nodeExec = givenExecutor
+	nodePath, err := exec.LookPath("node")
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
+	}
+
+	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+	if runPath == "" {
+		runPath = defaultRunPath
+	}
+
+	if _, err = os.Stat(runPath); err != nil {
+		cmdutil.ExitError(
+			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
 	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
@@ -97,7 +84,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodeExec, engineAddress, tracing)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -118,14 +105,16 @@ func main() {
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
-	exec          string
+	nodeBin       string
+	runPath       string
 	engineAddress string
 	tracing       string
 }
 
-func newLanguageHost(exec, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(nodePath, runPath, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
-		exec:          exec,
+		nodeBin:       nodePath,
+		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
 	}
@@ -263,17 +252,40 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		return nil, err
 	}
 
+	ourCmd, err := os.Executable()
+	if err != nil {
+		err = errors.Wrap(err, "failed to find our working directory")
+		return nil, err
+	}
+
+	// Older versions of the pulumi runtime used a custom node module (which only worked on node 6.10.X) to support
+	// closure serialization. While we no longer use this, we continue to ship this module with the language host in
+	// the SDK, so we can deploy programs using older versions of the Pulumi framework.  So, for now, let's add this
+	// folder with our native modules to the NODE_PATH so Node can find it.
+	//
+	// TODO(ellismg)[pulumi/pulumi#1298]: Remove this block of code when we no longer need to support older
+	// @pulumi/pulumi versions.
+	env := os.Environ()
+	existingNodePath := os.Getenv("NODE_PATH")
+	if existingNodePath != "" {
+		env = append(env, fmt.Sprintf("NODE_PATH=%s/v6.10.2:%s", filepath.Dir(ourCmd), existingNodePath))
+	} else {
+		env = append(env, "NODE_PATH="+filepath.Dir(ourCmd)+"/v6.10.2")
+	}
+
+	env = append(env, pulumiConfigVar+"="+string(config))
+
 	if glog.V(5) {
 		commandStr := strings.Join(args, " ")
-		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+		glog.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
+	cmd := exec.Command(host.nodeBin, args...) // nolint: gas, intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), pulumiConfigVar+"="+string(config))
+	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
@@ -299,7 +311,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
 func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest) []string {
-	var args []string
+	args := []string{host.runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
 			args = append(args, "--"+k, v)

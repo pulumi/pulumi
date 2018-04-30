@@ -32,7 +32,6 @@ RunGoBuild "github.com/pulumi/pulumi"
 RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
-Copy-Item "$Root\sdk\nodejs\dist\pulumi-language-nodejs-exec.cmd" "$PublishDir\bin"
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
 
 New-Item -ItemType Directory -Path "$PublishDir\bin\v6.10.2" | Out-Null
