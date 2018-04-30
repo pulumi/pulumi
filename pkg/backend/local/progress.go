@@ -856,7 +856,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we still just print the same thing we
 		// did while running the step.
-		return step.Op.Prefix() + getPreviewText(step.Op) + colors.Reset
+		return step.Op.Color() + getPreviewText(step.Op) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
@@ -907,7 +907,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return makeError(getDescription())
 	}
 
-	return op.Prefix() + getDescription() + colors.Reset
+	return op.Color() + getDescription() + colors.Reset
 }
 
 func getPreviewText(op deploy.StepOp) string {
@@ -930,6 +930,10 @@ func getPreviewText(op deploy.StepOp) string {
 
 	contract.Failf("Unrecognized resource step op: %v", op)
 	return ""
+}
+
+func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata) string {
+	return step.Op.Prefix() + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -966,7 +970,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-	return op.Prefix() + getDescription() + colors.Reset
+	return op.Color() + getDescription() + colors.Reset
 }
 
 func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {

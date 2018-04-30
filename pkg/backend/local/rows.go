@@ -64,7 +64,7 @@ func (data *headerRowData) SetDisplayOrderIndex(time int) {
 func (data *headerRowData) ColorizedColumns() []string {
 	if len(data.columns) == 0 {
 		blue := func(msg string) string {
-			return colors.Blue + msg + colors.Reset
+			return colors.BrightBlue + msg + colors.Reset
 		}
 
 		header := func(msg string) string {
@@ -77,7 +77,7 @@ func (data *headerRowData) ColorizedColumns() []string {
 		} else {
 			statusColumn = header("Status")
 		}
-		data.columns = []string{header("Resource Type"), header("Name"), statusColumn, header("Extra Info")}
+		data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
 	}
 
 	return data.columns
@@ -189,10 +189,11 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 type column int
 
 const (
-	typeColumn   column = 0
-	nameColumn   column = 1
-	statusColumn column = 2
-	infoColumn   column = 3
+	opColumn     column = 0
+	typeColumn   column = 1
+	nameColumn   column = 2
+	statusColumn column = 3
+	infoColumn   column = 4
 )
 
 func (data *resourceRowData) ColorizedSuffix() string {
@@ -221,7 +222,8 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		typ = simplifyTypeName(data.step.URN.Type())
 	}
 
-	columns := make([]string, 4)
+	columns := make([]string, 5)
+	columns[opColumn] = data.display.getStepOpLabel(step)
 	columns[typeColumn] = typ
 	columns[nameColumn] = name
 
