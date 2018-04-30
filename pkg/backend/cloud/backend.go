@@ -260,11 +260,11 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
 	// When projID.Repository is the empty string, we are using the new identity model. In this case, the service
-	// uses "-" for the repository and project name.
+	// does not include project or repository information in URLS, so the "project path" is simply the owner.
 	//
 	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
 	if projID.Repository == "" {
-		return path.Join(projID.Owner, "-", "-")
+		return projID.Owner
 	}
 
 	return path.Join(projID.Owner, projID.Repository, projID.Project)
