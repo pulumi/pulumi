@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/workspace"
 
@@ -31,9 +33,10 @@ func newNewCmd() *cobra.Command {
 	var description string
 	var force bool
 	var offline bool
+	var noStackInit bool
 
 	cmd := &cobra.Command{
-		Use:   "new <template>",
+		Use:   "new [<template>]",
 		Short: "Create a new Pulumi project",
 		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -116,6 +119,14 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 
+			// Now run stack init using the project name for the stack.
+			if !noStackInit {
+				if err = stackInit(name); err != nil {
+					return err
+				}
+				fmt.Println("Run 'pulumi stack init' to create a new stack.")
+			}
+
 			fmt.Println("Your project was created successfully.")
 			return nil
 		}),
@@ -135,8 +146,57 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
 		"Allows offline use of cached templates without making any network requests")
+	cmd.PersistentFlags().BoolVar(
+		&noStackInit, "no-stack-init", false,
+		"Do not automatically run stack init")
 
 	return cmd
+}
+
+// stackInit will attempt to create the stack. If the stack already exists, it will
+// retry by appending an incremented index to the stack name.
+func stackInit(stackName string) error {
+	originalStackName := stackName
+
+	b, err := currentBackend()
+	if err != nil {
+		return err
+	}
+
+	const maxTryCount = 25
+	const delaySeconds = 1
+
+	try := 0
+
+	for {
+		stackRef, err := b.ParseStackReference(stackName)
+		if err != nil {
+			return err
+		}
+
+		// Attempt to create the stack.
+		if _, err = createStack(b, stackRef, nil); err != nil {
+			// If the stack already exists and we're under maxTryCount, try again after a short delay
+			// by appending an incremented number to the stack name.
+			if _, ok := err.(*backend.StackAlreadyExistsError); ok && try < maxTryCount {
+				// Wait a short delay as to not overload the service.
+				time.Sleep(delaySeconds * time.Second)
+
+				// Update the name with incremented suffix.
+				old := stackName
+				try++
+				stackName = fmt.Sprintf("%s%d", originalStackName, try)
+
+				// Let the user know what's going on and loop around to try again.
+				fmt.Printf("Stack '%s' already exists. Trying '%s'.\n", old, stackName)
+				continue
+			}
+			return err
+		}
+		break
+	}
+
+	return nil
 }
 
 func getCloudURL(cloudURL string) string {

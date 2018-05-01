@@ -400,6 +400,10 @@ func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interfa
 
 	apistack, err := b.client.CreateStack(project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
 	if err != nil {
+		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
+		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
+			return nil, &backend.StackAlreadyExistsError{StackName: string(stackRef.StackName())}
+		}
 		return nil, err
 	}
 
@@ -408,7 +412,7 @@ func (b *cloudBackend) CreateStack(stackRef backend.StackReference, opts interfa
 	if !stack.RunLocally() {
 		fmt.Printf(" in PPC %s", stack.CloudName())
 	}
-	fmt.Println()
+	fmt.Println(".")
 
 	return stack, nil
 }

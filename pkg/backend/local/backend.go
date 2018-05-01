@@ -4,6 +4,7 @@ package local
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -101,7 +102,7 @@ func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interfa
 	}
 
 	if _, _, _, err := b.getStack(stackName); err == nil {
-		return nil, errors.Errorf("stack '%s' already exists", stackName)
+		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
 	tags, err := backend.GetStackTags()
@@ -117,7 +118,10 @@ func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interfa
 		return nil, err
 	}
 
-	return newStack(stackRef, file, nil, nil, b), nil
+	stack := newStack(stackRef, file, nil, nil, b)
+	fmt.Printf("Created stack '%s'.\n", stack.Name())
+
+	return stack, nil
 }
 
 func (b *localBackend) GetStack(stackRef backend.StackReference) (backend.Stack, error) {

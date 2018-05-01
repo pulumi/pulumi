@@ -49,6 +49,10 @@ func currentBackend() (backend.Backend, error) {
 func createStack(b backend.Backend, stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
 	stack, err := b.CreateStack(stackRef, opts)
 	if err != nil {
+		// If it's a StackAlreadyExistsError, don't wrap it.
+		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
+			return nil, err
+		}
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
