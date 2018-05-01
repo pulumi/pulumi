@@ -14,6 +14,8 @@ describe("runtime", () => {
                 "bStr": "a string",
                 "cUnd": undefined,
                 "dArr": Promise.resolve([ "x", 42, Promise.resolve(true), Promise.resolve(undefined) ]),
+                "id": "foo",
+                "urn": "bar",
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             const transfer = gstruct.Struct.fromJavaScript(
@@ -23,6 +25,8 @@ describe("runtime", () => {
             assert.equal(result.bStr, "a string");
             assert.equal(result.cUnd, undefined);
             assert.deepEqual(result.dArr, [ "x", 42, true, undefined ]);
+            assert.equal(result.id, "foo");
+            assert.equal(result.urn, "bar");
         }));
     });
 });
