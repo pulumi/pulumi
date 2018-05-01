@@ -355,6 +355,7 @@ func (pc *Client) CreateUpdate(
 	case UpdateKindUpdate:
 		if dryRun {
 			endpoint = "preview"
+			kind = UpdateKindPreview
 		} else {
 			endpoint = "update"
 		}
