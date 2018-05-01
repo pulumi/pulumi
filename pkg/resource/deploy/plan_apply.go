@@ -222,38 +222,31 @@ outer:
 func (iter *PlanIterator) diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs, newOutputs,
 	newProps resource.PropertyMap, prov plugin.Provider, refresh, allowUnknowns bool) (plugin.DiffResult, error) {
 
-	// Workaround #1251: unexpected replaces.
-	//
-	// The legacy/desired behavior here is that if the provider-calculated inputs for a resource did not change,
-	// then the resource itself should not change. Unfortunately, we (correctly?) pass the entire current state
-	// of the resource to Diff, which includes calculated/output properties that may differ from those present
-	// in the input properties. This can cause unexpected diffs.
-	//
-	// For now, simply apply the legacy diffing behavior before deferring to the provider.
-	var hasChanges bool
-	if refresh {
-		hasChanges = !oldOutputs.DeepEquals(newOutputs)
-	} else {
-		hasChanges = !oldInputs.DeepEquals(newInputs)
-	}
-	if !hasChanges {
-		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	// If there is a provider for this resource, ask it to compute a diff.
+	var diff plugin.DiffResult
+	if prov != nil {
+		d, err := prov.Diff(urn, id, oldOutputs, newProps, allowUnknowns)
+		if err != nil {
+			return plugin.DiffResult{}, err
+		}
+		diff = d
 	}
 
-	// If there is no provider for this resource, simply return a "diffs exist" result.
-	if prov == nil {
-		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
-	}
-
-	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
-	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newProps, allowUnknowns)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
+	// If the plugin did not return a concrete result, apply the legacy diffing approach to decide whether or not
+	// differences exist.
 	if diff.Changes == plugin.DiffUnknown {
+		var hasChanges bool
+		if refresh {
+			hasChanges = !oldOutputs.DeepEquals(newOutputs)
+		} else {
+			hasChanges = !oldInputs.DeepEquals(newInputs)
+		}
+		if !hasChanges {
+			return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+		}
 		diff.Changes = plugin.DiffSome
 	}
+
 	return diff, nil
 }
 
