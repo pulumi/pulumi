@@ -15,6 +15,8 @@ const (
 	DeployUpdate UpdateKind = "update"
 	// PreviewUpdate is a preview of an update, without impacting resources.
 	PreviewUpdate UpdateKind = "preview"
+	// RefreshUpdate is an update that came from a refresh operation.
+	RefreshUpdate UpdateKind = "refresh"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"
 )
