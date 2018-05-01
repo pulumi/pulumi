@@ -76,19 +76,19 @@ async function serializeFilteredProperties(
 }
 
 /**
- * serializeProperties walks the props object passed in, awaiting all interior promises besides those for `id` and
- * `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
+ * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
+ * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
-export async function serializeProperties(
+export async function serializeResourceProperties(
         label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
     return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", dependentResources);
 }
 
 /**
- * serializeAllProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
+ * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
  * POJO object that can be remoted over to registerResource.
  */
-export async function serializeAllProperties(
+export async function serializeProperties(
         label: string, props: Inputs, dependentResources: Resource[] = []): Promise<Record<string, any>> {
     return serializeFilteredProperties(label, props, key => true, dependentResources);
 }
