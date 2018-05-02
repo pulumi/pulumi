@@ -105,6 +105,7 @@ message CreateRequest {
 message CreateResponse {
     string id = 1;                         // the ID of the created resource.
     google.protobuf.Struct properties = 2; // any properties that were computed during creation.
+    string error = 3;                      // any errors that occured after the resource was created.
 }
 
 message ReadRequest {
@@ -127,6 +128,7 @@ message UpdateRequest {
 
 message UpdateResponse {
     google.protobuf.Struct properties = 1; // any properties that were computed during updating.
+    string error = 2;                      // any errors that occured after the resource was updated.
 }
 
 message DeleteRequest {
