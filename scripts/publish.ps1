@@ -3,8 +3,7 @@ Set-StrictMode -Version 2.0
 $ErrorActionPreference="Stop"
 
 $PublishScript="$(go env GOPATH)\src\github.com\pulumi\home\scripts\publish.ps1"
-$BuildSdkScript="$(go env GOPATH)\src\github.com\pulumi\sdk\scripts\build-sdk.ps1"
-
+$BuildSdkScript="$(go env GOPATH)\src\github.com\pulumi\pulumi\scripts\build-sdk.ps1"
 
 if (!(Test-Path $PublishScript)) {
     Write-Error "Missing publish script at $PublishScript"
