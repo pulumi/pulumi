@@ -72,6 +72,11 @@ export interface CreateResult {
      * Any properties that were computed during creation.
      */
     readonly outs?: any;
+
+    /**
+     * Any errors that occured after the resource was already created.
+     */
+    readonly error?: string;
 }
 
 export interface ReadResult {
@@ -89,6 +94,11 @@ export interface UpdateResult {
      * Any properties that were computed during updating.
      */
     readonly outs?: any;
+
+    /**
+     * Any errors that occured after the resource was already updated.
+     */
+    readonly error?: string;
 }
 
 /**
