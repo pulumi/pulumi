@@ -216,7 +216,7 @@ export async function createFunctionInfoAsync(
         }
     }
 
-    // Add information so that we can properly serialize over async/generators/iterators.
+    // Add information so that we can properly serialize over generators/iterators.
     addGeneratorEntries();
     context.cache.set(Symbol.iterator, { expr: "Symbol.iterator" });
 
