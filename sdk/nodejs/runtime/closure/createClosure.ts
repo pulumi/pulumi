@@ -216,7 +216,7 @@ export async function createFunctionInfoAsync(
         }
     }
 
-    // Add information so that we can properly serialize over generators/iterators.
+    // Add information so that we can properly serialize over async/generators/iterators.
     addGeneratorEntries();
     context.cache.set(Symbol.iterator, { expr: "Symbol.iterator" });
 
@@ -224,7 +224,7 @@ export async function createFunctionInfoAsync(
     const entry: Entry = {};
     context.cache.set(func, entry);
 
-    entry.function = createFunctionInfo(func, context, serialize);
+    entry.function = createFunctionInfo1(func, context, serialize);
 
     await processAsyncWorkQueue();
 
@@ -292,7 +292,7 @@ export async function createFunctionInfoAsync(
  * createFunctionInfo does the work to create an asynchronous dataflow graph that resolves to a
  * final FunctionInfo.
  */
-function createFunctionInfo(
+function createFunctionInfo1(
         func: Function, context: Context,
         serialize: (o: any) => boolean): FunctionInfo {
 
@@ -369,11 +369,19 @@ function createFunctionInfo(
             func.toString().startsWith("class ") &&
             proto !== Function.prototype(func);
 
+        // Note, i can't think of a better way to determine this.  This is particularly hard because
+        // we can't even necessary refer to async function objects here as this code is rewritten by
+        // TS, converting all async functions to non async functions.
+        const isAsyncFunction = func.constructor && func.constructor.name === "AsyncFunction";
+
         // Ensure that the prototype of this function is properly serialized as well. We only need to do
-        // this for functions with a custom prototype (like a derived class constructor, or a functoin
+        // this for functions with a custom prototype (like a derived class constructor, or a function
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (proto !== Function.prototype && !isDerivedNoCaptureConstructor(func)) {
+        if (proto !== Function.prototype &&
+            !isAsyncFunction &&
+            !isDerivedNoCaptureConstructor(func)) {
+
             const protoEntry = getOrCreateEntry(proto, undefined, context, serialize);
             functionInfo.proto = protoEntry;
 
@@ -714,7 +722,7 @@ function getOrCreateEntry(
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.function = createFunctionInfo(obj, context, serialize);
+            entry.function = createFunctionInfo1(obj, context, serialize);
         }
         else if (resource.Output.isInstance(obj)) {
             // captures the frames up to this point. so we can give a good message if we

@@ -140,6 +140,12 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return ["", { funcExprWithoutName: funcString, isArrowFunction: true }];
     }
 
+    let isAsync = false;
+    if (funcString.startsWith("async ")) {
+        isAsync = true;
+        funcString = funcString.substr("async ".length);
+    }
+
     if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
         const trimmed = funcString.substr("function get".length);
         return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
@@ -171,8 +177,8 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             const isSubClass = classDecl.heritageClauses && classDecl.heritageClauses.some(
                 c => c.token === ts.SyntaxKind.ExtendsKeyword);
             return isSubClass
-                ? makeFunctionDeclaration("constructor() { super(); }", /*isFunctionDeclaration: */ false)
-                : makeFunctionDeclaration("constructor() { }", /*isFunctionDeclaration: */ false);
+                ? makeFunctionDeclaration("constructor() { super(); }", /*isFunctionDeclaration:*/ false)
+                : makeFunctionDeclaration("constructor() { }", /*isFunctionDeclaration:*/ false);
         }
 
         const constructorCode = funcString.substring(constructor.pos, constructor.end).trim();
@@ -185,7 +191,9 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     return makeFunctionDeclaration(funcString, /*isFunctionDeclaration: */ false);
 
     function makeFunctionDeclaration(v: string, isFunctionDeclaration: boolean): [string, ParsedFunctionCode] {
-        let prefix = "function ";
+        let prefix = isAsync ? "async " : "";
+        prefix += "function ";
+
         v = v.trimLeft();
 
         if (v.startsWith("*")) {
