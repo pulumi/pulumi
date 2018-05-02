@@ -224,7 +224,7 @@ export async function createFunctionInfoAsync(
     const entry: Entry = {};
     context.cache.set(func, entry);
 
-    entry.function = createFunctionInfo1(func, context, serialize);
+    entry.function = createFunctionInfo(func, context, serialize);
 
     await processAsyncWorkQueue();
 
@@ -292,7 +292,7 @@ export async function createFunctionInfoAsync(
  * createFunctionInfo does the work to create an asynchronous dataflow graph that resolves to a
  * final FunctionInfo.
  */
-function createFunctionInfo1(
+function createFunctionInfo(
         func: Function, context: Context,
         serialize: (o: any) => boolean): FunctionInfo {
 
@@ -722,7 +722,7 @@ function getOrCreateEntry(
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.function = createFunctionInfo1(obj, context, serialize);
+            entry.function = createFunctionInfo(obj, context, serialize);
         }
         else if (resource.Output.isInstance(obj)) {
             // captures the frames up to this point. so we can give a good message if we
