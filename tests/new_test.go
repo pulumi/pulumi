@@ -41,7 +41,7 @@ func TestPulumiNew(t *testing.T) {
 		e.CWD = subdir
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template, "--offline")
+		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only")
 
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
 	})
@@ -63,7 +63,7 @@ func TestPulumiNew(t *testing.T) {
 		e.CWD = subdir
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template, "--offline")
+		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only")
 
 		assertSuccess(t, subdir, "foo", description)
 	})
@@ -100,7 +100,7 @@ func TestPulumiNew(t *testing.T) {
 		template := "this-is-not-the-template-youre-looking-for"
 
 		// Confirm this fails.
-		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline", "--generate-only")
 		assert.Equal(t, "", stdout)
 		assert.NotEmpty(t, stderr)
 
@@ -135,7 +135,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template, "--name", "bar", "--description", "A project.", "--offline")
+		e.RunCommand("pulumi", "new", template, "--name", "bar", "--description", "A project.", "--offline", "--generate-only")
 
 		assertSuccess(t, e.CWD, "bar", "A project.")
 	})
@@ -156,7 +156,7 @@ func TestPulumiNew(t *testing.T) {
 		e.CWD = subdir
 
 		// Run pulumi new.
-		e.RunCommand("pulumi", "new", template, "--offline")
+		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only")
 
 		// Assert the default name used is "foo" not "@foo".
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
@@ -181,7 +181,7 @@ func TestPulumiNew(t *testing.T) {
 		assert.NoError(t, err, "creating Pulumi.yaml")
 
 		// Confirm failure due to existing file.
-		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline", "--generate-only")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "Pulumi.yaml")
 
@@ -220,7 +220,7 @@ func TestPulumiNew(t *testing.T) {
 		assert.NoError(t, err, "creating test2.txt")
 
 		// Confirm failure due to existing files.
-		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "new", template, "--offline", "--generate-only")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "Pulumi.yaml")
 		assert.Contains(t, stderr, "test2.txt")
@@ -266,7 +266,7 @@ func TestPulumiNew(t *testing.T) {
 		assert.NoError(t, err, "creating test2.txt")
 
 		// Run pulumi new with --force.
-		e.RunCommand("pulumi", "new", template, "--force", "--offline")
+		e.RunCommand("pulumi", "new", template, "--force", "--offline", "--generate-only")
 
 		assertSuccess(t, subdir, "foo", "A Pulumi project.")
 	})
