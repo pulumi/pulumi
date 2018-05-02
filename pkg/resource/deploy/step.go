@@ -148,6 +148,8 @@ func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
+	var resourceError error
+	resourceStatus := resource.StatusOK
 	if !preview {
 		if s.new.Custom && !s.plan.IsRefresh() {
 			// Invoke the Create RPC function for this provider:
@@ -157,8 +159,15 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 			}
 			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs)
 			if err != nil {
-				return rst, err
+				if rst == resource.StatusUnknown {
+					return rst, err
+				}
+
+				contract.Assert(rst == resource.StatusPartialFailure)
+				resourceError = err
+				resourceStatus = rst
 			}
+
 			contract.Assert(id != "")
 
 			// Copy any of the default and output properties on the live object state.
@@ -173,7 +182,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	s.reg.Done(&RegisterResult{State: s.new})
-	return resource.StatusOK, nil
+	return resourceStatus, resourceError
 }
 
 // DeleteStep is a mutating step that deletes an existing resource.
@@ -290,6 +299,8 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	s.new.URN = s.old.URN
 	s.new.ID = s.old.ID
 
+	var resourceError error
+	resourceStatus := resource.StatusOK
 	if !preview {
 		if s.new.Custom && !s.plan.IsRefresh() {
 			// Invoke the Update RPC function for this provider:
@@ -301,7 +312,13 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
 			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), s.new.Inputs)
 			if upderr != nil {
-				return rst, upderr
+				if rst == resource.StatusUnknown {
+					return rst, upderr
+				}
+
+				contract.Assert(rst == resource.StatusPartialFailure)
+				resourceError = upderr
+				resourceStatus = rst
 			}
 
 			// Now copy any output state back in case the update triggered cascading updates to other properties.
@@ -311,7 +328,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 
 	// Finally, mark this operation as complete.
 	s.reg.Done(&RegisterResult{State: s.new, Stables: s.stables})
-	return resource.StatusOK, nil
+	return resourceStatus, resourceError
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:

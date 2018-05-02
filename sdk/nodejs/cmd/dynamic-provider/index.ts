@@ -21,11 +21,13 @@ import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
 const grpc = require("grpc");
+const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const provproto = require("../../proto/provider_pb.js");
 const provrpc = require("../../proto/provider_grpc_pb.js");
 const plugproto = require("../../proto/plugin_pb.js");
+const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
 
@@ -153,8 +155,32 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(`${e}: ${e.stack}`);
-        callback(e, undefined);
+        // Create response object.
+        const resp = new statusproto.Status();
+        resp.setCode(grpc.status.UNKNOWN);
+        resp.setMessage(e.message);
+
+        // Pack initialization failure into details.
+        const metadata = new grpc.Metadata();
+        if (e.id) {
+            const detail = new provproto.ErrorResourceInitFailed();
+            detail.setId(e.id);
+            detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
+            detail.addReasons(e.reasons || []);
+
+            const details = new anyproto.Any();
+            details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
+
+            // Add details to metadata.
+            resp.addDetails(details);
+            metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
+        }
+
+        return callback({
+            code: grpc.status.UNKNOWN,
+            message: e.message,
+            metadata: metadata,
+        });
     }
 }
 
@@ -194,19 +220,45 @@ async function updateRPC(call: any, callback: any): Promise<void> {
             throw new Error("changes to provider should require replacement");
         }
 
-        let outs: any;
+        let result: any;
         const provider = getProvider(olds);
         if (provider.update) {
-            outs = (await provider.update(req.getId(), olds, news)).outs;
+            result = await provider.update(req.getId(), olds, news);
         }
 
-        const resultProps = resultIncludingProvider(outs, news);
-        resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
+        if (result.outs) {
+            const resultProps = resultIncludingProvider(result.outs, news);
+            resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
+        }
 
         callback(undefined, resp);
     } catch (e) {
-        console.error(`${e}: ${e.stack}`);
-        callback(e, undefined);
+        // Create response object.
+        const resp = new statusproto.Status();
+        resp.setCode(grpc.status.UNKNOWN);
+        resp.setMessage(e.message);
+
+        // Pack initialization failure into details.
+        const metadata = new grpc.Metadata();
+        if (e.id) {
+            const detail = new provproto.ErrorResourceInitFailed();
+            detail.setId(e.id);
+            detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
+            detail.addReasons(e.reasons || []);
+
+            const details = new anyproto.Any();
+            details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
+
+            // Add details to metadata.
+            resp.addDetails(details);
+            metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
+        }
+
+        return callback({
+            code: grpc.status.UNKNOWN,
+            message: e.message,
+            metadata: metadata,
+        });
     }
 }
 
