@@ -143,7 +143,7 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     let isAsync = false;
     if (funcString.startsWith("async ")) {
         isAsync = true;
-        funcString = funcString.substr("async ".length);
+        funcString = funcString.substr("async".length).trimLeft();
     }
 
     if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
