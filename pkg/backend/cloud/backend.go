@@ -640,6 +640,12 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		return err
 	}
 
+	if !stack.(Stack).RunLocally() && updateKind == client.UpdateKindDestroy {
+		// The service does not support preview of a destroy for a stack managed by a PPC.  So behave as if (--force)
+		// had been passed (so we don't run the preview step)
+		opts.Force = true
+	}
+
 	if !opts.Force {
 		// If we're not forcing, then preview the operation to the user and ask them if
 		// they want to proceed.
