@@ -27,6 +27,7 @@ lint::
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	tsc
+	cp tests/runtime/closurejs.spec.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
