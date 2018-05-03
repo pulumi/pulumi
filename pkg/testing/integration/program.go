@@ -131,6 +131,9 @@ type ProgramTestOptions struct {
 	// environment during tests.
 	StackName string
 
+	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocatoions.
+	Tracing string
+
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
 
@@ -243,6 +246,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PPCName != "" {
 		opts.PPCName = overrides.PPCName
 	}
+	if overrides.Tracing != "" {
+		opts.Tracing = overrides.Tracing
+	}
 	if overrides.EditDirs != nil {
 		opts.EditDirs = overrides.EditDirs
 	}
@@ -339,10 +345,13 @@ func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
 	}
 	cmd := []string{bin}
 	if du := pt.opts.GetDebugLogLevel(); du > 0 {
-		cmd = append(cmd, "--logtostderr")
-		cmd = append(cmd, "-v="+strconv.Itoa(du))
+		cmd = append(cmd, "--logtostderr", "-v="+strconv.Itoa(du))
 	}
-	return append(cmd, args...), nil
+	cmd = append(cmd, args...)
+	if tracing := pt.opts.Tracing; tracing != "" {
+		cmd = append(cmd, "--tracing", tracing)
+	}
+	return cmd, nil
 }
 
 func (pt *programTester) yarnCmd(args []string) ([]string, error) {
