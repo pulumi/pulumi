@@ -1,17 +1,4 @@
 [[constraint]]
-  name = "github.com/cheggaaa/pb"
-  version = "v1.0"
-
-# TODO[pulumi/pulumi#701]: remove this constraint and let updates pick the latest when this bug is fixed.
-[[constraint]]
-  name = "google.golang.org/grpc"
-  version = "=v1.7.2"
-
-[[constraint]]
-  name = "github.com/dustin/go-humanize"
-  branch = "master"
-
-[[constraint]]
   name = "github.com/Nvveen/Gotty"
   revision = "a8b993ba6abdb0e0c12b0125c603323a71c7790c"
   source = "https://github.com/ijc25/Gotty"
