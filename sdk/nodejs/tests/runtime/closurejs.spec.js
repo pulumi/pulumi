@@ -22,6 +22,8 @@ describe("closure", () => {
     const version = Number(process.version.match(/^v(\d+)\.\d+/)[1]);
 
     if (version >= 8) {
+        console.log("Process: " + process.version + "\n");
+        console.log("Version: " + version + "\n");
         cases.push({
             title: "Async anonymous function closure (js)",
             // tslint:disable-next-line
