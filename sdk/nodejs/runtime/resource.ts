@@ -1,5 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+import * as grpc from "grpc";
 import * as log from "../log";
 import { ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../resource";
 import { debuggablePromise, errorString } from "./debuggable";
@@ -112,9 +113,16 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const opLabel = `monitor.registerResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
             const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
-                monitor.registerResource(req, (err: Error, innerResponse: any) => {
+                monitor.registerResource(req, async (err: grpc.ServiceError, innerResponse: any) => {
                     log.debug(`RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
+                        // If the monitor is unavailable, it is in the process of shutting down or has already
+                        // shut down. Don't emit an error and don't do any more RPCs.
+                        if (err.code === grpc.status.UNAVAILABLE) {
+                            log.debug("Resource monitor is terminating");
+                            await waitForDeath();
+                        }
+
                         log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
                         reject(err);
                     }
@@ -268,10 +276,17 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
         req.setOutputs(outputsObj);
 
         await debuggablePromise(new Promise((resolve, reject) =>
-            monitor.registerResourceOutputs(req, (err: Error, innerResponse: any) => {
+            monitor.registerResourceOutputs(req, async (err: grpc.ServiceError, innerResponse: any) => {
                 log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
                     `err: ${err}, resp: ${innerResponse}`);
                 if (err) {
+                    // If the monitor is unavailable, it is in the process of shutting down or has already
+                    // shut down. Don't emit an error and don't do any more RPCs.
+                    if (err.code === grpc.status.UNAVAILABLE) {
+                        log.debug("Resource monitor is terminating");
+                        await waitForDeath();
+                    }
+
                     log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
                     reject(err);
                 }
@@ -320,4 +335,21 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
+}
+
+/**
+ * waitForDeath loops forever. This is a hack.
+ *
+ * The purpose of this hack is to deal with graceful termination of the resource monitor.
+ * When the engine decides that it needs to terminate, it shuts down the Log and ResourceMonitor RPC
+ * endpoints. Shutting down RPC endpoints involves draining all outstanding RPCs and denying new connections.
+ *
+ * This is all fine for us as the language host, but we need to 1) not let the RPC that just failed due to
+ * the ResourceMonitor server shutdown get displayed as an error and 2) not do any more RPCs, since they'll fail.
+ *
+ * We can accomplish both by just doing nothing until the engine kills us. It's ugly, but it works.
+ */
+function waitForDeath(): Promise<void> {
+    // tslint:disable-next-line
+    while (true) {}
 }
