@@ -369,11 +369,19 @@ function createFunctionInfo(
             func.toString().startsWith("class ") &&
             proto !== Function.prototype(func);
 
+        // Note, i can't think of a better way to determine this.  This is particularly hard because
+        // we can't even necessary refer to async function objects here as this code is rewritten by
+        // TS, converting all async functions to non async functions.
+        const isAsyncFunction = func.constructor && func.constructor.name === "AsyncFunction";
+
         // Ensure that the prototype of this function is properly serialized as well. We only need to do
-        // this for functions with a custom prototype (like a derived class constructor, or a functoin
+        // this for functions with a custom prototype (like a derived class constructor, or a function
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (proto !== Function.prototype && !isDerivedNoCaptureConstructor(func)) {
+        if (proto !== Function.prototype &&
+            !isAsyncFunction &&
+            !isDerivedNoCaptureConstructor(func)) {
+
             const protoEntry = getOrCreateEntry(proto, undefined, context, serialize);
             functionInfo.proto = protoEntry;
 
