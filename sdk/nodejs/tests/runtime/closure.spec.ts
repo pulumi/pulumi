@@ -3786,7 +3786,7 @@ return function /*f3*/() {
     // function.
     const version = Number(process.version.match(/^v(\d+)\.\d+/)![1]);
     if (version >= 8) {
-        const jsCases = require("./jsClosureCases")
+        const jsCases = require("./jsClosureCases");
         cases.push(...jsCases.cases);
     }
 
