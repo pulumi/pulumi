@@ -366,7 +366,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	// Now block waiting for the operation to finish.
-	// IDEA: we probably need some way to cancel this in case of catastrophe.
 	var result *RegisterResult
 	select {
 	case result = <-step.done:
