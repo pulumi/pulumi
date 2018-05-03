@@ -3,9 +3,11 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
 	"path"
@@ -355,6 +357,15 @@ func (cf *colorFlag) Colorization() colors.Colorization {
 	return cf.value
 }
 
+type anyWriter bool
+
+func (w *anyWriter) Write(d []byte) (int, error) {
+	if len(d) > 0 {
+		*w = true
+	}
+	return len(d), nil
+}
+
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
 func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
@@ -384,15 +395,22 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		}
 
 		// If the current commit is dirty.
-		w, err := repo.Worktree()
+		gitBin, err := exec.LookPath("git")
 		if err != nil {
-			return m, errors.Wrapf(err, gitErrCtx, "getting worktree")
+			return m, errors.Wrapf(err, gitErrCtx, "finding git executable")
 		}
-		s, err := w.Status()
-		if err != nil {
-			return m, errors.Wrapf(err, gitErrCtx, "getting worktree status")
+		gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
+		var anyOutput anyWriter
+		var stderr bytes.Buffer
+		gitStatusCmd.Stdout = &anyOutput
+		gitStatusCmd.Stderr = &stderr
+		if err := gitStatusCmd.Run(); err != nil {
+			if ee, ok := err.(*exec.ExitError); ok {
+				ee.Stderr = stderr.Bytes()
+			}
+			return m, errors.Wrapf(err, gitErrCtx, fmt.Sprintf("invoking git status"))
 		}
-		dirty := !s.IsClean()
+		dirty := bool(anyOutput)
 		m.Environment[backend.GitDirty] = fmt.Sprint(dirty)
 
 		// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
