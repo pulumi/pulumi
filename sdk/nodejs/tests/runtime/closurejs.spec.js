@@ -18,11 +18,15 @@ const util_1 = require("../util");
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
     const cases = [];
-    cases.push({
-        title: "Async anonymous function closure (js)",
-        // tslint:disable-next-line
-        func: async function (a) { await a; },
-        expectText: `exports.handler = __f0;
+
+    const version = Number(process.version.match(/^v(\d+)\.\d+/)[1]);
+
+    if (version >= 8) {
+        cases.push({
+            title: "Async anonymous function closure (js)",
+            // tslint:disable-next-line
+            func: async function (a) { await a; },
+            expectText: `exports.handler = __f0;
 
 function __f0() {
   return (function() {
@@ -34,13 +38,13 @@ return async function (a) { await a; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 `,
-    });
+        });
 
-    cases.push({
-        title: "Async anonymous function closure - extra space (js)",
-        // tslint:disable-next-line
-        func: async  function (a) { await a; },
-        expectText: `exports.handler = __f0;
+        cases.push({
+            title: "Async anonymous function closure - extra space (js)",
+            // tslint:disable-next-line
+            func: async  function (a) { await a; },
+            expectText: `exports.handler = __f0;
 
 function __f0() {
   return (function() {
@@ -52,13 +56,13 @@ return async function (a) { await a; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 `,
-    });
+        });
 
-    cases.push({
-        title: "Async named function closure (js)",
-        // tslint:disable-next-line
-        func: async function foo(a) { await a; },
-        expectText: `exports.handler = __foo;
+        cases.push({
+            title: "Async named function closure (js)",
+            // tslint:disable-next-line
+            func: async function foo(a) { await a; },
+            expectText: `exports.handler = __foo;
 
 function __foo() {
   return (function() {
@@ -70,13 +74,13 @@ return async function /*foo*/(a) { await a; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 `,
-    });
+        });
 
-    cases.push({
-        title: "Async arrow function closure (js)",
-        // tslint:disable-next-line
-        func: async (a) => { await a; },
-        expectText: `exports.handler = __f0;
+        cases.push({
+            title: "Async arrow function closure (js)",
+            // tslint:disable-next-line
+            func: async (a) => { await a; },
+            expectText: `exports.handler = __f0;
 
 function __f0() {
   return (function() {
@@ -88,7 +92,8 @@ return async (a) => { await a; };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 `,
-    });
+        });
+    }
 
     // Make a callback to keep running tests.
     let remaining = cases;
