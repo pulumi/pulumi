@@ -15,14 +15,18 @@ import (
 )
 
 type Row interface {
+	DisplayOrderIndex() int
+	SetDisplayOrderIndex(index int)
+
 	ColorizedColumns() []string
 	ColorizedSuffix() string
+	HideRowIfUnnecessary() bool
 }
 
 type ResourceRow interface {
 	Row
 
-	// The change that the engine wants apply to that resource.
+	Step() engine.StepEventMetadata
 	SetStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
@@ -44,10 +48,23 @@ type headerRowData struct {
 	columns []string
 }
 
+func (data *headerRowData) HideRowIfUnnecessary() bool {
+	return false
+}
+
+func (data *headerRowData) DisplayOrderIndex() int {
+	// sort the header before all other rows
+	return -1
+}
+
+func (data *headerRowData) SetDisplayOrderIndex(time int) {
+	// Nothing to do here.   Header is always at the same index.
+}
+
 func (data *headerRowData) ColorizedColumns() []string {
 	if len(data.columns) == 0 {
 		blue := func(msg string) string {
-			return colors.Blue + msg + colors.Reset
+			return colors.BrightBlue + msg + colors.Reset
 		}
 
 		header := func(msg string) string {
@@ -60,7 +77,7 @@ func (data *headerRowData) ColorizedColumns() []string {
 		} else {
 			statusColumn = header("Status")
 		}
-		data.columns = []string{header("Resource Type"), header("Name"), statusColumn, header("Extra Info")}
+		data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
 	}
 
 	return data.columns
@@ -72,6 +89,8 @@ func (data *headerRowData) ColorizedSuffix() string {
 
 // Implementation of a row used for all the resource rows in the grid.
 type resourceRowData struct {
+	displayOrderIndex int
+
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
@@ -88,6 +107,30 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo *DiagInfo
+
+	// If this row should be hidden by default.  We will hide unless we have any child nodes
+	// we need to show.
+	hideRowIfUnnecessary bool
+}
+
+func (data *resourceRowData) DisplayOrderIndex() int {
+	// sort the header before all other rows
+	return data.displayOrderIndex
+}
+
+func (data *resourceRowData) SetDisplayOrderIndex(index int) {
+	// only set this if it's the first time.
+	if data.displayOrderIndex == 0 {
+		data.displayOrderIndex = index
+	}
+}
+
+func (data *resourceRowData) HideRowIfUnnecessary() bool {
+	return data.hideRowIfUnnecessary
+}
+
+func (data *resourceRowData) Step() engine.StepEventMetadata {
+	return data.step
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
@@ -146,18 +189,21 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 type column int
 
 const (
-	typeColumn   column = 0
-	nameColumn   column = 1
-	statusColumn column = 2
-	infoColumn   column = 3
+	opColumn     column = 0
+	typeColumn   column = 1
+	nameColumn   column = 2
+	statusColumn column = 3
+	infoColumn   column = 4
 )
 
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.display.Done && !data.done {
-		suffixes := data.display.suffixesArray
-		ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
+		if data.step.Op != deploy.OpSame || isRootURN(data.step.URN) {
+			suffixes := data.display.suffixesArray
+			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-		return data.step.Op.Color() + ellipses + colors.Reset
+			return data.step.Op.Color() + ellipses + colors.Reset
+		}
 	}
 
 	return ""
@@ -176,7 +222,8 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		typ = simplifyTypeName(data.step.URN.Type())
 	}
 
-	columns := make([]string, 4)
+	columns := make([]string, 5)
+	columns[opColumn] = data.display.getStepOpLabel(step)
 	columns[typeColumn] = typ
 	columns[nameColumn] = name
 

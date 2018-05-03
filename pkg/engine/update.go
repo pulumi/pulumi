@@ -53,6 +53,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
+		PluginEvents:  &pluginActions{ctx},
 	}, dryRun)
 }
 
@@ -115,12 +116,21 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
-			summary, _, _, err := result.Walk(ctx, actions, false)
+			summary, step, _, err := result.Walk(ctx, actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return resourceChanges, err
 			}
+
 			contract.Assert(summary != nil)
+			if err != nil {
+				var failedUrn resource.URN
+				if step != nil {
+					failedUrn = step.URN()
+				}
+
+				opts.Diag.Errorf(diag.Message(failedUrn, err.Error()))
+			}
 
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			resourceChanges = ResourceChanges(actions.Ops)
@@ -133,6 +143,16 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 	}
 
 	return resourceChanges, nil
+}
+
+// pluginActions listens for plugin events and persists the set of loaded plugins
+// to the snapshot.
+type pluginActions struct {
+	Context *Context
+}
+
+func (p *pluginActions) OnPluginLoad(loadedPlug workspace.PluginInfo) error {
+	return p.Context.SnapshotManager.RecordPlugin(loadedPlug)
 }
 
 // updateActions pretty-prints the plan application process as it goes.
@@ -163,7 +183,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
 	// Inform the snapshot service that we are about to perform a step.
-	return acts.Update.BeginMutation()
+	return acts.Context.SnapshotManager.BeginMutation(step)
 }
 
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
@@ -203,8 +223,9 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
-	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error reported above.
-	return ctx.(SnapshotMutation).End(step.Iterator().Snap())
+	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
+	// reported above.
+	return ctx.(SnapshotMutation).End(step, err == nil)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
@@ -214,10 +235,5 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 	// There's a chance there are new outputs that weren't written out last time.
 	// We need to perform another snapshot write to ensure they get written out.
-	mutation, err := acts.Update.BeginMutation()
-	if err != nil {
-		return err
-	}
-
-	return mutation.End(step.Iterator().Snap())
+	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }

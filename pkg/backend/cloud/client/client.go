@@ -355,6 +355,7 @@ func (pc *Client) CreateUpdate(
 	case UpdateKindUpdate:
 		if dryRun {
 			endpoint = "preview"
+			kind = UpdateKindPreview
 		} else {
 			endpoint = "update"
 		}
@@ -419,7 +420,7 @@ func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTag
 	}
 
 	var resp apitype.StartUpdateResponse
-	if err := pc.restCall("POST", getUpdatePath(update), req, nil, &resp); err != nil {
+	if err := pc.restCall("POST", getUpdatePath(update), nil, req, &resp); err != nil {
 		return 0, "", err
 	}
 

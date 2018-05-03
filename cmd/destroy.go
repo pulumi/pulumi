@@ -5,11 +5,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -32,6 +30,7 @@ func newDestroyCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var nonInteractive bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -47,7 +46,8 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+			isInteractive := IsInteractive(cmd)
+			if !force && !preview && !isInteractive {
 				return errors.New("'destroy' must be run interactively or be passed the --force or --preview flags")
 			}
 
@@ -88,6 +88,7 @@ func newDestroyCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				IsInteractive:        isInteractive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			}, cancellationScopes)
@@ -135,6 +136,7 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(&nonInteractive, "non-interactive", false, "Disable interactive mode")
 
 	return cmd
 }

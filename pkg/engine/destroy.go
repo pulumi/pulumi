@@ -13,6 +13,7 @@ func Destroy(
 	u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 
 	contract.Require(u != nil, "u")
+	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 

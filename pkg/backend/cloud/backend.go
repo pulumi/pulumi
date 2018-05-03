@@ -77,8 +77,7 @@ func ValueOrDefaultURL(cloudURL string) string {
 
 	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
 	// to ignore the local cloud.
-	creds, err := workspace.GetStoredCredentials()
-	if err != nil {
+	if creds, err := workspace.GetStoredCredentials(); err == nil {
 		if creds.Current != "" && !local.IsLocalBackendURL(creds.Current) {
 			return creds.Current
 		}
@@ -154,6 +153,11 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 	existingToken, err := workspace.GetAccessToken(cloudURL)
 	if err == nil && existingToken != "" {
 		if valid, _ := IsValidAccessToken(cloudURL, existingToken); valid {
+			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
+			if err = workspace.StoreAccessToken(cloudURL, existingToken, true); err != nil {
+				return nil, err
+			}
+
 			return New(d, cloudURL)
 		}
 	}
@@ -256,11 +260,11 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 // must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
 	// When projID.Repository is the empty string, we are using the new identity model. In this case, the service
-	// uses "-" for the repository and project name.
+	// does not include project or repository information in URLS, so the "project path" is simply the owner.
 	//
 	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
 	if projID.Repository == "" {
-		return path.Join(projID.Owner, "-", "-")
+		return projID.Owner
 	}
 
 	return path.Join(projID.Owner, projID.Repository, projID.Project)
@@ -473,24 +477,28 @@ func (b *cloudBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 	return &cloudCrypter{backend: b, stack: stack}, nil
 }
 
+var (
+	updateTextMap = map[string]struct {
+		previewText string
+		text        string
+	}{
+		string(client.UpdateKindUpdate):  {"update of", "Updating"},
+		string(client.UpdateKindRefresh): {"refresh of", "Refreshing"},
+		string(client.UpdateKindDestroy): {"destroy of", "Destroying"},
+		string(client.UpdateKindImport):  {"import to", "Importing into"},
+	}
+)
+
 func getActionLabel(key string, dryRun bool) string {
+	v := updateTextMap[key]
+	contract.Assert(v.previewText != "")
+	contract.Assert(v.text != "")
+
 	if dryRun {
-		return "Previewing"
+		return "Previewing " + v.previewText
 	}
 
-	switch key {
-	case string(client.UpdateKindUpdate):
-		return "Updating"
-	case string(client.UpdateKindRefresh):
-		return "Refreshing"
-	case string(client.UpdateKindDestroy):
-		return "Destroying"
-	case string(client.UpdateKindImport):
-		return "Importing"
-	}
-
-	contract.Failf("Should not get here.")
-	return ""
+	return v.text
 }
 
 type response string
@@ -630,6 +638,12 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	stack, err := getStack(b, stackRef)
 	if err != nil {
 		return err
+	}
+
+	if !stack.(Stack).RunLocally() && updateKind == client.UpdateKindDestroy {
+		// The service does not support preview of a destroy for a stack managed by a PPC.  So behave as if (--force)
+		// had been passed (so we don't run the preview step)
+		opts.Force = true
 	}
 
 	if !opts.Force {
@@ -810,6 +824,8 @@ func (b *cloudBackend) runEngineAction(
 		return err
 	}
 
+	persister := b.newSnapshotPersister(u.update, u.tokenSource)
+	manager := backend.NewSnapshotManager(stackRef.StackName(), persister, u.GetTarget().Snapshot)
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 
@@ -834,7 +850,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
-	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents}
+	engineCtx := &engine.Context{Cancel: scope.Context(), Events: engineEvents, SnapshotManager: manager}
 	switch action {
 	case client.UpdateKindUpdate:
 		if dryRun {
@@ -855,6 +871,7 @@ func (b *cloudBackend) runEngineAction(
 	close(engineEvents)
 	close(displayEvents)
 	close(displayDone)
+	contract.IgnoreClose(manager)
 
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded

@@ -225,6 +225,9 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 		return err
 	}
 
+	persister := b.newSnapshotPersister(stackName)
+	manager := backend.NewSnapshotManager(stackName, persister, update.GetTarget().Snapshot)
+
 	events := make(chan engine.Event)
 
 	cancelScope := scopes.NewScope(events, dryRun)
@@ -236,13 +239,14 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 
 	// Perform the update
 	start := time.Now().Unix()
-	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events}
+	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events, SnapshotManager: manager}
 	changes, updateErr := performEngineOp(update, engineCtx, opts, dryRun)
 	end := time.Now().Unix()
 
 	<-done
 	close(events)
 	close(done)
+	contract.IgnoreClose(manager)
 
 	// Save update results.
 	result := backend.SucceededResult

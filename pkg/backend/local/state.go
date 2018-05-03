@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/encoding"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
@@ -54,28 +53,6 @@ func (u *update) GetProject() *workspace.Project {
 
 func (u *update) GetTarget() *deploy.Target {
 	return u.target
-}
-
-type localStackMutation struct {
-	name    tokens.QName
-	backend *localBackend
-}
-
-func (u *update) BeginMutation() (engine.SnapshotMutation, error) {
-	return &localStackMutation{name: u.target.Name, backend: u.backend}, nil
-}
-
-func (m *localStackMutation) End(snapshot *deploy.Snapshot) error {
-	stack := snapshot.Stack
-	contract.Assert(m.name == stack)
-
-	config, _, _, err := m.backend.getStack(stack)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	_, err = m.backend.saveStack(stack, config, snapshot)
-	return err
 }
 
 func (b *localBackend) newUpdate(stackName tokens.QName, proj *workspace.Project, root string) (*update, error) {

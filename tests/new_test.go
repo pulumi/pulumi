@@ -17,6 +17,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// deleteIfNotFailed deletes the files in the testing environment if the testcase has
+// not failed. (Otherwise they are left to aid debugging.)
+func deleteIfNotFailed(e *ptesting.Environment) {
+	if !e.T.Failed() {
+		e.DeleteEnvironment()
+	}
+}
+
 func TestPulumiNew(t *testing.T) {
 	t.Run("SanityTest", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)

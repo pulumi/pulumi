@@ -169,7 +169,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi update.
 		before := time.Now().UnixNano()
-		e.RunCommand("pulumi", "update", "--force")
+		e.RunCommand("pulumi", "update", "--non-interactive", "--force")
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
@@ -183,7 +183,7 @@ func TestStackBackups(t *testing.T) {
 
 		// Now run pulumi destroy.
 		before = time.Now().UnixNano()
-		e.RunCommand("pulumi", "destroy", "--force")
+		e.RunCommand("pulumi", "destroy", "--non-interactive", "--force")
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.

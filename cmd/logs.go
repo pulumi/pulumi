@@ -29,7 +29,7 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "Show aggregated logs for a project",
+		Short: "Show aggregated logs for a stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			s, err := requireStack(stack, false)
@@ -48,7 +48,8 @@ func newLogsCmd() *cobra.Command {
 			}
 
 			fmt.Printf(
-				colors.ColorizeText(colors.BrightMagenta+"Collecting logs since %s.\n\n"+colors.Reset),
+				colors.ColorizeText(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
+				s.Name().String(),
 				startTime.Format(timeFormat),
 			)
 

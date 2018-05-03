@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -31,7 +33,6 @@ import (
 // Actions must have an ID.
 type Progress struct {
 	ID      string
-	ShowID  bool
 	Message string
 	Action  string
 }
@@ -40,11 +41,11 @@ func makeMessageProgress(message string) Progress {
 	return Progress{Message: message}
 }
 
-func makeActionProgress(id string, action string, showID bool) Progress {
+func makeActionProgress(id string, action string) Progress {
 	contract.Assertf(id != "", "id must be non empty for action %s", action)
 	contract.Assertf(action != "", "action must be non empty")
 
-	return Progress{ID: id, Action: action, ShowID: showID}
+	return Progress{ID: id, Action: action}
 }
 
 type DiagInfo struct {
@@ -82,6 +83,10 @@ type ProgressDisplay struct {
 	// Any system events we've received.  They will be printed at the bottom of all the status rows
 	systemEventPayloads []engine.StdoutEventPayload
 
+	// Used to record the order that rows are created in.  That way, when we present in a tree, we
+	// can keep things ordered so they will not jump around.
+	displayOrderCounter int
+
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
 	currentTick int
@@ -91,11 +96,6 @@ type ProgressDisplay struct {
 
 	// A mapping from each resource URN we are told about to its current status.
 	eventUrnToResourceRow map[resource.URN]ResourceRow
-
-	// The length of the largest ID we've seen.  We use this so we can align status messages per
-	// resource.  i.e. status messages for shorter IDs will get passed with spaces so that
-	// everything aligns.
-	maxColumnLengths []int
 
 	// Remember if we're a terminal or not.  In a terminal we get a little bit fancier.
 	// For example, we'll go back and update previous status messages to make sure things
@@ -114,15 +114,16 @@ type ProgressDisplay struct {
 	// the list of suffixes to rotate through
 	suffixesArray []string
 
-	// the length of the longest suffix
-	maxSuffixLength int
-
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
 
 	// Cache of colorized to uncolorized text.  We go between the two a lot, so caching helps
 	// prevent lots of recomputation
 	colorizedToUncolorized map[string]string
+
+	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
+	// changed between the last time we printed and now.
+	printedProgressCache map[string]Progress
 }
 
 var (
@@ -168,6 +169,17 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 		progress.Action = display.opts.Color.Colorize(progress.Action)
 	}
 
+	if progress.ID != "" {
+		// don't repeat the same output if there is no difference between the last time we
+		// printed it and now.
+		lastProgress, has := display.printedProgressCache[progress.ID]
+		if has && lastProgress.Message == progress.Message && lastProgress.Action == progress.Action {
+			return
+		}
+
+		display.printedProgressCache[progress.ID] = progress
+	}
+
 	display.progressOutput <- progress
 }
 
@@ -203,21 +215,18 @@ func DisplayProgressEvents(
 		suffixesArray:          []string{"", ".", "..", "..."},
 		urnToID:                make(map[resource.URN]string),
 		colorizedToUncolorized: make(map[string]string),
+		printedProgressCache:   make(map[string]Progress),
+		displayOrderCounter:    1,
 	}
 
-	for _, v := range display.suffixesArray {
-		if len(v) > display.maxSuffixLength {
-			display.maxSuffixLength = len(v)
-		}
-	}
+	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
 
 	_, stdout, _ := term.StdStreams()
-	_, isTerminal := term.GetFdInfo(stdout)
 
 	terminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
 	contract.IgnoreError(err)
 
-	display.isTerminal = isTerminal
+	display.isTerminal = opts.IsInteractive
 	display.terminalWidth = terminalWidth
 
 	go func() {
@@ -229,7 +238,7 @@ func DisplayProgressEvents(
 		close(progressOutput)
 	}()
 
-	DisplayProgressToStream(progressOutput, stdout, isTerminal)
+	DisplayProgressToStream(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
 
@@ -240,25 +249,18 @@ func DisplayProgressEvents(
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
 func (display *ProgressDisplay) getMessagePadding(
-	id string, maxIDLength int, uncolorizedColumns []string, columnIndex int) string {
+	uncolorizedColumns []string, columnIndex int, maxColumnLengths []int) string {
 
 	extraWhitespace := 1
 
 	// In the terminal we try to align the status messages for each resource.
 	// do not bother with this in the non-terminal case.
-	if display.isTerminal {
-		var column string
-		var maxLength int
-		if columnIndex == -1 {
-			column = id
-			maxLength = maxIDLength
-		} else {
-			column = uncolorizedColumns[columnIndex]
-			maxLength = display.maxColumnLengths[columnIndex]
-		}
+	if columnIndex >= 0 && display.isTerminal {
+		column := uncolorizedColumns[columnIndex]
+		maxLength := maxColumnLengths[columnIndex]
 
-		extraWhitespace = maxLength - len(column)
-		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxIDLength, column)
+		extraWhitespace = maxLength - utf8.RuneCountInString(column)
+		contract.Assertf(extraWhitespace >= 0, "Neg whitespace. %v %s", maxLength, column)
 
 		// Place two spaces between all columns (except after the first column).  The first
 		// column already has a ": " so it doesn't need the extra space.
@@ -275,12 +277,12 @@ func (display *ProgressDisplay) getMessagePadding(
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
 func (display *ProgressDisplay) getPaddedMessage(
-	id string, maxIDLength int, colorizedColumns, uncolorizedColumns []string) string {
+	colorizedColumns, uncolorizedColumns []string, maxColumnLengths []int) string {
 
 	colorizedMessage := ""
 
 	for i := 0; i < len(colorizedColumns); i++ {
-		padding := display.getMessagePadding(id, maxIDLength, uncolorizedColumns, i-1)
+		padding := display.getMessagePadding(uncolorizedColumns, i-1, maxColumnLengths)
 		colorizedMessage += padding + colorizedColumns[i]
 	}
 
@@ -289,7 +291,7 @@ func (display *ProgressDisplay) getPaddedMessage(
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		maxMsgLength := display.terminalWidth - len(id) - len(": ") - 1
+		maxMsgLength := display.terminalWidth - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
@@ -320,65 +322,205 @@ func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) refreshSingleRow(id string, maxIDLength int, row Row) {
+func (display *ProgressDisplay) refreshSingleRow(id string, row Row, maxColumnLengths []int) {
 	colorizedColumns := row.ColorizedColumns()
 	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
+	display.refreshColumns(id, colorizedColumns, maxColumnLengths)
+}
+
+func (display *ProgressDisplay) refreshColumns(
+	id string, colorizedColumns []string, maxColumnLengths []int) {
 
 	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
-	msg := display.getPaddedMessage(id, maxIDLength, colorizedColumns, uncolorizedColumns)
+	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
 	if display.isTerminal {
-		display.colorizeAndWriteProgress(makeActionProgress(
-			id, msg, true /*showID*/))
+		display.colorizeAndWriteProgress(makeActionProgress(id, msg))
 	} else {
 		display.writeSimpleMessage(msg)
 	}
 }
 
-// Ensure our stored dimension info is up to date.  Returns 'true' if the stored dimension info is
-// updated.
-func (display *ProgressDisplay) updateDimensions(rows []Row) {
+// Ensure our stored dimension info is up to date.
+func (display *ProgressDisplay) updateTerminalWidth() {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
 		currentTerminalWidth, _, err := terminal.GetSize(int(os.Stdout.Fd()))
 		contract.IgnoreError(err)
 
 		if currentTerminalWidth != display.terminalWidth {
-			// terminal width changed.  Refresh everything
 			display.terminalWidth = currentTerminalWidth
-		}
 
-		for _, row := range rows {
-			colorizedColumns := row.ColorizedColumns()
-			uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
-
-			if len(display.maxColumnLengths) == 0 {
-				display.maxColumnLengths = make([]int, len(uncolorizedColumns))
-			}
-
-			for i, column := range uncolorizedColumns {
-				var columnLength = len(column)
-				if i == display.suffixColumn {
-					columnLength += display.maxSuffixLength
-				}
-
-				if columnLength > display.maxColumnLengths[i] {
-					display.maxColumnLengths[i] = columnLength
-				}
-			}
+			// also clear our display cache as we want to reprint all lines.
+			display.printedProgressCache = make(map[string]Progress)
 		}
 	}
 }
 
-func (display *ProgressDisplay) allRows() []Row {
-	result := []Row{}
-	if display.headerRow != nil {
-		result = append(result, display.headerRow)
+type treeNode struct {
+	row Row
+
+	colorizedColumns []string
+	colorizedSuffix  string
+
+	childNodes []*treeNode
+}
+
+func (display *ProgressDisplay) getOrCreateTreeNode(
+	result *[]*treeNode, urn resource.URN, row ResourceRow, urnToTreeNode map[resource.URN]*treeNode) *treeNode {
+
+	node, has := urnToTreeNode[urn]
+	if has {
+		return node
 	}
 
-	for _, row := range display.resourceRows {
-		result = append(result, row)
+	node = &treeNode{
+		row:              row,
+		colorizedColumns: row.ColorizedColumns(),
+		colorizedSuffix:  row.ColorizedSuffix(),
+	}
+
+	urnToTreeNode[urn] = node
+
+	if urn != "" && urn != display.stackUrn {
+		var parentURN resource.URN
+
+		res := row.Step().Res
+		if res != nil {
+			parentURN = res.Parent
+		}
+
+		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
+		if !hasParentRow {
+			// if we couldn't find a parent for this yet, parent this to the stack if we
+			// have an entry for that.  Otherwise, we'll just make this a top level item.
+			parentURN = display.stackUrn
+			parentRow, hasParentRow = display.eventUrnToResourceRow[parentURN]
+		}
+
+		if hasParentRow {
+			parentNode := display.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
+			parentNode.childNodes = append(parentNode.childNodes, node)
+			return node
+		}
+	}
+
+	*result = append(*result, node)
+	return node
+}
+
+func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
+	result := []*treeNode{}
+
+	result = append(result, &treeNode{
+		row:              display.headerRow,
+		colorizedColumns: display.headerRow.ColorizedColumns(),
+	})
+
+	urnToTreeNode := make(map[resource.URN]*treeNode)
+	for urn, row := range display.eventUrnToResourceRow {
+		display.getOrCreateTreeNode(&result, urn, row, urnToTreeNode)
+	}
+
+	return result
+}
+
+func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
+
+	childIndentation := indentation + "│  "
+	lastChildIndentation := indentation + "   "
+
+	for i, node := range treeNodes {
+		isLast := i == len(treeNodes)-1
+
+		prefix := indentation
+
+		var nestedIndentation string
+		if !isRoot {
+			if isLast {
+				prefix += "└─ "
+				nestedIndentation = lastChildIndentation
+			} else {
+				prefix += "├─ "
+				nestedIndentation = childIndentation
+			}
+		}
+
+		node.colorizedColumns[typeColumn] = prefix + node.colorizedColumns[typeColumn]
+		display.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
+	}
+}
+
+func (display *ProgressDisplay) convertNodesToRows(
+	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int) {
+
+	for _, node := range nodes {
+		if len(*maxColumnLengths) == 0 {
+			*maxColumnLengths = make([]int, len(node.colorizedColumns))
+		}
+
+		colorizedColumns := make([]string, len(node.colorizedColumns))
+		uncolorisedColumns := display.uncolorizeColumns(node.colorizedColumns)
+
+		for i, colorizedColumn := range node.colorizedColumns {
+			columnWidth := utf8.RuneCountInString(uncolorisedColumns[i])
+
+			if i == display.suffixColumn {
+				columnWidth += maxSuffixLength
+				colorizedColumns[i] = colorizedColumn + node.colorizedSuffix
+			} else {
+				colorizedColumns[i] = colorizedColumn
+			}
+
+			if columnWidth > (*maxColumnLengths)[i] {
+				(*maxColumnLengths)[i] = columnWidth
+			}
+		}
+
+		*rows = append(*rows, colorizedColumns)
+
+		display.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths)
+	}
+}
+
+type sortable []*treeNode
+
+func (sortable sortable) Len() int {
+	return len(sortable)
+}
+
+func (sortable sortable) Less(i, j int) bool {
+	return sortable[i].row.DisplayOrderIndex() < sortable[j].row.DisplayOrderIndex()
+}
+
+func (sortable sortable) Swap(i, j int) {
+	sortable[i], sortable[j] = sortable[j], sortable[i]
+}
+
+func sortNodes(nodes []*treeNode) {
+	sort.Sort(sortable(nodes))
+
+	for _, node := range nodes {
+		childNodes := node.childNodes
+		sortNodes(childNodes)
+		node.childNodes = childNodes
+	}
+}
+
+func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(nodes []*treeNode) []*treeNode {
+	result := []*treeNode{}
+
+	for _, node := range nodes {
+		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
+
+		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
+			continue
+		}
+
+		display.displayOrderCounter++
+		node.row.SetDisplayOrderIndex(display.displayOrderCounter)
+		result = append(result, node)
 	}
 
 	return result
@@ -387,13 +529,25 @@ func (display *ProgressDisplay) allRows() []Row {
 func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 	if display.isTerminal && display.headerRow != nil {
 		// make sure our stored dimension info is up to date
+		display.updateTerminalWidth()
 
-		rows := display.allRows()
-		display.updateDimensions(rows)
+		rootNodes := display.generateTreeNodes()
+		rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
+		sortNodes(rootNodes)
+		display.addIndentations(rootNodes, true /*isRoot*/, "")
 
-		// tree := display.generateTree()
+		maxSuffixLength := 0
+		for _, v := range display.suffixesArray {
+			runeCount := utf8.RuneCountInString(v)
+			if runeCount > maxSuffixLength {
+				maxSuffixLength = runeCount
+			}
+		}
 
-		maxIDLength := len(fmt.Sprintf("%v", len(rows)-1))
+		var rows [][]string
+		var maxColumnLengths []int
+		display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
+
 		for i, row := range rows {
 			var id string
 			if i == 0 {
@@ -402,7 +556,7 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 				id = fmt.Sprintf("%v", i)
 			}
 
-			display.refreshSingleRow(id, maxIDLength, row)
+			display.refreshColumns(id, row, maxColumnLengths)
 		}
 
 		systemID := len(rows)
@@ -419,19 +573,18 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 			if !printedHeader {
 				printedHeader = true
 				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID), " ", false /*showID*/))
+					fmt.Sprintf("%v", systemID), " "))
 				systemID++
 
 				display.colorizeAndWriteProgress(makeActionProgress(
 					fmt.Sprintf("%v", systemID),
-					colors.Yellow+"System Messages"+colors.Reset,
-					false /*showID*/))
+					colors.Yellow+"System Messages"+colors.Reset))
 				systemID++
 			}
 
 			for _, line := range lines {
 				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line), false /*showID*/))
+					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
 				systemID++
 			}
 		}
@@ -442,8 +595,6 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
-	display.maxColumnLengths = []int{}
-	display.maxSuffixLength = 0
 	display.Done = true
 
 	for _, v := range display.eventUrnToResourceRow {
@@ -454,7 +605,7 @@ func (display *ProgressDisplay) processEndSteps() {
 			v.SetDone()
 
 			if !display.isTerminal {
-				display.refreshSingleRow("", 0, v)
+				display.refreshSingleRow("", v, nil)
 			}
 		} else {
 			// Explicitly transition the status so that we clear out any cached data for it.
@@ -586,8 +737,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// Don't bother showing certain events (for example, things that are unchanged). However
 	// always show the root 'stack' resource so we can indicate that it's still running, and
 	// also so we have something to attach unparented diagnostic events to.
+	hideRowIfUnnecessary := false
 	if metadata != nil && !shouldShow(*metadata, display.opts) && !isRootURN(eventUrn) {
-		return
+		hideRowIfUnnecessary = true
 	}
 
 	// At this point, all events should relate to resources.
@@ -597,10 +749,11 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
 		row = &resourceRowData{
-			display:  display,
-			tick:     display.currentTick,
-			diagInfo: &DiagInfo{},
-			step:     engine.StepEventMetadata{Op: deploy.OpSame},
+			display:              display,
+			tick:                 display.currentTick,
+			diagInfo:             &DiagInfo{},
+			step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+			hideRowIfUnnecessary: hideRowIfUnnecessary,
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row
@@ -635,7 +788,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.refreshAllRowsIfInTerminal()
 	} else {
 		// otherwise, just print out this single row.
-		display.refreshSingleRow("", 0, row)
+		display.refreshSingleRow("", row, nil)
 	}
 }
 
@@ -703,7 +856,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we still just print the same thing we
 		// did while running the step.
-		return step.Op.Prefix() + getPreviewText(step.Op) + colors.Reset
+		return step.Op.Color() + getPreviewText(step.Op) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
@@ -754,7 +907,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return makeError(getDescription())
 	}
 
-	return op.Prefix() + getDescription() + colors.Reset
+	return op.Color() + getDescription() + colors.Reset
 }
 
 func getPreviewText(op deploy.StepOp) string {
@@ -777,6 +930,10 @@ func getPreviewText(op deploy.StepOp) string {
 
 	contract.Failf("Unrecognized resource step op: %v", op)
 	return ""
+}
+
+func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata) string {
+	return step.Op.Prefix() + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -813,7 +970,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-	return op.Prefix() + getDescription() + colors.Reset
+	return op.Color() + getDescription() + colors.Reset
 }
 
 func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.StepOp) {

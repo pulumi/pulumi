@@ -9,6 +9,7 @@ import {
     resolveProperties,
     serializeProperties,
     serializeProperty,
+    serializeResourceProperties,
     transferProperties,
 } from "./rpc";
 import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
@@ -186,7 +187,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
     const implicitDependencies: Resource[] = [];
-    const serializedProps = await serializeProperties(label, props, implicitDependencies);
+    const serializedProps = await serializeResourceProperties(label, props, implicitDependencies);
 
     let parentURN: URN | undefined;
     if (opts.parent) {

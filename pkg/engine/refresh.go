@@ -10,8 +10,8 @@ import (
 )
 
 func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
-
 	contract.Require(u != nil, "u")
+	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
@@ -27,6 +27,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 		SkipOutputs:   true, // refresh is exclusively about outputs
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
+		PluginEvents:  &pluginActions{ctx},
 		Diag:          newEventSink(emitter),
 	}, dryRun)
 }

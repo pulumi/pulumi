@@ -32,9 +32,9 @@ function promiseDebugString(p: Promise<any>): string {
  * debuggablePromise optionally wraps a promise with some goo to make it easier to debug common problems.
  */
 export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
-    // Whack some stack onto the promise.
-    (<any>p)._debugCtx = ctx;
-    (<any>p)._debugStackTrace = new Error().stack;
+    // Whack some stack onto the promise.  Leave them non-enumerable to avoid awkward rendering.
+    Object.defineProperty(p, "_debugCtx", { writable: true, value: ctx });
+    Object.defineProperty(p, "_debugStackTrace", { writable: true, value: new Error().stack });
 
     if (debugPromiseLeaks) {
         // Setup leak detection.

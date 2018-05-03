@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
@@ -466,4 +468,12 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	signal.Notify(c.sigint, os.Interrupt)
 
 	return c
+}
+
+// IsInteractive returns true if the environment and command line options indicate we should
+// do things interactively
+func IsInteractive(cmd *cobra.Command) bool {
+	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+	contract.IgnoreError(err)
+	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !isCI()
 }

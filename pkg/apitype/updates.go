@@ -151,9 +151,11 @@ type UpdateProgram struct {
 	// Analyzers is the set of analyzers to run when this program is executed.
 	Analyzers []string `json:"analyzers"`
 
-	// Destroy indicates whether or not this program is the nil program (i.e. the program that generates no
-	// resources).
+	// Destroy indicates whether or not this program is the nil program (i.e. the program that generates no resources).
 	Destroy bool `json:"destroy"`
+
+	// Refresh is true if this is a refresh-style update, which simply takes state from the current cloud resources.
+	Refresh bool `json:"refresh"`
 }
 
 // CreateUpdateRequest describe the data provided as the body of a request to the `POST /updates` endpoint of

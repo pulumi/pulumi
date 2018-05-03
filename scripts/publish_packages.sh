@@ -26,4 +26,4 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         ${ROOT}/sdk/python/env/src/dist/*.whl
 fi
 
-${PULUMI_SDK}/scripts/build-sdk.sh $(${ROOT}/scripts/get-version) $(git rev-parse HEAD)
+${ROOT}/scripts/build-sdk.sh $(${ROOT}/scripts/get-version) $(git rev-parse HEAD)

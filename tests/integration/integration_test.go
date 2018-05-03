@@ -58,7 +58,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--non-interactive", "--force")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a relative path")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -74,7 +74,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--force")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "update", "--non-interactive", "--force")
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "project 'main' must be a subfolder")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
@@ -235,6 +235,15 @@ func TestStackParenting(t *testing.T) {
 				}
 			}
 		},
+	})
+}
+
+func TestStackBadParenting(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           "stack_bad_parenting",
+		Dependencies:  []string{"@pulumi/pulumi"},
+		Quick:         true,
+		ExpectFailure: true,
 	})
 }
 

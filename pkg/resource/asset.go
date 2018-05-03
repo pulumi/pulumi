@@ -630,9 +630,10 @@ func (a *Archive) Open() (ArchiveReader, error) {
 
 // assetsArchiveReader is used to read an Assets archive.
 type assetsArchiveReader struct {
-	assets  map[string]interface{}
-	keys    []string
-	archive ArchiveReader
+	assets      map[string]interface{}
+	keys        []string
+	archive     ArchiveReader
+	archiveRoot string
 }
 
 func (r *assetsArchiveReader) Next() (string, *Blob, error) {
@@ -650,7 +651,7 @@ func (r *assetsArchiveReader) Next() (string, *Blob, error) {
 				return "", nil, err
 			default:
 				// The subarchive produced a valid blob. Return it.
-				return name, blob, nil
+				return filepath.Join(r.archiveRoot, name), blob, nil
 			}
 		}
 
@@ -679,6 +680,7 @@ func (r *assetsArchiveReader) Next() (string, *Blob, error) {
 				return "", nil, errors.Wrapf(err, "failed to expand sub-archive '%v'", name)
 			}
 			r.archive = archive
+			r.archiveRoot = name
 		}
 	}
 }

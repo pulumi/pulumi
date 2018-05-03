@@ -4,11 +4,9 @@ package cmd
 
 import (
 	"context"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -30,6 +28,7 @@ func newUpdateCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var nonInteractive bool
 
 	var cmd = &cobra.Command{
 		Use:        "update",
@@ -49,7 +48,8 @@ func newUpdateCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			if !force && !preview && !terminal.IsTerminal(int(os.Stdout.Fd())) {
+			isInteractive := IsInteractive(cmd)
+			if !force && !preview && !isInteractive {
 				return errors.New("'update' must be run interactively or be passed the --force or --preview flag")
 			}
 
@@ -83,6 +83,7 @@ func newUpdateCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				IsInteractive:        isInteractive,
 				DiffDisplay:          diffDisplay,
 				Debug:                debug,
 			}, cancellationScopes)
@@ -131,6 +132,7 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(&nonInteractive, "non-interactive", false, "Disable interactive mode")
 
 	return cmd
 }
