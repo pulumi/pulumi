@@ -195,9 +195,7 @@ func getDevStackName(stackName string, index int) string {
 
 	// Strip the suffix if the name already has it so we don't
 	// include two -dev suffixes in the name.
-	if strings.HasSuffix(stackName, suffix) {
-		stackName = stackName[0 : len(stackName)-len(suffix)]
-	}
+	stackName = strings.TrimSuffix(stackName, suffix)
 
 	// If the index is 0, don't include it in the name.
 	if index == 0 {
