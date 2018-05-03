@@ -156,10 +156,8 @@ func newNewCmd() *cobra.Command {
 }
 
 // stackInit will attempt to create the stack. If the stack already exists, it will
-// retry by appending an incremented index to the stack name.
+// try again using a new name with an incremented number.
 func stackInit(stackName string) error {
-	originalStackName := stackName
-
 	b, err := currentBackend()
 	if err != nil {
 		return err
@@ -168,7 +166,8 @@ func stackInit(stackName string) error {
 	const maxTryCount = 25
 	try := 0
 	for {
-		stackRef, err := b.ParseStackReference(stackName)
+		name := getDevStackName(stackName, try)
+		stackRef, err := b.ParseStackReference(name)
 		if err != nil {
 			return err
 		}
@@ -177,9 +176,8 @@ func stackInit(stackName string) error {
 		if _, err = createStack(b, stackRef, nil); err != nil {
 			if _, ok := err.(*backend.StackAlreadyExistsError); ok && try < maxTryCount {
 				// The stack already exists and we're under the maxTryCount.
-				// Append an incremented number to the stack name and loop around to try again.
+				// Increment the index and loop around to try again.
 				try++
-				stackName = fmt.Sprintf("%s%d", originalStackName, try)
 				continue
 			}
 			return err
@@ -188,6 +186,26 @@ func stackInit(stackName string) error {
 	}
 
 	return nil
+}
+
+// getDevStackName returns the stack name suffixed with an
+// index (if index isn't 0) and -dev.
+func getDevStackName(stackName string, index int) string {
+	const suffix = "-dev"
+
+	// Strip the suffix if the name already has it so we don't
+	// include two -dev suffixes in the name.
+	if strings.HasSuffix(stackName, suffix) {
+		stackName = stackName[0 : len(stackName)-len(suffix)]
+	}
+
+	// If the index is 0, don't include it in the name.
+	if index == 0 {
+		return stackName + suffix
+	}
+
+	// Return the name with the index and a -dev suffix.
+	return fmt.Sprintf("%s%d%s", stackName, index, suffix)
 }
 
 func getCloudURL(cloudURL string) string {
