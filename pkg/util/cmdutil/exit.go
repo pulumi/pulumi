@@ -46,6 +46,31 @@ func DetailedError(err error) string {
 	return msg
 }
 
+// runPostCommandHooks runs any post-hooks present on the given cobra.Command. This logic is copied directly from
+// cobra itself; see https://github.com/spf13/cobra/blob/4dab30cb33e6633c33c787106bafbfbfdde7842d/command.go#L768-L785
+// for the original.
+func runPostCommandHooks(c *cobra.Command, args []string) error {
+	if c.PostRunE != nil {
+		if err := c.PostRunE(c, args); err != nil {
+			return err
+		}
+	} else if c.PostRun != nil {
+		c.PostRun(c, args)
+	}
+	for p := c; p != nil; p = p.Parent() {
+		if p.PersistentPostRunE != nil {
+			if err := p.PersistentPostRunE(c, args); err != nil {
+				return err
+			}
+			break
+		} else if p.PersistentPostRun != nil {
+			p.PersistentPostRun(c, args)
+			break
+		}
+	}
+	return nil
+}
+
 // RunFunc wraps an error-returning run func with standard Pulumi error handling.  All Pulumi commands should wrap
 // themselves in this to ensure consistent and appropriate error behavior.  In particular, we want to avoid any calls to
 // os.Exit in the middle of a callstack which might prohibit reaping of child processes, resources, etc.  And we wish to
@@ -53,6 +78,12 @@ func DetailedError(err error) string {
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if err := run(cmd, args); err != nil {
+			// Sadly, the fact that we hard-exit below means that it's up to us to replicate the Cobra post-run
+			// behavior here.
+			if postRunErr := runPostCommandHooks(cmd, args); postRunErr != nil {
+				err = multierror.Append(err, postRunErr)
+			}
+
 			// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug glog it.
 			var msg string
 			if LogToStderr {
@@ -61,6 +92,7 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 				msg = errorMessage(err)
 				glog.V(3).Infof(DetailedError(err))
 			}
+
 			ExitError(msg)
 		}
 	}
