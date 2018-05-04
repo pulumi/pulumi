@@ -19,7 +19,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -664,19 +663,14 @@ func (display *ProgressDisplay) processEndSteps() {
 	if display.opts.ShowStackOutputs {
 		if display.stackUrn != "" {
 			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-			metadata := stackStep.New
-			if metadata != nil {
-				if len(metadata.Outputs) > 0 {
-					serialized := stack.SerializeProperties(metadata.Outputs)
-					printed := stack.FormatStackOutputs(serialized)
-
-					if !wroteDiagnosticHeader {
-						display.writeBlankLine()
-					}
-
-					wroteDiagnosticHeader = true
-					display.writeSimpleMessage(printed)
+			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
+			if props != "" {
+				if !wroteDiagnosticHeader {
+					display.writeBlankLine()
 				}
+
+				wroteDiagnosticHeader = true
+				display.writeSimpleMessage(props)
 			}
 		}
 	}

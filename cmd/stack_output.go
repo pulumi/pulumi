@@ -37,7 +37,7 @@ func newStackOutputCmd() *cobra.Command {
 				name := args[0]
 				v, has := outputs[name]
 				if has {
-					fmt.Printf("%v\n", stack.StringifyOutput(v))
+					fmt.Printf("%v\n", stringifyOutput(v))
 				} else {
 					return errors.Errorf("current stack does not have output property '%v'", name)
 				}
