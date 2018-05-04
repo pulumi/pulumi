@@ -80,7 +80,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
-		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respsecitvely")
+		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
