@@ -5,7 +5,6 @@ package plugin
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/blang/semver"
 	"github.com/golang/glog"
@@ -30,9 +29,7 @@ type provider struct {
 	plug      *plugin                          // the actual plugin process wrapper.
 	clientRaw pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	cfgerr    error                            // non-nil if a configure call fails.
-	cfgdone   bool                             // set to true when configuration has completed.
-	cfglock   *sync.Mutex                      // a lock to protect configuration state.
-	cfgcond   *sync.Cond                       // a condition to await configuration completion.
+	cfgdone   chan bool                        // closed when configuration has completed.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -56,14 +53,12 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
-	cfglock := &sync.Mutex{}
 	return &provider{
 		ctx:       ctx,
 		pkg:       pkg,
 		plug:      plug,
 		clientRaw: pulumirpc.NewResourceProviderClient(plug.Conn),
-		cfglock:   cfglock,
-		cfgcond:   sync.NewCond(cfglock),
+		cfgdone:   make(chan bool),
 	}, nil
 }
 
@@ -87,11 +82,7 @@ func (p *provider) getClient() (pulumirpc.ResourceProviderClient, error) {
 // occur in parallel, and we await the completion of them at the last possible moment.  This does mean, however, that
 // we might discover failures later than we would have otherwise, but the caller of ensureConfigured will get them.
 func (p *provider) ensureConfigured() error {
-	p.cfglock.Lock()
-	defer p.cfglock.Unlock()
-	for !p.cfgdone {
-		p.cfgcond.Wait()
-	}
+	<-p.cfgdone
 	return p.cfgerr
 }
 
@@ -116,11 +107,8 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfglock.Lock()
-		defer p.cfglock.Unlock()
 		p.cfgerr = err
-		p.cfgdone = true
-		p.cfgcond.Broadcast()
+		close(p.cfgdone)
 	}()
 
 	return nil
