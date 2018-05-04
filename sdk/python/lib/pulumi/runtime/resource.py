@@ -80,9 +80,9 @@ def register_resource(typ, name, custom, props, opts):
         # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
         # the .code() member. Pylint doesn't know this because it's not known statically.
         #
-        # Neither pylint nor I are the only ones who find this confusing:member
+        # Neither pylint nor I are the only ones who find this confusing:
         # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-        # pylint: disable=no-
+        # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
             wait_for_death()
 
