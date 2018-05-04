@@ -61,6 +61,12 @@ func NewSnapshot(manifest Manifest, resources []*resource.State) *Snapshot {
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,
 // integrity verification is only performed on demand, and not automatically during snapshot construction.
+//
+// This function enforces a couple of invariants:
+//  1. Parents should always come before children in the resource list
+//  2. Dependents should always come before their dependencies in the resource list
+//  3. For every URN in the snapshot, there must be at most one resource with that URN that is not pending deletion
+//  4. The magic manifest number should change every time the snapshot is mutated
 func (snap *Snapshot) VerifyIntegrity() error {
 	if snap != nil {
 		// Ensure the magic cookie checks out.
@@ -69,8 +75,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 		}
 
 		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
-		// any duplicate URNs.  Eventually, we will capture the full resource DAG (see
-		// https://github.com/pulumi/pulumi/issues/624), on which we can then do additional verification.
+		// any duplicate URNs.
 		urns := make(map[resource.URN]*resource.State)
 		for i, state := range snap.Resources {
 			urn := state.URN
@@ -84,6 +89,19 @@ func (snap *Snapshot) VerifyIntegrity() error {
 						}
 					}
 					return errors.Errorf("child resource %s refers to missing parent %s", urn, par)
+				}
+			}
+
+			for _, dep := range state.Dependencies {
+				if _, has := urns[dep]; !has {
+					// same as above - doing this for better error messages
+					for _, other := range snap.Resources[i+1:] {
+						if other.URN == dep {
+							return errors.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
+						}
+					}
+
+					return errors.Errorf("resource %s dependency %s refers to missing resource", urn, dep)
 				}
 			}
 

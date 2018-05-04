@@ -368,7 +368,9 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	//
 	//     * If the URN does not exist in the old snapshot, create the resource anew.
 	//
-	if hasOld {
+	// If the URN exists in the old snapshot but we've recorded that we've deleted it already,
+	// we will do a create-replacement in order to re-create the deleted resource.
+	if hasOld && !iter.deletes[urn] {
 		contract.Assert(old != nil && old.Type == new.Type)
 
 		// Determine whether the change resulted in a diff.
@@ -422,11 +424,36 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 				// The provider is responsible for requesting which of these two modes to use.
 
 				if diff.DeleteBeforeReplace {
-					return []Step{
+					glog.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
+					contract.Assert(iter.p.depGraph != nil)
+
+					// DeleteBeforeCreate implies that we must immediately delete the resource. For correctness,
+					// we must also eagerly delete all resources that depend directly or indirectly on the resource
+					// being replaced.
+					//
+					// To do this, we'll utilize the dependency information contained in the snapshot, which is
+					// interpreted by the DependencyGraph type.
+					var steps []Step
+					for _, dependentResource := range iter.p.depGraph.DependingOn(old) {
+						// If we already deleted this resource due to some other DBR, don't do it again.
+						if iter.deletes[dependentResource.URN] {
+							continue
+						}
+
+						glog.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
+							dependentResource.URN, urn)
+						steps = append(steps, NewDeleteReplacementStep(iter.p, dependentResource, false))
+
+						// Mark the condemned resource as deleted. We won't know until later in the plan whether
+						// or not we're going to be replacing this resource.
+						iter.deletes[dependentResource.URN] = true
+					}
+
+					return append(steps,
 						NewDeleteReplacementStep(iter.p, old, false),
 						NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, false),
 						NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, false),
-					}, nil
+					), nil
 				}
 
 				return []Step{
@@ -452,7 +479,25 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 		return []Step{NewSameStep(iter.p, e, old, new)}, nil
 	}
 
-	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
+	if iter.deletes[urn] {
+		// this resource existed, but we deleted it earlier. we'll re-create it here.
+		glog.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
+		contract.Assert(!refresh)
+		diff, err := iter.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, false, allowUnknowns)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmark this resource as deleted, we now know it's being replaced instead.
+		delete(iter.deletes, urn)
+		iter.replaces[urn] = true
+		return []Step{
+			NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, false),
+			NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, false),
+		}, nil
+	}
+
+	// Otherwise, the resource isn't in the old map or it was deleted earlier, so it must be a resource creation.
 	iter.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(iter.p, e, new)}, nil
@@ -539,6 +584,7 @@ func (iter *PlanIterator) computeDeletes() []Step {
 			res := prev.Resources[i]
 			if res.Delete {
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
+				contract.Assert(!iter.deletes[res.URN])
 				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(iter.p, res, true))
 			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] {
