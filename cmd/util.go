@@ -399,12 +399,13 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		if err != nil {
 			return m, errors.Wrapf(err, gitErrCtx, "finding git executable")
 		}
+		// nolint: gas
 		gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
 		var anyOutput anyWriter
 		var stderr bytes.Buffer
 		gitStatusCmd.Stdout = &anyOutput
 		gitStatusCmd.Stderr = &stderr
-		if err := gitStatusCmd.Run(); err != nil {
+		if err = gitStatusCmd.Run(); err != nil {
 			if ee, ok := err.(*exec.ExitError); ok {
 				ee.Stderr = stderr.Bytes()
 			}
