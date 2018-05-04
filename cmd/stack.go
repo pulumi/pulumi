@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -153,14 +152,9 @@ func newStackCmd() *cobra.Command {
 }
 
 func printStackOutputs(outputs map[string]interface{}) {
-	fmt.Printf("%s", formatStackOutputs(outputs))
-}
-
-func formatStackOutputs(outputs map[string]interface{}) string {
-	buf := &bytes.Buffer{}
-	fmt.Fprintf(buf, "Current stack outputs (%d):\n", len(outputs))
+	fmt.Printf("Current stack outputs (%d):\n", len(outputs))
 	if len(outputs) == 0 {
-		fmt.Fprintf(buf, "    No output values currently in this stack\n")
+		fmt.Printf("    No output values currently in this stack\n")
 	} else {
 		maxkey := 48
 		var outkeys []string
@@ -171,13 +165,11 @@ func formatStackOutputs(outputs map[string]interface{}) string {
 			outkeys = append(outkeys, outkey)
 		}
 		sort.Strings(outkeys)
-		fmt.Fprintf(buf, "    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
+		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
 		for _, key := range outkeys {
-			fmt.Fprintf(buf, "    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
+			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
 		}
 	}
-
-	return buf.String()
 }
 
 // stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case
