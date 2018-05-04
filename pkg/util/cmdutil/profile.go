@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 
 	"github.com/pkg/errors"
 
@@ -19,11 +20,21 @@ func InitProfiling(prefix string) error {
 	if err = pprof.StartCPUProfile(cpu); err != nil {
 		return errors.Wrap(err, "could not start CPU profile")
 	}
+
+	exec, err := os.Create(fmt.Sprintf("%s.%v.trace", prefix, os.Getpid()))
+	if err != nil {
+		return errors.Wrap(err, "could not start execution trace")
+	}
+	if err = trace.Start(exec); err != nil {
+		return errors.Wrap(err, "could not start execution trace")
+	}
+
 	return nil
 }
 
 func CloseProfiling(prefix string) error {
 	pprof.StopCPUProfile()
+	trace.Stop()
 
 	mem, err := os.Create(fmt.Sprintf("%s.%v.mem", prefix, os.Getpid()))
 	if err != nil {
