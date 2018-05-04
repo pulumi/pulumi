@@ -15,13 +15,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
@@ -357,6 +357,8 @@ func (cf *colorFlag) Colorization() colors.Colorization {
 	return cf.value
 }
 
+// anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a
+// non-zero-length slice. This can be used to determine whether or not any data was ever written to the writer.
 type anyWriter bool
 
 func (w *anyWriter) Write(d []byte) (int, error) {
@@ -364,6 +366,29 @@ func (w *anyWriter) Write(d []byte) (int, error) {
 		*w = true
 	}
 	return len(d), nil
+}
+
+// isGitWorkTreeDirty returns true if the work tree for the current directory's repository is dirty.
+func isGitWorkTreeDirty() (bool, error) {
+	gitBin, err := exec.LookPath("git")
+	if err != nil {
+		return false, err
+	}
+
+	// nolint: gas
+	gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
+	var anyOutput anyWriter
+	var stderr bytes.Buffer
+	gitStatusCmd.Stdout = &anyOutput
+	gitStatusCmd.Stderr = &stderr
+	if err = gitStatusCmd.Run(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			ee.Stderr = stderr.Bytes()
+		}
+		return false, errors.Wrapf(err, "'git status' failed")
+	}
+
+	return bool(anyOutput), nil
 }
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
@@ -377,49 +402,35 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
 	repo, err := getGitRepository(root)
 	if err != nil {
-		return m, errors.Wrap(err, "looking for git repository")
+		glog.Warningf("looking for git repository: %v", err)
 	}
-	if repo != nil && err == nil {
-		const gitErrCtx = "reading git repo (%v)" // Message passed with wrapped errors from go-git.
+	if repo == nil {
+		glog.Infof("no git repository found")
+		return m, nil
+	}
 
-		// Commit at HEAD.
-		head, err := repo.Head()
-		if err == nil {
-			m.Environment[backend.GitHead] = head.Hash().String()
-		} else {
-			// Ignore "reference not found" in the odd case where the HEAD commit doesn't exist.
-			// (git init, but no commits yet.)
-			if err != plumbing.ErrReferenceNotFound {
-				return m, errors.Wrapf(err, gitErrCtx, "getting head")
-			}
-		}
+	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
+	ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
+	if err != nil {
+		glog.Warningf("getting GitHub information: %v", err)
+	} else {
+		m.Environment[backend.GitHubLogin] = ghLogin
+		m.Environment[backend.GitHubRepo] = ghRepo
+	}
 
-		// If the current commit is dirty.
-		gitBin, err := exec.LookPath("git")
-		if err != nil {
-			return m, errors.Wrapf(err, gitErrCtx, "finding git executable")
-		}
-		// nolint: gas
-		gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
-		var anyOutput anyWriter
-		var stderr bytes.Buffer
-		gitStatusCmd.Stdout = &anyOutput
-		gitStatusCmd.Stderr = &stderr
-		if err = gitStatusCmd.Run(); err != nil {
-			if ee, ok := err.(*exec.ExitError); ok {
-				ee.Stderr = stderr.Bytes()
-			}
-			return m, errors.Wrapf(err, gitErrCtx, fmt.Sprintf("invoking git status"))
-		}
-		dirty := bool(anyOutput)
-		m.Environment[backend.GitDirty] = fmt.Sprint(dirty)
+	// Commit at HEAD
+	head, err := repo.Head()
+	if err != nil {
+		glog.Warningf("getting HEAD commit")
+	} else {
+		m.Environment[backend.GitHead] = head.Hash().String()
+	}
 
-		// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-		ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
-		if err == nil {
-			m.Environment[backend.GitHubLogin] = ghLogin
-			m.Environment[backend.GitHubRepo] = ghRepo
-		}
+	isDirty, err := isGitWorkTreeDirty()
+	if err != nil {
+		glog.Warningf("determining git work tree status")
+	} else {
+		m.Environment[backend.GitDirty] = fmt.Sprint(isDirty)
 	}
 
 	return m, nil
