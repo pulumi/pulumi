@@ -421,14 +421,14 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
-		glog.Warningf("getting HEAD commit")
+		glog.Warningf("getting HEAD commit: %v", err)
 	} else {
 		m.Environment[backend.GitHead] = head.Hash().String()
 	}
 
 	isDirty, err := isGitWorkTreeDirty()
 	if err != nil {
-		glog.Warningf("determining git work tree status")
+		glog.Warningf("determining git work tree status: %v", err)
 	} else {
 		m.Environment[backend.GitDirty] = fmt.Sprint(isDirty)
 	}
