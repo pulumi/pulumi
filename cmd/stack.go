@@ -3,11 +3,8 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -152,38 +149,5 @@ func newStackCmd() *cobra.Command {
 }
 
 func printStackOutputs(outputs map[string]interface{}) {
-	fmt.Printf("Current stack outputs (%d):\n", len(outputs))
-	if len(outputs) == 0 {
-		fmt.Printf("    No output values currently in this stack\n")
-	} else {
-		maxkey := 48
-		var outkeys []string
-		for outkey := range outputs {
-			if len(outkey) > maxkey {
-				maxkey = len(outkey)
-			}
-			outkeys = append(outkeys, outkey)
-		}
-		sort.Strings(outkeys)
-		fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
-		for _, key := range outkeys {
-			fmt.Printf("    %-"+strconv.Itoa(maxkey)+"s %s\n", key, stringifyOutput(outputs[key]))
-		}
-	}
-}
-
-// stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case
-// of top level strings, where we just return the raw value.
-func stringifyOutput(v interface{}) string {
-	s, ok := v.(string)
-	if ok {
-		return s
-	}
-
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "error: could not format value"
-	}
-
-	return string(b)
+	fmt.Printf("%s", stack.FormatStackOutputs(outputs))
 }

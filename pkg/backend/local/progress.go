@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -660,6 +661,26 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
+	if display.opts.ShowStackOutputs {
+		if display.stackUrn != "" {
+			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+			metadata := stackStep.New
+			if metadata != nil {
+				if len(metadata.Outputs) > 0 {
+					serialized := stack.SerializeProperties(metadata.Outputs)
+					printed := stack.FormatStackOutputs(serialized)
+
+					if !wroteDiagnosticHeader {
+						display.writeBlankLine()
+					}
+
+					wroteDiagnosticHeader = true
+					display.writeSimpleMessage(printed)
+				}
+			}
+		}
+	}
+
 	// print the summary
 	if display.summaryEventPayload != nil {
 		msg := renderSummaryEvent(*display.summaryEventPayload, display.opts)
@@ -772,6 +793,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
 			row.SetDone()
+		} else {
+			step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+			row.SetStep(step)
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
 		row.SetDone()

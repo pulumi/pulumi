@@ -3,7 +3,12 @@
 package stack
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"reflect"
+	"sort"
+	"strconv"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -205,4 +210,44 @@ func DeserializePropertyValue(v interface{}) (resource.PropertyValue, error) {
 	}
 
 	return resource.NewNullProperty(), nil
+}
+
+func FormatStackOutputs(outputs map[string]interface{}) string {
+	buf := &bytes.Buffer{}
+	fmt.Fprintf(buf, "Current stack outputs (%d):\n", len(outputs))
+	if len(outputs) == 0 {
+		fmt.Fprintf(buf, "    No output values currently in this stack\n")
+	} else {
+		maxkey := 48
+		var outkeys []string
+		for outkey := range outputs {
+			if len(outkey) > maxkey {
+				maxkey = len(outkey)
+			}
+			outkeys = append(outkeys, outkey)
+		}
+		sort.Strings(outkeys)
+		fmt.Fprintf(buf, "    %-"+strconv.Itoa(maxkey)+"s %s\n", "OUTPUT", "VALUE")
+		for _, key := range outkeys {
+			fmt.Fprintf(buf, "    %-"+strconv.Itoa(maxkey)+"s %s\n", key, StringifyOutput(outputs[key]))
+		}
+	}
+
+	return buf.String()
+}
+
+// stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case
+// of top level strings, where we just return the raw value.
+func StringifyOutput(v interface{}) string {
+	s, ok := v.(string)
+	if ok {
+		return s
+	}
+
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "error: could not format value"
+	}
+
+	return string(b)
 }
