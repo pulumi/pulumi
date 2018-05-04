@@ -33,7 +33,7 @@ type projectWorkspace struct {
 	repo     *Repository        // the repo this workspace is associated with.
 }
 
-var cache map[string]W = make(map[string]W)
+var cache = make(map[string]W)
 var cacheMutex sync.RWMutex
 
 func loadFromCache(key string) (W, bool) {
