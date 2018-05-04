@@ -46,6 +46,9 @@ func DetailedError(err error) string {
 	return msg
 }
 
+// runPostCommandHooks runs any post-hooks present on the given cobra.Command. This logic is copied directly from
+// cobra itself; see https://github.com/spf13/cobra/blob/4dab30cb33e6633c33c787106bafbfbfdde7842d/command.go#L768-L785
+// for the original.
 func runPostCommandHooks(c *cobra.Command, args []string) error {
 	if c.PostRunE != nil {
 		if err := c.PostRunE(c, args); err != nil {
