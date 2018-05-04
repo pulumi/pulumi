@@ -12,11 +12,13 @@ import (
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
 var TracingEndpoint string
+var RootSpan opentracing.SpanContext
 
 var traceCloser io.Closer
+var rootSpan opentracing.Span
 
 // InitTracing initializes tracing
-func InitTracing(name string, tracingEndpoint string) {
+func InitTracing(name, rootSpanName, tracingEndpoint string) {
 
 	// Store the tracing endpoint
 	TracingEndpoint = tracingEndpoint
@@ -51,9 +53,19 @@ func InitTracing(name string, tracingEndpoint string) {
 
 	// Set the ambient tracer
 	opentracing.SetGlobalTracer(tracer)
+
+	// If a root span was requested, start it now.
+	if rootSpanName != "" {
+		rootSpan = tracer.StartSpan(rootSpanName)
+		RootSpan = rootSpan.Context()
+	}
 }
 
 // CloseTracing ensures that all pending spans have been flushed.  It should be called before process exit.
 func CloseTracing() {
+	if rootSpan != nil {
+		rootSpan.Finish()
+	}
+
 	contract.IgnoreClose(traceCloser)
 }

@@ -25,24 +25,24 @@ type Stack interface {
 	Preview(proj *workspace.Project, root string, m UpdateMetadata,
 		opts UpdateOptions, scopes CancellationScopeSource) error
 	// Update this stack.
-	Update(proj *workspace.Project, root string, m UpdateMetadata,
-		opts UpdateOptions, scopes CancellationScopeSource) error
+	Update(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+		scopes CancellationScopeSource) error
 	// Refresh this stack's state from the cloud provider.
-	Refresh(proj *workspace.Project, root string, m UpdateMetadata,
-		opts UpdateOptions, scopes CancellationScopeSource) error
+	Refresh(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+		scopes CancellationScopeSource) error
 	// Destroy this stack's resources.
-	Destroy(proj *workspace.Project, root string, m UpdateMetadata,
-		opts UpdateOptions, scopes CancellationScopeSource) error
+	Destroy(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+		scopes CancellationScopeSource) error
 
-	Remove(force bool) (bool, error)                                  // remove this stack.
-	GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
-	ExportDeployment() (*apitype.UntypedDeployment, error)            // export this stack's deployment.
-	ImportDeployment(deployment *apitype.UntypedDeployment) error     // import the given deployment into this stack.
+	Remove(ctx context.Context, force bool) (bool, error)                                  // remove this stack.
+	GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
+	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)              // export this stack's deployment.
+	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error     // import the given deployment into this stack.
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
-func RemoveStack(s Stack, force bool) (bool, error) {
-	return s.Backend().RemoveStack(s.Name(), force)
+func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
+	return s.Backend().RemoveStack(ctx, s.Name(), force)
 }
 
 // PreviewStack previews changes to this stack.
@@ -52,21 +52,21 @@ func PreviewStack(s Stack, proj *workspace.Project, root string, m UpdateMetadat
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Update(s.Name(), proj, root, m, opts, scopes)
+func UpdateStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+	scopes CancellationScopeSource) error {
+	return s.Backend().Update(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Refresh(s.Name(), proj, root, m, opts, scopes)
+func RefreshStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+	scopes CancellationScopeSource) error {
+	return s.Backend().Refresh(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Destroy(s.Name(), proj, root, m, opts, scopes)
+func DestroyStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+	scopes CancellationScopeSource) error {
+	return s.Backend().Destroy(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.
@@ -75,18 +75,18 @@ func GetStackCrypter(s Stack) (config.Crypter, error) {
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(s.Name(), query)
+func GetStackLogs(ctx contet.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
+	return s.Backend().GetLogs(ctx, s.Name(), query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
-func ExportStackDeployment(s Stack) (*apitype.UntypedDeployment, error) {
-	return s.Backend().ExportDeployment(s.Name())
+func ExportStackDeployment(ctx context.Context, s Stack) (*apitype.UntypedDeployment, error) {
+	return s.Backend().ExportDeployment(ctx, s.Name())
 }
 
 // ImportStackDeployment imports the given deployment into the indicated stack.
-func ImportStackDeployment(s Stack, deployment *apitype.UntypedDeployment) error {
-	return s.Backend().ImportDeployment(s.Name(), deployment)
+func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.UntypedDeployment) error {
+	return s.Backend().ImportDeployment(ctx, s.Name(), deployment)
 }
 
 // GetStackTags returns the set of tags for the "current" stack, based on the environment
