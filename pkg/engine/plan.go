@@ -39,11 +39,18 @@ func ProjectInfoContext(projinfo *Projinfo, config plugin.ConfigSource, pluginEv
 
 // newPlanContext creates a context for a subsequent planning operation.  Callers must call Close on the
 // resulting context object once they have completed the associated planning operation.
-func newPlanContext(u UpdateInfo) (*planContext, error) {
+func newPlanContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*planContext, error) {
 	contract.Require(u != nil, "u")
 
 	// Create a root span for the operation
-	tracingSpan := opentracing.StartSpan("pulumi-plan")
+	opts := []opentracing.StartSpanOption{}
+	if opName != "" {
+		opts = append(opts, opentracing.Tag{"operation", opName})
+	}
+	if parentSpan != nil {
+		opts = append(opts, opentracing.ChildOf(parentSpan))
+	}
+	tracingSpan := opentracing.StartSpan("pulumi-plan", opts...)
 
 	return &planContext{
 		Update:      u,

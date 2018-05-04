@@ -3,6 +3,8 @@
 package engine
 
 import (
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -27,4 +29,5 @@ type Context struct {
 	Cancel          *cancel.Context
 	Events          chan<- Event
 	SnapshotManager SnapshotManager
+	ParentSpan      opentracing.SpanContext
 }

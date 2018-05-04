@@ -15,7 +15,7 @@ func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u)
+	info, err := newPlanContext(u, "preview", ctx.ParentSpan)
 	if err != nil {
 		return err
 	}

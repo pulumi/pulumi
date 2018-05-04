@@ -41,7 +41,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u)
+	info, err := newPlanContext(u, "update", ctx.ParentSpan)
 	if err != nil {
 		return nil, err
 	}
