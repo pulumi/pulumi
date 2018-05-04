@@ -360,8 +360,9 @@ func (pc *Client) CreateUpdate(
 			endpoint = "update"
 		}
 	case UpdateKindRefresh:
-		return UpdateIdentifier{},
-			errors.New("'refresh' not yet supported for managed stacks [pulumi/pulumi#1081]")
+		// Issue #1081: this will not work for PPC-managed stacks: instead, it will run an update. We rely on the
+		// caller to do the right thing here.
+		endpoint, kind = "update", UpdateKindUpdate
 	case UpdateKindDestroy:
 		endpoint = "destroy"
 	default:

@@ -739,6 +739,11 @@ func (b *cloudBackend) updateStack(
 	displayOpts backend.DisplayOptions, callerEventsOpt chan<- engine.Event, dryRun bool,
 	scopes backend.CancellationScopeSource) error {
 
+	// Check for an attempt to refresh a PPC-managed stack: this is not yet a supported scenario.
+	if action == client.UpdateKindRefresh && !stack.(Stack).RunLocally() {
+		return errors.New("'refresh' not yet supported for PPC stacks [pulumi/pulumi#1081]")
+	}
+
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
 	fmt.Printf(
