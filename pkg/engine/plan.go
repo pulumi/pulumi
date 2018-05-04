@@ -45,7 +45,7 @@ func newPlanContext(u UpdateInfo, opName string, parentSpan opentracing.SpanCont
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
 	if opName != "" {
-		opts = append(opts, opentracing.Tag{"operation", opName})
+		opts = append(opts, opentracing.Tag{Key: "operation", Value: opName})
 	}
 	if parentSpan != nil {
 		opts = append(opts, opentracing.ChildOf(parentSpan))
