@@ -68,6 +68,227 @@ func ValueOrDefaultURL(cloudURL string) string {
 	// If we have a cloud URL, just return it.
 	if cloudURL != "" {
 		return cloudURL
+	}
+
+	// Otherwise, respect the PULUMI_API override.
+	if cloudURL := os.Getenv(defaultURLEnvVar); cloudURL != "" {
+		return cloudURL
+	}
+
+	// If that didn't work, see if we have a current cloud, and use that. Note we need to be careful
+	// to ignore the local cloud.
+	if creds, err := workspace.GetStoredCredentials(); err == nil {
+		if creds.Current != "" && !local.IsLocalBackendURL(creds.Current) {
+			return creds.Current
+		}
+	}
+
+	// If none of those led to a cloud URL, simply return the default.
+	return PulumiCloudURL
+}
+
+// barCloser is an implementation of io.Closer that finishes a progress bar upon Close() as well as closing its
+// underlying readCloser.
+type barCloser struct {
+	bar        *pb.ProgressBar
+	readCloser io.ReadCloser
+}
+
+func (bc *barCloser) Read(dest []byte) (int, error) {
+	return bc.readCloser.Read(dest)
+}
+
+func (bc *barCloser) Close() error {
+	bc.bar.Finish()
+	return bc.readCloser.Close()
+}
+
+func newBarProxyReadCloser(bar *pb.ProgressBar, r io.Reader) io.ReadCloser {
+	return &barCloser{
+		bar:        bar,
+		readCloser: bar.NewProxyReader(r),
+	}
+}
+
+// Backend extends the base backend interface with specific information about cloud backends.
+type Backend interface {
+	backend.Backend
+
+	CloudURL() string
+
+	DownloadPlugin(ctx context.Context, info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
+	DownloadTemplate(ctx context.Context, name string, progress bool) (io.ReadCloser, error)
+	ListTemplates(ctx context.Context) ([]workspace.Template, error)
+
+	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
+	StackConsoleURL(stackRef backend.StackReference) (string, error)
+}
+
+type cloudBackend struct {
+	d      diag.Sink
+	url    string
+	client *client.Client
+}
+
+// New creates a new Pulumi backend for the given cloud API URL and token.
+func New(d diag.Sink, cloudURL string) (Backend, error) {
+	cloudURL = ValueOrDefaultURL(cloudURL)
+	apiToken, err := workspace.GetAccessToken(cloudURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting stored credentials")
+	}
+
+	return &cloudBackend{
+		d:      d,
+		url:    cloudURL,
+		client: client.NewClient(cloudURL, apiToken),
+	}, nil
+}
+
+// Login logs into the target cloud URL and returns the cloud backend for it.
+func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+	cloudURL = ValueOrDefaultURL(cloudURL)
+
+	// If we have a saved access token, and it is valid, use it.
+	existingToken, err := workspace.GetAccessToken(cloudURL)
+	if err == nil && existingToken != "" {
+		if valid, _ := IsValidAccessToken(ctx, cloudURL, existingToken); valid {
+			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
+			if err = workspace.StoreAccessToken(cloudURL, existingToken, true); err != nil {
+				return nil, err
+			}
+
+			return New(d, cloudURL)
+		}
+	}
+
+	// We intentionally don't accept command-line args for the user's access token. Having it in
+	// .bash_history is not great, and specifying it via flag isn't of much use.
+	accessToken := os.Getenv(AccessTokenEnvVar)
+	if accessToken != "" {
+		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
+	} else {
+		token, readerr := cmdutil.ReadConsoleNoEcho(
+			fmt.Sprintf("Enter your Pulumi access token from %s", cloudConsoleURL(cloudURL, "account")))
+		if readerr != nil {
+			return nil, readerr
+		}
+		accessToken = token
+	}
+
+	// Try and use the credentials to see if they are valid.
+	valid, err := IsValidAccessToken(ctx, cloudURL, accessToken)
+	if err != nil {
+		return nil, err
+	} else if !valid {
+		return nil, errors.Errorf("invalid access token")
+	}
+
+	// Save them.
+	if err = workspace.StoreAccessToken(cloudURL, accessToken, true); err != nil {
+		return nil, err
+	}
+
+	return New(d, cloudURL)
+}
+
+func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return "", err
+	}
+
+	return b.cloudConsoleStackPath(stackID), nil
+}
+
+func (b *cloudBackend) Name() string {
+	if b.url == PulumiCloudURL {
+		return "pulumi.com"
+	}
+
+	return b.url
+}
+
+func (b *cloudBackend) CloudURL() string { return b.url }
+
+func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
+	split := strings.Split(s, "/")
+	var owner string
+	var stackName string
+
+	if len(split) == 1 {
+		stackName = split[0]
+	} else if len(split) == 2 {
+		owner = split[0]
+		stackName = split[1]
+	} else {
+		return nil, errors.Errorf("could not parse stack name '%s'", s)
+	}
+
+	if owner == "" {
+		currentUser, userErr := b.client.GetPulumiAccountName(context.Background())
+		if userErr != nil {
+			return nil, userErr
+		}
+		owner = currentUser
+	}
+
+	return cloudBackendReference{
+		owner: owner,
+		name:  tokens.QName(stackName),
+		b:     b,
+	}, nil
+}
+
+// CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
+// created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
+func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
+	return cloudConsoleURL(b.CloudURL(), paths...)
+}
+
+func cloudConsoleURL(cloudURL string, paths ...string) string {
+	// To produce a cloud console URL, we assume that the URL is of the form `api.xx.yy`, and simply strip off the
+	// `api.` part.  If that is not the case, we will return an empty string because we don't recognize the pattern.
+	ix := strings.Index(cloudURL, defaultAPIURLPrefix)
+	if ix == -1 {
+		return ""
+	}
+	return cloudURL[:ix] + path.Join(append([]string{cloudURL[ix+len(defaultAPIURLPrefix):]}, paths...)...)
+}
+
+// cloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
+// must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
+func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
+	// When projID.Repository is the empty string, we are using the new identity model. In this case, the service
+	// does not include project or repository information in URLS, so the "project path" is simply the owner.
+	//
+	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
+	if projID.Repository == "" {
+		return projID.Owner
+	}
+
+	return path.Join(projID.Owner, projID.Repository, projID.Project)
+}
+
+// CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
+// must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
+func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
+	return path.Join(b.cloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+}
+
+// Logout logs out of the target cloud URL.
+func (b *cloudBackend) Logout() error {
+	return workspace.DeleteAccessToken(b.CloudURL())
+}
+
+// DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
+// that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
+// is true, the download will display a progress bar using stdout.
+func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
+	progress bool) (io.ReadCloser, error) {
+
+	// Figure out the OS/ARCH pair for the download URL.
+	var os string
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
 		os = runtime.GOOS
@@ -799,7 +1020,9 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 	return b.client.GetStackLogs(ctx, stackID, logQuery)
 }
 
-func (b *cloudBackend) ExportDeployment(ctx context.Context, stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+func (b *cloudBackend) ExportDeployment(ctx context.Context,
+	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -813,7 +1036,9 @@ func (b *cloudBackend) ExportDeployment(ctx context.Context, stackRef backend.St
 	return &deployment, nil
 }
 
-func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
+func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
+	deployment *apitype.UntypedDeployment) error {
+
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return err
@@ -992,8 +1217,8 @@ func displayEvents(
 
 // tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which results in a
 // false returned in the first return value.  If a non-nil error is returned, this operation should fail.
-func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateIdentifier, continuationToken *string, try int,
-	nextRetryTime time.Duration) (bool, interface{}, error) {
+func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateIdentifier, continuationToken *string,
+	try int, nextRetryTime time.Duration) (bool, interface{}, error) {
 
 	// If there is no error, we're done.
 	results, err := b.client.GetUpdateEvents(ctx, update, continuationToken)

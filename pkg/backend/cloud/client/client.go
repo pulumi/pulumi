@@ -120,7 +120,9 @@ func (pc *Client) GetPulumiAccountName(ctx context.Context) (string, error) {
 }
 
 // DownloadPlugin downloads the indicated plugin from the Pulumi API.
-func (pc *Client) DownloadPlugin(ctx context.Context, info workspace.PluginInfo, os, arch string) (io.ReadCloser, int64, error) {
+func (pc *Client) DownloadPlugin(ctx context.Context, info workspace.PluginInfo, os,
+	arch string) (io.ReadCloser, int64, error) {
+
 	endpoint := fmt.Sprintf("/releases/plugins/pulumi-%s-%s-v%s-%s-%s.tar.gz",
 		info.Kind, info.Name, info.Version, os, arch)
 	_, resp, err := pc.apiCall(ctx, "GET", endpoint, nil)
@@ -152,7 +154,9 @@ func (pc *Client) DownloadTemplate(ctx context.Context, name string) (io.ReadClo
 }
 
 // ListStacks lists all stacks for the indicated project.
-func (pc *Client) ListStacks(ctx context.Context, project ProjectIdentifier, projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
+func (pc *Client) ListStacks(ctx context.Context, project ProjectIdentifier,
+	projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
+
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
 
@@ -258,7 +262,9 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 }
 
 // GetStackLogs retrieves the log entries for the indicated stack that match the given query.
-func (pc *Client) GetStackLogs(ctx context.Context, stack StackIdentifier, logQuery operations.LogQuery) ([]operations.LogEntry, error) {
+func (pc *Client) GetStackLogs(ctx context.Context, stack StackIdentifier,
+	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
+
 	var response apitype.LogsResult
 	if err := pc.restCall(ctx, "GET", getStackPath(stack, "logs"), logQuery, nil, &response); err != nil {
 		return nil, err
@@ -283,7 +289,9 @@ func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier) ([
 }
 
 // ExportStackDeployment exports the indicated stack's deployment as a raw JSON message.
-func (pc *Client) ExportStackDeployment(ctx context.Context, stack StackIdentifier) (apitype.UntypedDeployment, error) {
+func (pc *Client) ExportStackDeployment(ctx context.Context,
+	stack StackIdentifier) (apitype.UntypedDeployment, error) {
+
 	var resp apitype.ExportStackResponse
 	if err := pc.restCall(ctx, "GET", getStackPath(stack, "export"), nil, nil, &resp); err != nil {
 		return apitype.UntypedDeployment{}, err
@@ -293,7 +301,9 @@ func (pc *Client) ExportStackDeployment(ctx context.Context, stack StackIdentifi
 }
 
 // ImportStackDeployment imports a new deployment into the indicated stack.
-func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifier, deployment json.RawMessage) (UpdateIdentifier, error) {
+func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifier,
+	deployment json.RawMessage) (UpdateIdentifier, error) {
+
 	req := apitype.ImportStackRequest{Deployment: deployment}
 	var resp apitype.ImportStackResponse
 	if err := pc.restCall(ctx, "POST", getStackPath(stack, "import"), nil, &req, &resp); err != nil {
@@ -410,7 +420,9 @@ func (pc *Client) CreateUpdate(
 
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
-func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier, tags map[apitype.StackTagName]string) (int, string, error) {
+func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
+	tags map[apitype.StackTagName]string) (int, string, error) {
+
 	// Validate names and tags.
 	if err := backend.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
 		return 0, "", errors.Wrap(err, "validating stack properties")
@@ -429,7 +441,9 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier, tags
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
-func (pc *Client) GetUpdateEvents(ctx context.Context, update UpdateIdentifier, continuationToken *string) (apitype.UpdateResults, error) {
+func (pc *Client) GetUpdateEvents(ctx context.Context, update UpdateIdentifier,
+	continuationToken *string) (apitype.UpdateResults, error) {
+
 	path := getUpdatePath(update)
 	if continuationToken != nil {
 		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
@@ -444,7 +458,9 @@ func (pc *Client) GetUpdateEvents(ctx context.Context, update UpdateIdentifier, 
 }
 
 // RenewUpdateLease renews the indicated update lease for the given duration.
-func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier, token string, duration time.Duration) (string, error) {
+func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier, token string,
+	duration time.Duration) (string, error) {
+
 	req := apitype.RenewUpdateLeaseRequest{
 		Token:    token,
 		Duration: int(duration / time.Second),
@@ -466,7 +482,9 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV1, token string) error {
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV1,
+	token string) error {
+
 	rawDeployment, err := json.Marshal(deployment)
 	if err != nil {
 		return err
@@ -485,7 +503,9 @@ func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) err
 }
 
 // CompleteUpdate completes the indicated update with the given status.
-func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus, token string) error {
+func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus,
+	token string) error {
+
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
 	}
@@ -493,8 +513,8 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 }
 
 // AppendUpdateLogEntry appends the given entry to the indicated update's logs.
-func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentifier, kind string, fields map[string]interface{},
-	token string) error {
+func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentifier, kind string,
+	fields map[string]interface{}, token string) error {
 
 	req := apitype.AppendUpdateLogEntryRequest{
 		Kind:   kind,

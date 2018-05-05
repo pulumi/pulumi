@@ -35,10 +35,14 @@ type Stack interface {
 	Destroy(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
 		scopes CancellationScopeSource) error
 
-	Remove(ctx context.Context, force bool) (bool, error)                                  // remove this stack.
-	GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) // list log entries for this stack.
-	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)              // export this stack's deployment.
-	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error     // import the given deployment into this stack.
+	// remove this stack.
+	Remove(ctx context.Context, force bool) (bool, error)
+	// list log entries for this stack.
+	GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error)
+	// export this stack's deployment.
+	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
+	// import the given deployment into this stack.
+	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.
@@ -47,9 +51,9 @@ func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+func PreviewStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
 	opts UpdateOptions, scopes CancellationScopeSource) error {
-	return s.Backend().Preview(s.Name(), proj, root, m, opts, scopes)
+	return s.Backend().Preview(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).

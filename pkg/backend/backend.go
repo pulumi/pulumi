@@ -49,7 +49,7 @@ type Backend interface {
 	ParseStackReference(s string) (StackReference, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
-	GetStack(ctx context.Context, stackRef StackReference, ) (Stack, error)
+	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
 	CreateStack(ctx context.Context, stackRef StackReference, opts interface{}) (Stack, error)
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it

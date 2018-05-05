@@ -336,7 +336,9 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 	return *logs, err
 }
 
-func (b *localBackend) ExportDeployment(ctx context.Context, stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+func (b *localBackend) ExportDeployment(ctx context.Context,
+	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+
 	stackName := stackRef.StackName()
 	_, snap, _, err := b.getStack(stackName)
 	if err != nil {
@@ -354,7 +356,9 @@ func (b *localBackend) ExportDeployment(ctx context.Context, stackRef backend.St
 	}, nil
 }
 
-func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
+func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
+	deployment *apitype.UntypedDeployment) error {
+
 	stackName := stackRef.StackName()
 	config, _, _, err := b.getStack(stackName)
 	if err != nil {
