@@ -4,6 +4,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -102,7 +103,7 @@ func (t updateAccessToken) String() string {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken,
+func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []byte, tok accessToken,
 	opts httpCallOptions) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
@@ -174,8 +175,9 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken,
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, tok accessToken,
-	opts httpCallOptions) error {
+func pulumiRESTCall(ctx context.Context, cloudAPI, method, path string, queryObj, reqObj, respObj interface{},
+	tok accessToken, opts httpCallOptions) error {
+
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -200,7 +202,7 @@ func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj int
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok, opts)
+	url, resp, err := pulumiAPICall(ctx, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}

@@ -84,7 +84,7 @@ func newDestroyCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			err = s.Destroy(proj, root, m, opts, cancellationScopes)
+			err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
 			if err == context.Canceled {
 				return errors.New("destroy cancelled")
 			}

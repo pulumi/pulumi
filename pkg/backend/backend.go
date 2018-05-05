@@ -4,6 +4,7 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -68,7 +69,7 @@ type Backend interface {
 	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
 		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx contexty.Context, stackRef StackReference, proj *workspace.Project, root string,
+	Refresh(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
 		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,

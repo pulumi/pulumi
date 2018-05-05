@@ -3,6 +3,8 @@
 package local
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -43,38 +45,38 @@ func (s *localStack) Snapshot() *deploy.Snapshot   { return s.snapshot }
 func (s *localStack) Backend() backend.Backend     { return s.b }
 func (s *localStack) Path() string                 { return s.path }
 
-func (s *localStack) Remove(force bool) (bool, error) {
-	return backend.RemoveStack(s, force)
+func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
+	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *localStack) Preview(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *localStack) Preview(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.PreviewStack(s, proj, root, m, opts, scopes)
+	return backend.PreviewStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *localStack) Update(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *localStack) Update(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.UpdateStack(s, proj, root, m, opts, scopes)
+	return backend.UpdateStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *localStack) Refresh(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *localStack) Refresh(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.RefreshStack(s, proj, root, m, opts, scopes)
+	return backend.RefreshStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *localStack) Destroy(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *localStack) Destroy(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.DestroyStack(s, proj, root, m, opts, scopes)
+	return backend.DestroyStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(s, query)
+func (s *localStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
+	return backend.GetStackLogs(ctx, s, query)
 }
 
-func (s *localStack) ExportDeployment() (*apitype.UntypedDeployment, error) {
-	return backend.ExportStackDeployment(s)
+func (s *localStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
+	return backend.ExportStackDeployment(ctx, s)
 }
 
-func (s *localStack) ImportDeployment(deployment *apitype.UntypedDeployment) error {
-	return backend.ImportStackDeployment(s, deployment)
+func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+	return backend.ImportStackDeployment(ctx, s, deployment)
 }

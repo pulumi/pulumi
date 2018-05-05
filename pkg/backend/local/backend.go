@@ -3,6 +3,7 @@
 package local
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -93,7 +94,9 @@ func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackRe
 
 func (b *localBackend) local() {}
 
-func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
+func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
+	opts interface{}) (backend.Stack, error) {
+
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
 	stackName := stackRef.StackName()
@@ -124,7 +127,7 @@ func (b *localBackend) CreateStack(stackRef backend.StackReference, opts interfa
 	return stack, nil
 }
 
-func (b *localBackend) GetStack(stackRef backend.StackReference) (backend.Stack, error) {
+func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.StackName()
 	config, snapshot, path, err := b.getStack(stackName)
 	switch {
@@ -137,7 +140,7 @@ func (b *localBackend) GetStack(stackRef backend.StackReference) (backend.Stack,
 	}
 }
 
-func (b *localBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.Stack, error) {
+func (b *localBackend) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]backend.Stack, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, err
@@ -145,7 +148,7 @@ func (b *localBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.
 
 	var results []backend.Stack
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(localBackendReference{name: stackName})
+		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +158,7 @@ func (b *localBackend) ListStacks(projectFilter *tokens.PackageName) ([]backend.
 	return results, nil
 }
 
-func (b *localBackend) RemoveStack(stackRef backend.StackReference, force bool) (bool, error) {
+func (b *localBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference, force bool) (bool, error) {
 	stackName := stackRef.StackName()
 	_, snapshot, _, err := b.getStack(stackName)
 	if err != nil {
@@ -175,8 +178,9 @@ func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 }
 
 func (b *localBackend) Preview(
-	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string,
+	m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+
 	return b.performEngineOp("previewing", backend.PreviewUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes,
 		func(u engine.UpdateInfo, ctx *engine.Context,
@@ -188,8 +192,9 @@ func (b *localBackend) Preview(
 }
 
 func (b *localBackend) Update(
-	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
 	// parity with stacks managed by the Pulumi Service.
@@ -206,15 +211,17 @@ func (b *localBackend) Update(
 }
 
 func (b *localBackend) Refresh(
-	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Refresh)
 }
 
 func (b *localBackend) Destroy(
-	stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Destroy)
 }
@@ -289,7 +296,7 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	return errors.Wrap(backupErr, "saving backup")
 }
 
-func (b *localBackend) GetHistory(stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.StackName()
 	updates, err := b.getHistory(stackName)
 	if err != nil {
@@ -298,7 +305,7 @@ func (b *localBackend) GetHistory(stackRef backend.StackReference) ([]backend.Up
 	return updates, nil
 }
 
-func (b *localBackend) GetLogs(stackRef backend.StackReference,
+func (b *localBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stackRef.StackName()
@@ -329,7 +336,7 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 	return *logs, err
 }
 
-func (b *localBackend) ExportDeployment(stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
+func (b *localBackend) ExportDeployment(ctx context.Context, stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
 	stackName := stackRef.StackName()
 	_, snap, _, err := b.getStack(stackName)
 	if err != nil {
@@ -347,7 +354,7 @@ func (b *localBackend) ExportDeployment(stackRef backend.StackReference) (*apity
 	}, nil
 }
 
-func (b *localBackend) ImportDeployment(stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
+func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference, deployment *apitype.UntypedDeployment) error {
 	stackName := stackRef.StackName()
 	config, _, _, err := b.getStack(stackName)
 	if err != nil {

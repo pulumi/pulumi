@@ -47,7 +47,7 @@ func newStackLsCmd() *cobra.Command {
 
 			// Get the current stack so we can print a '*' next to it.
 			var current string
-			if s, _ := state.CurrentStack(b); s != nil {
+			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
 				current = s.Name().String()
 			}
@@ -61,7 +61,7 @@ func newStackLsCmd() *cobra.Command {
 			var result error
 			var stackNames []string
 			stacks := make(map[string]backend.Stack)
-			bs, err := b.ListStacks(packageFilter)
+			bs, err := b.ListStacks(commandContext(), packageFilter)
 			if err != nil {
 				return err
 			}

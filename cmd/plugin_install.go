@@ -123,7 +123,7 @@ func newPluginInstallCmd() *cobra.Command {
 						cmdutil.Diag().Infoerrf(
 							diag.Message("", "%s downloading from %s"), label, source)
 					}
-					if tarball, err = releases.DownloadPlugin(install, true); err != nil {
+					if tarball, err = releases.DownloadPlugin(commandContext(), install, true); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, source)
 					}
 				} else {

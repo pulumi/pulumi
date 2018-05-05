@@ -3,12 +3,14 @@
 package state
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
-func CurrentStack(backend backend.Backend) (backend.Stack, error) {
+func CurrentStack(ctx context.Context, backend backend.Backend) (backend.Stack, error) {
 	w, err := workspace.New()
 	if err != nil {
 		return nil, err
@@ -24,7 +26,7 @@ func CurrentStack(backend backend.Backend) (backend.Stack, error) {
 		return nil, err
 	}
 
-	return backend.GetStack(ref)
+	return backend.GetStack(ctx, ref)
 }
 
 // SetCurrentStack changes the current stack to the given stack name.

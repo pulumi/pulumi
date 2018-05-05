@@ -3,6 +3,7 @@
 package backend
 
 import (
+	"context"
 	"regexp"
 
 	"github.com/pkg/errors"
@@ -75,7 +76,7 @@ func GetStackCrypter(s Stack) (config.Crypter, error) {
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(ctx contet.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
+func GetStackLogs(ctx context.Context, s Stack, query operations.LogQuery) ([]operations.LogEntry, error) {
 	return s.Backend().GetLogs(ctx, s.Name(), query)
 }
 

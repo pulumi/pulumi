@@ -86,7 +86,7 @@ func newNewCmd() *cobra.Command {
 			if !offline {
 				var tarball io.ReadCloser
 				source := releases.CloudURL()
-				if tarball, err = releases.DownloadTemplate(templateName, false); err != nil {
+				if tarball, err = releases.DownloadTemplate(commandContext(), templateName, false); err != nil {
 					message := ""
 					// If the local template is available locally, provide a nicer error message.
 					if localTemplates, localErr := workspace.ListLocalTemplates(); localErr == nil && len(localTemplates) > 0 {
@@ -320,7 +320,7 @@ func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
 	var err error
 
 	if !offline {
-		if templates, err = backend.ListTemplates(); err != nil {
+		if templates, err = backend.ListTemplates(commandContext()); err != nil {
 			message := "could not fetch list of remote templates"
 
 			// If we couldn't fetch the list, see if there are any local templates
