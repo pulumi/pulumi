@@ -257,7 +257,7 @@ func (data *resourceRowData) getInfo() string {
 
 			writePropertyKeys(changesBuf, diff.Adds, deploy.OpCreate)
 			writePropertyKeys(changesBuf, diff.Deletes, deploy.OpDelete)
-			writePropertyKeys(changesBuf, updates, deploy.OpReplace)
+			writePropertyKeys(changesBuf, updates, deploy.OpUpdate)
 		}
 	}
 

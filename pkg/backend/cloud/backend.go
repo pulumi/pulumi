@@ -658,6 +658,9 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	// Now do the real operation.  We don't care about the events it issues, so just
 	// pass a nil channel along.
 	var unused chan engine.Event
+
+	// Print the stack outputs at the end this time.
+	displayOpts.ShowStackOutputs = true
 	return b.updateStack(
 		updateKind, stack, pkg,
 		root, m, opts, displayOpts, unused, false /*dryRun*/, scopes)

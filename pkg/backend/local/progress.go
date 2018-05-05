@@ -660,6 +660,21 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
+	if display.opts.ShowStackOutputs {
+		if display.stackUrn != "" {
+			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
+			if props != "" {
+				if !wroteDiagnosticHeader {
+					display.writeBlankLine()
+				}
+
+				wroteDiagnosticHeader = true
+				display.writeSimpleMessage(props)
+			}
+		}
+	}
+
 	// print the summary
 	if display.summaryEventPayload != nil {
 		msg := renderSummaryEvent(*display.summaryEventPayload, display.opts)
@@ -772,6 +787,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
 			row.SetDone()
+		} else {
+			step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+			row.SetStep(step)
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
 		row.SetDone()
