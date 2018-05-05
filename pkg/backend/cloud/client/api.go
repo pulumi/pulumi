@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/go-querystring/query"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -114,6 +115,14 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating new HTTP request")
 	}
+
+	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, path,
+		opentracing.Tag{Key: "method", Value: method},
+		opentracing.Tag{Key: "api", Value: cloudAPI},
+		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
+	defer requestSpan.Finish()
+
+	req = req.WithContext(requestContext)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
@@ -142,6 +151,8 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
 	glog.V(7).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
+
+	requestSpan.SetTag("responseCode", resp.Status)
 
 	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
