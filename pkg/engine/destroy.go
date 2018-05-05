@@ -17,7 +17,7 @@ func Destroy(
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u)
+	info, err := newPlanContext(u, "destroy", ctx.ParentSpan)
 	if err != nil {
 		return nil, err
 	}
