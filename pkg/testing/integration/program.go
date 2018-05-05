@@ -526,7 +526,7 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 func (pt *programTester) testLifeCycleDestroy(dir string) error {
 	// Destroy and remove the stack.
 	fprintf(pt.opts.Stdout, "Destroying stack\n")
-	destroy := []string{"destroy", "--non-interactive", "--force"}
+	destroy := []string{"destroy", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		destroy = append(destroy, "-d")
 	}
@@ -567,8 +567,8 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 }
 
 func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bool) error {
-	preview := []string{"update", "--non-interactive", "--preview=only"}
-	update := []string{"update", "--non-interactive", "--preview=skip"}
+	preview := []string{"preview", "--non-interactive"}
+	update := []string{"update", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")

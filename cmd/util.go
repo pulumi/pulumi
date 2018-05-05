@@ -17,7 +17,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -502,25 +501,20 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 
 // isInteractive returns true if the environment and command line options indicate we should
 // do things interactively
-func isInteractive(cmd *cobra.Command) bool {
-	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-	contract.IgnoreError(err)
+func isInteractive(nonInteractive bool) bool {
 	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !isCI()
 }
 
-// previewFlagsToBehavior turns the CLI preview flag into a backend behavior enum.
-func previewFlagsToBehavior(interactive bool, preview string) (backend.PreviewBehavior, error) {
-	behavior := backend.PreviewBehavior(preview)
-	switch behavior {
-	case backend.DefaultPreview, backend.OnlyPreview, backend.SkipPreview, backend.AutoPreview:
-		// ok
-	default:
-		return "", errors.Errorf("unrecognized preview behavior: '%s'", preview)
+// updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
+// is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
+func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
+	if !interactive && !yes {
+		return backend.UpdateOptions{},
+			errors.New("--yes must be passed in non-interactive mode")
 	}
 
-	if !interactive && behavior.Interactive() {
-		return "", errors.New("--preview must be only, skip, or auto when run in non-interactive mode")
-	}
-
-	return behavior, nil
+	return backend.UpdateOptions{
+		AutoApprove: yes,
+		SkipPreview: skipPreview,
+	}, nil
 }

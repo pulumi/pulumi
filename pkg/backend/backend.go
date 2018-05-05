@@ -52,18 +52,18 @@ type Backend interface {
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
+	// Preview shows what would be updated given the current workspace's contents.
+	Preview(stackRef StackReference, proj *workspace.Project, root string,
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, preview PreviewBehavior,
-		displayOpts DisplayOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, preview PreviewBehavior,
-		displayOpts DisplayOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Destroy destroys all of this stack's resources.
 	Destroy(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, preview PreviewBehavior,
-		displayOpts DisplayOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -79,44 +79,17 @@ type Backend interface {
 	Logout() error
 }
 
-// PreviewBehavior controls how previews are performed during an update.
-type PreviewBehavior string
+// UpdateOptions is the full set of update options, including backend and engine options.
+type UpdateOptions struct {
+	// Engine contains all of the engine-specific options.
+	Engine engine.UpdateOptions
+	// Display contains all of the backend display options.
+	Display DisplayOptions
 
-const (
-	// DefaultPreview is the default behavior of a preview followed by an confirmation-prompt-guarded update.
-	DefaultPreview PreviewBehavior = ""
-	// OnlyPreview only runs a preview but does not perform an update.
-	OnlyPreview PreviewBehavior = "only"
-	// SkipPreview skips a preview, and prompt, altogether, and simply performs the update.
-	SkipPreview PreviewBehavior = "skip"
-	// AutoPreview automatically confirms a preview after performing it.
-	AutoPreview PreviewBehavior = "auto"
-)
-
-// Only returns true if the update only entails a preview operation.
-func (preview PreviewBehavior) Only() bool {
-	return preview == OnlyPreview
-}
-
-// Skip returns true if the update should skip the preview altogether.
-func (preview PreviewBehavior) Skip() bool {
-	return preview == SkipPreview
-}
-
-// Should returns true if the update options mandate that a preview occur.
-func (preview PreviewBehavior) Should() bool {
-	return !preview.Skip()
-}
-
-// Interactive returns true if a preview behavior will require confirmation prompts.
-func (preview PreviewBehavior) Interactive() bool {
-	return preview == DefaultPreview
-}
-
-// AutoAccept returns true if a preview's result should be automatically accepted.  This can be useful in
-// non-interactive situations where you'd like to still preview before performing an apply.
-func (preview PreviewBehavior) AutoAccept() bool {
-	return preview == AutoPreview
+	// AutoApprove, when true, will automatically approve previews.
+	AutoApprove bool
+	// SkipPreview, when true, causes the preview step to be skipped.
+	SkipPreview bool
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.

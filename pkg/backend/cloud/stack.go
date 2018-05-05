@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -117,22 +116,24 @@ func (s *cloudStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
+func (s *cloudStack) Preview(proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.PreviewStack(s, proj, root, m, opts, scopes)
+}
+
 func (s *cloudStack) Update(proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, preview backend.PreviewBehavior,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-	return backend.UpdateStack(s, proj, root, m, opts, preview, displayOpts, scopes)
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.UpdateStack(s, proj, root, m, opts, scopes)
 }
 
 func (s *cloudStack) Refresh(proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, preview backend.PreviewBehavior,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-	return backend.RefreshStack(s, proj, root, m, opts, preview, displayOpts, scopes)
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.RefreshStack(s, proj, root, m, opts, scopes)
 }
 
 func (s *cloudStack) Destroy(proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts engine.UpdateOptions, preview backend.PreviewBehavior,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-	return backend.DestroyStack(s, proj, root, m, opts, preview, displayOpts, scopes)
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.DestroyStack(s, proj, root, m, opts, scopes)
 }
 
 func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

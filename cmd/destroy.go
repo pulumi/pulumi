@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -25,11 +24,12 @@ func newDestroyCmd() *cobra.Command {
 	var color colorFlag
 	var diffDisplay bool
 	var parallel int
-	var preview string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var nonInteractive bool
+	var skipPreview bool
+	var yes bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -45,8 +45,12 @@ func newDestroyCmd() *cobra.Command {
 			"is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			interactive := isInteractive(cmd)
-			behavior, err := previewFlagsToBehavior(interactive, preview)
+			interactive := isInteractive(nonInteractive)
+			if !interactive {
+				yes = true // auto-approve changes, since we cannot prompt.
+			}
+
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
 			if err != nil {
 				return err
 			}
@@ -65,32 +69,22 @@ func newDestroyCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			if behavior.Interactive() {
-				prompt := fmt.Sprintf("This will permanently destroy all resources in the '%s' stack!", s.Name())
-				if !confirmPrompt(prompt, s.Name().String()) {
-					return errors.New("confirmation declined")
-				}
+			opts.Engine = engine.UpdateOptions{
+				Analyzers: analyzers,
+				Parallel:  parallel,
+				Debug:     debug,
+			}
+			opts.Display = backend.DisplayOptions{
+				Color:                color.Colorization(),
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSameResources:    showSames,
+				IsInteractive:        interactive,
+				DiffDisplay:          diffDisplay,
+				Debug:                debug,
 			}
 
-			err = s.Destroy(
-				proj, root, m,
-				engine.UpdateOptions{
-					Analyzers: analyzers,
-					Parallel:  parallel,
-					Debug:     debug,
-				},
-				behavior,
-				backend.DisplayOptions{
-					Color:                color.Colorization(),
-					ShowConfig:           showConfig,
-					ShowReplacementSteps: showReplacementSteps,
-					ShowSameResources:    showSames,
-					IsInteractive:        interactive,
-					DiffDisplay:          diffDisplay,
-					Debug:                debug,
-				},
-				cancellationScopes,
-			)
+			err = s.Destroy(proj, root, m, opts, cancellationScopes)
 			if err == context.Canceled {
 				return errors.New("destroy cancelled")
 			}
@@ -117,12 +111,11 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().BoolVar(
+		&nonInteractive, "non-interactive", false, "Disable interactive mode")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", 0,
 		"Allow P resource operations to run in parallel at once (<=1 for no parallelism)")
-	cmd.PersistentFlags().StringVar(
-		&preview, "preview", "",
-		"Preview behavior. Choices are: only (dry-run), skip (no preview, just update), auto (auto-accept)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -132,7 +125,12 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVar(&nonInteractive, "non-interactive", false, "Disable interactive mode")
+	cmd.PersistentFlags().BoolVar(
+		&skipPreview, "skip-preview", false,
+		"Do not perform a preview before performing the destroy")
+	cmd.PersistentFlags().BoolVar(
+		&yes, "yes", false,
+		"Automatically approve and perform the destroy after previewing it")
 
 	return cmd
 }
