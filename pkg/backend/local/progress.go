@@ -660,7 +660,7 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	if display.opts.ShowStackOutputs {
+	if !display.opts.SuppressStackOutputs {
 		if display.stackUrn != "" {
 			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
