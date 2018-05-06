@@ -47,9 +47,6 @@ func TestExamples(t *testing.T) {
 				"simple:config:x": "1",
 				"simple:config:y": "1",
 			},
-			Verbose:       true,
-			DebugUpdates:  true,
-			DebugLogLevel: 12,
 		},
 		{
 			Dir:          path.Join(cwd, "dynamic-provider/multiple-turns"),
@@ -97,7 +94,7 @@ func TestExamples(t *testing.T) {
 	for _, example := range examples {
 		ex := example.With(integration.ProgramTestOptions{
 			ReportStats: integration.NewS3Reporter("us-west-2", "eng.pulumi.com", "testreports"),
-			Tracing: "https://tracing.pulumi-engineering.com/collector/api/v1/spans",
+			Tracing:     "https://tracing.pulumi-engineering.com/collector/api/v1/spans",
 		})
 		t.Run(example.Dir, func(t *testing.T) {
 			integration.ProgramTest(t, &ex)

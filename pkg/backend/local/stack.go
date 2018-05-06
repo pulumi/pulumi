@@ -5,7 +5,6 @@ package local
 import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -48,19 +47,24 @@ func (s *localStack) Remove(force bool) (bool, error) {
 	return backend.RemoveStack(s, force)
 }
 
-func (s *localStack) Update(proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-	return backend.UpdateStack(s, proj, root, m, opts, displayOpts, scopes)
+func (s *localStack) Preview(proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.PreviewStack(s, proj, root, m, opts, scopes)
 }
 
-func (s *localStack) Refresh(proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-	return backend.RefreshStack(s, proj, root, m, opts, displayOpts, scopes)
+func (s *localStack) Update(proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.UpdateStack(s, proj, root, m, opts, scopes)
 }
 
-func (s *localStack) Destroy(proj *workspace.Project, root string, m backend.UpdateMetadata, opts engine.UpdateOptions,
-	displayOpts backend.DisplayOptions, scopes backend.CancellationScopeSource) error {
-	return backend.DestroyStack(s, proj, root, m, opts, displayOpts, scopes)
+func (s *localStack) Refresh(proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.RefreshStack(s, proj, root, m, opts, scopes)
+}
+
+func (s *localStack) Destroy(proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	return backend.DestroyStack(s, proj, root, m, opts, scopes)
 }
 
 func (s *localStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {

@@ -17,7 +17,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -500,10 +499,22 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	return c
 }
 
-// IsInteractive returns true if the environment and command line options indicate we should
+// isInteractive returns true if the environment and command line options indicate we should
 // do things interactively
-func IsInteractive(cmd *cobra.Command) bool {
-	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-	contract.IgnoreError(err)
+func isInteractive(nonInteractive bool) bool {
 	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !isCI()
+}
+
+// updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
+// is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
+func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
+	if !interactive && !yes {
+		return backend.UpdateOptions{},
+			errors.New("--yes must be passed in non-interactive mode")
+	}
+
+	return backend.UpdateOptions{
+		AutoApprove: yes,
+		SkipPreview: skipPreview,
+	}, nil
 }

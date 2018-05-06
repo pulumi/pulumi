@@ -9,9 +9,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-func Destroy(
-	u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
-
+func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, error) {
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 

@@ -52,15 +52,18 @@ type Backend interface {
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
+	// Preview shows what would be updated given the current workspace's contents.
+	Preview(stackRef StackReference, proj *workspace.Project, root string,
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Destroy destroys all of this stack's resources.
 	Destroy(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
@@ -74,6 +77,19 @@ type Backend interface {
 	ImportDeployment(stackRef StackReference, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
+}
+
+// UpdateOptions is the full set of update options, including backend and engine options.
+type UpdateOptions struct {
+	// Engine contains all of the engine-specific options.
+	Engine engine.UpdateOptions
+	// Display contains all of the backend display options.
+	Display DisplayOptions
+
+	// AutoApprove, when true, will automatically approve previews.
+	AutoApprove bool
+	// SkipPreview, when true, causes the preview step to be skipped.
+	SkipPreview bool
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.
