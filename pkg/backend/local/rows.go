@@ -167,19 +167,14 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 
 	switch payload.Severity {
 	case diag.Error:
-		diagInfo.ErrorCount++
 		diagInfo.LastError = &event
 	case diag.Warning:
-		diagInfo.WarningCount++
 		diagInfo.LastWarning = &event
 	case diag.Infoerr:
-		diagInfo.InfoCount++
 		diagInfo.LastInfoError = &event
 	case diag.Info:
-		diagInfo.InfoCount++
 		diagInfo.LastInfo = &event
 	case diag.Debug:
-		diagInfo.DebugCount++
 		diagInfo.LastDebug = &event
 	}
 
@@ -188,8 +183,28 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 	}
 
 	events, _ := diagInfo.StreamIDToDiagEvents[payload.StreamID]
+
+	// Record the count if this is for the default stream, or this is the first event in a a
+	// non-default stream
+	recordCount := payload.StreamID == 0 || len(events) == 0
+
 	events = append(events, event)
 	diagInfo.StreamIDToDiagEvents[payload.StreamID] = events
+
+	if recordCount {
+		switch payload.Severity {
+		case diag.Error:
+			diagInfo.ErrorCount++
+		case diag.Warning:
+			diagInfo.WarningCount++
+		case diag.Infoerr:
+			diagInfo.InfoCount++
+		case diag.Info:
+			diagInfo.InfoCount++
+		case diag.Debug:
+			diagInfo.DebugCount++
+		}
+	}
 }
 
 type column int
