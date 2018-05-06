@@ -182,7 +182,7 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 		diagInfo.StreamIDToDiagEvents = make(map[int32][]engine.Event)
 	}
 
-	events, _ := diagInfo.StreamIDToDiagEvents[payload.StreamID]
+	events := diagInfo.StreamIDToDiagEvents[payload.StreamID]
 
 	// Record the count if this is for the default stream, or this is the first event in a a
 	// non-default stream
