@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,7 @@ func newNewCmd() *cobra.Command {
 	var name string
 	var description string
 	var force bool
+	var yes bool
 	var offline bool
 	var generateOnly bool
 
@@ -55,6 +57,16 @@ func newNewCmd() *cobra.Command {
 			releases, err := cloud.New(cmdutil.Diag(), getCloudURL(cloudURL))
 			if err != nil {
 				return errors.Wrap(err, "creating API client")
+			}
+
+			// If we're going to be creating a stack, get the current backend, which
+			// will kick off the login flow (if not already logged-in).
+			var b backend.Backend
+			if !generateOnly {
+				b, err = currentBackend()
+				if err != nil {
+					return err
+				}
 			}
 
 			// Get the selected template.
@@ -96,11 +108,7 @@ func newNewCmd() *cobra.Command {
 				return errors.Wrapf(err, "template '%s' not found", templateName)
 			}
 
-			// Get the values to fill in.
-			name = workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
-			description = workspace.ValueOrDefaultProjectDescription(description, template.Description)
-
-			// Do a dry run if we're not forcing files to be overwritten.
+			// Do a dry run, if we're not forcing files to be overwritten.
 			if !force {
 				if err = template.CopyTemplateFilesDryRun(cwd); err != nil {
 					if os.IsNotExist(err) {
@@ -108,6 +116,26 @@ func newNewCmd() *cobra.Command {
 					}
 					return err
 				}
+			}
+
+			// Show instructions, if we're going to show at least one prompt.
+			hasAtLeastOnePrompt := (name == "") || (description == "") || !generateOnly
+			if !yes && hasAtLeastOnePrompt {
+				fmt.Println("This command will walk you through creating a new Pulumi project.")
+				fmt.Println("Enter a value (or leave blank to accept the default) and press <ENTER>.")
+				fmt.Println("Press ^C at any time to quit.")
+			}
+
+			// Prompt for the project name, if it wasn't already specified.
+			if name == "" {
+				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
+				name = promptForValue(yes, "project name", defaultValue, workspace.IsValidProjectName)
+			}
+
+			// Prompt for the project description, if it wasn't already specified.
+			if description == "" {
+				defaultValue := workspace.ValueOrDefaultProjectDescription(description, template.Description)
+				description = promptForValue(yes, "project description", defaultValue, nil)
 			}
 
 			// Actually copy the files.
@@ -118,18 +146,25 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 
-			const successMessage = "Your project was created successfully"
+			fmt.Printf("Created project '%s'.\n", name)
 
-			// Now run stack init using the project name as the basis for the stack name.
+			// Prompt for the stack name and create the stack.
 			if !generateOnly {
-				if err = stackInit(name); err != nil {
-					fmt.Println(successMessage + ", but there was an error creating the stack.")
-					fmt.Println("Run 'pulumi stack init' manually to create a new stack.")
-					return err
+				defaultValue := getDevStackName(name)
+
+				for {
+					stackName := promptForValue(yes, "stack name", defaultValue, nil)
+					if err = stackInit(b, stackName); err != nil {
+						// Let the user know about the error and loop around to try again.
+						fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
+						continue
+					}
+					break
 				}
+
+				// The backend will print "Created stack '<stack>'." on success.
 			}
 
-			fmt.Println(successMessage + ".")
 			return nil
 		}),
 	}
@@ -138,16 +173,19 @@ func newNewCmd() *cobra.Command {
 		"cloud-url", "c", "", "A cloud URL to download templates from")
 	cmd.PersistentFlags().StringVarP(
 		&name, "name", "n", "",
-		"The project name; if not specified, the name of the current working directory is used")
+		"The project name; if not specified, a prompt will request it")
 	cmd.PersistentFlags().StringVarP(
 		&description, "description", "d", "",
-		"The project description; if not specified, a default description is used")
+		"The project description; if not specified, a prompt will request it")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
+	cmd.PersistentFlags().BoolVar(
+		&yes, "yes", false,
+		"Skip prompts and proceed with default values")
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,
-		"Allows offline use of cached templates without making any network requests")
+		"Use locally cached templates without making any network requests")
 	cmd.PersistentFlags().BoolVar(
 		&generateOnly, "generate-only", false,
 		"Generate the project without automatically running 'pulumi stack init'")
@@ -155,57 +193,25 @@ func newNewCmd() *cobra.Command {
 	return cmd
 }
 
-// stackInit will attempt to create the stack. If the stack already exists, it will
-// try again using a new name with an incremented number.
-func stackInit(stackName string) error {
-	b, err := currentBackend()
+// getDevStackName returns the stack name suffixed with -dev.
+func getDevStackName(name string) string {
+	const suffix = "-dev"
+	// Strip the suffix so we don't include two -dev suffixes
+	// if the name already has it.
+	return strings.TrimSuffix(name, suffix) + suffix
+}
+
+// stackInit creates the stack.
+func stackInit(b backend.Backend, stackName string) error {
+	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return err
 	}
-
-	const maxTryCount = 25
-	try := 0
-	for {
-		name := getDevStackName(stackName, try)
-		stackRef, err := b.ParseStackReference(name)
-		if err != nil {
-			return err
-		}
-
-		// Attempt to create the stack.
-		if _, err = createStack(b, stackRef, nil); err != nil {
-			if _, ok := err.(*backend.StackAlreadyExistsError); ok && try < maxTryCount {
-				// The stack already exists and we're under the maxTryCount.
-				// Increment the index and loop around to try again.
-				try++
-				continue
-			}
-			return err
-		}
-		break
-	}
-
-	return nil
+	_, err = createStack(b, stackRef, nil)
+	return err
 }
 
-// getDevStackName returns the stack name suffixed with an
-// index (if index isn't 0) and -dev.
-func getDevStackName(stackName string, index int) string {
-	const suffix = "-dev"
-
-	// Strip the suffix if the name already has it so we don't
-	// include two -dev suffixes in the name.
-	stackName = strings.TrimSuffix(stackName, suffix)
-
-	// If the index is 0, don't include it in the name.
-	if index == 0 {
-		return stackName + suffix
-	}
-
-	// Return the name with the index and a -dev suffix.
-	return fmt.Sprintf("%s%d%s", stackName, index, suffix)
-}
-
+// getCloudURL returns the URL used to download the template.
 func getCloudURL(cloudURL string) string {
 	// If we have a cloud URL, just return it.
 	if cloudURL != "" {
@@ -268,6 +274,37 @@ func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
 	}
 
 	return option, nil
+}
+
+// promptForValue prompts the user for a value with a defaultValue preselected. Hitting enter accepts the
+// default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
+// when specified, it will be run to validate that value entered. An invalid value will result in an error
+// message followed by another prompt for the value.
+func promptForValue(yes bool, prompt string, defaultValue string, isValidFn func(value string) bool) string {
+	if yes {
+		return defaultValue
+	}
+
+	for {
+		prompt = colors.ColorizeText(
+			fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValue, colors.Reset))
+		fmt.Print(prompt)
+
+		reader := bufio.NewReader(os.Stdin)
+		line, _ := reader.ReadString('\n')
+		value := strings.TrimSpace(line)
+
+		if value != "" {
+			if isValidFn == nil || isValidFn(value) {
+				return value
+			}
+
+			// The value is invalid, let the user know and try again
+			fmt.Printf("Sorry, '%s' is not a valid %s.\n", value, prompt)
+			continue
+		}
+		return defaultValue
+	}
 }
 
 // templateArrayToStringArrayAndMap returns an array of template names and map of names to templates
