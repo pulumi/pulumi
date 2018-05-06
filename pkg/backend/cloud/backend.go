@@ -573,13 +573,9 @@ func (b *cloudBackend) PreviewThenPrompt(
 		}()
 	}
 
-	// During preview, don't show stack outputs.  We only want that at the end.
-	optsCopy := displayOpts
-	optsCopy.SuppressStackOutputs = true
-
 	err := b.updateStack(
 		updateKind, stack, pkg, root, m,
-		opts, optsCopy, eventsChannel, true /*dryRun*/, scopes)
+		opts, displayOpts, eventsChannel, true /*dryRun*/, scopes)
 
 	if err != nil || opts.Preview {
 		// if we're just previewing, then we can stop at this point.

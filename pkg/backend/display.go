@@ -13,6 +13,5 @@ type DisplayOptions struct {
 	SummaryDiff          bool                // If the diff display should be summarized
 	IsInteractive        bool                // If we should display things interactively
 	DiffDisplay          bool                // true if we should display things as a rich diff
-	SuppressStackOutputs bool                // If the stack outputs should be not be shown
 	Debug                bool
 }

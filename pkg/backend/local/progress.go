@@ -660,7 +660,8 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 	}
 
-	if !display.opts.SuppressStackOutputs {
+	// If we're not previewing, and we get stack outputs, then display them at the end.
+	if !display.isPreview {
 		if display.stackUrn != "" {
 			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
