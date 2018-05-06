@@ -45,9 +45,11 @@ func cancelEvent() Event {
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
 	URN      resource.URN
+	Prefix   string
 	Message  string
 	Color    colors.Colorization
 	Severity diag.Severity
+	StreamID int32
 }
 
 type StdoutEventPayload struct {
@@ -424,36 +426,38 @@ func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
 	}
 }
 
-func diagEvent(e *eventEmitter, urn resource.URN, msg string, sev diag.Severity) {
+func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.Chan <- Event{
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
-			URN:      urn,
+			URN:      d.URN,
+			Prefix:   e.Filter.Filter(prefix),
 			Message:  e.Filter.Filter(msg),
 			Color:    colors.Raw,
 			Severity: sev,
+			StreamID: d.StreamID,
 		},
 	}
 }
 
-func (e *eventEmitter) diagDebugEvent(urn resource.URN, msg string) {
-	diagEvent(e, urn, msg, diag.Debug)
+func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Debug)
 }
 
-func (e *eventEmitter) diagInfoEvent(urn resource.URN, msg string) {
-	diagEvent(e, urn, msg, diag.Info)
+func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Info)
 }
 
-func (e *eventEmitter) diagInfoerrEvent(urn resource.URN, msg string) {
-	diagEvent(e, urn, msg, diag.Infoerr)
+func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Infoerr)
 }
 
-func (e *eventEmitter) diagErrorEvent(urn resource.URN, msg string) {
-	diagEvent(e, urn, msg, diag.Error)
+func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Error)
 }
 
-func (e *eventEmitter) diagWarningEvent(urn resource.URN, msg string) {
-	diagEvent(e, urn, msg, diag.Warning)
+func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string) {
+	diagEvent(e, d, prefix, msg, diag.Warning)
 }

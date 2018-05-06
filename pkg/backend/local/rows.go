@@ -183,7 +183,13 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 		diagInfo.LastDebug = &event
 	}
 
-	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
+	if diagInfo.StreamIDToDiagEvents == nil {
+		diagInfo.StreamIDToDiagEvents = make(map[int32][]engine.Event)
+	}
+
+	events, _ := diagInfo.StreamIDToDiagEvents[payload.StreamID]
+	events = append(events, event)
+	diagInfo.StreamIDToDiagEvents[payload.StreamID] = events
 }
 
 type column int
@@ -309,7 +315,7 @@ func (data *resourceRowData) getInfo() string {
 	// the diagnostics at the bottom, so we don't need to show this.
 	worstDiag := getWorstDiagnostic(data.diagInfo)
 	if worstDiag != nil && !data.display.Done {
-		eventMsg := data.display.renderProgressDiagEvent(*worstDiag)
+		eventMsg := data.display.renderProgressDiagEvent(*worstDiag, true /*includePrefix:*/)
 		if eventMsg != "" {
 			diagMsg += ". " + eventMsg
 		}

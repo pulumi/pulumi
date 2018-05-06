@@ -4,14 +4,15 @@ package plugin
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/golang/glog"
 	multierror "github.com/hashicorp/go-multierror"
@@ -63,6 +64,11 @@ type plugin struct {
 // pluginRPCConnectionTimeout dictates how long we wait for the plugin's RPC to become available.
 var pluginRPCConnectionTimeout = time.Second * 10
 
+// A unique ID provided to the output stream of each plugin.  This allows the output of the plugin
+// to be streamed to the display, while still allowing that output to be sent a small piece at a
+// time.
+var nextStreamID int32
+
 func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin, error) {
 	if glog.V(9) {
 		var argstr string
@@ -89,20 +95,26 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 		}
 	}()
 
+	outStreamID := atomic.AddInt32(&nextStreamID, 1)
+	errStreamID := atomic.AddInt32(&nextStreamID, 1)
+
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	runtrace := func(t io.Reader, stderr bool, done chan<- bool) {
 		reader := bufio.NewReader(t)
 
-		buf := &bytes.Buffer{}
-		_, err1 := buf.ReadFrom(reader)
-		contract.IgnoreError(err1)
+		for {
+			msg, readerr := reader.ReadString('\n')
+			if readerr != nil {
+				break
+			}
 
-		msg := buf.String()
-		if strings.TrimSpace(msg) != "" {
-			if stderr {
-				ctx.Diag.Infoerrf(diag.RawMessage("" /*urn*/, msg))
-			} else {
-				ctx.Diag.Infof(diag.RawMessage("" /*urn*/, msg))
+			msg = strings.TrimRightFunc(msg, unicode.IsSpace)
+			if strings.TrimSpace(msg) != "" {
+				if stderr {
+					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, outStreamID))
+				} else {
+					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, errStreamID))
+				}
 			}
 		}
 
