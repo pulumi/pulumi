@@ -43,7 +43,7 @@ func TestPulumiNew(t *testing.T) {
 		// Run pulumi new.
 		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only", "--yes")
 
-		assertSuccess(t, subdir, "foo", "A Pulumi project.")
+		assertSuccess(t, subdir, "foo", "")
 	})
 
 	t.Run("SanityTestWithManifest", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestPulumiNew(t *testing.T) {
 		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only", "--yes")
 
 		// Assert the default name used is "foo" not "@foo".
-		assertSuccess(t, subdir, "foo", "A Pulumi project.")
+		assertSuccess(t, subdir, "foo", "")
 	})
 
 	t.Run("ExistingFileNotOverwritten", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestPulumiNew(t *testing.T) {
 		// Run pulumi new with --force.
 		e.RunCommand("pulumi", "new", template, "--force", "--offline", "--generate-only", "--yes")
 
-		assertSuccess(t, subdir, "foo", "A Pulumi project.")
+		assertSuccess(t, subdir, "foo", "")
 	})
 }
 

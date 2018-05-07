@@ -23,8 +23,7 @@ import (
 )
 
 const (
-	defaultProjectName        = "project"
-	defaultProjectDescription = "A Pulumi project."
+	defaultProjectName = "project"
 
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
@@ -232,7 +231,7 @@ func ValueOrDefaultProjectDescription(description string, defaultDescription str
 	if defaultDescription != "" {
 		return defaultDescription
 	}
-	return defaultProjectDescription
+	return ""
 }
 
 // getValidProjectName returns a valid project name based on the passed-in name.
