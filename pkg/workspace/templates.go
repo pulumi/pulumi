@@ -181,11 +181,15 @@ func (template Template) CopyTemplateFiles(
 			return err
 		}
 
-		// We assume all template files are text files.
-		transformed := transform(string(b), projectName, projectDescription)
+		// Transform only if it isn't a binary file.
+		result := b
+		if !isBinary(b) {
+			transformed := transform(string(b), projectName, projectDescription)
+			result = []byte(transformed)
+		}
 
 		// Write to the destination file.
-		err = writeAllText(dest, transformed, force)
+		err = writeAllBytes(dest, result, force)
 		if err != nil {
 			// An existing file has shown up in between the dry run and the actual copy operation.
 			if os.IsExist(err) {
@@ -379,8 +383,8 @@ func transform(content string, projectName string, projectDescription string) st
 	return content
 }
 
-// writeAllText writes all the text to the specified file, with an option to overwrite.
-func writeAllText(filename string, text string, overwrite bool) error {
+// writeAllBytes writes the bytes to the specified file, with an option to overwrite.
+func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
 	flag := os.O_WRONLY | os.O_CREATE
 	if overwrite {
 		flag = flag | os.O_TRUNC
@@ -394,8 +398,28 @@ func writeAllText(filename string, text string, overwrite bool) error {
 	}
 	defer contract.IgnoreClose(f)
 
-	_, err = f.WriteString(text)
+	_, err = f.Write(bytes)
 	return err
+}
+
+// isBinary returns true if a zero byte occurs within the first
+// 8000 bytes (or the entire length if shorter). This is the
+// same approach that git uses to determine if a file is binary.
+func isBinary(bytes []byte) bool {
+	const firstFewBytes = 8000
+
+	length := len(bytes)
+	if firstFewBytes < length {
+		length = firstFewBytes
+	}
+
+	for i := 0; i < length; i++ {
+		if bytes[i] == 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // fixWindowsLineEndings will go through the sourceDir, read each file, replace \n with \r\n,
@@ -414,12 +438,16 @@ func fixWindowsLineEndings(sourceDir string) error {
 			return err
 		}
 
-		// We assume all template files are text files.
-		content := string(b)
-		content = strings.Replace(content, "\n", "\r\n", -1)
+		// Transform only if it isn't a binary file.
+		result := b
+		if !isBinary(b) {
+			content := string(b)
+			content = strings.Replace(content, "\n", "\r\n", -1)
+			result = []byte(content)
+		}
 
 		// Write to the destination file.
-		err = writeAllText(dest, content, true /*overwrite*/)
+		err = writeAllBytes(dest, result, true /*overwrite*/)
 		if err != nil {
 			// An existing file has shown up in between the dry run and the actual copy operation.
 			if os.IsExist(err) {
