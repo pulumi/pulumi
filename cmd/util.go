@@ -50,8 +50,11 @@ func currentBackend() (backend.Backend, error) {
 
 func commandContext() context.Context {
 	ctx := context.Background()
-	if cmdutil.TracingRootSpan != nil {
-		ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+	if cmdutil.IsTracingEnabled() {
+		if cmdutil.TracingRootSpan != nil {
+			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+		}
+		ctx = backend.ContextWithTracingOptions(ctx, backend.TracingOptions{PropagateSpans: true})
 	}
 	return ctx
 }
