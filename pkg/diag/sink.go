@@ -29,8 +29,8 @@ type Sink interface {
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
-	// Stringify stringifies a diagnostic so that it's appropriate for printing.
-	Stringify(sev Severity, diag *Diag, args ...interface{}) string
+	// Stringify stringifies a diagnostic into a prefix and message that is appropriate for printing.
+	Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string)
 }
 
 // Severity dictates the kind of diagnostic.
@@ -106,10 +106,15 @@ func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 	}
 }
 
+func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{}) string {
+	prefix, msg := d.Stringify(sev, diag, args...)
+	return prefix + msg
+}
+
 func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
 	glog.V(3).Infof(diag.Message, args...)
-	msg := d.Stringify(Debug, diag, args...)
+	msg := d.createMessage(Debug, diag, args...)
 	if glog.V(9) {
 		glog.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
@@ -117,7 +122,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(Info, diag, args...)
+	msg := d.createMessage(Info, diag, args...)
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
@@ -125,7 +130,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(Info /* not Infoerr, just "info: "*/, diag, args...)
+	msg := d.createMessage(Info /* not Infoerr, just "info: "*/, diag, args...)
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
@@ -133,7 +138,7 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(Error, diag, args...)
+	msg := d.createMessage(Error, diag, args...)
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
@@ -141,35 +146,36 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(Warning, diag, args...)
+	msg := d.createMessage(Warning, diag, args...)
 	if glog.V(5) {
 		glog.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Warning], msg)
 }
 
-func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {
-	var buffer bytes.Buffer
+func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string) {
+	var prefix bytes.Buffer
 
 	// Now print the message category's prefix (error/warning).
 	switch sev {
 	case Debug:
-		buffer.WriteString(colors.SpecDebug)
+		prefix.WriteString(colors.SpecDebug)
 	case Info, Infoerr:
-		buffer.WriteString(colors.SpecInfo)
+		prefix.WriteString(colors.SpecInfo)
 	case Error:
-		buffer.WriteString(colors.SpecError)
+		prefix.WriteString(colors.SpecError)
 	case Warning:
-		buffer.WriteString(colors.SpecWarning)
+		prefix.WriteString(colors.SpecWarning)
 	default:
 		contract.Failf("Unrecognized diagnostic severity: %v", sev)
 	}
 
-	buffer.WriteString(string(sev))
-	buffer.WriteString(": ")
-	buffer.WriteString(colors.Reset)
+	prefix.WriteString(string(sev))
+	prefix.WriteString(": ")
+	prefix.WriteString(colors.Reset)
 
 	// Finally, actually print the message itself.
+	var buffer bytes.Buffer
 	buffer.WriteString(colors.SpecNote)
 
 	if diag.Raw {
@@ -184,8 +190,6 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
 	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
-	s := buffer.String()
-
 	// If colorization was requested, compile and execute the directives now.
-	return d.opts.Color.Colorize(s)
+	return d.opts.Color.Colorize(prefix.String()), d.opts.Color.Colorize(buffer.String())
 }

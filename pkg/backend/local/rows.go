@@ -167,23 +167,44 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 
 	switch payload.Severity {
 	case diag.Error:
-		diagInfo.ErrorCount++
-		diagInfo.LastError = &event
+		diagInfo.LastError = &payload
 	case diag.Warning:
-		diagInfo.WarningCount++
-		diagInfo.LastWarning = &event
+		diagInfo.LastWarning = &payload
 	case diag.Infoerr:
-		diagInfo.InfoCount++
-		diagInfo.LastInfoError = &event
+		diagInfo.LastInfoError = &payload
 	case diag.Info:
-		diagInfo.InfoCount++
-		diagInfo.LastInfo = &event
+		diagInfo.LastInfo = &payload
 	case diag.Debug:
-		diagInfo.DebugCount++
-		diagInfo.LastDebug = &event
+		diagInfo.LastDebug = &payload
 	}
 
-	diagInfo.DiagEvents = append(diagInfo.DiagEvents, event)
+	if diagInfo.StreamIDToDiagPayloads == nil {
+		diagInfo.StreamIDToDiagPayloads = make(map[int32][]engine.DiagEventPayload)
+	}
+
+	payloads := diagInfo.StreamIDToDiagPayloads[payload.StreamID]
+
+	// Record the count if this is for the default stream, or this is the first event in a a
+	// non-default stream
+	recordCount := payload.StreamID == 0 || len(payloads) == 0
+
+	payloads = append(payloads, payload)
+	diagInfo.StreamIDToDiagPayloads[payload.StreamID] = payloads
+
+	if recordCount {
+		switch payload.Severity {
+		case diag.Error:
+			diagInfo.ErrorCount++
+		case diag.Warning:
+			diagInfo.WarningCount++
+		case diag.Infoerr:
+			diagInfo.InfoCount++
+		case diag.Info:
+			diagInfo.InfoCount++
+		case diag.Debug:
+			diagInfo.DebugCount++
+		}
+	}
 }
 
 type column int
@@ -309,7 +330,7 @@ func (data *resourceRowData) getInfo() string {
 	// the diagnostics at the bottom, so we don't need to show this.
 	worstDiag := getWorstDiagnostic(data.diagInfo)
 	if worstDiag != nil && !data.display.Done {
-		eventMsg := data.display.renderProgressDiagEvent(*worstDiag)
+		eventMsg := data.display.renderProgressDiagEvent(*worstDiag, true /*includePrefix:*/)
 		if eventMsg != "" {
 			diagMsg += ". " + eventMsg
 		}
@@ -325,7 +346,7 @@ func (data *resourceRowData) getInfo() string {
 
 // Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
 // any resource if it has had any issues.
-func getWorstDiagnostic(diagInfo *DiagInfo) *engine.Event {
+func getWorstDiagnostic(diagInfo *DiagInfo) *engine.DiagEventPayload {
 	if diagInfo.LastError != nil {
 		return diagInfo.LastError
 	}
