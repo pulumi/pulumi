@@ -53,7 +53,7 @@ type DiagInfo struct {
 
 	// The last event of each severity kind.  We'll print out the most significant of these next
 	// to a resource while it is in progress.
-	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.Event
+	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.DiagEventPayload
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
 	// in the status region while a resource is in progress.  At the end we'll print out all
@@ -61,7 +61,7 @@ type DiagInfo struct {
 	//
 	// Diagnostic events are bucketed by their associated stream ID (with 0 being the default
 	// stream)
-	StreamIDToDiagEvents map[int32][]engine.Event
+	StreamIDToDiagPayloads map[int32][]engine.DiagEventPayload
 }
 
 type ProgressDisplay struct {
@@ -627,17 +627,17 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteDiagnosticHeader := false
 
 	for _, row := range display.eventUrnToResourceRow {
-		for id, events := range row.DiagInfo().StreamIDToDiagEvents {
-			if len(events) > 0 {
+		for id, payloads := range row.DiagInfo().StreamIDToDiagPayloads {
+			if len(payloads) > 0 {
 				if id != 0 {
 					// for the non-default stream merge all the messages from the stream into a single
 					// message.
-					ev := display.mergeStreamEventsToSingleEvent(events)
-					events = []engine.Event{ev}
+					p := display.mergeStreamPayloadsToSinglePayload(payloads)
+					payloads = []engine.DiagEventPayload{p}
 				}
 
 				wroteResourceHeader := false
-				for _, v := range events {
+				for _, v := range payloads {
 					msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
 
 					lines := splitIntoDisplayableLines(msg)
@@ -655,7 +655,6 @@ func (display *ProgressDisplay) processEndSteps() {
 						wroteResourceHeader = true
 						columns := row.ColorizedColumns()
 						display.writeSimpleMessage("  " +
-							// columns[idColumn] + ": " +
 							columns[typeColumn] + ": " +
 							columns[nameColumn])
 					}
@@ -699,27 +698,28 @@ func (display *ProgressDisplay) processEndSteps() {
 	}
 }
 
-func (display *ProgressDisplay) mergeStreamEventsToSingleEvent(events []engine.Event) engine.Event {
+func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
+	payloads []engine.DiagEventPayload) engine.DiagEventPayload {
 	buf := bytes.Buffer{}
 
-	for i, ev := range events {
+	for i, p := range payloads {
 		if i != 0 {
 			buf.WriteString("\n")
 		}
 
-		buf.WriteString(display.renderProgressDiagEvent(ev, false /*includePrefix:*/))
+		buf.WriteString(display.renderProgressDiagEvent(p, false /*includePrefix:*/))
 	}
 
-	firstPayload := events[0].Payload.(engine.DiagEventPayload)
+	firstPayload := payloads[0]
 	msg := buf.String()
-	return engine.Event{Payload: engine.DiagEventPayload{
+	return engine.DiagEventPayload{
 		URN:      firstPayload.URN,
 		Message:  msg,
 		Prefix:   firstPayload.Prefix,
 		Color:    firstPayload.Color,
 		Severity: firstPayload.Severity,
 		StreamID: firstPayload.StreamID,
-	}}
+	}
 }
 
 func splitIntoDisplayableLines(msg string) []string {
@@ -775,7 +775,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.summaryEventPayload = &payload
 		return
 	case engine.DiagEvent:
-		msg := display.renderProgressDiagEvent(event, true /*includePrefix:*/)
+		msg := display.renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), true /*includePrefix:*/)
 		if msg == "" {
 			return
 		}
@@ -892,9 +892,7 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	}
 }
 
-func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event, includePrefix bool) string {
-	payload := event.Payload.(engine.DiagEventPayload)
-
+func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEventPayload, includePrefix bool) string {
 	if payload.Severity == diag.Debug && !display.opts.Debug {
 		return ""
 	}

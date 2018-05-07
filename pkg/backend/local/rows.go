@@ -167,29 +167,29 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 
 	switch payload.Severity {
 	case diag.Error:
-		diagInfo.LastError = &event
+		diagInfo.LastError = &payload
 	case diag.Warning:
-		diagInfo.LastWarning = &event
+		diagInfo.LastWarning = &payload
 	case diag.Infoerr:
-		diagInfo.LastInfoError = &event
+		diagInfo.LastInfoError = &payload
 	case diag.Info:
-		diagInfo.LastInfo = &event
+		diagInfo.LastInfo = &payload
 	case diag.Debug:
-		diagInfo.LastDebug = &event
+		diagInfo.LastDebug = &payload
 	}
 
-	if diagInfo.StreamIDToDiagEvents == nil {
-		diagInfo.StreamIDToDiagEvents = make(map[int32][]engine.Event)
+	if diagInfo.StreamIDToDiagPayloads == nil {
+		diagInfo.StreamIDToDiagPayloads = make(map[int32][]engine.DiagEventPayload)
 	}
 
-	events := diagInfo.StreamIDToDiagEvents[payload.StreamID]
+	payloads := diagInfo.StreamIDToDiagPayloads[payload.StreamID]
 
 	// Record the count if this is for the default stream, or this is the first event in a a
 	// non-default stream
-	recordCount := payload.StreamID == 0 || len(events) == 0
+	recordCount := payload.StreamID == 0 || len(payloads) == 0
 
-	events = append(events, event)
-	diagInfo.StreamIDToDiagEvents[payload.StreamID] = events
+	payloads = append(payloads, payload)
+	diagInfo.StreamIDToDiagPayloads[payload.StreamID] = payloads
 
 	if recordCount {
 		switch payload.Severity {
@@ -346,7 +346,7 @@ func (data *resourceRowData) getInfo() string {
 
 // Returns the worst diagnostic we've seen.  Used to produce a diagnostic string to go along with
 // any resource if it has had any issues.
-func getWorstDiagnostic(diagInfo *DiagInfo) *engine.Event {
+func getWorstDiagnostic(diagInfo *DiagInfo) *engine.DiagEventPayload {
 	if diagInfo.LastError != nil {
 		return diagInfo.LastError
 	}
