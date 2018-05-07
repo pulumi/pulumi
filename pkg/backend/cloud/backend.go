@@ -168,7 +168,7 @@ func Login(d diag.Sink, cloudURL string) (Backend, error) {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
 		token, readerr := cmdutil.ReadConsoleNoEcho(
-			fmt.Sprintf("Enter your Pulumi access token from %s", cloudConsoleURL(cloudURL, "account")))
+			fmt.Sprintf("Sign in to Pulumi and enter your access token from %s", cloudConsoleURL(cloudURL, "account")))
 		if readerr != nil {
 			return nil, readerr
 		}
