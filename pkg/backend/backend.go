@@ -15,6 +15,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
+type StackAlreadyExistsError struct {
+	StackName string
+}
+
+func (e StackAlreadyExistsError) Error() string {
+	return fmt.Sprintf("stack '%v' already exists", e.StackName)
+}
+
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
 // method to turn a string like "my-great-stack" or "pulumi/my-great-stack" into a stack reference that can be used to
 // interact with the stack via the backend. Stack references are specific to a given backend and different back ends
