@@ -205,6 +205,9 @@ func newNewCmd() *cobra.Command {
 					return errors.Wrap(err, "installing dependencies")
 				}
 				fmt.Println("Finished installing dependencies.")
+
+				// Write a summary with next steps.
+				fmt.Println("New project is configured and ready to deploy with 'pulumi update'.")
 			}
 
 			return nil
