@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -165,6 +166,16 @@ func newNewCmd() *cobra.Command {
 				// The backend will print "Created stack '<stack>'." on success.
 			}
 
+			// Install dependencies.
+			if !generateOnly && template.InstallDependencies {
+				fmt.Println("Installing dependencies...")
+				err = installDependencies()
+				if err != nil {
+					return errors.Wrap(err, "installing dependencies")
+				}
+				fmt.Println("Finished installing dependencies.")
+			}
+
 			return nil
 		}),
 	}
@@ -209,6 +220,30 @@ func stackInit(b backend.Backend, stackName string) error {
 	}
 	_, err = createStack(b, stackRef, nil)
 	return err
+}
+
+// installDependencies will install dependencies for the project, e.g. by running
+// `npm install` for nodejs projects or `pip install` for python projects.
+func installDependencies() error {
+	proj, _, err := readProject()
+	if err != nil {
+		return err
+	}
+
+	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	var c *exec.Cmd
+	if strings.EqualFold(proj.Runtime, "nodejs") {
+		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
+	} else if strings.EqualFold(proj.Runtime, "python") {
+		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
+	} else {
+		return nil
+	}
+
+	// Run the command.
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
 }
 
 // getCloudURL returns the URL used to download the template.
