@@ -14,6 +14,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
 
 	"github.com/pkg/errors"
@@ -123,7 +125,8 @@ func newNewCmd() *cobra.Command {
 			hasAtLeastOnePrompt := (name == "") || (description == "") || !generateOnly
 			if !yes && hasAtLeastOnePrompt {
 				fmt.Println("This command will walk you through creating a new Pulumi project.")
-				fmt.Println("Enter a value (or leave blank to accept the default) and press <ENTER>.")
+				fmt.Println()
+				fmt.Println("Enter a value or leave blank to accept the default, and press <ENTER>.")
 				fmt.Println("Press ^C at any time to quit.")
 			}
 
@@ -150,20 +153,48 @@ func newNewCmd() *cobra.Command {
 			fmt.Printf("Created project '%s'.\n", name)
 
 			// Prompt for the stack name and create the stack.
+			var stack backend.Stack
 			if !generateOnly {
 				defaultValue := getDevStackName(name)
 
 				for {
 					stackName := promptForValue(yes, "stack name", defaultValue, nil)
-					if err = stackInit(b, stackName); err != nil {
-						// Let the user know about the error and loop around to try again.
-						fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
-						continue
+					stack, err = stackInit(b, stackName)
+					if err != nil {
+						if !yes {
+							// Let the user know about the error and loop around to try again.
+							fmt.Printf("Sorry, could not create stack '%s': %v.\n", stackName, err)
+							continue
+						}
+						return err
 					}
 					break
 				}
 
 				// The backend will print "Created stack '<stack>'." on success.
+			}
+
+			// Prompt for config values and save.
+			if !generateOnly {
+				var keys config.KeyArray
+				for k := range template.Config {
+					keys = append(keys, k)
+				}
+				if len(keys) > 0 {
+					sort.Sort(keys)
+
+					c := make(config.Map)
+					for _, k := range keys {
+						value := promptForValue(yes, k.String(), template.Config[k], nil)
+						c[k] = config.NewValue(value)
+					}
+
+					if err = saveConfig(stack.Name().StackName(), c); err != nil {
+						return errors.Wrap(err, "saving config")
+					}
+
+					fmt.Println("Saved config.")
+				}
 			}
 
 			// Install dependencies.
@@ -199,7 +230,7 @@ func newNewCmd() *cobra.Command {
 		"Use locally cached templates without making any network requests")
 	cmd.PersistentFlags().BoolVar(
 		&generateOnly, "generate-only", false,
-		"Generate the project without automatically running 'pulumi stack init'")
+		"Generate the project only; do not create a stack, save config, or install dependencies")
 
 	return cmd
 }
@@ -213,13 +244,26 @@ func getDevStackName(name string) string {
 }
 
 // stackInit creates the stack.
-func stackInit(b backend.Backend, stackName string) error {
+func stackInit(b backend.Backend, stackName string) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
+	if err != nil {
+		return nil, err
+	}
+	return createStack(b, stackRef, nil)
+}
+
+// saveConfig saves the config for the stack.
+func saveConfig(stackName tokens.QName, c config.Map) error {
+	ps, err := workspace.DetectProjectStack(stackName)
 	if err != nil {
 		return err
 	}
-	_, err = createStack(b, stackRef, nil)
-	return err
+
+	for k, v := range c {
+		ps.Config[k] = v
+	}
+
+	return workspace.SaveProjectStack(stackName, ps)
 }
 
 // installDependencies will install dependencies for the project, e.g. by running
