@@ -55,7 +55,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	cmdutil.InitLogging(false, 0, false)
-	cmdutil.InitTracing(os.Args[0], "pulumi-language-python", tracing)
+	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
 	var pythonExec string
 	if givenExecutor == "" {
 		// The -exec binary is the same name as the current language host, except that we must trim off
