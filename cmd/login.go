@@ -27,7 +27,7 @@ func newLoginCmd() *cobra.Command {
 			if local.IsLocalBackendURL(cloudURL) {
 				b, err = local.Login(cmdutil.Diag(), cloudURL)
 			} else {
-				b, err = cloud.Login(cmdutil.Diag(), cloudURL)
+				b, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL)
 			}
 
 			if err != nil {

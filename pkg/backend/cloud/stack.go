@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -44,7 +45,7 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
-	curUser, err := c.b.client.GetPulumiAccountName()
+	curUser, err := c.b.client.GetPulumiAccountName(context.Background())
 	if err != nil {
 		curUser = ""
 	}
@@ -112,40 +113,40 @@ func (s *cloudStack) OrgName() string              { return s.orgName }
 func (s *cloudStack) CloudName() string            { return s.cloudName }
 func (s *cloudStack) RunLocally() bool             { return s.cloudName == managedCloudName }
 
-func (s *cloudStack) Remove(force bool) (bool, error) {
-	return backend.RemoveStack(s, force)
+func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
+	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *cloudStack) Preview(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *cloudStack) Preview(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.PreviewStack(s, proj, root, m, opts, scopes)
+	return backend.PreviewStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *cloudStack) Update(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *cloudStack) Update(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.UpdateStack(s, proj, root, m, opts, scopes)
+	return backend.UpdateStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *cloudStack) Refresh(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *cloudStack) Refresh(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.RefreshStack(s, proj, root, m, opts, scopes)
+	return backend.RefreshStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *cloudStack) Destroy(proj *workspace.Project, root string, m backend.UpdateMetadata,
+func (s *cloudStack) Destroy(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
-	return backend.DestroyStack(s, proj, root, m, opts, scopes)
+	return backend.DestroyStack(ctx, s, proj, root, m, opts, scopes)
 }
 
-func (s *cloudStack) GetLogs(query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(s, query)
+func (s *cloudStack) GetLogs(ctx context.Context, query operations.LogQuery) ([]operations.LogEntry, error) {
+	return backend.GetStackLogs(ctx, s, query)
 }
 
-func (s *cloudStack) ExportDeployment() (*apitype.UntypedDeployment, error) {
-	return backend.ExportStackDeployment(s)
+func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
+	return backend.ExportStackDeployment(ctx, s)
 }
 
-func (s *cloudStack) ImportDeployment(deployment *apitype.UntypedDeployment) error {
-	return backend.ImportStackDeployment(s, deployment)
+func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
+	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
 func (s *cloudStack) ConsoleURL() (string, error) {

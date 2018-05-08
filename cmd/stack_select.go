@@ -36,7 +36,7 @@ func newStackSelectCmd() *cobra.Command {
 					return stackErr
 				}
 
-				stack, stackErr := b.GetStack(stackRef)
+				stack, stackErr := b.GetStack(commandContext(), stackRef)
 				if stackErr != nil {
 					return stackErr
 				} else if stack != nil {

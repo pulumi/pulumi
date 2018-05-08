@@ -31,7 +31,7 @@ func newStackExportCmd() *cobra.Command {
 				return err
 			}
 
-			deployment, err := s.ExportDeployment()
+			deployment, err := s.ExportDeployment(commandContext())
 			if err != nil {
 				return err
 			}

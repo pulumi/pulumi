@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,30 +41,30 @@ func NewClient(apiURL, apiToken string) *Client {
 }
 
 // apiCall makes a raw HTTP request to the Pulumi API using the given method, path, and request body.
-func (pc *Client) apiCall(method, path string, body []byte) (string, *http.Response, error) {
-	return pulumiAPICall(pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
+func (pc *Client) apiCall(ctx context.Context, method, path string, body []byte) (string, *http.Response, error) {
+	return pulumiAPICall(ctx, pc.apiURL, method, path, body, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCall(method, path string, queryObj, reqObj, respObj interface{}) error {
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
+func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
+	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
-func (pc *Client) restCallWithOptions(method, path string, queryObj, reqObj,
+func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
 	respObj interface{}, opts httpCallOptions) error {
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
+	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
-func (pc *Client) updateRESTCall(method, path string, queryObj, reqObj, respObj interface{},
+func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
 	token updateAccessToken) error {
 
-	return pulumiRESTCall(pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpCallOptions{})
+	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpCallOptions{})
 }
 
 // getProjectPath returns the API path to for the given project with the given components joined with path separators
@@ -99,12 +100,12 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 }
 
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
-func (pc *Client) GetPulumiAccountName() (string, error) {
+func (pc *Client) GetPulumiAccountName(ctx context.Context) (string, error) {
 	if pc.apiUser == "" {
 		resp := struct {
 			GitHubLogin string `json:"githubLogin"`
 		}{}
-		if err := pc.restCall("GET", "/api/user", nil, nil, &resp); err != nil {
+		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
 			return "", err
 		}
 
@@ -119,10 +120,12 @@ func (pc *Client) GetPulumiAccountName() (string, error) {
 }
 
 // DownloadPlugin downloads the indicated plugin from the Pulumi API.
-func (pc *Client) DownloadPlugin(info workspace.PluginInfo, os, arch string) (io.ReadCloser, int64, error) {
+func (pc *Client) DownloadPlugin(ctx context.Context, info workspace.PluginInfo, os,
+	arch string) (io.ReadCloser, int64, error) {
+
 	endpoint := fmt.Sprintf("/releases/plugins/pulumi-%s-%s-v%s-%s-%s.tar.gz",
 		info.Kind, info.Name, info.Version, os, arch)
-	_, resp, err := pc.apiCall("GET", endpoint, nil)
+	_, resp, err := pc.apiCall(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -130,20 +133,20 @@ func (pc *Client) DownloadPlugin(info workspace.PluginInfo, os, arch string) (io
 }
 
 // ListTemplates lists all templates of which the Pulumi API knows.
-func (pc *Client) ListTemplates() ([]workspace.Template, error) {
+func (pc *Client) ListTemplates(ctx context.Context) ([]workspace.Template, error) {
 	// Query all templates.
 	var templates []workspace.Template
-	if err := pc.restCall("GET", "/releases/templates", nil, nil, &templates); err != nil {
+	if err := pc.restCall(ctx, "GET", "/releases/templates", nil, nil, &templates); err != nil {
 		return nil, err
 	}
 	return templates, nil
 }
 
 // DownloadTemplate downloads the indicated template from the Pulumi API.
-func (pc *Client) DownloadTemplate(name string) (io.ReadCloser, int64, error) {
+func (pc *Client) DownloadTemplate(ctx context.Context, name string) (io.ReadCloser, int64, error) {
 	// Make the GET request to download the template.
 	endpoint := fmt.Sprintf("/releases/templates/%s.tar.gz", name)
-	_, resp, err := pc.apiCall("GET", endpoint, nil)
+	_, resp, err := pc.apiCall(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -151,12 +154,14 @@ func (pc *Client) DownloadTemplate(name string) (io.ReadCloser, int64, error) {
 }
 
 // ListStacks lists all stacks for the indicated project.
-func (pc *Client) ListStacks(project ProjectIdentifier, projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
+func (pc *Client) ListStacks(ctx context.Context, project ProjectIdentifier,
+	projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
+
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
 
 	if project.Repository != "" {
-		if err := pc.restCall("GET", getProjectPath(project, "stacks"), nil, nil, &stacks); err != nil {
+		if err := pc.restCall(ctx, "GET", getProjectPath(project, "stacks"), nil, nil, &stacks); err != nil {
 			return nil, err
 		}
 	} else {
@@ -167,7 +172,7 @@ func (pc *Client) ListStacks(project ProjectIdentifier, projectFilter *tokens.Pa
 			}{ProjectFilter: project.Project}
 		}
 
-		if err := pc.restCall("GET", "/api/user/stacks", queryFilter, nil, &stacks); err != nil {
+		if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &stacks); err != nil {
 			return nil, err
 		}
 	}
@@ -176,9 +181,9 @@ func (pc *Client) ListStacks(project ProjectIdentifier, projectFilter *tokens.Pa
 }
 
 // GetStack retrieves the stack with the given name.
-func (pc *Client) GetStack(stackID StackIdentifier) (apitype.Stack, error) {
+func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error) {
 	var stack apitype.Stack
-	if err := pc.restCall("GET", getStackPath(stackID), nil, nil, &stack); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID), nil, nil, &stack); err != nil {
 		return apitype.Stack{}, err
 	}
 	return stack, nil
@@ -186,7 +191,7 @@ func (pc *Client) GetStack(stackID StackIdentifier) (apitype.Stack, error) {
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
 func (pc *Client) CreateStack(
-	project ProjectIdentifier, cloudName string, stackName string,
+	ctx context.Context, project ProjectIdentifier, cloudName string, stackName string,
 	tags map[apitype.StackTagName]string) (apitype.Stack, error) {
 	// Validate names and tags.
 	if err := backend.ValidateStackProperties(stackName, tags); err != nil {
@@ -210,12 +215,12 @@ func (pc *Client) CreateStack(
 	var createStackResp apitype.CreateStackResponseByName
 	if project.Repository != "" {
 		if err := pc.restCall(
-			"POST", getProjectPath(project, "stacks"), nil, &createStackReq, &createStackResp); err != nil {
+			ctx, "POST", getProjectPath(project, "stacks"), nil, &createStackReq, &createStackResp); err != nil {
 			return apitype.Stack{}, err
 		}
 	} else {
 		if err := pc.restCall(
-			"POST", fmt.Sprintf("/api/stacks/%s", project.Owner), nil, &createStackReq, &createStackResp); err != nil {
+			ctx, "POST", fmt.Sprintf("/api/stacks/%s", project.Owner), nil, &createStackReq, &createStackResp); err != nil {
 			return apitype.Stack{}, err
 		}
 	}
@@ -225,7 +230,7 @@ func (pc *Client) CreateStack(
 }
 
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
-func (pc *Client) DeleteStack(stack StackIdentifier, force bool) (bool, error) {
+func (pc *Client) DeleteStack(ctx context.Context, stack StackIdentifier, force bool) (bool, error) {
 	path := getStackPath(stack)
 	if force {
 		path += "?force=true"
@@ -233,33 +238,35 @@ func (pc *Client) DeleteStack(stack StackIdentifier, force bool) (bool, error) {
 
 	// TODO[pulumi/pulumi-service#196] When the service returns a well known response for "this stack still has
 	//     resources and `force` was not true", we should sniff for that message and return a true for the boolean.
-	return false, pc.restCall("DELETE", path, nil, nil, nil)
+	return false, pc.restCall(ctx, "DELETE", path, nil, nil, nil)
 }
 
 // EncryptValue encrypts a plaintext value in the context of the indicated stack.
-func (pc *Client) EncryptValue(stack StackIdentifier, plaintext []byte) ([]byte, error) {
+func (pc *Client) EncryptValue(ctx context.Context, stack StackIdentifier, plaintext []byte) ([]byte, error) {
 	req := apitype.EncryptValueRequest{Plaintext: plaintext}
 	var resp apitype.EncryptValueResponse
-	if err := pc.restCall("POST", getStackPath(stack, "encrypt"), nil, &req, &resp); err != nil {
+	if err := pc.restCall(ctx, "POST", getStackPath(stack, "encrypt"), nil, &req, &resp); err != nil {
 		return nil, err
 	}
 	return resp.Ciphertext, nil
 }
 
 // DecryptValue decrypts a ciphertext value in the context of the indicated stack.
-func (pc *Client) DecryptValue(stack StackIdentifier, ciphertext []byte) ([]byte, error) {
+func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphertext []byte) ([]byte, error) {
 	req := apitype.DecryptValueRequest{Ciphertext: ciphertext}
 	var resp apitype.DecryptValueResponse
-	if err := pc.restCall("POST", getStackPath(stack, "decrypt"), nil, &req, &resp); err != nil {
+	if err := pc.restCall(ctx, "POST", getStackPath(stack, "decrypt"), nil, &req, &resp); err != nil {
 		return nil, err
 	}
 	return resp.Plaintext, nil
 }
 
 // GetStackLogs retrieves the log entries for the indicated stack that match the given query.
-func (pc *Client) GetStackLogs(stack StackIdentifier, logQuery operations.LogQuery) ([]operations.LogEntry, error) {
+func (pc *Client) GetStackLogs(ctx context.Context, stack StackIdentifier,
+	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
+
 	var response apitype.LogsResult
-	if err := pc.restCall("GET", getStackPath(stack, "logs"), logQuery, nil, &response); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "logs"), logQuery, nil, &response); err != nil {
 		return nil, err
 	}
 
@@ -272,9 +279,9 @@ func (pc *Client) GetStackLogs(stack StackIdentifier, logQuery operations.LogQue
 }
 
 // GetStackUpdates returns all updates to the indicated stack.
-func (pc *Client) GetStackUpdates(stack StackIdentifier) ([]apitype.UpdateInfo, error) {
+func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier) ([]apitype.UpdateInfo, error) {
 	var response apitype.GetHistoryResponse
-	if err := pc.restCall("GET", getStackPath(stack, "updates"), nil, nil, &response); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "updates"), nil, nil, &response); err != nil {
 		return nil, err
 	}
 
@@ -282,9 +289,11 @@ func (pc *Client) GetStackUpdates(stack StackIdentifier) ([]apitype.UpdateInfo, 
 }
 
 // ExportStackDeployment exports the indicated stack's deployment as a raw JSON message.
-func (pc *Client) ExportStackDeployment(stack StackIdentifier) (apitype.UntypedDeployment, error) {
+func (pc *Client) ExportStackDeployment(ctx context.Context,
+	stack StackIdentifier) (apitype.UntypedDeployment, error) {
+
 	var resp apitype.ExportStackResponse
-	if err := pc.restCall("GET", getStackPath(stack, "export"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "export"), nil, nil, &resp); err != nil {
 		return apitype.UntypedDeployment{}, err
 	}
 
@@ -292,10 +301,12 @@ func (pc *Client) ExportStackDeployment(stack StackIdentifier) (apitype.UntypedD
 }
 
 // ImportStackDeployment imports a new deployment into the indicated stack.
-func (pc *Client) ImportStackDeployment(stack StackIdentifier, deployment json.RawMessage) (UpdateIdentifier, error) {
+func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifier,
+	deployment json.RawMessage) (UpdateIdentifier, error) {
+
 	req := apitype.ImportStackRequest{Deployment: deployment}
 	var resp apitype.ImportStackResponse
-	if err := pc.restCall("POST", getStackPath(stack, "import"), nil, &req, &resp); err != nil {
+	if err := pc.restCall(ctx, "POST", getStackPath(stack, "import"), nil, &req, &resp); err != nil {
 		return UpdateIdentifier{}, err
 	}
 
@@ -310,7 +321,7 @@ func (pc *Client) ImportStackDeployment(stack StackIdentifier, deployment json.R
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
-	kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
+	ctx context.Context, kind UpdateKind, stack StackIdentifier, pkg *workspace.Project, cfg config.Map,
 	main string, m apitype.UpdateMetadata, opts engine.UpdateOptions, dryRun bool,
 	getContents func() (io.ReadCloser, int64, error)) (UpdateIdentifier, error) {
 
@@ -370,7 +381,7 @@ func (pc *Client) CreateUpdate(
 
 	path := getStackPath(stack, endpoint)
 	var updateResponse apitype.UpdateProgramResponse
-	if err := pc.restCall("POST", path, nil, &updateRequest, &updateResponse); err != nil {
+	if err := pc.restCall(ctx, "POST", path, nil, &updateRequest, &updateResponse); err != nil {
 		return UpdateIdentifier{}, err
 	}
 
@@ -409,7 +420,9 @@ func (pc *Client) CreateUpdate(
 
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
-func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTagName]string) (int, string, error) {
+func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
+	tags map[apitype.StackTagName]string) (int, string, error) {
+
 	// Validate names and tags.
 	if err := backend.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
 		return 0, "", errors.Wrap(err, "validating stack properties")
@@ -420,7 +433,7 @@ func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTag
 	}
 
 	var resp apitype.StartUpdateResponse
-	if err := pc.restCall("POST", getUpdatePath(update), nil, req, &resp); err != nil {
+	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
 		return 0, "", err
 	}
 
@@ -428,14 +441,16 @@ func (pc *Client) StartUpdate(update UpdateIdentifier, tags map[apitype.StackTag
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
-func (pc *Client) GetUpdateEvents(update UpdateIdentifier, continuationToken *string) (apitype.UpdateResults, error) {
+func (pc *Client) GetUpdateEvents(ctx context.Context, update UpdateIdentifier,
+	continuationToken *string) (apitype.UpdateResults, error) {
+
 	path := getUpdatePath(update)
 	if continuationToken != nil {
 		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
 	}
 
 	var results apitype.UpdateResults
-	if err := pc.restCall("GET", path, nil, nil, &results); err != nil {
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &results); err != nil {
 		return apitype.UpdateResults{}, err
 	}
 
@@ -443,13 +458,15 @@ func (pc *Client) GetUpdateEvents(update UpdateIdentifier, continuationToken *st
 }
 
 // RenewUpdateLease renews the indicated update lease for the given duration.
-func (pc *Client) RenewUpdateLease(update UpdateIdentifier, token string, duration time.Duration) (string, error) {
+func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier, token string,
+	duration time.Duration) (string, error) {
+
 	req := apitype.RenewUpdateLeaseRequest{
 		Token:    token,
 		Duration: int(duration / time.Second),
 	}
 	var resp apitype.RenewUpdateLeaseResponse
-	if err := pc.restCallWithOptions("POST", getUpdatePath(update, "renew_lease"), nil,
+	if err := pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "renew_lease"), nil,
 		req, &resp, httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
@@ -457,15 +474,17 @@ func (pc *Client) RenewUpdateLease(update UpdateIdentifier, token string, durati
 }
 
 // InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
-func (pc *Client) InvalidateUpdateCheckpoint(update UpdateIdentifier, token string) error {
+func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, token string) error {
 	req := apitype.PatchUpdateCheckpointRequest{
 		IsInvalid: true,
 	}
-	return pc.updateRESTCall("PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *apitype.DeploymentV1, token string) error {
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV1,
+	token string) error {
+
 	rawDeployment, err := json.Marshal(deployment)
 	if err != nil {
 		return err
@@ -475,29 +494,31 @@ func (pc *Client) PatchUpdateCheckpoint(update UpdateIdentifier, deployment *api
 		Version:    1,
 		Deployment: rawDeployment,
 	}
-	return pc.updateRESTCall("PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
 }
 
 // CancelUpdate cancels the indicated update.
-func (pc *Client) CancelUpdate(update UpdateIdentifier) error {
-	return pc.restCall("POST", getUpdatePath(update, "cancel"), nil, nil, nil)
+func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
+	return pc.restCall(ctx, "POST", getUpdatePath(update, "cancel"), nil, nil, nil)
 }
 
 // CompleteUpdate completes the indicated update with the given status.
-func (pc *Client) CompleteUpdate(update UpdateIdentifier, status apitype.UpdateStatus, token string) error {
+func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus,
+	token string) error {
+
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
 	}
-	return pc.updateRESTCall("POST", getUpdatePath(update, "complete"), nil, req, nil, updateAccessToken(token))
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil, updateAccessToken(token))
 }
 
 // AppendUpdateLogEntry appends the given entry to the indicated update's logs.
-func (pc *Client) AppendUpdateLogEntry(update UpdateIdentifier, kind string, fields map[string]interface{},
-	token string) error {
+func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentifier, kind string,
+	fields map[string]interface{}, token string) error {
 
 	req := apitype.AppendUpdateLogEntryRequest{
 		Kind:   kind,
 		Fields: fields,
 	}
-	return pc.updateRESTCall("POST", getUpdatePath(update, "log"), nil, req, nil, updateAccessToken(token))
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil, updateAccessToken(token))
 }

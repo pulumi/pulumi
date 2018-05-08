@@ -45,7 +45,7 @@ func newStackRmCmd() *cobra.Command {
 				return errors.New("confirmation declined")
 			}
 
-			hasResources, err := s.Remove(force)
+			hasResources, err := s.Remove(commandContext(), force)
 			if err != nil {
 				if hasResources {
 					return errors.Errorf(

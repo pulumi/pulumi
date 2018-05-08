@@ -51,7 +51,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Cancel the update.
-			if err := backend.CancelCurrentUpdate(s.Name()); err != nil {
+			if err := backend.CancelCurrentUpdate(commandContext(), s.Name()); err != nil {
 				return err
 			}
 

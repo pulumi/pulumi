@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
@@ -43,12 +44,20 @@ func currentBackend() (backend.Backend, error) {
 	if local.IsLocalBackendURL(creds.Current) {
 		return local.New(cmdutil.Diag(), creds.Current), nil
 	}
-	return cloud.Login(cmdutil.Diag(), creds.Current)
+	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current)
+}
+
+func commandContext() context.Context {
+	ctx := context.Background()
+	if cmdutil.TracingRootSpan != nil {
+		ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+	}
+	return ctx
 }
 
 // createStack creates a stack with the given name, and selects it as the current.
 func createStack(b backend.Backend, stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
-	stack, err := b.CreateStack(stackRef, opts)
+	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
 		// If it's a StackAlreadyExistsError, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -82,7 +91,7 @@ func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
 		return nil, err
 	}
 
-	stack, err := b.GetStack(stackRef)
+	stack, err := b.GetStack(commandContext(), stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +121,7 @@ func requireCurrentStack(offerNew bool) (backend.Stack, error) {
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(b)
+	stack, err := state.CurrentStack(commandContext(), b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -145,7 +154,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	// First create a list and map of stack names.
 	var options []string
 	stacks := make(map[string]backend.Stack)
-	allStacks, err := b.ListStacks(&proj.Name)
+	allStacks, err := b.ListStacks(commandContext(), &proj.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
@@ -167,7 +176,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 
 	// If a stack is already selected, make that the default.
 	var current string
-	currStack, currErr := state.CurrentStack(b)
+	currStack, currErr := state.CurrentStack(commandContext(), b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
 		current = currStack.Name().String()

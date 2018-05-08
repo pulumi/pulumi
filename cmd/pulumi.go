@@ -37,7 +37,7 @@ func NewPulumiCmd() *cobra.Command {
 			}
 
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
-			cmdutil.InitTracing("pulumi-cli", tracing)
+			cmdutil.InitTracing("pulumi-cli", "pulumi", tracing)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling); err != nil {
