@@ -103,8 +103,12 @@ func newPluginRmCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVarP(&all, "all", "a", false, "Remove all plugins")
-	cmd.PersistentFlags().BoolVar(&yes, "yes", false, "Skip confirmation prompts, and proceed with removal anyway")
+	cmd.PersistentFlags().BoolVarP(
+		&all, "all", "a", false,
+		"Remove all plugins")
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
+		"Skip confirmation prompts, and proceed with removal anyway")
 
 	return cmd
 }
