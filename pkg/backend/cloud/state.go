@@ -31,7 +31,7 @@ type tokenResponse struct {
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
 type tokenSource struct {
 	requests chan tokenRequest
-	done chan bool
+	done     chan bool
 }
 
 func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
