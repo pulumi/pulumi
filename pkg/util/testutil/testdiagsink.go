@@ -31,25 +31,30 @@ func (d *TestDiagSink) ErrorMsgs() []string   { return d.messages[diag.Error] }
 func (d *TestDiagSink) WarningMsgs() []string { return d.messages[diag.Warning] }
 
 func (d *TestDiagSink) Logf(sev diag.Severity, dia *diag.Diag, args ...interface{}) {
-	d.messages[sev] = append(d.messages[sev], d.Stringify(sev, dia, args...))
+	d.messages[sev] = append(d.messages[sev], d.combine(sev, dia, args...))
 }
 
 func (d *TestDiagSink) Debugf(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Debug] = append(d.messages[diag.Debug], d.Stringify(diag.Debug, dia, args...))
+	d.messages[diag.Debug] = append(d.messages[diag.Debug], d.combine(diag.Debug, dia, args...))
 }
 
 func (d *TestDiagSink) Infof(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Info] = append(d.messages[diag.Info], d.Stringify(diag.Info, dia, args...))
+	d.messages[diag.Info] = append(d.messages[diag.Info], d.combine(diag.Info, dia, args...))
 }
 
 func (d *TestDiagSink) Errorf(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Error] = append(d.messages[diag.Error], d.Stringify(diag.Error, dia, args...))
+	d.messages[diag.Error] = append(d.messages[diag.Error], d.combine(diag.Error, dia, args...))
 }
 
 func (d *TestDiagSink) Warningf(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Warning] = append(d.messages[diag.Warning], d.Stringify(diag.Warning, dia, args...))
+	d.messages[diag.Warning] = append(d.messages[diag.Warning], d.combine(diag.Warning, dia, args...))
 }
 
-func (d *TestDiagSink) Stringify(sev diag.Severity, dia *diag.Diag, args ...interface{}) string {
+func (d *TestDiagSink) Stringify(sev diag.Severity, dia *diag.Diag, args ...interface{}) (string, string) {
 	return d.sink.Stringify(sev, dia, args...)
+}
+
+func (d *TestDiagSink) combine(sev diag.Severity, dia *diag.Diag, args ...interface{}) string {
+	p, s := d.sink.Stringify(sev, dia, args...)
+	return p + s
 }

@@ -17,36 +17,33 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 const (
-	defaultProjectName        = "project"
-	defaultProjectDescription = "A Pulumi project."
+	defaultProjectName = "project"
 
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
-	// It's not currently used, but the could be used in the future to contain
-	// metadata for the template, such as the description, for use offline.
 	pulumiTemplateManifestFile = ".pulumi.template.yaml"
 )
 
 // Template represents a project template.
 type Template struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-// templateManifest represents a template's manifest file.
-type templateManifest struct {
-	Description string `yaml:"description"`
+	// The name of the template.
+	Name string `json:"name" yaml:"name"`
+	// Optional description of the template, also used as a default project description.
+	Description string `json:"description" yaml:"description"`
+	// Optional bool which determines whether dependencies should be installed after project creation.
+	InstallDependencies bool `json:"installdependencies" yaml:"installdependencies"`
+	// Optional default config values.
+	Config map[config.Key]string `json:"config" yaml:"config"`
 }
 
 // LoadLocalTemplate returns a local template.
 func LoadLocalTemplate(name string) (Template, error) {
-	template := Template{Name: name}
-
 	templateDir, err := GetTemplateDir(name)
 	if err != nil {
 		return Template{}, err
@@ -61,13 +58,12 @@ func LoadLocalTemplate(name string) (Template, error) {
 	}
 
 	// Read the description from the manifest (if it exists).
-	manifest, err := readTemplateManifest(filepath.Join(templateDir, pulumiTemplateManifestFile))
+	template, err := readTemplateManifest(filepath.Join(templateDir, pulumiTemplateManifestFile))
 	if err != nil && !os.IsNotExist(err) {
 		return Template{}, err
-	} else if err == nil && manifest.Description != "" {
-		template.Description = manifest.Description
 	}
 
+	template.Name = name
 	return template, nil
 }
 
@@ -181,11 +177,15 @@ func (template Template) CopyTemplateFiles(
 			return err
 		}
 
-		// We assume all template files are text files.
-		transformed := transform(string(b), projectName, projectDescription)
+		// Transform only if it isn't a binary file.
+		result := b
+		if !isBinary(b) {
+			transformed := transform(string(b), projectName, projectDescription)
+			result = []byte(transformed)
+		}
 
 		// Write to the destination file.
-		err = writeAllText(dest, transformed, force)
+		err = writeAllBytes(dest, result, force)
 		if err != nil {
 			// An existing file has shown up in between the dry run and the actual copy operation.
 			if os.IsExist(err) {
@@ -231,7 +231,7 @@ func ValueOrDefaultProjectDescription(description string, defaultDescription str
 	if defaultDescription != "" {
 		return defaultDescription
 	}
-	return defaultProjectDescription
+	return ""
 }
 
 // getValidProjectName returns a valid project name based on the passed-in name.
@@ -344,16 +344,16 @@ func walkFiles(sourceDir string, destDir string,
 }
 
 // readTemplateManifest reads a template manifest file.
-func readTemplateManifest(filename string) (templateManifest, error) {
+func readTemplateManifest(filename string) (Template, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return templateManifest{}, err
+		return Template{}, err
 	}
 
-	var manifest templateManifest
+	var manifest Template
 	err = yaml.Unmarshal(b, &manifest)
 	if err != nil {
-		return templateManifest{}, err
+		return Template{}, err
 	}
 
 	return manifest, nil
@@ -379,8 +379,8 @@ func transform(content string, projectName string, projectDescription string) st
 	return content
 }
 
-// writeAllText writes all the text to the specified file, with an option to overwrite.
-func writeAllText(filename string, text string, overwrite bool) error {
+// writeAllBytes writes the bytes to the specified file, with an option to overwrite.
+func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
 	flag := os.O_WRONLY | os.O_CREATE
 	if overwrite {
 		flag = flag | os.O_TRUNC
@@ -394,8 +394,28 @@ func writeAllText(filename string, text string, overwrite bool) error {
 	}
 	defer contract.IgnoreClose(f)
 
-	_, err = f.WriteString(text)
+	_, err = f.Write(bytes)
 	return err
+}
+
+// isBinary returns true if a zero byte occurs within the first
+// 8000 bytes (or the entire length if shorter). This is the
+// same approach that git uses to determine if a file is binary.
+func isBinary(bytes []byte) bool {
+	const firstFewBytes = 8000
+
+	length := len(bytes)
+	if firstFewBytes < length {
+		length = firstFewBytes
+	}
+
+	for i := 0; i < length; i++ {
+		if bytes[i] == 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // fixWindowsLineEndings will go through the sourceDir, read each file, replace \n with \r\n,
@@ -414,12 +434,16 @@ func fixWindowsLineEndings(sourceDir string) error {
 			return err
 		}
 
-		// We assume all template files are text files.
-		content := string(b)
-		content = strings.Replace(content, "\n", "\r\n", -1)
+		// Transform only if it isn't a binary file.
+		result := b
+		if !isBinary(b) {
+			content := string(b)
+			content = strings.Replace(content, "\n", "\r\n", -1)
+			result = []byte(content)
+		}
 
 		// Write to the destination file.
-		err = writeAllText(dest, content, true /*overwrite*/)
+		err = writeAllBytes(dest, result, true /*overwrite*/)
 		if err != nil {
 			// An existing file has shown up in between the dry run and the actual copy operation.
 			if os.IsExist(err) {

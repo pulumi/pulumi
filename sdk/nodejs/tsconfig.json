@@ -13,7 +13,7 @@
         "noImplicitAny": true,
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
     },
     "files": [
         "index.ts",

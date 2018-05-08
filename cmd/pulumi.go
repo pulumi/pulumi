@@ -24,6 +24,7 @@ func NewPulumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var tracing string
+	var profiling string
 	var verbose int
 
 	cmd := &cobra.Command{
@@ -36,12 +37,25 @@ func NewPulumiCmd() *cobra.Command {
 			}
 
 			cmdutil.InitLogging(logToStderr, verbose, logFlow)
-			cmdutil.InitTracing("pulumi-cli", tracing)
+			cmdutil.InitTracing("pulumi-cli", "pulumi", tracing)
+
+			if profiling != "" {
+				if err := cmdutil.InitProfiling(profiling); err != nil {
+					glog.Warningf("could not initialize profiling: %v", err)
+				}
+			}
+
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()
 			cmdutil.CloseTracing()
+
+			if profiling != "" {
+				if err := cmdutil.CloseProfiling(profiling); err != nil {
+					glog.Warningf("could not close profiling: %v", err)
+				}
+			}
 		},
 	}
 
@@ -65,6 +79,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Log to stderr instead of to files")
 	cmd.PersistentFlags().StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
+	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
+		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 

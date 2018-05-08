@@ -24,10 +24,12 @@ import (
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx    *Context
-	pkg    tokens.Package
-	plug   *plugin
-	client pulumirpc.ResourceProviderClient
+	ctx       *Context                         // a plugin context for caching, etc.
+	pkg       tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug      *plugin                          // the actual plugin process wrapper.
+	clientRaw pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr    error                            // non-nil if a configure call fails.
+	cfgdone   chan bool                        // closed when configuration has completed.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -52,10 +54,11 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	return &provider{
-		ctx:    ctx,
-		pkg:    pkg,
-		plug:   plug,
-		client: pulumirpc.NewResourceProviderClient(plug.Conn),
+		ctx:       ctx,
+		pkg:       pkg,
+		plug:      plug,
+		clientRaw: pulumirpc.NewResourceProviderClient(plug.Conn),
+		cfgdone:   make(chan bool),
 	}, nil
 }
 
@@ -64,6 +67,23 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s]", p.pkg)
+}
+
+// getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
+// to use without forgetting to call ensureConfigured manually.
+func (p *provider) getClient() (pulumirpc.ResourceProviderClient, error) {
+	if err := p.ensureConfigured(); err != nil {
+		return nil, err
+	}
+	return p.clientRaw, nil
+}
+
+// ensureConfigured blocks waiting for the plugin to be configured.  To improve parallelism, all Configure RPCs
+// occur in parallel, and we await the completion of them at the last possible moment.  This does mean, however, that
+// we might discover failures later than we would have otherwise, but the caller of ensureConfigured will get them.
+func (p *provider) ensureConfigured() error {
+	<-p.cfgdone
+	return p.cfgerr
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
@@ -76,12 +96,20 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 		// providers which are on the older plan.
 		config[k.Namespace()+":config:"+k.Name()] = v
 	}
-	_, err := p.client.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-		return createConfigureError(rpcError)
-	}
+
+	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
+	// want to make forward progress, even as the configure call is happening.
+	go func() {
+		_, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
+		if err != nil {
+			rpcError := rpcerror.Convert(err)
+			glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			err = createConfigureError(rpcError)
+		}
+		// Acquire the lock, publish the results, and notify any waiters.
+		p.cfgerr = err
+		close(p.cfgdone)
+	}()
 
 	return nil
 }
@@ -89,7 +117,6 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
-
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	glog.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -104,7 +131,13 @@ func (p *provider) Check(urn resource.URN,
 		return nil, nil, err
 	}
 
-	resp, err := p.client.Check(p.ctx.Request(), &pulumirpc.CheckRequest{
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := client.Check(p.ctx.Request(), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
 		Olds: molds,
 		News: mnews,
@@ -157,7 +190,13 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	resp, err := p.client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	resp, err := client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
 		Id:   string(id),
 		Urn:  string(urn),
 		Olds: molds,
@@ -203,7 +242,13 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusOK, err
 	}
 
-	resp, err := p.client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return "", nil, resource.StatusOK, err
+	}
+
+	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
@@ -244,8 +289,14 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 		return nil, err
 	}
 
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, err
+	}
+
 	// Now issue the read request over RPC, blocking until it finished.
-	resp, err := p.client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
+	resp, err := client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: marshaled,
@@ -296,14 +347,18 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
-	req := &pulumirpc.UpdateRequest{
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+
+	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
 		Id:   string(id),
 		Urn:  string(urn),
 		Olds: molds,
 		News: mnews,
-	}
-
-	resp, err := p.client.Update(p.ctx.Request(), req)
+	})
 	if err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		glog.V(7).Infof("%s failed: %v", label, rpcErr)
@@ -333,13 +388,17 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		return resource.StatusOK, err
 	}
 
-	req := &pulumirpc.DeleteRequest{
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return resource.StatusOK, err
+	}
+
+	if _, err := client.Delete(p.ctx.Request(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mprops,
-	}
-
-	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
+	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
 		glog.V(7).Infof("%s failed: %v", label, rpcErr)
 		return resourceStatus, rpcErr
@@ -362,7 +421,13 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		return nil, nil, err
 	}
 
-	resp, err := p.client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
 		glog.V(7).Infof("%s failed: %v", label, err)
 		return nil, nil, err
@@ -389,7 +454,10 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", p.label())
 	glog.V(7).Infof("%s executing", label)
-	resp, err := p.client.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
+
+	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
+	// Thus, we access the clientRaw property, rather than calling getClient.
+	resp, err := p.clientRaw.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())

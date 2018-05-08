@@ -2,20 +2,6 @@
 set -o nounset -o errexit -o pipefail
 
 SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+NPM_VERSION="$($SCRIPT_ROOT/get-version "$@")"
 
-# To generate a Python version, we will need to mangle it
-# slightly.  Namely, we must perform the following translations:
-#
-#     1) Skip the leading "v" (i.e., "1.3.11", not "v1.3.11").
-#     2) Change "-dev-<xyz>" into an alpha release "a<xyz>".
-#     3) Change "-rc-<xyz>" into a release candidate "rc<xyz>".
-#     4) Change "-<commitish><dirty>" into a local version label;
-#        e.g. "+37bc2f9-dirty" rather than "-37bc2f9-dirty".
-#
-# This ensures conformance with PEP440:
-# https://www.python.org/dev/peps/pep-0440/#version-scheme.
-echo $($SCRIPT_ROOT/get-version "$@") | \
-    sed 's/v//'      | \
-    sed 's/-dev-/a/' | \
-    sed 's/-rc-/rc/' | \
-    sed 's/-/+/'
+go run "${SCRIPT_ROOT}/get-py-version.go" "${NPM_VERSION}"

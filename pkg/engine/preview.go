@@ -9,15 +9,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
+func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) (ResourceChanges, error) {
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u)
+	info, err := newPlanContext(u, "preview", ctx.ParentSpan)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer info.Close()
 
@@ -30,10 +30,10 @@ func Preview(u UpdateInfo, ctx *Context, opts UpdateOptions) error {
 	})
 }
 
-func preview(ctx *Context, info *planContext, opts planOptions) error {
+func preview(ctx *Context, info *planContext, opts planOptions) (ResourceChanges, error) {
 	result, err := plan(info, opts, true /*dryRun*/)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if result != nil {
 		defer contract.IgnoreClose(result)
@@ -41,16 +41,14 @@ func preview(ctx *Context, info *planContext, opts planOptions) error {
 		// Make the current working directory the same as the program's, and restore it upon exit.
 		done, err := result.Chdir()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer done()
 
-		if _, err := printPlan(ctx, result, true /*dryRun*/); err != nil {
-			return err
-		}
+		return printPlan(ctx, result, true /*dryRun*/)
 	}
 
-	return nil
+	return nil, nil
 }
 
 type previewActions struct {

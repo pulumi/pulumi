@@ -3,9 +3,11 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
 	"path"
@@ -13,13 +15,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/golang/glog"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
@@ -42,13 +44,25 @@ func currentBackend() (backend.Backend, error) {
 	if local.IsLocalBackendURL(creds.Current) {
 		return local.New(cmdutil.Diag(), creds.Current), nil
 	}
-	return cloud.Login(cmdutil.Diag(), creds.Current)
+	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current)
+}
+
+func commandContext() context.Context {
+	ctx := context.Background()
+	if cmdutil.TracingRootSpan != nil {
+		ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+	}
+	return ctx
 }
 
 // createStack creates a stack with the given name, and selects it as the current.
 func createStack(b backend.Backend, stackRef backend.StackReference, opts interface{}) (backend.Stack, error) {
-	stack, err := b.CreateStack(stackRef, opts)
+	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
+		// If it's a StackAlreadyExistsError, don't wrap it.
+		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
+			return nil, err
+		}
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
@@ -77,7 +91,7 @@ func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
 		return nil, err
 	}
 
-	stack, err := b.GetStack(stackRef)
+	stack, err := b.GetStack(commandContext(), stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +121,7 @@ func requireCurrentStack(offerNew bool) (backend.Stack, error) {
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(b)
+	stack, err := state.CurrentStack(commandContext(), b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -140,7 +154,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	// First create a list and map of stack names.
 	var options []string
 	stacks := make(map[string]backend.Stack)
-	allStacks, err := b.ListStacks(&proj.Name)
+	allStacks, err := b.ListStacks(commandContext(), &proj.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not query backend for stacks")
 	}
@@ -162,7 +176,7 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 
 	// If a stack is already selected, make that the default.
 	var current string
-	currStack, currErr := state.CurrentStack(b)
+	currStack, currErr := state.CurrentStack(commandContext(), b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
 		current = currStack.Name().String()
@@ -355,6 +369,40 @@ func (cf *colorFlag) Colorization() colors.Colorization {
 	return cf.value
 }
 
+// anyWriter is an io.Writer that will set itself to `true` iff any call to `anyWriter.Write` is made with a
+// non-zero-length slice. This can be used to determine whether or not any data was ever written to the writer.
+type anyWriter bool
+
+func (w *anyWriter) Write(d []byte) (int, error) {
+	if len(d) > 0 {
+		*w = true
+	}
+	return len(d), nil
+}
+
+// isGitWorkTreeDirty returns true if the work tree for the current directory's repository is dirty.
+func isGitWorkTreeDirty() (bool, error) {
+	gitBin, err := exec.LookPath("git")
+	if err != nil {
+		return false, err
+	}
+
+	// nolint: gas
+	gitStatusCmd := exec.Command(gitBin, "status", "--porcelain", "-z")
+	var anyOutput anyWriter
+	var stderr bytes.Buffer
+	gitStatusCmd.Stdout = &anyOutput
+	gitStatusCmd.Stderr = &stderr
+	if err = gitStatusCmd.Run(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			ee.Stderr = stderr.Bytes()
+		}
+		return false, errors.Wrapf(err, "'git status' failed")
+	}
+
+	return bool(anyOutput), nil
+}
+
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
 func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
@@ -366,41 +414,35 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
 	repo, err := getGitRepository(root)
 	if err != nil {
-		return m, errors.Wrap(err, "looking for git repository")
+		glog.Warningf("looking for git repository: %v", err)
 	}
-	if repo != nil && err == nil {
-		const gitErrCtx = "reading git repo (%v)" // Message passed with wrapped errors from go-git.
+	if repo == nil {
+		glog.Infof("no git repository found")
+		return m, nil
+	}
 
-		// Commit at HEAD.
-		head, err := repo.Head()
-		if err == nil {
-			m.Environment[backend.GitHead] = head.Hash().String()
-		} else {
-			// Ignore "reference not found" in the odd case where the HEAD commit doesn't exist.
-			// (git init, but no commits yet.)
-			if err != plumbing.ErrReferenceNotFound {
-				return m, errors.Wrapf(err, gitErrCtx, "getting head")
-			}
-		}
+	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
+	ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
+	if err != nil {
+		glog.Warningf("getting GitHub information: %v", err)
+	} else {
+		m.Environment[backend.GitHubLogin] = ghLogin
+		m.Environment[backend.GitHubRepo] = ghRepo
+	}
 
-		// If the current commit is dirty.
-		w, err := repo.Worktree()
-		if err != nil {
-			return m, errors.Wrapf(err, gitErrCtx, "getting worktree")
-		}
-		s, err := w.Status()
-		if err != nil {
-			return m, errors.Wrapf(err, gitErrCtx, "getting worktree status")
-		}
-		dirty := !s.IsClean()
-		m.Environment[backend.GitDirty] = fmt.Sprint(dirty)
+	// Commit at HEAD
+	head, err := repo.Head()
+	if err != nil {
+		glog.Warningf("getting HEAD commit: %v", err)
+	} else {
+		m.Environment[backend.GitHead] = head.Hash().String()
+	}
 
-		// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-		ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
-		if err == nil {
-			m.Environment[backend.GitHubLogin] = ghLogin
-			m.Environment[backend.GitHubRepo] = ghRepo
-		}
+	isDirty, err := isGitWorkTreeDirty()
+	if err != nil {
+		glog.Warningf("determining git work tree status: %v", err)
+	} else {
+		m.Environment[backend.GitDirty] = fmt.Sprint(isDirty)
 	}
 
 	return m, nil
@@ -470,10 +512,22 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	return c
 }
 
-// IsInteractive returns true if the environment and command line options indicate we should
+// isInteractive returns true if the environment and command line options indicate we should
 // do things interactively
-func IsInteractive(cmd *cobra.Command) bool {
-	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-	contract.IgnoreError(err)
+func isInteractive(nonInteractive bool) bool {
 	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !isCI()
+}
+
+// updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
+// is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
+func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
+	if !interactive && !yes {
+		return backend.UpdateOptions{},
+			errors.New("--yes must be passed in non-interactive mode")
+	}
+
+	return backend.UpdateOptions{
+		AutoApprove: yes,
+		SkipPreview: skipPreview,
+	}, nil
 }

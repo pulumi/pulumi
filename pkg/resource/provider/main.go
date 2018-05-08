@@ -26,7 +26,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 
 	// Initialize loggers before going any further.
 	cmdutil.InitLogging(false, 0, false)
-	cmdutil.InitTracing(name, tracing)
+	cmdutil.InitTracing(name, name, tracing)
 
 	// Read the non-flags args and connect to the engine.
 	args := flag.Args()

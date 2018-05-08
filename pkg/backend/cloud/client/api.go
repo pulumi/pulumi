@@ -4,6 +4,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/google/go-querystring/query"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -102,17 +104,27 @@ func (t updateAccessToken) String() string {
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken,
+func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []byte, tok accessToken,
 	opts httpCallOptions) (string, *http.Response, error) {
+
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
-	path = strings.TrimPrefix(path, "/")
+	path = cleanPath(path)
 
-	url := fmt.Sprintf("%s/%s", cloudAPI, path)
+	url := fmt.Sprintf("%s%s", cloudAPI, path)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating new HTTP request")
 	}
+
+	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
+		opentracing.Tag{Key: "method", Value: method},
+		opentracing.Tag{Key: "path", Value: path},
+		opentracing.Tag{Key: "api", Value: cloudAPI},
+		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
+	defer requestSpan.Finish()
+
+	req = req.WithContext(requestContext)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
@@ -141,6 +153,8 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken,
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
 	glog.V(7).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
+
+	requestSpan.SetTag("responseCode", resp.Status)
 
 	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
@@ -174,8 +188,9 @@ func pulumiAPICall(cloudAPI, method, path string, body []byte, tok accessToken,
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj interface{}, tok accessToken,
-	opts httpCallOptions) error {
+func pulumiRESTCall(ctx context.Context, cloudAPI, method, path string, queryObj, reqObj, respObj interface{},
+	tok accessToken, opts httpCallOptions) error {
+
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -200,7 +215,7 @@ func pulumiRESTCall(cloudAPI, method, path string, queryObj, reqObj, respObj int
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(cloudAPI, method, path+querystring, reqBody, tok, opts)
+	url, resp, err := pulumiAPICall(ctx, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}

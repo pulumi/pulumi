@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -32,6 +33,26 @@ type projectWorkspace struct {
 	repo     *Repository        // the repo this workspace is associated with.
 }
 
+var cache = make(map[string]W)
+var cacheMutex sync.RWMutex
+
+func loadFromCache(key string) (W, bool) {
+	cacheMutex.RLock()
+	defer cacheMutex.RUnlock()
+
+	w, ok := cache[key]
+	return w, ok
+}
+
+func upsertIntoCache(key string, w W) {
+	contract.Require(w != nil, "w")
+
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+
+	cache[key] = w
+}
+
 // New creates a new workspace using the current working directory.
 func New() (W, error) {
 	cwd, err := os.Getwd()
@@ -44,6 +65,16 @@ func New() (W, error) {
 // NewFrom creates a new Pulumi workspace in the given directory. Requires a Pulumi.yaml file be present in the
 // folder hierarchy between dir and the .pulumi folder.
 func NewFrom(dir string) (W, error) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	dir = absDir
+
+	if w, ok := loadFromCache(dir); ok {
+		return w, nil
+	}
+
 	repo, err := GetRepository(dir)
 	if err == ErrNoRepository {
 		repo = nil
@@ -63,7 +94,7 @@ func NewFrom(dir string) (W, error) {
 		return nil, err
 	}
 
-	w := projectWorkspace{
+	w := &projectWorkspace{
 		name:    proj.Name,
 		project: path,
 		repo:    repo,
@@ -78,7 +109,8 @@ func NewFrom(dir string) (W, error) {
 		w.settings.ConfigDeprecated = make(map[tokens.QName]config.Map)
 	}
 
-	return &w, nil
+	upsertIntoCache(dir, w)
+	return w, nil
 }
 
 func (pw *projectWorkspace) Settings() *Settings {

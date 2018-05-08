@@ -45,7 +45,7 @@ func newStackRmCmd() *cobra.Command {
 				return errors.New("confirmation declined")
 			}
 
-			hasResources, err := s.Remove(force)
+			hasResources, err := s.Remove(commandContext(), force)
 			if err != nil {
 				if hasResources {
 					return errors.Errorf(
@@ -74,8 +74,8 @@ func newStackRmCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"By default, removal of a stack with resources will be rejected; this forces it")
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 
 	return cmd

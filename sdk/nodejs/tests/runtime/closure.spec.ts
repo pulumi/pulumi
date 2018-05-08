@@ -3780,6 +3780,16 @@ return function /*f3*/() {
 });
     }
 
+    // Run a bunch of direct checks on async js functions if we're in node 8 or above.
+    // We can't do this inline as node6 doesn't understand 'async functions'.  And we
+    // can't do this in TS as TS will convert the async-function to be a normal non-async
+    // function.
+    const version = Number(process.version.match(/^v(\d+)\.\d+/)![1]);
+    if (version >= 8) {
+        const jsCases = require("./jsClosureCases");
+        cases.push(...jsCases.cases);
+    }
+
     // Make a callback to keep running tests.
     let remaining = cases;
     while (true) {

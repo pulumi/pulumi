@@ -51,7 +51,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Cancel the update.
-			if err := backend.CancelCurrentUpdate(s.Name()); err != nil {
+			if err := backend.CancelCurrentUpdate(commandContext(), s.Name()); err != nil {
 				return err
 			}
 
@@ -63,8 +63,8 @@ func newCancelCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")
 
 	return cmd

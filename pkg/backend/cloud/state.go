@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -32,11 +33,11 @@ type tokenSource struct {
 	requests chan tokenRequest
 }
 
-func newTokenSource(token string, backend *cloudBackend, update client.UpdateIdentifier,
+func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
 
 	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(update, token, duration)
+	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func newTokenSource(token string, backend *cloudBackend, update client.UpdateIde
 		for {
 			select {
 			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(update, token, duration)
+				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
 				if err != nil {
 					ticker.Stop()
 				} else {
@@ -87,6 +88,7 @@ func (ts *tokenSource) GetToken() (string, error) {
 
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
+	context context.Context
 	backend *cloudBackend
 
 	update      client.UpdateIdentifier
@@ -116,7 +118,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	if err != nil {
 		return err
 	}
-	return u.backend.client.CompleteUpdate(u.update, status, token)
+	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
 }
 
 func (u *cloudUpdate) recordEvent(
@@ -150,7 +152,7 @@ func (u *cloudUpdate) recordEvent(
 	}
 
 	fields := map[string]interface{}{"text": msg, "colorize": colors.Always}
-	return u.backend.client.AppendUpdateLogEntry(u.update, kind, fields, token)
+	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
 }
 
 func (u *cloudUpdate) RecordAndDisplayEvents(action string,
@@ -184,13 +186,13 @@ func (u *cloudUpdate) RecordAndDisplayEvents(action string,
 	}
 }
 
-func (b *cloudBackend) newUpdate(stackRef backend.StackReference, proj *workspace.Project, root string,
-	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
+func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, proj *workspace.Project,
+	root string, update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
 	if token != "" {
-		ts, err := newTokenSource(token, b, update, 5*time.Minute)
+		ts, err := newTokenSource(ctx, token, b, update, 5*time.Minute)
 		if err != nil {
 			return nil, err
 		}
@@ -198,13 +200,14 @@ func (b *cloudBackend) newUpdate(stackRef backend.StackReference, proj *workspac
 	}
 
 	// Construct the deployment target.
-	target, err := b.getTarget(stackRef)
+	target, err := b.getTarget(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
 
 	// Construct and return a new update.
 	return &cloudUpdate{
+		context:     ctx,
 		backend:     b,
 		update:      update,
 		tokenSource: tokenSource,
@@ -214,7 +217,7 @@ func (b *cloudBackend) newUpdate(stackRef backend.StackReference, proj *workspac
 	}, nil
 }
 
-func (b *cloudBackend) getTarget(stackRef backend.StackReference) (*deploy.Target, error) {
+func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
 	stk, err := workspace.DetectProjectStack(stackRef.StackName())
 	if err != nil {
@@ -226,7 +229,7 @@ func (b *cloudBackend) getTarget(stackRef backend.StackReference) (*deploy.Targe
 		return nil, err
 	}
 
-	untypedDeployment, err := b.ExportDeployment(stackRef)
+	untypedDeployment, err := b.ExportDeployment(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}

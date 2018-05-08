@@ -4,6 +4,7 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -14,6 +15,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+// StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
+type StackAlreadyExistsError struct {
+	StackName string
+}
+
+func (e StackAlreadyExistsError) Error() string {
+	return fmt.Sprintf("stack '%v' already exists", e.StackName)
+}
 
 // StackReference is an opaque type that refers to a stack managed by a backend.  The CLI uses the ParseStackReference
 // method to turn a string like "my-great-stack" or "pulumi/my-great-stack" into a stack reference that can be used to
@@ -39,41 +49,57 @@ type Backend interface {
 	ParseStackReference(s string) (StackReference, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
-	GetStack(stackRef StackReference) (Stack, error)
+	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(stackRef StackReference, opts interface{}) (Stack, error)
+	CreateStack(ctx context.Context, stackRef StackReference, opts interface{}) (Stack, error)
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
-	RemoveStack(stackRef StackReference, force bool) (bool, error)
+	RemoveStack(ctx context.Context, stackRef StackReference, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(projectFilter *tokens.PackageName) ([]Stack, error)
+	ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]Stack, error)
 
 	// GetStackCrypter returns an encrypter/decrypter for the given stack's secret config values.
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
+	// Preview shows what would be updated given the current workspace's contents.
+	Preview(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
+	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
+	Refresh(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Destroy destroys all of this stack's resources.
-	Destroy(stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts engine.UpdateOptions, displayOpts DisplayOptions, scopes CancellationScopeSource) error
+	Destroy(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
-	GetHistory(stackRef StackReference) ([]UpdateInfo, error)
+	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(stackRef StackReference, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, stackRef StackReference, query operations.LogQuery) ([]operations.LogEntry, error)
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
-	ExportDeployment(stackRef StackReference) (*apitype.UntypedDeployment, error)
+	ExportDeployment(ctx context.Context, stackRef StackReference) (*apitype.UntypedDeployment, error)
 	// ImportDeployment imports the given deployment into the indicated stack.
-	ImportDeployment(stackRef StackReference, deployment *apitype.UntypedDeployment) error
+	ImportDeployment(ctx context.Context, stackRef StackReference, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
+}
+
+// UpdateOptions is the full set of update options, including backend and engine options.
+type UpdateOptions struct {
+	// Engine contains all of the engine-specific options.
+	Engine engine.UpdateOptions
+	// Display contains all of the backend display options.
+	Display DisplayOptions
+
+	// AutoApprove, when true, will automatically approve previews.
+	AutoApprove bool
+	// SkipPreview, when true, causes the preview step to be skipped.
+	SkipPreview bool
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.

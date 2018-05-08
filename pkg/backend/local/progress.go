@@ -53,12 +53,15 @@ type DiagInfo struct {
 
 	// The last event of each severity kind.  We'll print out the most significant of these next
 	// to a resource while it is in progress.
-	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.Event
+	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.DiagEventPayload
 
-	// All the diagnostic events we've heard about this resource.  We'll print the last
-	// diagnostic in the status region while a resource is in progress.  At the end we'll
-	// print out all diagnostics for a resource.
-	DiagEvents []engine.Event
+	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
+	// in the status region while a resource is in progress.  At the end we'll print out all
+	// diagnostics for a resource.
+	//
+	// Diagnostic events are bucketed by their associated stream ID (with 0 being the default
+	// stream)
+	StreamIDToDiagPayloads map[int32][]engine.DiagEventPayload
 }
 
 type ProgressDisplay struct {
@@ -624,38 +627,61 @@ func (display *ProgressDisplay) processEndSteps() {
 	wroteDiagnosticHeader := false
 
 	for _, row := range display.eventUrnToResourceRow {
-		events := row.DiagInfo().DiagEvents
-		if len(events) > 0 {
-			wroteResourceHeader := false
-			for _, v := range events {
-				msg := display.renderProgressDiagEvent(v)
-
-				lines := splitIntoDisplayableLines(msg)
-				if len(lines) == 0 {
-					continue
+		for id, payloads := range row.DiagInfo().StreamIDToDiagPayloads {
+			if len(payloads) > 0 {
+				if id != 0 {
+					// for the non-default stream merge all the messages from the stream into a single
+					// message.
+					p := display.mergeStreamPayloadsToSinglePayload(payloads)
+					payloads = []engine.DiagEventPayload{p}
 				}
 
-				if !wroteDiagnosticHeader {
-					wroteDiagnosticHeader = true
+				wroteResourceHeader := false
+				for _, v := range payloads {
+					msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
+
+					lines := splitIntoDisplayableLines(msg)
+					if len(lines) == 0 {
+						continue
+					}
+
+					if !wroteDiagnosticHeader {
+						wroteDiagnosticHeader = true
+						display.writeBlankLine()
+						display.writeSimpleMessage("Diagnostics:")
+					}
+
+					if !wroteResourceHeader {
+						wroteResourceHeader = true
+						columns := row.ColorizedColumns()
+						display.writeSimpleMessage("  " +
+							columns[typeColumn] + ": " +
+							columns[nameColumn])
+					}
+
+					for _, line := range lines {
+						line = strings.TrimRightFunc(line, unicode.IsSpace)
+						display.writeSimpleMessage("    " + line)
+					}
+
 					display.writeBlankLine()
-					display.writeSimpleMessage("Diagnostics:")
+				}
+			}
+		}
+	}
+
+	// If we're not previewing, and we get stack outputs, then display them at the end.
+	if !display.isPreview {
+		if display.stackUrn != "" {
+			stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+			props := engine.GetResourceOutputsPropertiesString(stackStep, 0, false, display.opts.Debug)
+			if props != "" {
+				if !wroteDiagnosticHeader {
+					display.writeBlankLine()
 				}
 
-				if !wroteResourceHeader {
-					wroteResourceHeader = true
-					columns := row.ColorizedColumns()
-					display.writeSimpleMessage("  " +
-						// columns[idColumn] + ": " +
-						columns[typeColumn] + ": " +
-						columns[nameColumn])
-				}
-
-				for _, line := range lines {
-					line = strings.TrimRightFunc(line, unicode.IsSpace)
-					display.writeSimpleMessage("    " + line)
-				}
-
-				display.writeBlankLine()
+				wroteDiagnosticHeader = true
+				display.writeSimpleMessage(props)
 			}
 		}
 	}
@@ -669,6 +695,30 @@ func (display *ProgressDisplay) processEndSteps() {
 		}
 
 		display.writeSimpleMessage(msg)
+	}
+}
+
+func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
+	payloads []engine.DiagEventPayload) engine.DiagEventPayload {
+	buf := bytes.Buffer{}
+
+	for i, p := range payloads {
+		if i != 0 {
+			buf.WriteString("\n")
+		}
+
+		buf.WriteString(display.renderProgressDiagEvent(p, false /*includePrefix:*/))
+	}
+
+	firstPayload := payloads[0]
+	msg := buf.String()
+	return engine.DiagEventPayload{
+		URN:      firstPayload.URN,
+		Message:  msg,
+		Prefix:   firstPayload.Prefix,
+		Color:    firstPayload.Color,
+		Severity: firstPayload.Severity,
+		StreamID: firstPayload.StreamID,
 	}
 }
 
@@ -725,7 +775,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.summaryEventPayload = &payload
 		return
 	case engine.DiagEvent:
-		msg := display.renderProgressDiagEvent(event)
+		msg := display.renderProgressDiagEvent(event.Payload.(engine.DiagEventPayload), true /*includePrefix:*/)
 		if msg == "" {
 			return
 		}
@@ -772,6 +822,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
 			row.SetDone()
+		} else {
+			step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+			row.SetStep(step)
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
 		row.SetDone()
@@ -839,13 +892,17 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	}
 }
 
-func (display *ProgressDisplay) renderProgressDiagEvent(event engine.Event) string {
-	payload := event.Payload.(engine.DiagEventPayload)
-
+func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEventPayload, includePrefix bool) string {
 	if payload.Severity == diag.Debug && !display.opts.Debug {
 		return ""
 	}
-	return strings.TrimRightFunc(payload.Message, unicode.IsSpace)
+
+	msg := payload.Message
+	if includePrefix {
+		msg = payload.Prefix + msg
+	}
+
+	return strings.TrimRightFunc(msg, unicode.IsSpace)
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
