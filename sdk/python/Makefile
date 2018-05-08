@@ -14,7 +14,7 @@ include ../../build/common.mk
 
 ensure::
 	$(PIP) install --user 'virtualenv>=15.2.0'
-	rm -rf $(PYENV) && virtualenv --python=$(PYTHON) $(PYENV)/
+	rm -rf $(PYENV) && $(shell python -m site --user-base)/bin/virtualenv --python=$(PYTHON) $(PYENV)/
 	echo "export PYTHONPATH=$${PYTHONPATH}:$(shell pwd)/$(PYENVLIB)/python2.7/site-packages" >> $(PYENVBIN)/activate
 	( \
 		source $(PYENVBIN)/activate ; \
