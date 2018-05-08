@@ -368,8 +368,13 @@ func promptForValue(yes bool, prompt string, defaultValue string, isValidFn func
 	}
 
 	for {
-		prompt = colors.ColorizeText(
-			fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValue, colors.Reset))
+		if defaultValue == "" {
+			prompt = colors.ColorizeText(
+				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
+		} else {
+			prompt = colors.ColorizeText(
+				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValue, colors.Reset))
+		}
 		fmt.Print(prompt)
 
 		reader := bufio.NewReader(os.Stdin)
