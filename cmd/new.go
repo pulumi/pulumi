@@ -225,8 +225,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Forces content to be generated even if it would change existing files")
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
 	cmd.PersistentFlags().BoolVarP(
 		&offline, "offline", "o", false,

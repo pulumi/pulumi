@@ -133,8 +133,8 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
 		"Do not perform a preview before performing the update")
-	cmd.PersistentFlags().BoolVar(
-		&yes, "yes", false,
+	cmd.PersistentFlags().BoolVarP(
+		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 
 	return cmd
