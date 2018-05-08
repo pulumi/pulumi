@@ -433,9 +433,19 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
-		glog.Warningf("getting HEAD commit: %v", err)
+		glog.Warningf("getting Git HEAD: %v", err)
 	} else {
-		m.Environment[backend.GitHead] = head.Hash().String()
+		hash := head.Hash()
+		m.Environment[backend.GitHead] = hash.String()
+		commit, commitErr := repo.CommitObject(hash)
+		if commitErr != nil {
+			glog.Warningf("getting Git HEAD commit: %v", commitErr)
+		} else {
+			m.Environment[backend.GitCommitter] = commit.Committer.Name
+			m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
+			m.Environment[backend.GitAuthor] = commit.Author.Name
+			m.Environment[backend.GitAuthorEmail] = commit.Author.Email
+		}
 	}
 
 	isDirty, err := isGitWorkTreeDirty()
