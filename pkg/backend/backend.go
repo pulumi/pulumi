@@ -63,7 +63,7 @@ type Backend interface {
 	GetStackCrypter(stackRef StackReference) (config.Crypter, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(stackRef StackReference, proj *workspace.Project, root string,
+	Preview(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
 		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,

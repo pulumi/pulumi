@@ -75,7 +75,7 @@ func newPreviewCmd() *cobra.Command {
 					Debug:                debug,
 				},
 			}
-			return s.Preview(proj, root, m, opts, cancellationScopes)
+			return s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
 		}),
 	}
 

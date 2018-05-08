@@ -552,7 +552,7 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 
 func (b *cloudBackend) PreviewThenPrompt(
 	ctx context.Context, updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts engine.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (bool, error) {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff

@@ -61,6 +61,7 @@ func init() {
 		routes.Path(path).Methods(method).Name(name)
 	}
 
+	// nolint: lll
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
 	addEndpoint("GET", "/api/orgs/{orgName}", "getOrganization")

@@ -23,8 +23,8 @@ type Stack interface {
 	Backend() Backend           // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(proj *workspace.Project, root string, m UpdateMetadata,
-		opts UpdateOptions, scopes CancellationScopeSource) error
+	Preview(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
+		scopes CancellationScopeSource) error
 	// Update this stack.
 	Update(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
 		scopes CancellationScopeSource) error
@@ -57,20 +57,20 @@ func PreviewStack(ctx context.Context, s Stack, proj *workspace.Project, root st
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
-func UpdateStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-	scopes CancellationScopeSource) error {
+func UpdateStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+	opts UpdateOptions, scopes CancellationScopeSource) error {
 	return s.Backend().Update(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
-func RefreshStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-	scopes CancellationScopeSource) error {
+func RefreshStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+	opts UpdateOptions, scopes CancellationScopeSource) error {
 	return s.Backend().Refresh(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // DestroyStack destroys all of this stack's resources.
-func DestroyStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-	scopes CancellationScopeSource) error {
+func DestroyStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
+	opts UpdateOptions, scopes CancellationScopeSource) error {
 	return s.Backend().Destroy(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
