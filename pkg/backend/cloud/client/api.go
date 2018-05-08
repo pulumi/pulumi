@@ -106,18 +106,20 @@ func (t updateAccessToken) String() string {
 // pulumiAPICall makes an HTTP request to the Pulumi API.
 func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []byte, tok accessToken,
 	opts httpCallOptions) (string, *http.Response, error) {
+
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
-	path = strings.TrimPrefix(path, "/")
+	path = cleanPath(path)
 
-	url := fmt.Sprintf("%s/%s", cloudAPI, path)
+	url := fmt.Sprintf("%s%s", cloudAPI, path)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating new HTTP request")
 	}
 
-	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, path,
+	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
 		opentracing.Tag{Key: "method", Value: method},
+		opentracing.Tag{Key: "path", Value: path},
 		opentracing.Tag{Key: "api", Value: cloudAPI},
 		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
 	defer requestSpan.Finish()
