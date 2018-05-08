@@ -50,6 +50,15 @@ const (
 	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
 	GitDirty = "git.dirty"
 
+	// GitCommitter is the name of the person who committed the commit at HEAD.
+	GitCommitter = "git.committer"
+	// GitCommitterEmail is the Email address associated with the committer.
+	GitCommitterEmail = "git.committer.email"
+	// GitAuthor is the name of the person who authored the commit at HEAD.
+	GitAuthor = "git.author"
+	// GitAuthorEmail is the email address associated with the commit's author.
+	GitAuthorEmail = "git.author.email"
+
 	// GitHubLogin is the user/organization who owns the local repo, if the origin remote is hosted on GitHub.com.
 	GitHubLogin = "github.login"
 	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
