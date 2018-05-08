@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
@@ -414,7 +415,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
 	repo, err := getGitRepository(root)
 	if err != nil {
-		glog.Warningf("looking for git repository: %v", err)
+		cmdutil.Diag().Warningf(diag.Message("", "could not detect Git repository: %v"), err)
 	}
 	if repo == nil {
 		glog.Infof("no git repository found")
@@ -424,7 +425,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
 	ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
 	if err != nil {
-		glog.Warningf("getting GitHub information: %v", err)
+		cmdutil.Diag().Warningf(diag.Message("", "could not detect GitHub project information: %v"), err)
 	} else {
 		m.Environment[backend.GitHubLogin] = ghLogin
 		m.Environment[backend.GitHubRepo] = ghRepo
@@ -433,13 +434,14 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
-		glog.Warningf("getting Git HEAD: %v", err)
+		cmdutil.Diag().Warningf(diag.Message("", "could not fetch Git repository HEAD info: %v"), err)
 	} else {
 		hash := head.Hash()
 		m.Environment[backend.GitHead] = hash.String()
 		commit, commitErr := repo.CommitObject(hash)
 		if commitErr != nil {
-			glog.Warningf("getting Git HEAD commit: %v", commitErr)
+			cmdutil.Diag().Warningf(
+				diag.Message("", "could not fetch Git repository HEAD commit info: %v"), commitErr)
 		} else {
 			m.Environment[backend.GitCommitter] = commit.Committer.Name
 			m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
@@ -450,7 +452,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 
 	isDirty, err := isGitWorkTreeDirty()
 	if err != nil {
-		glog.Warningf("determining git work tree status: %v", err)
+		cmdutil.Diag().Warningf(diag.Message("", "could not Git repository dirty worktree info: %v"), err)
 	} else {
 		m.Environment[backend.GitDirty] = fmt.Sprint(isDirty)
 	}
