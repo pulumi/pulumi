@@ -31,6 +31,7 @@ type tokenResponse struct {
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
 type tokenSource struct {
 	requests chan tokenRequest
+	done chan bool
 }
 
 func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
@@ -42,7 +43,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 		return nil, err
 	}
 
-	requests := make(chan tokenRequest)
+	requests, done := make(chan tokenRequest), make(chan bool)
 	go func() {
 		// We will renew the lease after 50% of the duration has elapsed to allow more time for retries.
 		ticker := time.NewTicker(duration / 2)
@@ -60,6 +61,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 
 			case c, ok := <-requests:
 				if !ok {
+					close(done)
 					return
 				}
 
@@ -72,11 +74,12 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 		}
 	}()
 
-	return &tokenSource{requests: requests}, nil
+	return &tokenSource{requests: requests, done: done}, nil
 }
 
 func (ts *tokenSource) Close() {
 	close(ts.requests)
+	<-ts.done
 }
 
 func (ts *tokenSource) GetToken() (string, error) {
