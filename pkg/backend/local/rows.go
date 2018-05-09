@@ -321,7 +321,7 @@ func (data *resourceRowData) getInfo() string {
 
 	if diagInfo.DebugCount == 1 {
 		appendDiagMessage("1 debug message")
-	} else if diagInfo.ErrorCount > 1 {
+	} else if diagInfo.DebugCount > 1 {
 		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
 	}
 
