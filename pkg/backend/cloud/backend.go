@@ -582,7 +582,9 @@ func (b *cloudBackend) PreviewThenPrompt(
 		if err != nil {
 			return false, err
 		}
-		hasChanges = changes.HasChanges()
+
+		// TODO(ellismg)[pulumi/pulumi#1347]: Work around 1347 by forcing a choice when running a preview against a PPC
+		hasChanges = changes.HasChanges() || !stack.(Stack).RunLocally()
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.

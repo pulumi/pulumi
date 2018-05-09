@@ -370,6 +370,8 @@ func (pc *Client) CreateUpdate(
 		} else {
 			endpoint = "update"
 		}
+	case UpdateKindPreview:
+		endpoint = "preview"
 	case UpdateKindRefresh:
 		return UpdateIdentifier{},
 			errors.New("'refresh' not yet supported for managed stacks [pulumi/pulumi#1081]")
