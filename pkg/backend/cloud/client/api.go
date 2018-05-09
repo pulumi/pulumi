@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -135,6 +136,14 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 	// Apply credentials if provided.
 	if tok.String() != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
+	}
+
+	tracingOptions := backend.TracingOptionsFromContext(requestContext)
+	if tracingOptions.PropagateSpans {
+		carrier := opentracing.HTTPHeadersCarrier(req.Header)
+		if err = requestSpan.Tracer().Inject(requestSpan.Context(), opentracing.HTTPHeaders, carrier); err != nil {
+			glog.Errorf("injecting tracing headers: %v", err)
+		}
 	}
 
 	glog.V(7).Infof("Making Pulumi API call: %s", url)
