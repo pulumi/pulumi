@@ -3570,6 +3570,170 @@ return function /*f1*/() {
     }
 
     {
+        class C {
+            a: number;
+            b: number;
+
+            constructor() {
+                this.a = 1;
+                this.b = 2;
+            }
+
+            // tslint:disable-next-line:no-empty
+            m() { }
+        }
+        const o = new C();
+
+        cases.push({
+            title: "Capture all props if prototype is accessed #1",
+            // tslint:disable-next-line
+            func: function () { o.m(); },
+            expectText: `exports.handler = __f0;
+
+var __o_proto = {};
+__f1.prototype = __o_proto;
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.a = 1;
+                this.b = 2;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+
+            constructor() {
+                this.a = 1;
+            }
+
+            m() { (<any>this).n(); }
+        }
+
+        class D extends C {
+            b: number;
+            constructor() {
+                super();
+                this.b = 2;
+            }
+            // tslint:disable-next-line:no-empty
+            n() {}
+        }
+        const o = new D();
+
+        cases.push({
+            title: "Capture all props if prototype is accessed #2",
+            // tslint:disable-next-line
+            func: function () { o.m(); },
+            expectText: `exports.handler = __f0;
+
+var __o_proto_proto = {};
+__f1.prototype = __o_proto_proto;
+Object.defineProperty(__o_proto_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o_proto = Object.create(__o_proto_proto);
+__f3.prototype = __o_proto;
+Object.setPrototypeOf(__f3, __f1);
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__o_proto, "n", { configurable: true, writable: true, value: __f4 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.a = 1;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __super: __f1 }) {
+
+return function /*constructor*/() {
+    __super.call(this);
+    this.b = 2;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ __super: __f1 }) {
+
+return function /*n*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         // tslint:disable-next-line:no-empty
         const table1: any = { primaryKey: 1, insert: () => { }, scan: () => { } };
 

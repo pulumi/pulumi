@@ -814,6 +814,7 @@ function getOrCreateEntry(
     function serializeObject() {
         // Serialize the set of property names asked for.  If we discover that any of them
         // use this/super, then go and reserialize all the properties.
+
         const serializeAll = serializeObjectWorker(capturedObjectProperties || []);
         if (serializeAll) {
             serializeObjectWorker([]);
@@ -827,7 +828,19 @@ function getOrCreateEntry(
         entry.object = objectInfo;
         const environment = entry.object.env;
 
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(obj)) {
+        const ownPropertyNamesAndSymbols = getOwnPropertyNamesAndSymbols(obj);
+        const accessedPropertyNotDirectlyOnObject = localObjectProperties.some(
+            lop => ownPropertyNamesAndSymbols.find(op => lop.name === op) === undefined);
+
+        // User accessed a property that we can't find directly on the object we're serializing
+        // This most likely means they're accessing up the prototype chain.  It would be complex
+        // to try to walk this prototype chain to analyze what's going on, so we conservatively
+        // assume that property may end up needing 'this' and we serialize out the entire object.
+        if (accessedPropertyNotDirectlyOnObject) {
+            return true;
+        }
+
+        for (const keyOrSymbol of ownPropertyNamesAndSymbols) {
             const capturedPropInfo = localObjectProperties.find(p => p.name === keyOrSymbol);
 
             if (localObjectProperties.length > 0 && !capturedPropInfo) {
