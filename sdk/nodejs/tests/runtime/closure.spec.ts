@@ -1,6 +1,7 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
 // tslint:disable:max-line-length
+// tslint:disable:no-empty
 
 import * as assert from "assert";
 import { EOL } from "os";
