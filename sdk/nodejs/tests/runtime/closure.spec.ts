@@ -3160,7 +3160,7 @@ return function () { console.log(o); };
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __o = {c: __f1, a: 1, b: 2};
+var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
@@ -3194,7 +3194,7 @@ return function () { console.log(o.c()); };
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __o = {c: __f1, a: 1, b: 2};
+var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
@@ -3367,8 +3367,8 @@ return function () { console.log(o.b.c()); };
             expectText: `exports.handler = __f0;
 
 var __o = {};
-Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
 __o.a = 1;
+Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
 
 function __f1() {
   return (function() {
@@ -3579,13 +3579,12 @@ return function /*f1*/() {
                 this.b = 2;
             }
 
-            // tslint:disable-next-line:no-empty
-            m() { }
+            m() { console.log(this); }
         }
         const o = new C();
 
         cases.push({
-            title: "Capture all props if prototype is accessed #1",
+            title: "Capture all props if prototype is and uses this #1",
             // tslint:disable-next-line
             func: function () { o.m(); },
             expectText: `exports.handler = __f0;
@@ -3612,6 +3611,52 @@ return function /*constructor*/() {
 }
 
 function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { console.log(this); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+            b: number;
+
+            constructor() {
+                this.a = 1;
+                this.b = 2;
+            }
+
+            m() { }
+        }
+        const o = new C();
+
+        cases.push({
+            title: "Capture no props if prototype is used but does not use this #1",
+            // tslint:disable-next-line
+            func: function () { o.m(); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+Object.defineProperty(__o, "m", { configurable: true, writable: true, value: __f1 });
+
+function __f1() {
   return (function() {
     with({  }) {
 
@@ -3754,7 +3799,7 @@ return function () { o.m(); };
             func: testScanReturnsAllValues,
             expectText: `exports.handler = __testScanReturnsAllValues;
 
-var __table1 = {primaryKey: 1, insert: __f1};
+var __table1 = {insert: __f1, primaryKey: 1};
 
 function __f0() {
   return (function() {
