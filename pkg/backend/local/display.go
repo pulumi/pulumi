@@ -254,7 +254,6 @@ func renderResourcePreEvent(
 	out := &bytes.Buffer{}
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		fmt.Printf("Preevent-show: %s %s\n", payload.Metadata.Op, payload.Metadata.URN)
 		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 		details := engine.GetResourcePropertiesDetails(
@@ -263,8 +262,6 @@ func renderResourcePreEvent(
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
 		fprintIgnoreError(out, opts.Color.Colorize(details))
 		fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
-	} else {
-		fmt.Printf("Preevent-hide: %s %s\n", payload.Metadata.Op, payload.Metadata.URN)
 	}
 
 	return out.String()
@@ -278,13 +275,10 @@ func renderResourceOutputsEvent(
 	out := &bytes.Buffer{}
 
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		fmt.Printf("Outputs-show: %s %s\n", payload.Metadata.Op, payload.Metadata.URN)
 		indent := engine.GetIndent(payload.Metadata, seen)
 		text := engine.GetResourceOutputsPropertiesString(payload.Metadata, indent+1, payload.Planning, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(text))
-	} else {
-		fmt.Printf("Outputs-hide: %s %s\n", payload.Metadata.Op, payload.Metadata.URN)
 	}
 
 	return out.String()
