@@ -29,8 +29,6 @@ const (
 // return boolean of true means the acceptor eventually accepted; a non-nil error means the acceptor returned an error.
 // If an acceptor accepts a condition after the context has expired, we ignore the expiration and return the condition.
 func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
-	expired := false
-
 	// Prepare our delay and backoff variables.
 	var delay time.Duration
 	if acceptor.Delay == nil {
@@ -51,17 +49,9 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
 		maxDelay = *acceptor.MaxDelay
 	}
 
-	// If the context expires before the waiter has accepted, return.
-	if ctx != nil {
-		go func() {
-			<-ctx.Done()
-			expired = true
-		}()
-	}
-
-	// Loop until the condition is accepted, or the context expires, whichever comes first.
-	var try int
-	for !expired {
+	// Loop until the condition is accepted or the context expires, whichever comes first.
+	try := 0
+	for {
 		// Compute the next retry time so the callback can access it.
 		delay = time.Duration(float64(delay) * backoff)
 		if delay > maxDelay {
@@ -74,12 +64,16 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
 			return b, data, err
 		}
 
-		// About to try again.  Sleep, bump the retry count, and go around the horn again.
-		time.Sleep(delay)
+		// Wait for delay or timeout.
+		select {
+		case <-time.After(delay):
+			// Continue on.
+		case <-ctx.Done():
+			return false, nil, nil
+		}
+
 		try++
 	}
-
-	return false, nil, nil
 }
 
 // UntilDeadline creates a child context with the given deadline, and then invokes the above Until function.
