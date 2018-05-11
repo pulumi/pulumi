@@ -18,6 +18,8 @@ interface ClosureCase {
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
 
+export const exportedValue = 42;
+
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
     const cases: ClosureCase[] = [];
@@ -3939,6 +3941,73 @@ return function /*f3*/() {
 }
 `,
 });
+    }
+
+    {
+        cases.push({
+            title: "Capture of exported variable #1",
+            func: function () { console.log(exportedValue); },
+            expectText: `exports.handler = __f0;
+
+var __exports = {exportedValue: 42};
+
+function __f0() {
+  return (function() {
+    with({ exports: __exports }) {
+
+return function () { console.log(exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture of exported variable #2",
+            func: function () { console.log(exports.exportedValue); },
+            expectText: `exports.handler = __f0;
+
+var __exports = {exportedValue: 42};
+
+function __f0() {
+  return (function() {
+    with({ exports: __exports }) {
+
+return function () { console.log(exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture of exported variable #3",
+            func: function () { console.log(module.exports.exportedValue); },
+            expectText: `exports.handler = __f0;
+
+var __module = {};
+var __module_exports = {};
+Object.defineProperty(__module_exports, "__esModule", { value: true });
+__module_exports.exportedValue = 42;
+__module.exports = __module_exports;
+
+function __f0() {
+  return (function() {
+    with({ module: __module }) {
+
+return function () { console.log(module.exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
     }
 
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
