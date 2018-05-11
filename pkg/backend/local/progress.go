@@ -798,17 +798,29 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
+		step := engine.StepEventMetadata{Op: deploy.OpSame}
+		if metadata != nil {
+			step = *metadata
+		}
+
 		row = &resourceRowData{
 			display:              display,
 			tick:                 display.currentTick,
 			diagInfo:             &DiagInfo{},
-			step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+			step:                 step,
 			hideRowIfUnnecessary: hideRowIfUnnecessary,
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row
 		display.ensureHeaderRow()
 		display.resourceRows = append(display.resourceRows, row)
+	} else {
+		// we already heard about the resource.  However, originally, we may have thought
+		// it should be hidden, but now we may have changed our mind.  Update the resource
+		// row accordingly.
+		if !hideRowIfUnnecessary {
+			row.SetHideRowIfUnnecessary(false)
+		}
 	}
 
 	if event.Type == engine.ResourcePreEvent {
@@ -822,10 +834,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
 			row.SetDone()
-		} else {
-			step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
-			row.SetStep(step)
 		}
+
+		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+		row.SetStep(step)
 	} else if event.Type == engine.ResourceOperationFailed {
 		row.SetDone()
 		row.SetFailed()
