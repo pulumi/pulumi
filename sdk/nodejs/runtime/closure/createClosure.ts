@@ -41,7 +41,7 @@ export interface FunctionInfo extends ObjectInfo {
 // simple.
 export interface PropertyInfo {
     // If the property has a value we should directly provide when calling .defineProperty
-    hasValue?: boolean;
+    hasValue: boolean;
 
     // same as PropertyDescriptor
     configurable?: boolean;
@@ -780,40 +780,10 @@ function getOrCreateEntry(
         }
     }
 
-    function getPropertyInfo(key: PropertyKey) {
-        const desc = Object.getOwnPropertyDescriptor(obj, key);
-        let propertyInfo: PropertyInfo | undefined;
-        if (desc) {
-            if (!desc.enumerable || !desc.writable || !desc.configurable || desc.get || desc.set) {
-                // Complex property.  Copy over the relevant flags.  (We copy to make
-                // testing easier).
-                propertyInfo = { hasValue: desc.value !== undefined };
-                if (desc.configurable) {
-                    propertyInfo.configurable = desc.configurable;
-                }
-                if (desc.enumerable) {
-                    propertyInfo.enumerable = desc.enumerable;
-                }
-                if (desc.writable) {
-                    propertyInfo.writable = desc.writable;
-                }
-                if (desc.get) {
-                    propertyInfo.get = getOrCreateEntry(
-                        desc.get, undefined, context, serialize);
-                }
-                if (desc.set) {
-                    propertyInfo.set = getOrCreateEntry(
-                        desc.set, undefined, context, serialize);
-                }
-            }
-        }
-
-        return propertyInfo;
-    }
-
     function serializeObject() {
         // Serialize the set of property names asked for.  If we discover that any of them
         // use this/super, then go and reserialize all the properties.
+
         const serializeAll = serializeObjectWorker(capturedObjectProperties || []);
         if (serializeAll) {
             serializeObjectWorker([]);
@@ -827,62 +797,147 @@ function getOrCreateEntry(
         entry.object = objectInfo;
         const environment = entry.object.env;
 
-        for (const keyOrSymbol of getOwnPropertyNamesAndSymbols(obj)) {
-            const capturedPropInfo = localObjectProperties.find(p => p.name === keyOrSymbol);
+        if (localObjectProperties.length === 0) {
+            // we wanted to capture everything (including the prototype chain)
+            const ownPropertyNamesAndSymbols = getOwnPropertyNamesAndSymbols(obj);
 
-            if (localObjectProperties.length > 0 && !capturedPropInfo) {
-                // If we're filtering down to a specific set of properties, then don't
-                // serialize this property unless it's in that set.
-                continue;
-            }
-
-            const keyEntry = getOrCreateEntry(keyOrSymbol, undefined, context, serialize);
-            if (!environment.has(keyEntry)) {
+            for (const keyOrSymbol of ownPropertyNamesAndSymbols) {
                 // we're about to recurse inside this object.  In order to prever infinite
                 // loops, put a dummy entry in the environment map.  That way, if we hit
                 // this object again while recursing we won't try to generate this property.
-                environment.set(keyEntry, <any>undefined);
+                const keyEntry = getOrCreateEntry(keyOrSymbol, undefined, context, serialize);
+                if (!environment.has(keyEntry)) {
+                    environment.set(keyEntry, <any>undefined);
 
-                const propertyInfo = getPropertyInfo(keyOrSymbol);
-                const valEntry = getOrCreateEntry(
-                    obj[keyOrSymbol], undefined, context, serialize);
+                    const propertyInfo = getPropertyInfo(keyOrSymbol);
+                    if (!propertyInfo) {
+                        throw new Error("Could not find property info for 'own' property.");
+                    }
 
-                // Now, replace the dummy entry with the actual one we want.
-                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+                    const valEntry = getOrCreateEntry(
+                        obj[keyOrSymbol], undefined, context, serialize);
 
-                if (capturedPropInfo && capturedPropInfo.invoked) {
-                    // If this was a captured property and the property was invoked, then we have to
-                    // check if that property ends up using this/super.  if so, then we actually
-                    // have to serialize out this object entirely.
-                    if (usesNonLexicalThis(valEntry)) {
-                        return true;
+                    // Now, replace the dummy entry with the actual one we want.
+                    environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+                }
+            }
+
+            // If the object's __proto__ is not Object.prototype, then we have to capture what it
+            // actually is.  On the other end, we'll use Object.create(deserializedProto) to set
+            // things up properly.
+            //
+            // We don't need to capture the prototype if the user is not capturing 'this' either.
+            if (!entry.object.proto) {
+                const proto = Object.getPrototypeOf(obj);
+                if (proto !== Object.prototype) {
+                    entry.object.proto = getOrCreateEntry(proto, undefined, context, serialize);
+                }
+            }
+
+            return false;
+        } else {
+            // we only want to capture a subset of properties.  We can do this as long those
+            // properties don't somehow end up involving referencing "this" in an 'invokved'
+            // capacity (in which case we need to completely realize the object.
+            //
+            // this is slightly tricky as it's not obvious if a property is a getter/setter
+            // and this is implicitly invoked just by access it.
+            for (const capturedInfo of localObjectProperties) {
+                const propName = capturedInfo.name;
+
+                const keyEntry = getOrCreateEntry(propName, undefined, context, serialize);
+                if (!environment.has(keyEntry)) {
+                    // we're about to recurse inside this object.  In order to prever infinite
+                    // loops, put a dummy entry in the environment map.  That way, if we hit
+                    // this object again while recursing we won't try to generate this property.
+                    environment.set(keyEntry, <any>undefined);
+                    const objPropValue = obj[propName];
+
+                    const propertyInfo = getPropertyInfo(propName);
+                    if (!propertyInfo) {
+                        if (objPropValue !== undefined) {
+                            throw new Error("Could not find property info for real property on object: " + propName);
+                        }
+
+                        // User code referenced a property not actually on the object at all.
+                        // So to properly represent that, we don't place any information about
+                        // this property on the object.
+                        environment.delete(keyEntry);
+                    } else {
+                        // Note: objPropValue can be undefined here.  That's the case where the
+                        // object does have the property, but the property is just set to the
+                        // undefined value.
+                        const valEntry = getOrCreateEntry(
+                            objPropValue, undefined, context, serialize);
+
+                        if (propInfoUsesNonLexicalThis(capturedInfo, propertyInfo, valEntry)) {
+                            // the referenced function captured 'this'.  Have to serialize out
+                            // this entire object.  Undo the work we did to just serialize out a
+                            // few properties.
+                            for (const info of localObjectProperties) {
+                                const infoEntry = getOrCreateEntry(propName, undefined, context, serialize);
+                                environment.delete(infoEntry);
+                            }
+
+                            // Signal our caller to serialize the entire object.
+                            return true;
+                        }
+
+                        // Now, replace the dummy entry with the actual one we want.
+                        environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
                     }
                 }
+            }
 
-                // if we're accessing a getter/setter, and that getter/setter uses
-                // 'this', then we need to serialize out this object entirely.
+            return false;
+        }
+    }
 
-                if (usesNonLexicalThis(propertyInfo ? propertyInfo.get : undefined) ||
-                    usesNonLexicalThis(propertyInfo ? propertyInfo.set : undefined)) {
-
-                    return true;
-                }
+    function propInfoUsesNonLexicalThis(
+            capturedInfo: CapturedPropertyInfo, propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
+        if (capturedInfo.invoked) {
+            // If the property was invoked, then we have to check if that property ends
+            // up using this/super.  if so, then we actually have to serialize out this
+            // object entirely.
+            if (usesNonLexicalThis(valEntry)) {
+                return true;
             }
         }
 
-        // If the object's __proto__ is not Object.prototype, then we have to capture what it
-        // actually is.  On the other end, we'll use Object.create(deserializedProto) to set things
-        // up properly.
-        //
-        // We don't need to capture the prototype if the user is not capturing 'this' either.
-        if (!entry.object.proto && localObjectProperties.length === 0) {
-            const proto = Object.getPrototypeOf(obj);
-            if (proto !== Object.prototype) {
-                entry.object.proto = getOrCreateEntry(proto, undefined, context, serialize);
-            }
+        // if we're accessing a getter/setter, and that getter/setter uses
+        // 'this', then we need to serialize out this object entirely.
+
+        if (usesNonLexicalThis(propertyInfo ? propertyInfo.get : undefined) ||
+            usesNonLexicalThis(propertyInfo ? propertyInfo.set : undefined)) {
+
+            return true;
         }
 
         return false;
+    }
+
+    function getPropertyInfo(key: PropertyKey): PropertyInfo | undefined {
+        for (let current = obj; current; current = Object.getPrototypeOf(current)) {
+            const desc = Object.getOwnPropertyDescriptor(current, key);
+            if (desc) {
+                const propertyInfo = <PropertyInfo>{ hasValue: desc.value !== undefined };
+                propertyInfo.configurable = desc.configurable;
+                propertyInfo.enumerable = desc.enumerable;
+                propertyInfo.writable = desc.writable;
+                if (desc.get) {
+                    propertyInfo.get = getOrCreateEntry(
+                        desc.get, undefined, context, serialize);
+                }
+                if (desc.set) {
+                    propertyInfo.set = getOrCreateEntry(
+                        desc.set, undefined, context, serialize);
+                }
+
+                return propertyInfo;
+            }
+        }
+
+        return undefined;
     }
 
     function usesNonLexicalThis(localEntry: Entry | undefined) {
