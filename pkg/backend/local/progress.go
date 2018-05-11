@@ -802,13 +802,28 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			display:              display,
 			tick:                 display.currentTick,
 			diagInfo:             &DiagInfo{},
-			step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+			step:                 metadata,
 			hideRowIfUnnecessary: hideRowIfUnnecessary,
 		}
 
 		display.eventUrnToResourceRow[eventUrn] = row
 		display.ensureHeaderRow()
 		display.resourceRows = append(display.resourceRows, row)
+	} else {
+		// we already heard about the resource.  However, originally, we may have thought
+		// it should be hidden, but now we may have changed our mind.  Update the resource
+		// row accordingly.
+		if hideRowIfUnnecessary {
+			// We're hearing about a change we normally wouldn't want to display, but we've
+			// already created a row for the resource.  This can happen, for example, when
+			// we hear about the create/delete for a resource that we've already head about
+			// the 'replace' for.  Because we already know about the information we do want
+			// to show the user, just ignore this latest message.
+			return
+		} else {
+			// Resource should not be hidden by default.  Ensure we remember that.
+			row.SetHideRowIfUnnecessary(false)
+		}
 	}
 
 	if event.Type == engine.ResourcePreEvent {

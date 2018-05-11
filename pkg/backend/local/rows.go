@@ -20,7 +20,9 @@ type Row interface {
 
 	ColorizedColumns() []string
 	ColorizedSuffix() string
+
 	HideRowIfUnnecessary() bool
+	SetHideRowIfUnnecessary(value bool)
 }
 
 type ResourceRow interface {
@@ -50,6 +52,9 @@ type headerRowData struct {
 
 func (data *headerRowData) HideRowIfUnnecessary() bool {
 	return false
+}
+
+func (data *headerRowData) SetHideRowIfUnnecessary(value bool) {
 }
 
 func (data *headerRowData) DisplayOrderIndex() int {
@@ -94,7 +99,7 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step engine.StepEventMetadata
+	step *engine.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
@@ -127,6 +132,10 @@ func (data *resourceRowData) SetDisplayOrderIndex(index int) {
 
 func (data *resourceRowData) HideRowIfUnnecessary() bool {
 	return data.hideRowIfUnnecessary
+}
+
+func (data *resourceRowData) SetHideRowIfUnnecessary(value bool) {
+	data.hideRowIfUnnecessary = value
 }
 
 func (data *resourceRowData) Step() engine.StepEventMetadata {
