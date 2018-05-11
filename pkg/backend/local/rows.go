@@ -99,7 +99,7 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step *engine.StepEventMetadata
+	step engine.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
@@ -143,6 +143,14 @@ func (data *resourceRowData) Step() engine.StepEventMetadata {
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
+	// never update a 'replace' step with an CreateReplacement DeleteReplacement step.
+	// in the progress view we never want to show those individually, we always want
+	// them combined since we only show a single line per resource.
+	if data.step.Op == deploy.OpReplace &&
+		(step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced) {
+		return
+	}
+
 	data.step = step
 }
 

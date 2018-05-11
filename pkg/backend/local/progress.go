@@ -798,11 +798,16 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if !has {
 		// first time we're hearing about this resource.  Create an initial nearly-empty
 		// status for it, assigning it a nice short ID.
+		step := engine.StepEventMetadata{Op: deploy.OpSame}
+		if metadata != nil {
+			step = *metadata
+		}
+
 		row = &resourceRowData{
 			display:              display,
 			tick:                 display.currentTick,
 			diagInfo:             &DiagInfo{},
-			step:                 metadata,
+			step:                 step,
 			hideRowIfUnnecessary: hideRowIfUnnecessary,
 		}
 
@@ -813,15 +818,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// we already heard about the resource.  However, originally, we may have thought
 		// it should be hidden, but now we may have changed our mind.  Update the resource
 		// row accordingly.
-		if hideRowIfUnnecessary {
-			// We're hearing about a change we normally wouldn't want to display, but we've
-			// already created a row for the resource.  This can happen, for example, when
-			// we hear about the create/delete for a resource that we've already head about
-			// the 'replace' for.  Because we already know about the information we do want
-			// to show the user, just ignore this latest message.
-			return
-		} else {
-			// Resource should not be hidden by default.  Ensure we remember that.
+		if !hideRowIfUnnecessary {
 			row.SetHideRowIfUnnecessary(false)
 		}
 	}
@@ -837,10 +834,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// transition the status to done.
 		if !isRootURN(eventUrn) {
 			row.SetDone()
-		} else {
-			step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
-			row.SetStep(step)
 		}
+
+		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+		row.SetStep(step)
 	} else if event.Type == engine.ResourceOperationFailed {
 		row.SetDone()
 		row.SetFailed()
