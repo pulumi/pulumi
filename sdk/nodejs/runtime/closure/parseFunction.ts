@@ -52,8 +52,6 @@ export interface CapturedVariables {
 const nodeModuleGlobals: {[key: string]: boolean} = {
     "__dirname": true,
     "__filename": true,
-    "exports": true,
-    "module": true,
     "require": true,
 };
 
