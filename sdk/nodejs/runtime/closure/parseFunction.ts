@@ -49,9 +49,16 @@ export interface CapturedVariables {
     optional: CapturedVariableMap;
 }
 
+// These are the special globals we've marked as ones we do not want to capture by value.
+// These values have a dual meaning.  They mean one thing at deployment time and one thing
+// at cloud-execution time.  By **not** capturing-by-value we take the view that the user
+// wants the cloud-execution time view of things.
 const nodeModuleGlobals: {[key: string]: boolean} = {
     "__dirname": true,
     "__filename": true,
+    // We definitely should not try to capture/serialize 'require'.  Not only will it bottom
+    // out as a native function, but it is definitely something the user intends to run
+    // against the right module environment at cloud-execution time and not deployment time.
     "require": true,
 };
 
