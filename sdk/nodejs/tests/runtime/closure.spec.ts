@@ -3477,6 +3477,37 @@ return function /*f1*/() {
     }
 
     {
+        const o = { a: 1 };
+        function f1() {
+            // @ts-ignore
+            console.log(o.c);
+        }
+
+        cases.push({
+            title: "Do not capture non-existent prop",
+            // tslint:disable-next-line
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {};
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f1: __f1 }) {
+
+return function /*f1*/() {
+            // @ts-ignore
+            console.log(o.c);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
         const o = { a: 1, b: 1, c: 2 };
         function f1() {
             console.log(o.a);

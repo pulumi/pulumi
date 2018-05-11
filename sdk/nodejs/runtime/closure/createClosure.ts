@@ -41,7 +41,7 @@ export interface FunctionInfo extends ObjectInfo {
 // simple.
 export interface PropertyInfo {
     // If the property has a value we should directly provide when calling .defineProperty
-    hasValue?: boolean;
+    hasValue: boolean;
 
     // same as PropertyDescriptor
     configurable?: boolean;
@@ -810,6 +810,10 @@ function getOrCreateEntry(
                     environment.set(keyEntry, <any>undefined);
 
                     const propertyInfo = getPropertyInfo(keyOrSymbol);
+                    if (!propertyInfo) {
+                        throw new Error("Could not find property info for 'own' property.");
+                    }
+
                     const valEntry = getOrCreateEntry(
                         obj[keyOrSymbol], undefined, context, serialize);
 
@@ -847,26 +851,41 @@ function getOrCreateEntry(
                     // loops, put a dummy entry in the environment map.  That way, if we hit
                     // this object again while recursing we won't try to generate this property.
                     environment.set(keyEntry, <any>undefined);
+                    const objPropValue = obj[propName];
 
                     const propertyInfo = getPropertyInfo(propName);
-                    const valEntry = getOrCreateEntry(
-                        obj[propName], undefined, context, serialize);
-
-                    if (propInfoUsesNonLexicalThis(capturedInfo, propertyInfo, valEntry)) {
-                        // the referenced function captured 'this'.  Have to serialize out
-                        // this entire object.  Undo the work we did to just serialize out a
-                        // few properties.
-                        for (const info of localObjectProperties) {
-                            const infoEntry = getOrCreateEntry(propName, undefined, context, serialize);
-                            environment.delete(infoEntry);
+                    if (!propertyInfo) {
+                        if (objPropValue !== undefined) {
+                            throw new Error("Could not find property info for real property on object: " + propName);
                         }
 
-                        // Signal our caller to serialize the entire object.
-                        return true;
-                    }
+                        // User code referenced a property not actually on the object at all.
+                        // So to properly represent that, we don't place any information about
+                        // this property on the object.
+                        environment.delete(keyEntry);
+                    } else {
+                        // Note: objPropValue can be undefined here.  That's the case where the
+                        // object does have the property, but the property is just set to the
+                        // undefined value.
+                        const valEntry = getOrCreateEntry(
+                            objPropValue, undefined, context, serialize);
 
-                    // Now, replace the dummy entry with the actual one we want.
-                    environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+                        if (propInfoUsesNonLexicalThis(capturedInfo, propertyInfo, valEntry)) {
+                            // the referenced function captured 'this'.  Have to serialize out
+                            // this entire object.  Undo the work we did to just serialize out a
+                            // few properties.
+                            for (const info of localObjectProperties) {
+                                const infoEntry = getOrCreateEntry(propName, undefined, context, serialize);
+                                environment.delete(infoEntry);
+                            }
+
+                            // Signal our caller to serialize the entire object.
+                            return true;
+                        }
+
+                        // Now, replace the dummy entry with the actual one we want.
+                        environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+                    }
                 }
             }
 
@@ -897,33 +916,21 @@ function getOrCreateEntry(
         return false;
     }
 
-    function getPropertyInfo(key: PropertyKey) {
+    function getPropertyInfo(key: PropertyKey): PropertyInfo | undefined {
         for (let current = obj; current; current = Object.getPrototypeOf(current)) {
             const desc = Object.getOwnPropertyDescriptor(current, key);
             if (desc) {
-                let propertyInfo: PropertyInfo | undefined;
-
-                if (!desc.enumerable || !desc.writable || !desc.configurable || desc.get || desc.set) {
-                    // Complex property.  Copy over the relevant flags.  (We copy to make
-                    // testing easier).
-                    propertyInfo = { hasValue: desc.value !== undefined };
-                    if (desc.configurable) {
-                        propertyInfo.configurable = desc.configurable;
-                    }
-                    if (desc.enumerable) {
-                        propertyInfo.enumerable = desc.enumerable;
-                    }
-                    if (desc.writable) {
-                        propertyInfo.writable = desc.writable;
-                    }
-                    if (desc.get) {
-                        propertyInfo.get = getOrCreateEntry(
-                            desc.get, undefined, context, serialize);
-                    }
-                    if (desc.set) {
-                        propertyInfo.set = getOrCreateEntry(
-                            desc.set, undefined, context, serialize);
-                    }
+                const propertyInfo = <PropertyInfo>{ hasValue: desc.value !== undefined };
+                propertyInfo.configurable = desc.configurable;
+                propertyInfo.enumerable = desc.enumerable;
+                propertyInfo.writable = desc.writable;
+                if (desc.get) {
+                    propertyInfo.get = getOrCreateEntry(
+                        desc.get, undefined, context, serialize);
+                }
+                if (desc.set) {
+                    propertyInfo.set = getOrCreateEntry(
+                        desc.set, undefined, context, serialize);
                 }
 
                 return propertyInfo;

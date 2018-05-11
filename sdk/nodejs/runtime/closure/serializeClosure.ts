@@ -245,8 +245,19 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
         }
 
         function entryIsComplex(v: closure.PropertyInfoAndValue) {
-            return v.info !== undefined || deepContainsObjOrArray(v.entry);
+            return !isSimplePropertyInfo(v.info) || deepContainsObjOrArray(v.entry);
         }
+    }
+
+    function isSimplePropertyInfo(info: closure.PropertyInfo | undefined): boolean {
+        if (!info) {
+            return true;
+        }
+
+        return info.enumerable === true &&
+               info.writable === true &&
+               info.configurable === true &&
+               !info.get && !info.set;
     }
 
     function emitComplexObjectProperties(
@@ -257,7 +268,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
             const keyString = envEntryToString(keyEntry, varName + "_" + subName);
             const valString = envEntryToString(valEntry, varName + "_" + subName);
 
-            if (!info) {
+            if (isSimplePropertyInfo(info)) {
                 // normal property.  Just emit simply as a direct assignment.
                 if (typeof keyEntry.json === "string" && closure.isLegalMemberName(keyEntry.json)) {
                     environmentText += `${envVar}.${keyEntry.json} = ${valString};\n`;
@@ -268,7 +279,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
             }
             else {
                 // complex property.  emit as Object.defineProperty
-                emitDefineProperty(info, valString, keyString);
+                emitDefineProperty(info!, valString, keyString);
             }
         }
 
@@ -276,13 +287,13 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
             desc: closure.PropertyInfo, entryValue: string, propName: string) {
 
             const copy: any = {};
-            if (desc.configurable !== undefined) {
+            if (desc.configurable) {
                 copy.configurable = desc.configurable;
             }
-            if (desc.enumerable !== undefined) {
+            if (desc.enumerable) {
                 copy.enumerable = desc.enumerable;
             }
-            if (desc.writable !== undefined) {
+            if (desc.writable) {
                 copy.writable = desc.writable;
             }
             if (desc.get) {
