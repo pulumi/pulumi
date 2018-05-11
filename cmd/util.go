@@ -48,13 +48,21 @@ func currentBackend() (backend.Backend, error) {
 	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current)
 }
 
+// This is used to control the contents of the tracing header.
+var tracingHeader = os.Getenv("PULUMI_TRACING_HEADER")
+
 func commandContext() context.Context {
 	ctx := context.Background()
 	if cmdutil.IsTracingEnabled() {
 		if cmdutil.TracingRootSpan != nil {
 			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
 		}
-		ctx = backend.ContextWithTracingOptions(ctx, backend.TracingOptions{PropagateSpans: true})
+
+		tracingOptions := backend.TracingOptions{
+			PropagateSpans: true,
+			TracingHeader: tracingHeader,
+		}
+		ctx = backend.ContextWithTracingOptions(ctx, tracingOptions)
 	}
 	return ctx
 }

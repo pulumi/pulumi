@@ -145,6 +145,9 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 			glog.Errorf("injecting tracing headers: %v", err)
 		}
 	}
+	if tracingOptions.TracingHeader != "" {
+		req.Header.Set("X-Pulumi-Tracing", tracingOptions.TracingHeader)
+	}
 
 	glog.V(7).Infof("Making Pulumi API call: %s", url)
 	if glog.V(9) {
