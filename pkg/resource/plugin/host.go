@@ -3,6 +3,8 @@
 package plugin
 
 import (
+	"os"
+
 	"github.com/blang/semver"
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-multierror"
@@ -12,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -206,7 +209,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			}
 
 			// Warn if the plugin version was not what we expected
-			if version != nil {
+			if version != nil && !cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
 				if info.Version == nil || !info.Version.GTE(*version) {
 					var v string
 					if info.Version != nil {
