@@ -26,7 +26,3 @@ after_failure:
     - "${PULUMI_HOME}/scripts/upload-failed-tests"
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
-
-# The macOS machines are flaky in travis right now (fail to download pre-reqs) so allow them to fail for now.
-allow_failures:
-    - os: osx
