@@ -113,7 +113,8 @@ func NewPulumiCmd() *cobra.Command {
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
 		cmd.AddCommand(newArchiveCommand())
 
-		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "", "Include the tracing header with the given contents.")
+		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
+			"Include the tracing header with the given contents.")
 	}
 
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging

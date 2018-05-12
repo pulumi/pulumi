@@ -60,7 +60,7 @@ func commandContext() context.Context {
 
 		tracingOptions := backend.TracingOptions{
 			PropagateSpans: true,
-			TracingHeader: tracingHeader,
+			TracingHeader:  tracingHeader,
 		}
 		ctx = backend.ContextWithTracingOptions(ctx, tracingOptions)
 	}
