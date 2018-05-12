@@ -32,6 +32,9 @@ func DisplayEvents(
 	if opts.DiffDisplay {
 		DisplayDiffEvents(action, events, done, opts)
 	} else {
+		// in progress display, we can't show separate create/delete for a single resource.
+		// we have to always show them as a single 'replace'.
+		opts.ShowReplacementSteps = false
 		DisplayProgressEvents(action, events, done, opts)
 	}
 }
