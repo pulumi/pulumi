@@ -362,7 +362,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	case rm.regChan <- step:
 	case <-rm.cancel:
 		glog.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor is shutting down")
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -371,7 +371,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	case result = <-step.done:
 	case <-rm.cancel:
 		glog.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor is shutting down")
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 	}
 
 	state := result.State
@@ -429,7 +429,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case rm.regOutChan <- step:
 	case <-rm.cancel:
 		glog.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor is shutting down")
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -437,7 +437,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case <-step.done:
 	case <-rm.cancel:
 		glog.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor is shutting down")
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
 	}
 
 	logging.V(5).Infof(

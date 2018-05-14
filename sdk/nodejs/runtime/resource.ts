@@ -113,14 +113,14 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         const opLabel = `monitor.registerResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
             const resp: any = await debuggablePromise(new Promise((resolve, reject) =>
-                monitor.registerResource(req, async (err: grpc.ServiceError, innerResponse: any) => {
+                monitor.registerResource(req, (err: grpc.ServiceError, innerResponse: any) => {
                     log.debug(`RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
                     if (err) {
                         // If the monitor is unavailable, it is in the process of shutting down or has already
                         // shut down. Don't emit an error and don't do any more RPCs.
                         if (err.code === grpc.status.UNAVAILABLE) {
                             log.debug("Resource monitor is terminating");
-                            await waitForDeath();
+                            waitForDeath();
                         }
 
                         log.error(`Failed to register new resource '${name}' [${t}]: ${err.stack}`);
@@ -276,7 +276,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
         req.setOutputs(outputsObj);
 
         await debuggablePromise(new Promise((resolve, reject) =>
-            monitor.registerResourceOutputs(req, async (err: grpc.ServiceError, innerResponse: any) => {
+            monitor.registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
                 log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; `+
                     `err: ${err}, resp: ${innerResponse}`);
                 if (err) {
@@ -284,7 +284,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs) {
                     // shut down. Don't emit an error and don't do any more RPCs.
                     if (err.code === grpc.status.UNAVAILABLE) {
                         log.debug("Resource monitor is terminating");
-                        await waitForDeath();
+                        waitForDeath();
                     }
 
                     log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
@@ -349,7 +349,7 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
  *
  * We can accomplish both by just doing nothing until the engine kills us. It's ugly, but it works.
  */
-function waitForDeath(): Promise<void> {
+function waitForDeath(): never {
     // tslint:disable-next-line
     while (true) {}
 }

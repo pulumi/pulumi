@@ -25,9 +25,21 @@ def invoke(tok, args):
     # Now perform the invocation.  This is synchronous and will return only after the operation completes.
     # TODO[pulumi/pulumi#1063]: asynchronous registration to support parallelism.
     monitor = get_monitor()
-    resp = monitor.Invoke(provider_pb2.InvokeRequest(
-        tok=tok,
-        args=serialize_resource_props(args)))
+    try:
+        resp = monitor.Invoke(provider_pb2.InvokeRequest(
+            tok=tok,
+            args=serialize_resource_props(args)))
+    except grpc.RpcError as exn:
+        # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
+        # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
+        # the .code() member. Pylint doesn't know this because it's not known statically.
+        #
+        # Neither pylint nor I are the only ones who find this confusing:
+        # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+        # pylint: disable=no-member
+        if exn.code() == grpc.StatusCode.UNAVAILABLE:
+            wait_for_death()
+
 
     # If the invoke failed, raise an error.
     if resp.failures:
@@ -76,12 +88,8 @@ def register_resource(typ, name, custom, props, opts):
             object=objprops,
             protect=opts.protect if opts else None))
     except grpc.RpcError as exn:
-        # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
-        # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
-        # the .code() member. Pylint doesn't know this because it's not known statically.
-        #
-        # Neither pylint nor I are the only ones who find this confusing:
-        # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+        # See the above comment on invoke for the justification for disabling
+        # this warning
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
             wait_for_death()
@@ -122,7 +130,7 @@ def register_resource_outputs(res, outputs):
             urn=res.urn,
             outputs=objouts))
     except grpc.RpcError as exn:
-        # See the above comment on register_resource for the justification for disabling
+        # See the above comment on invoke for the justification for disabling
         # this warning
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
