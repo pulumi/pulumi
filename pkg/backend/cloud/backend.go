@@ -847,6 +847,7 @@ func (b *cloudBackend) runEngineAction(
 	scope := scopes.NewScope(engineEvents, dryRun)
 	defer scope.Close()
 
+	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
@@ -856,6 +857,8 @@ func (b *cloudBackend) runEngineAction(
 				callerEventsOpt <- e
 			}
 		}
+
+		close(eventsDone)
 	}()
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -890,6 +893,9 @@ func (b *cloudBackend) runEngineAction(
 	close(displayDone)
 	contract.IgnoreClose(manager)
 
+	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
+	// has exited before proceeding
+	<-eventsDone
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded
 		if err != nil {
