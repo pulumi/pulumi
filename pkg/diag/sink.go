@@ -189,6 +189,9 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
 	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
+	// Ensure that any sensitive data we know about is filtered out preemptively.
+	filtered := logging.FilterString(buffer.String())
+
 	// If colorization was requested, compile and execute the directives now.
-	return d.opts.Color.Colorize(prefix.String()), d.opts.Color.Colorize(buffer.String())
+	return d.opts.Color.Colorize(prefix.String()), d.opts.Color.Colorize(filtered)
 }

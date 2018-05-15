@@ -36,29 +36,16 @@ func V(level glog.Level) glog.Verbose {
 	return glog.V(level)
 }
 
-func runFilters(msg string) string {
-	var localFilters []Filter
-	rwLock.RLock()
-	localFilters = filters
-	rwLock.RUnlock()
-
-	for _, filter := range localFilters {
-		msg = filter.Filter(msg)
-	}
-
-	return msg
-}
-
 func Errorf(format string, args ...interface{}) {
-	glog.Errorf("%s", runFilters(fmt.Sprintf(format, args...)))
+	glog.Errorf("%s", FilterString(fmt.Sprintf(format, args...)))
 }
 
 func Infof(format string, args ...interface{}) {
-	glog.Infof("%s", runFilters(fmt.Sprintf(format, args...)))
+	glog.Infof("%s", FilterString(fmt.Sprintf(format, args...)))
 }
 
 func Warningf(format string, args ...interface{}) {
-	glog.Warningf("%s", runFilters(fmt.Sprintf(format, args...)))
+	glog.Warningf("%s", FilterString(fmt.Sprintf(format, args...)))
 }
 
 func Flush() {
@@ -111,7 +98,7 @@ func (f *regexFilter) Filter(s string) string {
 	return f.re.ReplaceAllLiteralString(s, f.replacement)
 }
 
-func AddFilter(filter Filter) {
+func AddGlobalFilter(filter Filter) {
 	rwLock.Lock()
 	filters = append(filters, filter)
 	rwLock.Unlock()
@@ -137,4 +124,17 @@ func CreateFilter(secrets []string, replacement string) Filter {
 	}
 
 	return &nopFilter{}
+}
+
+func FilterString(msg string) string {
+	var localFilters []Filter
+	rwLock.RLock()
+	localFilters = filters
+	rwLock.RUnlock()
+
+	for _, filter := range localFilters {
+		msg = filter.Filter(msg)
+	}
+
+	return msg
 }
