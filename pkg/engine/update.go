@@ -70,13 +70,13 @@ func newUpdateSource(
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
-	})
+	}, plugin.AllPlugins)
 	if err != nil {
 		return nil, err
 	}
 
 	// Now ensure that we have loaded up any plugins that the program will need in advance.
-	if err = plugctx.Host.EnsurePlugins(plugins); err != nil {
+	if err = plugctx.Host.EnsurePlugins(plugins, plugin.AllPlugins); err != nil {
 		return nil, err
 	}
 
