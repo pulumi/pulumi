@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -21,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/httputil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
 )
 
@@ -142,13 +142,13 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 	if tracingOptions.PropagateSpans {
 		carrier := opentracing.HTTPHeadersCarrier(req.Header)
 		if err = requestSpan.Tracer().Inject(requestSpan.Context(), opentracing.HTTPHeaders, carrier); err != nil {
-			glog.Errorf("injecting tracing headers: %v", err)
+			logging.Errorf("injecting tracing headers: %v", err)
 		}
 	}
 
-	glog.V(7).Infof("Making Pulumi API call: %s", url)
-	if glog.V(9) {
-		glog.V(9).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
+	logging.V(7).Infof("Making Pulumi API call: %s", url)
+	if logging.V(9) {
+		logging.V(9).Infof("Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
 	var resp *http.Response
@@ -161,7 +161,7 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "performing HTTP request")
 	}
-	glog.V(7).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
+	logging.V(7).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
 
 	requestSpan.SetTag("responseCode", resp.Status)
 
@@ -235,8 +235,8 @@ func pulumiRESTCall(ctx context.Context, cloudAPI, method, path string, queryObj
 	if err != nil {
 		return errors.Wrapf(err, "reading response from API")
 	}
-	if glog.V(9) {
-		glog.V(7).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
+	if logging.V(9) {
+		logging.V(7).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
 	}
 
 	if respObj != nil {

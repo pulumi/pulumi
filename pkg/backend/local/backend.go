@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -27,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -430,7 +430,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
 		_, _, _, err := b.getStack(name)
 		if err != nil {
-			glog.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
+			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.
 		}
 

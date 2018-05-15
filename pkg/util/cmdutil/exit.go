@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang/glog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
@@ -84,13 +84,13 @@ func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 				err = multierror.Append(err, postRunErr)
 			}
 
-			// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug glog it.
+			// If there is a stack trace, and logging is enabled, append it.  Otherwise, debug logging it.
 			var msg string
-			if LogToStderr {
+			if logging.LogToStderr {
 				msg = DetailedError(err)
 			} else {
 				msg = errorMessage(err)
-				glog.V(3).Infof(DetailedError(err))
+				logging.V(3).Infof(DetailedError(err))
 			}
 
 			ExitError(msg)

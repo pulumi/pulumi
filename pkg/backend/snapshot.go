@@ -3,13 +3,13 @@ package backend
 import (
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -119,12 +119,12 @@ func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
 // intent to mutate before the mutation occurs.
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Require(step != nil, "step != nil")
-	glog.V(9).Infof("Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
+	logging.V(9).Infof("Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
 	// This is for compat with the existing update model with the service. Invalidating a
 	// stack sets a bit in a database indicating that the stored snapshot is not valid.
 	if err := sm.persister.Invalidate(); err != nil {
-		glog.V(9).Infof("Failed to invalidate snapshot: %s", err.Error())
+		logging.V(9).Infof("Failed to invalidate snapshot: %s", err.Error())
 		return nil, err
 	}
 
@@ -234,7 +234,7 @@ func (sm *SnapshotManager) refresh() error {
 func (sm *SnapshotManager) markDone(state *resource.State) {
 	contract.Assert(state != nil)
 	sm.dones[state] = true
-	glog.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
+	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
 }
 
 // markNew marks a resource as existing in the new snapshot. This occurs on
@@ -243,7 +243,7 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 func (sm *SnapshotManager) markNew(state *resource.State) {
 	contract.Assert(state != nil)
 	sm.resources = append(sm.resources, state)
-	glog.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
+	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current

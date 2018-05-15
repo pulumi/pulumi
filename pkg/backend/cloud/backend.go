@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb"
-	"github.com/golang/glog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -734,7 +734,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 	if action == client.UpdateKindUpdate {
-		glog.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
+		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
 	return update, version, token, nil
@@ -1243,16 +1243,16 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 			if try < 10 {
 				warn = false
 			}
-			glog.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
+			logging.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
 				b.CloudURL(), errResp.Code, try, err)
 		} else {
 			// Otherwise, we will issue an error.
-			glog.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
+			logging.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
 				b.CloudURL(), errResp.Code, try, err)
 			return false, nil, err
 		}
 	} else {
-		glog.V(3).Infof("Unexpected %s error after %d retries (retrying): %v", b.CloudURL(), try, err)
+		logging.V(3).Infof("Unexpected %s error after %d retries (retrying): %v", b.CloudURL(), try, err)
 	}
 
 	// Issue a warning if appropriate.

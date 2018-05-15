@@ -27,11 +27,11 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -57,7 +57,7 @@ func main() {
 
 	flag.Parse()
 	args := flag.Args()
-	cmdutil.InitLogging(false, 0, false)
+	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-langauge-nodejs", tracing)
 
 	nodePath, err := exec.LookPath("node")
@@ -275,9 +275,9 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	env = append(env, pulumiConfigVar+"="+string(config))
 
-	if glog.V(5) {
+	if logging.V(5) {
 		commandStr := strings.Join(args, " ")
-		glog.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
+		logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.

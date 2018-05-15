@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -60,7 +60,7 @@ func (h *langhost) Runtime() string { return h.runtime }
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
 	proj := string(info.Proj.Name)
-	glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
+	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
 	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{
 		Project: proj,
@@ -69,7 +69,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
+		logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) failed: err=%v",
 			h.runtime, proj, info.Pwd, info.Program, rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPlugins
@@ -101,7 +101,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		})
 	}
 
-	glog.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
+	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
 		h.runtime, proj, info.Pwd, info.Program, len(results))
 	return results, nil
 
@@ -111,7 +111,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 // the code must not assume that side-effects or final values resulting from resource deployments are actually
 // available.  If it is false, on the other hand, a real deployment is occurring and it may safely depend on these.
 func (h *langhost) Run(info RunInfo) (string, error) {
-	glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
+	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string)
 	for k, v := range info.Config {
@@ -130,24 +130,24 @@ func (h *langhost) Run(info RunInfo) (string, error) {
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
+		logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) failed: err=%v",
 			h.runtime, info.Pwd, info.Program, info.DryRun, rpcError)
 		return "", rpcError
 	}
 
 	progerr := resp.GetError()
-	glog.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
+	logging.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
 		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
 	return progerr, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
-	glog.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
+	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
+		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
 		return workspace.PluginInfo{}, rpcError
 	}
 

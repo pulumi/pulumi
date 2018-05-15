@@ -10,12 +10,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -36,24 +36,24 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			cmdutil.InitLogging(logToStderr, verbose, logFlow)
+			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracing)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling); err != nil {
-					glog.Warningf("could not initialize profiling: %v", err)
+					logging.Warningf("could not initialize profiling: %v", err)
 				}
 			}
 
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			glog.Flush()
+			logging.Flush()
 			cmdutil.CloseTracing()
 
 			if profiling != "" {
 				if err := cmdutil.CloseProfiling(profiling); err != nil {
-					glog.Warningf("could not close profiling: %v", err)
+					logging.Warningf("could not close profiling: %v", err)
 				}
 			}
 		},
