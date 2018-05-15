@@ -3,15 +3,9 @@
 import * as log from "../log";
 
 /**
- * debugPromiseTimeout can be set to enable promises debugging.  If it is -1, it has no effect.  Be careful setting
- * this to other values, because too small a value will cause legitimate promise resolutions to appear as timeouts.
- */
-const debugPromiseTimeout: number = -1;
-
-/**
  * debugPromiseLeaks can be set to enable promises leaks debugging.
  */
-const debugPromiseLeaks: boolean = true;
+const debugPromiseLeaks: boolean = !!process.env.PULUMI_DEBUG_PROMISE_LEAKS;
 
 /**
  * leakDetectorScheduled is true when the promise leak detector is scheduled for process exit.
@@ -36,63 +30,49 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
     Object.defineProperty(p, "_debugCtx", { writable: true, value: ctx });
     Object.defineProperty(p, "_debugStackTrace", { writable: true, value: new Error().stack });
 
-    if (debugPromiseLeaks) {
-        // Setup leak detection.
-        if (!leakDetectorScheduled) {
-            process.on("exit", (code: number) => {
-                // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
-                // course yields things that look like "leaks".
-                if (code === 0 && !log.hasErrors()) {
+    if (!leakDetectorScheduled) {
+        process.on("exit", (code: number) => {
+            // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
+            // course yields things that look like "leaks".
+            if (code === 0 && !log.hasErrors()) {
+                // If we've opted-in to the debug error message, send it out here.
+                if (debugPromiseLeaks) {
                     for (const leaked of leakCandidates) {
                         console.error("Promise leak detected:");
                         console.error(promiseDebugString(leaked));
                     }
+
+                    return;
                 }
-            });
-            leakDetectorScheduled = true;
-        }
 
-        // Add this promise to the leak candidates list, and schedule it for removal if it resolves.
-        leakCandidates.add(p);
-        return p.then((val: any) => {
-            leakCandidates.delete(p);
-            return val;
-        }).catch((err: any) => {
-            leakCandidates.delete(p);
-            throw err;
+                // Otherwise, issue a more user-friendly message.
+                const leakedCount = leakCandidates.size;
+                const promisePlural = leakedCount === 1 ? "promise" : "promises";
+                console.error(`The Pulumi runtime detected that ${leakedCount} ${promisePlural} were still active`);
+                console.error("at the time that the process exited. There are a few ways that this can occur:");
+                console.error("  * Not using `await` or `.then` on a Promise returned from a Pulumi API");
+                console.error("  * Introducing a cyclic dependency between two Pulumi Resources");
+                console.error("  * A bug in the Pulumi Runtime");
+                console.error("");
+                console.error("Leaving promises active is probably not what you want. If you are unsure about");
+                console.error("why you are seeing this message, re-run your program "
+                    + "with the `PULUMI_DEBUG_PROMISE_LEAKS`");
+                console.error("environment variable. The Pulumi runtime will then print out additional");
+                console.error("debug information about the leaked promises.");
+            }
         });
+        leakDetectorScheduled = true;
     }
 
-    // If the timeout isn't -1, register a timer.
-    if (debugPromiseTimeout !== -1) {
-        // Create a timer that we race against the original promise.
-        let timetok: any;
-        const timeout = new Promise<T>((resolve, reject) => {
-            timetok = setTimeout(() => {
-                clearTimeout(timetok);
-                reject(
-                    `Promise timeout after ${debugPromiseTimeout}ms;\n` +
-                    `CONTEXT: ${ctx}\n` +
-                    `STACK TRACE:\n` +
-                    `${(<any>p)._debugStackTrace}`,
-                );
-            }, debugPromiseTimeout);
-        });
-
-        // Ensure to cancel the timer should the promise actually resolve.
-        const clearP = p.then((v: any) => {
-            clearTimeout(timetok);
-            return v;
-        }).catch((err: any) => {
-            clearTimeout(timetok);
-            throw err;
-        });
-
-        // Now race them; first one wins!
-        return Promise.race([ clearP, timeout ]);
-    }
-
-    return p;
+    // Add this promise to the leak candidates list, and schedule it for removal if it resolves.
+    leakCandidates.add(p);
+    return p.then((val: any) => {
+        leakCandidates.delete(p);
+        return val;
+    }).catch((err: any) => {
+        leakCandidates.delete(p);
+        throw err;
+    });
 }
 
 /**
