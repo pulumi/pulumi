@@ -18,10 +18,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
@@ -285,7 +285,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// If we have a version of the plugin on its $PATH, use it.  This supports development scenarios.
 	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 	if path, err := exec.LookPath(filename); err == nil {
-		glog.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
+		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
 		return "", path, nil
 	}
 
@@ -314,7 +314,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 
 			if m != nil {
 				match = m
-				glog.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
+				logging.V(6).Infof("GetPluginPath(%s, %s, %s): found candidate (#%s)",
 					kind, name, version, match.Version)
 			}
 		}
@@ -330,7 +330,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 			return "", "", err
 		}
 
-		glog.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
+		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
 		return matchDir, matchPath, nil
 	}
 
@@ -347,14 +347,14 @@ var pluginRegexp = regexp.MustCompile(
 func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
-		glog.V(11).Infof("skipping file in plugin directory: %s", file.Name())
+		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
 		return "", "", semver.Version{}, false
 	}
 
 	// Filenames must match the plugin regexp.
 	match := pluginRegexp.FindStringSubmatch(file.Name())
 	if len(match) != len(pluginRegexp.SubexpNames()) {
-		glog.V(11).Infof("skipping plugin %s with missing capture groups: expect=%d, actual=%d",
+		logging.V(11).Infof("skipping plugin %s with missing capture groups: expect=%d, actual=%d",
 			file.Name(), len(pluginRegexp.SubexpNames()), len(match))
 		return "", "", semver.Version{}, false
 	}
@@ -369,7 +369,7 @@ func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 			if IsPluginKind(v) {
 				kind = PluginKind(v)
 			} else {
-				glog.V(11).Infof("skipping invalid plugin kind: %s", v)
+				logging.V(11).Infof("skipping invalid plugin kind: %s", v)
 			}
 		case "Name":
 			name = v
@@ -379,14 +379,14 @@ func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 			if err == nil {
 				version = &ver
 			} else {
-				glog.V(11).Infof("skipping invalid plugin version: %s", v)
+				logging.V(11).Infof("skipping invalid plugin version: %s", v)
 			}
 		}
 	}
 
 	// If anything was missing or invalid, skip this plugin.
 	if kind == "" || name == "" || version == nil {
-		glog.V(11).Infof("skipping plugin with missing information: kind=%s, name=%s, version=%v",
+		logging.V(11).Infof("skipping plugin with missing information: kind=%s, name=%s, version=%v",
 			kind, name, version)
 		return "", "", semver.Version{}, false
 	}

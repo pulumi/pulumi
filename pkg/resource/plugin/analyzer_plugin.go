@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -65,7 +65,7 @@ func (a *analyzer) label() string {
 // Analyze analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
-	glog.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 	mprops, err := MarshalProperties(props, MarshalOptions{})
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcError)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
 		return nil, rpcError
 	}
 
@@ -88,18 +88,18 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 			Reason:   failure.Reason,
 		})
 	}
-	glog.V(7).Infof("%s success: failures=#%d", label, len(failures))
+	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
 	return failures, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
-	glog.V(7).Infof("%s executing", label)
+	logging.V(7).Infof("%s executing", label)
 	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
+		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
 		return workspace.PluginInfo{}, rpcError
 	}
 

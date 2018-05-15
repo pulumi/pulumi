@@ -6,9 +6,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 func newEventSink(events eventEmitter) diag.Sink {
@@ -41,42 +41,42 @@ func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
 
 func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
-	glog.V(3).Infof(d.Message, args...)
+	logging.V(3).Infof(d.Message, args...)
 	prefix, msg := s.Stringify(diag.Debug, d, args...)
-	if glog.V(9) {
-		glog.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
+	if logging.V(9) {
+		logging.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagDebugEvent(d, prefix, msg)
 }
 
 func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Info, d, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagInfoEvent(d, prefix, msg)
 }
 
 func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagInfoerrEvent(d, prefix, msg)
 }
 
 func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Error, d, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagErrorEvent(d, prefix, msg)
 }
 
 func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Warning, d, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagWarningEvent(d, prefix, msg)
 }

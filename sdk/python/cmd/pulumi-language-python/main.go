@@ -22,10 +22,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -54,7 +54,7 @@ func main() {
 
 	flag.Parse()
 	args := flag.Args()
-	cmdutil.InitLogging(false, 0, false)
+	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
 	var pythonExec string
 	if givenExecutor == "" {
@@ -71,10 +71,10 @@ func main() {
 			cmdutil.Exit(err)
 		}
 
-		glog.V(3).Infof("language host identified executor from path: `%s`", pathExec)
+		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
 		pythonExec = pathExec
 	} else {
-		glog.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
 		pythonExec = givenExecutor
 	}
 
@@ -137,9 +137,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	if glog.V(5) {
+	if logging.V(5) {
 		commandStr := strings.Join(args, " ")
-		glog.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.

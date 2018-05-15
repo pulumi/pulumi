@@ -8,10 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/golang/glog"
-
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -113,42 +112,42 @@ func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{
 
 func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
-	glog.V(3).Infof(diag.Message, args...)
+	logging.V(3).Infof(diag.Message, args...)
 	msg := d.createMessage(Debug, diag, args...)
-	if glog.V(9) {
-		glog.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
+	if logging.V(9) {
+		logging.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Debug], msg)
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	msg := d.createMessage(Info, diag, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Info], msg)
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 	msg := d.createMessage(Info /* not Infoerr, just "info: "*/, diag, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Infoerr], msg)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	msg := d.createMessage(Error, diag, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Error], msg)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	msg := d.createMessage(Warning, diag, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
+	if logging.V(5) {
+		logging.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprint(d.writers[Warning], msg)
 }

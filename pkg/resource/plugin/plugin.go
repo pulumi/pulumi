@@ -14,7 +14,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/golang/glog"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -26,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -70,7 +70,7 @@ var pluginRPCConnectionTimeout = time.Second * 10
 var nextStreamID int32
 
 func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin, error) {
-	if glog.V(9) {
+	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
 			if i > 0 {
@@ -78,7 +78,7 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 			}
 			argstr += arg
 		}
-		glog.V(9).Infof("Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
+		logging.V(9).Infof("Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
 	}
 
 	// Try to execute the binary.
@@ -217,12 +217,12 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 func execPlugin(bin string, pluginArgs []string, pwd string) (*plugin, error) {
 	var args []string
 	// Flow the logging information if set.
-	if cmdutil.LogFlow {
-		if cmdutil.LogToStderr {
+	if logging.LogFlow {
+		if logging.LogToStderr {
 			args = append(args, "--logtostderr")
 		}
-		if cmdutil.Verbose > 0 {
-			args = append(args, "-v="+strconv.Itoa(cmdutil.Verbose))
+		if logging.Verbose > 0 {
+			args = append(args, "-v="+strconv.Itoa(logging.Verbose))
 		}
 	}
 	// Always flow tracing settings.

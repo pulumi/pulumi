@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/blang/semver"
-	"github.com/golang/glog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -379,17 +379,17 @@ func (host *defaultHost) Close() error {
 	// Close all plugins.
 	for _, plug := range host.analyzerPlugins {
 		if err := plug.Plugin.Close(); err != nil {
-			glog.Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			logging.Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
 		}
 	}
 	for _, plug := range host.resourcePlugins {
 		if err := plug.Plugin.Close(); err != nil {
-			glog.Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			logging.Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
 		}
 	}
 	for _, plug := range host.languagePlugins {
 		if err := plug.Plugin.Close(); err != nil {
-			glog.Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			logging.Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
 		}
 	}
 
