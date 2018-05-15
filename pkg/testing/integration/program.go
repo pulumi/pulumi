@@ -136,7 +136,7 @@ type ProgramTestOptions struct {
 	Tracing string
 
 	// PreUpdate specifies a callback that will be executed before each update, destroy, and refresh.
-	PreUpdate func() error
+	PreUpdate func(op string) error
 	// PostUpdate specifies a callback that will be executed after each update, destroy, and refresh.
 	PostUpdate func(runErr error) error
 
@@ -380,7 +380,7 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		return err
 	}
 
-	preFn, postFn := func() error { return nil }, func(_ error) error { return nil }
+	preFn, postFn := func(_ string) error { return nil }, func(_ error) error { return nil }
 	switch args[0] {
 	case "update", "destroy", "refresh":
 		if pt.opts.PreUpdate != nil {
@@ -391,12 +391,15 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		}
 	}
 
-	if err := preFn(); err != nil {
+	if err := preFn(args[0]); err != nil {
 		return err
 	}
 	runErr := pt.runCommand(name, cmd, wd)
 	postErr := postFn(runErr)
-	return multierror.Append(runErr, postErr)
+	if runErr != nil {
+		return multierror.Append(runErr, postErr)
+	}
+	return postErr
 }
 
 func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
