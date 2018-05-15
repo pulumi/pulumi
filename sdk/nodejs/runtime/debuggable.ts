@@ -47,18 +47,20 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
 
                 // Otherwise, issue a more user-friendly message.
                 const leakedCount = leakCandidates.size;
-                const promisePlural = leakedCount === 1 ? "promise" : "promises";
-                console.error(`The Pulumi runtime detected that ${leakedCount} ${promisePlural} were still active`);
-                console.error("at the time that the process exited. There are a few ways that this can occur:");
-                console.error("  * Not using `await` or `.then` on a Promise returned from a Pulumi API");
-                console.error("  * Introducing a cyclic dependency between two Pulumi Resources");
-                console.error("  * A bug in the Pulumi Runtime");
-                console.error("");
-                console.error("Leaving promises active is probably not what you want. If you are unsure about");
-                console.error("why you are seeing this message, re-run your program "
-                    + "with the `PULUMI_DEBUG_PROMISE_LEAKS`");
-                console.error("environment variable. The Pulumi runtime will then print out additional");
-                console.error("debug information about the leaked promises.");
+                if (leakedCount > 0) {
+                    const promisePlural = leakedCount === 1 ? "promise" : "promises";
+                    console.error(`The Pulumi runtime detected that ${leakedCount} ${promisePlural} were still active`);
+                    console.error("at the time that the process exited. There are a few ways that this can occur:");
+                    console.error("  * Not using `await` or `.then` on a Promise returned from a Pulumi API");
+                    console.error("  * Introducing a cyclic dependency between two Pulumi Resources");
+                    console.error("  * A bug in the Pulumi Runtime");
+                    console.error("");
+                    console.error("Leaving promises active is probably not what you want. If you are unsure about");
+                    console.error("why you are seeing this message, re-run your program "
+                        + "with the `PULUMI_DEBUG_PROMISE_LEAKS`");
+                    console.error("environment variable. The Pulumi runtime will then print out additional");
+                    console.error("debug information about the leaked promises.");
+                }
             }
         });
         leakDetectorScheduled = true;
