@@ -11,43 +11,54 @@ package logging
 // should be updated to properly filter as well before forwarding things along.
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/golang/glog"
 )
 
-type filter interface {
+type Filter interface {
 	Filter(s string) string
 }
 
 var LogToStderr = false // true if logging is being redirected to stderr.
 var Verbose = 0         // >0 if verbose logging is enabled at a particular level.
 var LogFlow = false     // true to flow logging settings to child processes.
-var Filter filter = &nopFilter{}
 
-type nopFilter struct {
-}
-
-func (filter nopFilter) Filter(s string) string {
-	return s
-}
+var rwLock sync.RWMutex
+var filters []Filter
 
 func V(level glog.Level) glog.Verbose {
 	return glog.V(level)
 }
 
+func runFilters(msg string) string {
+	var localFilters []Filter
+	rwLock.RLock()
+	localFilters = filters
+	rwLock.RUnlock()
+
+	for _, filter := range localFilters {
+		msg = filter.Filter(msg)
+	}
+
+	return msg
+}
+
 func Errorf(format string, args ...interface{}) {
-	glog.Errorf("%s", Filter.Filter(fmt.Sprintf(format, args...)))
+	glog.Errorf("%s", runFilters(fmt.Sprintf(format, args...)))
 }
 
 func Infof(format string, args ...interface{}) {
-	glog.Infof("%s", Filter.Filter(fmt.Sprintf(format, args...)))
+	glog.Infof("%s", runFilters(fmt.Sprintf(format, args...)))
 }
 
 func Warningf(format string, args ...interface{}) {
-	glog.Warningf("%s", Filter.Filter(fmt.Sprintf(format, args...)))
+	glog.Warningf("%s", runFilters(fmt.Sprintf(format, args...)))
 }
 
 func Flush() {
@@ -84,6 +95,46 @@ func failfast(msg string) {
 	panic(fmt.Sprintf("fatal: %v", msg))
 }
 
-func SetFilter(filter filter) {
-	Filter = filter
+type nopFilter struct {
+}
+
+func (f *nopFilter) Filter(s string) string {
+	return s
+}
+
+type regexFilter struct {
+	re          *regexp.Regexp
+	replacement string
+}
+
+func (f *regexFilter) Filter(s string) string {
+	return f.re.ReplaceAllLiteralString(s, f.replacement)
+}
+
+func AddFilter(filter Filter) {
+	rwLock.Lock()
+	filters = append(filters, filter)
+	rwLock.Unlock()
+}
+
+func CreateFilter(secrets []string, replacement string) Filter {
+	var b bytes.Buffer
+	for _, secret := range secrets {
+		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
+		// displaying `[secret]`. Travis does a similar thing, for example.
+		if len(secret) < 3 {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteRune('|')
+		}
+
+		b.WriteString(regexp.QuoteMeta(secret))
+	}
+	// "[secret]"
+	if b.Len() > 0 {
+		return &regexFilter{re: regexp.MustCompile(b.String()), replacement: replacement}
+	}
+
+	return &nopFilter{}
 }

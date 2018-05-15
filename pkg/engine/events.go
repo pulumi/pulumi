@@ -3,9 +3,7 @@
 package engine
 
 import (
-	"bytes"
 	"reflect"
-	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -127,11 +125,9 @@ type StepEventStateMetadata struct {
 }
 
 func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
-	var f filter = &nopFilter{}
-
 	target := update.GetTarget()
+	var secrets []string
 	if target.Config.HasSecureValue() {
-		var b bytes.Buffer
 		for _, v := range target.Config {
 			if !v.Secure() {
 				continue
@@ -139,23 +135,12 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 			secret, err := v.Value(target.Decrypter)
 			contract.AssertNoError(err)
 
-			// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
-			// displaying `[secret]`. Travis does a similar thing, for example.
-			if len(secret) < 3 {
-				continue
-			}
-			if b.Len() > 0 {
-				b.WriteRune('|')
-			}
-
-			b.WriteString(regexp.QuoteMeta(secret))
-		}
-		if b.Len() > 0 {
-			f = &regexFilter{re: regexp.MustCompile(b.String())}
+			secrets = append(secrets, secret)
 		}
 	}
 
-	logging.SetFilter(f)
+	f := logging.CreateFilter(secrets, "[secret]")
+	logging.AddFilter(f)
 
 	return eventEmitter{
 		Chan:   events,
@@ -165,10 +150,10 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 
 type eventEmitter struct {
 	Chan   chan<- Event
-	Filter filter
+	Filter logging.Filter
 }
 
-func makeStepEventMetadata(step deploy.Step, filter filter, debug bool) StepEventMetadata {
+func makeStepEventMetadata(step deploy.Step, filter logging.Filter, debug bool) StepEventMetadata {
 	var keys []resource.PropertyKey
 
 	if step.Op() == deploy.OpCreateReplacement {
@@ -189,7 +174,7 @@ func makeStepEventMetadata(step deploy.Step, filter filter, debug bool) StepEven
 	}
 }
 
-func makeStepEventStateMetadata(state *resource.State, filter filter, debug bool) *StepEventStateMetadata {
+func makeStepEventStateMetadata(state *resource.State, filter logging.Filter, debug bool) *StepEventStateMetadata {
 	if state == nil {
 		return nil
 	}
@@ -207,7 +192,7 @@ func makeStepEventStateMetadata(state *resource.State, filter filter, debug bool
 	}
 }
 
-func filterPropertyMap(propertyMap resource.PropertyMap, filter filter, debug bool) resource.PropertyMap {
+func filterPropertyMap(propertyMap resource.PropertyMap, filter logging.Filter, debug bool) resource.PropertyMap {
 	mappable := propertyMap.Mappable()
 
 	var filterValue func(v interface{}) interface{}
@@ -314,25 +299,6 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter filter, debug bo
 		func(v interface{}) (resource.PropertyValue, bool) {
 			return resource.NewPropertyValue(filterValue(v)), true
 		})
-}
-
-type filter interface {
-	Filter(s string) string
-}
-
-type nopFilter struct {
-}
-
-func (f *nopFilter) Filter(s string) string {
-	return s
-}
-
-type regexFilter struct {
-	re *regexp.Regexp
-}
-
-func (f *regexFilter) Filter(s string) string {
-	return f.re.ReplaceAllLiteralString(s, "[secret]")
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
