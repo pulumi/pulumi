@@ -5,6 +5,10 @@ package logging
 // Wrapper around the glog API that allows us to intercept all logging calls and manipulate them as
 // necessary.  This is primarily used so we can make a best effort approach to filtering out secrets
 // from any logs we emit before they get written to log-files/stderr.
+//
+// Code in pulumi should use this package instead of directly importing glog itself.  If any glog
+// methods are needed that are not exported from this, they can be added, with the caveat that they
+// should be updated to properly filter as well before forwarding things along.
 
 import (
 	"flag"
