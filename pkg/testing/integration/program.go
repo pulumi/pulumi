@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -133,6 +134,10 @@ type ProgramTestOptions struct {
 
 	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocatoions.
 	Tracing string
+
+	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
+	// optionally return another callback to be invoked after the `pulumi` invocation completes.
+	PrePulumiCommand func(verb string) (func(err error) error, error)
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
@@ -373,7 +378,22 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 	if err != nil {
 		return err
 	}
-	return pt.runCommand(name, cmd, wd)
+
+	var postFn func(error) error
+	if pt.opts.PrePulumiCommand != nil {
+		postFn, err = pt.opts.PrePulumiCommand(args[0])
+		if err != nil {
+			return err
+		}
+	}
+
+	runErr := pt.runCommand(name, cmd, wd)
+	if postFn != nil {
+		if postErr := postFn(runErr); postErr != nil {
+			return multierror.Append(runErr, postErr)
+		}
+	}
+	return runErr
 }
 
 func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
