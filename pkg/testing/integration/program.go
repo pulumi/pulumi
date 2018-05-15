@@ -380,7 +380,7 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		return err
 	}
 
-	preFn, postFn := func() error { return nil }, func (_ error) error { return nil }
+	preFn, postFn := func() error { return nil }, func(_ error) error { return nil }
 	switch args[0] {
 	case "update", "destroy", "refresh":
 		if pt.opts.PreUpdate != nil {
