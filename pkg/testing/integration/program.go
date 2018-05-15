@@ -135,10 +135,9 @@ type ProgramTestOptions struct {
 	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocatoions.
 	Tracing string
 
-	// PreUpdate specifies a callback that will be executed before each update, destroy, and refresh.
-	PreUpdate func(op string) error
-	// PostUpdate specifies a callback that will be executed after each update, destroy, and refresh.
-	PostUpdate func(runErr error) error
+	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
+	// optionally return another callback to be invoked after the `pulumi` invocation completes.
+	PrePulumiCommand func(verb string) (func(err error) error, error)
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
@@ -380,26 +379,21 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 		return err
 	}
 
-	preFn, postFn := func(_ string) error { return nil }, func(_ error) error { return nil }
-	switch args[0] {
-	case "update", "destroy", "refresh":
-		if pt.opts.PreUpdate != nil {
-			preFn = pt.opts.PreUpdate
-		}
-		if pt.opts.PostUpdate != nil {
-			postFn = pt.opts.PostUpdate
+	var postFn func(error) error
+	if pt.opts.PrePulumiCommand != nil {
+		postFn, err = pt.opts.PrePulumiCommand(args[0])
+		if err != nil {
+			return err
 		}
 	}
 
-	if err := preFn(args[0]); err != nil {
-		return err
-	}
 	runErr := pt.runCommand(name, cmd, wd)
-	postErr := postFn(runErr)
-	if runErr != nil {
-		return multierror.Append(runErr, postErr)
+	if postFn != nil {
+		if postErr := postFn(runErr); postErr != nil {
+			return multierror.Append(runErr, postErr)
+		}
 	}
-	return postErr
+	return runErr
 }
 
 func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
