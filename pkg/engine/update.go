@@ -229,7 +229,7 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
 	// reported above.
-	return ctx.(SnapshotMutation).End(step, err == nil)
+	return ctx.(SnapshotMutation).End(step, err == nil || status == resource.StatusPartialFailure)
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {

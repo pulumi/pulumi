@@ -141,6 +141,10 @@ async function createRPC(call: any, callback: any): Promise<void> {
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
         }
 
+        if (result.error) {
+            resp.setError(result.error);
+        }
+
         callback(undefined, resp);
     } catch (e) {
         console.error(`${e}: ${e.stack}`);
@@ -185,6 +189,10 @@ async function updateRPC(call: any, callback: any): Promise<void> {
             const result: any = await provider.update(req.getId(), olds, news);
             if (result.outs) {
                 resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+            }
+
+            if (result.error) {
+                resp.setError(result.error);
             }
         }
 

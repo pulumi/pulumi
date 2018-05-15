@@ -270,8 +270,16 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusUnknown, err
 	}
 
+	var resourceError error
+	resourceStatus := resource.StatusOK
+	if resp.GetError() != "" {
+		// The resource was created, but a follow-up step failed.
+		resourceError = errors.New(resp.GetError())
+		resourceStatus = resource.StatusPartialFailure
+	}
+
 	glog.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
-	return id, outs, resource.StatusOK, nil
+	return id, outs, resourceStatus, resourceError
 }
 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
@@ -371,8 +379,16 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusUnknown, err
 	}
 
+	var resourceError error
+	resourceStatus := resource.StatusOK
+	if resp.GetError() != "" {
+		// The resource was updated, but a follow-up step failed.
+		resourceError = errors.New(resp.GetError())
+		resourceStatus = resource.StatusPartialFailure
+	}
+
 	glog.V(7).Infof("%s success; #outs=%d", label, len(outs))
-	return outs, resource.StatusOK, nil
+	return outs, resourceStatus, resourceError
 }
 
 // Delete tears down an existing resource.
