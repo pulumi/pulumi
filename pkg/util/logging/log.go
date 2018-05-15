@@ -2,6 +2,10 @@
 
 package logging
 
+// Wrapper around the glog API that allows us to intercept all logging calls and manipulate them as
+// necessary.  This is primarily used so we can make a best effort approach to filtering out secrets
+// from any logs we emit before they get written to log-files/stderr.
+
 import (
 	"flag"
 	"fmt"
