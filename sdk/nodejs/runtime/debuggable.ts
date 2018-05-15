@@ -54,7 +54,13 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
 
         // Add this promise to the leak candidates list, and schedule it for removal if it resolves.
         leakCandidates.add(p);
-        p.then((v: any) => leakCandidates.delete(p), (err: any) => leakCandidates.delete(p));
+        return p.then((val: any) => {
+            leakCandidates.delete(p);
+            return val;
+        }).catch((err: any) => {
+            leakCandidates.delete(p);
+            throw err;
+        });
     }
 
     // If the timeout isn't -1, register a timer.
@@ -74,10 +80,16 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
         });
 
         // Ensure to cancel the timer should the promise actually resolve.
-        p.then((v: any) => clearTimeout(timetok), (err: any) => clearTimeout(timetok));
+        const clearP = p.then((v: any) => {
+            clearTimeout(timetok);
+            return v;
+        }).catch((err: any) => {
+            clearTimeout(timetok);
+            throw err;
+        });
 
         // Now race them; first one wins!
-        p = Promise.race([ p, timeout ]);
+        return Promise.race([ clearP, timeout ]);
     }
 
     return p;
