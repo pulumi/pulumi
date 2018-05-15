@@ -139,21 +139,18 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 		}
 	}
 
-	f := logging.CreateFilter(secrets, "[secret]")
-	logging.AddGlobalFilter(f)
+	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
 
 	return eventEmitter{
-		Chan:   events,
-		Filter: f,
+		Chan: events,
 	}
 }
 
 type eventEmitter struct {
-	Chan   chan<- Event
-	Filter logging.Filter
+	Chan chan<- Event
 }
 
-func makeStepEventMetadata(step deploy.Step, filter logging.Filter, debug bool) StepEventMetadata {
+func makeStepEventMetadata(step deploy.Step, debug bool) StepEventMetadata {
 	var keys []resource.PropertyKey
 
 	if step.Op() == deploy.OpCreateReplacement {
@@ -167,14 +164,14 @@ func makeStepEventMetadata(step deploy.Step, filter logging.Filter, debug bool) 
 		URN:     step.URN(),
 		Type:    step.Type(),
 		Keys:    keys,
-		Old:     makeStepEventStateMetadata(step.Old(), filter, debug),
-		New:     makeStepEventStateMetadata(step.New(), filter, debug),
-		Res:     makeStepEventStateMetadata(step.Res(), filter, debug),
+		Old:     makeStepEventStateMetadata(step.Old(), debug),
+		New:     makeStepEventStateMetadata(step.New(), debug),
+		Res:     makeStepEventStateMetadata(step.Res(), debug),
 		Logical: step.Logical(),
 	}
 }
 
-func makeStepEventStateMetadata(state *resource.State, filter logging.Filter, debug bool) *StepEventStateMetadata {
+func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventStateMetadata {
 	if state == nil {
 		return nil
 	}
@@ -187,12 +184,12 @@ func makeStepEventStateMetadata(state *resource.State, filter logging.Filter, de
 		ID:      state.ID,
 		Parent:  state.Parent,
 		Protect: state.Protect,
-		Inputs:  filterPropertyMap(state.Inputs, filter, debug),
-		Outputs: filterPropertyMap(state.Outputs, filter, debug),
+		Inputs:  filterPropertyMap(state.Inputs, debug),
+		Outputs: filterPropertyMap(state.Outputs, debug),
 	}
 }
 
-func filterPropertyMap(propertyMap resource.PropertyMap, filter logging.Filter, debug bool) resource.PropertyMap {
+func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.PropertyMap {
 	mappable := propertyMap.Mappable()
 
 	var filterValue func(v interface{}) interface{}
@@ -218,7 +215,7 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter logging.Filter, 
 			return v
 		case string:
 			// have to ensure we filter out secrets.
-			return filter.Filter(t)
+			return logging.FilterString(t)
 		case *resource.Asset:
 			text := t.Text
 			if text != "" {
@@ -229,7 +226,7 @@ func filterPropertyMap(propertyMap resource.PropertyMap, filter logging.Filter, 
 				// progress/diffs/etc.
 				if t.IsUserProgramCode() {
 					// also make sure we filter this in case there are any secrets in the code.
-					text = filter.Filter(resource.MassageIfUserProgramCodeAsset(t, debug).Text)
+					text = logging.FilterString(resource.MassageIfUserProgramCodeAsset(t, debug).Text)
 				} else {
 					// We need to have some string here so that we preserve that this is a
 					// text-asset
@@ -309,7 +306,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 	e.Chan <- Event{
 		Type: ResourceOperationFailed,
 		Payload: ResourceOperationFailedPayload{
-			Metadata: makeStepEventMetadata(step, e.Filter, debug),
+			Metadata: makeStepEventMetadata(step, debug),
 			Status:   status,
 			Steps:    steps,
 		},
@@ -324,7 +321,7 @@ func (e *eventEmitter) resourceOutputsEvent(
 	e.Chan <- Event{
 		Type: ResourceOutputsEvent,
 		Payload: ResourceOutputsEventPayload{
-			Metadata: makeStepEventMetadata(step, e.Filter, debug),
+			Metadata: makeStepEventMetadata(step, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
@@ -339,7 +336,7 @@ func (e *eventEmitter) resourcePreEvent(
 	e.Chan <- Event{
 		Type: ResourcePreEvent,
 		Payload: ResourcePreEventPayload{
-			Metadata: makeStepEventMetadata(step, e.Filter, debug),
+			Metadata: makeStepEventMetadata(step, debug),
 			Planning: planning,
 			Debug:    debug,
 		},
@@ -402,8 +399,8 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 		Type: DiagEvent,
 		Payload: DiagEventPayload{
 			URN:      d.URN,
-			Prefix:   e.Filter.Filter(prefix),
-			Message:  e.Filter.Filter(msg),
+			Prefix:   logging.FilterString(prefix),
+			Message:  logging.FilterString(msg),
 			Color:    colors.Raw,
 			Severity: sev,
 			StreamID: d.StreamID,
