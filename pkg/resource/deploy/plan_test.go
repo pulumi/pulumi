@@ -373,10 +373,11 @@ func (host *testProviderHost) LanguageRuntime(runtime string) (plugin.LanguageRu
 func (host *testProviderHost) ListPlugins() []workspace.PluginInfo {
 	return nil
 }
-func (host *testProviderHost) EnsurePlugins(plugins []workspace.PluginInfo) error {
+func (host *testProviderHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
 	return nil
 }
-func (host *testProviderHost) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
+func (host *testProviderHost) GetRequiredPlugins(info plugin.ProgInfo,
+	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
 	return nil, nil
 }
 

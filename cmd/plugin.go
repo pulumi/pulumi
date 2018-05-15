@@ -58,7 +58,7 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
-	})
+	}, plugin.AllPlugins)
 	if err != nil {
 		return nil, err
 	}
