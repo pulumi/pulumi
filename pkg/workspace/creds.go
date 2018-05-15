@@ -127,7 +127,7 @@ func GetStoredCredentials() (Credentials, error) {
 		secrets = append(secrets, v)
 	}
 
-	logging.AddFilter(logging.CreateFilter(secrets, "[credential]"))
+	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[credential]"))
 
 	return creds, nil
 }

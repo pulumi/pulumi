@@ -140,7 +140,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) eventEmitter {
 	}
 
 	f := logging.CreateFilter(secrets, "[secret]")
-	logging.AddFilter(f)
+	logging.AddGlobalFilter(f)
 
 	return eventEmitter{
 		Chan:   events,
