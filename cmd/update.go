@@ -95,7 +95,7 @@ func newUpdateCmd() *cobra.Command {
 				return errors.New("update cancelled")
 			case err != nil:
 				return err
-			case expectNop && changes.HasChanges():
+			case expectNop && changes != nil && changes.HasChanges():
 				return errors.New("error: no changes were expected but changes occurred")
 			default:
 				return nil
