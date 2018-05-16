@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -50,22 +51,22 @@ func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 }
 
 func (s *localStack) Preview(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return backend.PreviewStack(ctx, s, proj, root, m, opts, scopes)
 }
 
 func (s *localStack) Update(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return backend.UpdateStack(ctx, s, proj, root, m, opts, scopes)
 }
 
 func (s *localStack) Refresh(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return backend.RefreshStack(ctx, s, proj, root, m, opts, scopes)
 }
 
 func (s *localStack) Destroy(ctx context.Context, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return backend.DestroyStack(ctx, s, proj, root, m, opts, scopes)
 }
 

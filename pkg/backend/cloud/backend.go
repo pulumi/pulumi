@@ -551,7 +551,8 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 
 func (b *cloudBackend) PreviewThenPrompt(
 	ctx context.Context, updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (bool, error) {
+	m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, bool, error) {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -574,25 +575,25 @@ func (b *cloudBackend) PreviewThenPrompt(
 	}()
 
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
-	hasChanges := true
+	changes, hasChanges := engine.ResourceChanges(nil), true
 	if !opts.SkipPreview {
-		changes, err := b.updateStack(
+		c, err := b.updateStack(
 			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel, true /*dryRun*/, scopes)
 		if err != nil {
-			return false, err
+			return c, false, err
 		}
 
 		// TODO(ellismg)[pulumi/pulumi#1347]: Work around 1347 by forcing a choice when running a preview against a PPC
-		hasChanges = changes.HasChanges() || !stack.(Stack).RunLocally()
+		changes, hasChanges = c, c.HasChanges() || !stack.(Stack).RunLocally()
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if !hasChanges || opts.AutoApprove || updateKind == client.UpdateKindPreview {
-		return hasChanges, nil
+		return changes, hasChanges, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	return hasChanges, confirmBeforeUpdating(updateKind, stack, events, opts)
+	return changes, hasChanges, confirmBeforeUpdating(updateKind, stack, events, opts)
 }
 
 // confirmBeforeUpdating asks the user whether to proceed.  A nil error means yes.
@@ -648,12 +649,13 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 
 func (b *cloudBackend) PreviewThenPromptThenExecute(
 	ctx context.Context, updateKind client.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	// First get the stack.
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !stack.(Stack).RunLocally() && updateKind == client.UpdateKindDestroy {
@@ -662,33 +664,36 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	}
 
 	// Preview the operation to the user and ask them if they want to proceed.
-	hasChanges, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
+	changes, hasChanges, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
 	if err != nil || !hasChanges || updateKind == client.UpdateKindPreview {
-		return err
+		return changes, err
 	}
 
 	// Now do the real operation.  We don't care about the events it issues, so just pass a nil channel along.
-	_, err = b.updateStack(ctx, updateKind, stack, pkg, root, m, opts, nil, false /*dryRun*/, scopes)
-	return err
+	return b.updateStack(ctx, updateKind, stack, pkg, root, m, opts, nil, false /*dryRun*/, scopes)
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindPreview, stackRef, pkg, root, m, opts, scopes)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindUpdate, stackRef, pkg, root, m, opts, scopes)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindRefresh, stackRef, pkg, root, m, opts, scopes)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindDestroy, stackRef, pkg, root, m, opts, scopes)
 }
 

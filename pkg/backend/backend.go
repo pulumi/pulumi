@@ -64,16 +64,16 @@ type Backend interface {
 
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
