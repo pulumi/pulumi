@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -16,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -228,7 +230,7 @@ func (rm *resmon) Address() string {
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
 func (rm *resmon) Cancel() error {
-	rm.cancel <- true
+	close(rm.cancel)
 	return <-rm.done
 }
 
@@ -355,11 +357,23 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies),
 		done: make(chan *RegisterResult),
 	}
-	rm.regChan <- step
+
+	select {
+	case rm.regChan <- step:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+	}
 
 	// Now block waiting for the operation to finish.
-	// IDEA: we probably need some way to cancel this in case of catastrophe.
-	result := <-step.done
+	var result *RegisterResult
+	select {
+	case result = <-step.done:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+	}
+
 	state := result.State
 	props = state.All()
 	stable := result.Stable
@@ -410,11 +424,22 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 		outputs: outs,
 		done:    make(chan bool),
 	}
-	rm.regOutChan <- step
+
+	select {
+	case rm.regOutChan <- step:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
+	}
 
 	// Now block waiting for the operation to finish.
-	// IDEA: we probably need some way to cancel this in case of catastrophe.
-	<-step.done
+	select {
+	case <-step.done:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResourceOutputs operation finished: urn=%v, #outs=%v", urn, len(outs))
 	return &pbempty.Empty{}, nil
