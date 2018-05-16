@@ -1047,12 +1047,18 @@ func writePropertyKeys(b *bytes.Buffer, propMap resource.PropertyMap, op deploy.
 		writeString(b, " ")
 		writeString(b, op.Prefix())
 
-		index := 0
+		keys := make([]string, 0, len(propMap))
 		for k := range propMap {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+
+		index := 0
+		for _, k := range keys {
 			if index != 0 {
 				writeString(b, ",")
 			}
-			writeString(b, string(k))
+			writeString(b, k)
 			index++
 		}
 
