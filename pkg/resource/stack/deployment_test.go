@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
@@ -141,4 +142,26 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, float64(999.9), outmap["z"].(float64))
 	assert.NotNil(t, dep.Outputs["out-empty-map"])
 	assert.Equal(t, 0, len(dep.Outputs["out-empty-map"].(map[string]interface{})))
+}
+
+func TestLoadTooNewDeployment(t *testing.T) {
+	untypedDeployment := &apitype.UntypedDeployment{
+		Version: DeploymentSchemaVersionCurrent + 1,
+	}
+
+	deployment, err := DeserializeDeployment(untypedDeployment)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
+}
+
+func TestLoadTooOldDeployment(t *testing.T) {
+	untypedDeployment := &apitype.UntypedDeployment{
+		Version: DeploymentSchemaVersionOldestSupported - 1,
+	}
+
+	deployment, err := DeserializeDeployment(untypedDeployment)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
 }

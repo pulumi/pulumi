@@ -16,7 +16,6 @@ package cloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -237,11 +236,8 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	if err != nil {
 		return nil, err
 	}
-	checkpoint := &apitype.CheckpointV1{}
-	if err = json.Unmarshal([]byte(untypedDeployment.Deployment), &checkpoint.Latest); err != nil {
-		return nil, err
-	}
-	snapshot, err := stack.DeserializeCheckpoint(checkpoint)
+
+	snapshot, err := stack.DeserializeDeployment(untypedDeployment)
 	if err != nil {
 		return nil, err
 	}

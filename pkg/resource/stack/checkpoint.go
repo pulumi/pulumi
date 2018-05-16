@@ -75,7 +75,7 @@ func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Sna
 	contract.AssertNoError(err)
 
 	return &apitype.VersionedCheckpoint{
-		Version:    1,
+		Version:    DeploymentSchemaVersionCurrent,
 		Checkpoint: json.RawMessage(b),
 	}
 }
