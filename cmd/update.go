@@ -88,7 +88,7 @@ func newUpdateCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			err = s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+			_, err = s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
 			if err == context.Canceled {
 				return errors.New("update cancelled")
 			}
