@@ -15,6 +15,7 @@ import (
 
 func newUpdateCmd() *cobra.Command {
 	var debug bool
+	var expectNop bool
 	var message string
 	var stack string
 
@@ -88,17 +89,26 @@ func newUpdateCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			_, err = s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
-			if err == context.Canceled {
+			changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
+			switch {
+			case err == context.Canceled:
 				return errors.New("update cancelled")
+			case err != nil:
+				return err
+			case expectNop && changes.HasChanges():
+				return errors.New("error: no changes were expected but changes occurred")
+			default:
+				return nil
 			}
-			return err
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
+	cmd.PersistentFlags().BoolVar(
+		&expectNop, "expect-no-changes", false,
+		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
