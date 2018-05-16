@@ -361,7 +361,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	select {
 	case rm.regChan <- step:
 	case <-rm.cancel:
-		glog.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+		logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
 	}
 
@@ -370,7 +370,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	select {
 	case result = <-step.done:
 	case <-rm.cancel:
-		glog.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+		logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 	}
 
@@ -428,7 +428,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	select {
 	case rm.regOutChan <- step:
 	case <-rm.cancel:
-		glog.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
+		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
 	}
 
@@ -436,7 +436,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	select {
 	case <-step.done:
 	case <-rm.cancel:
-		glog.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
+		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
 	}
 
