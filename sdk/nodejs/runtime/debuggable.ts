@@ -35,19 +35,20 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
             // Only print leaks if we're exiting normally.  Otherwise, it could be a crash, which of
             // course yields things that look like "leaks".
             if (code === 0 && !log.hasErrors()) {
+                const leakedCount = leakCandidates.size;
+                if (leakedCount === 0) {
+                    // No leaks - proceed with the exit.
+                    return;
+                }
+
                 // If we've opted-in to the debug error message, send it out here.
                 if (debugPromiseLeaks) {
                     for (const leaked of leakCandidates) {
                         console.error("Promise leak detected:");
                         console.error(promiseDebugString(leaked));
                     }
-
-                    return;
-                }
-
-                // Otherwise, issue a more user-friendly message.
-                const leakedCount = leakCandidates.size;
-                if (leakedCount > 0) {
+                } else {
+                    // Otherwise, issue a more user-friendly message.
                     const promisePlural = leakedCount === 1 ? "promise was" : "promises were";
                     console.error(`The Pulumi runtime detected that ${leakedCount} ${promisePlural} still active`);
                     console.error("at the time that the process exited. There are a few ways that this can occur:");
@@ -61,6 +62,9 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
                     console.error("environment variable. The Pulumi runtime will then print out additional");
                     console.error("debug information about the leaked promises.");
                 }
+
+                // Fail the deployment if we leaked any promises.
+                process.exitCode = 1;
             }
         });
         leakDetectorScheduled = true;
