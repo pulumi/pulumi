@@ -3,15 +3,20 @@
 package tests
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
@@ -126,6 +131,62 @@ func TestStackCommands(t *testing.T) {
 		// local: .pulumi/stacks/pulumi-test/anor-londo.json: no such file or directory
 		// cloud:  Stack 'integration-test-59f645ba/pulumi-test/anor-londo' not found
 		assert.Contains(t, err, "anor-londo")
+	})
+
+	// Test that stack import fails if the version of the deployment we give it is not
+	// one that the CLI supports.
+	t.Run("CheckpointVersioning", func(t *testing.T) {
+		versions := []int{
+			stack.DeploymentSchemaVersionCurrent + 1,
+			stack.DeploymentSchemaVersionOldestSupported - 1,
+		}
+
+		for _, deploymentVersion := range versions {
+			t.Run(fmt.Sprintf("Version%d", deploymentVersion), func(t *testing.T) {
+				e := ptesting.NewEnvironment(t)
+				defer func() {
+					if !t.Failed() {
+						e.DeleteEnvironment()
+					}
+				}()
+
+				integration.CreateBasicPulumiRepo(e)
+				e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+				e.RunCommand("pulumi", "stack", "init", "the-abyss")
+				stacks, _ := integration.GetStacks(e)
+				assert.Equal(t, 1, len(stacks))
+
+				stackFile := path.Join(e.RootPath, "stack.json")
+				e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
+				stackJSON, err := ioutil.ReadFile(stackFile)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+
+				var deployment apitype.UntypedDeployment
+				err = json.Unmarshal(stackJSON, &deployment)
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+
+				deployment.Version = deploymentVersion
+				bytes, err := json.Marshal(deployment)
+				assert.NoError(t, err)
+				err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+				if !assert.NoError(t, err) {
+					t.FailNow()
+				}
+
+				stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "import", "--file", "stack.json")
+				assert.Empty(t, stdout)
+				switch {
+				case deploymentVersion > stack.DeploymentSchemaVersionCurrent:
+					assert.Contains(t, stderr, "is newer than what this version of the Pulumi CLI understands")
+				case deploymentVersion < stack.DeploymentSchemaVersionOldestSupported:
+					assert.Contains(t, stderr, "is too old")
+				}
+			})
+		}
 	})
 }
 

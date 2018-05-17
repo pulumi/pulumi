@@ -54,6 +54,8 @@ var (
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
+	contract.Require(snap != nil, "snap")
+
 	// Capture the version information into a manifest.
 	manifest := apitype.Manifest{
 		Time:    snap.Manifest.Time,
