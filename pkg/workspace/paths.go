@@ -62,12 +62,12 @@ func DetectProjectPath() (string, error) {
 // DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
 // specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
 func DetectProjectStackPath(stackName tokens.QName) (string, error) {
-	projPath, err := DetectProjectPath()
+	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
+	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
 		filepath.Ext(projPath))), nil
 }
 
