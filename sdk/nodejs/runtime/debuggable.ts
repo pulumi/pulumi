@@ -48,8 +48,8 @@ export function debuggablePromise<T>(p: Promise<T>, ctx?: any): Promise<T> {
                 // Otherwise, issue a more user-friendly message.
                 const leakedCount = leakCandidates.size;
                 if (leakedCount > 0) {
-                    const promisePlural = leakedCount === 1 ? "promise" : "promises";
-                    console.error(`The Pulumi runtime detected that ${leakedCount} ${promisePlural} were still active`);
+                    const promisePlural = leakedCount === 1 ? "promise was" : "promises were";
+                    console.error(`The Pulumi runtime detected that ${leakedCount} ${promisePlural} still active`);
                     console.error("at the time that the process exited. There are a few ways that this can occur:");
                     console.error("  * Not using `await` or `.then` on a Promise returned from a Pulumi API");
                     console.error("  * Introducing a cyclic dependency between two Pulumi Resources");
