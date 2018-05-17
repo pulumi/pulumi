@@ -262,7 +262,7 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 
 	// Create the management machinery.
 	persister := b.newSnapshotPersister(stackName)
-	manager := backend.NewSnapshotManager(stackName, persister, update.GetTarget().Snapshot)
+	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{Cancel: cancelScope.Context(), Events: events, SnapshotManager: manager}
 
 	// Perform the update

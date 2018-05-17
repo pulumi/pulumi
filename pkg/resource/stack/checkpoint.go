@@ -73,7 +73,6 @@ func DeserializeCheckpoint(chkpoint *apitype.CheckpointV1) (*deploy.Snapshot, er
 	contract.Require(chkpoint != nil, "chkpoint")
 
 	var snap *deploy.Snapshot
-	stack := chkpoint.Stack
 	if latest := chkpoint.Latest; latest != nil {
 		// Unpack the versions.
 		manifest := deploy.Manifest{
@@ -107,7 +106,7 @@ func DeserializeCheckpoint(chkpoint *apitype.CheckpointV1) (*deploy.Snapshot, er
 			resources = append(resources, desres)
 		}
 
-		snap = deploy.NewSnapshot(stack, manifest, resources)
+		snap = deploy.NewSnapshot(manifest, resources)
 	}
 
 	return snap, nil

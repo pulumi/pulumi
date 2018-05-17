@@ -36,14 +36,14 @@ func (m *MockStackPersister) Invalidate() error {
 	return nil
 }
 
-func MockSetup(t *testing.T, name tokens.QName, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
 	err := baseSnap.VerifyIntegrity()
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(name, sp, baseSnap), sp
+	return NewSnapshotManager(sp, baseSnap), sp
 }
 
 func NewResource(name string, deps ...resource.URN) *resource.State {
@@ -56,8 +56,8 @@ func NewResource(name string, deps ...resource.URN) *resource.State {
 	}
 }
 
-func NewSnapshot(name tokens.QName, resources []*resource.State) *deploy.Snapshot {
-	return deploy.NewSnapshot(name, deploy.Manifest{
+func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
+	return deploy.NewSnapshot(deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
@@ -66,12 +66,11 @@ func NewSnapshot(name tokens.QName, resources []*resource.State) *deploy.Snapsho
 
 func TestIdenticalSames(t *testing.T) {
 	sameState := NewResource("a-unique-urn")
-	name := tokens.QName("test")
-	snap := NewSnapshot(name, []*resource.State{
+	snap := NewSnapshot([]*resource.State{
 		sameState,
 	})
 
-	manager, sp := MockSetup(t, "test", snap)
+	manager, sp := MockSetup(t, snap)
 
 	// The engine generates a SameStep on sameState.
 	engineGeneratedSame := NewResource(string(sameState.URN))
@@ -109,17 +108,15 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	resourceA := NewResource("a-unique-urn-resource-a")
 	resourceB := NewResource("a-unique-urn-resource-b", resourceA.URN)
 
-	name := tokens.QName("test")
-
 	// The setup: the snapshot contains two resources, A and B, where
 	// B depends on A. We're going to begin a mutation in which B no longer
 	// depends on A and appears first in program order.
-	snap := NewSnapshot(name, []*resource.State{
+	snap := NewSnapshot([]*resource.State{
 		resourceA,
 		resourceB,
 	})
 
-	manager, sp := MockSetup(t, "test", snap)
+	manager, sp := MockSetup(t, snap)
 
 	resourceBUpdated := NewResource(string(resourceB.URN))
 	// note: no dependencies
@@ -202,8 +199,7 @@ func TestVexingDeployment(t *testing.T) {
 	c := NewResource("c", a.URN, b.URN)
 	d := NewResource("d", c.URN)
 	e := NewResource("e", c.URN)
-	name := tokens.QName("test")
-	snap := NewSnapshot(name, []*resource.State{
+	snap := NewSnapshot([]*resource.State{
 		a,
 		b,
 		c,
@@ -211,7 +207,7 @@ func TestVexingDeployment(t *testing.T) {
 		e,
 	})
 
-	manager, sp := MockSetup(t, "test", snap)
+	manager, sp := MockSetup(t, snap)
 
 	// This is the sequence of events that come out of the engine:
 	//   B - Same, depends on nothing
@@ -317,13 +313,11 @@ func TestVexingDeployment(t *testing.T) {
 
 func TestDeletion(t *testing.T) {
 	resourceA := NewResource("a")
-
-	name := tokens.QName("test")
-	snap := NewSnapshot(name, []*resource.State{
+	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, name, snap)
+	manager, sp := MockSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
@@ -343,13 +337,11 @@ func TestDeletion(t *testing.T) {
 
 func TestFailedDelete(t *testing.T) {
 	resourceA := NewResource("a")
-
-	name := tokens.QName("test")
-	snap := NewSnapshot(name, []*resource.State{
+	snap := NewSnapshot([]*resource.State{
 		resourceA,
 	})
 
-	manager, sp := MockSetup(t, name, snap)
+	manager, sp := MockSetup(t, snap)
 	step := deploy.NewDeleteStep(nil, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {

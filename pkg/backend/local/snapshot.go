@@ -7,7 +7,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // localSnapshotManager is a simple SnapshotManager implementation that persists snapshots
@@ -22,15 +21,12 @@ func (sm *localSnapshotPersister) Invalidate() error {
 }
 
 func (sm *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	stack := snapshot.Stack
-	contract.Assert(sm.name == stack)
-
-	config, _, _, err := sm.backend.getStack(stack)
+	config, _, _, err := sm.backend.getStack(sm.name)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	_, err = sm.backend.saveStack(stack, config, snapshot)
+	_, err = sm.backend.saveStack(sm.name, config, snapshot)
 	return err
 
 }
