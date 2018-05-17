@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -105,10 +104,6 @@ func NewFrom(dir string) (W, error) {
 		return nil, err
 	}
 
-	if w.settings.ConfigDeprecated == nil {
-		w.settings.ConfigDeprecated = make(map[tokens.QName]config.Map)
-	}
-
 	upsertIntoCache(dir, w)
 	return w, nil
 }
@@ -122,13 +117,6 @@ func (pw *projectWorkspace) Repository() *Repository {
 }
 
 func (pw *projectWorkspace) Save() error {
-	// let's remove all the empty entries from the config array
-	for k, v := range pw.settings.ConfigDeprecated {
-		if len(v) == 0 {
-			delete(pw.settings.ConfigDeprecated, k)
-		}
-	}
-
 	settingsFile := pw.settingsPath()
 
 	// If the settings file is empty, don't write an new one, and delete the old one if present. Since we put workspaces
