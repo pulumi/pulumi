@@ -2,16 +2,8 @@
     "name": "@pulumi/pulumi",
     "version": "${VERSION}",
     "description": "Pulumi's Node.js SDK",
+    "license": "Apache-2.0",
     "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
-    "devDependencies": {
-        "@types/minimist": "^1.2.0",
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^8.0.25",
-        "istanbul": "^0.4.5",
-        "mocha": "^3.5.0",
-        "node-gyp": "^3.6.2",
-        "tslint": "^5.7.0"
-    },
     "dependencies": {
         "google-protobuf": "^3.5.0",
         "grpc": "^1.6.0",
@@ -20,5 +12,14 @@
         "require-from-string": "^2.0.1",
         "source-map-support": "^0.4.16",
         "typescript": "^2.5.2"
+    },
+    "devDependencies": {
+        "@types/minimist": "^1.2.0",
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^8.0.25",
+        "istanbul": "^0.4.5",
+        "mocha": "^3.5.0",
+        "node-gyp": "^3.6.2",
+        "tslint": "^5.7.0"
     }
 }

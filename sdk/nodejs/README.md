@@ -1,5 +1,8 @@
 # Pulumi Node.js SDK
 
+:warning: **Pulumi is in private beta.  This package may not work unless you are already participating.
+Please visit [https://pulumi.com/](pulumi.com) to register for access.**
+
 The Pulumi Node.js SDK lets you write cloud programs in JavaScript.
 
 ## Installation
