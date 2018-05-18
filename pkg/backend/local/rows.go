@@ -20,7 +20,9 @@ type Row interface {
 
 	ColorizedColumns() []string
 	ColorizedSuffix() string
+
 	HideRowIfUnnecessary() bool
+	SetHideRowIfUnnecessary(value bool)
 }
 
 type ResourceRow interface {
@@ -50,6 +52,9 @@ type headerRowData struct {
 
 func (data *headerRowData) HideRowIfUnnecessary() bool {
 	return false
+}
+
+func (data *headerRowData) SetHideRowIfUnnecessary(value bool) {
 }
 
 func (data *headerRowData) DisplayOrderIndex() int {
@@ -129,11 +134,23 @@ func (data *resourceRowData) HideRowIfUnnecessary() bool {
 	return data.hideRowIfUnnecessary
 }
 
+func (data *resourceRowData) SetHideRowIfUnnecessary(value bool) {
+	data.hideRowIfUnnecessary = value
+}
+
 func (data *resourceRowData) Step() engine.StepEventMetadata {
 	return data.step
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
+	// never update a 'replace' step with an CreateReplacement DeleteReplacement step.
+	// in the progress view we never want to show those individually, we always want
+	// them combined since we only show a single line per resource.
+	if data.step.Op == deploy.OpReplace &&
+		(step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced) {
+		return
+	}
+
 	data.step = step
 }
 
@@ -321,7 +338,7 @@ func (data *resourceRowData) getInfo() string {
 
 	if diagInfo.DebugCount == 1 {
 		appendDiagMessage("1 debug message")
-	} else if diagInfo.ErrorCount > 1 {
+	} else if diagInfo.DebugCount > 1 {
 		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
 	}
 

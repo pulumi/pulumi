@@ -15,7 +15,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
@@ -34,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -48,10 +48,21 @@ func currentBackend() (backend.Backend, error) {
 	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current)
 }
 
+// This is used to control the contents of the tracing header.
+var tracingHeader = os.Getenv("PULUMI_TRACING_HEADER")
+
 func commandContext() context.Context {
 	ctx := context.Background()
-	if cmdutil.TracingRootSpan != nil {
-		ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+	if cmdutil.IsTracingEnabled() {
+		if cmdutil.TracingRootSpan != nil {
+			ctx = opentracing.ContextWithSpan(ctx, cmdutil.TracingRootSpan)
+		}
+
+		tracingOptions := backend.TracingOptions{
+			PropagateSpans: true,
+			TracingHeader:  tracingHeader,
+		}
+		ctx = backend.ContextWithTracingOptions(ctx, tracingOptions)
 	}
 	return ctx
 }
@@ -418,7 +429,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		cmdutil.Diag().Warningf(diag.Message("", "could not detect Git repository: %v"), err)
 	}
 	if repo == nil {
-		glog.Infof("no git repository found")
+		logging.Infof("no git repository found")
 		return m, nil
 	}
 

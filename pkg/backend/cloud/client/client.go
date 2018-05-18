@@ -62,9 +62,9 @@ func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, 
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
 func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
-	token updateAccessToken) error {
+	token updateAccessToken, httpOptions httpCallOptions) error {
 
-	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpCallOptions{})
+	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
 // getProjectPath returns the API path to for the given project with the given components joined with path separators
@@ -178,6 +178,38 @@ func (pc *Client) ListStacks(ctx context.Context, project ProjectIdentifier,
 	}
 
 	return stacks, nil
+}
+
+// GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
+func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
+	latest := struct {
+		Info apitype.UpdateInfo `json:"info,allowEmpty"`
+	}{}
+
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
+		if restErr, ok := err.(*apitype.ErrorResponse); ok {
+			if restErr.Code == http.StatusNotFound {
+				return nil, errors.New("no previous deployment")
+			}
+		}
+
+		return nil, err
+	}
+
+	cfg := make(config.Map)
+	for k, v := range latest.Info.Config {
+		newKey, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		if v.Secret {
+			cfg[newKey] = config.NewSecureValue(v.String)
+		} else {
+			cfg[newKey] = config.NewValue(v.String)
+		}
+	}
+
+	return cfg, nil
 }
 
 // GetStack retrieves the stack with the given name.
@@ -373,8 +405,7 @@ func (pc *Client) CreateUpdate(
 	case UpdateKindPreview:
 		endpoint = "preview"
 	case UpdateKindRefresh:
-		return UpdateIdentifier{},
-			errors.New("'refresh' not yet supported for managed stacks [pulumi/pulumi#1081]")
+		endpoint = "refresh"
 	case UpdateKindDestroy:
 		endpoint = "destroy"
 	default:
@@ -468,6 +499,10 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 		Duration: int(duration / time.Second),
 	}
 	var resp apitype.RenewUpdateLeaseResponse
+
+	// While renewing a lease uses POST, it is safe to send multiple requests (consider that we do this multiple times
+	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
+	// these POST operations.
 	if err := pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "renew_lease"), nil,
 		req, &resp, httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
@@ -480,7 +515,10 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 	req := apitype.PatchUpdateCheckpointRequest{
 		IsInvalid: true,
 	}
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+
+	// It is safe to retry this PATCH operation, because it is logically idempotent.
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
@@ -496,12 +534,19 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 		Version:    1,
 		Deployment: rawDeployment,
 	}
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil, updateAccessToken(token))
+
+	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
+	// deployment instead of a set of changes to apply.
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
 
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
-	return pc.restCall(ctx, "POST", getUpdatePath(update, "cancel"), nil, nil, nil)
+
+	// It is safe to retry this PATCH operation, because it is logically idempotent.
+	return pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "cancel"), nil, nil, nil,
+		httpCallOptions{RetryAllMethods: true})
 }
 
 // CompleteUpdate completes the indicated update with the given status.
@@ -511,7 +556,10 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
 	}
-	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil, updateAccessToken(token))
+
+	// It is safe to retry this PATCH operation, because it is logically idempotent.
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
 
 // AppendUpdateLogEntry appends the given entry to the indicated update's logs.
@@ -522,5 +570,10 @@ func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentif
 		Kind:   kind,
 		Fields: fields,
 	}
-	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil, updateAccessToken(token))
+
+	// Retrying this POST operation could cause us to have multiple copies of the same log message for a given
+	// operation. The alternative, however, is worse. A failure in this call will fail the entire update, so we're
+	// forcing retry of these operations, at the expense of duplicated log messages in some cases.
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }

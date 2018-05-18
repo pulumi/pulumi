@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
@@ -119,6 +121,14 @@ func GetStoredCredentials() (Credentials, error) {
 	if err = json.Unmarshal(c, &creds); err != nil {
 		return Credentials{}, errors.Wrapf(err, "unmarshalling credentials file")
 	}
+
+	var secrets []string
+	for _, v := range creds.AccessTokens {
+		secrets = append(secrets, v)
+	}
+
+	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[credential]"))
+
 	return creds, nil
 }
 

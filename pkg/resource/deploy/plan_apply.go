@@ -5,7 +5,6 @@ package deploy
 import (
 	"reflect"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -13,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // Options controls the planning and deployment process.
@@ -115,7 +115,7 @@ func (iter *PlanIterator) Apply(step Step, preview bool) (resource.Status, error
 	}
 
 	// Apply the step.
-	glog.V(9).Infof("Applying step %v on %v (preview %v)", step.Op(), urn, preview)
+	logging.V(9).Infof("Applying step %v on %v (preview %v)", step.Op(), urn, preview)
 	status, err := step.Apply(preview)
 
 	// If there is no error, proceed to save the state; otherwise, go straight to the exit codepath.
@@ -390,8 +390,8 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 					new.Inputs = inputs
 				}
 
-				if glog.V(7) {
-					glog.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
+				if logging.V(7) {
+					logging.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
 						urn, oldInputs, new.Inputs)
 				}
 
@@ -426,23 +426,23 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 
 			// If we fell through, it's an update.
 			iter.updates[urn] = true
-			if glog.V(7) {
-				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
+			if logging.V(7) {
+				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldInputs, new.Inputs)
 			}
 			return []Step{NewUpdateStep(iter.p, e, old, new, diff.StableKeys)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
 		iter.sames[urn] = true
-		if glog.V(7) {
-			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
+		if logging.V(7) {
+			logging.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.Inputs)
 		}
 		return []Step{NewSameStep(iter.p, e, old, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
-	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
+	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(iter.p, e, new)}, nil
 }
 
@@ -499,7 +499,7 @@ func (iter *PlanIterator) registerResourceOutputs(e RegisterResourceOutputsEvent
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
 	// might already be there, since otherwise "deleting" outputs would have no affect.
 	outs := e.Outputs()
-	glog.V(7).Infof("Registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
+	logging.V(7).Infof("Registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
 	reg.New().Outputs = e.Outputs()
 
 	// If there is an event subscription for finishing the resource, execute them.
@@ -526,11 +526,11 @@ func (iter *PlanIterator) computeDeletes() []Step {
 			// If this resource is explicitly marked for deletion or wasn't seen at all, delete it.
 			res := prev.Resources[i]
 			if res.Delete {
-				glog.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
+				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(iter.p, res, true))
 			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] {
-				glog.V(7).Infof("Planner decided to delete '%v'", res.URN)
+				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteStep(iter.p, res))
 			}

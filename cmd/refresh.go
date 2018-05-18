@@ -84,7 +84,7 @@ func newRefreshCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			err = s.Refresh(commandContext(), proj, root, m, opts, cancellationScopes)
+			_, err = s.Refresh(commandContext(), proj, root, m, opts, cancellationScopes)
 			if err == context.Canceled {
 				return errors.New("refresh cancelled")
 			}

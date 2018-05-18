@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -24,16 +25,16 @@ type Stack interface {
 
 	// Preview changes to this stack.
 	Preview(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) error
+		scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Update this stack.
 	Update(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) error
+		scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Refresh this stack's state from the cloud provider.
 	Refresh(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) error
+		scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
-		scopes CancellationScopeSource) error
+		scopes CancellationScopeSource) (engine.ResourceChanges, error)
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -52,31 +53,36 @@ func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 
 // PreviewStack previews changes to this stack.
 func PreviewStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
+	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
 	return s.Backend().Preview(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
+	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
 	return s.Backend().Update(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
 func RefreshStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
+	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
 	return s.Backend().Refresh(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // DestroyStack destroys all of this stack's resources.
 func DestroyStack(ctx context.Context, s Stack, proj *workspace.Project, root string, m UpdateMetadata,
-	opts UpdateOptions, scopes CancellationScopeSource) error {
+	opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error) {
 	return s.Backend().Destroy(ctx, s.Name(), proj, root, m, opts, scopes)
 }
 
 // GetStackCrypter fetches the encrypter/decrypter for a stack.
 func GetStackCrypter(s Stack) (config.Crypter, error) {
 	return s.Backend().GetStackCrypter(s.Name())
+}
+
+// GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
+func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
+	return s.Backend().GetLatestConfiguration(ctx, s.Name())
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.

@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // MarshalOptions controls the marshaling of RPC structures.
@@ -53,11 +53,11 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
-		glog.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
 		if v.IsOutput() {
-			glog.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
+			logging.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
 		} else if opts.SkipNulls && v.IsNull() {
-			glog.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
+			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
 		} else {
 			m, err := MarshalPropertyValue(v, opts)
 			if err != nil {
@@ -189,9 +189,9 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 		if err != nil {
 			return nil, err
 		} else if v != nil {
-			glog.V(9).Infof("Unmarshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+			logging.V(9).Infof("Unmarshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
 			if opts.SkipNulls && v.IsNull() {
-				glog.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is null", opts.Label, key)
+				logging.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is null", opts.Label, key)
 			} else {
 				result[pk] = *v
 			}

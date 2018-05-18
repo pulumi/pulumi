@@ -1,6 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-// tslint:disable:max-line-length
+// tslint:disable
 
 import * as assert from "assert";
 import { EOL } from "os";
@@ -18,13 +18,14 @@ interface ClosureCase {
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
 
+export const exportedValue = 42;
+
 // This group of tests ensure that we serialize closures properly.
 describe("closure", () => {
     const cases: ClosureCase[] = [];
 
     cases.push({
         title: "Empty function closure",
-        // tslint:disable-next-line
         func: function () { },
         expectText: `exports.handler = __f0;
 
@@ -42,7 +43,6 @@ return function () { };
 
     cases.push({
         title: "Empty named function",
-        // tslint:disable-next-line
         func: function f() { },
         expectText: `exports.handler = __f;
 
@@ -60,7 +60,6 @@ return function /*f*/() { };
 
     cases.push({
         title: "Named function with self-reference",
-        // tslint:disable-next-line
         func: function f() { f(); },
         expectText: `exports.handler = __f;
 
@@ -78,7 +77,6 @@ return function /*f*/() { f(); };
 
     cases.push({
         title: "Function closure with this capture",
-        // tslint:disable-next-line
         func: function () { console.log(this); },
         expectText: `exports.handler = __f0;
 
@@ -96,7 +94,6 @@ return function () { console.log(this); };
 
     cases.push({
         title: "Function closure with this and arguments capture",
-        // tslint:disable-next-line
         func: function () { console.log(this + arguments); },
         expectText: `exports.handler = __f0;
 
@@ -114,7 +111,6 @@ return function () { console.log(this + arguments); };
 
     cases.push({
         title: "Empty arrow closure",
-        // tslint:disable-next-line
         func: () => { },
         expectText: `exports.handler = __f0;
 
@@ -132,7 +128,6 @@ return () => { };
 
     cases.push({
         title: "Arrow closure with this capture",
-        // tslint:disable-next-line
         func: () => { console.log(this); },
         expectText: undefined,
         error:
@@ -168,7 +163,6 @@ return function (thisArg, _arguments, P, generator) {
 
     cases.push({
         title: "Async lambda that does not capture this",
-        // tslint:disable-next-line
         func: async () => { },
         expectText: `exports.handler = __f0;
 ${awaiterCode}
@@ -186,7 +180,6 @@ return () => __awaiter(this, void 0, void 0, function* () { });
 
     cases.push({
         title: "Async lambda that does capture this",
-        // tslint:disable-next-line
         func: async () => { console.log(this); },
         expectText: undefined,
         error: `Error serializing function 'func': closure.spec.js(0,0)
@@ -201,7 +194,6 @@ Function code:
 
     cases.push({
         title: "Async function that does not capture this",
-        // tslint:disable-next-line
         func: async function() { },
         expectText: `exports.handler = __f0;
 ${awaiterCode}
@@ -221,7 +213,6 @@ return function () {
 
     cases.push({
         title: "Async function that does capture this",
-        // tslint:disable-next-line
         func: async function () { console.log(this); },
         expectText: `exports.handler = __f0;
 ${awaiterCode}
@@ -241,7 +232,6 @@ return function () {
 
     cases.push({
         title: "Arrow closure with this and arguments capture",
-        // tslint:disable-next-line
         func: (function() { return () => { console.log(this + arguments); } }).apply(this, [0, 1]),
         expectText: undefined,
         error: `Error serializing function '<anonymous>': closure.spec.js(0,0)
@@ -256,7 +246,6 @@ Function code:
 
     cases.push({
         title: "Arrow closure with this capture inside function closure",
-        // tslint:disable-next-line
         func: function () { () => { console.log(this); } },
         expectText: `exports.handler = __f0;
 
@@ -274,7 +263,6 @@ return function () { () => { console.log(this); }; };
 
     cases.push({
         title: "Arrow closure with this and arguments capture inside function closure",
-        // tslint:disable-next-line
         func: function () { () => { console.log(this + arguments); } },
         expectText: `exports.handler = __f0;
 
@@ -294,7 +282,6 @@ return function () { () => { console.log(this + arguments); }; };
         class Task {
             run: any;
             constructor() {
-                // tslint:disable-next-line:no-empty
                 this.run = async function() { };
             }
         }
@@ -303,7 +290,6 @@ return function () { () => { console.log(this + arguments); }; };
 
         cases.push({
             title: "Invocation of async function that does not capture this #1",
-            // tslint:disable-next-line
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
@@ -357,7 +343,6 @@ return function () {
         class Task {
             run: any;
             constructor() {
-                // tslint:disable-next-line:no-empty
                 this.run = async function() { console.log(this); };
             }
         }
@@ -366,7 +351,6 @@ return function () {
 
         cases.push({
             title: "Invocation of async function that does capture this #1",
-            // tslint:disable-next-line
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
@@ -397,7 +381,6 @@ function __f2() {
     with({ __awaiter: __f1 }) {
 
 return function /*constructor*/() {
-                // tslint:disable-next-line:no-empty
                 this.run = function () {
                     return __awaiter(this, void 0, void 0, function* () { console.log(this); });
                 };
@@ -438,7 +421,6 @@ return function () {
         class Task {
             run: any;
             constructor() {
-                // tslint:disable-next-line:no-empty
                 this.run = async () => { };
             }
         }
@@ -447,7 +429,6 @@ return function () {
 
         cases.push({
             title: "Invocation of async lambda that does not capture this #1",
-            // tslint:disable-next-line
             func: async function() { await task.run(); },
             expectText: `exports.handler = __f0;
 
@@ -499,7 +480,6 @@ return function () {
         class Task {
             run: any;
             constructor() {
-                // tslint:disable-next-line:no-empty
                 this.run = async () => { console.log(this); };
             }
         }
@@ -508,7 +488,6 @@ return function () {
 
         cases.push({
             title: "Invocation of async lambda that capture this #1",
-            // tslint:disable-next-line
             func: async function() { await task.run(); },
             expectText: undefined,
             error: `Error serializing function 'func': closure.spec.js(0,0)
@@ -526,7 +505,6 @@ Function code:
 
     cases.push({
         title: "Empty function closure w/ args",
-        // tslint:disable-next-line
         func: function (x: any, y: any, z: any) { },
         expectText: `exports.handler = __f0;
 
@@ -544,7 +522,6 @@ return function (x, y, z) { };
 
     cases.push({
         title: "Empty arrow closure w/ args",
-        // tslint:disable-next-line
         func: (x: any, y: any, z: any) => { },
         expectText: `exports.handler = __f0;
 
@@ -588,7 +565,6 @@ return () => { console.log("Just a global object reference"); };
         };
         cases.push({
             title: "Serializes basic captures",
-            // tslint:disable-next-line
             func: () => { console.log(wcap + `${xcap}` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); },
             expectText: `exports.handler = __f0;
 
@@ -612,13 +588,9 @@ return () => { console.log(wcap + \`\${xcap}\` + ycap.length + eval(zcap.a + zca
         });
     }
     {
-        // tslint:disable-next-line
         let nocap1 = 1, nocap2 = 2, nocap3 = 3, nocap4 = 4, nocap5 = 5, nocap6 = 6, nocap7 = 7;
-        // tslint:disable-next-line
         let nocap8 = 8, nocap9 = 9, nocap10 = 10;
-        // tslint:disable-next-line
         let cap1 = 100, cap2 = 200, cap3 = 300, cap4 = 400, cap5 = 500, cap6 = 600, cap7 = 700;
-        // tslint:disable-next-line
         let cap8 = 800;
 
         const functext = `(nocap1, nocap2) => {
@@ -659,7 +631,6 @@ return () => { console.log(wcap + \`\${xcap}\` + ycap.length + eval(zcap.a + zca
 }`;
         cases.push({
             title: "Doesn't serialize non-free variables (but retains frees)",
-            // tslint:disable-next-line
             func: eval(functext),
             expectText: `exports.handler = __f0;
 
@@ -711,9 +682,7 @@ return (nocap1, nocap2) => {
         });
     }
     {
-        // tslint:disable-next-line
         let nocap1 = 1;
-        // tslint:disable-next-line
         let cap1 = 100;
 
         cases.push({
@@ -721,7 +690,6 @@ return (nocap1, nocap2) => {
             func: () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
-                // tslint:disable-next-line
                 let [nocap1 = cap1] = [];
                 console.log(nocap1);
             },
@@ -734,7 +702,6 @@ function __f0() {
 return () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
-                // tslint:disable-next-line
                 let [nocap1 = cap1] = [];
                 console.log(nocap1);
             };
@@ -746,9 +713,7 @@ return () => {
         });
     }
     {
-        // tslint:disable-next-line
         let nocap1 = 1;
-        // tslint:disable-next-line
         let cap1 = 100;
 
         cases.push({
@@ -756,7 +721,6 @@ return () => {
             func: () => {
     // cap1 is captured here.
     // nocap1 introduces a new variable that shadows the outer one.
-    // tslint:disable-next-line
     let {nocap1 = cap1} = {};
     console.log(nocap1);
 },
@@ -769,7 +733,6 @@ function __f0() {
 return () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
-                // tslint:disable-next-line
                 let { nocap1 = cap1 } = {};
                 console.log(nocap1);
             };
@@ -781,9 +744,7 @@ return () => {
         });
     }
     {
-        // tslint:disable-next-line
         let nocap1 = 1;
-        // tslint:disable-next-line
         let cap1 = 100;
 
         cases.push({
@@ -791,7 +752,6 @@ return () => {
             func: () => {
     // cap1 is captured here.
     // nocap1 introduces a new variable that shadows the outer one.
-    // tslint:disable-next-line
     let {x: nocap1 = cap1} = {};
     console.log(nocap1);
 },
@@ -804,7 +764,6 @@ function __f0() {
 return () => {
                 // cap1 is captured here.
                 // nocap1 introduces a new variable that shadows the outer one.
-                // tslint:disable-next-line
                 let { x: nocap1 = cap1 } = {};
                 console.log(nocap1);
             };
@@ -818,7 +777,6 @@ return () => {
 
     cases.push({
         title: "Don't capture built-ins",
-        // tslint:disable-next-line
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
         expectText: `exports.handler = __f0;
 
@@ -941,7 +899,6 @@ Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') i
 
     cases.push({
         title: "Don't capture catch variables",
-        // tslint:disable-next-line
         func: () => { try { } catch (err) { console.log(err); } },
         expectText: `exports.handler = __f0;
 
@@ -979,7 +936,6 @@ return () => { try { }
 
         cases.push({
             title: "Serializes recursive function captures",
-            // tslint:disable-next-line
             func: func,
             expectText: `exports.handler = __f0;
 
@@ -1125,7 +1081,6 @@ return function () { return mutable; };
         const v = { d: output(4) };
         cases.push({
             title: "Output capture",
-            // tslint:disable-next-line
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
@@ -1197,7 +1152,6 @@ return function () { console.log(v); };
         };
         cases.push({
             title: "Multiple output capture",
-            // tslint:disable-next-line
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
@@ -1280,7 +1234,6 @@ return function () { console.log(v); };
 
         cases.push({
             title: "Recursive output capture",
-            // tslint:disable-next-line
             func: function () { console.log(v); },
             expectText: `exports.handler = __f0;
 
@@ -1354,7 +1307,6 @@ return function () { console.log(v); };
 
         cases.push({
             title: "Capture object with methods",
-            // tslint:disable-next-line
             func: function () { console.log(obj); },
             expectText: `exports.handler = __f0;
 
@@ -1441,7 +1393,6 @@ return function () { const x = typeof a; };
 
         cases.push({
             title: "Capture numeric property",
-            // tslint:disable-next-line
             func: function () { return array; },
             expectText: `exports.handler = __f0;
 
@@ -1469,7 +1420,6 @@ return function () { return array; };
         const array = [outer];
         outer.b = array;
         const C = (function () {
-            // tslint:disable-next-line:no-empty no-shadowed-variable
             function C() {}
             C.prototype.m = function () { return this.n() + outer; };
             C.prototype.n = function () { return array; };
@@ -1851,9 +1801,7 @@ return function /*m*/() { return this.n(); };
 
     {
         const D = (function () {
-            // tslint:disable-next-line:no-shadowed-variable
             function D() {
-                // tslint:disable-next-line:semicolon
                 ;
             }
             (<any>D).m = function () { return this.n(); };
@@ -2350,7 +2298,6 @@ return function* () { yield 1; };
                 return this._x;
             }
 
-            // tslint:disable-next-line:no-empty
             set foo(v: number) {
                 this._x = v;
             }
@@ -3084,7 +3031,6 @@ return () => B;
 
         cases.push({
             title: "Capture subset of properties #1",
-            // tslint:disable-next-line
             func: function () { console.log(o.a); },
             expectText: `exports.handler = __f0;
 
@@ -3108,7 +3054,6 @@ return function () { console.log(o.a); };
 
         cases.push({
             title: "Capture subset of properties #2",
-            // tslint:disable-next-line
             func: function () { console.log(o.b + o.c); },
             expectText: `exports.handler = __f0;
 
@@ -3132,7 +3077,6 @@ return function () { console.log(o.b + o.c); };
 
         cases.push({
             title: "Capture all if object is used as is.",
-            // tslint:disable-next-line
             func: function () { console.log(o); },
             expectText: `exports.handler = __f0;
 
@@ -3156,11 +3100,10 @@ return function () { console.log(o); };
 
         cases.push({
             title: "Capture all if object property is invoked, and it uses this.",
-            // tslint:disable-next-line
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __o = {c: __f1, a: 1, b: 2};
+var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
@@ -3190,11 +3133,10 @@ return function () { console.log(o.c()); };
 
         cases.push({
             title: "Capture all if object property is invoked, and it uses this in nested arrow function.",
-            // tslint:disable-next-line
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
-var __o = {c: __f1, a: 1, b: 2};
+var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
@@ -3224,7 +3166,6 @@ return function () { console.log(o.c()); };
 
         cases.push({
             title: "Capture one if object property is invoked, but it uses this in nested function.",
-            // tslint:disable-next-line
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
@@ -3258,7 +3199,6 @@ return function () { console.log(o.c()); };
 
         cases.push({
             title: "Capture one if object property is captured, uses this, but is not invoked",
-            // tslint:disable-next-line
             func: function () { console.log(o.c); },
             expectText: `exports.handler = __f0;
 
@@ -3292,7 +3232,6 @@ return function () { console.log(o.c); };
 
         cases.push({
             title: "Capture one if object property is invoked, and it does not use this.",
-            // tslint:disable-next-line
             func: function () { console.log(o.c()); },
             expectText: `exports.handler = __f0;
 
@@ -3326,7 +3265,6 @@ return function () { console.log(o.c()); };
 
         cases.push({
             title: "Capture subset if sub object property is invoked.",
-            // tslint:disable-next-line
             func: function () { console.log(o.b.c()); },
             expectText: `exports.handler = __f0;
 
@@ -3362,13 +3300,12 @@ return function () { console.log(o.b.c()); };
 
         cases.push({
             title: "Capture all if getter and getter uses this.",
-            // tslint:disable-next-line
             func: function () { console.log(o.b); },
             expectText: `exports.handler = __f0;
 
 var __o = {};
-Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
 __o.a = 1;
+Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f1 });
 
 function __f1() {
   return (function() {
@@ -3398,7 +3335,6 @@ return function () { console.log(o.b); };
 
         cases.push({
             title: "Capture one if getter and getter does not use this.",
-            // tslint:disable-next-line
             func: function () { console.log(o.b); },
             expectText: `exports.handler = __f0;
 
@@ -3441,7 +3377,6 @@ return function () { console.log(o.b); };
 
         cases.push({
             title: "Capture multi props from different contexts #1",
-            // tslint:disable-next-line
             func: f1,
             expectText: `exports.handler = __f1;
 
@@ -3476,6 +3411,36 @@ return function /*f1*/() {
     }
 
     {
+        const o = { a: 1 };
+        function f1() {
+            // @ts-ignore
+            console.log(o.c);
+        }
+
+        cases.push({
+            title: "Do not capture non-existent prop",
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {};
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f1: __f1 }) {
+
+return function /*f1*/() {
+            // @ts-ignore
+            console.log(o.c);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
         const o = { a: 1, b: 1, c: 2 };
         function f1() {
             console.log(o.a);
@@ -3488,7 +3453,6 @@ return function /*f1*/() {
 
         cases.push({
             title: "Capture all props from different contexts #1",
-            // tslint:disable-next-line
             func: f1,
             expectText: `exports.handler = __f1;
 
@@ -3535,7 +3499,6 @@ return function /*f1*/() {
 
         cases.push({
             title: "Capture all props from different contexts #2",
-            // tslint:disable-next-line
             func: f1,
             expectText: `exports.handler = __f1;
 
@@ -3570,7 +3533,211 @@ return function /*f1*/() {
     }
 
     {
-        // tslint:disable-next-line:no-empty
+        class C {
+            a: number;
+            b: number;
+
+            constructor() {
+                this.a = 1;
+                this.b = 2;
+            }
+
+            m() { console.log(this); }
+        }
+        const o = new C();
+
+        cases.push({
+            title: "Capture all props if prototype is and uses this #1",
+            func: function () { o.m(); },
+            expectText: `exports.handler = __f0;
+
+var __o_proto = {};
+__f1.prototype = __o_proto;
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.a = 1;
+                this.b = 2;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { console.log(this); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+            b: number;
+
+            constructor() {
+                this.a = 1;
+                this.b = 2;
+            }
+
+            m() { }
+        }
+        const o = new C();
+
+        cases.push({
+            title: "Capture no props if prototype is used but does not use this #1",
+            func: function () { o.m(); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+Object.defineProperty(__o, "m", { configurable: true, writable: true, value: __f1 });
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        class C {
+            a: number;
+
+            constructor() {
+                this.a = 1;
+            }
+
+            m() { (<any>this).n(); }
+        }
+
+        class D extends C {
+            b: number;
+            constructor() {
+                super();
+                this.b = 2;
+            }
+            n() {}
+        }
+        const o = new D();
+
+        cases.push({
+            title: "Capture all props if prototype is accessed #2",
+            func: function () { o.m(); },
+            expectText: `exports.handler = __f0;
+
+var __o_proto_proto = {};
+__f1.prototype = __o_proto_proto;
+Object.defineProperty(__o_proto_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+Object.defineProperty(__o_proto_proto, "m", { configurable: true, writable: true, value: __f2 });
+var __o_proto = Object.create(__o_proto_proto);
+__f3.prototype = __o_proto;
+Object.setPrototypeOf(__f3, __f1);
+Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__o_proto, "n", { configurable: true, writable: true, value: __f4 });
+var __o = Object.create(__o_proto);
+__o.a = 1;
+__o.b = 2;
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() {
+                this.a = 1;
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*m*/() { this.n(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ __super: __f1 }) {
+
+return function /*constructor*/() {
+    __super.call(this);
+    this.b = 2;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ __super: __f1 }) {
+
+return function /*n*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { o.m(); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const table1: any = { primaryKey: 1, insert: () => { }, scan: () => { } };
 
         async function testScanReturnsAllValues() {
@@ -3586,11 +3753,10 @@ return function /*f1*/() {
 
         cases.push({
             title: "Cloud table function",
-            // tslint:disable-next-line
             func: testScanReturnsAllValues,
             expectText: `exports.handler = __testScanReturnsAllValues;
 
-var __table1 = {primaryKey: 1, insert: __f1};
+var __table1 = {insert: __f1, primaryKey: 1};
 
 function __f0() {
   return (function() {
@@ -3650,7 +3816,6 @@ return function /*testScanReturnsAllValues*/() {
 
         cases.push({
             title: "Do not capture #1",
-            // tslint:disable-next-line
             func: f1,
             expectText: `exports.handler = __f1;
 
@@ -3681,7 +3846,6 @@ return function /*f1*/() {
 
         cases.push({
             title: "Merge simple functions",
-            // tslint:disable-next-line
             func: f3,
             expectText: `exports.handler = __f3;
 
@@ -3734,7 +3898,6 @@ return function /*f3*/() {
 
         cases.push({
             title: "Share __awaiter functions",
-            // tslint:disable-next-line
             func: f3,
             expectText: `exports.handler = __f3;
 
@@ -3778,6 +3941,73 @@ return function /*f3*/() {
 }
 `,
 });
+    }
+
+    {
+        cases.push({
+            title: "Capture of exported variable #1",
+            func: function () { console.log(exportedValue); },
+            expectText: `exports.handler = __f0;
+
+var __exports = {exportedValue: 42};
+
+function __f0() {
+  return (function() {
+    with({ exports: __exports }) {
+
+return function () { console.log(exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture of exported variable #2",
+            func: function () { console.log(exports.exportedValue); },
+            expectText: `exports.handler = __f0;
+
+var __exports = {exportedValue: 42};
+
+function __f0() {
+  return (function() {
+    with({ exports: __exports }) {
+
+return function () { console.log(exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture of exported variable #3",
+            func: function () { console.log(module.exports.exportedValue); },
+            expectText: `exports.handler = __f0;
+
+var __module = {};
+var __module_exports = {};
+Object.defineProperty(__module_exports, "__esModule", { value: true });
+__module_exports.exportedValue = 42;
+__module.exports = __module_exports;
+
+function __f0() {
+  return (function() {
+    with({ module: __module }) {
+
+return function () { console.log(module.exports.exportedValue); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
     }
 
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.

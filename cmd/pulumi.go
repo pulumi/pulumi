@@ -10,12 +10,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -24,6 +24,7 @@ func NewPulumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool
 	var tracing string
+	var tracingHeaderFlag string
 	var profiling string
 	var verbose int
 
@@ -36,24 +37,27 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			cmdutil.InitLogging(logToStderr, verbose, logFlow)
+			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracing)
+			if tracingHeaderFlag != "" {
+				tracingHeader = tracingHeaderFlag
+			}
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling); err != nil {
-					glog.Warningf("could not initialize profiling: %v", err)
+					logging.Warningf("could not initialize profiling: %v", err)
 				}
 			}
 
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			glog.Flush()
+			logging.Flush()
 			cmdutil.CloseTracing()
 
 			if profiling != "" {
 				if err := cmdutil.CloseProfiling(profiling); err != nil {
-					glog.Warningf("could not close profiling: %v", err)
+					logging.Warningf("could not close profiling: %v", err)
 				}
 			}
 		},
@@ -108,6 +112,9 @@ func NewPulumiCmd() *cobra.Command {
 	// set to true.
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
 		cmd.AddCommand(newArchiveCommand())
+
+		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
+			"Include the tracing header with the given contents.")
 	}
 
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging

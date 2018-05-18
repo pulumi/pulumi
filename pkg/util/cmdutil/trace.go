@@ -16,6 +16,10 @@ var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
 
+func IsTracingEnabled() bool {
+	return TracingEndpoint != ""
+}
+
 // InitTracing initializes tracing
 func InitTracing(name, rootSpanName, tracingEndpoint string) {
 	// If no tracing endpoint was provided, just return. The default global tracer is already a no-op tracer.
@@ -57,7 +61,7 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 
 // CloseTracing ensures that all pending spans have been flushed.  It should be called before process exit.
 func CloseTracing() {
-	if TracingEndpoint == "" {
+	if !IsTracingEnabled() {
 		return
 	}
 

@@ -361,6 +361,11 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: name, props: undefined };
             },
         },
+        // Test that leaked debuggable promises fail the deployment.
+        "promise_leak": {
+            program: path.join(base, "016.promise_leak"),
+            expectError: "Program exited with non-zero exit code: 1",
+        },
     };
 
     for (const casename of Object.keys(cases)) {

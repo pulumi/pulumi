@@ -36,7 +36,9 @@ func newDestroySource(
 
 	// For destroy, we consult the manifest for the plugin versions/ required to destroy it.
 	if target != nil && target.Snapshot != nil {
-		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins); err != nil {
+		// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.
+		kinds := plugin.AllPlugins & ^plugin.LanguagePlugins
+		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins, kinds); err != nil {
 			return nil, err
 		}
 	}

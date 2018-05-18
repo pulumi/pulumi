@@ -5,7 +5,7 @@ package contract
 import (
 	"io"
 
-	"github.com/golang/glog"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // Ignore explicitly ignores a value.  This is similar to `_ = x`, but tells linters ignoring is intentional.
@@ -13,7 +13,7 @@ func Ignore(v interface{}) {
 	// Log something at a VERY verbose level just in case it helps to track down issues (e.g., an error that was
 	// ignored that represents something even more egregious than the eventual failure mode).  If this truly matters, it
 	// probably implies the ignore was not appropriate, but as a safeguard, logging seems useful.
-	glog.V(11).Infof("Explicitly ignoring and discarding result: %v", v)
+	logging.V(11).Infof("Explicitly ignoring and discarding result: %v", v)
 }
 
 // IgnoreClose closes and ignores the returned error.  This makes defer closes easier.
@@ -29,6 +29,6 @@ func IgnoreError(err error) {
 	// ignored that represents something even more egregious than the eventual failure mode).  If this truly matters, it
 	// probably implies the ignore was not appropriate, but as a safeguard, logging seems useful.
 	if err != nil {
-		glog.V(3).Infof("Explicitly ignoring and discarding error: %v", err)
+		logging.V(3).Infof("Explicitly ignoring and discarding error: %v", err)
 	}
 }

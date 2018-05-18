@@ -5,17 +5,19 @@ package deploy
 import (
 	"fmt"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -115,12 +117,12 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	case reg := <-iter.regChan:
 		contract.Assert(reg != nil)
 		goal := reg.Goal()
-		glog.V(5).Infof("EvalSourceIterator produced a registration: t=%v,name=%v,#props=%v",
+		logging.V(5).Infof("EvalSourceIterator produced a registration: t=%v,name=%v,#props=%v",
 			goal.Type, goal.Name, len(goal.Properties))
 		return reg, nil
 	case regOut := <-iter.regOutChan:
 		contract.Assert(regOut != nil)
-		glog.V(5).Infof("EvalSourceIterator produced a completion: urn=%v,#outs=%v",
+		logging.V(5).Infof("EvalSourceIterator produced a completion: urn=%v,#outs=%v",
 			regOut.URN(), len(regOut.Outputs()))
 		return regOut, nil
 	case err := <-iter.finChan:
@@ -128,7 +130,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		// that the language runtime has exited and so calling Close on the plugin is fine.
 		iter.done = true
 		if err != nil {
-			glog.V(5).Infof("EvalSourceIterator ended with an error: %v", err)
+			logging.V(5).Infof("EvalSourceIterator ended with an error: %v", err)
 		}
 		return nil, err
 	}
@@ -228,7 +230,7 @@ func (rm *resmon) Address() string {
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
 func (rm *resmon) Cancel() error {
-	rm.cancel <- true
+	close(rm.cancel)
 	return <-rm.done
 }
 
@@ -253,7 +255,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	}
 
 	// Do the invoke and then return the arguments.
-	glog.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
+	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	ret, failures, err := prov.Invoke(tok, args)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
@@ -308,7 +310,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		}
 
 		// Now actually call the plugin to read the state and then return the results.
-		glog.V(5).Infof("ResourceMonitor.ReadResource received: %s #props=%d", label, len(props))
+		logging.V(5).Infof("ResourceMonitor.ReadResource received: %s #props=%d", label, len(props))
 		result, err := prov.Read(urn, id, props)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading resource %s state", urn)
@@ -346,7 +348,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, err
 	}
 
-	glog.V(5).Infof(
+	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, deps=%v",
 		t, name, custom, len(props), parent, protect, dependencies)
 
@@ -355,11 +357,23 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies),
 		done: make(chan *RegisterResult),
 	}
-	rm.regChan <- step
+
+	select {
+	case rm.regChan <- step:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+	}
 
 	// Now block waiting for the operation to finish.
-	// IDEA: we probably need some way to cancel this in case of catastrophe.
-	result := <-step.done
+	var result *RegisterResult
+	select {
+	case result = <-step.done:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+	}
+
 	state := result.State
 	props = state.All()
 	stable := result.Stable
@@ -367,7 +381,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	for _, sta := range result.Stables {
 		stables = append(stables, string(sta))
 	}
-	glog.V(5).Infof(
+	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, stable=%v, #stables=%v #outs=%v",
 		state.Type, state.URN, stable, len(stables), len(props))
 
@@ -402,7 +416,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
 	}
-	glog.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, len(outs))
+	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, len(outs))
 
 	// Now send the step over to the engine to perform.
 	step := &registerResourceOutputsEvent{
@@ -410,12 +424,23 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 		outputs: outs,
 		done:    make(chan bool),
 	}
-	rm.regOutChan <- step
+
+	select {
+	case rm.regOutChan <- step:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
+	}
 
 	// Now block waiting for the operation to finish.
-	// IDEA: we probably need some way to cancel this in case of catastrophe.
-	<-step.done
-	glog.V(5).Infof(
+	select {
+	case <-step.done:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
+	}
+
+	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResourceOutputs operation finished: urn=%v, #outs=%v", urn, len(outs))
 	return &pbempty.Empty{}, nil
 }

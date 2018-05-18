@@ -11,11 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -81,7 +81,7 @@ const (
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
-	glog.V(6).Infof("GetLogs[%v]", state.URN)
+	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	switch state.Type {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
@@ -92,7 +92,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.EndTime,
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
-		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
+		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
@@ -103,11 +103,11 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.EndTime,
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
-		glog.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
+		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	default:
 		// Else this resource kind does not produce any logs.
-		glog.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
+		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
 		return nil, nil
 	}
 }
@@ -173,12 +173,12 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 			}, func(resp *cloudwatchlogs.FilterLogEventsOutput, lastPage bool) bool {
 				ret = append(ret, resp.Events...)
 				if !lastPage {
-					glog.V(5).Infof("[getLogs] Getting more logs for %v...\n", logGroup)
+					logging.V(5).Infof("[getLogs] Getting more logs for %v...\n", logGroup)
 				}
 				return true
 			})
 			if err != nil {
-				glog.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+				logging.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
 			}
 			ch <- ret
 		}(logGroup)

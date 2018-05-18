@@ -13,6 +13,7 @@ import (
 
 func newPreviewCmd() *cobra.Command {
 	var debug bool
+	var expectNop bool
 	var message string
 	var stack string
 
@@ -75,13 +76,24 @@ func newPreviewCmd() *cobra.Command {
 					Debug:                debug,
 				},
 			}
-			return s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
+			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
+			switch {
+			case err != nil:
+				return err
+			case expectNop && changes != nil && changes.HasChanges():
+				return errors.New("error: no changes were expected but changes were proposed")
+			default:
+				return nil
+			}
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
+	cmd.PersistentFlags().BoolVar(
+		&expectNop, "expect-no-changes", false,
+		"Return an error if any changes are proposed by this preview")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")

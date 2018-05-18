@@ -1,5 +1,6 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
+import * as grpc from "grpc";
 import * as log from "../log";
 import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
@@ -32,9 +33,16 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
         req.setTok(tok);
         req.setArgs(obj);
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
-            monitor.invoke(req, (err: Error, innerResponse: any) => {
+            monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
+                    // If the monitor is unavailable, it is in the process of shutting down or has already
+                    // shut down. Don't emit an error and don't do any more RPCs.
+                    if (err.code === grpc.status.UNAVAILABLE) {
+                        log.debug("Resource monitor is terminating");
+                        waitForDeath();
+                    }
+
                     innerReject(err);
                 }
                 else {
@@ -56,3 +64,11 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
     }
 }
 
+/**
+ * waitForDeath loops forever. See the comments in resource.ts on the function with
+ * the same name for an explanation as to why this exists.
+ */
+function waitForDeath(): never {
+    // tslint:disable-next-line
+    while (true) {}
+}

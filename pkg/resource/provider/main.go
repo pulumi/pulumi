@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
@@ -25,7 +26,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 	flag.Parse()
 
 	// Initialize loggers before going any further.
-	cmdutil.InitLogging(false, 0, false)
+	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing(name, name, tracing)
 
 	// Read the non-flags args and connect to the engine.

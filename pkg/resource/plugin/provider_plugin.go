@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -17,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -89,7 +89,7 @@ func (p *provider) ensureConfigured() error {
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(vars map[config.Key]string) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
-	glog.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
+	logging.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
 	config := make(map[string]string)
 	for k, v := range vars {
 		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
@@ -103,7 +103,7 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 		_, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{Variables: config})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
-			glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
@@ -118,7 +118,7 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
-	glog.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label),
 		KeepUnknowns: allowUnknowns})
@@ -144,7 +144,7 @@ func (p *provider) Check(urn resource.URN,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 		return nil, nil, rpcError
 	}
 
@@ -164,7 +164,7 @@ func (p *provider) Check(urn resource.URN,
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	glog.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
 	return inputs, failures, nil
 }
 
@@ -177,7 +177,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	contract.Assert(olds != nil)
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
-	glog.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
@@ -204,7 +204,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
 		return DiffResult{}, rpcError
 	}
 
@@ -218,7 +218,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	}
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
-	glog.V(7).Infof("%s success: changes=%d #replaces=%d #stables=%d delbefrepl=%v",
+	logging.V(7).Infof("%s success: changes=%d #replaces=%d #stables=%d delbefrepl=%v",
 		label, changes, len(replaces), len(stables), deleteBeforeReplace)
 	return DiffResult{
 		Changes:             DiffChanges(changes),
@@ -235,7 +235,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	contract.Assert(props != nil)
 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
-	glog.V(7).Infof("%s executing (#props=%v)", label, len(props))
+	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
 	mprops, err := MarshalProperties(props, MarshalOptions{Label: fmt.Sprintf("%s.inputs", label)})
 	if err != nil {
@@ -254,7 +254,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	})
 	if err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcErr)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcErr)
 		return "", nil, resourceStatus, rpcErr
 	}
 
@@ -270,7 +270,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusUnknown, err
 	}
 
-	glog.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
 	return id, outs, resource.StatusOK, nil
 }
 
@@ -281,7 +281,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 	contract.Assert(id != "")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
-	glog.V(7).Infof("%s executing (#props=%v)", label, len(props))
+	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
 	// Marshal the input state so we can perform the RPC.
 	marshaled, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
@@ -302,7 +302,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 		Properties: marshaled,
 	})
 	if err != nil {
-		glog.V(7).Infof("%s failed: %v", label, err)
+		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err
 	}
 
@@ -322,7 +322,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 		return nil, err
 	}
 
-	glog.V(7).Infof("%s success; #outs=%d", label, len(results))
+	logging.V(7).Infof("%s success; #outs=%d", label, len(results))
 	return results, nil
 }
 
@@ -335,7 +335,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	contract.Assert(olds != nil)
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
-	glog.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true})
@@ -361,7 +361,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	})
 	if err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
-		glog.V(7).Infof("%s failed: %v", label, rpcErr)
+		logging.V(7).Infof("%s failed: %v", label, rpcErr)
 		return nil, resourceStatus, rpcErr
 	}
 
@@ -371,7 +371,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusUnknown, err
 	}
 
-	glog.V(7).Infof("%s success; #outs=%d", label, len(outs))
+	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 	return outs, resource.StatusOK, nil
 }
 
@@ -381,7 +381,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	contract.Assert(id != "")
 
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
-	glog.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 
 	mprops, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
 	if err != nil {
@@ -400,11 +400,11 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		Properties: mprops,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
-		glog.V(7).Infof("%s failed: %v", label, rpcErr)
+		logging.V(7).Infof("%s failed: %v", label, rpcErr)
 		return resourceStatus, rpcErr
 	}
 
-	glog.V(7).Infof("%s success", label)
+	logging.V(7).Infof("%s success", label)
 	return resource.StatusOK, nil
 }
 
@@ -414,7 +414,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	contract.Assert(tok != "")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
-	glog.V(7).Infof("%s executing (#args=%d)", label, len(args))
+	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
 
 	margs, err := MarshalProperties(args, MarshalOptions{Label: fmt.Sprintf("%s.args", label)})
 	if err != nil {
@@ -429,7 +429,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
-		glog.V(7).Infof("%s failed: %v", label, err)
+		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, nil, err
 	}
 
@@ -446,21 +446,21 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	glog.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
 	return ret, failures, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", p.label())
-	glog.V(7).Infof("%s executing", label)
+	logging.V(7).Infof("%s executing", label)
 
 	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
 	resp, err := p.clientRaw.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		glog.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 		return workspace.PluginInfo{}, rpcError
 	}
 
@@ -524,13 +524,13 @@ func createConfigureError(rpcerr *rpcerror.Error) error {
 // `codes.DataLoss`, or `codes.Unknown` to us.
 func resourceStateAndError(err error) (resource.Status, error) {
 	rpcError := rpcerror.Convert(err)
-	glog.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
+	logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
 	switch rpcError.Code() {
 	case codes.Internal, codes.DataLoss, codes.Unknown:
-		glog.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcError.Code())
+		logging.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcError.Code())
 		return resource.StatusUnknown, rpcError
 	}
 
-	glog.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcError.Code())
+	logging.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcError.Code())
 	return resource.StatusOK, rpcError
 }

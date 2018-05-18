@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -27,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -177,9 +177,23 @@ func (b *localBackend) GetStackCrypter(stackRef backend.StackReference) (config.
 	return symmetricCrypter(stackRef.StackName())
 }
 
+func (b *localBackend) GetLatestConfiguration(ctx context.Context,
+	stackRef backend.StackReference) (config.Map, error) {
+
+	hist, err := b.GetHistory(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	if len(hist) == 0 {
+		return nil, errors.New("no previous deployment")
+	}
+
+	return hist[0].Config, nil
+}
+
 func (b *localBackend) Preview(
-	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string,
-	m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	return b.performEngineOp("previewing", backend.PreviewUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes,
@@ -193,18 +207,18 @@ func (b *localBackend) Preview(
 
 func (b *localBackend) Update(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	// The Pulumi Service will pick up changes to a stack's tags on each update. (e.g. changing the description
 	// in Pulumi.yaml.) While this isn't necessary for local updates, we do the validation here to keep
 	// parity with stacks managed by the Pulumi Service.
 	tags, err := backend.GetStackTags()
 	if err != nil {
-		return errors.Wrap(err, "getting stack tags")
+		return nil, errors.Wrap(err, "getting stack tags")
 	}
 	stackName := stackRef.StackName()
 	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
-		return errors.Wrap(err, "validating stack properties")
+		return nil, errors.Wrap(err, "validating stack properties")
 	}
 	return b.performEngineOp("updating", backend.DeployUpdate,
 		stackName, proj, root, m, opts, scopes, engine.Update)
@@ -212,7 +226,7 @@ func (b *localBackend) Update(
 
 func (b *localBackend) Refresh(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Refresh)
@@ -220,7 +234,7 @@ func (b *localBackend) Refresh(
 
 func (b *localBackend) Destroy(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Destroy)
@@ -229,11 +243,12 @@ func (b *localBackend) Destroy(
 type engineOpFunc func(engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
 
 func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
-	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata,
-	opts backend.UpdateOptions, scopes backend.CancellationScopeSource, performEngineOp engineOpFunc) error {
+	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource, performEngineOp engineOpFunc) (engine.ResourceChanges, error) {
+
 	update, err := b.newUpdate(stackName, proj, root)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	events := make(chan engine.Event)
@@ -287,13 +302,13 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 
 	if updateErr != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return updateErr
+		return changes, updateErr
 	}
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return errors.Wrap(saveErr, "saving update info")
+		return changes, errors.Wrap(saveErr, "saving update info")
 	}
-	return errors.Wrap(backupErr, "saving backup")
+	return changes, errors.Wrap(backupErr, "saving backup")
 }
 
 func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
@@ -416,7 +431,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
 		_, _, _, err := b.getStack(name)
 		if err != nil {
-			glog.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
+			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
 			continue // failure reading the stack information.
 		}
 

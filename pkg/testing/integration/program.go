@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -133,6 +134,10 @@ type ProgramTestOptions struct {
 
 	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocatoions.
 	Tracing string
+
+	// PrePulumiCommand specifies a callback that will be executed before each `pulumi` invocation. This callback may
+	// optionally return another callback to be invoked after the `pulumi` invocation completes.
+	PrePulumiCommand func(verb string) (func(err error) error, error)
 
 	// ReportStats optionally specifies how to report results from the test for external collection.
 	ReportStats TestStatsReporter
@@ -373,7 +378,22 @@ func (pt *programTester) runPulumiCommand(name string, args []string, wd string)
 	if err != nil {
 		return err
 	}
-	return pt.runCommand(name, cmd, wd)
+
+	var postFn func(error) error
+	if pt.opts.PrePulumiCommand != nil {
+		postFn, err = pt.opts.PrePulumiCommand(args[0])
+		if err != nil {
+			return err
+		}
+	}
+
+	runErr := pt.runCommand(name, cmd, wd)
+	if postFn != nil {
+		if postErr := postFn(runErr); postErr != nil {
+			return multierror.Append(runErr, postErr)
+		}
+	}
+	return runErr
 }
 
 func (pt *programTester) runYarnCommand(name string, args []string, wd string) error {
@@ -542,7 +562,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
 	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
-	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure)
+	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -552,7 +572,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.Quick {
 		fprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := pt.previewAndUpdate(dir, "empty", false); err != nil {
+		if err := pt.previewAndUpdate(dir, "empty", false, true); err != nil {
 			return err
 		}
 	}
@@ -566,12 +586,16 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	return pt.testEdits(dir)
 }
 
-func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bool) error {
+func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNop bool) error {
 	preview := []string{"preview", "--non-interactive"}
 	update := []string{"update", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
+	}
+	if expectNop {
+		preview = append(preview, "--expect-no-changes")
+		update = append(update, "--expect-no-changes")
 	}
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
@@ -706,7 +730,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false); err != nil {
 		return err
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)

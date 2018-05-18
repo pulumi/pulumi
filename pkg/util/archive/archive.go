@@ -13,9 +13,10 @@ import (
 	"path"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -39,7 +40,7 @@ func Process(path string, useDefaultExcludes bool) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	glog.V(5).Infof("project archive is %v bytes", buffer.Len())
+	logging.V(5).Infof("project archive is %v bytes", buffer.Len())
 
 	return buffer, nil
 }
@@ -50,7 +51,7 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string,
 
 	// If there is an ignorefile, process it before looking at any child paths.
 	if stat, err := os.Stat(ignoreFilePath); err == nil && !stat.IsDir() {
-		glog.V(9).Infof("processing ignore file in %v", dir)
+		logging.V(9).Infof("processing ignore file in %v", dir)
 
 		ignore, err := newPulumiIgnorerIgnorer(ignoreFilePath)
 		if err != nil {
@@ -69,7 +70,7 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string,
 		// If there is a package.json file here, let's build a node_modules ignorer from it.
 		packageJSONFilePath := path.Join(dir, packageJSONFileName)
 		if stat, err := os.Stat(packageJSONFilePath); err == nil && !stat.IsDir() {
-			glog.V(9).Infof("building ignore filter from package.json in %v", dir)
+			logging.V(9).Infof("building ignore filter from package.json in %v", dir)
 			ignore, err := newNodeModulesIgnorer(packageJSONFilePath)
 			if err != nil {
 				return errors.Wrapf(err, "could not read ignores from package.json file in %v", dir)
@@ -96,7 +97,7 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string,
 		fullName := path.Join(dir, info.Name())
 
 		if !info.IsDir() && ignores.IsIgnored(fullName) {
-			glog.V(9).Infof("skip archiving of %v due to ignore file", fullName)
+			logging.V(9).Infof("skip archiving of %v due to ignore file", fullName)
 			continue
 		}
 
@@ -131,7 +132,7 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string,
 				return err
 			}
 		} else if info.Mode().IsRegular() {
-			glog.V(9).Infof("adding %v to archive", fullName)
+			logging.V(9).Infof("adding %v to archive", fullName)
 
 			w, err := writer.Create(convertPathsForZip(strings.TrimPrefix(fullName, root)))
 			if err != nil {
@@ -150,7 +151,7 @@ func addDirectoryToZip(writer *zip.Writer, root string, dir string,
 				return err
 			}
 		} else {
-			glog.V(9).Infof("ignoring special file %v with mode %v", fullName, info.Mode())
+			logging.V(9).Infof("ignoring special file %v with mode %v", fullName, info.Mode())
 		}
 	}
 

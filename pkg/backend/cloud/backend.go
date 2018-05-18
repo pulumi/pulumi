@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,7 +18,6 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb"
-	"github.com/golang/glog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -41,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/archive"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -552,7 +551,8 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 
 func (b *cloudBackend) PreviewThenPrompt(
 	ctx context.Context, updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
-	m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (bool, error) {
+	m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, bool, error) {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -575,25 +575,25 @@ func (b *cloudBackend) PreviewThenPrompt(
 	}()
 
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
-	hasChanges := true
+	changes, hasChanges := engine.ResourceChanges(nil), true
 	if !opts.SkipPreview {
-		changes, err := b.updateStack(
+		c, err := b.updateStack(
 			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel, true /*dryRun*/, scopes)
 		if err != nil {
-			return false, err
+			return c, false, err
 		}
 
 		// TODO(ellismg)[pulumi/pulumi#1347]: Work around 1347 by forcing a choice when running a preview against a PPC
-		hasChanges = changes.HasChanges() || !stack.(Stack).RunLocally()
+		changes, hasChanges = c, c.HasChanges() || !stack.(Stack).RunLocally()
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if !hasChanges || opts.AutoApprove || updateKind == client.UpdateKindPreview {
-		return hasChanges, nil
+		return changes, hasChanges, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	return hasChanges, confirmBeforeUpdating(updateKind, stack, events, opts)
+	return changes, hasChanges, confirmBeforeUpdating(updateKind, stack, events, opts)
 }
 
 // confirmBeforeUpdating asks the user whether to proceed.  A nil error means yes.
@@ -649,12 +649,13 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 
 func (b *cloudBackend) PreviewThenPromptThenExecute(
 	ctx context.Context, updateKind client.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	// First get the stack.
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !stack.(Stack).RunLocally() && updateKind == client.UpdateKindDestroy {
@@ -663,33 +664,36 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	}
 
 	// Preview the operation to the user and ask them if they want to proceed.
-	hasChanges, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
+	changes, hasChanges, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
 	if err != nil || !hasChanges || updateKind == client.UpdateKindPreview {
-		return err
+		return changes, err
 	}
 
 	// Now do the real operation.  We don't care about the events it issues, so just pass a nil channel along.
-	_, err = b.updateStack(ctx, updateKind, stack, pkg, root, m, opts, nil, false /*dryRun*/, scopes)
-	return err
+	return b.updateStack(ctx, updateKind, stack, pkg, root, m, opts, nil, false /*dryRun*/, scopes)
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindPreview, stackRef, pkg, root, m, opts, scopes)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindUpdate, stackRef, pkg, root, m, opts, scopes)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindRefresh, stackRef, pkg, root, m, opts, scopes)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
-	root string, m backend.UpdateMetadata, opts backend.UpdateOptions, scopes backend.CancellationScopeSource) error {
+	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindDestroy, stackRef, pkg, root, m, opts, scopes)
 }
 
@@ -735,7 +739,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, 0, "", err
 	}
 	if action == client.UpdateKindUpdate {
-		glog.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
+		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
 	return update, version, token, nil
@@ -843,6 +847,7 @@ func (b *cloudBackend) runEngineAction(
 	scope := scopes.NewScope(engineEvents, dryRun)
 	defer scope.Close()
 
+	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send to them to the two listeners.
 		for e := range engineEvents {
@@ -852,6 +857,8 @@ func (b *cloudBackend) runEngineAction(
 				callerEventsOpt <- e
 			}
 		}
+
+		close(eventsDone)
 	}()
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
@@ -886,6 +893,9 @@ func (b *cloudBackend) runEngineAction(
 	close(displayDone)
 	contract.IgnoreClose(manager)
 
+	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
+	// has exited before proceeding
+	<-eventsDone
 	if !dryRun {
 		status := apitype.UpdateStatusSucceeded
 		if err != nil {
@@ -936,15 +946,6 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
 	for _, update := range updates {
-		// Decode the deployment.
-		if update.Version > 1 {
-			return nil, errors.Errorf("unsupported checkpoint version %v", update.Version)
-		}
-		var deployment apitype.DeploymentV1
-		if err := json.Unmarshal([]byte(update.Deployment), &deployment); err != nil {
-			return nil, err
-		}
-
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)
 		if err != nil {
@@ -959,12 +960,22 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 			Result:          backend.UpdateResult(update.Result),
 			StartTime:       update.StartTime,
 			EndTime:         update.EndTime,
-			Deployment:      &deployment,
 			ResourceChanges: convertResourceChanges(update.ResourceChanges),
 		})
 	}
 
 	return beUpdates, nil
+}
+
+func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
+	stackRef backend.StackReference) (config.Map, error) {
+
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.client.GetLatestConfiguration(ctx, stackID)
 }
 
 // convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.
@@ -1243,16 +1254,16 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 			if try < 10 {
 				warn = false
 			}
-			glog.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
+			logging.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
 				b.CloudURL(), errResp.Code, try, err)
 		} else {
 			// Otherwise, we will issue an error.
-			glog.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
+			logging.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
 				b.CloudURL(), errResp.Code, try, err)
 			return false, nil, err
 		}
 	} else {
-		glog.V(3).Infof("Unexpected %s error after %d retries (retrying): %v", b.CloudURL(), try, err)
+		logging.V(3).Infof("Unexpected %s error after %d retries (retrying): %v", b.CloudURL(), try, err)
 	}
 
 	// Issue a warning if appropriate.

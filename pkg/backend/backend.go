@@ -64,22 +64,24 @@ type Backend interface {
 
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stackRef StackReference, proj *workspace.Project, root string,
-		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) error
+		m UpdateMetadata, opts UpdateOptions, scopes CancellationScopeSource) (engine.ResourceChanges, error)
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(ctx context.Context, stackRef StackReference, query operations.LogQuery) ([]operations.LogEntry, error)
+	// Get the configuration from the most recent deployment of the stack.
+	GetLatestConfiguration(ctx context.Context, stackRef StackReference) (config.Map, error)
 
 	// ExportDeployment exports the deployment for the given stack as an opaque JSON message.
 	ExportDeployment(ctx context.Context, stackRef StackReference) (*apitype.UntypedDeployment, error)
@@ -114,4 +116,28 @@ type CancellationScope interface {
 type CancellationScopeSource interface {
 	// NewScope creates a new cancellation scope.
 	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
+}
+
+// tracingOptionsKey is the value used as the context key for TracingOptions.
+var tracingOptionsKey struct{}
+
+// TracingOptions describes the set of options available for configuring tracing on a per-request basis.
+type TracingOptions struct {
+	// PropagateSpans indicates that spans should be propagated from the client to the Pulumi service when making API
+	// calls.
+	PropagateSpans bool
+	// IncludeTracingHeader indicates that API calls should include the indicated tracing header contents.
+	TracingHeader string
+}
+
+// ContextWithTracingOptions returns a new context.Context with the indicated tracing options.
+func ContextWithTracingOptions(ctx context.Context, opts TracingOptions) context.Context {
+	return context.WithValue(ctx, tracingOptionsKey, opts)
+}
+
+// TracingOptionsFromContext retrieves any tracing options present in the given context. If no options are present,
+// this function returns the zero value.
+func TracingOptionsFromContext(ctx context.Context) TracingOptions {
+	opts, _ := ctx.Value(tracingOptionsKey).(TracingOptions)
+	return opts
 }
