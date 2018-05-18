@@ -562,7 +562,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
 	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
-	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false)
+	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -572,7 +572,7 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.Quick {
 		fprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := pt.previewAndUpdate(dir, "empty", false, true); err != nil {
+		if err := pt.previewAndUpdate(dir, "empty", false); err != nil {
 			return err
 		}
 	}
@@ -586,16 +586,12 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	return pt.testEdits(dir)
 }
 
-func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNop bool) error {
+func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bool) error {
 	preview := []string{"preview", "--non-interactive"}
 	update := []string{"update", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
-	}
-	if expectNop {
-		preview = append(preview, "--expect-no-changes")
-		update = append(update, "--expect-no-changes")
 	}
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
@@ -730,7 +726,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
 		return err
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
