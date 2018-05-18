@@ -873,13 +873,9 @@ func (b *cloudBackend) runEngineAction(
 
 	switch action {
 	case client.UpdateKindPreview:
-		changes, err = engine.Preview(u, engineCtx, opts.Engine)
+		changes, err = engine.Update(u, engineCtx, opts.Engine, true)
 	case client.UpdateKindUpdate:
-		if dryRun {
-			changes, err = engine.Preview(u, engineCtx, opts.Engine)
-		} else {
-			changes, err = engine.Update(u, engineCtx, opts.Engine, dryRun)
-		}
+		changes, err = engine.Update(u, engineCtx, opts.Engine, dryRun)
 	case client.UpdateKindRefresh:
 		changes, err = engine.Refresh(u, engineCtx, opts.Engine, dryRun)
 	case client.UpdateKindDestroy:

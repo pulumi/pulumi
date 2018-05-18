@@ -194,15 +194,8 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 func (b *localBackend) Preview(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
 	return b.performEngineOp("previewing", backend.PreviewUpdate,
-		stackRef.StackName(), proj, root, m, opts, scopes,
-		func(u engine.UpdateInfo, ctx *engine.Context,
-			opts engine.UpdateOptions, dryRun bool) (engine.ResourceChanges, error) {
-			contract.Assert(dryRun)
-			return engine.Preview(u, ctx, opts)
-		},
-	)
+		stackRef.StackName(), proj, root, m, opts, scopes, engine.Update)
 }
 
 func (b *localBackend) Update(
@@ -227,7 +220,6 @@ func (b *localBackend) Update(
 func (b *localBackend) Refresh(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Refresh)
 }
@@ -235,7 +227,6 @@ func (b *localBackend) Refresh(
 func (b *localBackend) Destroy(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Destroy)
 }
