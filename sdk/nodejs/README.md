@@ -1,36 +1,49 @@
-# Pulumi Fabric Node.js SDK
+# Pulumi Node.js SDK
 
-The Pulumi Fabric Node.js SDK lets you write cloud programs in JavaScript.
+The Pulumi Node.js SDK lets you write cloud programs in JavaScript.
 
-## Installing
+## Installation
 
-For now, we only support developers building from source.  Eventually we will have a nice installer.
+Using npm:
+
+```bash
+$ npm install --save @pulumi/pulumi
+```
+
+Using yarn:
+
+```bash
+$ yarn add @pulumi/pulumi
+```
+
+This SDK is meant for use with the Pulumi CLI.  Please visit [docs.pulumi.com](https://docs.pulumi.com) for
+installation instructions.
+
+## Building and Testing
+
+For anybody who wants to build from source, here is how you do it.
 
 ### Prerequisites
 
-To build and install the SDK, you will first need a few things.
+This SDK uses Node.js and we support the Active LTS and Current releases, as defined by
+[this table](https://github.com/nodejs/Release#release-schedule).  We support both [NPM](https://npmjs.org) and
+[Yarn](https://yarnpkg.com/lang/en/docs/install/) for package management.
 
-First, you will need a version of Node. We officially support the current node Active LTS releases and
-the most recent Current release, as defined by [this table](https://github.com/nodejs/Release#release-schedule).
+At the moment, we only support building on macOS and Linux, where standard GNU tools like `make` are available.
 
-Next, we suggest using [Yarn](https://yarnpkg.com/lang/en/docs/install/) for package management.  NPM works too, but
-Yarn is faster and therefore preferred.  Please follow the directions on Yarn's website.
+### Make Targets
 
-### Building and Testing
+The first time you build, run `make ensure` to install and prepare native plugins for V8:
 
-The first time you build, you can `make ensure` to install and prepare native plugins for V8:
-
-    $ make configure
+    $ make ensure
 
 This is only necessary if you intend to produce a build that is capable of running older versions of the SDK
-contained in this directory. If you do intend to do this, you must have node `6.10.2` installed.
+contained in this directory.  If you do intend to do this, you must have node `6.10.2` installed.
 
-To build the SDK, simply run `make` from the root directory (`sdk/nodejs/`).  This will build the code, run tests, and
-then "install" the package (by `yarn link`ing the resulting `bin/` directory).
+To build the SDK, simply run `make` from the root directory (where this `README` lives, at `sdk/nodejs/` from the repo's
+root).  This will build the code, run tests, and install the package and its supporting artifacts.
 
-We recommend putting `bin/` on your `$PATH`, since the `pulumi-langhost-nodejs` executable will be loaded dynamically
-by the `pulumi` tool whenever it encounters a Node.js program.
+At the moment, for local development, we install everything into `/opt/pulumi`.  You will want this on your `$PATH`.
 
 The tests will verify that everything works, but feel free to try running `pulumi preview` and/or `pulumi update` from
 the `examples/minimal/` directory.  Remember to run `tsc` first, since `pulumi` expects JavaScript, not TypeScript.
-
