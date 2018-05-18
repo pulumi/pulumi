@@ -658,8 +658,9 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		return nil, err
 	}
 
-	if !stack.(Stack).RunLocally() && updateKind == client.UpdateKindDestroy {
-		// The service does not support preview of a destroy for a stack managed by a PPC.  So skip the preview.
+	if !stack.(Stack).RunLocally() &&
+		(updateKind == client.UpdateKindDestroy || updateKind == client.UpdateKindRefresh) {
+		// The service does not support previews for PPC stacks, other than for updates.  So skip the preview.
 		opts.SkipPreview = true
 	}
 
@@ -829,6 +830,7 @@ func (b *cloudBackend) runEngineAction(
 	root string, opts backend.UpdateOptions, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
+	contract.Assertf(dryRun || token != "", "expected a non-empty token when doing a non-dryrun update")
 
 	u, err := b.newUpdate(ctx, stackRef, pkg, root, update, token)
 	if err != nil {
