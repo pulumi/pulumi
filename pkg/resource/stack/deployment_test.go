@@ -146,7 +146,7 @@ func TestDeploymentSerialization(t *testing.T) {
 
 func TestLoadTooNewDeployment(t *testing.T) {
 	untypedDeployment := &apitype.UntypedDeployment{
-		Version: DeploymentSchemaVersionCurrent + 1,
+		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
 	deployment, err := DeserializeDeployment(untypedDeployment)

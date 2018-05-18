@@ -34,10 +34,6 @@ const (
 	// We only have one version today (version 1) so the oldest supported version is the
 	// current version.
 	DeploymentSchemaVersionOldestSupported = 1
-
-	// DeploymentSchemaVersionCurrent is the current version of the deployment schema.
-	// Any deployments newer than this version will be rejected.
-	DeploymentSchemaVersionCurrent = 1
 )
 
 var (
@@ -93,7 +89,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
 func DeserializeDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snapshot, error) {
 	contract.Require(deployment != nil, "deployment")
 	switch {
-	case deployment.Version > DeploymentSchemaVersionCurrent:
+	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
 		return nil, ErrDeploymentSchemaVersionTooNew
 	case deployment.Version < DeploymentSchemaVersionOldestSupported:
 		return nil, ErrDeploymentSchemaVersionTooOld

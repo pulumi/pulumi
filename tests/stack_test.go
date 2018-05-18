@@ -137,7 +137,7 @@ func TestStackCommands(t *testing.T) {
 	// one that the CLI supports.
 	t.Run("CheckpointVersioning", func(t *testing.T) {
 		versions := []int{
-			stack.DeploymentSchemaVersionCurrent + 1,
+			apitype.DeploymentSchemaVersionCurrent + 1,
 			stack.DeploymentSchemaVersionOldestSupported - 1,
 		}
 
@@ -180,7 +180,7 @@ func TestStackCommands(t *testing.T) {
 				stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "import", "--file", "stack.json")
 				assert.Empty(t, stdout)
 				switch {
-				case deploymentVersion > stack.DeploymentSchemaVersionCurrent:
+				case deploymentVersion > apitype.DeploymentSchemaVersionCurrent:
 					assert.Contains(t, stderr, "is newer than what this version of the Pulumi CLI understands")
 				case deploymentVersion < stack.DeploymentSchemaVersionOldestSupported:
 					assert.Contains(t, stderr, "is too old")

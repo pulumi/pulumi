@@ -36,6 +36,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+const (
+	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.
+	// Any deployments newer than this version will be rejected.
+	DeploymentSchemaVersionCurrent = 1
+)
+
 // We alias the latest versions of the various types below to their friendly names here.
 
 type Checkpoint = CheckpointV1
