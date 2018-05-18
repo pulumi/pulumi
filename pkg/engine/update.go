@@ -57,7 +57,6 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
 		Diag:          newEventSink(emitter),
-		PluginEvents:  &pluginActions{ctx},
 	}, dryRun)
 }
 
@@ -91,7 +90,7 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, error) {
-	result, err := plan(info, opts, dryRun)
+	result, err := plan(ctx, info, opts, dryRun)
 	if err != nil {
 		return nil, err
 	}
