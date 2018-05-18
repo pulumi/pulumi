@@ -7,7 +7,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/version"
@@ -48,7 +47,6 @@ type SnapshotManager struct {
 	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
 	doVerify         bool                     // If true, verify the snapshot before persisting it
 	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
-	stackName        tokens.QName             // The name of the stack being updated
 	mutationRequests chan func()              // The queue of mutation requests, to be retired serially by the manager
 }
 
@@ -298,7 +296,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(sm.stackName, manifest, resources)
+	return deploy.NewSnapshot(manifest, resources)
 }
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
@@ -307,12 +305,10 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // It is *very important* that the baseSnap pointer refers to the same Snapshot
 // given to the engine! The engine will mutate this object and correctness of the
 // SnapshotManager depends on being able to observe this mutation. (This is not ideal...)
-func NewSnapshotManager(stackName tokens.QName, persister SnapshotPersister,
-	baseSnap *deploy.Snapshot) *SnapshotManager {
+func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) *SnapshotManager {
 	manager := &SnapshotManager{
 		persister:        persister,
 		baseSnapshot:     baseSnap,
-		stackName:        stackName,
 		dones:            make(map[*resource.State]bool),
 		doVerify:         true,
 		mutationRequests: make(chan func()),

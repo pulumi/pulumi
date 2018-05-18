@@ -83,7 +83,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			[]resource.URN{},
 		))
 	}
-	snapshot := deploy.NewSnapshot(stackName, deploy.Manifest{}, resources)
+	snapshot := deploy.NewSnapshot(deploy.Manifest{}, resources)
 
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{

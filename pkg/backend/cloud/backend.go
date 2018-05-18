@@ -836,7 +836,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	manager := backend.NewSnapshotManager(stackRef.StackName(), persister, u.GetTarget().Snapshot)
+	manager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 
