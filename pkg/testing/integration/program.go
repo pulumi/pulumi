@@ -125,6 +125,9 @@ type ProgramTestOptions struct {
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
+	// ExpectRefreshChanges may be set to true if a test is expected to have changes yielded by an immediate refresh.
+	// This could occur, for example, is a resource's state is constantly changing outside of Pulumi (e.g., timestamps).
+	ExpectRefreshChanges bool
 	// Quick can be set to true to run a "quick" test that skips any non-essential steps (e.g., empty updates).
 	Quick bool
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
@@ -594,6 +597,18 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 		return err
 	}
 
+	// Perform a refresh and ensure it doesn't yield changes.
+	refresh := []string{"refresh", "--non-interactive", "--skip-preview"}
+	if pt.opts.GetDebugUpdates() {
+		refresh = append(refresh, "-d")
+	}
+	if !pt.opts.ExpectRefreshChanges {
+		refresh = append(refresh, "--expect-no-changes")
+	}
+	if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir); err != nil {
+		return err
+	}
+
 	// If there are any edits, apply them and run a preview and update for each one.
 	return pt.testEdits(dir)
 }
@@ -613,6 +628,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
 	}
 
+	// If not in quick mode, run an explicit preview.
 	if !pt.opts.Quick {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir); err != nil {
 			if shouldFail {
@@ -623,6 +639,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 		}
 	}
 
+	// Now run an update.
 	if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir); err != nil {
 		if shouldFail {
 			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
