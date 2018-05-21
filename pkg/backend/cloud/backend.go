@@ -255,24 +255,10 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	return cloudURL[:ix] + path.Join(append([]string{cloudURL[ix+len(defaultAPIURLPrefix):]}, paths...)...)
 }
 
-// cloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
-// must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
-func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
-	// When projID.Repository is the empty string, we are using the new identity model. In this case, the service
-	// does not include project or repository information in URLS, so the "project path" is simply the owner.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
-	if projID.Repository == "" {
-		return projID.Owner
-	}
-
-	return path.Join(projID.Owner, projID.Repository, projID.Project)
-}
-
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(b.cloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+	return path.Join(stackID.Owner, stackID.Stack)
 }
 
 // Logout logs out of the target cloud URL.
@@ -370,15 +356,6 @@ type CreateStackOptions struct {
 	CloudName string
 }
 
-func ownerFromRef(stackRef backend.StackReference) string {
-	if r, ok := stackRef.(cloudBackendReference); ok {
-		return r.owner
-	}
-
-	contract.Failf("bad StackReference type")
-	return ""
-}
-
 func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
@@ -391,7 +368,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
 	}
 
-	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -401,11 +378,11 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	apistack, err := b.client.CreateStack(ctx, project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
+	apistack, err := b.client.CreateStack(ctx, stackID, cloudOpts.CloudName, tags)
 	if err != nil {
 		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
-			return nil, &backend.StackAlreadyExistsError{StackName: string(stackRef.StackName())}
+			return nil, &backend.StackAlreadyExistsError{StackName: stackID.Stack}
 		}
 		return nil, err
 	}
@@ -421,12 +398,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 }
 
 func (b *cloudBackend) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]backend.Stack, error) {
-	project, err := b.getCloudProjectIdentifier("")
-	if err != nil {
-		return nil, err
-	}
-
-	stacks, err := b.client.ListStacks(ctx, project, projectFilter)
+	stacks, err := b.client.ListStacks(ctx, projectFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -1072,59 +1044,22 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	return nil
 }
 
-// getCloudProjectIdentifier returns information about the current repository and project, based on the current
-// working directory.
-func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectIdentifier, error) {
-	w, err := workspace.New()
-	if err != nil {
-		return client.ProjectIdentifier{}, err
-	}
-
-	proj, err := workspace.DetectProject()
-	if err != nil {
-		return client.ProjectIdentifier{}, err
-	}
-
-	repo := w.Repository()
-
-	// If we have repository information (this is the case when `pulumi init` has been run, use that.) To support the
-	// old and new model, we either set the Repository field in ProjectIdentifer or keep it as the empty string. The
-	// client type uses this to decide what REST endpoints to hit.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
-	if repo != nil {
-		return client.ProjectIdentifier{
-			Owner:      repo.Owner,
-			Repository: repo.Name,
-			Project:    string(proj.Name),
-		}, nil
-	}
+// getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
+// the current working directory.
+func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
+	owner := stackRef.(cloudBackendReference).owner
+	var err error
 
 	if owner == "" {
 		owner, err = b.client.GetPulumiAccountName(context.Background())
 		if err != nil {
-			return client.ProjectIdentifier{}, err
+			return client.StackIdentifier{}, err
 		}
 	}
 
-	// Otherwise, we are on the new plan.
-	return client.ProjectIdentifier{
-		Owner:   owner,
-		Project: string(proj.Name),
-	}, nil
-}
-
-// getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
-// the current working directory.
-func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
-	if err != nil {
-		return client.StackIdentifier{}, errors.Wrap(err, "failed to detect project")
-	}
-
 	return client.StackIdentifier{
-		ProjectIdentifier: project,
-		Stack:             string(stackRef.StackName()),
+		Owner: owner,
+		Stack: string(stackRef.StackName()),
 	}, nil
 }
 

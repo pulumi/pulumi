@@ -92,7 +92,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newLoginCmd())
 	cmd.AddCommand(newLogoutCmd())
 	cmd.AddCommand(newLogsCmd())

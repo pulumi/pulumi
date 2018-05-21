@@ -100,7 +100,6 @@ func TestStackTagValidation(t *testing.T) {
 			}
 		}()
 		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -120,7 +119,6 @@ func TestStackTagValidation(t *testing.T) {
 			}
 		}()
 		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -145,7 +143,6 @@ func TestStackTagValidation(t *testing.T) {
 			}
 		}()
 		e.RunCommand("git", "init")
-		e.RunCommand("pulumi", "init")
 
 		e.ImportDirectory("stack_project_name")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())

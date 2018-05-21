@@ -4,6 +4,7 @@ package backend
 
 import (
 	"context"
+	"path/filepath"
 	"regexp"
 
 	"github.com/pkg/errors"
@@ -13,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -105,17 +107,6 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 func GetStackTags() (map[apitype.StackTagName]string, error) {
 	tags := make(map[apitype.StackTagName]string)
 
-	// Tags based on the workspace's repository.
-	w, err := workspace.New()
-	if err != nil {
-		return nil, err
-	}
-	repo := w.Repository()
-	if repo != nil {
-		tags[apitype.GitHubOwnerNameTag] = repo.Owner
-		tags[apitype.GitHubRepositoryNameTag] = repo.Name
-	}
-
 	// Tags based on Pulumi.yaml.
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
@@ -131,6 +122,12 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 		if proj.Description != nil {
 			tags[apitype.ProjectDescriptionTag] = *proj.Description
 		}
+
+		if owner, repo, err := gitutil.GetGitHubProjectForOrigin(filepath.Dir(projPath)); err == nil {
+			tags[apitype.GitHubOwnerNameTag] = owner
+			tags[apitype.GitHubRepositoryNameTag] = repo
+		}
+
 	}
 
 	return tags, nil
