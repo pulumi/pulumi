@@ -15,7 +15,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     fi
 
     pushd ${ROOT}/sdk/nodejs/bin && \
-        npm publish --tag "${NPM_TAG}" && \
+        npm publish --access public --tag "${NPM_TAG}" && \
         npm info 2>/dev/null || true && \
         popd
 
