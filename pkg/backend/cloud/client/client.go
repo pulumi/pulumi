@@ -67,29 +67,10 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 	return pulumiRESTCall(ctx, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
-// getProjectPath returns the API path to for the given project with the given components joined with path separators
-// and appended to the project root.
-func getProjectPath(project ProjectIdentifier, components ...string) string {
-	contract.Assertf(project.Repository != "", "need repository in ProjectIdentifier")
-
-	projectRoot := fmt.Sprintf("/api/orgs/%s/programs/%s/%s", project.Owner, project.Repository, project.Project)
-	return path.Join(append([]string{projectRoot}, components...)...)
-}
-
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
 // and appended to the stack root.
 func getStackPath(stack StackIdentifier, components ...string) string {
-
-	// When stack.Repository is not empty, we are on the old pulumi init based identity plan, and we hit different REST
-	// endpoints.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
-	if stack.Repository == "" {
-		return path.Join(append([]string{fmt.Sprintf("/api/stacks/%s/%s", stack.Owner, stack.Stack)}, components...)...)
-	}
-
-	components = append([]string{"stacks", stack.Stack}, components...)
-	return getProjectPath(stack.ProjectIdentifier, components...)
+	return path.Join(append([]string{fmt.Sprintf("/api/stacks/%s/%s", stack.Owner, stack.Stack)}, components...)...)
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -154,27 +135,19 @@ func (pc *Client) DownloadTemplate(ctx context.Context, name string) (io.ReadClo
 }
 
 // ListStacks lists all stacks for the indicated project.
-func (pc *Client) ListStacks(ctx context.Context, project ProjectIdentifier,
-	projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
+func (pc *Client) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
 
 	// Query all stacks for the project on Pulumi.
 	var stacks []apitype.Stack
+	var queryFilter interface{}
+	if projectFilter != nil {
+		queryFilter = struct {
+			ProjectFilter string `url:"project"`
+		}{ProjectFilter: string(*projectFilter)}
+	}
 
-	if project.Repository != "" {
-		if err := pc.restCall(ctx, "GET", getProjectPath(project, "stacks"), nil, nil, &stacks); err != nil {
-			return nil, err
-		}
-	} else {
-		var queryFilter interface{}
-		if projectFilter != nil {
-			queryFilter = struct {
-				ProjectFilter string `url:"project"`
-			}{ProjectFilter: project.Project}
-		}
-
-		if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &stacks); err != nil {
-			return nil, err
-		}
+	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &stacks); err != nil {
+		return nil, err
 	}
 
 	return stacks, nil
@@ -223,38 +196,29 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
 func (pc *Client) CreateStack(
-	ctx context.Context, project ProjectIdentifier, cloudName string, stackName string,
+	ctx context.Context, stackID StackIdentifier, cloudName string,
 	tags map[apitype.StackTagName]string) (apitype.Stack, error) {
 	// Validate names and tags.
-	if err := backend.ValidateStackProperties(stackName, tags); err != nil {
+	if err := backend.ValidateStackProperties(stackID.Stack, tags); err != nil {
 		return apitype.Stack{}, errors.Wrap(err, "validating stack properties")
 	}
 
 	stack := apitype.Stack{
-		CloudName:   cloudName,
-		StackName:   tokens.QName(stackName),
-		OrgName:     project.Owner,
-		RepoName:    project.Repository,
-		ProjectName: project.Project,
-		Tags:        tags,
+		CloudName: cloudName,
+		StackName: tokens.QName(stackID.Stack),
+		OrgName:   stackID.Owner,
+		Tags:      tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
 		CloudName: cloudName,
-		StackName: stackName,
+		StackName: stackID.Stack,
 		Tags:      tags,
 	}
 
 	var createStackResp apitype.CreateStackResponseByName
-	if project.Repository != "" {
-		if err := pc.restCall(
-			ctx, "POST", getProjectPath(project, "stacks"), nil, &createStackReq, &createStackResp); err != nil {
-			return apitype.Stack{}, err
-		}
-	} else {
-		if err := pc.restCall(
-			ctx, "POST", fmt.Sprintf("/api/stacks/%s", project.Owner), nil, &createStackReq, &createStackResp); err != nil {
-			return apitype.Stack{}, err
-		}
+	if err := pc.restCall(
+		ctx, "POST", fmt.Sprintf("/api/stacks/%s", stackID.Owner), nil, &createStackReq, &createStackResp); err != nil {
+		return apitype.Stack{}, err
 	}
 
 	stack.CloudName = createStackResp.CloudName

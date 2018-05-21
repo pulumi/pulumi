@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -23,29 +22,6 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	filePath = path.Join(e.CWD, filePath)
 	err := ioutil.WriteFile(filePath, []byte(contents), os.ModePerm)
 	assert.NoError(e, err, "writing %s file", filePath)
-}
-
-// GetRepository returns the contents of the workspace's repository settings file. Assumes the
-// bookkeeping dir (.pulumi) is in the CWD. Any IO errors fails the test.
-func GetRepository(e *testing.Environment) workspace.Repository {
-	relativePathToRepoFile := fmt.Sprintf("%s/%s", workspace.BookkeepingDir, workspace.RepoFile)
-	if !e.PathExists(relativePathToRepoFile) {
-		e.Fatalf("did not find .pulumi/settings.json")
-	}
-
-	path := path.Join(e.CWD, relativePathToRepoFile)
-	contents, err := ioutil.ReadFile(path)
-	if err != nil {
-		e.Fatalf("error reading %s: %v", workspace.RepoFile, err)
-	}
-
-	var repo workspace.Repository
-	err = json.Unmarshal(contents, &repo)
-	if err != nil {
-		e.Fatalf("error unmarshalling JSON: %v", err)
-	}
-
-	return repo
 }
 
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.

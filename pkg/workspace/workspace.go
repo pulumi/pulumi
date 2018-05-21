@@ -21,16 +21,14 @@ import (
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings     // returns a mutable pointer to the optional workspace settings info.
-	Repository() *Repository // (optional) returns the repository this project belongs to.
-	Save() error             // saves any modifications to the workspace.
+	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
+	Save() error         // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
 	name     tokens.PackageName // the package this workspace is associated with.
 	project  string             // the path to the Pulumi.[yaml|json] file for this project.
 	settings *Settings          // settings for this workspace.
-	repo     *Repository        // the repo this workspace is associated with.
 }
 
 var cache = make(map[string]W)
@@ -75,13 +73,6 @@ func NewFrom(dir string) (W, error) {
 		return w, nil
 	}
 
-	repo, err := GetRepository(dir)
-	if err == ErrNoRepository {
-		repo = nil
-	} else if err != nil {
-		return nil, err
-	}
-
 	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, err
@@ -97,7 +88,6 @@ func NewFrom(dir string) (W, error) {
 	w := &projectWorkspace{
 		name:    proj.Name,
 		project: path,
-		repo:    repo,
 	}
 
 	err = w.readSettings()
@@ -115,10 +105,6 @@ func NewFrom(dir string) (W, error) {
 
 func (pw *projectWorkspace) Settings() *Settings {
 	return pw.settings
-}
-
-func (pw *projectWorkspace) Repository() *Repository {
-	return pw.repo
 }
 
 func (pw *projectWorkspace) Save() error {

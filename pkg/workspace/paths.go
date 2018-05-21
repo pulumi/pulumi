@@ -63,7 +63,7 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 // hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool {
-		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
+		return true
 	})
 }
 
@@ -113,22 +113,6 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 	}
 
 	return stack.Save(path)
-}
-
-func isGitFolder(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir() && info.Name() == GitDir
-}
-
-func isRepositoryFolder(path string) bool {
-	info, err := os.Stat(path)
-	if err == nil && info.IsDir() && info.Name() == BookkeepingDir {
-		// make sure it has a settings.json file in it
-		info, err := os.Stat(filepath.Join(path, RepoFile))
-		return err == nil && !info.IsDir()
-	}
-
-	return false
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like

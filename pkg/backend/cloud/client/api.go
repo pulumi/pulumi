@@ -35,18 +35,9 @@ const (
 	UpdateKindImport  UpdateKind = "import"
 )
 
-// ProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
-// logical "home" of a stack on the Pulumi Cloud.
-type ProjectIdentifier struct {
-	Owner      string
-	Repository string
-	Project    string
-}
-
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
-	ProjectIdentifier
-
+	Owner string
 	Stack string
 }
 
