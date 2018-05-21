@@ -424,7 +424,7 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 				// The provider is responsible for requesting which of these two modes to use.
 
 				if diff.DeleteBeforeReplace {
-					glog.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
+					logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
 					contract.Assert(iter.p.depGraph != nil)
 
 					// DeleteBeforeCreate implies that we must immediately delete the resource. For correctness,
@@ -440,7 +440,7 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 							continue
 						}
 
-						glog.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
+						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 							dependentResource.URN, urn)
 						steps = append(steps, NewDeleteReplacementStep(iter.p, dependentResource, false))
 
@@ -481,7 +481,7 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 
 	if iter.deletes[urn] {
 		// this resource existed, but we deleted it earlier. we'll re-create it here.
-		glog.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
+		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 		contract.Assert(!refresh)
 		diff, err := iter.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, false, allowUnknowns)
 		if err != nil {
