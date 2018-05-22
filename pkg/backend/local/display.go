@@ -257,7 +257,7 @@ func renderResourcePreEvent(
 		indent := engine.GetIndent(payload.Metadata, seen)
 		summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
 		details := engine.GetResourcePropertiesDetails(
-			payload.Metadata, indent, opts.SummaryDiff, payload.Planning, payload.Debug)
+			payload.Metadata, indent, payload.Planning, opts.SummaryDiff, payload.Debug)
 
 		fprintIgnoreError(out, opts.Color.Colorize(summary))
 		fprintIgnoreError(out, opts.Color.Colorize(details))
