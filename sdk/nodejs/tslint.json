@@ -15,7 +15,7 @@
         "eofline": true,
         "file-header": [
             true,
-            "Copyright 2016-2018, Pulumi Corporation.  All rights reserved."
+            "Copyright \\d{4}-\\d{4}, Pulumi Corporation."
         ],
         "forin": true,
         "indent": [
