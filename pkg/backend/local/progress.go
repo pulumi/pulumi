@@ -776,6 +776,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
 		step:                 step,
+		hideRowIfUnnecessary: true,
 	}
 
 	display.eventUrnToResourceRow[urn] = row
