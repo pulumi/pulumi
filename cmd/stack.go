@@ -45,6 +45,10 @@ func newStackCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
+			}
 
 			// First print general info about the current stack.
 			fmt.Printf("Current stack is %s:\n", s.Name())
@@ -63,7 +67,6 @@ func newStackCmd() *cobra.Command {
 				}
 			}
 
-			snap := s.Snapshot()
 			if snap != nil {
 				if t := snap.Manifest.Time; t.IsZero() {
 					fmt.Printf("    Last update time unknown\n")

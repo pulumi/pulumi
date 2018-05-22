@@ -52,8 +52,12 @@ func newStackGraphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
+			}
 
-			dg := makeDependencyGraph(s.Snapshot())
+			dg := makeDependencyGraph(snap)
 			file, err := os.Create(args[0])
 			if err != nil {
 				return err

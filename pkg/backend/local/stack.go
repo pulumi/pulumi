@@ -52,11 +52,11 @@ func newStack(name backend.StackReference, path string, config config.Map,
 	}
 }
 
-func (s *localStack) Name() backend.StackReference { return s.name }
-func (s *localStack) Config() config.Map           { return s.config }
-func (s *localStack) Snapshot() *deploy.Snapshot   { return s.snapshot }
-func (s *localStack) Backend() backend.Backend     { return s.b }
-func (s *localStack) Path() string                 { return s.path }
+func (s *localStack) Name() backend.StackReference                           { return s.name }
+func (s *localStack) Config() config.Map                                     { return s.config }
+func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
+func (s *localStack) Backend() backend.Backend                               { return s.b }
+func (s *localStack) Path() string                                           { return s.path }
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
