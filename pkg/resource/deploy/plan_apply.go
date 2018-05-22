@@ -471,7 +471,13 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 					// To do this, we'll utilize the dependency information contained in the snapshot, which is
 					// interpreted by the DependencyGraph type.
 					var steps []Step
-					for _, dependentResource := range iter.p.depGraph.DependingOn(old) {
+					deps := iter.p.depGraph.DependingOn(old)
+
+					// Deletions must occur in reverse dependency order, and `deps` is returned in dependency
+					// order, so we iterate in reverse.
+					for i := len(deps) - 1; i >= 0; i-- {
+						dependentResource := deps[i]
+
 						// If we already deleted this resource due to some other DBR, don't do it again.
 						if iter.deletes[dependentResource.URN] {
 							continue

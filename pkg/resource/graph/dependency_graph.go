@@ -15,7 +15,7 @@ type DependencyGraph struct {
 
 // DependingOn returns a slice containing all resources that directly or indirectly
 // depend upon the given resource. The returned slice is guaranteed to be in topological
-// order with respect to the reverse of the snapshot dependency graph.
+// order with respect to the snapshot dependency graph.
 //
 // The time complexity of DependingOn is linear with respect to the number of resources.
 func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
@@ -45,7 +45,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 		cursorResource := dg.resources[i]
 		for _, dependency := range cursorResource.Dependencies {
 			if dependentSet[dependency] {
-				dependents = append([]*resource.State{cursorResource}, dependents...)
+				dependents = append(dependents, cursorResource)
 				dependentSet[cursorResource.URN] = true
 			}
 		}

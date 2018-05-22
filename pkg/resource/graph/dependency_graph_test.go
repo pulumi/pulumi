@@ -34,7 +34,7 @@ func TestBasicGraph(t *testing.T) {
 	})
 
 	assert.Equal(t, []*resource.State{
-		d, c, b,
+		b, c, d,
 	}, dg.DependingOn(a))
 
 	assert.Equal(t, []*resource.State{
