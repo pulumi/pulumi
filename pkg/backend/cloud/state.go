@@ -232,6 +232,23 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}, nil
 }
 
+func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
+	untypedDeployment, err := b.ExportDeployment(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	checkpoint := &apitype.CheckpointV1{}
+	if err = json.Unmarshal([]byte(untypedDeployment.Deployment), &checkpoint.Latest); err != nil {
+		return nil, err
+	}
+	snapshot, err := stack.DeserializeCheckpoint(checkpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	return snapshot, nil
+}
+
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
 	stk, err := workspace.DetectProjectStack(stackRef.StackName())
@@ -243,16 +260,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	if err != nil {
 		return nil, err
 	}
-
-	untypedDeployment, err := b.ExportDeployment(ctx, stackRef)
-	if err != nil {
-		return nil, err
-	}
-	checkpoint := &apitype.CheckpointV1{}
-	if err = json.Unmarshal([]byte(untypedDeployment.Deployment), &checkpoint.Latest); err != nil {
-		return nil, err
-	}
-	snapshot, err := stack.DeserializeCheckpoint(checkpoint)
+	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}

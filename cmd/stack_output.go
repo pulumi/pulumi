@@ -39,7 +39,12 @@ func newStackOutputCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, outputs := stack.GetRootStackResource(s.Snapshot())
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
+			}
+
+			res, outputs := stack.GetRootStackResource(snap)
 			if res == nil || outputs == nil {
 				return errors.New("current stack has no output properties")
 			}

@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -47,7 +46,7 @@ type cloudStack struct {
 	orgName   string                 // the organization that owns this stack.
 	cloudName string                 // the PPC in which this stack is running.
 	config    config.Map             // the stack's config bag.
-	snapshot  *deploy.Snapshot       // a snapshot representing the latest deployment state.
+	snapshot  **deploy.Snapshot      // a snapshot representing the latest deployment state (allocated on first use)
 	b         *cloudBackend          // a pointer to the backend this stack belongs to.
 }
 
@@ -75,39 +74,18 @@ func (c cloudBackendReference) StackName() tokens.QName {
 }
 
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
-	// Create a fake snapshot out of this stack.
-	// TODO[pulumi/pulumi-service#249]: add time, version, etc. info to the manifest.
-	stackName := apistack.StackName
-
-	var resources []*resource.State
-	for _, res := range apistack.Resources {
-		resources = append(resources, resource.NewState(
-			res.Type,
-			res.URN,
-			res.Custom,
-			false,
-			res.ID,
-			resource.NewPropertyMapFromMap(res.Inputs),
-			resource.NewPropertyMapFromMap(res.Outputs),
-			res.Parent,
-			res.Protect,
-			res.Dependencies,
-		))
-	}
-	snapshot := deploy.NewSnapshot(deploy.Manifest{}, resources)
-
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		name: cloudBackendReference{
 			owner: apistack.OrgName,
-			name:  stackName,
+			name:  apistack.StackName,
 			b:     b,
 		},
 		cloudURL:  b.CloudURL(),
 		orgName:   apistack.OrgName,
 		cloudName: apistack.CloudName,
 		config:    nil, // TODO[pulumi/pulumi-service#249]: add the config variables.
-		snapshot:  snapshot,
+		snapshot:  nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
 		b:         b,
 	}
 }
@@ -118,12 +96,25 @@ const managedCloudName = "pulumi"
 
 func (s *cloudStack) Name() backend.StackReference { return s.name }
 func (s *cloudStack) Config() config.Map           { return s.config }
-func (s *cloudStack) Snapshot() *deploy.Snapshot   { return s.snapshot }
 func (s *cloudStack) Backend() backend.Backend     { return s.b }
 func (s *cloudStack) CloudURL() string             { return s.cloudURL }
 func (s *cloudStack) OrgName() string              { return s.orgName }
 func (s *cloudStack) CloudName() string            { return s.cloudName }
 func (s *cloudStack) RunLocally() bool             { return s.cloudName == managedCloudName }
+
+func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
+	if s.snapshot != nil {
+		return *s.snapshot, nil
+	}
+
+	snap, err := s.b.getSnapshot(ctx, s.name)
+	if err != nil {
+		return nil, err
+	}
+
+	s.snapshot = &snap
+	return *s.snapshot, nil
+}
 
 func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -95,6 +96,18 @@ func newStackLsCmd() *cobra.Command {
 				}
 			}
 
+			// We have to fault in snapshots for all the stacks we are going to list here, because that's the easiest
+			// way to get the last update time and the resource count.  Since this is an expensive operation, we'll
+			// do it before printing any output so the latency happens all at once instead of line by line.
+			//
+			// TODO[pulumi/pulumi-service#1530]: We need a lighterweight way of fetching just the specific information
+			// we want to display here.
+			for _, name := range stackNames {
+				stack := stacks[name]
+				_, err := stack.Snapshot(commandContext())
+				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
+			}
+
 			formatDirective := "%-" + strconv.Itoa(maxname) + "s %-24s %-18s"
 			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 
@@ -121,7 +134,10 @@ func newStackLsCmd() *cobra.Command {
 				none := "n/a"
 				lastUpdate := none
 				resourceCount := none
-				if snap := stack.Snapshot(); snap != nil {
+				snap, err := stack.Snapshot(commandContext())
+				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
+
+				if snap != nil {
 					if t := snap.Manifest.Time; !t.IsZero() {
 						lastUpdate = humanize.Time(t)
 					}
