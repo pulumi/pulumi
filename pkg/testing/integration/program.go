@@ -122,6 +122,14 @@ type ProgramTestOptions struct {
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
 	RelativeWorkDir string
+	// AllowEmptyPreviewChanges is true if we expect that this test's no-op preview may propose changes (e.g.
+	// because the test is sensitive to the exact contents of its working directory and those contents change
+	// incidentally between the initial update and the empty update).
+	AllowEmptyPreviewChanges bool
+	// AllowEmptyUpdateChanges is true if we expect that this test's no-op update may perform changes (e.g.
+	// because the test is sensitive to the exact contents of its working directory and those contents change
+	// incidentally between the initial update and the empty update).
+	AllowEmptyUpdateChanges bool
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
@@ -574,7 +582,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
 	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
-	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false)
+	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -583,8 +591,14 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.Quick {
-		fprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := pt.previewAndUpdate(dir, "empty", false, true); err != nil {
+		msg := ""
+		if !pt.opts.AllowEmptyUpdateChanges {
+			msg = "(no changes expected)"
+		}
+		fprintf(pt.opts.Stdout, "Performing empty preview and update%s\n", msg)
+		if err := pt.previewAndUpdate(
+			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
+
 			return err
 		}
 	}
@@ -598,15 +612,19 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	return pt.testEdits(dir)
 }
 
-func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNop bool) error {
+func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
+	expectNopUpdate bool) error {
+
 	preview := []string{"preview", "--non-interactive"}
 	update := []string{"update", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
 	}
-	if expectNop {
+	if expectNopPreview {
 		preview = append(preview, "--expect-no-changes")
+	}
+	if expectNopUpdate {
 		update = append(update, "--expect-no-changes")
 	}
 	if pt.opts.UpdateCommandlineFlags != nil {
@@ -742,7 +760,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false, false); err != nil {
 		return err
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)
