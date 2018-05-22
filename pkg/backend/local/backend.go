@@ -394,6 +394,10 @@ func (b *localBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.url)
 }
 
+func (b *localBackend) EnableCrashReporting() {
+	// Crash reporting does not make sense for the local case.
+}
+
 func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	var stacks []tokens.QName
 

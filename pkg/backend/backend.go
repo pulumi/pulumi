@@ -89,6 +89,10 @@ type Backend interface {
 	ImportDeployment(ctx context.Context, stackRef StackReference, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
+
+	// EnableCrashReporting enables crash reporting for this process.
+	// Must be called using `defer`.
+	EnableCrashReporting()
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.

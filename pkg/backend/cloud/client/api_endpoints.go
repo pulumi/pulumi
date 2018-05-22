@@ -137,4 +137,5 @@ func init() {
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/complete", "completeUpdate")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/log", "appendUpdateLogEntry")
 	addEndpoint("POST", "/api/stacks/{orgName}/{stackName}/update/{updateID}/renew_lease", "renewUpdateLease")
+	addEndpoint("POST", "/api/telemetry/errors", "telemetryLogError")
 }

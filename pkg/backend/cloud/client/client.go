@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -576,4 +578,23 @@ func (pc *Client) AppendUpdateLogEntry(ctx context.Context, update UpdateIdentif
 	// forcing retry of these operations, at the expense of duplicated log messages in some cases.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "log"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+}
+
+// TelemetryLogError logs an error with the given severity and message to the telemetry service.
+func (pc *Client) TelemetryLogError(ctx context.Context, severity string, message string, dryRun bool) error {
+	env := apitype.TelemetryEnvironmentInfo{
+		PulumiVersion: version.Version,
+		GoVersion:     runtime.Version(),
+		OS:            runtime.GOOS,
+		Arch:          runtime.GOARCH,
+	}
+
+	req := apitype.TelemetryError{
+		Environment: env,
+		Severity:    severity,
+		Message:     message,
+		DryRun:      dryRun,
+	}
+
+	return pc.restCall(ctx, "POST", "/api/telemetry/errors", nil, req, nil)
 }

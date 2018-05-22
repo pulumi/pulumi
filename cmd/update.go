@@ -64,6 +64,7 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			defer s.Backend().EnableCrashReporting()
 			proj, root, err := readProject()
 			if err != nil {
 				return err

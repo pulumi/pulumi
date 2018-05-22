@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/retry"
+	"github.com/pulumi/pulumi/pkg/version"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -278,6 +280,42 @@ func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) str
 // Logout logs out of the target cloud URL.
 func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.CloudURL())
+}
+
+// EnableCrashReporting recovers from panics and reports their stacks to the
+// service for further reporting and debugging.
+//
+// Must be called from a `defer`.
+func (b *cloudBackend) EnableCrashReporting() {
+	if panicErr := recover(); panicErr != nil {
+		fmt.Fprintf(os.Stderr, "fatal error: %v\n", panicErr)
+		fmt.Fprintln(os.Stderr, "==========================================================================")
+		fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a fatal error - This is a bug!")
+		fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
+		fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
+		fmt.Fprintln(os.Stderr, "==========================================================================")
+		fmt.Fprintln(os.Stderr, "Full details of the crash:")
+		fmt.Fprintf(os.Stderr, "   Pulumi Version:   %s\n", version.Version)
+		fmt.Fprintf(os.Stderr, "   Operating System: %s\n", runtime.GOOS)
+		fmt.Fprintf(os.Stderr, "   Architecture:     %s\n", runtime.GOARCH)
+		fmt.Fprintf(os.Stderr, "   Go Version:       %s\n", runtime.Version())
+
+		// The Go runtime runs all defers immediately at the point of a panic.
+		// The stack frame in which we are now running is logically above the
+		// frame that panicked. This is perfect for us since we can now use
+		// `debug.Stack()` to get the full stack trace of the current context, which
+		// includes the faulting context.
+		message := fmt.Sprintf("%v: %s", panicErr, debug.Stack())
+
+		// Ignore all errors, this is all best-effort since we're going down.
+		// We don't actually know if we're doing a dry run or not, since we can panic anywhere.
+		err := b.client.TelemetryLogError(context.Background(), apitype.TelemetryErrorSeverityPanic,
+			message, false /* dryRun */)
+		contract.IgnoreError(err)
+
+		// Re-panic with the same error to crash the process.
+		panic(panicErr)
+	}
 }
 
 // DownloadPlugin downloads a plugin as a tarball from the release endpoint.  The returned reader is a stream
