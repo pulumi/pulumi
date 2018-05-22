@@ -838,6 +838,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
 		row.SetStep(step)
+
+		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
+		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
+		hasMeaningfulOutput := !display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
+		if !display.isTerminal && !hasMeaningfulOutput {
+			return
+		}
 	} else if event.Type == engine.ResourceOperationFailed {
 		row.SetDone()
 		row.SetFailed()
