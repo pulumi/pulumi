@@ -359,18 +359,46 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
 	}
 
-	// Now decide what to do, step-wise:
+	// There are three cases we need to consider when figuring out what to do with this resource.
 	//
-	//     * If the URN exists in the old snapshot, and it has been updated,
-	//         - Check whether the update requires replacement.
-	//         - If yes, create a new copy, and mark it as having been replaced.
-	//         - If no, simply update the existing resource in place.
+	// Case 1: iter.deletes[urn]
+	//  In this case, we have seen a resource with this URN before and we have already issued a
+	//  delete step for it. This happens when the engine has to delete a resource before it has
+	//  enough information about whether that resource still exists. A concrete example is
+	//  when a resource depends on a resource that is delete-before-replace: the engine must first
+	//  delete the dependent resource before depending the DBR resource, but the engine can't know
+	//  yet whether the dependent resource is being replaced or deleted.
 	//
-	//     * If the URN does not exist in the old snapshot, create the resource anew.
+	//  In this case, we are seeing the resource again after deleting it, so it must be a replacement.
 	//
-	// If the URN exists in the old snapshot but we've recorded that we've deleted it already,
-	// we will do a create-replacement in order to re-create the deleted resource.
-	if hasOld && !iter.deletes[urn] {
+	//  Logically, iter.deletes[urn] implies hasOld, since in order to delete something it must have
+	//  already existed.
+	contract.Assert(!iter.deletes[urn] || hasOld)
+	if iter.deletes[urn] {
+		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
+		contract.Assert(!refresh)
+		diff, err := iter.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, false, allowUnknowns)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmark this resource as deleted, we now know it's being replaced instead.
+		delete(iter.deletes, urn)
+		iter.replaces[urn] = true
+		return []Step{
+			NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, false),
+			NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, false),
+		}, nil
+	}
+
+	// Case 2: hasOld
+	//  In this case, the resource we are operating upon now exists in the old snapshot.
+	//  It must be an update or a replace. Which operation we do depends on the provider's
+	//  response to `Diff`. We must:
+	//    - Check whether the update requires replacement (`Diff`)
+	//    - If yes, create a new copy, and mark it as having been replaced.
+	//    - If no, simply update the existing resource in place.
+	if hasOld {
 		contract.Assert(old != nil && old.Type == new.Type)
 
 		// Determine whether the change resulted in a diff.
@@ -479,25 +507,9 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 		return []Step{NewSameStep(iter.p, e, old, new)}, nil
 	}
 
-	if iter.deletes[urn] {
-		// this resource existed, but we deleted it earlier. we'll re-create it here.
-		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
-		contract.Assert(!refresh)
-		diff, err := iter.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, false, allowUnknowns)
-		if err != nil {
-			return nil, err
-		}
-
-		// Unmark this resource as deleted, we now know it's being replaced instead.
-		delete(iter.deletes, urn)
-		iter.replaces[urn] = true
-		return []Step{
-			NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, false),
-			NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, false),
-		}, nil
-	}
-
-	// Otherwise, the resource isn't in the old map or it was deleted earlier, so it must be a resource creation.
+	// Case 3: Not Case 1 or Case 2
+	//  If a resource isn't being recreated and it's not being updated or replaced,
+	//  it's just being created.
 	iter.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(iter.p, e, new)}, nil
