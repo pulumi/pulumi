@@ -608,7 +608,7 @@ func (iter *PlanIterator) computeDeletes() []Step {
 				contract.Assert(!iter.deletes[res.URN])
 				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(iter.p, res, true))
-			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] {
+			} else if !iter.sames[res.URN] && !iter.updates[res.URN] && !iter.replaces[res.URN] && !iter.deletes[res.URN] {
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				iter.deletes[res.URN] = true
 				dels = append(dels, NewDeleteStep(iter.p, res))
