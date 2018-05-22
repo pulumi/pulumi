@@ -377,17 +377,26 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	if iter.deletes[urn] {
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 		contract.Assert(!refresh)
-		diff, err := iter.diff(urn, old.ID, oldInputs, oldOutputs, inputs, outputs, props, prov, false, allowUnknowns)
-		if err != nil {
-			return nil, err
+
+		// Like a replacement, we need to run `Check` again to project property defaults without
+		// taking the old resource's properties into account.
+		if prov != nil {
+			var failures []plugin.CheckFailure
+			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+			if err != nil {
+				return nil, err
+			} else if iter.issueCheckErrors(new, urn, failures) {
+				return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
+			}
+			new.Inputs = inputs
 		}
 
 		// Unmark this resource as deleted, we now know it's being replaced instead.
 		delete(iter.deletes, urn)
 		iter.replaces[urn] = true
 		return []Step{
-			NewReplaceStep(iter.p, old, new, diff.ReplaceKeys, false),
-			NewCreateReplacementStep(iter.p, e, old, new, diff.ReplaceKeys, false),
+			NewReplaceStep(iter.p, old, new, nil, false),
+			NewCreateReplacementStep(iter.p, e, old, new, nil, false),
 		}, nil
 	}
 
