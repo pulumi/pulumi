@@ -746,18 +746,45 @@ func (display *ProgressDisplay) processTick() {
 	display.refreshAllRowsIfInTerminal()
 }
 
+func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
+	// If there's already a row for this URN, return it.
+	row, has := display.eventUrnToResourceRow[urn]
+	if has {
+		return row
+	}
+
+	// First time we're hearing about this resource. Create an initial nearly-empty status for it.
+	step := engine.StepEventMetadata{Op: deploy.OpSame}
+	if metadata != nil {
+		step = *metadata
+	}
+
+	// If this is the first time we're seeing an event for the stack resource, check to see if we've already
+	// recorded root events that we want to reassociate with this URN.
+	if isRootURN(urn) {
+		if row, has = display.eventUrnToResourceRow[""]; has {
+			row.SetStep(step)
+			display.stackUrn = urn
+			display.eventUrnToResourceRow[urn] = row
+			delete(display.eventUrnToResourceRow, "")
+			return row
+		}
+	}
+
+	row = &resourceRowData{
+		display:              display,
+		tick:                 display.currentTick,
+		diagInfo:             &DiagInfo{},
+		step:                 step,
+	}
+
+	display.eventUrnToResourceRow[urn] = row
+	display.ensureHeaderRow()
+	display.resourceRows = append(display.resourceRows, row)
+	return row
+}
+
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
-	eventUrn, metadata := getEventUrnAndMetadata(event)
-	if isRootURN(eventUrn) {
-		display.stackUrn = eventUrn
-	}
-
-	if eventUrn == "" {
-		// if the event doesn't have any URN associated with it, just associate
-		// it with the stack.
-		eventUrn = display.stackUrn
-	}
-
 	switch event.Type {
 	case engine.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.
@@ -784,43 +811,23 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	}
 
+	// At this point, all events should relate to resources.
+	eventUrn, metadata := getEventUrnAndMetadata(event)
+	if eventUrn == "" {
+		// If this event has no URN, associate it with the stack. Note that there may not yet be a stack resource, in
+		// which case this is a no-op.
+		eventUrn = display.stackUrn
+	}
+	isRootEvent := eventUrn == display.stackUrn
+
+	row := display.getRowForURN(eventUrn, metadata)
+
 	// Don't bother showing certain events (for example, things that are unchanged). However
 	// always show the root 'stack' resource so we can indicate that it's still running, and
 	// also so we have something to attach unparented diagnostic events to.
-	hideRowIfUnnecessary := false
-	if metadata != nil && !shouldShow(*metadata, display.opts) && !isRootURN(eventUrn) {
-		hideRowIfUnnecessary = true
-	}
-
-	// At this point, all events should relate to resources.
-
-	row, has := display.eventUrnToResourceRow[eventUrn]
-	if !has {
-		// first time we're hearing about this resource.  Create an initial nearly-empty
-		// status for it, assigning it a nice short ID.
-		step := engine.StepEventMetadata{Op: deploy.OpSame}
-		if metadata != nil {
-			step = *metadata
-		}
-
-		row = &resourceRowData{
-			display:              display,
-			tick:                 display.currentTick,
-			diagInfo:             &DiagInfo{},
-			step:                 step,
-			hideRowIfUnnecessary: hideRowIfUnnecessary,
-		}
-
-		display.eventUrnToResourceRow[eventUrn] = row
-		display.ensureHeaderRow()
-		display.resourceRows = append(display.resourceRows, row)
-	} else {
-		// we already heard about the resource.  However, originally, we may have thought
-		// it should be hidden, but now we may have changed our mind.  Update the resource
-		// row accordingly.
-		if !hideRowIfUnnecessary {
-			row.SetHideRowIfUnnecessary(false)
-		}
+	hideRowIfUnnecessary := metadata != nil && !shouldShow(*metadata, display.opts) && !isRootEvent
+	if !hideRowIfUnnecessary {
+		row.SetHideRowIfUnnecessary(false)
 	}
 
 	if event.Type == engine.ResourcePreEvent {
@@ -832,7 +839,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		// transition the status to done.
-		if !isRootURN(eventUrn) {
+		if !isRootEvent {
 			row.SetDone()
 		}
 
