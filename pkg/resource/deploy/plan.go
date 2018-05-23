@@ -17,6 +17,7 @@ package deploy
 import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -36,6 +37,7 @@ type Plan struct {
 	source    Source                           // the source of new resources.
 	analyzers []tokens.QName                   // the analyzers to run during this plan's generation.
 	preview   bool                             // true if this plan is to be previewed rather than applied.
+	depGraph  *graph.DependencyGraph           // the dependency graph of the old snapshot
 }
 
 // NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
@@ -54,6 +56,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	contract.Assert(target != nil)
 	contract.Assert(source != nil)
 
+	var depGraph *graph.DependencyGraph
 	// Produce a map of all old resources for fast resources.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
@@ -67,6 +70,8 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 			contract.Assert(olds[urn] == nil)
 			olds[urn] = oldres
 		}
+
+		depGraph = graph.NewDependencyGraph(prev.Resources)
 	}
 
 	return &Plan{
@@ -77,6 +82,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		source:    source,
 		analyzers: analyzers,
 		preview:   preview,
+		depGraph:  depGraph,
 	}
 }
 

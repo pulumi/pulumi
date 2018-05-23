@@ -91,8 +91,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			resource.NewPropertyMapFromMap(res.Outputs),
 			res.Parent,
 			res.Protect,
-			// TODO(swgillespie) provide an actual list of dependencies
-			[]resource.URN{},
+			res.Dependencies,
 		))
 	}
 	snapshot := deploy.NewSnapshot(deploy.Manifest{}, resources)
