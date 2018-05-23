@@ -36,7 +36,7 @@ describe("runtime", () => {
             assert.equal(result.aNum, 42);
             assert.equal(result.bStr, "a string");
             assert.equal(result.cUnd, undefined);
-            assert.deepEqual(result.dArr, [ "x", 42, true, undefined ]);
+            assert.deepEqual(result.dArr, [ "x", 42, true, null ]);
             assert.equal(result.id, "foo");
             assert.equal(result.urn, "bar");
         }));

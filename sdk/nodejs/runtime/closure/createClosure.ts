@@ -167,7 +167,7 @@ interface ContextFrame {
  * inside a cloud callback.
  */
 class SerializedOutput<T> implements resource.Output<T> {
-    /* @internal */ public performApply: Promise<boolean>;
+    /* @internal */ public isKnown: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
     /* @internal */ public readonly resources: () => Set<resource.Resource>;
 

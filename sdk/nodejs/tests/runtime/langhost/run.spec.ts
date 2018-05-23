@@ -210,7 +210,7 @@ describe("rpc", () => {
                             // by: https://github.com/pulumi/pulumi/issues/1055
                             assert.deepEqual(res, {
                                 otherIn: 777,
-                                otherOut: runtime.undefinedValue,
+                                otherOut: runtime.unknownValue,
                             });
                         }
                         else {
