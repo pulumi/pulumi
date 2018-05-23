@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -139,6 +140,21 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 func (u *cloudUpdate) recordEvent(
 	event engine.Event, seen map[resource.URN]engine.StepEventMetadata,
 	opts backend.DisplayOptions) error {
+
+	// Before anything else, throw this diagnostic at our telemetry endpoint.
+	// Even if we're not rendering anything for this update/preview, we'd still
+	// like to know about errors that arise.
+	if event.Type == engine.DiagEvent {
+		payload := event.Payload.(engine.DiagEventPayload)
+		if payload.Severity == diag.Error || payload.Severity == diag.Warning {
+			messageNoColor := colors.Never.Colorize(payload.Message)
+			err := u.backend.client.TelemetryLogError(
+				u.context, string(payload.Severity), messageNoColor, u.tokenSource == nil)
+
+			// Best effort. Don't fail the update if we can't talk to the telemetry endpoint.
+			contract.IgnoreError(err)
+		}
+	}
 
 	// If we don't have a token source, we can't perform any mutations.
 	if u.tokenSource == nil {
