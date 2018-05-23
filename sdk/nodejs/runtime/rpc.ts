@@ -129,7 +129,8 @@ export function deserializeProperties(outputsStruct: any): any {
  * of the resource's matching properties to the values inside.
  *
  * NOTE: it is imperative that the properties in `allProps` were produced by `deserializeProperties` in order for
- * output properties to work correctly w.r.t. knowns/unknowns.
+ * output properties to work correctly w.r.t. knowns/unknowns: this function assumes that any undefined value in
+ * `allProps`represents an unknown value that was returned by an engine operation.
  */
 export function resolveProperties(
     res: Resource, resolvers: Record<string, (v: any, isKnown: boolean) => void>,
@@ -224,13 +225,12 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
 export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
-    if (prop === undefined) {
-        return undefined;
-    }
-    else if (prop === null ||
-             typeof prop === "boolean" ||
-             typeof prop === "number" ||
-             typeof prop === "string") {
+    if (prop === undefined ||
+        prop === null ||
+        typeof prop === "boolean" ||
+        typeof prop === "number" ||
+        typeof prop === "string") {
+
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
         }
@@ -242,6 +242,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
+            // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
             const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
             elems.push(elem === undefined ? null : elem);
         }
@@ -295,6 +296,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
+
+            // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
             const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
             if (v !== undefined) {
                 obj[k] = v;
@@ -315,10 +318,7 @@ export function deserializeProperty(prop: any): any {
     else if (prop === unknownValue) {
         return undefined;
     }
-    else if (prop === null || typeof prop === "boolean" || typeof prop === "number") {
-        return prop;
-    }
-    else if (typeof prop === "string") {
+    else if (prop === null || typeof prop === "boolean" || typeof prop === "number" || typeof prop === "string") {
         return prop;
     }
     else if (prop instanceof Array) {
