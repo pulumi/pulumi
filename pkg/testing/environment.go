@@ -111,6 +111,7 @@ func (e *Environment) runCommand(t *testing.T, expectSuccess bool, command,
 	cmd.Stdout = &outBuffer
 	cmd.Stderr = &errBuffer
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", workspace.PulumiCredentialsPathEnvVar, e.RootPath))
+	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 
 	runErr := cmd.Run()
 	if (runErr == nil) != expectSuccess {

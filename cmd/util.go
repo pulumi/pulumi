@@ -45,6 +45,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+func hasDebugCommands() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
+}
+
 func currentBackend() (backend.Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {

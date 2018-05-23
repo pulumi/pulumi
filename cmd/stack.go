@@ -17,7 +17,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 
@@ -156,7 +155,7 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
 
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
+	if hasDebugCommands() {
 		cmd.AddCommand(newStackGraphCmd())
 	}
 
