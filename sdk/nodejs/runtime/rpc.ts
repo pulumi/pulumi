@@ -285,8 +285,9 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
         // sentinel. We will do the former for all outputs created directly by user code (such outputs always
         // resolve isKnown to true) and for any resource outputs that were resolved with known values.
-        const [isKnown, value] = [await prop.isKnown, await prop.promise()];
-        return isKnown ? await serializeProperty(`${ctx}.id`, value, dependentResources) : unknownValue;
+        const isKnown = await prop.isKnown;
+        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
+        return isKnown ? value : unknownValue;
     } else {
         return await serializeAllKeys(prop, {});
     }
