@@ -47,6 +47,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 			if dependentSet[dependency] {
 				dependents = append(dependents, cursorResource)
 				dependentSet[cursorResource.URN] = true
+				break
 			}
 		}
 	}

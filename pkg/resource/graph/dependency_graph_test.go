@@ -44,3 +44,22 @@ func TestBasicGraph(t *testing.T) {
 	assert.Nil(t, dg.DependingOn(c))
 	assert.Nil(t, dg.DependingOn(d))
 }
+
+// Tests that we don't add the same node to the DependingOn set twice.
+func TestGraphNoDuplicates(t *testing.T) {
+	a := NewResource("a")
+	b := NewResource("b", a.URN)
+	c := NewResource("c", a.URN)
+	d := NewResource("d", b.URN, c.URN)
+
+	dg := NewDependencyGraph([]*resource.State{
+		a,
+		b,
+		c,
+		d,
+	})
+
+	assert.Equal(t, []*resource.State{
+		b, c, d,
+	}, dg.DependingOn(a))
+}
