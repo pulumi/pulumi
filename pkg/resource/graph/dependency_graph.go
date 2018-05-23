@@ -41,7 +41,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State) []*resource.State {
 	// scan of the resource list starting at the requested resource and ending at the end of
 	// the list. All resources that depend directly or indirectly on `res` are prepended
 	// onto `dependents`.
-	for i := cursorIndex; i < len(dg.resources); i++ {
+	for i := cursorIndex + 1; i < len(dg.resources); i++ {
 		cursorResource := dg.resources[i]
 		for _, dependency := range cursorResource.Dependencies {
 			if dependentSet[dependency] {

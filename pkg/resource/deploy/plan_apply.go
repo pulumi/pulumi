@@ -319,6 +319,9 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := iter.p.preview && !refresh
 
+	// We may be re-creating this resource if it got deleted earlier in the execution of this plan.
+	recreating := iter.deletes[urn]
+
 	// If this isn't a refresh, ensure the provider is okay with this resource and fetch the inputs to pass to
 	// subsequent methods.  If these are not inputs, we are just going to blindly store the outputs, so skip this.
 	if prov != nil && !refresh {
@@ -326,7 +329,7 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
 		// invalid (they got deleted) so don't consider them.
-		if iter.deletes[urn] {
+		if recreating {
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 		} else {
 			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
@@ -369,7 +372,7 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 
 	// There are three cases we need to consider when figuring out what to do with this resource.
 	//
-	// Case 1: iter.deletes[urn]
+	// Case 1: recreating
 	//  In this case, we have seen a resource with this URN before and we have already issued a
 	//  delete step for it. This happens when the engine has to delete a resource before it has
 	//  enough information about whether that resource still exists. A concrete example is
@@ -379,10 +382,10 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	//
 	//  In this case, we are seeing the resource again after deleting it, so it must be a replacement.
 	//
-	//  Logically, iter.deletes[urn] implies hasOld, since in order to delete something it must have
+	//  Logically, recreating implies hasOld, since in order to delete something it must have
 	//  already existed.
-	contract.Assert(!iter.deletes[urn] || hasOld)
-	if iter.deletes[urn] {
+	contract.Assert(!recreating || hasOld)
+	if recreating {
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 		contract.Assert(!refresh)
 
