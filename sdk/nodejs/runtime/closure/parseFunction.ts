@@ -65,20 +65,26 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
 // Gets the text of the provided function (using .toString()) and massages it so that it is a legal
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
-// are represented.  If these change, this will likely break us.zs
+// are represented.  If these change, this will likely break us.
 export function parseFunction(funcString: string): [string, ParsedFunction] {
     const [error, functionCode] = parseFunctionCode(funcString);
     if (error) {
         return [error, <any>undefined];
     }
 
-    const file = createSourceFile(functionCode);
+    // In practice it's not guaranteed that a function's toString is parsable by TypeScript.
+    // V8 intrinsics are prefixed with a '%' and TypeScript does not consider that to be a valid
+    // identifier.
+    const [parseError, file] = createSourceFile(functionCode);
+    if (parseError) {
+        return [parseError, <any>undefined];
+    }
 
-    const capturedVariables = computeCapturedVariableNames(file);
+    const capturedVariables = computeCapturedVariableNames(file!);
 
     // if we're looking at an arrow function, the it is always using lexical 'this's
     // so we don't have to bother even examining it.
-    const usesNonLexicalThis = !functionCode.isArrowFunction && computeUsesNonLexicalThis(file);
+    const usesNonLexicalThis = !functionCode.isArrowFunction && computeUsesNonLexicalThis(file!);
 
     const result = <ParsedFunction>functionCode;
     result.capturedVariables = capturedVariables;
@@ -236,7 +242,7 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     }
 }
 
-function createSourceFile(serializedFunction: ParsedFunctionCode): ts.SourceFile {
+function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.SourceFile | null] {
     const funcstr = serializedFunction.funcExprWithName || serializedFunction.funcExprWithoutName;
 
     // Wrap with parens to make into something parseable.  This is necessary as many
@@ -249,10 +255,10 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): ts.SourceFile
         "", toParse, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
     if (diagnostics.length) {
-        throw new Error(`Could not parse function: ${diagnostics[0].messageText}\n${toParse}`);
+        return [`the function could not be parsed: ${diagnostics[0].messageText}`, null];
     }
 
-    return file;
+    return ["", file];
 }
 
 function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
