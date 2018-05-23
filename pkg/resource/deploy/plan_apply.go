@@ -323,7 +323,15 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	// subsequent methods.  If these are not inputs, we are just going to blindly store the outputs, so skip this.
 	if prov != nil && !refresh {
 		var failures []plugin.CheckFailure
-		inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
+
+		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
+		// invalid (they got deleted) so don't consider them.
+		if iter.deletes[urn] {
+			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+		} else {
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
+		}
+
 		if err != nil {
 			return nil, err
 		} else if iter.issueCheckErrors(new, urn, failures) {
@@ -377,19 +385,6 @@ func (iter *PlanIterator) makeRegisterResourceSteps(e RegisterResourceEvent) ([]
 	if iter.deletes[urn] {
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 		contract.Assert(!refresh)
-
-		// Like a replacement, we need to run `Check` again to project property defaults without
-		// taking the old resource's properties into account.
-		if prov != nil {
-			var failures []plugin.CheckFailure
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
-			if err != nil {
-				return nil, err
-			} else if iter.issueCheckErrors(new, urn, failures) {
-				return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
-			}
-			new.Inputs = inputs
-		}
 
 		// Unmark this resource as deleted, we now know it's being replaced instead.
 		delete(iter.deletes, urn)
