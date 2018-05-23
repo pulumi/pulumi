@@ -70,6 +70,15 @@ func newStackImportCmd() *cobra.Command {
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
 			snapshot, err := stack.DeserializeDeployment(&deployment)
 			if err != nil {
+				switch err {
+				case stack.ErrDeploymentSchemaVersionTooOld:
+					return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+						s.Name().StackName())
+				case stack.ErrDeploymentSchemaVersionTooNew:
+					return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+						"Please update your version of the Pulumi CLI", s.Name().StackName())
+				}
+
 				return errors.Wrap(err, "could not deserialize deployment")
 			}
 

@@ -39,13 +39,11 @@ const (
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too old to understand.
-	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old to be used by " +
-		"this version of the Pulumi CLI.")
+	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old")
 
 	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
 	// untyped deployment being deserialized is too new to understand.
-	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is newer than what " +
-		"this version of the Pulumi CLI understands. Please update your Pulumi CLI.")
+	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
 )
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.

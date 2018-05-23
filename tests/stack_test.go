@@ -181,9 +181,9 @@ func TestStackCommands(t *testing.T) {
 				assert.Empty(t, stdout)
 				switch {
 				case deploymentVersion > apitype.DeploymentSchemaVersionCurrent:
-					assert.Contains(t, stderr, "is newer than what this version of the Pulumi CLI understands")
+					assert.Contains(t, stderr, "the stack 'the-abyss' is newer than what this version of the Pulumi CLI understands")
 				case deploymentVersion < stack.DeploymentSchemaVersionOldestSupported:
-					assert.Contains(t, stderr, "is too old")
+					assert.Contains(t, stderr, "the stack 'the-abyss' is too old")
 				}
 			})
 		}
