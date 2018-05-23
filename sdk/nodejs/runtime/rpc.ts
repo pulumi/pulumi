@@ -49,11 +49,11 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         }
 
         let resolveValue: (v: any) => void;
-        let resolvePerformApply: (v: boolean) => void;
+        let resolveIsKnown: (v: boolean) => void;
 
-        resolvers[k] = (v: any, performApply: boolean) => {
+        resolvers[k] = (v: any, isKnown: boolean) => {
             resolveValue(v);
-            resolvePerformApply(performApply);
+            resolveIsKnown(isKnown);
         };
 
         (<any>onto)[k] = Output.create(
@@ -62,7 +62,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
                 new Promise<any>(resolve => resolveValue = resolve),
                 `transferProperty(${label}, ${k}, ${props[k]})`),
             debuggablePromise(
-                new Promise<boolean>(resolve => resolvePerformApply = resolve),
+                new Promise<boolean>(resolve => resolveIsKnown = resolve),
                 `transferIsStable(${label}, ${k}, ${props[k]})`));
     }
 
@@ -79,8 +79,12 @@ async function serializeFilteredProperties(
         dependentResources: Resource[] = []): Promise<Record<string, any>> {
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
-        if (acceptKey(k) && props[k] !== undefined) {
-            result[k] = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
+        if (acceptKey(k)) {
+            // We treat properties with undefined values as if they do not exist.
+            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
+            if (v !== undefined) {
+                result[k] = v;
+            }
         }
     }
 
@@ -112,7 +116,10 @@ export function deserializeProperties(outputsStruct: any): any {
     const props: any = {};
     const outputs: any = outputsStruct.toJavaScript();
     for (const k of Object.keys(outputs)) {
-        props[k] = deserializeProperty(outputs[k]);
+        // We treat properties with undefined values as if they do not exist.
+        if (outputs[k] !== undefined) {
+            props[k] = deserializeProperty(outputs[k]);
+        }
     }
     return props;
 }
@@ -120,9 +127,12 @@ export function deserializeProperties(outputsStruct: any): any {
 /**
  * resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all
  * of the resource's matching properties to the values inside.
+ *
+ * NOTE: it is imperative that the properties in `allProps` were produced by `deserializeProperties` in order for
+ * output properties to work correctly w.r.t. knowns/unknowns.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any, performApply: boolean) => void>,
+    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean) => void>,
     t: string, name: string, allProps: any): void {
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
@@ -137,11 +147,11 @@ export function resolveProperties(
 
         if (resolve === undefined) {
             let resolveValue: (v: any) => void;
-            let resolvePerformApply: (v: boolean) => void;
+            let resolveIsKnown: (v: boolean) => void;
 
-            resolve = (v, performApply) => {
+            resolve = (v, isKnown) => {
                 resolveValue(v);
-                resolvePerformApply(performApply);
+                resolveIsKnown(isKnown);
             };
 
             // If there is no property yet, zero initialize it.  This ensures unexpected properties
@@ -151,7 +161,7 @@ export function resolveProperties(
             (res as any)[k] = Output.create(
                 res,
                 debuggablePromise(new Promise<any>(r => resolveValue = r)),
-                debuggablePromise(new Promise<boolean>(r => resolvePerformApply = r)));
+                debuggablePromise(new Promise<boolean>(r => resolveIsKnown = r)));
         }
 
         try {
@@ -164,13 +174,11 @@ export function resolveProperties(
                 resolve(allProps[k], true);
             }
             else {
-                // We're previewing.  If the engine was able to give us a reasonable value back,
-                // then use it.  Otherwise, let the Output know that the value isn't known and it
-                // shoudl not use it when performing .apply calls.
-
+                // We're previewing. If the engine was able to give us a reasonable value back,
+                // then use it. Otherwise, inform the Output that the value isn't known.
                 const value = allProps[k];
-                const performApply = value !== undefined;
-                resolve(value, performApply);
+                const isKnown = value !== undefined;
+                resolve(value, isKnown);
             }
         }
         catch (err) {
@@ -195,9 +203,9 @@ export function resolveProperties(
 }
 
 /**
- * Protobuf js doesn't like undefined values.  so we just encode as a string
+ * Unknown values are encoded as a distinguished string value.
  */
-export const undefinedValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
  * specialSigKey is sometimes used to encode type identity inside of a map.  See pkg/resource/properties.go.
  */
@@ -217,10 +225,7 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  */
 export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Resource[]): Promise<any> {
     if (prop === undefined) {
-        if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: undefined`);
-        }
-        return undefinedValue;
+        return undefined;
     }
     else if (prop === null ||
              typeof prop === "boolean" ||
@@ -237,7 +242,8 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
-            elems.push(await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources));
+            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
+            elems.push(elem === undefined ? null : elem);
         }
         return elems;
     }
@@ -270,11 +276,16 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
     }
     else if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: Dependency<T>`);
+            log.debug(`Serialize property [${ctx}]: Output<T>`);
         }
 
         dependentResources.push(...prop.resources());
-        return await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
+
+        // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
+        // sentinel. We will do the former for all outputs created directly by user code (such outputs always
+        // resolve isKnown to true) and for any resource outputs that were resolved with known values.
+        const [isKnown, value] = [await prop.isKnown, await prop.promise()];
+        return isKnown ? await serializeProperty(`${ctx}.id`, value, dependentResources) : unknownValue;
     } else {
         return await serializeAllKeys(prop, {});
     }
@@ -284,7 +295,10 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
-            obj[k] = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
+            const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
+            if (v !== undefined) {
+                obj[k] = v;
+            }
         }
 
         return obj;
@@ -295,7 +309,10 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
  * deserializeProperty unpacks some special types, reversing the above process.
  */
 export function deserializeProperty(prop: any): any {
-    if (prop === undefined || prop === undefinedValue) {
+    if (prop === undefined) {
+        throw new Error("unexpected undefined property value during deserialization");
+    }
+    else if (prop === unknownValue) {
         return undefined;
     }
     else if (prop === null || typeof prop === "boolean" || typeof prop === "number") {
