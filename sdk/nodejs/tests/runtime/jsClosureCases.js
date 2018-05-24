@@ -74,6 +74,18 @@ return async (a) => { await a; };
 `,
 });
 
+cases.push({
+    title: "Function captures V8 intrinsic (js)",
+    func: () => { %AbortJS(0) },
+    error: `Error serializing function 'func': jsClosureCases.js(0,0)
+
+function 'func': jsClosureCases.js(0,0): which could not be serialized because
+  the function could not be parsed: (...)
+
+Function code:
+  () => { %AbortJS(0) }`
+});
+
 
 module.exports.cases = cases;
 
