@@ -22,9 +22,12 @@ class MyResource extends pulumi.CustomResource {
                 o: { z: "x" },
             },
 
-            // Next some properties that are completely unresolved (outputs).
+            // Next some properties that are completely unresolved (outputs) but will be provided after creation.
             "outprop1": undefined,
             "outprop2": undefined,
+
+            // Finally define an output property that will not be provided after creation.
+            "outprop3": undefined,
         });
     }
 }
@@ -35,21 +38,19 @@ res.urn.apply(urn => {
     assert.equal(urn, "test:index:MyResource::testResource1");
 });
 res.id.apply(id => {
-    if (id) {
-        console.log(`ID: ${id}`);
-        assert.equal(id, "testResource1");
-    }
+    console.log(`ID: ${id}`);
+    assert.equal(id, "testResource1");
 });
 res.outprop1.apply(prop => {
-    if (prop) {
-        console.log(`OutProp1: ${prop}`);
-        assert.equal(prop, "output properties ftw");
-    }
+    console.log(`OutProp1: ${prop}`);
+    assert.equal(prop, "output properties ftw");
 });
 res.outprop2.apply(prop => {
-    if (prop) {
-        console.log(`OutProp2: ${prop}`);
-        assert.equal(prop, 998.6);
-    }
+    console.log(`OutProp2: ${prop}`);
+    assert.equal(prop, 998.6);
+});
+res.outprop3.apply(prop => {
+    console.log(`OutProp3: ${prop}`);
+    assert.equal(prop, undefined);
 });
 
