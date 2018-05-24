@@ -292,10 +292,7 @@ func installDependencies() error {
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	var c *exec.Cmd
 	if strings.EqualFold(proj.Runtime, "nodejs") {
-		// TODO[pulumi/pulumi#1350].  @pulumi/pulumi pulls in grpc which has a dependency on a version of
-		// protobufs which has a DoS issue. However, until upstream fixes their issue (grpc/grpc-node#277)
-		// we'll just explicitly pass no-audit to prevent scary warnings about security issues.
-		c = exec.Command("npm", "install", "--no-audit") // nolint: gas, intentionally launching with partial path
+		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
 	} else if strings.EqualFold(proj.Runtime, "python") {
 		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
 	} else {
