@@ -536,7 +536,7 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 func (b *cloudBackend) PreviewThenPrompt(
 	ctx context.Context, updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, bool, error) {
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -559,25 +559,23 @@ func (b *cloudBackend) PreviewThenPrompt(
 	}()
 
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
-	changes, hasChanges := engine.ResourceChanges(nil), true
+	changes := engine.ResourceChanges(nil)
 	if !opts.SkipPreview {
 		c, err := b.updateStack(
 			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel, true /*dryRun*/, scopes)
 		if err != nil {
-			return c, false, err
+			return c, err
 		}
-
-		// TODO(ellismg)[pulumi/pulumi#1347]: Work around 1347 by forcing a choice when running a preview against a PPC
-		changes, hasChanges = c, c.HasChanges() || !stack.(Stack).RunLocally()
+		changes = c
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
-	if !hasChanges || opts.AutoApprove || updateKind == client.UpdateKindPreview {
-		return changes, hasChanges, nil
+	if opts.AutoApprove || updateKind == client.UpdateKindPreview {
+		return changes, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	return changes, hasChanges, confirmBeforeUpdating(updateKind, stack, events, opts)
+	return changes, confirmBeforeUpdating(updateKind, stack, events, opts)
 }
 
 // confirmBeforeUpdating asks the user whether to proceed.  A nil error means yes.
@@ -649,8 +647,8 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	}
 
 	// Preview the operation to the user and ask them if they want to proceed.
-	changes, hasChanges, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
-	if err != nil || !hasChanges || updateKind == client.UpdateKindPreview {
+	changes, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
+	if err != nil || updateKind == client.UpdateKindPreview {
 		return changes, err
 	}
 
