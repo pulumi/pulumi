@@ -188,17 +188,13 @@ export function resolveProperties(
         }
     }
 
-    // Now latch all properties in case the inputs did not contain any values.  If we're doing a dry-run, we won't
-    // actually propagate the provisional state, because we cannot know for sure that it is final yet.
+    // `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
+    // We will resolve all of these values as `undefined`, and will mark the value as known if we are not running a
+    // preview.
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
-            if (!isDryRun()) {
-                throw new Error(
-                    `Unexpected missing property '${k}' on resource '${name}' [${t}] during final deployment`);
-            }
-
             const resolve = resolvers[k];
-            resolve(undefined, false);
+            resolve(undefined, !isDryRun());
         }
     }
 }
