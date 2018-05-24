@@ -98,6 +98,10 @@ func (sm *SnapshotManager) mutate(mutator func()) error {
 			}
 		}
 
+		if err != nil {
+			err = errors.Wrap(err, "failed to save snapshot")
+		}
+
 		responseChan <- err
 	}
 
