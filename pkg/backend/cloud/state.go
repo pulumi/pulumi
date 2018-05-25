@@ -145,9 +145,11 @@ func (u *cloudUpdate) recordEvent(
 		return nil
 	}
 
+	fields := make(map[string]interface{})
 	kind := string(apitype.StdoutEvent)
 	if event.Type == engine.DiagEvent {
 		payload := event.Payload.(engine.DiagEventPayload)
+		fields["severity"] = string(payload.Severity)
 		if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 			kind = string(apitype.StderrEvent)
 		}
@@ -166,7 +168,8 @@ func (u *cloudUpdate) recordEvent(
 		return err
 	}
 
-	fields := map[string]interface{}{"text": msg, "colorize": colors.Always}
+	fields["text"] = msg
+	fields["colorize"] = colors.Always
 	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
 }
 
