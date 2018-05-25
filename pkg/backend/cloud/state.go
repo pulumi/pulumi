@@ -149,9 +149,9 @@ func (u *cloudUpdate) recordEvent(
 	kind := string(apitype.StdoutEvent)
 	if event.Type == engine.DiagEvent {
 		payload := event.Payload.(engine.DiagEventPayload)
+		fields["severity"] = string(payload.Severity)
 		if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 			kind = string(apitype.StderrEvent)
-			fields["severity"] = string(payload.Severity)
 		}
 	}
 
