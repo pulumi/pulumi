@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
@@ -67,15 +68,22 @@ func newStackImportCmd() *cobra.Command {
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			if deployment.Version > 1 {
-				return errors.New("unsupported deployment version")
+			snapshot, err := stack.DeserializeDeployment(&deployment)
+			if err != nil {
+				switch err {
+				case stack.ErrDeploymentSchemaVersionTooOld:
+					return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+						s.Name().StackName())
+				case stack.ErrDeploymentSchemaVersionTooNew:
+					return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+						"Please update your version of the Pulumi CLI", s.Name().StackName())
+				}
+
+				return errors.Wrap(err, "could not deserialize deployment")
 			}
-			var typed apitype.DeploymentV1
-			if err = json.Unmarshal(deployment.Deployment, &typed); err != nil {
-				return err
-			}
+
 			var result error
-			for _, res := range typed.Resources {
+			for _, res := range snapshot.Resources {
 				if res.URN.Stack() != s.Name().StackName() {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
 						res.URN, res.URN.Stack(), s.Name().StackName())

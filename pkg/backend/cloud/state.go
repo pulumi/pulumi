@@ -16,10 +16,10 @@ package cloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
@@ -240,11 +240,8 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	if err != nil {
 		return nil, err
 	}
-	checkpoint := &apitype.CheckpointV1{}
-	if err = json.Unmarshal([]byte(untypedDeployment.Deployment), &checkpoint.Latest); err != nil {
-		return nil, err
-	}
-	snapshot, err := stack.DeserializeCheckpoint(checkpoint)
+
+	snapshot, err := stack.DeserializeDeployment(untypedDeployment)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +262,16 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	}
 	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
-		return nil, err
+		switch err {
+		case stack.ErrDeploymentSchemaVersionTooOld:
+			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+				stackRef.StackName())
+		case stack.ErrDeploymentSchemaVersionTooNew:
+			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+				"Please update your version of the Pulumi CLI", stackRef.StackName())
+		default:
+			return nil, errors.Wrap(err, "could not deserialize deployment")
+		}
 	}
 
 	return &deploy.Target{
