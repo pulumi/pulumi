@@ -35,6 +35,9 @@ build::
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
+docs::
+	./node_modules/.bin/typedoc --json bin/docs.json --mode modules --includeDeclarations --excludeExternals --excludeNotExported
+
 install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
