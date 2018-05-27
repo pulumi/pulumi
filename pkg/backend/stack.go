@@ -158,6 +158,10 @@ func validateStackName(s string) error {
 // ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
 // naming and length restrictions.
 func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
+	const maxStackName = 100 // Derived from the regex in validateStackName.
+	if len(stack) > maxStackName {
+		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
+	}
 	if err := validateStackName(stack); err != nil {
 		return errors.Wrapf(err, "invalid stack name")
 	}
