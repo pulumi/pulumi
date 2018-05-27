@@ -108,31 +108,7 @@ func TestStackTagValidation(t *testing.T) {
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "error: could not create stack:")
 		assert.Contains(t, stderr, "validating stack properties:")
-		assert.Contains(t, stderr, "stack name can only contain alphanumeric, hyphens, or underscores")
-	})
-
-	t.Run("Error_ProjectName", func(t *testing.T) {
-		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
-		e.RunCommand("git", "init")
-
-		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-
-		// Change the contents of the Name property of Pulumi.yaml.
-		yamlPath := path.Join(e.CWD, "Pulumi.yaml")
-		err := integration.ReplaceInFile("name: stack_project_name", "name: something using forbidden characters!", yamlPath)
-		assert.NoError(t, err)
-
-		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
-		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "error: could not create stack:")
-		assert.Contains(t, stderr, "validating stack properties:")
-		assert.Contains(t, stderr, "project name can only contain alphanumeric, hyphens, or underscores")
+		assert.Contains(t, stderr, "stack name may only contain alphanumeric, hyphens, underscores, or periods")
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {

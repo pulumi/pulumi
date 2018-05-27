@@ -145,47 +145,36 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 	return tags, nil
 }
 
+// validateStackName checks if s is a valid stack name, otherwise returns a descritive error.
+// This should match the stack naming rules enforced by the Pulumi Service.
+func validateStackName(s string) error {
+	stackNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
+	if stackNameRE.MatchString(s) {
+		return nil
+	}
+	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
+}
+
 // ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
 // naming and length restrictions.
 func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	// Validate a name, used for both stack and project names since they use the same regex.
-	validateName := func(ty, name string) error {
-		// Must be alphanumeric, dash, or underscore. Must begin an alphanumeric. Must be between 3 and 100 chars.
-		stackNameRE := regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,98}[a-zA-Z0-9]$")
-		if !stackNameRE.MatchString(name) {
-			if len(name) < 3 || len(name) > 100 {
-				return errors.Errorf("%s name must be between 3 and 100 characters long", ty)
-			}
-			first, last := name[0], name[len(name)-1]
-			if first == '-' || first == '_' || last == '-' || last == '_' {
-				return errors.Errorf("%s name begin and end with an alphanumeric", ty)
-			}
-			return errors.Errorf("%s name can only contain alphanumeric, hyphens, or underscores", ty)
-		}
-		return nil
-	}
-	if err := validateName("stack", stack); err != nil {
-		return err
+	if err := validateStackName(stack); err != nil {
+		return errors.Wrapf(err, "invalid stack name")
 	}
 
-	// Tags must all be shorter than a given length, and may have other tag-specific restrictions.
-	// These values are enforced by the Pulumi Service, but we validate them here to have a better
-	// error experience.
+	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
+	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
 	const maxTagName = 40
 	const maxTagValue = 256
 	for t, v := range tags {
-		switch t {
-		case apitype.ProjectNameTag, apitype.ProjectRuntimeTag:
-			if err := validateName("project", v); err != nil {
-				return err
-			}
+		if len(t) == 0 {
+			return errors.Errorf("invalid stack tag %q", t)
 		}
-
 		if len(t) > maxTagName {
-			return errors.Errorf("stack tag %q is too long (max length 40 characters)", t)
+			return errors.Errorf("stack tag %q is too long (max length %d characters)", t, maxTagName)
 		}
 		if len(v) > maxTagValue {
-			return errors.Errorf("stack tag %q value is too long (max length 255 characters)", t)
+			return errors.Errorf("stack tag %q value is too long (max length %d characters)", t, maxTagValue)
 		}
 	}
 
