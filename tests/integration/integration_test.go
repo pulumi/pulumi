@@ -136,7 +136,7 @@ func TestStackTagValidation(t *testing.T) {
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "error: could not create stack:")
 		assert.Contains(t, stderr, "validating stack properties:")
-		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 255 characters)")
+		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 256 characters)")
 	})
 }
 
