@@ -310,11 +310,10 @@ func (pc *Client) ExportStackDeployment(ctx context.Context,
 
 // ImportStackDeployment imports a new deployment into the indicated stack.
 func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifier,
-	deployment json.RawMessage) (UpdateIdentifier, error) {
+	deployment *apitype.UntypedDeployment) (UpdateIdentifier, error) {
 
-	req := apitype.ImportStackRequest{Deployment: deployment}
 	var resp apitype.ImportStackResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "import"), nil, &req, &resp); err != nil {
+	if err := pc.restCall(ctx, "POST", getStackPath(stack, "import"), nil, deployment, &resp); err != nil {
 		return UpdateIdentifier{}, err
 	}
 
