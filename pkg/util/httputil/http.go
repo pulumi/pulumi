@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/retry"
 )
 
@@ -39,6 +40,11 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 			}
 			if try >= (maxRetryCount - 1) {
 				return false, res, resErr
+			}
+
+			// Close the response body, if present, since our caller can't.
+			if resErr == nil {
+				contract.IgnoreError(res.Body.Close())
 			}
 			return false, nil, nil
 		},
