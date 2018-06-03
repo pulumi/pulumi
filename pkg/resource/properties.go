@@ -284,6 +284,8 @@ func NewPropertyValueRepl(v interface{},
 			obj[pk] = pv
 		}
 		return NewObjectProperty(obj)
+	case reflect.String:
+		return NewStringProperty(rv.String())
 	case reflect.Struct:
 		obj := NewPropertyMapRepl(v, replk, replv)
 		return NewObjectProperty(obj)

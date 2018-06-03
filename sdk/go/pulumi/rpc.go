@@ -1,0 +1,175 @@
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package pulumi
+
+import (
+	"reflect"
+	"sort"
+
+	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/pkg/errors"
+
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/go/pulumi/asset"
+)
+
+// marshalInputs turns resource property inputs into a gRPC struct suitable for marshaling.
+func marshalInputs(props Inputs) ([]string, *structpb.Struct, []URN, error) {
+	var keys []string
+	for key := range props {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var depURNs []URN
+	pmap := make(map[string]interface{})
+	for _, key := range keys {
+		// Get the underlying value, possibly waiting for an output to arrive.
+		v, deps, err := marshalInput(props[key])
+		if err != nil {
+			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", key)
+		}
+
+		pmap[key] = v
+
+		// Record all dependencies accumulated from reading this property.
+		for _, dep := range deps {
+			depURNs = append(depURNs, dep.URN())
+		}
+	}
+
+	// Marshal all properties for the RPC call.
+	m, err := plugin.MarshalProperties(
+		resource.NewPropertyMapFromMap(pmap),
+		plugin.MarshalOptions{KeepUnknowns: true},
+	)
+	return keys, m, depURNs, err
+}
+
+const (
+	rpcTokenSpecialSigKey     = "4dabf18193072939515e22adb298388d"
+	rpcTokenSpecialAssetSig   = "c44067f5952c0a294b673a41bacd8c17"
+	rpcTokenSpecialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7"
+	rpcTokenUnknownValue      = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+)
+
+// marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
+func marshalInput(v interface{}) (interface{}, []Resource, error) {
+	// If nil, just return that.
+	if v == nil {
+		return nil, nil, nil
+	}
+
+	// Next, look for some well known types.
+	switch t := v.(type) {
+	case bool, int, uint, int32, uint32, int64, uint64, float32, float64, string:
+		return t, nil, nil
+	case CustomResource:
+		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
+		e, d, err := marshalInput(t.ID())
+		if err != nil {
+			return nil, nil, err
+		}
+		return e, append([]Resource{t}, d...), nil
+	case asset.Asset:
+		return map[string]interface{}{
+			rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
+			"path":                t.Path(),
+			"text":                t.Text(),
+			"uri":                 t.URI(),
+		}, nil, nil
+	case asset.Archive:
+		var assets map[string]interface{}
+		if as := t.Assets(); as != nil {
+			assets = make(map[string]interface{})
+			for k, a := range as {
+				aa, _, err := marshalInput(a)
+				if err != nil {
+					return nil, nil, err
+				}
+				assets[k] = aa
+			}
+		}
+
+		return map[string]interface{}{
+			rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
+			"assets":              assets,
+			"path":                t.Path(),
+			"uri":                 t.URI(),
+		}, nil, nil
+	case *Output:
+		// Await the value and return its raw value.
+		v, err := t.Value()
+		if err != nil {
+			return nil, nil, err
+		}
+		// TODO: unknownValue
+		e, d, err := marshalInput(v)
+		if err != nil {
+			return nil, nil, err
+		}
+		return e, append(t.Deps(), d...), err
+	}
+
+	// Finally, handle the usual primitives (numbers, strings, arrays, maps, ...)
+	rv := reflect.ValueOf(v)
+	switch rk := rv.Type().Kind(); rk {
+	case reflect.Array, reflect.Slice:
+		// If an array or a slice, create a new array by recursing into elements.
+		var arr []interface{}
+		var deps []Resource
+		for i := 0; i < rv.Len(); i++ {
+			elem := rv.Index(i)
+			e, d, err := marshalInput(elem.Interface())
+			if err != nil {
+				return nil, nil, err
+			}
+			arr = append(arr, e)
+			deps = append(deps, d...)
+		}
+		return arr, deps, nil
+	case reflect.Map:
+		// For maps, only support string-based keys, and recurse into the values.
+		var obj map[string]interface{}
+		var deps []Resource
+		for _, key := range rv.MapKeys() {
+			k, ok := key.Interface().(string)
+			if !ok {
+				return nil, nil,
+					errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
+			}
+			value := rv.MapIndex(key)
+			v, d, err := marshalInput(value)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			obj[k] = v
+			deps = append(deps, d...)
+		}
+		return obj, deps, nil
+	case reflect.Ptr:
+		// For pointerss, recurse into the underlying value.
+		if rv.IsNil() {
+			return nil, nil, nil
+		}
+		return marshalInput(rv.Interface())
+	case reflect.String:
+		return marshalInput(rv.String())
+	}
+
+	return nil, nil, errors.Errorf("unrecognized input property type: %v", reflect.TypeOf(v))
+}
