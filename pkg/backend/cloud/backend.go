@@ -1037,7 +1037,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	update, err := b.client.ImportStackDeployment(ctx, stack, deployment.Deployment)
+	update, err := b.client.ImportStackDeployment(ctx, stack, deployment)
 	if err != nil {
 		return err
 	}

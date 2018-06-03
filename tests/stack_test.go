@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -187,6 +188,38 @@ func TestStackCommands(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	// This tests an export-import roundtrip. This is a common scenario after a user has cancelled
+	// a deployment.
+	t.Run("ExportImportRoundtrip", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			e.DeleteEnvironment()
+		}()
+
+		// Semi-random stack name to avoid collisions in the service.
+		stackName := fmt.Sprintf("roundtrip-%d", rand.Int63())
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/empty/nodejs")
+
+		e.RunCommand("pulumi", "login")
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		// Install, build, run. The "empty" program doesn't do anything so this
+		// should trivially succeed.
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "run", "build")
+		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
+
+		// Roundtrip the snapshot. This should be a no-op if working correctly.
+		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
+		e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
+
+		// After exporting and importing, the next update should proceed successfully.
+		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force", stackName)
 	})
 }
 
