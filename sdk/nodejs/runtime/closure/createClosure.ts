@@ -47,6 +47,9 @@ export interface FunctionInfo extends ObjectInfo {
     // name that the function was declared with.  used only for trying to emit a better
     // name into the serialized code for it.
     name: string | undefined;
+
+    // the set of package 'requires' seen in the function body.
+    requiredPackages: string[];
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -343,7 +346,7 @@ function createFunctionInfo(
         return undefined;
     }
 
-    function serializeWorker() {
+    function serializeWorker(): FunctionInfo {
         const funcEntry = context.cache.get(func);
         if (!funcEntry) {
             throw new Error("Entry for this this function was not created by caller");
@@ -373,6 +376,7 @@ function createFunctionInfo(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
+            requiredPackages: parsedFunction.requiredPackages,
         };
 
         const proto = Object.getPrototypeOf(func);

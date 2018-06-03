@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { serializeFunctionAsync }  from "./closure/serializeClosure";
+export {
+    serializeFunctionAsync,
+    serializeFunction,
+    SerializedFunction,
+    SerializeFunctionArgs,
+}  from "./closure/serializeClosure";
 export * from "./config";
 export * from "./invoke";
 export * from "./resource";
