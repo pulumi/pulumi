@@ -150,17 +150,14 @@ func newStackCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 
+	cmd.AddCommand(newStackExportCmd())
+	cmd.AddCommand(newStackGraphCmd())
+	cmd.AddCommand(newStackImportCmd())
 	cmd.AddCommand(newStackInitCmd())
 	cmd.AddCommand(newStackLsCmd())
 	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackExportCmd())
-	cmd.AddCommand(newStackImportCmd())
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
-
-	if hasDebugCommands() {
-		cmd.AddCommand(newStackGraphCmd())
-	}
 
 	return cmd
 }
