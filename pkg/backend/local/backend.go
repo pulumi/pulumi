@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/encoding"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/operations"
@@ -134,7 +135,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(stackRef, file, nil, nil, b)
-	fmt.Printf("Created stack '%s'.\n", stack.Name())
+	fmt.Printf(colors.ColorizeText(colors.BrightMagenta+"Created stack '%s'\n"+colors.Reset), stack.Name())
 
 	return stack, nil
 }

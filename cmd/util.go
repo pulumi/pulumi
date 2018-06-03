@@ -23,6 +23,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -95,6 +97,27 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 	}
 
 	return stack, nil
+}
+
+// removeStack removes a given stack, including any of its settings files.  If the stack could not be removed because
+// it still contains resources and force was false, the returned boolean will be true.
+func removeStack(s backend.Stack, force bool) (bool, error) {
+	hasResources, err := s.Remove(commandContext(), force)
+	if err != nil {
+		return hasResources, err
+	}
+
+	// Blow away stack specific settings if they exist
+	path, err := workspace.DetectProjectStackPath(s.Name().StackName())
+	if err != nil {
+		return false, err
+	}
+
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+
+	return false, nil
 }
 
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
@@ -397,6 +420,73 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	return m, nil
+}
+
+// We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
+// pre-define a format string for this format, though it is similar to time.RFC3339Nano.
+//
+// See https://tools.ietf.org/html/rfc5424#section-6.2.3.
+const timeFormat = "2006-01-02T15:04:05.000Z07:00"
+
+func showLogs(s backend.Stack, startTime *time.Time, resourceFilter *operations.ResourceFilter, follow bool) error {
+	// Print a nice little banner, with instructions on how to quit if following.
+	_, err := fmt.Fprintf(os.Stderr,
+		colors.ColorizeText(colors.BrightMagenta+"Collecting logs for stack %s since %s\n"+colors.Reset),
+		s.Name().String(), startTime.Format(timeFormat))
+	contract.IgnoreError(err)
+	if follow {
+		_, err = fmt.Fprintf(os.Stderr,
+			colors.ColorizeText(colors.SpecUnimportant+"Press ^C to quit following\n"+colors.Reset))
+		contract.IgnoreError(err)
+	}
+
+	// Setup a cancellation scope to make teardown more graceful.
+	// IDEA: we should plumb a cancellation scope more deeply into the backend/engine, so that we quit
+	//     more quickly (right now, there will be up to a 1s delay).
+	done := !follow
+	if follow {
+		sigint := make(chan os.Signal)
+		go func() {
+			<-sigint
+			_, err = fmt.Fprintf(os.Stderr,
+				colors.ColorizeText(colors.BrightRed+"^C received; cancelling...\n"+colors.Reset))
+			contract.IgnoreError(err)
+			done = true
+		}()
+		signal.Notify(sigint, os.Interrupt)
+	}
+
+	// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
+	// approach here to ensure we don't grow memory unboundedly while following logs.
+	//
+	// Note: Just tracking latest log date is not sufficient - as stale logs may show up which should have been
+	// displayed before previously rendered log entries, but weren't available at the time, so still need to be
+	// rendered now even though they are technically out of order.
+	shown := map[operations.LogEntry]bool{}
+	for {
+		logs, err := s.GetLogs(commandContext(), operations.LogQuery{
+			StartTime:      startTime,
+			ResourceFilter: resourceFilter,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to get logs")
+		}
+
+		for _, logEntry := range logs {
+			if _, shownAlready := shown[logEntry]; !shownAlready {
+				eventTime := time.Unix(0, logEntry.Timestamp*1000000)
+				fmt.Printf("%30.30s[%30.30s] %v\n", eventTime.Format(timeFormat), logEntry.ID, logEntry.Message)
+				shown[logEntry] = true
+			}
+		}
+
+		// If we aren't following, or a cancellation has occurred, quit the loop.
+		if done {
+			return nil
+		}
+
+		time.Sleep(time.Second)
+	}
 }
 
 type cancellationScope struct {
