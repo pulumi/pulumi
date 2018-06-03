@@ -43,7 +43,7 @@ export interface ParsedFunction extends ParsedFunctionCode {
     usesNonLexicalThis: boolean;
 
     // The set of package `require`s seen in the parsed function.
-    requiredPackages: string[];
+    requiredPackages: Set<string>;
 }
 
 // Information about a captured property.  Both the name and whether or not the property was
@@ -105,7 +105,7 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     const result = <ParsedFunction>functionCode;
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
-    result.requiredPackages = [...capturedVariables.requiredPackages];
+    result.requiredPackages = capturedVariables.requiredPackages;
 
     if (result.capturedVariables.required.has("this")) {
         return [

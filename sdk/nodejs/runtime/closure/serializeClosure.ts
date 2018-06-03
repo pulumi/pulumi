@@ -47,7 +47,7 @@ export interface SerializedFunction {
      * JavaScript function serialization.  These pacakges must be able to resolve in the target execution environment
      * for the serialized function to be able to be loaded and evaluated correctly.
      */
-    requiredPackages: string[];
+    requiredPackages: Set<string>;
 }
 
 /**
@@ -134,7 +134,7 @@ function serializeJavaScriptText(
     // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
     return {
         text: text,
-        requiredPackages: [...requiredPackages],
+        requiredPackages: requiredPackages,
         exportName: exportName,
     };
 

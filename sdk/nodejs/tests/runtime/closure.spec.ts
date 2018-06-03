@@ -4097,9 +4097,9 @@ return function () { require("typescript"); foo(); if (true) {
                 const sf = await runtime.serializeFunction(test.func);
                 assert.equal(sf.text, test.expectText);
                 if (test.expectPackages) {
-                    assert.equal(sf.requiredPackages.length, test.expectPackages.size)
-                    for (let i = 0; i < sf.requiredPackages.length; i++) {
-                        assert.equal(test.expectPackages.has(sf.requiredPackages[i]), true);
+                    assert.equal(sf.requiredPackages.size, test.expectPackages.size)
+                    for (const p of sf.requiredPackages) {
+                        assert.equal(test.expectPackages.has(p), true);
                     }
                 }
             }

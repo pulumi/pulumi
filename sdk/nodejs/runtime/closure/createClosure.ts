@@ -49,7 +49,7 @@ export interface FunctionInfo extends ObjectInfo {
     name: string | undefined;
 
     // the set of package 'requires' seen in the function body.
-    requiredPackages: string[];
+    requiredPackages: Set<string>;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
