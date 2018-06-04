@@ -25,7 +25,8 @@ interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
     title: string;                  // a title banner for the test case.
     func: Function;                 // the function whose body and closure to serialize.
-    expectText: string | undefined; // optionally also validate the serialization to JavaScript text.
+    expectText?: string;            // optionally also validate the serialization to JavaScript text.
+    expectPackages?: Set<string>;   // optionally also validate the packages required by the JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
@@ -790,6 +791,7 @@ return () => {
     cases.push({
         title: "Don't capture built-ins",
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
+        expectPackages: new Set(["os"]),
         expectText: `exports.handler = __f0;
 
 function __f0() {
@@ -810,6 +812,7 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
         cases.push({
             title: "Fail to capture built-in modules due to native functions",
             func: () => os,
+            expectPackages: new Set([]),
             expectText: undefined,
             error:
 `Error serializing '() => os': closure.spec.js(0,0)
@@ -4022,6 +4025,45 @@ return function () { console.log(module.exports.exportedValue); };
         });
     }
 
+    {
+
+        function foo() {
+            require("./util");
+        }
+
+        cases.push({
+            title: "Required pacakges #1",
+            func: function () { require("typescript"); foo(); if (true) { require("os") } },
+            expectPackages: new Set(["os", "typescript", "./util"]),
+            expectText: `exports.handler = __f0;
+
+function __foo() {
+  return (function() {
+    with({ foo: __foo }) {
+
+return function /*foo*/() {
+            require("./util");
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ foo: __foo }) {
+
+return function () { require("typescript"); foo(); if (true) {
+                require("os");
+            } };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
@@ -4052,12 +4094,18 @@ return function () { console.log(module.exports.exportedValue); };
 
             // Invoke the test case.
             if (test.expectText) {
-                const text = await runtime.serializeFunctionAsync(test.func);
-                assert.equal(text, test.expectText);
+                const sf = await runtime.serializeFunction(test.func);
+                assert.equal(sf.text, test.expectText);
+                if (test.expectPackages) {
+                    assert.equal(sf.requiredPackages.size, test.expectPackages.size)
+                    for (const p of sf.requiredPackages) {
+                        assert.equal(test.expectPackages.has(p), true);
+                    }
+                }
             }
             else {
                 const message = await assertAsyncThrows(async () => {
-                    await runtime.serializeFunctionAsync(test.func);
+                    await runtime.serializeFunction(test.func);
                 });
 
                 // replace real locations with (0,0) so that our test baselines do not need to

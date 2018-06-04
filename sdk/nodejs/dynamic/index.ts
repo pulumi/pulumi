@@ -157,7 +157,7 @@ export interface ResourceProvider {
 }
 
 function serializeProvider(provider: ResourceProvider): Promise<string> {
-    return runtime.serializeFunctionAsync(() => provider);
+    return runtime.serializeFunction(() => provider).then(sf => sf.text);
 }
 
 /**
