@@ -3,10 +3,11 @@
 package tests
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 
@@ -198,8 +200,8 @@ func TestStackCommands(t *testing.T) {
 			e.DeleteEnvironment()
 		}()
 
-		// Semi-random stack name to avoid collisions in the service.
-		stackName := fmt.Sprintf("roundtrip-%d", rand.Int63())
+		// Random stack name to avoid collisions in the service.
+		stackName := addRandomSufix("roundtrip")
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/empty/nodejs")
 
@@ -317,4 +319,11 @@ func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string
 		workspace.BackupDir,
 		stackName,
 	), nil
+}
+
+func addRandomSufix(s string) string {
+	b := make([]byte, 4)
+	_, err := cryptorand.Read(b)
+	contract.AssertNoError(err)
+	return s + "-" + hex.EncodeToString(b)
 }
