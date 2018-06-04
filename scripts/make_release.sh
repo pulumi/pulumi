@@ -55,10 +55,6 @@ cp ${ROOT}/sdk/python/cmd/pulumi-language-python-exec ${PUBDIR}/bin/
 # Copy packages
 copy_package "${ROOT}/sdk/nodejs/bin/." "@pulumi/pulumi"
 
-# Copy prebuilt native modules
-mkdir ${PUBDIR}/bin/v6.10.2/
-cp ${ROOT}/sdk/nodejs/prebuilt/*.node ${PUBDIR}/bin/v6.10.2/
-
 # Tar up the file and then print it out for use by the caller or script.
 tar -czf ${PUBFILE} -C ${PUBDIR} .
 echo ${PUBFILE} ${PUBTARGETS[@]}
