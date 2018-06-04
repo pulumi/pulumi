@@ -117,7 +117,7 @@ function reportModuleLoadFailure(program: string, error: Error): never {
         const command = scripts["build"];
         console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
         console.error("Pulumi does not run build scripts before running your program. " +
-                        `Please run '${command}', 'yarn build', or 'npm build' and try again.`);
+                        `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
         return process.exit(1);
     }
 
