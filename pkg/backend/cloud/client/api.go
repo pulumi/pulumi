@@ -116,7 +116,7 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 	path = cleanPath(path)
 
 	url := fmt.Sprintf("%s%s", cloudAPI, path)
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating new HTTP request")
 	}

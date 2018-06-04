@@ -28,12 +28,24 @@ const maxRetryCount = 5
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
 func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error) {
+	contract.Assertf(req.ContentLength == 0 || req.GetBody != nil,
+		"Retryable request must have no body or rewindable body")
+
 	inRange := func(test, lower, upper int) bool {
 		return lower <= test && test <= upper
 	}
 
 	_, res, err := retry.Until(context.Background(), retry.Acceptor{
 		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			if try > 0 && req.GetBody != nil {
+				// Reset request body, if present, for retries.
+				rc, bodyErr := req.GetBody()
+				if bodyErr != nil {
+					return false, nil, bodyErr
+				}
+				req.Body = rc
+			}
+
 			res, resErr := client.Do(req)
 			if resErr == nil && !inRange(res.StatusCode, 500, 599) {
 				return true, res, nil
