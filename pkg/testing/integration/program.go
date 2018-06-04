@@ -16,7 +16,7 @@ package integration
 
 import (
 	"context"
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -233,7 +233,7 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 		}
 
 		b := make([]byte, 4)
-		_, err = rand.Read(b)
+		_, err = cryptorand.Read(b)
 		contract.AssertNoError(err)
 
 		opts.StackName = strings.ToLower("p-it-" + host + "-" + test + "-" + hex.EncodeToString(b))
