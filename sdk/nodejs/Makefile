@@ -15,11 +15,6 @@ include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-ensure::
-	[ -d "./prebuilt/" ] || mkdir "./prebuilt"
-	[ -e "./prebuilt/nativeruntime.node" ] || aws s3 cp "s3://eng.pulumi.com/nativeruntime/$$(go env GOOS)/nativeruntime.node" "./prebuilt/"
-	[ -e "./prebuilt/nativeruntime-v0.11.0.node" ] || aws s3 cp "s3://eng.pulumi.com/nativeruntime/$$(go env GOOS)/nativeruntime-v0.11.0.node" "./prebuilt/"
-
 lint::
 	$(GOMETALINTER) cmd/pulumi-language-nodejs/main.go | sort ; exit "$${PIPESTATUS[0]}"
 	tslint -c tslint.json -p tsconfig.json
@@ -39,7 +34,6 @@ install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
 	mkdir -p "$(PULUMI_BIN)/v6.10.2"
-	cp ./prebuilt/*.node "$(PULUMI_BIN)/v6.10.2/"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
 test_fast::

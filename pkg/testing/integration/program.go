@@ -328,6 +328,23 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 		}
 	}()
 
+	// Set up some default values for sending test reports and tracing data. We use environment varaiables to
+	// control these globally and set reasonable values for our own use in CI.
+	if opts.ReportStats == nil {
+		if v := os.Getenv("PULUMI_TEST_REPORT_CONFIG"); v != "" {
+			splits := strings.Split(v, ":")
+			if len(splits) != 3 {
+				t.Errorf("report config should be set to a value of the form: <aws-region>:<bucket-name>:<keyPrefix>")
+			}
+
+			opts.ReportStats = NewS3Reporter(splits[0], splits[1], splits[2])
+		}
+	}
+
+	if opts.Tracing == "" {
+		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
+	}
+
 	pt := newProgramTester(t, opts)
 	err := pt.testLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
