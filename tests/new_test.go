@@ -35,7 +35,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
-		subdir := path.Join(e.RootPath, "foo")
+		subdir := filepath.Join(e.RootPath, "foo")
 		err := os.MkdirAll(subdir, os.ModePerm)
 		assert.NoError(t, err, "error creating subdirectory")
 		e.CWD = subdir
@@ -44,6 +44,53 @@ func TestPulumiNew(t *testing.T) {
 		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only", "--yes")
 
 		assertSuccess(t, subdir, "foo", "")
+	})
+
+	t.Run("SanityTestWithDir", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+
+		// Create a temporary local template.
+		template := createTemporaryLocalTemplate(t, "")
+		defer deleteTemporaryLocalTemplate(t, template)
+
+		// Run pulumi new.
+		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only", "--yes", "--dir", "foo")
+
+		assertSuccess(t, filepath.Join(e.RootPath, "foo"), "foo", "")
+	})
+
+	t.Run("SanityTestWithDirMultiplePaths", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+
+		// Create a temporary local template.
+		template := createTemporaryLocalTemplate(t, "")
+		defer deleteTemporaryLocalTemplate(t, template)
+
+		// Run pulumi new.
+		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only", "--yes", "--dir", filepath.Join("bar", "foo"))
+
+		assertSuccess(t, filepath.Join(e.RootPath, "bar", "foo"), "foo", "")
+	})
+
+	t.Run("SanityTestWithCAndDir", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+
+		// Create a temporary local template.
+		template := createTemporaryLocalTemplate(t, "")
+		defer deleteTemporaryLocalTemplate(t, template)
+
+		// Create a sub directory.
+		subdir := filepath.Join(e.RootPath, "bar")
+		err := os.MkdirAll(subdir, os.ModePerm)
+		assert.NoError(t, err, "error creating subdirectory")
+
+		// Run pulumi new.
+		e.RunCommand("pulumi", "new", template, "--offline", "--generate-only", "--yes", "-C", "bar", "--dir", "foo")
+
+		assertSuccess(t, filepath.Join(subdir, "foo"), "foo", "")
 	})
 
 	t.Run("SanityTestWithManifest", func(t *testing.T) {
@@ -57,7 +104,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
-		subdir := path.Join(e.RootPath, "foo")
+		subdir := filepath.Join(e.RootPath, "foo")
 		err := os.MkdirAll(subdir, os.ModePerm)
 		assert.NoError(t, err, "error creating subdirectory")
 		e.CWD = subdir
@@ -167,7 +214,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
-		subdir := path.Join(e.RootPath, "foo")
+		subdir := filepath.Join(e.RootPath, "foo")
 		err := os.MkdirAll(subdir, os.ModePerm)
 		assert.NoError(t, err, "error creating subdirectory")
 		e.CWD = subdir
@@ -201,7 +248,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
-		subdir := path.Join(e.RootPath, "foo")
+		subdir := filepath.Join(e.RootPath, "foo")
 		err := os.MkdirAll(subdir, os.ModePerm)
 		assert.NoError(t, err, "error creating subdirectory")
 		e.CWD = subdir
@@ -246,7 +293,7 @@ func TestPulumiNew(t *testing.T) {
 		defer deleteTemporaryLocalTemplate(t, template)
 
 		// Create a subdirectory and CD into it.
-		subdir := path.Join(e.RootPath, "foo")
+		subdir := filepath.Join(e.RootPath, "foo")
 		err := os.MkdirAll(subdir, os.ModePerm)
 		assert.NoError(t, err, "error creating subdirectory")
 		e.CWD = subdir
