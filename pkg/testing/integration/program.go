@@ -141,9 +141,6 @@ type ProgramTestOptions struct {
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
 	CloudURL string
-	// Owner is an optional value to specify during calls to `pulumi stack init`. Otherwise the --owner flag will
-	// not be set
-	Owner string
 	// PPCName is the name of the PPC to use when running a test against the hosted service. If
 	// not set, the --ppc flag will not be set on `pulumi stack init`.
 	PPCName string
@@ -266,9 +263,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
-	}
-	if overrides.Owner != "" {
-		opts.Owner = overrides.Owner
 	}
 	if overrides.PPCName != "" {
 		opts.PPCName = overrides.PPCName
@@ -524,17 +518,6 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
-	// Set the owner organization from an environment variable if not overridden in options.
-	if pt.opts.Owner == "" {
-		pulumiAPIOwnerOrganization := os.Getenv("PULUMI_API_OWNER_ORGANIZATION")
-		if pulumiAPIOwnerOrganization != "" {
-			pt.opts.Owner = pulumiAPIOwnerOrganization
-		} else {
-			// Default to the `pulumi` organization.
-			pt.opts.Owner = "pulumi"
-		}
-	}
-
 	// Set the target PPC from an environment variable if not overridden in options.
 	if pt.opts.PPCName == "" {
 		ppcName := os.Getenv("PULUMI_API_PPC_NAME")
@@ -562,8 +545,15 @@ func (pt *programTester) testLifeCycleInitialize(dir string) error {
 		}
 	}
 
+	// If an optional test owner is provided in the environment, create the stack under that owner. We use this in
+	// CI to ensure stacks are owned by an organization that all Pulumi developers have access to.
+	qualifiedStackName := string(stackName)
+	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+		qualifiedStackName = owner + "/" + qualifiedStackName
+	}
+
 	// Stack init
-	stackInitArgs := []string{"stack", "init", fmt.Sprintf("%s/%s", pt.opts.Owner, string(stackName))}
+	stackInitArgs := []string{"stack", "init", qualifiedStackName}
 	stackInitArgs = addFlagIfNonNil(stackInitArgs, "--ppc", pt.opts.PPCName)
 
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir); err != nil {
