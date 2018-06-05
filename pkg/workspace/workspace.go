@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package workspace
 
@@ -14,23 +26,20 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // W offers functionality for interacting with Pulumi workspaces.
 type W interface {
-	Settings() *Settings     // returns a mutable pointer to the optional workspace settings info.
-	Repository() *Repository // (optional) returns the repository this project belongs to.
-	Save() error             // saves any modifications to the workspace.
+	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
+	Save() error         // saves any modifications to the workspace.
 }
 
 type projectWorkspace struct {
 	name     tokens.PackageName // the package this workspace is associated with.
 	project  string             // the path to the Pulumi.[yaml|json] file for this project.
 	settings *Settings          // settings for this workspace.
-	repo     *Repository        // the repo this workspace is associated with.
 }
 
 var cache = make(map[string]W)
@@ -75,13 +84,6 @@ func NewFrom(dir string) (W, error) {
 		return w, nil
 	}
 
-	repo, err := GetRepository(dir)
-	if err == ErrNoRepository {
-		repo = nil
-	} else if err != nil {
-		return nil, err
-	}
-
 	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, err
@@ -97,16 +99,11 @@ func NewFrom(dir string) (W, error) {
 	w := &projectWorkspace{
 		name:    proj.Name,
 		project: path,
-		repo:    repo,
 	}
 
 	err = w.readSettings()
 	if err != nil {
 		return nil, err
-	}
-
-	if w.settings.ConfigDeprecated == nil {
-		w.settings.ConfigDeprecated = make(map[tokens.QName]config.Map)
 	}
 
 	upsertIntoCache(dir, w)
@@ -117,18 +114,7 @@ func (pw *projectWorkspace) Settings() *Settings {
 	return pw.settings
 }
 
-func (pw *projectWorkspace) Repository() *Repository {
-	return pw.repo
-}
-
 func (pw *projectWorkspace) Save() error {
-	// let's remove all the empty entries from the config array
-	for k, v := range pw.settings.ConfigDeprecated {
-		if len(v) == 0 {
-			delete(pw.settings.ConfigDeprecated, k)
-		}
-	}
-
 	settingsFile := pw.settingsPath()
 
 	// If the settings file is empty, don't write an new one, and delete the old one if present. Since we put workspaces

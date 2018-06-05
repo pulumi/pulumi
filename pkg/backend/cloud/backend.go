@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cloud
 
@@ -255,24 +267,10 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	return cloudURL[:ix] + path.Join(append([]string{cloudURL[ix+len(defaultAPIURLPrefix):]}, paths...)...)
 }
 
-// cloudConsoleProjectPath returns the project path components for getting to a stack in the cloud console.  This path
-// must, of course, be combined with the actual console base URL by way of the CloudConsoleURL function above.
-func (b *cloudBackend) cloudConsoleProjectPath(projID client.ProjectIdentifier) string {
-	// When projID.Repository is the empty string, we are using the new identity model. In this case, the service
-	// does not include project or repository information in URLS, so the "project path" is simply the owner.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
-	if projID.Repository == "" {
-		return projID.Owner
-	}
-
-	return path.Join(projID.Owner, projID.Repository, projID.Project)
-}
-
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
 // must, of coursee, be combined with the actual console base URL by way of the CloudConsoleURL function above.
 func (b *cloudBackend) cloudConsoleStackPath(stackID client.StackIdentifier) string {
-	return path.Join(b.cloudConsoleProjectPath(stackID.ProjectIdentifier), stackID.Stack)
+	return path.Join(stackID.Owner, stackID.Stack)
 }
 
 // Logout logs out of the target cloud URL.
@@ -370,15 +368,6 @@ type CreateStackOptions struct {
 	CloudName string
 }
 
-func ownerFromRef(stackRef backend.StackReference) string {
-	if r, ok := stackRef.(cloudBackendReference); ok {
-		return r.owner
-	}
-
-	contract.Failf("bad StackReference type")
-	return ""
-}
-
 func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
@@ -391,7 +380,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("expected a CloudStackOptions value for opts parameter")
 	}
 
-	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -401,11 +390,11 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.Wrap(err, "error determining initial tags")
 	}
 
-	apistack, err := b.client.CreateStack(ctx, project, cloudOpts.CloudName, string(stackRef.StackName()), tags)
+	apistack, err := b.client.CreateStack(ctx, stackID, cloudOpts.CloudName, tags)
 	if err != nil {
 		// If the status is 409 Conflict (stack already exists), return StackAlreadyExistsError.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
-			return nil, &backend.StackAlreadyExistsError{StackName: string(stackRef.StackName())}
+			return nil, &backend.StackAlreadyExistsError{StackName: stackID.Stack}
 		}
 		return nil, err
 	}
@@ -421,12 +410,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 }
 
 func (b *cloudBackend) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]backend.Stack, error) {
-	project, err := b.getCloudProjectIdentifier("")
-	if err != nil {
-		return nil, err
-	}
-
-	stacks, err := b.client.ListStacks(ctx, project, projectFilter)
+	stacks, err := b.client.ListStacks(ctx, projectFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +536,7 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 func (b *cloudBackend) PreviewThenPrompt(
 	ctx context.Context, updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts backend.UpdateOptions,
-	scopes backend.CancellationScopeSource) (engine.ResourceChanges, bool, error) {
+	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -575,25 +559,23 @@ func (b *cloudBackend) PreviewThenPrompt(
 	}()
 
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
-	changes, hasChanges := engine.ResourceChanges(nil), true
+	changes := engine.ResourceChanges(nil)
 	if !opts.SkipPreview {
 		c, err := b.updateStack(
 			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel, true /*dryRun*/, scopes)
 		if err != nil {
-			return c, false, err
+			return c, err
 		}
-
-		// TODO(ellismg)[pulumi/pulumi#1347]: Work around 1347 by forcing a choice when running a preview against a PPC
-		changes, hasChanges = c, c.HasChanges() || !stack.(Stack).RunLocally()
+		changes = c
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
-	if !hasChanges || opts.AutoApprove || updateKind == client.UpdateKindPreview {
-		return changes, hasChanges, nil
+	if opts.AutoApprove || updateKind == client.UpdateKindPreview {
+		return changes, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	return changes, hasChanges, confirmBeforeUpdating(updateKind, stack, events, opts)
+	return changes, confirmBeforeUpdating(updateKind, stack, events, opts)
 }
 
 // confirmBeforeUpdating asks the user whether to proceed.  A nil error means yes.
@@ -658,14 +640,15 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 		return nil, err
 	}
 
-	if !stack.(Stack).RunLocally() && updateKind == client.UpdateKindDestroy {
-		// The service does not support preview of a destroy for a stack managed by a PPC.  So skip the preview.
+	if !stack.(Stack).RunLocally() &&
+		(updateKind == client.UpdateKindDestroy || updateKind == client.UpdateKindRefresh) {
+		// The service does not support previews for PPC stacks, other than for updates.  So skip the preview.
 		opts.SkipPreview = true
 	}
 
 	// Preview the operation to the user and ask them if they want to proceed.
-	changes, hasChanges, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
-	if err != nil || !hasChanges || updateKind == client.UpdateKindPreview {
+	changes, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
+	if err != nil || updateKind == client.UpdateKindPreview {
 		return changes, err
 	}
 
@@ -829,6 +812,7 @@ func (b *cloudBackend) runEngineAction(
 	root string, opts backend.UpdateOptions, update client.UpdateIdentifier, token string,
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
+	contract.Assertf(dryRun || token != "", "expected a non-empty token when doing a non-dryrun update")
 
 	u, err := b.newUpdate(ctx, stackRef, pkg, root, update, token)
 	if err != nil {
@@ -871,13 +855,9 @@ func (b *cloudBackend) runEngineAction(
 
 	switch action {
 	case client.UpdateKindPreview:
-		changes, err = engine.Preview(u, engineCtx, opts.Engine)
+		changes, err = engine.Update(u, engineCtx, opts.Engine, true)
 	case client.UpdateKindUpdate:
-		if dryRun {
-			changes, err = engine.Preview(u, engineCtx, opts.Engine)
-		} else {
-			changes, err = engine.Update(u, engineCtx, opts.Engine, dryRun)
-		}
+		changes, err = engine.Update(u, engineCtx, opts.Engine, dryRun)
 	case client.UpdateKindRefresh:
 		changes, err = engine.Refresh(u, engineCtx, opts.Engine, dryRun)
 	case client.UpdateKindDestroy:
@@ -904,7 +884,7 @@ func (b *cloudBackend) runEngineAction(
 
 		completeErr := u.Complete(status)
 		if completeErr != nil {
-			err = multierror.Append(err, completeErr)
+			err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
 		}
 	}
 
@@ -1057,7 +1037,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	update, err := b.client.ImportStackDeployment(ctx, stack, deployment.Deployment)
+	update, err := b.client.ImportStackDeployment(ctx, stack, deployment)
 	if err != nil {
 		return err
 	}
@@ -1074,59 +1054,22 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 	return nil
 }
 
-// getCloudProjectIdentifier returns information about the current repository and project, based on the current
-// working directory.
-func (b *cloudBackend) getCloudProjectIdentifier(owner string) (client.ProjectIdentifier, error) {
-	w, err := workspace.New()
-	if err != nil {
-		return client.ProjectIdentifier{}, err
-	}
-
-	proj, err := workspace.DetectProject()
-	if err != nil {
-		return client.ProjectIdentifier{}, err
-	}
-
-	repo := w.Repository()
-
-	// If we have repository information (this is the case when `pulumi init` has been run, use that.) To support the
-	// old and new model, we either set the Repository field in ProjectIdentifer or keep it as the empty string. The
-	// client type uses this to decide what REST endpoints to hit.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1241] Clean this up once we remove pulumi init
-	if repo != nil {
-		return client.ProjectIdentifier{
-			Owner:      repo.Owner,
-			Repository: repo.Name,
-			Project:    string(proj.Name),
-		}, nil
-	}
+// getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
+// the current working directory.
+func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
+	owner := stackRef.(cloudBackendReference).owner
+	var err error
 
 	if owner == "" {
 		owner, err = b.client.GetPulumiAccountName(context.Background())
 		if err != nil {
-			return client.ProjectIdentifier{}, err
+			return client.StackIdentifier{}, err
 		}
 	}
 
-	// Otherwise, we are on the new plan.
-	return client.ProjectIdentifier{
-		Owner:   owner,
-		Project: string(proj.Name),
-	}, nil
-}
-
-// getCloudStackIdentifier returns information about the given stack in the current repository and project, based on
-// the current working directory.
-func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	project, err := b.getCloudProjectIdentifier(ownerFromRef(stackRef))
-	if err != nil {
-		return client.StackIdentifier{}, errors.Wrap(err, "failed to detect project")
-	}
-
 	return client.StackIdentifier{
-		ProjectIdentifier: project,
-		Stack:             string(stackRef.StackName()),
+		Owner: owner,
+		Stack: string(stackRef.StackName()),
 	}, nil
 }
 

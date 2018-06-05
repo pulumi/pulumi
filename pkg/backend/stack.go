@@ -1,9 +1,22 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package backend
 
 import (
 	"context"
+	"path/filepath"
 	"regexp"
 
 	"github.com/pkg/errors"
@@ -13,15 +26,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 // Stack is a stack associated with a particular backend implementation.
 type Stack interface {
-	Name() StackReference       // this stack's identity.
-	Config() config.Map         // the current config map.
-	Snapshot() *deploy.Snapshot // the latest deployment snapshot.
-	Backend() Backend           // the backend this stack belongs to.
+	Name() StackReference                                   // this stack's identity.
+	Config() config.Map                                     // the current config map.
+	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
+	Backend() Backend                                       // the backend this stack belongs to.
 
 	// Preview changes to this stack.
 	Preview(ctx context.Context, proj *workspace.Project, root string, m UpdateMetadata, opts UpdateOptions,
@@ -105,17 +119,6 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 func GetStackTags() (map[apitype.StackTagName]string, error) {
 	tags := make(map[apitype.StackTagName]string)
 
-	// Tags based on the workspace's repository.
-	w, err := workspace.New()
-	if err != nil {
-		return nil, err
-	}
-	repo := w.Repository()
-	if repo != nil {
-		tags[apitype.GitHubOwnerNameTag] = repo.Owner
-		tags[apitype.GitHubRepositoryNameTag] = repo.Name
-	}
-
 	// Tags based on Pulumi.yaml.
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
@@ -131,52 +134,51 @@ func GetStackTags() (map[apitype.StackTagName]string, error) {
 		if proj.Description != nil {
 			tags[apitype.ProjectDescriptionTag] = *proj.Description
 		}
+
+		if owner, repo, err := gitutil.GetGitHubProjectForOrigin(filepath.Dir(projPath)); err == nil {
+			tags[apitype.GitHubOwnerNameTag] = owner
+			tags[apitype.GitHubRepositoryNameTag] = repo
+		}
+
 	}
 
 	return tags, nil
 }
 
+// validateStackName checks if s is a valid stack name, otherwise returns a descritive error.
+// This should match the stack naming rules enforced by the Pulumi Service.
+func validateStackName(s string) error {
+	stackNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
+	if stackNameRE.MatchString(s) {
+		return nil
+	}
+	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
+}
+
 // ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
 // naming and length restrictions.
 func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	// Validate a name, used for both stack and project names since they use the same regex.
-	validateName := func(ty, name string) error {
-		// Must be alphanumeric, dash, or underscore. Must begin an alphanumeric. Must be between 3 and 100 chars.
-		stackNameRE := regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,98}[a-zA-Z0-9]$")
-		if !stackNameRE.MatchString(name) {
-			if len(name) < 3 || len(name) > 100 {
-				return errors.Errorf("%s name must be between 3 and 100 characters long", ty)
-			}
-			first, last := name[0], name[len(name)-1]
-			if first == '-' || first == '_' || last == '-' || last == '_' {
-				return errors.Errorf("%s name begin and end with an alphanumeric", ty)
-			}
-			return errors.Errorf("%s name can only contain alphanumeric, hyphens, or underscores", ty)
-		}
-		return nil
+	const maxStackName = 100 // Derived from the regex in validateStackName.
+	if len(stack) > maxStackName {
+		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
 	}
-	if err := validateName("stack", stack); err != nil {
-		return err
+	if err := validateStackName(stack); err != nil {
+		return errors.Wrapf(err, "invalid stack name")
 	}
 
-	// Tags must all be shorter than a given length, and may have other tag-specific restrictions.
-	// These values are enforced by the Pulumi Service, but we validate them here to have a better
-	// error experience.
+	// Ensure tag values won't be rejected by the Pulumi Service. We do not validate that their
+	// values make sense, e.g. ProjectRuntimeTag is a supported runtime.
 	const maxTagName = 40
 	const maxTagValue = 256
 	for t, v := range tags {
-		switch t {
-		case apitype.ProjectNameTag, apitype.ProjectRuntimeTag:
-			if err := validateName("project", v); err != nil {
-				return err
-			}
+		if len(t) == 0 {
+			return errors.Errorf("invalid stack tag %q", t)
 		}
-
 		if len(t) > maxTagName {
-			return errors.Errorf("stack tag %q is too long (max length 40 characters)", t)
+			return errors.Errorf("stack tag %q is too long (max length %d characters)", t, maxTagName)
 		}
 		if len(v) > maxTagValue {
-			return errors.Errorf("stack tag %q value is too long (max length 255 characters)", t)
+			return errors.Errorf("stack tag %q value is too long (max length %d characters)", t, maxTagValue)
 		}
 	}
 

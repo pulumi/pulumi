@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import { RunError } from "./errors";
 import * as runtime from "./runtime";
@@ -206,7 +218,7 @@ export class Output<T> {
      * may not expect an undefined value.  So, instead, we just transition to another Output
      * value that itself knows it should not perform .apply calls.
      */
-    /* @internal */ public performApply: Promise<boolean>;
+    /* @internal */ public isKnown: Promise<boolean>;
 
     /**
      * Method that actually produces the concrete value of this output, as well as the total
@@ -273,13 +285,13 @@ export class Output<T> {
     }
 
     /* @internal */ public static create<T>(
-            resource: Resource, promise: Promise<T>, performApply: Promise<boolean>): Output<T> {
-        return new Output<T>(new Set<Resource>([resource]), promise, performApply);
+            resource: Resource, promise: Promise<T>, isKnown: Promise<boolean>): Output<T> {
+        return new Output<T>(new Set<Resource>([resource]), promise, isKnown);
     }
 
     /* @internal */ public constructor(
-            resources: Set<Resource>, promise: Promise<T>, performApply: Promise<boolean>) {
-        this.performApply = performApply;
+            resources: Set<Resource>, promise: Promise<T>, isKnown: Promise<boolean>) {
+        this.isKnown = isKnown;
 
         // Always create a copy so that no one accidentally modifies our Resource list.
         this.resources = () => new Set<Resource>(resources);
@@ -290,7 +302,7 @@ export class Output<T> {
             return new Output<U>(resources, promise.then(async v => {
                 // During previews do not perform the apply if the engine was not able to
                 // give us an actual value for this Output.
-                const perform = await performApply;
+                const perform = await isKnown;
                 if (runtime.isDryRun() && !perform) {
                     return <U><any>undefined;
                 }
@@ -306,7 +318,7 @@ export class Output<T> {
                 } else {
                     return transformed;
                 }
-            }), performApply);
+            }), isKnown);
         };
 
         this.get = () => {
@@ -358,10 +370,10 @@ export function all<T>(val: Input<T>[] | { [key: string]: Input<T> }): Output<an
         const resources = allOutputs.reduce<Resource[]>((arr, o) => (arr.push(...o.resources()), arr), []);
         const promises = allOutputs.map(o => o.promise());
 
-        // A merged output can perform its .apply if all of its inputs can perform their .apply's as well.
-        const performApply = Promise.all(allOutputs.map(o => o.performApply)).then(ps => ps.every(b => b));
+        // A merged output is known if all of its inputs are known.
+        const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
 
-        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises), performApply);
+        return new Output<T[]>(new Set<Resource>(resources), Promise.all(promises), isKnown);
     } else {
         const array = Object.keys(val).map(k =>
             output<T>(val[k]).apply(v => ({ key: k, value: v})));

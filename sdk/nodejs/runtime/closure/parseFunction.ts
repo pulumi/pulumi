@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import * as ts from "typescript";
 import * as log from "../../log";
@@ -24,11 +36,14 @@ export interface ParsedFunctionCode {
 }
 
 export interface ParsedFunction extends ParsedFunctionCode {
-    // The set of variables the function attempts to capture
+    // The set of variables the function attempts to capture.
     capturedVariables: CapturedVariables;
 
     // Whether or not the real 'this' (i.e. not a lexically captured this) is used in the function.
     usesNonLexicalThis: boolean;
+
+    // The set of package `require`s seen in the parsed function.
+    requiredPackages: Set<string>;
 }
 
 // Information about a captured property.  Both the name and whether or not the property was
@@ -47,6 +62,7 @@ export type CapturedVariableMap = Map<string, CapturedPropertyInfo[]>;
 export interface CapturedVariables {
     required: CapturedVariableMap;
     optional: CapturedVariableMap;
+    requiredPackages: Set<string>;
 }
 
 // These are the special globals we've marked as ones we do not want to capture by value.
@@ -65,24 +81,31 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
 // Gets the text of the provided function (using .toString()) and massages it so that it is a legal
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
-// are represented.  If these change, this will likely break us.zs
+// are represented.  If these change, this will likely break us.
 export function parseFunction(funcString: string): [string, ParsedFunction] {
     const [error, functionCode] = parseFunctionCode(funcString);
     if (error) {
         return [error, <any>undefined];
     }
 
-    const file = createSourceFile(functionCode);
+    // In practice it's not guaranteed that a function's toString is parsable by TypeScript.
+    // V8 intrinsics are prefixed with a '%' and TypeScript does not consider that to be a valid
+    // identifier.
+    const [parseError, file] = createSourceFile(functionCode);
+    if (parseError) {
+        return [parseError, <any>undefined];
+    }
 
-    const capturedVariables = computeCapturedVariableNames(file);
+    const capturedVariables = computeCapturedVariableNames(file!);
 
     // if we're looking at an arrow function, the it is always using lexical 'this's
     // so we don't have to bother even examining it.
-    const usesNonLexicalThis = !functionCode.isArrowFunction && computeUsesNonLexicalThis(file);
+    const usesNonLexicalThis = !functionCode.isArrowFunction && computeUsesNonLexicalThis(file!);
 
     const result = <ParsedFunction>functionCode;
     result.capturedVariables = capturedVariables;
     result.usesNonLexicalThis = usesNonLexicalThis;
+    result.requiredPackages = capturedVariables.requiredPackages;
 
     if (result.capturedVariables.required.has("this")) {
         return [
@@ -236,7 +259,7 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     }
 }
 
-function createSourceFile(serializedFunction: ParsedFunctionCode): ts.SourceFile {
+function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.SourceFile | null] {
     const funcstr = serializedFunction.funcExprWithName || serializedFunction.funcExprWithoutName;
 
     // Wrap with parens to make into something parseable.  This is necessary as many
@@ -249,10 +272,10 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): ts.SourceFile
         "", toParse, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
     if (diagnostics.length) {
-        throw new Error(`Could not parse function: ${diagnostics[0].messageText}\n${toParse}`);
+        return [`the function could not be parsed: ${diagnostics[0].messageText}`, null];
     }
 
-    return file;
+    return ["", file];
 }
 
 function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
@@ -345,6 +368,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     let optional: CapturedVariableMap = new Map();
     const scopes: Set<string>[] = [];
     let functionVars: Set<string> = new Set();
+    const requiredPackages: Set<string> = new Set();
 
     // Recurse through the tree.  We use typescript's AST here and generally walk the entire
     // tree. One subtlety to be aware of is that we generally assume that when we hit an
@@ -358,7 +382,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     // Now just return all variables whose value is true.  Filter out any that are part of the built-in
     // Node.js global object, however, since those are implicitly availble on the other side of serialization.
-    const result: CapturedVariables = { required: new Map(), optional: new Map() };
+    const result: CapturedVariables = { required: new Map(), optional: new Map(), requiredPackages: requiredPackages };
 
     for (const key of required.keys()) {
         if (required.has(key) && !isBuiltIn(key)) {
@@ -373,8 +397,6 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
     }
 
-    // console.log("Free variables for:\n" + serializedFunction.funcExprWithName  +
-    //     "\n" + JSON.stringify(result));
     log.debug(`Found free variables: ${JSON.stringify(result)}`);
     return result;
 
@@ -635,6 +657,18 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // For normal calls, just walk all arguments normally.
         for (const arg of node.arguments) {
             walk(arg);
+        }
+
+        // If we see calls to `require`, record them.
+        if (node.expression.kind === ts.SyntaxKind.Identifier) {
+            if ((node.expression as ts.Identifier).text === "require") {
+                if (node.arguments.length > 0) {
+                    if (node.arguments[0].kind === ts.SyntaxKind.StringLiteral) {
+                        const modName = (node.arguments[0] as ts.StringLiteral).text;
+                        requiredPackages.add(modName);
+                    }
+                }
+            }
         }
     }
 

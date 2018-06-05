@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cmd
 
@@ -16,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -83,6 +96,18 @@ func newStackLsCmd() *cobra.Command {
 				}
 			}
 
+			// We have to fault in snapshots for all the stacks we are going to list here, because that's the easiest
+			// way to get the last update time and the resource count.  Since this is an expensive operation, we'll
+			// do it before printing any output so the latency happens all at once instead of line by line.
+			//
+			// TODO[pulumi/pulumi-service#1530]: We need a lighterweight way of fetching just the specific information
+			// we want to display here.
+			for _, name := range stackNames {
+				stack := stacks[name]
+				_, err := stack.Snapshot(commandContext())
+				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
+			}
+
 			formatDirective := "%-" + strconv.Itoa(maxname) + "s %-24s %-18s"
 			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 
@@ -109,7 +134,10 @@ func newStackLsCmd() *cobra.Command {
 				none := "n/a"
 				lastUpdate := none
 				resourceCount := none
-				if snap := stack.Snapshot(); snap != nil {
+				snap, err := stack.Snapshot(commandContext())
+				contract.IgnoreError(err) // If we couldn't get snapshot for the stack don't fail the overall listing.
+
+				if snap != nil {
 					if t := snap.Manifest.Time; !t.IsZero() {
 						lastUpdate = humanize.Time(t)
 					}

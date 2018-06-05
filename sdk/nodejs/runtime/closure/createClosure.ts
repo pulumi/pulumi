@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import { relative as pathRelative } from "path";
 import { basename } from "path";
@@ -35,6 +47,9 @@ export interface FunctionInfo extends ObjectInfo {
     // name that the function was declared with.  used only for trying to emit a better
     // name into the serialized code for it.
     name: string | undefined;
+
+    // the set of package 'requires' seen in the function body.
+    requiredPackages: Set<string>;
 }
 
 // Similar to PropertyDescriptor.  Helps describe an Entry in the case where it is not
@@ -155,7 +170,7 @@ interface ContextFrame {
  * inside a cloud callback.
  */
 class SerializedOutput<T> implements resource.Output<T> {
-    /* @internal */ public performApply: Promise<boolean>;
+    /* @internal */ public isKnown: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
     /* @internal */ public readonly resources: () => Set<resource.Resource>;
 
@@ -331,7 +346,7 @@ function createFunctionInfo(
         return undefined;
     }
 
-    function serializeWorker() {
+    function serializeWorker(): FunctionInfo {
         const funcEntry = context.cache.get(func);
         if (!funcEntry) {
             throw new Error("Entry for this this function was not created by caller");
@@ -361,6 +376,7 @@ function createFunctionInfo(
             env: new Map(),
             usesNonLexicalThis: parsedFunction.usesNonLexicalThis,
             name: functionDeclarationName,
+            requiredPackages: parsedFunction.requiredPackages,
         };
 
         const proto = Object.getPrototypeOf(func);

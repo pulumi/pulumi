@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import * as grpc from "grpc";
 import * as log from "../log";
@@ -6,6 +18,7 @@ import { ID, Input, Inputs, Output, Resource, ResourceOptions, URN } from "../re
 import { debuggablePromise, errorString } from "./debuggable";
 import {
     deserializeProperties,
+    deserializeProperty,
     OutputResolvers,
     resolveProperties,
     serializeProperties,
@@ -229,20 +242,17 @@ async function resolveOutputs(res: Resource, t: string, name: string,
         Object.assign(allProps, deserializeProperties(outputs));
     }
 
+    const label = `resource:${name}[${t}]#...`;
     for (const key of Object.keys(props)) {
         if (!allProps.hasOwnProperty(key)) {
-            // input prop the engine didn't give us a final value for.  Just use the
-            // value passed into the resource.  Note: unwrap dependencies so that we
-            // can reparent the value against ourself.  i.e. if resource B is passed
-            // resources A.depProp as an input, and the engine doesn't produce an
-            // output for it, we want resource B to expose depProp as a DependencyProp
-            // pointing to B and not A.
-            const inputProp = props[key];
-            if (Output.isInstance(inputProp)) {
-                allProps[key] = await inputProp.promise();
-            } else {
-                allProps[key] = inputProp;
+            // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
+            // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
+            // Output values are handled properly w.r.t. unknowns.
+            const inputProp = await serializeProperty(label, props[key], []);
+            if (inputProp === undefined) {
+                continue;
             }
+            allProps[key] = deserializeProperty(inputProp);
         }
     }
 

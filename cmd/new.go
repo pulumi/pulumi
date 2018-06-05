@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cmd
 
@@ -38,6 +50,7 @@ func newNewCmd() *cobra.Command {
 	var yes bool
 	var offline bool
 	var generateOnly bool
+	var dir string
 
 	cmd := &cobra.Command{
 		Use:   "new [template]",
@@ -49,6 +62,20 @@ func newNewCmd() *cobra.Command {
 			// Validate name (if specified) before further prompts/operations.
 			if name != "" && !workspace.IsValidProjectName(name) {
 				return errors.Errorf("'%s' is not a valid project name", name)
+			}
+
+			// If dir was specified, ensure it exists and use it as the
+			// current working directory.
+			if dir != "" {
+				// Ensure the directory exists.
+				if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+					return errors.Wrap(err, "creating the directory")
+				}
+
+				// Change the working directory to the specified directory.
+				if err = os.Chdir(dir); err != nil {
+					return errors.Wrap(err, "changing the working directory")
+				}
 			}
 
 			// Get the current working directory.
@@ -234,6 +261,8 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&generateOnly, "generate-only", false,
 		"Generate the project only; do not create a stack, save config, or install dependencies")
+	cmd.PersistentFlags().StringVar(&dir, "dir", "",
+		"The location to place the generated project; if not specified, the current directory is used")
 
 	return cmd
 }

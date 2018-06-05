@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package local
 
@@ -194,15 +206,8 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 func (b *localBackend) Preview(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
 	return b.performEngineOp("previewing", backend.PreviewUpdate,
-		stackRef.StackName(), proj, root, m, opts, scopes,
-		func(u engine.UpdateInfo, ctx *engine.Context,
-			opts engine.UpdateOptions, dryRun bool) (engine.ResourceChanges, error) {
-			contract.Assert(dryRun)
-			return engine.Preview(u, ctx, opts)
-		},
-	)
+		stackRef.StackName(), proj, root, m, opts, scopes, engine.Update)
 }
 
 func (b *localBackend) Update(
@@ -227,7 +232,6 @@ func (b *localBackend) Update(
 func (b *localBackend) Refresh(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
 	return b.performEngineOp("refreshing", backend.RefreshUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Refresh)
 }
@@ -235,7 +239,6 @@ func (b *localBackend) Refresh(
 func (b *localBackend) Destroy(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-
 	return b.performEngineOp("destroying", backend.DestroyUpdate,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Destroy)
 }
@@ -358,6 +361,10 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	_, snap, _, err := b.getStack(stackName)
 	if err != nil {
 		return nil, err
+	}
+
+	if snap == nil {
+		snap = deploy.NewSnapshot(deploy.Manifest{}, nil)
 	}
 
 	data, err := json.Marshal(stack.SerializeDeployment(snap))

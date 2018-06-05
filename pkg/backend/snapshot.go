@@ -1,3 +1,17 @@
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package backend
 
 import (
@@ -84,6 +98,10 @@ func (sm *SnapshotManager) mutate(mutator func()) error {
 			}
 		}
 
+		if err != nil {
+			err = errors.Wrap(err, "failed to save snapshot")
+		}
+
 		responseChan <- err
 	}
 
@@ -107,6 +125,7 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 
 // RecordPlugin records that the current plan loaded a plugin and saves it in the snapshot.
 func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
+	logging.V(9).Infof("SnapshotManager: RecordPlugin(%v)", plugin)
 	return sm.mutate(func() {
 		sm.plugins = append(sm.plugins, plugin)
 	})
@@ -117,12 +136,12 @@ func (sm *SnapshotManager) RecordPlugin(plugin workspace.PluginInfo) error {
 // intent to mutate before the mutation occurs.
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Require(step != nil, "step != nil")
-	logging.V(9).Infof("Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
+	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
 	// This is for compat with the existing update model with the service. Invalidating a
 	// stack sets a bit in a database indicating that the stored snapshot is not valid.
 	if err := sm.persister.Invalidate(); err != nil {
-		logging.V(9).Infof("Failed to invalidate snapshot: %s", err.Error())
+		logging.V(9).Infof("SnapshotManager: Failed to invalidate snapshot: %s", err.Error())
 		return nil, err
 	}
 
@@ -158,6 +177,7 @@ type sameSnapshotMutation struct {
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
+	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() {
 		if successful {
 			ssm.manager.markDone(step.Old())
@@ -172,6 +192,7 @@ type createSnapshotMutation struct {
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
+	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
 	return csm.manager.mutate(func() {
 		if successful {
 			// There is some very subtle behind-the-scenes magic here that
@@ -194,6 +215,7 @@ type updateSnapshotMutation struct {
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
+	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
 	return usm.manager.mutate(func() {
 		if successful {
 			usm.manager.markDone(step.Old())
@@ -208,6 +230,7 @@ type deleteSnapshotMutation struct {
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
+	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
 	return dsm.manager.mutate(func() {
 		if successful {
 			contract.Assert(!step.Old().Protect)
@@ -224,6 +247,7 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 // snapshot exactly as it is currently to disk. This is useful when a mutation
 // has failed and we do not intend to persist the failed mutation.
 func (sm *SnapshotManager) refresh() error {
+	logging.V(9).Infof("SnapshotManager: refresh()")
 	return sm.mutate(func() {})
 }
 

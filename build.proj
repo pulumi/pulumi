@@ -20,13 +20,6 @@
           WorkingDirectory="$(NodeJSSdkDirectory)" />
   </Target>
 
-  <Target Name="EnsurePrebuilt">
-    <MakeDir Directories="$(NodeJSSdkDirectory)\prebuilt" />
-    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime.node &quot;$(NodeJSSdkDirectory)\prebuilt\nativeruntime.node&quot;" />
-    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/nativeruntime-v0.11.0.node &quot;$(NodeJSSdkDirectory)\prebuilt\nativeruntime-v0.11.0.node&quot;" />
-    <Exec Command="aws s3 cp s3://eng.pulumi.com/nativeruntime/windows/pulumi-language-nodejs-node.exe &quot;$(NodeJSSdkDirectory)\prebuilt\pulumi-language-nodejs-node.exe&quot;" />
-  </Target>
-
   <Target Name="TypeScriptCompileNodeSdk">
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true" Condition="'$(Version)' == ''">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
@@ -76,11 +69,6 @@
   <Target Name="BinPlaceNodeSdk"
           DependsOnTargets="BinPlaceNodeSdkProtos;BinPlaceNodeSdkTestData;YarnLinkSdk">
      <Copy SourceFiles="$(NodeJSSdkDirectory)\dist\pulumi-resource-pulumi-nodejs.cmd" DestinationFolder="$(PulumiBin)" />
-     <MakeDir Directories="$(PulumiBin)\v6.10.2" />
-     <MakeDir Directories="$(PulumiBin)\custom_node" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\prebuilt\nativeruntime.node" DestinationFolder="$(PulumiBin)\v6.10.2" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\prebuilt\nativeruntime-v0.11.0.node" DestinationFolder="$(PulumiBin)\v6.10.2" />
-     <Copy SourceFiles="$(NodeJSSdkDirectory)\prebuilt\pulumi-language-nodejs-node.exe" DestinationFiles="$(PulumiBin)\custom_node\node.exe" />
   </Target>
 
   <Target Name="BuildNodeSdk"
@@ -101,7 +89,7 @@
   </Target>
 
   <Target Name="Build"
-          DependsOnTargets="EnsureGoDependencies;EnsureNodeDependencies;EnsurePrebuilt;BuildNodeSdk;BuildGoCmds">
+          DependsOnTargets="EnsureGoDependencies;EnsureNodeDependencies;BuildNodeSdk;BuildGoCmds">
   </Target>
 
   <Target Name="IntegrationTest">

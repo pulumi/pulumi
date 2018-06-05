@@ -1,11 +1,22 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cmd
 
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 
@@ -34,6 +45,10 @@ func newStackCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
+			}
 
 			// First print general info about the current stack.
 			fmt.Printf("Current stack is %s:\n", s.Name())
@@ -52,7 +67,6 @@ func newStackCmd() *cobra.Command {
 				}
 			}
 
-			snap := s.Snapshot()
 			if snap != nil {
 				if t := snap.Manifest.Time; t.IsZero() {
 					fmt.Printf("    Last update time unknown\n")
@@ -136,17 +150,14 @@ func newStackCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&showURNs, "show-urns", "u", false, "Display each resource's Pulumi-assigned globally unique URN")
 
+	cmd.AddCommand(newStackExportCmd())
+	cmd.AddCommand(newStackGraphCmd())
+	cmd.AddCommand(newStackImportCmd())
 	cmd.AddCommand(newStackInitCmd())
 	cmd.AddCommand(newStackLsCmd())
 	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackExportCmd())
-	cmd.AddCommand(newStackImportCmd())
 	cmd.AddCommand(newStackRmCmd())
 	cmd.AddCommand(newStackSelectCmd())
-
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
-		cmd.AddCommand(newStackGraphCmd())
-	}
 
 	return cmd
 }

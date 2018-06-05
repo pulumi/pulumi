@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package workspace
 
@@ -39,13 +51,10 @@ type Project struct {
 
 	Analyzers *Analyzers `json:"analyzers,omitempty" yaml:"analyzers,omitempty"` // any analyzers enabled for this project.
 
-	EncryptionSaltDeprecated string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`     // base64 encoded encryption salt.
-	Context                  string `json:"context,omitempty" yaml:"context,omitempty"`                   // an optional path (combined with the on disk location of Pulumi.yaml) to control the data uploaded to the service.
-	NoDefaultIgnores         *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
+	Context          string `json:"context,omitempty" yaml:"context,omitempty"`                   // an optional path (combined with the on disk location of Pulumi.yaml) to control the data uploaded to the service.
+	NoDefaultIgnores *bool  `json:"nodefaultignores,omitempty" yaml:"nodefaultignores,omitempty"` // true if we should only respect .pulumiignore when archiving
 
-	ConfigDeprecated map[config.Key]config.Value `json:"config,omitempty" yaml:"config,omitempty"` // optional config (applies to all stacks).
-
-	StacksDeprecated map[tokens.QName]ProjectStack `json:"stacks,omitempty" yaml:"stacks,omitempty"` // optional stack specific information.
+	Config string `json:"config,omitempty" yaml:"config,omitempty"` // where to store Pulumi.<stack-name>.yaml files, this is combined with the folder Pulumi.yaml is in.
 }
 
 func (proj *Project) Validate() error {
@@ -72,12 +81,6 @@ func (proj *Project) Save(path string) error {
 	contract.Require(proj != nil, "proj")
 	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
 
-	for name, info := range proj.StacksDeprecated {
-		if info.isEmpty() {
-			delete(proj.StacksDeprecated, name)
-		}
-	}
-
 	m, err := marshallerForPath(path)
 	if err != nil {
 		return err
@@ -98,11 +101,6 @@ type ProjectStack struct {
 	Config         config.Map `json:"config,omitempty" yaml:"config,omitempty"`                 // optional config.
 }
 
-// isEmpty returns True if this object contains no information (i.e. all members have their zero values)
-func (ps *ProjectStack) isEmpty() bool {
-	return len(ps.Config) == 0 && ps.EncryptionSalt == ""
-}
-
 // Save writes a project definition to a file.
 func (ps *ProjectStack) Save(path string) error {
 	contract.Require(path != "", "path")
@@ -115,6 +113,11 @@ func (ps *ProjectStack) Save(path string) error {
 
 	b, err := m.Marshal(ps)
 	if err != nil {
+		return err
+	}
+
+	// nolint: gas, gas prefers 0700 for a directory, but 0755 (so group and world can read it) is what we prefer
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 

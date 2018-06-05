@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import * as minimist from "minimist";
 import * as path from "path";
@@ -115,7 +127,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
                     resp.setReplacesList(result.replaces);
                 }
                 if (result.deleteBeforeReplace) {
-                    resp.setDeleteBeforeReplace(result.deleteBeforeReplace);
+                    resp.setDeletebeforereplace(result.deleteBeforeReplace);
                 }
             }
         }
@@ -134,12 +146,10 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         const props = req.getProperties().toJavaScript();
         const provider = getProvider(props);
-
         const result = await provider.create(props);
+        const resultProps = resultIncludingProvider(result.outs, props);
         resp.setId(result.id);
-        if (result.outs) {
-            resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
-        }
+        resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
     } catch (e) {
@@ -156,10 +166,14 @@ async function readRPC(call: any, callback: any): Promise<void> {
         const props = req.getProperties().toJavaScript();
         const provider = getProvider(props);
         if (provider.read) {
+            // If there's a read function, consult the provider.  Ensure to propagate the special __provider
+            // value too, so that the provider's CRUD operations continue to function after a refresh.
             const result: any = await provider.read(req.getId(), props);
-            if (result.properties) {
-                resp.setProperties(structproto.Struct.fromJavaScript(result.properties));
-            }
+            const resultProps = resultIncludingProvider(result.properties, props);
+            resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
+        } else {
+            // In the event of a missing read, simply return back the input properties.
+            resp.setProperties(req.getProperties());
         }
 
         callback(undefined, resp);
@@ -180,13 +194,14 @@ async function updateRPC(call: any, callback: any): Promise<void> {
             throw new Error("changes to provider should require replacement");
         }
 
+        let outs: any;
         const provider = getProvider(olds);
         if (provider.update) {
-            const result: any = await provider.update(req.getId(), olds, news);
-            if (result.outs) {
-                resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
-            }
+            outs = (await provider.update(req.getId(), olds, news)).outs;
         }
+
+        const resultProps = resultIncludingProvider(outs, news);
+        resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
     } catch (e) {
@@ -214,6 +229,12 @@ async function getPluginInfoRPC(call: any, callback: any): Promise<void> {
     const resp: any = new plugproto.PluginInfo();
     resp.setVersion(version);
     callback(undefined, resp);
+}
+
+function resultIncludingProvider(result: any, props: any): any {
+    return Object.assign(result || {}, {
+        [providerKey]: props[providerKey],
+    });
 }
 
 export function main(args: string[]): void {

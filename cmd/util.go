@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cmd
 
@@ -9,18 +21,14 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"os/user"
-	"path"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
-	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
@@ -32,10 +40,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
+	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
+
+func hasDebugCommands() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
+}
 
 func currentBackend() (backend.Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
@@ -232,90 +244,6 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	return stacks[option], nil
 }
 
-func detectOwnerAndName(dir string) (string, string, error) {
-	owner, repo, err := getGitHubProjectForOrigin(dir)
-	if err == nil {
-		return owner, repo, nil
-	}
-
-	user, err := user.Current()
-	if err != nil {
-		return "", "", err
-	}
-
-	return user.Username, filepath.Base(dir), nil
-}
-
-// getGitRepository returns the git repository by walking up from the provided directory.
-// If no repository is found, will return (nil, nil).
-func getGitRepository(dir string) (*git.Repository, error) {
-	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "searching for git repository from %v", dir)
-	}
-	if gitRoot == "" {
-		return nil, nil
-	}
-
-	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	repo, err := git.PlainOpen(path.Join(gitRoot, ".."))
-	if err == git.ErrRepositoryNotExists {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "reading git repository")
-	}
-	return repo, nil
-}
-
-func getGitHubProjectForOrigin(dir string) (string, string, error) {
-	repo, err := getGitRepository(dir)
-	if repo == nil {
-		return "", "", fmt.Errorf("no git repository found from %v", dir)
-	}
-	if err != nil {
-		return "", "", err
-	}
-	return getGitHubProjectForOriginByRepo(repo)
-}
-
-// Returns the GitHub login, and GitHub repo name if the "origin" remote is
-// a GitHub URL.
-func getGitHubProjectForOriginByRepo(repo *git.Repository) (string, string, error) {
-	remote, err := repo.Remote("origin")
-	if err != nil {
-		return "", "", errors.Wrap(err, "could not read origin information")
-	}
-
-	remoteURL := ""
-	if len(remote.Config().URLs) > 0 {
-		remoteURL = remote.Config().URLs[0]
-	}
-	project := ""
-
-	const GitHubSSHPrefix = "git@github.com:"
-	const GitHubHTTPSPrefix = "https://github.com/"
-	const GitHubRepositorySuffix = ".git"
-
-	if strings.HasPrefix(remoteURL, GitHubSSHPrefix) {
-		project = trimGitRemoteURL(remoteURL, GitHubSSHPrefix, GitHubRepositorySuffix)
-	} else if strings.HasPrefix(remoteURL, GitHubHTTPSPrefix) {
-		project = trimGitRemoteURL(remoteURL, GitHubHTTPSPrefix, GitHubRepositorySuffix)
-	}
-
-	split := strings.Split(project, "/")
-
-	if len(split) != 2 {
-		return "", "", errors.Errorf("could not detect GitHub project from url: %v", remote)
-	}
-
-	return split[0], split[1], nil
-}
-
-func trimGitRemoteURL(url string, prefix string, suffix string) string {
-	return strings.TrimSuffix(strings.TrimPrefix(url, prefix), suffix)
-}
-
 // readProject attempts to detect and read the project for the current workspace. If an error occurs, it will be
 // printed to Stderr, and the returned value will be nil. If the project is successfully detected and read, it
 // is returned along with the path to its containing directory, which will be used as the root of the project's
@@ -424,7 +352,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	repo, err := getGitRepository(root)
+	repo, err := gitutil.GetGitRepository(root)
 	if err != nil {
 		cmdutil.Diag().Warningf(diag.Message("", "could not detect Git repository: %v"), err)
 	}
@@ -434,7 +362,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
-	ghLogin, ghRepo, err := getGitHubProjectForOriginByRepo(repo)
+	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByRepo(repo)
 	if err != nil {
 		cmdutil.Diag().Warningf(diag.Message("", "could not detect GitHub project information: %v"), err)
 	} else {

@@ -1,8 +1,22 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package stack
 
 import (
+	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
@@ -11,8 +25,31 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+const (
+	// DeploymentSchemaVersionOldestSupported is the oldest deployment schema that we
+	// still support, i.e. we can produce a `deploy.Snapshot` from. This will generally
+	// need to be at least one less than the current schema version so that old deployments can
+	// be migrated to the current schema.
+	//
+	// We only have one version today (version 1) so the oldest supported version is the
+	// current version.
+	DeploymentSchemaVersionOldestSupported = 1
+)
+
+var (
+	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
+	// untyped deployment being deserialized is too old to understand.
+	ErrDeploymentSchemaVersionTooOld = fmt.Errorf("this stack's deployment is too old")
+
+	// ErrDeploymentSchemaVersionTooNew is returned from `DeserializeDeployment` if the
+	// untyped deployment being deserialized is too new to understand.
+	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
+)
+
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
+	contract.Require(snap != nil, "snap")
+
 	// Capture the version information into a manifest.
 	manifest := apitype.Manifest{
 		Time:    snap.Manifest.Time,
@@ -42,6 +79,26 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
 		Manifest:  manifest,
 		Resources: resources,
 	}
+}
+
+// DeserializeDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
+// from it. DeserializeDeployment will return an error if the untyped deployment's version is
+// not within the range `DeploymentSchemaVersionCurrent` and `DeploymentSchemaVersionOldestSupported`.
+func DeserializeDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snapshot, error) {
+	contract.Require(deployment != nil, "deployment")
+	switch {
+	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
+		return nil, ErrDeploymentSchemaVersionTooNew
+	case deployment.Version < DeploymentSchemaVersionOldestSupported:
+		return nil, ErrDeploymentSchemaVersionTooOld
+	}
+
+	checkpoint := &apitype.CheckpointV1{}
+	if err := json.Unmarshal([]byte(deployment.Deployment), &checkpoint.Latest); err != nil {
+		return nil, err
+	}
+
+	return DeserializeCheckpoint(checkpoint)
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.

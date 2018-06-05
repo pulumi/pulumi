@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package client
 
@@ -35,18 +47,9 @@ const (
 	UpdateKindImport  UpdateKind = "import"
 )
 
-// ProjectIdentifier is the set of data needed to identify a Pulumi Cloud project. This the
-// logical "home" of a stack on the Pulumi Cloud.
-type ProjectIdentifier struct {
-	Owner      string
-	Repository string
-	Project    string
-}
-
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
 type StackIdentifier struct {
-	ProjectIdentifier
-
+	Owner string
 	Stack string
 }
 
@@ -113,7 +116,7 @@ func pulumiAPICall(ctx context.Context, cloudAPI, method, path string, body []by
 	path = cleanPath(path)
 
 	url := fmt.Sprintf("%s%s", cloudAPI, path)
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating new HTTP request")
 	}

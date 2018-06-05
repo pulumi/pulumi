@@ -1,12 +1,93 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import * as closure from "./createClosure";
 
+/**
+ * SerializeFunctionArgs are arguments used to serialize a JavaScript function
+ */
+export interface SerializeFunctionArgs {
+    /**
+     * The name to export from the module defined by the generated module text.  Defaults to 'handler'.
+     */
+    exportName?: string;
+    /**
+     * A function to prevent serialization of certain objects captured during the serialization.  Primarily used to
+     * prevent potential cycles.
+     */
+    serialize?: (o: any) => boolean;
+}
+
+/**
+ * SerializeFunction is a representation of a serialized JavaScript function.
+ */
+export interface SerializedFunction {
+    /**
+     * The text of a JavaScript module which exports a single name bound to a function value matching the serialized
+     * JavaScript function.
+     */
+    text: string;
+    /**
+     * The name of the exported module member.
+     */
+    exportName: string;
+    /**
+     * The set of pacakges that were 'require'd by the transitive closure of functions serialized as part of the
+     * JavaScript function serialization.  These pacakges must be able to resolve in the target execution environment
+     * for the serialized function to be able to be loaded and evaluated correctly.
+     */
+    requiredPackages: Set<string>;
+}
+
+/**
+ * serializeFunction serializes a JavaScript function into a text form that can be loaded in another exuection context,
+ * for example as part of a function callback associated with an AWS Lambda.  The function serialization captures any
+ * variables captured by the function body and serializes those values into the generated text along with the function
+ * body.  This process is recursive, so that functions referenced by the body of the serialized function will themselves
+ * be serialized as well.  Thid process also deeply serializes captured object values, including prototype chains and
+ * property descriptors, such that the semantics of the function when deserialized should match the original function.
+ *
+ * There are several known limitations:
+ * - If a native function is captured either directly or indirectly, closure serialization will return an error.
+ * - Captured values will be serialized based on their values at the time that `serializeFunction` is called.  Mutations
+ *   to these values after that (but before the deserialized funtion is used) will not be observed by the deserialized
+ *   function.
+ *
+ * @param func The JavaScript function to serialize.
+ * @param args Arguments to use to control the serialization of the JavaScript function.
+ */
+export async function serializeFunction(func: Function, args?: SerializeFunctionArgs): Promise<SerializedFunction> {
+    if (!args) {
+        args = {};
+    }
+    const exportName = args.exportName || "handler";
+    const serialize = args.serialize || (_ => true);
+
+    const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
+    return serializeJavaScriptText(func, functionInfo, exportName);
+}
+
+/**
+ * @deprecated This function has been replaced by `serializeFunction`, which accepts additional parameters and returns
+ * more details about the serialized function.  This form will be removed in a future release of this package.
+ */
 export async function serializeFunctionAsync(
-        func: Function, serialize?: (o: any) => boolean): Promise<string> {
+        func: Function,
+        serialize?: (o: any) => boolean): Promise<string> {
     serialize = serialize || (_ => true);
     const functionInfo = await closure.createFunctionInfoAsync(func, serialize);
-    return serializeJavaScriptText(func, functionInfo);
+    return serializeJavaScriptText(func, functionInfo, "handler").text;
 }
 
 /**
@@ -15,7 +96,10 @@ export async function serializeFunctionAsync(
  *
  * @param c The FunctionInfo to be serialized into a module string.
  */
-function serializeJavaScriptText(func: Function, outerFunction: closure.FunctionInfo): string {
+function serializeJavaScriptText(
+        func: Function,
+        outerFunction: closure.FunctionInfo,
+        exportName: string): SerializedFunction {
     // console.log("serializeJavaScriptTextAsync:\n" + func.toString());
 
     // Now produce a textual representation of the closure and its serialized captured environment.
@@ -33,6 +117,7 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
     const envEntryToEnvVar = new Map<closure.Entry, string>();
     const envVarNames = new Set<string>();
     const functionInfoToEnvVar = new Map<closure.FunctionInfo, string>();
+    const requiredPackages = new Set<string>();
 
     let environmentText = "";
     let functionText = "";
@@ -47,7 +132,11 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
         + environmentText + functionText;
 
     // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
-    return text;
+    return {
+        text: text,
+        requiredPackages: requiredPackages,
+        exportName: exportName,
+    };
 
     function emitFunctionAndGetName(functionInfo: closure.FunctionInfo): string {
         // If this is the first time seeing this function, then actually emit the function code for
@@ -61,6 +150,10 @@ function serializeJavaScriptText(func: Function, outerFunction: closure.Function
             functionInfoToEnvVar.set(functionInfo, functionName);
 
             emitFunctionWorker(functionInfo, functionName);
+        }
+
+        for (const p of functionInfo.requiredPackages) {
+            requiredPackages.add(p);
         }
 
         return functionName;

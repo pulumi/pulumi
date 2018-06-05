@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package integration
 
@@ -110,6 +122,14 @@ type ProgramTestOptions struct {
 	ExtraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo)
 	// RelativeWorkDir is an optional path relative to `Dir` which should be used as working directory during tests.
 	RelativeWorkDir string
+	// AllowEmptyPreviewChanges is true if we expect that this test's no-op preview may propose changes (e.g.
+	// because the test is sensitive to the exact contents of its working directory and those contents change
+	// incidentally between the initial update and the empty update).
+	AllowEmptyPreviewChanges bool
+	// AllowEmptyUpdateChanges is true if we expect that this test's no-op update may perform changes (e.g.
+	// because the test is sensitive to the exact contents of its working directory and those contents change
+	// incidentally between the initial update and the empty update).
+	AllowEmptyUpdateChanges bool
 	// ExpectFailure is true if we expect this test to fail.  This is very coarse grained, and will essentially
 	// tolerate *any* failure in the program (IDEA: in the future, offer a way to narrow this down more).
 	ExpectFailure bool
@@ -307,6 +327,23 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 			t.Errorf("panic testing %v: %v", opts.Dir, failure)
 		}
 	}()
+
+	// Set up some default values for sending test reports and tracing data. We use environment varaiables to
+	// control these globally and set reasonable values for our own use in CI.
+	if opts.ReportStats == nil {
+		if v := os.Getenv("PULUMI_TEST_REPORT_CONFIG"); v != "" {
+			splits := strings.Split(v, ":")
+			if len(splits) != 3 {
+				t.Errorf("report config should be set to a value of the form: <aws-region>:<bucket-name>:<keyPrefix>")
+			}
+
+			opts.ReportStats = NewS3Reporter(splits[0], splits[1], splits[2])
+		}
+	}
+
+	if opts.Tracing == "" {
+		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
+	}
 
 	pt := newProgramTester(t, opts)
 	err := pt.testLifeCycleInitAndDestroy()
@@ -562,7 +599,7 @@ func (pt *programTester) testLifeCycleDestroy(dir string) error {
 func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	// Now preview and update the real changes.
 	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
-	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure)
+	initErr := pt.previewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
@@ -571,8 +608,14 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.Quick {
-		fprintf(pt.opts.Stdout, "Performing empty preview and update (no changes expected)\n")
-		if err := pt.previewAndUpdate(dir, "empty", false); err != nil {
+		msg := ""
+		if !pt.opts.AllowEmptyUpdateChanges {
+			msg = "(no changes expected)"
+		}
+		fprintf(pt.opts.Stdout, "Performing empty preview and update%s\n", msg)
+		if err := pt.previewAndUpdate(
+			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
+
 			return err
 		}
 	}
@@ -586,12 +629,20 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 	return pt.testEdits(dir)
 }
 
-func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail bool) error {
+func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
+	expectNopUpdate bool) error {
+
 	preview := []string{"preview", "--non-interactive"}
 	update := []string{"update", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
+	}
+	if expectNopPreview {
+		preview = append(preview, "--expect-no-changes")
+	}
+	if expectNopUpdate {
+		update = append(update, "--expect-no-changes")
 	}
 	if pt.opts.UpdateCommandlineFlags != nil {
 		update = append(update, pt.opts.UpdateCommandlineFlags...)
@@ -726,7 +777,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		pt.opts.Verbose = oldVerbose
 	}()
 
-	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure); err != nil {
+	if err = pt.previewAndUpdate(dir, fmt.Sprintf("edit-%d", i), edit.ExpectFailure, false, false); err != nil {
 		return err
 	}
 	return pt.performExtraRuntimeValidation(edit.ExtraRuntimeValidation, dir)

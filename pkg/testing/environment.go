@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package testing
 
@@ -65,17 +77,29 @@ func (e *Environment) PathExists(p string) bool {
 	return err == nil
 }
 
-// RunCommand invokes the command-line argument in the environment, returning stdout and stderr.
-// Fails on non-zero exit code.
+// RunCommand runs the command expecting a zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	e.Helper()
-	return e.runCommand(e.T, true, cmd, e.CWD, args...)
+	stdout, stderr, err := e.GetCommandResults(e.T, cmd, args...)
+	if err != nil {
+		e.Errorf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
+		e.Logf("Run Error: %v", err)
+		e.Logf("STDOUT: %v", stdout)
+		e.Logf("STDERR: %v", stderr)
+	}
+	return stdout, stderr
 }
 
-// RunCommandExpectError runs the command expecting a non-zero exit code.
+// RunCommandExpectError runs the command expecting a non-zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
 	e.Helper()
-	return e.runCommand(e.T, false, cmd, e.CWD, args...)
+	stdout, stderr, err := e.GetCommandResults(e.T, cmd, args...)
+	if err == nil {
+		e.Errorf("Ran command %v args %v and expected failure. Instead got success.", cmd, args)
+		e.Logf("STDOUT: %v", stdout)
+		e.Logf("STDERR: %v", stderr)
+	}
+	return stdout, stderr
 }
 
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
@@ -84,8 +108,9 @@ func (e *Environment) LocalURL() string {
 	return "local://" + filepath.Join(e.RootPath, workspace.BookkeepingDir)
 }
 
-func (e *Environment) runCommand(t *testing.T, expectSuccess bool, command,
-	cwd string, args ...string) (string, string) {
+// GetCommandResults runs the given command and args in the Environments CWD, returning
+// STDOUT, STDERR, and the result of os/exec.Command{}.Run.
+func (e *Environment) GetCommandResults(t *testing.T, command string, args ...string) (string, string, error) {
 	t.Helper()
 	t.Logf("Running command %v %v", command, strings.Join(args, " "))
 
@@ -95,16 +120,12 @@ func (e *Environment) runCommand(t *testing.T, expectSuccess bool, command,
 
 	// nolint: gas
 	cmd := exec.Command(command, args...)
-	cmd.Dir = cwd
+	cmd.Dir = e.CWD
 	cmd.Stdout = &outBuffer
 	cmd.Stderr = &errBuffer
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", workspace.PulumiCredentialsPathEnvVar, e.RootPath))
+	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 
 	runErr := cmd.Run()
-	if (runErr == nil) != expectSuccess {
-		t.Errorf("Finished with unexpected result. Expected success: %v, got error: %v", expectSuccess, runErr)
-		t.Logf("STDOUT: %v", outBuffer.String())
-		t.Logf("STDERR: %v", errBuffer.String())
-	}
-	return outBuffer.String(), errBuffer.String()
+	return outBuffer.String(), errBuffer.String(), runErr
 }

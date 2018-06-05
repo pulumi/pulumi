@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package local
 
@@ -40,11 +52,11 @@ func newStack(name backend.StackReference, path string, config config.Map,
 	}
 }
 
-func (s *localStack) Name() backend.StackReference { return s.name }
-func (s *localStack) Config() config.Map           { return s.config }
-func (s *localStack) Snapshot() *deploy.Snapshot   { return s.snapshot }
-func (s *localStack) Backend() backend.Backend     { return s.b }
-func (s *localStack) Path() string                 { return s.path }
+func (s *localStack) Name() backend.StackReference                           { return s.name }
+func (s *localStack) Config() config.Map                                     { return s.config }
+func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
+func (s *localStack) Backend() backend.Backend                               { return s.b }
+func (s *localStack) Path() string                                           { return s.path }
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)

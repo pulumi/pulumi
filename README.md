@@ -1,6 +1,6 @@
 # Pulumi
 
-Pulumi is a framework and toolset for creating reusable cloud services.
+Pulumi is a programming platform for the cloud to make creating cloud programs easy and productive.
 
 This repo contains the core SDKs, CLI, and libraries, most notably the Pulumi Engine itself.
 

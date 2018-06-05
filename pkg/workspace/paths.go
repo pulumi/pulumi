@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package workspace
 
@@ -50,12 +62,12 @@ func DetectProjectPath() (string, error) {
 // DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
 // specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
 func DetectProjectStackPath(stackName tokens.QName) (string, error) {
-	projPath, err := DetectProjectPath()
+	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
+	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
 		filepath.Ext(projPath))), nil
 }
 
@@ -63,7 +75,7 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 // hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(path string) (string, error) {
 	return fsutil.WalkUp(path, isProject, func(s string) bool {
-		return !isRepositoryFolder(filepath.Join(s, BookkeepingDir))
+		return true
 	})
 }
 
@@ -113,22 +125,6 @@ func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
 	}
 
 	return stack.Save(path)
-}
-
-func isGitFolder(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir() && info.Name() == GitDir
-}
-
-func isRepositoryFolder(path string) bool {
-	info, err := os.Stat(path)
-	if err == nil && info.IsDir() && info.Name() == BookkeepingDir {
-		// make sure it has a settings.json file in it
-		info, err := os.Stat(filepath.Join(path, RepoFile))
-		return err == nil && !info.IsDir()
-	}
-
-	return false
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like

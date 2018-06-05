@@ -1,4 +1,16 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cmd
 
@@ -92,7 +104,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newLoginCmd())
 	cmd.AddCommand(newLogoutCmd())
 	cmd.AddCommand(newLogsCmd())
@@ -110,7 +121,7 @@ func NewPulumiCmd() *cobra.Command {
 
 	// We have a set of commands that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
 	// set to true.
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS")) {
+	if hasDebugCommands() {
 		cmd.AddCommand(newArchiveCommand())
 
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",

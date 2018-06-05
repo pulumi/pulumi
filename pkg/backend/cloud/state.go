@@ -1,13 +1,25 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2018, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package cloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
@@ -133,9 +145,11 @@ func (u *cloudUpdate) recordEvent(
 		return nil
 	}
 
+	fields := make(map[string]interface{})
 	kind := string(apitype.StdoutEvent)
 	if event.Type == engine.DiagEvent {
 		payload := event.Payload.(engine.DiagEventPayload)
+		fields["severity"] = string(payload.Severity)
 		if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 			kind = string(apitype.StderrEvent)
 		}
@@ -154,7 +168,8 @@ func (u *cloudUpdate) recordEvent(
 		return err
 	}
 
-	fields := map[string]interface{}{"text": msg, "colorize": colors.Always}
+	fields["text"] = msg
+	fields["colorize"] = colors.Always
 	return u.backend.client.AppendUpdateLogEntry(u.context, u.update, kind, fields, token)
 }
 
@@ -220,6 +235,20 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}, nil
 }
 
+func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
+	untypedDeployment, err := b.ExportDeployment(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshot, err := stack.DeserializeDeployment(untypedDeployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return snapshot, nil
+}
+
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference) (*deploy.Target, error) {
 	// Pull the local stack info so we can get at its configuration bag.
 	stk, err := workspace.DetectProjectStack(stackRef.StackName())
@@ -231,18 +260,18 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	if err != nil {
 		return nil, err
 	}
-
-	untypedDeployment, err := b.ExportDeployment(ctx, stackRef)
+	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
-		return nil, err
-	}
-	checkpoint := &apitype.CheckpointV1{}
-	if err = json.Unmarshal([]byte(untypedDeployment.Deployment), &checkpoint.Latest); err != nil {
-		return nil, err
-	}
-	snapshot, err := stack.DeserializeCheckpoint(checkpoint)
-	if err != nil {
-		return nil, err
+		switch err {
+		case stack.ErrDeploymentSchemaVersionTooOld:
+			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
+				stackRef.StackName())
+		case stack.ErrDeploymentSchemaVersionTooNew:
+			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
+				"Please update your version of the Pulumi CLI", stackRef.StackName())
+		default:
+			return nil, errors.Wrap(err, "could not deserialize deployment")
+		}
 	}
 
 	return &deploy.Target{
