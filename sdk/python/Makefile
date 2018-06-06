@@ -47,3 +47,4 @@ install::
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 test_fast::
+	$(PYTHON) -m unittest discover -s lib/test

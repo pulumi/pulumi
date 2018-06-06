@@ -15,6 +15,7 @@
 """The Resource module, containing all resource-related definitions."""
 
 from runtime.resource import register_resource, register_resource_outputs
+from runtime.rpc import register_custom_resource_type
 from runtime.settings import get_root_resource
 
 class Resource(object):
@@ -88,6 +89,9 @@ class CustomResource(Resource):
     """
     def __init__(self, t, name, props=None, opts=None):
         Resource.__init__(self, t, name, True, props, opts)
+
+# Elsewhere in the runtime, we depend on the object identity of the CustomResource class.
+register_custom_resource_type(CustomResource)
 
 class ComponentResource(Resource):
     """
