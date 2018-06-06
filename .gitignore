@@ -1,6 +1,6 @@
 *.swp
 /vendor/
-/.vscode/
+**/.vscode/
 coverage.cov
 *.coverprofile
 custom_node/
