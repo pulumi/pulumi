@@ -14,6 +14,7 @@
 
 import unittest
 from google.protobuf import struct_pb2
+from pulumi import CustomResource
 from pulumi.runtime import rpc
 
 class PropertySerializeTests(unittest.TestCase):
@@ -46,3 +47,68 @@ class PropertySerializeTests(unittest.TestCase):
         self.assertEqual(1, proto_list[0])
         self.assertEqual("2", proto_list[1])
         self.assertEqual(True, proto_list[2])
+
+    def test_custom_resource(self):
+        """
+        Tests that the class registered by `register_custom_resource_type`
+        is serialized by serializing its ID field.
+        """
+        class FakeCustomResource(object):
+            """
+            Fake CustomResource class that duck-types to the real CustomResource.
+            """
+            def __init__(self, id):
+                self.id = id
+
+        rpc.register_custom_resource_type(FakeCustomResource)
+        struct = rpc.serialize_resource_props({
+            "fake": FakeCustomResource(42)
+        })
+
+        self.assertTrue(isinstance(struct, struct_pb2.Struct))
+
+        # pylint: disable=unsubscriptable-object
+        serialized_resource = struct["fake"]
+        self.assertEqual(42, serialized_resource)
+
+class FakeCustomResource(object):
+    """
+    Fake CustomResource class that duck-types to the real CustomResource.
+    This class is substituted for the real CustomResource for the below test.
+    """
+    def __init__(self, id):
+        self.id = id
+
+
+class CustomResourceSerializeTest(unittest.TestCase):
+    """
+    Tests that we serialize CustomResources by serializing their ID.
+    """
+    def setUp(self):
+        """
+        Sets up the test by replacing the CustomResource that the rpc serialization
+        system knows about with the above FakeCustomResource, which doesn't interact
+        with the resource monitor.
+        """
+        rpc.register_custom_resource_type(FakeCustomResource)
+
+    def tearDown(self):
+        """
+        Tears down the test by re-setting the rpc serialization system's known CustomResource.
+        """
+        rpc.register_custom_resource_type(CustomResource)
+
+    def test_custom_resource(self):
+        """
+        Tests that the class registered by `register_custom_resource_type`
+        is serialized by serializing its ID field.
+        """
+        struct = rpc.serialize_resource_props({
+            "fake": FakeCustomResource(42)
+        })
+
+        self.assertTrue(isinstance(struct, struct_pb2.Struct))
+
+        # pylint: disable=unsubscriptable-object
+        serialized_resource = struct["fake"]
+        self.assertEqual(42, serialized_resource)

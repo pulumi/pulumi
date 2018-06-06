@@ -19,6 +19,6 @@ The runtime implementation of the Pulumi Python SDK.
 # Make all module members inside of this package available as package members.
 from config import *
 from resource import *
+from rpc import *
 from settings import *
 from stack import *
-from rpc import *
