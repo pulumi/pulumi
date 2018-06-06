@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
@@ -70,7 +69,11 @@ def deserialize_resource_props(props_struct):
     assert isinstance(props_struct, struct_pb2.Struct)
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways.
-    return { key: deserialize_property(value) for key, value in props_struct }
+    out = dict()
+    for key, value in props_struct.items():
+        out[key] = deserialize_property(value)
+
+    return out
 
 def deserialize_property(prop):
     """
