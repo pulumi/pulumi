@@ -16,6 +16,7 @@ Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
 
+from six.moves import map
 from google.protobuf import struct_pb2
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
@@ -32,7 +33,7 @@ def serialize_resource_props(props):
 
 def serialize_resource_value(value):
     """
-    Seralizes a resource property value so that it's ready for marshaling to the gRPC endpoint.
+    Serializes a resource property value so that it's ready for marshaling to the gRPC endpoint.
     """
     from ..resource import CustomResource
 
@@ -41,16 +42,10 @@ def serialize_resource_value(value):
         return serialize_resource_value(value.id)
     elif isinstance(value, dict):
         # Deeply serialize dictionaries.
-        d = dict()
-        for k, v in value.items():
-            d[k] = serialize_resource_value(v)
-        return d
+        return {k: serialize_resource_value(v) for (k, v) in value.items()}
     elif isinstance(value, list):
         # Deeply serialize lists.
-        a = []
-        for e in value:
-            a.append(serialize_resource_value(e))
-        return a
+        return list(map(serialize_resource_value, value))
     else:
         # All other values are directly serializable.
         # TODO[pulumi/pulumi#1063]: eventually, we want to think about Output, Properties, and so on.
@@ -69,11 +64,7 @@ def deserialize_resource_props(props_struct):
     assert isinstance(props_struct, struct_pb2.Struct)
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways.
-    out = dict()
-    for key, value in props_struct.items():
-        out[key] = deserialize_property(value)
-
-    return out
+    return {k: deserialize_property(v) for (k, v) in props_struct.items()}
 
 def deserialize_property(prop):
     """
