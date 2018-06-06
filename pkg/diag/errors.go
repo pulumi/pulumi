@@ -19,15 +19,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// errors tracks all existing errors, keyed by their unique ID.
-var errors = make(map[ID]*Diag)
-
-// newError registers a new error message underneath the given unique ID.
+// newError registers a new error message underneath the given id.
 func newError(urn resource.URN, id ID, message string) *Diag {
-	contract.Assert(errors[id] == nil)
-	e := &Diag{URN: urn, ID: id, Message: message}
-	errors[id] = e
-	return e
+	return &Diag{URN: urn, ID: id, Message: message}
 }
 
 // Plan and apply errors are in the [2000,3000) range.
