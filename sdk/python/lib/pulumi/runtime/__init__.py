@@ -21,3 +21,4 @@ from config import *
 from resource import *
 from settings import *
 from stack import *
+from rpc import *

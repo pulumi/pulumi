@@ -16,11 +16,15 @@ Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
 
+import six
 from six.moves import map
 from google.protobuf import struct_pb2
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
+
+CUSTOM_RESOURCE_TYPE = None
+"""The type of CustomResource. Filled-in as the Pulumi package is initializing."""
 
 def serialize_resource_props(props):
     """
@@ -35,9 +39,9 @@ def serialize_resource_value(value):
     """
     Serializes a resource property value so that it's ready for marshaling to the gRPC endpoint.
     """
-    from ..resource import CustomResource
 
-    if isinstance(value, CustomResource):
+    assert CUSTOM_RESOURCE_TYPE is not None, "failed to set CustomResource type"
+    if isinstance(value, CUSTOM_RESOURCE_TYPE):
         # Resource objects aren't serializable.  Instead, serialize them as references to their IDs.
         return serialize_resource_value(value.id)
     elif isinstance(value, dict):
@@ -85,3 +89,12 @@ def deserialize_property(prop):
 
     # Everything else is identity projected.
     return prop
+
+def register_custom_resource_type(class_obj):
+    """
+    Registers the given class object as the CustomResource type,
+    for use in serialization.
+    """
+    assert isinstance(class_obj, six.class_types), "class_obj is not a Class"
+    global CUSTOM_RESOURCE_TYPE
+    CUSTOM_RESOURCE_TYPE = class_obj
