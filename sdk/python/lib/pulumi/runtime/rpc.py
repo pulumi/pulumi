@@ -70,11 +70,7 @@ def deserialize_resource_props(props_struct):
     assert isinstance(props_struct, struct_pb2.Struct)
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways.
-    out_dict = {}
-    for key, value in props_struct.items():
-        out_dict[key] = deserialize_property(value)
-
-    return out_dict
+    return { key: deserialize_property(value) for key, value in props_struct }
 
 def deserialize_property(prop):
     """
