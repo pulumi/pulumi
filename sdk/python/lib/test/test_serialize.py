@@ -48,29 +48,6 @@ class PropertySerializeTests(unittest.TestCase):
         self.assertEqual("2", proto_list[1])
         self.assertEqual(True, proto_list[2])
 
-    def test_custom_resource(self):
-        """
-        Tests that the class registered by `register_custom_resource_type`
-        is serialized by serializing its ID field.
-        """
-        class FakeCustomResource(object):
-            """
-            Fake CustomResource class that duck-types to the real CustomResource.
-            """
-            def __init__(self, id):
-                self.id = id
-
-        rpc.register_custom_resource_type(FakeCustomResource)
-        struct = rpc.serialize_resource_props({
-            "fake": FakeCustomResource(42)
-        })
-
-        self.assertTrue(isinstance(struct, struct_pb2.Struct))
-
-        # pylint: disable=unsubscriptable-object
-        serialized_resource = struct["fake"]
-        self.assertEqual(42, serialized_resource)
-
 class FakeCustomResource(object):
     """
     Fake CustomResource class that duck-types to the real CustomResource.
