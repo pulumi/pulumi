@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Support for serializing and deserializing properties going into or flowing
+out of RPC calls.
+"""
+
 from google.protobuf import struct_pb2
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
@@ -90,4 +95,3 @@ def deserialize_property(prop):
 
     # Everything else is identity projected.
     return prop
-
