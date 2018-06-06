@@ -20,6 +20,7 @@ from ..errors import RunError
 from google.protobuf import struct_pb2
 from proto import provider_pb2, resource_pb2
 from settings import get_monitor
+import rpc
 import six
 import sys
 import grpc
@@ -40,7 +41,7 @@ def invoke(tok, args):
     try:
         resp = monitor.Invoke(provider_pb2.InvokeRequest(
             tok=tok,
-            args=serialize_resource_props(args)))
+            args=rpc.serialize_resource_props(args)))
     except grpc.RpcError as exn:
         # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
         # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
@@ -58,12 +59,11 @@ def invoke(tok, args):
         raise Exception('invoke of %s failed: %s (%s)' % (tok, resp.failures[0].reason, resp.failures[0].property))
 
     # Otherwise, return the output properties.
-    rets = dict()
     retobj = getattr(resp, 'return')
     if retobj:
-        for k, v in retobj.items():
-            rets[k] = v
-    return rets
+        return rpc.deserialize_resource_props(retobj)
+
+    return {}
 
 class RegisterResourceResult:
     """
@@ -82,7 +82,7 @@ def register_resource(typ, name, custom, props, opts):
     """
 
     # Serialize all properties.  This just translates known types into the gRPC marshalable equivalents.
-    objprops = serialize_resource_props(props)
+    objprops = rpc.serialize_resource_props(props)
 
     # Ensure we have flushed all stdout/stderr, in case the RPC fails.
     sys.stdout.flush()
@@ -112,13 +112,12 @@ def register_resource(typ, name, custom, props, opts):
         if resp.id:
             id = resp.id
         else:
-            id = UNKNOWN
+            id = None
     else:
         id = None
     outputs = dict()
     if resp.object:
-        for k, v in resp.object.items():
-            outputs[k] = v
+        outputs = rpc.deserialize_resource_props(resp.object)
 
     return RegisterResourceResult(urn, id, outputs)
 
@@ -128,7 +127,7 @@ def register_resource_outputs(res, outputs):
     """
 
     # Serialize all properties.  This just translates known types into the gRPC marshalable equivalents.
-    objouts = serialize_resource_props(outputs)
+    objouts = rpc.serialize_resource_props(outputs)
 
     # Ensure we have flushed all stdout/stderr, in case the RPC fails.
     sys.stdout.flush()
@@ -147,44 +146,6 @@ def register_resource_outputs(res, outputs):
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
             wait_for_death()
-
-def serialize_resource_props(props):
-    """
-    Serializes resource properties so that they are ready for marshaling to the gRPC endpoint.
-    """
-    struct = struct_pb2.Struct()
-    for k, v in props.items():
-        struct[k] = serialize_resource_value(v) # pylint: disable=unsupported-assignment-operation
-    return struct
-
-from ..resource import CustomResource
-
-UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-"""If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
-
-def serialize_resource_value(value):
-    """
-    Seralizes a resource property value so that it's ready for marshaling to the gRPC endpoint.
-    """
-    if isinstance(value, CustomResource):
-        # Resource objects aren't serializable.  Instead, serialize them as references to their IDs.
-        return serialize_resource_value(value.id)
-    elif isinstance(value, dict):
-        # Deeply serialize dictionaries.
-        d = dict()
-        for k, v in value.items():
-            d[k] = serialize_resource_value(v)
-        return d
-    elif isinstance(value, list):
-        # Deeply serialize lists.
-        a = []
-        for e in value:
-            a.append(serialize_resource_value(e))
-        return a
-    else:
-        # All other values are directly serializable.
-        # TODO[pulumi/pulumi#1063]: eventually, we want to think about Output, Properties, and so on.
-        return value
 
 
 # wait_for_death loops forever. This is a hack.
