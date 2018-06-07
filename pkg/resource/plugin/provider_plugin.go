@@ -441,8 +441,9 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 
 	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
 	if err != nil {
-		logging.V(7).Infof("%s failed: %v", label, err)
-		return nil, nil, err
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		return nil, nil, rpcError
 	}
 
 	// Unmarshal any return values.

@@ -53,6 +53,10 @@ def invoke(tok, args):
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
             wait_for_death()
 
+        # If the RPC otherwise failed, re-throw an exception with the message details - the contents
+        # are suitable for user presentation.
+        raise Exception(exn.details())
+
 
     # If the invoke failed, raise an error.
     if resp.failures:
