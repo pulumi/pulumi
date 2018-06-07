@@ -32,6 +32,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -952,7 +953,17 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
 	}
 	defer contract.IgnoreClose(data)
 
-	fw, err := zw.Create(file)
+	fh := &zip.FileHeader{
+		// These are the two fields set by zw.Create()
+		Name:   file,
+		Method: zip.Deflate,
+	}
+
+	// Set a nonzero -- but constant -- modification time.
+	// Otherwise, some agents (e.g. Azure websites) can't extract the resulting archive.
+	fh.SetModTime(time.Unix(0, 0))
+
+	fw, err := zw.CreateHeader(fh)
 	if err != nil {
 		return err
 	}
