@@ -45,7 +45,7 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
         req.setTok(tok);
         req.setArgs(obj);
         const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
-            monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
+            monitor.invoke(req, (err: grpc.StatusObject, innerResponse: any) => {
                 log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
                 if (err) {
                     // If the monitor is unavailable, it is in the process of shutting down or has already
@@ -55,7 +55,9 @@ export async function invoke(tok: string, props: Inputs): Promise<any> {
                         waitForDeath();
                     }
 
-                    innerReject(err);
+                    // If the RPC failed, rethrow the error with a native exception and the message that
+                    // the engine provided - it's suitable for user presentation.
+                    innerReject(new Error(err.details));
                 }
                 else {
                     innerResolve(innerResponse);
