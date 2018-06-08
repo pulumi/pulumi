@@ -36,5 +36,8 @@ func cloudConsoleURL(cloudURL string, paths ...string) string {
 	}
 
 	u.Path = path.Join(paths...)
+	q := u.Query()
+	q.Set("s", "cli")
+	u.RawQuery = q.Encode()
 	return u.String()
 }
