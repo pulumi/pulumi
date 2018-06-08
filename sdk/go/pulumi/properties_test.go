@@ -124,12 +124,12 @@ func TestNumberOutputs(t *testing.T) {
 		resolve(42.345)
 	}()
 	{
-		v, err := out.Number()
+		v, err := out.Float64()
 		assert.Nil(t, err)
 		assert.Equal(t, 42.345, v)
 	}
 	{
-		b := (*NumberOutput)(out)
+		b := (*Float64Output)(out)
 		v, err := b.Value()
 		assert.Nil(t, err)
 		assert.Equal(t, 42.345, v)
@@ -151,5 +151,99 @@ func TestStringOutputs(t *testing.T) {
 		v, err := b.Value()
 		assert.Nil(t, err)
 		assert.Equal(t, "a stringy output", v)
+	}
+}
+
+func TestResolveOutputToOutput(t *testing.T) {
+	// Test that resolving an output to an output yields the value, not the output.
+	{
+		out, resolve, _ := NewOutput(nil)
+		go func() {
+			other, resolveOther, _ := NewOutput(nil)
+			resolve(other)
+			go func() { resolveOther(99) }()
+		}()
+		v, err := out.Value()
+		assert.Nil(t, err)
+		assert.Equal(t, v, 99)
+	}
+	// Similarly, test that resolving an output to a rejected output yields an error.
+	{
+		out, resolve, _ := NewOutput(nil)
+		go func() {
+			other, _, rejectOther := NewOutput(nil)
+			resolve(other)
+			go func() { rejectOther(errors.New("boom")) }()
+		}()
+		v, err := out.Value()
+		assert.NotNil(t, err)
+		assert.Nil(t, v)
+	}
+}
+
+func TestOutputApply(t *testing.T) {
+	// Test that resolved outputs lead to applies being run.
+	{
+		out, resolve, _ := NewOutput(nil)
+		go func() { resolve(42) }()
+		var ranApp bool
+		b := (*IntOutput)(out)
+		app := b.Apply(func(v int) (interface{}, error) {
+			ranApp = true
+			return v + 1, nil
+		})
+		v, err := app.Value()
+		assert.True(t, ranApp)
+		assert.Nil(t, err)
+		assert.Equal(t, v, 43)
+	}
+	// Test that rejected outputs do not run the apply, and instead flow the error.
+	{
+		out, _, reject := NewOutput(nil)
+		go func() { reject(errors.New("boom")) }()
+		var ranApp bool
+		b := (*IntOutput)(out)
+		app := b.Apply(func(v int) (interface{}, error) {
+			ranApp = true
+			return v + 1, nil
+		})
+		v, err := app.Value()
+		assert.False(t, ranApp)
+		assert.NotNil(t, err)
+		assert.Nil(t, v)
+	}
+	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
+	{
+		out, resolve, _ := NewOutput(nil)
+		go func() { resolve(42) }()
+		var ranApp bool
+		b := (*IntOutput)(out)
+		app := b.Apply(func(v int) (interface{}, error) {
+			other, resolveOther, _ := NewOutput(nil)
+			go func() { resolveOther(v + 1) }()
+			ranApp = true
+			return other, nil
+		})
+		v, err := app.Value()
+		assert.True(t, ranApp)
+		assert.Nil(t, err)
+		assert.Equal(t, v, 43)
+	}
+	// Test that an an apply that reject an output returns the rejection of that output, not the output itself.
+	{
+		out, resolve, _ := NewOutput(nil)
+		go func() { resolve(42) }()
+		var ranApp bool
+		b := (*IntOutput)(out)
+		app := b.Apply(func(v int) (interface{}, error) {
+			other, _, rejectOther := NewOutput(nil)
+			go func() { rejectOther(errors.New("boom")) }()
+			ranApp = true
+			return other, nil
+		})
+		v, err := app.Value()
+		assert.True(t, ranApp)
+		assert.NotNil(t, err)
+		assert.Nil(t, v)
 	}
 }

@@ -14,6 +14,14 @@
 
 package pulumi
 
+import (
+	"time"
+
+	"github.com/spf13/cast"
+
+	"github.com/pulumi/pulumi/sdk/go/pulumi/asset"
+)
+
 // Input is an input property for a resource.  It is a discriminated union of either a value or another resource's
 // output value, which will make the receiving resource dependent on the resource from which the output came.
 type Input interface{}
@@ -47,13 +55,31 @@ func NewOutput(deps []Resource) (*Output, func(interface{}), func(error)) {
 		sync: make(chan *valueOrError, 1),
 		deps: deps,
 	}
-	resolve := func(v interface{}) {
+	return out, out.resolve, out.reject
+}
+
+// resolve will resolve the output.  It is not exported, because we want to control the capabilities tightly, such
+// that anybody who happens to have an Output is not allowed to resolve it; only those who created it can.
+func (out *Output) resolve(v interface{}) {
+	// If v is another output, chain this rather than resolving to an output directly.
+	if other, isOut := v.(*Output); isOut {
+		go func() {
+			real, err := other.Value()
+			if err != nil {
+				out.reject(err)
+			} else {
+				out.resolve(real)
+			}
+		}()
+	} else {
 		out.sync <- &valueOrError{value: v}
 	}
-	reject := func(err error) {
-		out.sync <- &valueOrError{err: err}
-	}
-	return out, resolve, reject
+}
+
+// reject will reject the output.  It is not exported, because we want to control the capabilities tightly, such
+// that anybody who happens to have an Output is not allowed to reject it; only those who created it can.
+func (out *Output) reject(err error) {
+	out.sync <- &valueOrError{err: err}
 }
 
 // Apply transforms the data of the output property using the applier func.  The result remains an output property,
@@ -109,22 +135,40 @@ func (out *Output) Value() (interface{}, error) {
 	return out.voe.value, out.voe.err
 }
 
+// Archive retrives the underlying value for this output property as an archive.
+func (out *Output) Archive() (asset.Archive, error) {
+	v, err := out.Value()
+	if err != nil {
+		return nil, err
+	}
+	return v.(asset.Archive), nil
+}
+
 // Array retrives the underlying value for this output property as an array.
 func (out *Output) Array() ([]interface{}, error) {
 	v, err := out.Value()
 	if err != nil {
 		return nil, err
 	}
-	return v.([]interface{}), nil
+	return cast.ToSlice(v), nil
 }
 
-// Bool retrives the underlying value for this output property as a bool.
+// Asset retrives the underlying value for this output property as an asset.
+func (out *Output) Asset() (asset.Asset, error) {
+	v, err := out.Value()
+	if err != nil {
+		return nil, err
+	}
+	return v.(asset.Asset), nil
+}
+
+/// Bool retrives the underlying value for this output property as a bool.
 func (out *Output) Bool() (bool, error) {
 	v, err := out.Value()
 	if err != nil {
 		return false, err
 	}
-	return v.(bool), nil
+	return cast.ToBool(v), nil
 }
 
 // Map retrives the underlying value for this output property as a map.
@@ -133,25 +177,25 @@ func (out *Output) Map() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return v.(map[string]interface{}), nil
+	return cast.ToStringMap(v), nil
 }
 
-// Number retrives the underlying value for this output property as a number.
-func (out *Output) Number() (float64, error) {
+// Float32 retrives the underlying value for this output property as a float32.
+func (out *Output) Float32() (float32, error) {
 	v, err := out.Value()
 	if err != nil {
 		return 0, err
 	}
-	return v.(float64), nil
+	return cast.ToFloat32(v), nil
 }
 
-// String retrives the underlying value for this output property as a string.
-func (out *Output) String() (string, error) {
+// Float64 retrives the underlying value for this output property as a float64.
+func (out *Output) Float64() (float64, error) {
 	v, err := out.Value()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	return v.(string), nil
+	return cast.ToFloat64(v), nil
 }
 
 // ID retrives the underlying value for this output property as an ID.
@@ -160,7 +204,115 @@ func (out *Output) ID() (ID, error) {
 	if err != nil {
 		return "", err
 	}
-	return v.(ID), nil
+	return ID(cast.ToString(v)), nil
+}
+
+// Int retrives the underlying value for this output property as a int.
+func (out *Output) Int() (int, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToInt(v), nil
+}
+
+// Int8 retrives the underlying value for this output property as a int8.
+func (out *Output) Int8() (int8, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToInt8(v), nil
+}
+
+// Int16 retrives the underlying value for this output property as a int16.
+func (out *Output) Int16() (int16, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToInt16(v), nil
+}
+
+// Int32 retrives the underlying value for this output property as a int32.
+func (out *Output) Int32() (int32, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToInt32(v), nil
+}
+
+// Int64 retrives the underlying value for this output property as a int64.
+func (out *Output) Int64() (int64, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToInt64(v), nil
+}
+
+// String retrives the underlying value for this output property as a string.
+func (out *Output) String() (string, error) {
+	v, err := out.Value()
+	if err != nil {
+		return "", err
+	}
+	return cast.ToString(v), nil
+}
+
+// Time retrives the underlying value for this output property as a time.
+func (out *Output) Time() (time.Time, error) {
+	v, err := out.Value()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return cast.ToTime(v), nil
+}
+
+// Uuint retrives the underlying value for this output property as a uint.
+func (out *Output) Uint() (uint, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToUint(v), nil
+}
+
+// Uuint8 retrives the underlying value for this output property as a uint8.
+func (out *Output) Uint8() (uint8, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToUint8(v), nil
+}
+
+// Uuint16 retrives the underlying value for this output property as a uint16.
+func (out *Output) Uint16() (uint16, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToUint16(v), nil
+}
+
+// Uuint32 retrives the underlying value for this output property as a uint32.
+func (out *Output) Uint32() (uint32, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToUint32(v), nil
+}
+
+// Uuint64 retrives the underlying value for this output property as a uint64.
+func (out *Output) Uint64() (uint64, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return cast.ToUint64(v), nil
 }
 
 // URN retrives the underlying value for this output property as a URN.
@@ -169,11 +321,24 @@ func (out *Output) URN() (URN, error) {
 	if err != nil {
 		return "", err
 	}
-	return v.(URN), nil
+	return URN(cast.ToString(v)), nil
 }
 
 // Outputs is a map of property name to value, one for each resource output property.
 type Outputs map[string]*Output
+
+// ArchiveOutput is an Output that is typed to return archive values.
+type ArchiveOutput Output
+
+// Value returns the underlying archive value.
+func (out *ArchiveOutput) Value() (asset.Archive, error) { return (*Output)(out).Archive() }
+
+// Apply applies a transformation to the archive value when it is available.
+func (out *ArchiveOutput) Apply(applier func(asset.Archive) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(v.(asset.Archive))
+	})
+}
 
 // ArrayOutput is an Output that is typed to return arrays of values.
 type ArrayOutput Output
@@ -181,26 +346,230 @@ type ArrayOutput Output
 // Value returns the underlying array value.
 func (out *ArrayOutput) Value() ([]interface{}, error) { return (*Output)(out).Array() }
 
+// Apply applies a transformation to the array value when it is available.
+func (out *ArrayOutput) Apply(applier func([]interface{}) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToSlice(v))
+	})
+}
+
+// AssetOutput is an Output that is typed to return asset values.
+type AssetOutput Output
+
+// Value returns the underlying asset value.
+func (out *AssetOutput) Value() (asset.Asset, error) { return (*Output)(out).Asset() }
+
+// Apply applies a transformation to the asset value when it is available.
+func (out *AssetOutput) Apply(applier func(asset.Asset) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(v.(asset.Asset))
+	})
+}
+
 // BoolOutput is an Output that is typed to return bool values.
 type BoolOutput Output
 
 // Value returns the underlying bool value.
 func (out *BoolOutput) Value() (bool, error) { return (*Output)(out).Bool() }
 
-// MapOutput is an Output that is typed to return string-keyed maps of values.
-type MapOutput Output
+// Apply applies a transformation to the bool value when it is available.
+func (out *BoolOutput) Apply(applier func(bool) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(v.(bool))
+	})
+}
 
-// Value returns the underlying map value.
-func (out *MapOutput) Value() (map[string]interface{}, error) { return (*Output)(out).Map() }
-
-// NumberOutput is an Output that is typed to return number values.
-type NumberOutput Output
+// Float32Output is an Output that is typed to return float32 values.
+type Float32Output Output
 
 // Value returns the underlying number value.
-func (out *NumberOutput) Value() (float64, error) { return (*Output)(out).Number() }
+func (out *Float32Output) Value() (float32, error) { return (*Output)(out).Float32() }
+
+// Apply applies a transformation to the float32 value when it is available.
+func (out *Float32Output) Apply(applier func(float32) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToFloat32(v))
+	})
+}
+
+// Float64Output is an Output that is typed to return float64 values.
+type Float64Output Output
+
+// Value returns the underlying number value.
+func (out *Float64Output) Value() (float64, error) { return (*Output)(out).Float64() }
+
+// Apply applies a transformation to the float64 value when it is available.
+func (out *Float64Output) Apply(applier func(float64) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToFloat64(v))
+	})
+}
+
+// IntOutput is an Output that is typed to return int values.
+type IntOutput Output
+
+// Value returns the underlying number value.
+func (out *IntOutput) Value() (int, error) { return (*Output)(out).Int() }
+
+// Apply applies a transformation to the int value when it is available.
+func (out *IntOutput) Apply(applier func(int) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToInt(v))
+	})
+}
+
+// Int8Output is an Output that is typed to return int8 values.
+type Int8Output Output
+
+// Value returns the underlying number value.
+func (out *Int8Output) Value() (int8, error) { return (*Output)(out).Int8() }
+
+// Apply applies a transformation to the int8 value when it is available.
+func (out *Int8Output) Apply(applier func(int8) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToInt8(v))
+	})
+}
+
+// Int16Output is an Output that is typed to return int16 values.
+type Int16Output Output
+
+// Value returns the underlying number value.
+func (out *Int16Output) Value() (int16, error) { return (*Output)(out).Int16() }
+
+// Apply applies a transformation to the int16 value when it is available.
+func (out *Int16Output) Apply(applier func(int16) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToInt16(v))
+	})
+}
+
+// Int32Output is an Output that is typed to return int32 values.
+type Int32Output Output
+
+// Value returns the underlying number value.
+func (out *Int32Output) Value() (int32, error) { return (*Output)(out).Int32() }
+
+// Apply applies a transformation to the int32 value when it is available.
+func (out *Int32Output) Apply(applier func(int32) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToInt32(v))
+	})
+}
+
+// Int64Output is an Output that is typed to return int64 values.
+type Int64Output Output
+
+// Value returns the underlying number value.
+func (out *Int64Output) Value() (int64, error) { return (*Output)(out).Int64() }
+
+// Apply applies a transformation to the int64 value when it is available.
+func (out *Int64Output) Apply(applier func(int64) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToInt64(v))
+	})
+}
+
+// MapOutput is an Output that is typed to return map values.
+type MapOutput Output
+
+// Value returns the underlying number value.
+func (out *MapOutput) Value() (map[string]interface{}, error) { return (*Output)(out).Map() }
+
+// Apply applies a transformation to the number value when it is available.
+func (out *MapOutput) Apply(applier func(map[string]interface{}) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToStringMap(v))
+	})
+}
 
 // StringOutput is an Output that is typed to return number values.
 type StringOutput Output
 
 // Value returns the underlying number value.
 func (out *StringOutput) Value() (string, error) { return (*Output)(out).String() }
+
+// Apply applies a transformation to the number value when it is available.
+func (out *StringOutput) Apply(applier func(string) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToString(v))
+	})
+}
+
+// TimeOutput is an Output that is typed to return number values.
+type TimeOutput Output
+
+// Value returns the underlying number value.
+func (out *TimeOutput) Value() (time.Time, error) { return (*Output)(out).Time() }
+
+// Apply applies a transformation to the number value when it is available.
+func (out *TimeOutput) Apply(applier func(time.Time) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToTime(v))
+	})
+}
+
+// UintOutput is an Output that is typed to return uint values.
+type UintOutput Output
+
+// Value returns the underlying number value.
+func (out *UintOutput) Value() (uint, error) { return (*Output)(out).Uint() }
+
+// Apply applies a transformation to the uint value when it is available.
+func (out *UintOutput) Apply(applier func(uint) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToUint(v))
+	})
+}
+
+// Uint8Output is an Output that is typed to return uint8 values.
+type Uint8Output Output
+
+// Value returns the underlying number value.
+func (out *Uint8Output) Value() (uint8, error) { return (*Output)(out).Uint8() }
+
+// Apply applies a transformation to the uint8 value when it is available.
+func (out *Uint8Output) Apply(applier func(uint8) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToUint8(v))
+	})
+}
+
+// Uint16Output is an Output that is typed to return uint16 values.
+type Uint16Output Output
+
+// Value returns the underlying number value.
+func (out *Uint16Output) Value() (uint16, error) { return (*Output)(out).Uint16() }
+
+// Apply applies a transformation to the uint16 value when it is available.
+func (out *Uint16Output) Apply(applier func(uint16) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToUint16(v))
+	})
+}
+
+// Uint32Output is an Output that is typed to return uint32 values.
+type Uint32Output Output
+
+// Value returns the underlying number value.
+func (out *Uint32Output) Value() (uint32, error) { return (*Output)(out).Uint32() }
+
+// Apply applies a transformation to the uint32 value when it is available.
+func (out *Uint32Output) Apply(applier func(uint32) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToUint32(v))
+	})
+}
+
+// Uint64Output is an Output that is typed to return uint64 values.
+type Uint64Output Output
+
+// Value returns the underlying number value.
+func (out *Uint64Output) Value() (uint64, error) { return (*Output)(out).Uint64() }
+
+// Apply applies a transformation to the uint64 value when it is available.
+func (out *Uint64Output) Apply(applier func(uint64) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(cast.ToUint64(v))
+	})
+}

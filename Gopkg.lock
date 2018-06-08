@@ -307,6 +307,12 @@
   revision = "75fb7ed4208cf72d323d7d02fd1a5964a7a9073c"
 
 [[projects]]
+  name = "github.com/spf13/cast"
+  packages = ["."]
+  revision = "8965335b8c7107321228e3e3702cab9832751bac"
+  version = "v1.2.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = [
@@ -554,6 +560,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a3c19b57bc10408ea6f35080bdca4a22257e7ab588c1fe3dfc88cf2b00aeea52"
+  inputs-digest = "f974a423ae8de19a1ba9f68115b5ab111040baece859d32f89e885094d3ebd86"
   solver-name = "gps-cdcl"
   solver-version = 1
