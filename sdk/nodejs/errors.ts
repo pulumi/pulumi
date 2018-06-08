@@ -21,7 +21,7 @@ export class RunError extends Error {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    private readonly __pulumiRunError: boolean = true;
+    /* @internal */ private readonly __pulumiRunError: boolean = true;
 
     /**
      * Returns true if the given object is an instance of a RunError.  This is designed to work even when
