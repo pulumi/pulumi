@@ -959,10 +959,12 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
 		Method: zip.Deflate,
 	}
 
-	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure websites) can't extract the
-	// resulting archive. We use `SetModTime` for go1.9 compatibility.
+	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure
+	// websites) can't extract the resulting archive. The date is comfortably after 1980 because
+	// the ZIP format includes a date representation that starts at 1980. Use `SetModTime` to
+	// remain compatible with Go 1.9.
 	// nolint: megacheck
-	fh.SetModTime(time.Unix(0, 0))
+	fh.SetModTime(time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC))
 
 	fw, err := zw.CreateHeader(fh)
 	if err != nil {
