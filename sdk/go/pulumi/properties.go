@@ -109,6 +109,42 @@ func (out *Output) Value() (interface{}, error) {
 	return out.voe.value, out.voe.err
 }
 
+// Array retrives the underlying value for this output property as an array.
+func (out *Output) Array() ([]interface{}, error) {
+	v, err := out.Value()
+	if err != nil {
+		return nil, err
+	}
+	return v.([]interface{}), nil
+}
+
+// Bool retrives the underlying value for this output property as a bool.
+func (out *Output) Bool() (bool, error) {
+	v, err := out.Value()
+	if err != nil {
+		return false, err
+	}
+	return v.(bool), nil
+}
+
+// Map retrives the underlying value for this output property as a map.
+func (out *Output) Map() (map[string]interface{}, error) {
+	v, err := out.Value()
+	if err != nil {
+		return nil, err
+	}
+	return v.(map[string]interface{}), nil
+}
+
+// Number retrives the underlying value for this output property as a number.
+func (out *Output) Number() (float64, error) {
+	v, err := out.Value()
+	if err != nil {
+		return 0, err
+	}
+	return v.(float64), nil
+}
+
 // String retrives the underlying value for this output property as a string.
 func (out *Output) String() (string, error) {
 	v, err := out.Value()
@@ -138,3 +174,33 @@ func (out *Output) URN() (URN, error) {
 
 // Outputs is a map of property name to value, one for each resource output property.
 type Outputs map[string]*Output
+
+// ArrayOutput is an Output that is typed to return arrays of values.
+type ArrayOutput Output
+
+// Value returns the underlying array value.
+func (out *ArrayOutput) Value() ([]interface{}, error) { return (*Output)(out).Array() }
+
+// BoolOutput is an Output that is typed to return bool values.
+type BoolOutput Output
+
+// Value returns the underlying bool value.
+func (out *BoolOutput) Value() (bool, error) { return (*Output)(out).Bool() }
+
+// MapOutput is an Output that is typed to return string-keyed maps of values.
+type MapOutput Output
+
+// Value returns the underlying map value.
+func (out *MapOutput) Value() (map[string]interface{}, error) { return (*Output)(out).Map() }
+
+// NumberOutput is an Output that is typed to return number values.
+type NumberOutput Output
+
+// Value returns the underlying number value.
+func (out *NumberOutput) Value() (float64, error) { return (*Output)(out).Number() }
+
+// StringOutput is an Output that is typed to return number values.
+type StringOutput Output
+
+// Value returns the underlying number value.
+func (out *StringOutput) Value() (string, error) { return (*Output)(out).String() }
