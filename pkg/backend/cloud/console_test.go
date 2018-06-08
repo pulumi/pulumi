@@ -21,15 +21,15 @@ import (
 
 func TestConsoleURL(t *testing.T) {
 	assert.Equal(t,
-		"https://app.pulumi.com/pulumi-bot/my-stack",
+		"https://app.pulumi.com/pulumi-bot/my-stack?s=cli",
 		cloudConsoleURL("https://api.pulumi.com", "pulumi-bot", "my-stack"))
 
 	assert.Equal(t,
-		"http://app.pulumi.example.com/pulumi-bot/my-stack",
+		"http://app.pulumi.example.com/pulumi-bot/my-stack?s=cli",
 		cloudConsoleURL("http://api.pulumi.example.com", "pulumi-bot", "my-stack"))
 
 	assert.Equal(t,
-		"http://localhost:3000/pulumi-bot/my-stack",
+		"http://localhost:3000/pulumi-bot/my-stack?s=cli",
 		cloudConsoleURL("http://localhost:8080", "pulumi-bot", "my-stack"))
 
 	assert.Equal(t, "", cloudConsoleURL("https://example.com", "pulumi-bot", "my-stack"))
