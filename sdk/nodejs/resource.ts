@@ -32,7 +32,7 @@ export abstract class Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
      // tslint:disable-next-line:variable-name
-    private readonly __pulumiResource: boolean = true;
+     /* @internal */ private readonly __pulumiResource: boolean = true;
 
     /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
@@ -124,7 +124,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    private readonly __pulumiCustomResource: boolean = true;
+    /* @internal */ private readonly __pulumiCustomResource: boolean = true;
 
     /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during

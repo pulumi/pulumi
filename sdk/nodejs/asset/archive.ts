@@ -23,7 +23,7 @@ export abstract class Archive {
      * A private field to help with RTTI that works in SxS scenarios.
      */
     // tslint:disable-next-line:variable-name
-    private readonly __pulumiArchive: boolean = true;
+    /* @internal */ private readonly __pulumiArchive: boolean = true;
 
     /**
      * Returns true if the given object is an instance of an Archive.  This is designed to work even when

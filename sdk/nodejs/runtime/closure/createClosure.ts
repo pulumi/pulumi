@@ -173,8 +173,10 @@ class SerializedOutput<T> implements resource.Output<T> {
     /* @internal */ public isKnown: Promise<boolean>;
     /* @internal */ public readonly promise: () => Promise<T>;
     /* @internal */ public readonly resources: () => Set<resource.Resource>;
+    /* @internal */ private readonly value: T;
 
-    public constructor(private readonly value: T) {
+    public constructor(value: T) {
+        this.value = value;
     }
 
     public apply<U>(func: (t: T) => resource.Input<U>): resource.Output<U> {
