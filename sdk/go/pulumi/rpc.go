@@ -20,6 +20,7 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
+	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -27,7 +28,7 @@ import (
 )
 
 // marshalInputs turns resource property inputs into a gRPC struct suitable for marshaling.
-func marshalInputs(props Inputs) ([]string, *structpb.Struct, []URN, error) {
+func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []URN, error) {
 	var keys []string
 	for key := range props {
 		keys = append(keys, key)
@@ -75,15 +76,8 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 
 	// Next, look for some well known types.
 	switch t := v.(type) {
-	case bool, int, uint, int32, uint32, int64, uint64, float32, float64, string:
+	case bool, int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, string:
 		return t, nil, nil
-	case CustomResource:
-		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
-		e, d, err := marshalInput(t.ID())
-		if err != nil {
-			return nil, nil, err
-		}
-		return e, append([]Resource{t}, d...), nil
 	case asset.Asset:
 		return map[string]interface{}{
 			rpcTokenSpecialSigKey: rpcTokenSpecialAssetSig,
@@ -122,6 +116,13 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 			return nil, nil, err
 		}
 		return e, append(t.Deps(), d...), err
+	case CustomResource:
+		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
+		e, d, err := marshalInput(t.ID())
+		if err != nil {
+			return nil, nil, err
+		}
+		return e, append([]Resource{t}, d...), nil
 	}
 
 	// Finally, handle the usual primitives (numbers, strings, arrays, maps, ...)
@@ -143,7 +144,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		return arr, deps, nil
 	case reflect.Map:
 		// For maps, only support string-based keys, and recurse into the values.
-		var obj map[string]interface{}
+		obj := make(map[string]interface{})
 		var deps []Resource
 		for _, key := range rv.MapKeys() {
 			k, ok := key.Interface().(string)
@@ -152,7 +153,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 					errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
 			}
 			value := rv.MapIndex(key)
-			v, d, err := marshalInput(value)
+			v, d, err := marshalInput(value.Interface())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -162,7 +163,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		}
 		return obj, deps, nil
 	case reflect.Ptr:
-		// For pointerss, recurse into the underlying value.
+		// For pointers, recurse into the underlying value.
 		if rv.IsNil() {
 			return nil, nil, nil
 		}
@@ -171,5 +172,93 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		return marshalInput(rv.String())
 	}
 
-	return nil, nil, errors.Errorf("unrecognized input property type: %v", reflect.TypeOf(v))
+	return nil, nil, errors.Errorf("unrecognized input property type: %v (%v)", v, reflect.TypeOf(v))
+}
+
+// unmarshalOutputs unmarshals all the outputs into a simple map.
+func unmarshalOutputs(outs *structpb.Struct) (map[string]interface{}, error) {
+	outprops, err := plugin.UnmarshalProperties(outs, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]interface{})
+	for k, v := range outprops.Mappable() {
+		result[k], err = unmarshalOutput(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// unmarshalOutput unmarshals a single output variable into its runtime representation.  For the most part, this just
+// returns the raw value.  In a small number of cases, we need to change a type.
+func unmarshalOutput(v interface{}) (interface{}, error) {
+	// In the case of assets and archives, turn these into real asset and archive structures.
+	if m, ok := v.(map[string]interface{}); ok {
+		if m[rpcTokenSpecialSigKey] == rpcTokenSpecialAssetSig {
+			if path := m["path"]; path != nil {
+				return asset.NewFileAsset(cast.ToString(path)), nil
+			} else if text := m["text"]; text != nil {
+				return asset.NewStringAsset(cast.ToString(text)), nil
+			} else if uri := m["uri"]; uri != nil {
+				return asset.NewRemoteAsset(cast.ToString(uri)), nil
+			}
+			return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
+		} else if m[rpcTokenSpecialSigKey] == rpcTokenSpecialArchiveSig {
+			if assets := m["assets"]; assets != nil {
+				as := make(map[string]interface{})
+				for k, v := range assets.(map[string]interface{}) {
+					a, err := unmarshalOutput(v)
+					if err != nil {
+						return nil, err
+					}
+					as[k] = a
+				}
+				return asset.NewAssetArchive(as), nil
+			} else if path := m["path"]; path != nil {
+				return asset.NewFileArchive(cast.ToString(path)), nil
+			} else if uri := m["uri"]; uri != nil {
+				return asset.NewRemoteArchive(cast.ToString(uri)), nil
+			}
+			return nil, errors.New("expected asset to be one of File, String, or Remote; got none")
+		}
+	}
+
+	// For arrays and maps, just make sure to transform them deeply.
+	rv := reflect.ValueOf(v)
+	switch rk := rv.Type().Kind(); rk {
+	case reflect.Array, reflect.Slice:
+		// If an array or a slice, create a new array by recursing into elements.
+		var arr []interface{}
+		for i := 0; i < rv.Len(); i++ {
+			elem := rv.Index(i)
+			e, err := unmarshalOutput(elem.Interface())
+			if err != nil {
+				return nil, err
+			}
+			arr = append(arr, e)
+		}
+		return arr, nil
+	case reflect.Map:
+		// For maps, only support string-based keys, and recurse into the values.
+		var obj map[string]interface{}
+		for _, key := range rv.MapKeys() {
+			k, ok := key.Interface().(string)
+			if !ok {
+				return nil, errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
+			}
+			value := rv.MapIndex(key)
+			v, err := unmarshalOutput(value)
+			if err != nil {
+				return nil, err
+			}
+
+			obj[k] = v
+		}
+		return obj, nil
+	}
+
+	return v, nil
 }

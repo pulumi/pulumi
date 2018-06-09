@@ -33,7 +33,7 @@ type Context struct {
 	ctx         context.Context
 	info        RunInfo
 	stackR      URN
-	exports     Inputs
+	exports     map[string]interface{}
 	monitor     pulumirpc.ResourceMonitorClient
 	monitorConn *grpc.ClientConn
 	engine      pulumirpc.EngineClient
@@ -73,7 +73,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	return &Context{
 		ctx:         ctx,
 		info:        info,
-		exports:     make(Inputs),
+		exports:     make(map[string]interface{}),
 		monitorConn: monitorConn,
 		monitor:     pulumirpc.NewResourceMonitorClient(monitorConn),
 		engineConn:  engineConn,
@@ -108,7 +108,7 @@ func (ctx *Context) Parallel() int { return ctx.info.Parallel }
 func (ctx *Context) DryRun() bool { return ctx.info.DryRun }
 
 // Invoke will invoke a provider's function, identified by its token tok.
-func (ctx *Context) Invoke(tok string, args Inputs) (Outputs, error) {
+func (ctx *Context) Invoke(tok string, args map[string]interface{}) (Outputs, error) {
 	// TODO(joe): implement this.
 	return nil, errors.New("Invoke not yet implemented")
 }
@@ -116,7 +116,7 @@ func (ctx *Context) Invoke(tok string, args Inputs) (Outputs, error) {
 // ReadResource reads an existing custom resource's state from the resource monitor.  Note that resources read in this
 // way will not be part of the resulting stack's state, as they are presumed to belong to another.
 func (ctx *Context) ReadResource(
-	t, name string, id ID, state Inputs, opts ...ResourceOpt) (*ResourceState, error) {
+	t, name string, id ID, state map[string]interface{}, opts ...ResourceOpt) (*ResourceState, error) {
 	if t == "" {
 		return nil, errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -132,7 +132,7 @@ func (ctx *Context) ReadResource(
 // the "name" part to use in creating a stable and globally unique URN for the object.  state contains the goal state
 // for the resource object and opts contains optional settings that govern the way the resource is created.
 func (ctx *Context) RegisterResource(
-	t, name string, custom bool, props Inputs, opts ...ResourceOpt) (*ResourceState, error) {
+	t, name string, custom bool, props map[string]interface{}, opts ...ResourceOpt) (*ResourceState, error) {
 	if t == "" {
 		return nil, errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -218,8 +218,12 @@ func (ctx *Context) RegisterResource(
 				resolveID(ID(resp.Id))
 			}
 			for _, key := range keys {
-				// TODO(joe): check for missing keys, etc.
-				resolveState[key](outprops[key])
+				out, err := unmarshalOutput(outprops[key])
+				if err != nil {
+					rejectState[key](err)
+				} else {
+					resolveState[key](out)
+				}
 			}
 		}
 
@@ -329,11 +333,11 @@ type ResourceState struct {
 }
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
-func (ctx *Context) RegisterResourceOutputs(urn URN, outs Inputs) error {
+func (ctx *Context) RegisterResourceOutputs(urn URN, outs map[string]interface{}) error {
 	return nil
 }
 
 // Export registers a key and value pair with the current context's stack.
-func (ctx *Context) Export(name string, value Input) {
+func (ctx *Context) Export(name string, value interface{}) {
 	ctx.exports[name] = value
 }

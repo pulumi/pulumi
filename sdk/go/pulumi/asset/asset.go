@@ -72,21 +72,21 @@ type archive struct {
 // NewAssetArchive creates a new archive from an in-memory collection of named assets or other archives.
 func NewAssetArchive(assets map[string]interface{}) Archive {
 	for k, a := range assets {
-		if _, ok := a.(*Asset); !ok {
-			if _, ok2 := a.(*Archive); !ok2 {
+		if _, ok := a.(Asset); !ok {
+			if _, ok2 := a.(Archive); !ok2 {
 				contract.Failf(
-					"expected asset map to contain *Assets and/or *Archives; %s is %v", k, reflect.TypeOf(a))
+					"expected asset map to contain Assets and/or Archives; %s is %v", k, reflect.TypeOf(a))
 			}
 		}
 	}
 	return &archive{assets: assets}
 }
 
-func NewPathArchive(path string) Archive {
+func NewFileArchive(path string) Archive {
 	return &archive{path: path}
 }
 
-func NewURIArchive(uri string) Archive {
+func NewRemoteArchive(uri string) Archive {
 	return &archive{uri: uri}
 }
 

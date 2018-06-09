@@ -15,21 +15,10 @@
 package pulumi
 
 import (
-	"time"
-
 	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi/asset"
 )
-
-// Input is an input property for a resource.  It is a discriminated union of either a value or another resource's
-// output value, which will make the receiving resource dependent on the resource from which the output came.
-type Input interface{}
-
-// Inputs is a map of property name to value, one for each resource input property.  Each value can be a prompt,
-// JSON serializable primitive -- bool, string, int, array, or map -- or it can be an *Output, in which case the
-// input property will carry dependency information from the resource to which the output belongs.
-type Inputs map[string]interface{}
 
 // Output helps encode the relationship between resources in a Pulumi application.  Specifically an output property
 // holds onto a value and the resource it came from.  An output value can then be provided when constructing new
@@ -261,15 +250,6 @@ func (out *Output) String() (string, error) {
 	return cast.ToString(v), nil
 }
 
-// Time retrives the underlying value for this output property as a time.
-func (out *Output) Time() (time.Time, error) {
-	v, err := out.Value()
-	if err != nil {
-		return time.Time{}, err
-	}
-	return cast.ToTime(v), nil
-}
-
 // Uuint retrives the underlying value for this output property as a uint.
 func (out *Output) Uint() (uint, error) {
 	v, err := out.Value()
@@ -493,19 +473,6 @@ func (out *StringOutput) Value() (string, error) { return (*Output)(out).String(
 func (out *StringOutput) Apply(applier func(string) (interface{}, error)) *Output {
 	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
 		return applier(cast.ToString(v))
-	})
-}
-
-// TimeOutput is an Output that is typed to return number values.
-type TimeOutput Output
-
-// Value returns the underlying number value.
-func (out *TimeOutput) Value() (time.Time, error) { return (*Output)(out).Time() }
-
-// Apply applies a transformation to the number value when it is available.
-func (out *TimeOutput) Apply(applier func(time.Time) (interface{}, error)) *Output {
-	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
-		return applier(cast.ToTime(v))
 	})
 }
 
