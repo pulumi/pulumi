@@ -17,6 +17,7 @@
 from runtime.resource import register_resource, register_resource_outputs
 from runtime.rpc import register_custom_resource_type
 from runtime.settings import get_root_resource
+from runtime.unknown import Unknown
 
 class Resource(object):
     """
@@ -64,6 +65,9 @@ class Resource(object):
             The provider-assigned unique ID for this managed resource.  It is set during deployments and may
             be missing during planning phases.
             """
+        else:
+            self.id = Unknown()
+
         if result.outputs:
             self.set_outputs(result.outputs)
 

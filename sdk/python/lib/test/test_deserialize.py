@@ -14,7 +14,7 @@
 
 import unittest
 from google.protobuf import struct_pb2
-from pulumi.runtime import rpc
+from pulumi.runtime import rpc, Unknown
 
 class PropertyDeserializeTests(unittest.TestCase):
     """
@@ -71,9 +71,7 @@ class PropertyDeserializeTests(unittest.TestCase):
         # pylint: disable=unsupported-assignment-operation
         proto["vpc_id"] = rpc.UNKNOWN
         deserialized = rpc.deserialize_resource_props(proto)
-        self.assertDictEqual({
-            "vpc_id": None
-        }, deserialized)
+        self.assertTrue(isinstance(deserialized["vpc_id"], Unknown))
 
 if __name__ == '__main__':
     unittest.main()
