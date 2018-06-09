@@ -1,0 +1,24 @@
+PROJECT_NAME     := Pulumi Go SDK
+LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/go/pulumi-language-go
+VERSION          := $(shell ../../scripts/get-version)
+PROJECT_PKGS     := $(shell go list ./pulumi/... ./pulumi-language-go/... | grep -v /vendor/)
+
+GOMETALINTERBIN := gometalinter
+GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
+
+TESTPARALLELISM := 10
+
+include ../../build/common.mk
+
+build::
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+install::
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+
+lint::
+	$(GOMETALINTER) ./pulumi/... | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./pulumi-language-go/... | sort ; exit $$(($${PIPESTATUS[1]}-1))
+
+test_fast::
+	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
