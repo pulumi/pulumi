@@ -22,6 +22,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/net/context"
+
+	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // Run executes the body of a Pulumi program, granting it access to a deployment context that it may use
@@ -34,7 +36,7 @@ func Run(body RunFunc) {
 	}
 }
 
-// Run executes the body of a Pulumi program, granting it access to a deployment context that it may use
+// RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 func RunErr(body RunFunc) error {
 	// Parse the info out of environment variables.  This is a lame contract with the caller, but helps to keep
@@ -47,7 +49,7 @@ func RunErr(body RunFunc) error {
 	if err != nil {
 		return err
 	}
-	defer ctx.Close()
+	defer contract.IgnoreClose(ctx)
 
 	// Create a root stack resource that we'll parent everything to.
 	reg, err := ctx.RegisterResource(
@@ -75,7 +77,7 @@ func RunErr(body RunFunc) error {
 	}
 
 	// Propagate the error from the body, if any.
-	return err
+	return result
 }
 
 // RunFunc executes the body of a Pulumi program.  It may register resources using the deployment context

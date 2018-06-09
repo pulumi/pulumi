@@ -37,21 +37,29 @@ type asset struct {
 	uri  string
 }
 
+// NewFileAsset creates an asset backed by a file and specified by that file's path.
 func NewFileAsset(path string) Asset {
 	return &asset{path: path}
 }
 
+// NewStringAsset creates an asset backed by a piece of in-memory text.
 func NewStringAsset(text string) Asset {
 	return &asset{text: text}
 }
 
+// NewRemoteAsset creates an asset backed by a remote file and specified by that file's URL.
 func NewRemoteAsset(uri string) Asset {
 	return &asset{uri: uri}
 }
 
+// Path returns the asset's file path, if this is a file asset, or an empty string otherwise.
 func (a *asset) Path() string { return a.path }
+
+// Text returns the asset's textual string, if this is a string asset, or an empty string otherwise.
 func (a *asset) Text() string { return a.text }
-func (a *asset) URI() string  { return a.uri }
+
+// URI returns the asset's URL, if this is a remote asset, or an empty string otherwise.
+func (a *asset) URI() string { return a.uri }
 
 // Archive represents a collection of Assets.
 type Archive interface {
@@ -82,14 +90,21 @@ func NewAssetArchive(assets map[string]interface{}) Archive {
 	return &archive{assets: assets}
 }
 
+// NewFileArchive creates an archive backed by a file and specified by that file's path.
 func NewFileArchive(path string) Archive {
 	return &archive{path: path}
 }
 
+// NewRemoteArchive creates an archive backed by a remote file and specified by that file's URL.
 func NewRemoteArchive(uri string) Archive {
 	return &archive{uri: uri}
 }
 
+// Assets returns the archive's asset map, if this is a collection of archives/assets, or nil otherwise.
 func (a *archive) Assets() map[string]interface{} { return a.assets }
-func (a *archive) Path() string                   { return a.path }
-func (a *archive) URI() string                    { return a.uri }
+
+// Path returns the archive's file path, if this is a file archive, or an empty string otherwise.
+func (a *archive) Path() string { return a.path }
+
+// URI returns the archive's URL, if this is a remote archive, or an empty string otherwise.
+func (a *archive) URI() string { return a.uri }

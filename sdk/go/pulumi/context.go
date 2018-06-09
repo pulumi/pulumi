@@ -212,7 +212,7 @@ func (ctx *Context) RegisterResource(
 				reject(err)
 			}
 		} else {
-			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s %d", resp.Urn, resp.Id, len(outprops))
+			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s %d", t, name, resp.Urn, resp.Id, len(outprops))
 			resolveURN(URN(resp.Urn))
 			if resolveID != nil {
 				resolveID(ID(resp.Id))

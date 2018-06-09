@@ -61,6 +61,7 @@ func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []
 }
 
 const (
+	// nolint: gas, linter thinks these are creds, but they aren't.
 	rpcTokenSpecialSigKey     = "4dabf18193072939515e22adb298388d"
 	rpcTokenSpecialAssetSig   = "c44067f5952c0a294b673a41bacd8c17"
 	rpcTokenSpecialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7"
@@ -106,12 +107,12 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		}, nil, nil
 	case *Output:
 		// Await the value and return its raw value.
-		v, err := t.Value()
+		ov, err := t.Value()
 		if err != nil {
 			return nil, nil, err
 		}
 		// TODO: unknownValue
-		e, d, err := marshalInput(v)
+		e, d, err := marshalInput(ov)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -153,12 +154,12 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 					errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
 			}
 			value := rv.MapIndex(key)
-			v, d, err := marshalInput(value.Interface())
+			mv, d, err := marshalInput(value.Interface())
 			if err != nil {
 				return nil, nil, err
 			}
 
-			obj[k] = v
+			obj[k] = mv
 			deps = append(deps, d...)
 		}
 		return obj, deps, nil
@@ -243,19 +244,19 @@ func unmarshalOutput(v interface{}) (interface{}, error) {
 		return arr, nil
 	case reflect.Map:
 		// For maps, only support string-based keys, and recurse into the values.
-		var obj map[string]interface{}
+		obj := make(map[string]interface{})
 		for _, key := range rv.MapKeys() {
 			k, ok := key.Interface().(string)
 			if !ok {
 				return nil, errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
 			}
 			value := rv.MapIndex(key)
-			v, err := unmarshalOutput(value)
+			mv, err := unmarshalOutput(value)
 			if err != nil {
 				return nil, err
 			}
 
-			obj[k] = v
+			obj[k] = mv
 		}
 		return obj, nil
 	}

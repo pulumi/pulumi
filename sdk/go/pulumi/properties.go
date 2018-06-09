@@ -151,7 +151,7 @@ func (out *Output) Asset() (asset.Asset, error) {
 	return v.(asset.Asset), nil
 }
 
-/// Bool retrives the underlying value for this output property as a bool.
+// Bool retrives the underlying value for this output property as a bool.
 func (out *Output) Bool() (bool, error) {
 	v, err := out.Value()
 	if err != nil {
@@ -250,7 +250,7 @@ func (out *Output) String() (string, error) {
 	return cast.ToString(v), nil
 }
 
-// Uuint retrives the underlying value for this output property as a uint.
+// Uint retrives the underlying value for this output property as a uint.
 func (out *Output) Uint() (uint, error) {
 	v, err := out.Value()
 	if err != nil {
@@ -259,7 +259,7 @@ func (out *Output) Uint() (uint, error) {
 	return cast.ToUint(v), nil
 }
 
-// Uuint8 retrives the underlying value for this output property as a uint8.
+// Uint8 retrives the underlying value for this output property as a uint8.
 func (out *Output) Uint8() (uint8, error) {
 	v, err := out.Value()
 	if err != nil {
@@ -268,7 +268,7 @@ func (out *Output) Uint8() (uint8, error) {
 	return cast.ToUint8(v), nil
 }
 
-// Uuint16 retrives the underlying value for this output property as a uint16.
+// Uint16 retrives the underlying value for this output property as a uint16.
 func (out *Output) Uint16() (uint16, error) {
 	v, err := out.Value()
 	if err != nil {
@@ -277,7 +277,7 @@ func (out *Output) Uint16() (uint16, error) {
 	return cast.ToUint16(v), nil
 }
 
-// Uuint32 retrives the underlying value for this output property as a uint32.
+// Uint32 retrives the underlying value for this output property as a uint32.
 func (out *Output) Uint32() (uint32, error) {
 	v, err := out.Value()
 	if err != nil {
@@ -286,7 +286,7 @@ func (out *Output) Uint32() (uint32, error) {
 	return cast.ToUint32(v), nil
 }
 
-// Uuint64 retrives the underlying value for this output property as a uint64.
+// Uint64 retrives the underlying value for this output property as a uint64.
 func (out *Output) Uint64() (uint64, error) {
 	v, err := out.Value()
 	if err != nil {
