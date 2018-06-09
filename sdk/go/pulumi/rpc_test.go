@@ -26,7 +26,7 @@ import (
 func TestMarshalRoundtrip(t *testing.T) {
 	// Create interesting inputs.
 	out, resolve, _ := NewOutput(nil)
-	resolve("outputty")
+	resolve("outputty", true)
 	input := map[string]interface{}{
 		"s":            "a string",
 		"a":            true,

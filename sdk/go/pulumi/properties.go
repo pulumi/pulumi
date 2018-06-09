@@ -34,12 +34,13 @@ type Output struct {
 type valueOrError struct {
 	value interface{} // a value, if the output resolved to a value.
 	err   error       // an error, if the producer yielded an error instead of a value.
+	known bool        // true if this value is known, versus just being a placeholder during previews.
 }
 
 // NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
 // function returns the output itself, plus two functions: one for resolving a value, and another for rejecting with an
 // error; exactly one function must be called.  This acts like a promise.
-func NewOutput(deps []Resource) (*Output, func(interface{}), func(error)) {
+func NewOutput(deps []Resource) (*Output, func(interface{}, bool), func(error)) {
 	out := &Output{
 		sync: make(chan *valueOrError, 1),
 		deps: deps,
@@ -49,19 +50,19 @@ func NewOutput(deps []Resource) (*Output, func(interface{}), func(error)) {
 
 // resolve will resolve the output.  It is not exported, because we want to control the capabilities tightly, such
 // that anybody who happens to have an Output is not allowed to resolve it; only those who created it can.
-func (out *Output) resolve(v interface{}) {
+func (out *Output) resolve(v interface{}, known bool) {
 	// If v is another output, chain this rather than resolving to an output directly.
-	if other, isOut := v.(*Output); isOut {
+	if other, isOut := v.(*Output); known && isOut {
 		go func() {
-			real, err := other.Value()
+			real, otherKnown, err := other.Value()
 			if err != nil {
 				out.reject(err)
 			} else {
-				out.resolve(real)
+				out.resolve(real, otherKnown)
 			}
 		}()
 	} else {
-		out.sync <- &valueOrError{value: v}
+		out.sync <- &valueOrError{value: v, known: known}
 	}
 }
 
@@ -78,27 +79,33 @@ func (out *Output) Apply(applier func(v interface{}) (interface{}, error)) *Outp
 	result, resolve, reject := NewOutput(out.Deps())
 	go func() {
 		for {
-			v, err := out.Value()
+			v, known, err := out.Value()
 			if err != nil {
 				reject(err)
 				break
 			} else {
-				// If we have a value, run the applier to transform it.
-				u, err := applier(v)
-				if err != nil {
-					reject(err)
-					break
-				} else {
-					// Now that we've transformed the value, it's possible we have another output.  If so, pluck it
-					// out and go around to await it until we hit a real value.  Note that we are not capturing the
-					// resources of this inner output, intentionally, as the output returned should be related to
-					// this output already.
-					if newout, ok := v.(*Output); ok {
-						out = newout
-					} else {
-						resolve(u)
+				if known {
+					// If we have a known value, run the applier to transform it.
+					u, err := applier(v)
+					if err != nil {
+						reject(err)
 						break
+					} else {
+						// Now that we've transformed the value, it's possible we have another output.  If so, pluck it
+						// out and go around to await it until we hit a real value.  Note that we are not capturing the
+						// resources of this inner output, intentionally, as the output returned should be related to
+						// this output already.
+						if newout, ok := v.(*Output); ok {
+							out = newout
+						} else {
+							resolve(u, true)
+							break
+						}
 					}
+				} else {
+					// If the value isn't known, skip the apply function.
+					resolve(nil, false)
+					break
 				}
 			}
 		}
@@ -107,12 +114,10 @@ func (out *Output) Apply(applier func(v interface{}) (interface{}, error)) *Outp
 }
 
 // Deps returns the dependencies for this output property.
-func (out *Output) Deps() []Resource {
-	return out.deps
-}
+func (out *Output) Deps() []Resource { return out.deps }
 
 // Value retrieves the underlying value for this output property.
-func (out *Output) Value() (interface{}, error) {
+func (out *Output) Value() (interface{}, bool, error) {
 	// If neither error nor value are available, first await the channel.  Only one Goroutine will make it through this
 	// and is responsible for closing the channel, to signal to other awaiters that it's safe to read the values.
 	if out.voe == nil {
@@ -121,184 +126,184 @@ func (out *Output) Value() (interface{}, error) {
 			close(out.sync)
 		}
 	}
-	return out.voe.value, out.voe.err
+	return out.voe.value, out.voe.known, out.voe.err
 }
 
 // Archive retrives the underlying value for this output property as an archive.
-func (out *Output) Archive() (asset.Archive, error) {
-	v, err := out.Value()
-	if err != nil {
-		return nil, err
+func (out *Output) Archive() (asset.Archive, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return nil, known, err
 	}
-	return v.(asset.Archive), nil
+	return v.(asset.Archive), true, nil
 }
 
 // Array retrives the underlying value for this output property as an array.
-func (out *Output) Array() ([]interface{}, error) {
-	v, err := out.Value()
-	if err != nil {
-		return nil, err
+func (out *Output) Array() ([]interface{}, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return nil, known, err
 	}
-	return cast.ToSlice(v), nil
+	return cast.ToSlice(v), true, nil
 }
 
 // Asset retrives the underlying value for this output property as an asset.
-func (out *Output) Asset() (asset.Asset, error) {
-	v, err := out.Value()
-	if err != nil {
-		return nil, err
+func (out *Output) Asset() (asset.Asset, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return nil, known, err
 	}
-	return v.(asset.Asset), nil
+	return v.(asset.Asset), true, nil
 }
 
 // Bool retrives the underlying value for this output property as a bool.
-func (out *Output) Bool() (bool, error) {
-	v, err := out.Value()
-	if err != nil {
-		return false, err
+func (out *Output) Bool() (bool, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return false, known, err
 	}
-	return cast.ToBool(v), nil
+	return cast.ToBool(v), true, nil
 }
 
 // Map retrives the underlying value for this output property as a map.
-func (out *Output) Map() (map[string]interface{}, error) {
-	v, err := out.Value()
-	if err != nil {
-		return nil, err
+func (out *Output) Map() (map[string]interface{}, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return nil, known, err
 	}
-	return cast.ToStringMap(v), nil
+	return cast.ToStringMap(v), true, nil
 }
 
 // Float32 retrives the underlying value for this output property as a float32.
-func (out *Output) Float32() (float32, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Float32() (float32, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToFloat32(v), nil
+	return cast.ToFloat32(v), true, nil
 }
 
 // Float64 retrives the underlying value for this output property as a float64.
-func (out *Output) Float64() (float64, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Float64() (float64, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToFloat64(v), nil
+	return cast.ToFloat64(v), true, nil
 }
 
 // ID retrives the underlying value for this output property as an ID.
-func (out *Output) ID() (ID, error) {
-	v, err := out.Value()
-	if err != nil {
-		return "", err
+func (out *Output) ID() (ID, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return "", known, err
 	}
-	return ID(cast.ToString(v)), nil
+	return ID(cast.ToString(v)), true, nil
 }
 
 // Int retrives the underlying value for this output property as a int.
-func (out *Output) Int() (int, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Int() (int, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToInt(v), nil
+	return cast.ToInt(v), true, nil
 }
 
 // Int8 retrives the underlying value for this output property as a int8.
-func (out *Output) Int8() (int8, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Int8() (int8, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToInt8(v), nil
+	return cast.ToInt8(v), true, nil
 }
 
 // Int16 retrives the underlying value for this output property as a int16.
-func (out *Output) Int16() (int16, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Int16() (int16, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToInt16(v), nil
+	return cast.ToInt16(v), true, nil
 }
 
 // Int32 retrives the underlying value for this output property as a int32.
-func (out *Output) Int32() (int32, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Int32() (int32, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToInt32(v), nil
+	return cast.ToInt32(v), true, nil
 }
 
 // Int64 retrives the underlying value for this output property as a int64.
-func (out *Output) Int64() (int64, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Int64() (int64, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToInt64(v), nil
+	return cast.ToInt64(v), true, nil
 }
 
 // String retrives the underlying value for this output property as a string.
-func (out *Output) String() (string, error) {
-	v, err := out.Value()
-	if err != nil {
-		return "", err
+func (out *Output) String() (string, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return "", known, err
 	}
-	return cast.ToString(v), nil
+	return cast.ToString(v), true, nil
 }
 
 // Uint retrives the underlying value for this output property as a uint.
-func (out *Output) Uint() (uint, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Uint() (uint, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToUint(v), nil
+	return cast.ToUint(v), true, nil
 }
 
 // Uint8 retrives the underlying value for this output property as a uint8.
-func (out *Output) Uint8() (uint8, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Uint8() (uint8, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToUint8(v), nil
+	return cast.ToUint8(v), true, nil
 }
 
 // Uint16 retrives the underlying value for this output property as a uint16.
-func (out *Output) Uint16() (uint16, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Uint16() (uint16, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToUint16(v), nil
+	return cast.ToUint16(v), true, nil
 }
 
 // Uint32 retrives the underlying value for this output property as a uint32.
-func (out *Output) Uint32() (uint32, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Uint32() (uint32, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToUint32(v), nil
+	return cast.ToUint32(v), true, nil
 }
 
 // Uint64 retrives the underlying value for this output property as a uint64.
-func (out *Output) Uint64() (uint64, error) {
-	v, err := out.Value()
-	if err != nil {
-		return 0, err
+func (out *Output) Uint64() (uint64, bool, error) {
+	v, known, err := out.Value()
+	if err != nil || !known {
+		return 0, known, err
 	}
-	return cast.ToUint64(v), nil
+	return cast.ToUint64(v), true, nil
 }
 
 // URN retrives the underlying value for this output property as a URN.
 func (out *Output) URN() (URN, error) {
-	v, err := out.Value()
-	if err != nil {
+	v, known, err := out.Value()
+	if err != nil || !known {
 		return "", err
 	}
 	return URN(cast.ToString(v)), nil
@@ -311,7 +316,9 @@ type Outputs map[string]*Output
 type ArchiveOutput Output
 
 // Value returns the underlying archive value.
-func (out *ArchiveOutput) Value() (asset.Archive, error) { return (*Output)(out).Archive() }
+func (out *ArchiveOutput) Value() (asset.Archive, bool, error) {
+	return (*Output)(out).Archive()
+}
 
 // Apply applies a transformation to the archive value when it is available.
 func (out *ArchiveOutput) Apply(applier func(asset.Archive) (interface{}, error)) *Output {
@@ -324,7 +331,9 @@ func (out *ArchiveOutput) Apply(applier func(asset.Archive) (interface{}, error)
 type ArrayOutput Output
 
 // Value returns the underlying array value.
-func (out *ArrayOutput) Value() ([]interface{}, error) { return (*Output)(out).Array() }
+func (out *ArrayOutput) Value() ([]interface{}, bool, error) {
+	return (*Output)(out).Array()
+}
 
 // Apply applies a transformation to the array value when it is available.
 func (out *ArrayOutput) Apply(applier func([]interface{}) (interface{}, error)) *Output {
@@ -337,7 +346,9 @@ func (out *ArrayOutput) Apply(applier func([]interface{}) (interface{}, error)) 
 type AssetOutput Output
 
 // Value returns the underlying asset value.
-func (out *AssetOutput) Value() (asset.Asset, error) { return (*Output)(out).Asset() }
+func (out *AssetOutput) Value() (asset.Asset, bool, error) {
+	return (*Output)(out).Asset()
+}
 
 // Apply applies a transformation to the asset value when it is available.
 func (out *AssetOutput) Apply(applier func(asset.Asset) (interface{}, error)) *Output {
@@ -350,7 +361,9 @@ func (out *AssetOutput) Apply(applier func(asset.Asset) (interface{}, error)) *O
 type BoolOutput Output
 
 // Value returns the underlying bool value.
-func (out *BoolOutput) Value() (bool, error) { return (*Output)(out).Bool() }
+func (out *BoolOutput) Value() (bool, bool, error) {
+	return (*Output)(out).Bool()
+}
 
 // Apply applies a transformation to the bool value when it is available.
 func (out *BoolOutput) Apply(applier func(bool) (interface{}, error)) *Output {
@@ -363,7 +376,9 @@ func (out *BoolOutput) Apply(applier func(bool) (interface{}, error)) *Output {
 type Float32Output Output
 
 // Value returns the underlying number value.
-func (out *Float32Output) Value() (float32, error) { return (*Output)(out).Float32() }
+func (out *Float32Output) Value() (float32, bool, error) {
+	return (*Output)(out).Float32()
+}
 
 // Apply applies a transformation to the float32 value when it is available.
 func (out *Float32Output) Apply(applier func(float32) (interface{}, error)) *Output {
@@ -376,7 +391,9 @@ func (out *Float32Output) Apply(applier func(float32) (interface{}, error)) *Out
 type Float64Output Output
 
 // Value returns the underlying number value.
-func (out *Float64Output) Value() (float64, error) { return (*Output)(out).Float64() }
+func (out *Float64Output) Value() (float64, bool, error) {
+	return (*Output)(out).Float64()
+}
 
 // Apply applies a transformation to the float64 value when it is available.
 func (out *Float64Output) Apply(applier func(float64) (interface{}, error)) *Output {
@@ -389,7 +406,9 @@ func (out *Float64Output) Apply(applier func(float64) (interface{}, error)) *Out
 type IntOutput Output
 
 // Value returns the underlying number value.
-func (out *IntOutput) Value() (int, error) { return (*Output)(out).Int() }
+func (out *IntOutput) Value() (int, bool, error) {
+	return (*Output)(out).Int()
+}
 
 // Apply applies a transformation to the int value when it is available.
 func (out *IntOutput) Apply(applier func(int) (interface{}, error)) *Output {
@@ -402,7 +421,9 @@ func (out *IntOutput) Apply(applier func(int) (interface{}, error)) *Output {
 type Int8Output Output
 
 // Value returns the underlying number value.
-func (out *Int8Output) Value() (int8, error) { return (*Output)(out).Int8() }
+func (out *Int8Output) Value() (int8, bool, error) {
+	return (*Output)(out).Int8()
+}
 
 // Apply applies a transformation to the int8 value when it is available.
 func (out *Int8Output) Apply(applier func(int8) (interface{}, error)) *Output {
@@ -415,7 +436,9 @@ func (out *Int8Output) Apply(applier func(int8) (interface{}, error)) *Output {
 type Int16Output Output
 
 // Value returns the underlying number value.
-func (out *Int16Output) Value() (int16, error) { return (*Output)(out).Int16() }
+func (out *Int16Output) Value() (int16, bool, error) {
+	return (*Output)(out).Int16()
+}
 
 // Apply applies a transformation to the int16 value when it is available.
 func (out *Int16Output) Apply(applier func(int16) (interface{}, error)) *Output {
@@ -428,7 +451,9 @@ func (out *Int16Output) Apply(applier func(int16) (interface{}, error)) *Output 
 type Int32Output Output
 
 // Value returns the underlying number value.
-func (out *Int32Output) Value() (int32, error) { return (*Output)(out).Int32() }
+func (out *Int32Output) Value() (int32, bool, error) {
+	return (*Output)(out).Int32()
+}
 
 // Apply applies a transformation to the int32 value when it is available.
 func (out *Int32Output) Apply(applier func(int32) (interface{}, error)) *Output {
@@ -441,7 +466,7 @@ func (out *Int32Output) Apply(applier func(int32) (interface{}, error)) *Output 
 type Int64Output Output
 
 // Value returns the underlying number value.
-func (out *Int64Output) Value() (int64, error) { return (*Output)(out).Int64() }
+func (out *Int64Output) Value() (int64, bool, error) { return (*Output)(out).Int64() }
 
 // Apply applies a transformation to the int64 value when it is available.
 func (out *Int64Output) Apply(applier func(int64) (interface{}, error)) *Output {
@@ -454,7 +479,9 @@ func (out *Int64Output) Apply(applier func(int64) (interface{}, error)) *Output 
 type MapOutput Output
 
 // Value returns the underlying number value.
-func (out *MapOutput) Value() (map[string]interface{}, error) { return (*Output)(out).Map() }
+func (out *MapOutput) Value() (map[string]interface{}, bool, error) {
+	return (*Output)(out).Map()
+}
 
 // Apply applies a transformation to the number value when it is available.
 func (out *MapOutput) Apply(applier func(map[string]interface{}) (interface{}, error)) *Output {
@@ -467,7 +494,9 @@ func (out *MapOutput) Apply(applier func(map[string]interface{}) (interface{}, e
 type StringOutput Output
 
 // Value returns the underlying number value.
-func (out *StringOutput) Value() (string, error) { return (*Output)(out).String() }
+func (out *StringOutput) Value() (string, bool, error) {
+	return (*Output)(out).String()
+}
 
 // Apply applies a transformation to the number value when it is available.
 func (out *StringOutput) Apply(applier func(string) (interface{}, error)) *Output {
@@ -480,7 +509,9 @@ func (out *StringOutput) Apply(applier func(string) (interface{}, error)) *Outpu
 type UintOutput Output
 
 // Value returns the underlying number value.
-func (out *UintOutput) Value() (uint, error) { return (*Output)(out).Uint() }
+func (out *UintOutput) Value() (uint, bool, error) {
+	return (*Output)(out).Uint()
+}
 
 // Apply applies a transformation to the uint value when it is available.
 func (out *UintOutput) Apply(applier func(uint) (interface{}, error)) *Output {
@@ -493,7 +524,9 @@ func (out *UintOutput) Apply(applier func(uint) (interface{}, error)) *Output {
 type Uint8Output Output
 
 // Value returns the underlying number value.
-func (out *Uint8Output) Value() (uint8, error) { return (*Output)(out).Uint8() }
+func (out *Uint8Output) Value() (uint8, bool, error) {
+	return (*Output)(out).Uint8()
+}
 
 // Apply applies a transformation to the uint8 value when it is available.
 func (out *Uint8Output) Apply(applier func(uint8) (interface{}, error)) *Output {
@@ -506,7 +539,9 @@ func (out *Uint8Output) Apply(applier func(uint8) (interface{}, error)) *Output 
 type Uint16Output Output
 
 // Value returns the underlying number value.
-func (out *Uint16Output) Value() (uint16, error) { return (*Output)(out).Uint16() }
+func (out *Uint16Output) Value() (uint16, bool, error) {
+	return (*Output)(out).Uint16()
+}
 
 // Apply applies a transformation to the uint16 value when it is available.
 func (out *Uint16Output) Apply(applier func(uint16) (interface{}, error)) *Output {
@@ -519,7 +554,9 @@ func (out *Uint16Output) Apply(applier func(uint16) (interface{}, error)) *Outpu
 type Uint32Output Output
 
 // Value returns the underlying number value.
-func (out *Uint32Output) Value() (uint32, error) { return (*Output)(out).Uint32() }
+func (out *Uint32Output) Value() (uint32, bool, error) {
+	return (*Output)(out).Uint32()
+}
 
 // Apply applies a transformation to the uint32 value when it is available.
 func (out *Uint32Output) Apply(applier func(uint32) (interface{}, error)) *Output {
@@ -532,7 +569,9 @@ func (out *Uint32Output) Apply(applier func(uint32) (interface{}, error)) *Outpu
 type Uint64Output Output
 
 // Value returns the underlying number value.
-func (out *Uint64Output) Value() (uint64, error) { return (*Output)(out).Uint64() }
+func (out *Uint64Output) Value() (uint64, bool, error) {
+	return (*Output)(out).Uint64()
+}
 
 // Apply applies a transformation to the uint64 value when it is available.
 func (out *Uint64Output) Apply(applier func(uint64) (interface{}, error)) *Output {

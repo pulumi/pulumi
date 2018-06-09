@@ -107,16 +107,22 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		}, nil, nil
 	case *Output:
 		// Await the value and return its raw value.
-		ov, err := t.Value()
+		ov, known, err := t.Value()
 		if err != nil {
 			return nil, nil, err
 		}
-		// TODO: unknownValue
-		e, d, err := marshalInput(ov)
-		if err != nil {
-			return nil, nil, err
+
+		if known {
+			// If the value is known, marshal it.
+			e, d, merr := marshalInput(ov)
+			if merr != nil {
+				return nil, nil, merr
+			}
+			return e, append(t.Deps(), d...), nil
+		} else {
+			// Otherwise, simply return the unknown value sentinel.
+			return rpcTokenUnknownValue, t.Deps(), nil
 		}
-		return e, append(t.Deps(), d...), err
 	case CustomResource:
 		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
 		e, d, err := marshalInput(t.ID())
@@ -196,6 +202,11 @@ func unmarshalOutputs(outs *structpb.Struct) (map[string]interface{}, error) {
 // unmarshalOutput unmarshals a single output variable into its runtime representation.  For the most part, this just
 // returns the raw value.  In a small number of cases, we need to change a type.
 func unmarshalOutput(v interface{}) (interface{}, error) {
+	// Check for nils and unknowns.
+	if v == nil || v == rpcTokenUnknownValue {
+		return nil, nil
+	}
+
 	// In the case of assets and archives, turn these into real asset and archive structures.
 	if m, ok := v.(map[string]interface{}); ok {
 		if m[rpcTokenSpecialSigKey] == rpcTokenSpecialAssetSig {

@@ -162,14 +162,14 @@ func (ctx *Context) RegisterResource(
 	urn, resolveURN, rejectURN := NewOutput(nil)
 
 	var id *Output
-	var resolveID func(interface{})
+	var resolveID func(interface{}, bool)
 	var rejectID func(error)
 	if custom {
 		id, resolveID, rejectID = NewOutput(nil)
 	}
 
 	state := make(map[string]*Output)
-	resolveState := make(map[string]func(interface{}))
+	resolveState := make(map[string]func(interface{}, bool))
 	rejectState := make(map[string]func(error))
 	for _, key := range keys {
 		state[key], resolveState[key], rejectState[key] = NewOutput(nil)
@@ -208,16 +208,18 @@ func (ctx *Context) RegisterResource(
 			}
 		} else {
 			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s %d", t, name, resp.Urn, resp.Id, len(outprops))
-			resolveURN(URN(resp.Urn))
+			resolveURN(URN(resp.Urn), true)
 			if resolveID != nil {
-				resolveID(ID(resp.Id))
+				resolveID(ID(resp.Id), true)
 			}
 			for _, key := range keys {
 				out, err := unmarshalOutput(outprops[key])
 				if err != nil {
 					rejectState[key](err)
 				} else {
-					resolveState[key](out)
+					// During previews, it's possible that nils will be returned due to unknown values.
+					known := !ctx.DryRun() || out != nil
+					resolveState[key](out, known)
 				}
 			}
 		}

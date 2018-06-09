@@ -26,10 +26,11 @@ func TestBasicOutputs(t *testing.T) {
 	{
 		out, resolve, _ := NewOutput(nil)
 		go func() {
-			resolve(42)
+			resolve(42, true)
 		}()
-		v, err := out.Value()
+		v, known, err := out.Value()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.NotNil(t, v)
 		assert.Equal(t, 42, v.(int))
 	}
@@ -38,7 +39,7 @@ func TestBasicOutputs(t *testing.T) {
 		go func() {
 			reject(errors.New("boom"))
 		}()
-		v, err := out.Value()
+		v, _, err := out.Value()
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
@@ -47,11 +48,12 @@ func TestBasicOutputs(t *testing.T) {
 func TestArrayOutputs(t *testing.T) {
 	out, resolve, _ := NewOutput(nil)
 	go func() {
-		resolve([]interface{}{nil, 0, "x"})
+		resolve([]interface{}{nil, 0, "x"}, true)
 	}()
 	{
-		v, err := out.Array()
+		v, known, err := out.Array()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.NotNil(t, v)
 		if assert.Equal(t, 3, len(v)) {
 			assert.Equal(t, nil, v[0])
@@ -61,7 +63,7 @@ func TestArrayOutputs(t *testing.T) {
 	}
 	{
 		arr := (*ArrayOutput)(out)
-		v, err := arr.Value()
+		v, _, err := arr.Value()
 		assert.Nil(t, err)
 		assert.NotNil(t, v)
 		if assert.Equal(t, 3, len(v)) {
@@ -75,17 +77,19 @@ func TestArrayOutputs(t *testing.T) {
 func TestBoolOutputs(t *testing.T) {
 	out, resolve, _ := NewOutput(nil)
 	go func() {
-		resolve(true)
+		resolve(true, true)
 	}()
 	{
-		v, err := out.Bool()
+		v, known, err := out.Bool()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.True(t, v)
 	}
 	{
 		b := (*BoolOutput)(out)
-		v, err := b.Value()
+		v, known, err := b.Value()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.True(t, v)
 	}
 }
@@ -97,11 +101,12 @@ func TestMapOutputs(t *testing.T) {
 			"x": 1,
 			"y": false,
 			"z": "abc",
-		})
+		}, true)
 	}()
 	{
-		v, err := out.Map()
+		v, known, err := out.Map()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.NotNil(t, v)
 		assert.Equal(t, 1, v["x"])
 		assert.Equal(t, false, v["y"])
@@ -109,8 +114,9 @@ func TestMapOutputs(t *testing.T) {
 	}
 	{
 		b := (*MapOutput)(out)
-		v, err := b.Value()
+		v, known, err := b.Value()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.NotNil(t, v)
 		assert.Equal(t, 1, v["x"])
 		assert.Equal(t, false, v["y"])
@@ -121,17 +127,19 @@ func TestMapOutputs(t *testing.T) {
 func TestNumberOutputs(t *testing.T) {
 	out, resolve, _ := NewOutput(nil)
 	go func() {
-		resolve(42.345)
+		resolve(42.345, true)
 	}()
 	{
-		v, err := out.Float64()
+		v, known, err := out.Float64()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, 42.345, v)
 	}
 	{
 		b := (*Float64Output)(out)
-		v, err := b.Value()
+		v, known, err := b.Value()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, 42.345, v)
 	}
 }
@@ -139,17 +147,19 @@ func TestNumberOutputs(t *testing.T) {
 func TestStringOutputs(t *testing.T) {
 	out, resolve, _ := NewOutput(nil)
 	go func() {
-		resolve("a stringy output")
+		resolve("a stringy output", true)
 	}()
 	{
-		v, err := out.String()
+		v, known, err := out.String()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, "a stringy output", v)
 	}
 	{
 		b := (*StringOutput)(out)
-		v, err := b.Value()
+		v, known, err := b.Value()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, "a stringy output", v)
 	}
 }
@@ -160,11 +170,12 @@ func TestResolveOutputToOutput(t *testing.T) {
 		out, resolve, _ := NewOutput(nil)
 		go func() {
 			other, resolveOther, _ := NewOutput(nil)
-			resolve(other)
-			go func() { resolveOther(99) }()
+			resolve(other, true)
+			go func() { resolveOther(99, true) }()
 		}()
-		v, err := out.Value()
+		v, known, err := out.Value()
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, v, 99)
 	}
 	// Similarly, test that resolving an output to a rejected output yields an error.
@@ -172,10 +183,10 @@ func TestResolveOutputToOutput(t *testing.T) {
 		out, resolve, _ := NewOutput(nil)
 		go func() {
 			other, _, rejectOther := NewOutput(nil)
-			resolve(other)
+			resolve(other, true)
 			go func() { rejectOther(errors.New("boom")) }()
 		}()
-		v, err := out.Value()
+		v, _, err := out.Value()
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
@@ -185,17 +196,33 @@ func TestOutputApply(t *testing.T) {
 	// Test that resolved outputs lead to applies being run.
 	{
 		out, resolve, _ := NewOutput(nil)
-		go func() { resolve(42) }()
+		go func() { resolve(42, true) }()
 		var ranApp bool
 		b := (*IntOutput)(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
-		v, err := app.Value()
+		v, known, err := app.Value()
 		assert.True(t, ranApp)
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, v, 43)
+	}
+	// Test that resolved, but known outputs, skip the running of applies.
+	{
+		out, resolve, _ := NewOutput(nil)
+		go func() { resolve(42, false) }()
+		var ranApp bool
+		b := (*IntOutput)(out)
+		app := b.Apply(func(v int) (interface{}, error) {
+			ranApp = true
+			return v + 1, nil
+		})
+		_, known, err := app.Value()
+		assert.False(t, ranApp)
+		assert.Nil(t, err)
+		assert.False(t, known)
 	}
 	// Test that rejected outputs do not run the apply, and instead flow the error.
 	{
@@ -207,7 +234,7 @@ func TestOutputApply(t *testing.T) {
 			ranApp = true
 			return v + 1, nil
 		})
-		v, err := app.Value()
+		v, _, err := app.Value()
 		assert.False(t, ranApp)
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
@@ -215,24 +242,25 @@ func TestOutputApply(t *testing.T) {
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
 	{
 		out, resolve, _ := NewOutput(nil)
-		go func() { resolve(42) }()
+		go func() { resolve(42, true) }()
 		var ranApp bool
 		b := (*IntOutput)(out)
 		app := b.Apply(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput(nil)
-			go func() { resolveOther(v + 1) }()
+			go func() { resolveOther(v+1, true) }()
 			ranApp = true
 			return other, nil
 		})
-		v, err := app.Value()
+		v, known, err := app.Value()
 		assert.True(t, ranApp)
 		assert.Nil(t, err)
+		assert.True(t, known)
 		assert.Equal(t, v, 43)
 	}
 	// Test that an an apply that reject an output returns the rejection of that output, not the output itself.
 	{
 		out, resolve, _ := NewOutput(nil)
-		go func() { resolve(42) }()
+		go func() { resolve(42, true) }()
 		var ranApp bool
 		b := (*IntOutput)(out)
 		app := b.Apply(func(v int) (interface{}, error) {
@@ -241,7 +269,7 @@ func TestOutputApply(t *testing.T) {
 			ranApp = true
 			return other, nil
 		})
-		v, err := app.Value()
+		v, _, err := app.Value()
 		assert.True(t, ranApp)
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
