@@ -23,8 +23,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
@@ -197,10 +195,7 @@ func (ctx *Context) RegisterResource(
 		})
 		var outprops map[string]interface{}
 		if err == nil {
-			var uprops resource.PropertyMap
-			if uprops, err = plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{}); err == nil {
-				outprops = uprops.Mappable()
-			}
+			outprops, err = unmarshalOutputs(resp.Object)
 		}
 		if err != nil {
 			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
