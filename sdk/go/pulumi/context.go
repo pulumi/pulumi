@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -114,10 +115,51 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 	return v, ok
 }
 
-// Invoke will invoke a provider's function, identified by its token tok.
-func (ctx *Context) Invoke(tok string, args map[string]interface{}) (Outputs, error) {
-	// TODO(joe): implement this.
-	return nil, errors.New("Invoke not yet implemented")
+// Invoke will invoke a provider's function, identified by its token tok.  This function call is synchronous.
+func (ctx *Context) Invoke(tok string, args map[string]interface{}) (map[string]interface{}, error) {
+	if tok == "" {
+		return nil, errors.New("invoke token must not be empty")
+	}
+
+	// Serialize arguments, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	// TODO[pulumi/pulumi#1483]: feels like we should be propagating dependencies to the outputs, instead of ignoring.
+	_, rpcArgs, _, err := marshalInputs(args)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling arguments")
+	}
+
+	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	if err = ctx.beginRPC(); err != nil {
+		return nil, err
+	}
+	defer ctx.endRPC()
+
+	// Now, invoke the RPC to the provider synchronously.
+	glog.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(args))
+	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
+		Tok:  tok,
+		Args: rpcArgs,
+	})
+	if err != nil {
+		glog.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
+		return nil, err
+	}
+
+	// If there were any failures from the provider, return them.
+	if len(resp.Failures) > 0 {
+		glog.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+		var ferr error
+		for _, failure := range resp.Failures {
+			ferr = multierror.Append(ferr,
+				errors.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
+		}
+		return nil, ferr
+	}
+
+	// Otherwsie, simply unmarshal the output properties and return the result.
+	outs, err := unmarshalOutputs(resp.Return)
+	glog.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outs), err)
+	return outs, err
 }
 
 // ReadResource reads an existing custom resource's state from the resource monitor.  Note that resources read in this
@@ -207,6 +249,7 @@ func (ctx *Context) RegisterResource(
 			outprops, err = unmarshalOutputs(resp.Object)
 		}
 		if err != nil {
+			// If there was an error, we must reject everything: URN, ID, and state properties.
 			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
 			rejectURN(err)
 			if rejectID != nil {
@@ -217,18 +260,33 @@ func (ctx *Context) RegisterResource(
 			}
 		} else {
 			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s %d", t, name, resp.Urn, resp.Id, len(outprops))
+
+			// Resolve the URN and ID.
 			resolveURN(URN(resp.Urn), true)
 			if resolveID != nil {
 				resolveID(ID(resp.Id), true)
 			}
-			for _, key := range keys {
-				out, err := unmarshalOutput(outprops[key])
-				if err != nil {
-					rejectState[key](err)
-				} else {
-					// During previews, it's possible that nils will be returned due to unknown values.
-					known := !ctx.DryRun() || out != nil
-					resolveState[key](out, known)
+
+			// During previews, it's possible that nils will be returned due to unknown values.  This function
+			// determines the known-ed-ness of a given value below.
+			isKnown := func(v interface{}) bool {
+				return !ctx.DryRun() || v != nil
+			}
+
+			// Now resolve all output properties.
+			seen := make(map[string]bool)
+			for key, v := range outprops {
+				if resolve, has := resolveState[key]; has {
+					resolve(v, isKnown(v))
+					seen[key] = true
+				}
+			}
+
+			// If we didn't get back any inputs as outputs, resolve them to the inputs.
+			for key, resolve := range resolveState {
+				if !seen[key] {
+					v := props[key]
+					resolve(v, isKnown(v))
 				}
 			}
 		}
