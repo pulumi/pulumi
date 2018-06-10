@@ -181,6 +181,8 @@ type ProgramTestOptions struct {
 	Bin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
+	GoBin string
 
 	// Additional environment variaibles to pass for each command we run.
 	Env []string
@@ -366,6 +368,7 @@ type programTester struct {
 	opts    *ProgramTestOptions // options that control this test run.
 	bin     string              // the `pulumi` binary we are using.
 	yarnBin string              // the `yarn` binary we are using.
+	goBin   string              // the `go` binary we are using.
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *programTester {
@@ -378,6 +381,10 @@ func (pt *programTester) getBin() (string, error) {
 
 func (pt *programTester) getYarnBin() (string, error) {
 	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
+}
+
+func (pt *programTester) getGoBin() (string, error) {
+	return getCmdBin(&pt.goBin, "go", pt.opts.GoBin)
 }
 
 func (pt *programTester) pulumiCmd(args []string) ([]string, error) {
@@ -910,6 +917,8 @@ func (pt *programTester) prepareProject(projectDir string) error {
 		return pt.prepareNodeJSProject(projinfo)
 	case "python":
 		return pt.preparePythonProject(projinfo)
+	case "go":
+		return pt.prepareGoProject(projinfo)
 	default:
 		return errors.Errorf("unrecognized project runtime: %s", proj.Runtime)
 	}
@@ -951,4 +960,27 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
 func (pt *programTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	return nil
+}
+
+// prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
+func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
+	// Go programs are compiled, so we will compile the project first.
+	goBin, err := pt.getGoBin()
+	if err != nil {
+		return errors.Wrap(err, "locating `go` binary")
+	}
+
+	// Ensure GOPATH is known.
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		return errors.New("$GOPATH must be set to test a Go project")
+	}
+
+	// To compile, simply run `go build -o $GOPATH/bin/<projname> .` from the project's working directory.
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+	outBin := filepath.Join(gopath, "bin", string(projinfo.Proj.Name))
+	return pt.runCommand("go-build", []string{goBin, "build", "-o", outBin, "."}, cwd)
 }

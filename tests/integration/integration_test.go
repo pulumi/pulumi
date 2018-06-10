@@ -35,6 +35,14 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
+// TestEmptyGo simply tests that we can run an empty Go project.
+func TestEmptyGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("empty", "go"),
+		Quick: true,
+	})
+}
+
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
 	var test integration.ProgramTestOptions

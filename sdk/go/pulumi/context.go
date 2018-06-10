@@ -267,13 +267,17 @@ func (ctx *Context) RegisterResource(
 		ctx.endRPC()
 	}()
 
+	var id *IDOutput
+	if op.outID != nil {
+		id = (*IDOutput)(op.outID.out)
+	}
 	outs := make(map[string]*Output)
 	for k, s := range op.outState {
 		outs[k] = s.out
 	}
 	return &ResourceState{
 		URN:   (*URNOutput)(op.outURN.out),
-		ID:    (*IDOutput)(op.outID.out),
+		ID:    id,
 		State: outs,
 	}, nil
 }
