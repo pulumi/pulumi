@@ -157,10 +157,9 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		return obj, deps, nil
 	case reflect.Ptr:
 		// See if this is an alias for *Output.  If so, convert to an *Output, and recurse.
-		e := rv.Elem()
-		ot := reflect.TypeOf(Output{})
-		if e.Type().ConvertibleTo(ot) {
-			oo := e.Convert(ot)
+		ot := reflect.TypeOf(&Output{})
+		if rv.Type().ConvertibleTo(ot) {
+			oo := rv.Convert(ot)
 			return marshalInput(oo.Interface())
 		}
 
@@ -168,7 +167,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		if rv.IsNil() {
 			return nil, nil, nil
 		}
-		return marshalInput(e.Interface())
+		return marshalInput(rv.Elem().Interface())
 	case reflect.String:
 		return marshalInput(rv.String())
 	}

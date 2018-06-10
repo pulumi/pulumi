@@ -73,6 +73,7 @@ func RunErr(body RunFunc) error {
 	if err != nil {
 		return err
 	}
+	contract.Assertf(ctx.stackR != "", "expected root stack resource to have a non-empty URN")
 
 	// Execute the body.
 	var result error
