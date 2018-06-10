@@ -1,35 +1,63 @@
 # Pulumi
 
-Pulumi is a programming platform for the cloud to make creating cloud programs easy and productive.
+Pulumi is a cloud development platform that makes creating cloud programs easy and productive.
 
-This repo contains the core SDKs, CLI, and libraries, most notably the Pulumi Engine itself.
+Author cloud programs in your favorite favorite language and Pulumi will automatically keep your infrastructure
+up-to-date.  Skip learning yet another YAML dialect.  Pulumi is multi-language and multi-cloud, and fully extensible.
 
-If you are learning about Pulumi for the first time, please [visit our docs website](https://docs.pulumi.com/).
+To install the latest Pulumi release, run:
 
-## Build Status
+```bash
+$ curl -fsSL https://get.pulumi.com/ | sh
+```
+
+If you are learning about Pulumi for the first time, please [visit the project website](https://pulumi.io/).
+
+This repo contains the CLI, language SDKs, and the core Pulumi engine.  Individual libraries are in their own repos.
+
+## Platforms
 
 | Architecture | Build Status |
 | ------------ | ------------ |
 | Linux/macOS x64    | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)  |
 | Windows x64  | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi) |
 
-## Installing
+## Languages
 
-To install Pulumi from source, simply run:
+| Language | Status | Runtime | Readme |
+| -------- | ------ | ------- | -------- |
+| JavaScript | Stable | Node.js 6.x-10.x | [Readme](./sdk/nodejs) |
+| TypeScript | Stable | Node.js 6.x-10.x | [Readme](./sdk/nodejs) |
+| Python | Beta | Python 2.7 | [Readme](./sdk/python) |
+| Go | Preview | Go 1.x | [Readme](./sdk/go) |
 
-    $ go get -u github.com/pulumi/pulumi
+## Clouds
 
-A `GOPATH` must be set.  A good default value is `~/go`.  In fact, [this is the default in Go 1.8](
-https://github.com/golang/go/issues/17262).
+| Cloud | Status | Docs | Repo |
+| ----- | ------ | ---- | ---- |
+| Amazon Web Services | Stable | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws/) | [pulumi/pulumi-aws](https://github.com/pulumi/pulumi-aws) |
+| Microsoft Azure | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/azure/) | [pulumi/pulumi-azure](https://github.com/pulumi/pulumi-azure) |
+| Google Cloud Platform | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/gcp/) | [pulumi/pulumi-gcp](https://github.com/pulumi/pulumi-gcp) |
+| Kubernetes | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/kubernetes/) | [pulumi/pulumi-kubernetes](https://github.com/pulumi/pulumi-kubernetes) |
 
-This installs the `pulumi` binary to `$GOPATH/bin`.
+## Libraries
 
-To do anything interesting with Pulumi, you will need an SDK for your language of choice.  Please see
-[sdk/README.md](`sdk/`) for information about how to obtain, install, and use such an SDK.
+There are several libraries that encapsulate best practices and common patterns:
+
+| Library | Status | Docs | Repo |
+| ------- | ------ | ---- | ---- |
+| AWS Serverless | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-serverless/) | [pulumi/pulumi-aws-serverless](https://github.com/pulumi/pulumi-aws-serverless) |
+| AWS Infrastructure | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-infra/) | [pulumi/pulumi-aws-infra](https://github.com/pulumi/pulumi-aws-infra) |
+| Pulumi Multi-Cloud Framework | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/cloud/) | [pulumi/pulumi-cloud](https://github.com/pulumi/pulumi-cloud) |
+
+## Examples
+
+A collection of examples for different languages, clouds, and scenarios is available in the
+[pulumi/examples](https://github.com/pulumi/examples) repo.
 
 ## Development
 
-This section is for Pulumi developers.
+If you'd like to contribute to Pulumi and/or build from source, this section is for you.
 
 ### Prerequisites
 
@@ -41,9 +69,23 @@ Pulumi is written in Go, uses Dep for dependency management, and GoMetaLinter fo
     - `$ go get -u github.com/alecthomas/gometalinter`
     - `$ gometalinter --install`
 
+### Building from Source
+
+To install the pre-built SDK, please run `curl -fsSL https://get.pulumi.com/ | sh`, or see detailed installation
+instructions on [the project page](https://pulumi.io/).  Read on if you want to install from source.
+
+To build the Pulumi CLI from source, you may simply run:
+
+    $ go get -u github.com/pulumi/pulumi
+
+This installs the `pulumi` binary to `$GOPATH/bin`.
+
+To do anything interesting with Pulumi, you will need an SDK for your language of choice.  The SDK installation comes
+with pre-built language providers, however the `make` flow below will create a complete SDK distribution for you.
+
 ### Building and Testing
 
-To build Pulumi, ensure `$GOPATH` is set, and clone into a standard Go workspace:
+To build a complete Pulumi SDK, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
     $ git clone git@github.com:pulumi/pulumi $GOPATH/src/github.com/pulumi/pulumi
     $ cd $GOPATH/src/github.com/pulumi/pulumi
@@ -83,4 +125,3 @@ For example, the command
     $ pulumi preview --logtostderr -v=5
 
 is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
-
