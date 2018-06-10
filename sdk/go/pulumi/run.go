@@ -47,7 +47,7 @@ func RunErr(body RunFunc) error {
 
 	// Validate some properties.
 	if info.Project == "" {
-		return errors.Errorf("missing project name (%s)", os.Environ())
+		return errors.Errorf("missing project name")
 	} else if info.Stack == "" {
 		return errors.New("missing stack name")
 	} else if info.MonitorAddr == "" {

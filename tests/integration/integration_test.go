@@ -364,3 +364,17 @@ func TestConfigBasicPython(t *testing.T) {
 		},
 	})
 }
+
+// Tests basic configuration from the perspective of a Pulumi Go program.
+func TestConfigBasicGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:   filepath.Join("config_basic", "go"),
+		Quick: true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super secret is encrypted",
+		},
+	})
+}
