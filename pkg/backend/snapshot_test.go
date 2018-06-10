@@ -18,11 +18,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/version"
-	"github.com/stretchr/testify/assert"
 )
 
 type MockRegisterResourceEvent struct {
