@@ -402,6 +402,21 @@ func (out *Float64Output) Apply(applier func(float64) (interface{}, error)) *Out
 	})
 }
 
+// IDOutput is an Output that is typed to return ID values.
+type IDOutput Output
+
+// Value returns the underlying number value.
+func (out *IDOutput) Value() (ID, bool, error) {
+	return (*Output)(out).ID()
+}
+
+// Apply applies a transformation to the ID value when it is available.
+func (out *IDOutput) Apply(applier func(ID) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(ID(cast.ToString(v)))
+	})
+}
+
 // IntOutput is an Output that is typed to return int values.
 type IntOutput Output
 
@@ -577,5 +592,20 @@ func (out *Uint64Output) Value() (uint64, bool, error) {
 func (out *Uint64Output) Apply(applier func(uint64) (interface{}, error)) *Output {
 	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
 		return applier(cast.ToUint64(v))
+	})
+}
+
+// URNOutput is an Output that is typed to return URN values.
+type URNOutput Output
+
+// Value returns the underlying number value.
+func (out *URNOutput) Value() (URN, error) {
+	return (*Output)(out).URN()
+}
+
+// Apply applies a transformation to the URN value when it is available.
+func (out *URNOutput) Apply(applier func(URN) (interface{}, error)) *Output {
+	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
+		return applier(URN(cast.ToString(v)))
 	})
 }

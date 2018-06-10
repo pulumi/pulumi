@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -165,7 +166,7 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}) (map[string]
 // ReadResource reads an existing custom resource's state from the resource monitor.  Note that resources read in this
 // way will not be part of the resulting stack's state, as they are presumed to belong to another.
 func (ctx *Context) ReadResource(
-	t, name string, id ID, state map[string]interface{}, opts ...ResourceOpt) (*ResourceState, error) {
+	t, name string, id ID, props map[string]interface{}, opts ...ResourceOpt) (*ResourceState, error) {
 	if t == "" {
 		return nil, errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -174,7 +175,48 @@ func (ctx *Context) ReadResource(
 		return nil, errors.New("resource ID is required for lookup and cannot be empty")
 	}
 
-	return nil, errors.New("ReadResource not yet implemented")
+	// Prepare the inputs for an impending operation.
+	op, err := ctx.newResourceOperation(true, props, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	if err = ctx.beginRPC(); err != nil {
+		return nil, err
+	}
+
+	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
+	go func() {
+		glog.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+		resp, err := ctx.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
+			Type:       t,
+			Name:       name,
+			Parent:     op.parent,
+			Properties: op.rpcProps,
+		})
+		if err != nil {
+			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+		} else {
+			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
+		}
+
+		// No matter the outcome, make sure all promises are resolved.
+		op.complete(err, resp.Urn, string(id), resp.Properties)
+
+		// Signal the completion of this RPC and notify any potential awaiters.
+		ctx.endRPC()
+	}()
+
+	outs := make(map[string]*Output)
+	for k, s := range op.outState {
+		outs[k] = s.out
+	}
+	return &ResourceState{
+		URN:   (*URNOutput)(op.outURN.out),
+		ID:    (*IDOutput)(op.outID.out),
+		State: outs,
+	}, nil
 }
 
 // RegisterResource creates and registers a new resource object.  t is the fully qualified type token and name is
@@ -188,42 +230,10 @@ func (ctx *Context) RegisterResource(
 		return nil, errors.New("resource name argument (for URN creation) cannot be empty")
 	}
 
-	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
-	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parentURN, optDepURNs, protect := ctx.getOpts(opts...)
-
-	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	keys, rpcProps, rpcDepURNs, err := marshalInputs(props)
+	// Prepare the inputs for an impending operation.
+	op, err := ctx.newResourceOperation(custom, props, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "marshaling properties")
-	}
-
-	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
-	var depURNs []string
-	depMap := make(map[URN]bool)
-	for _, dep := range append(optDepURNs, rpcDepURNs...) {
-		if _, has := depMap[dep]; !has {
-			depURNs = append(depURNs, string(dep))
-			depMap[dep] = true
-		}
-	}
-	sort.Strings(depURNs)
-
-	// Create a set of resolvers that we'll use to finalize state, for URNs, IDs, and output properties.
-	urn, resolveURN, rejectURN := NewOutput(nil)
-
-	var id *Output
-	var resolveID func(interface{}, bool)
-	var rejectID func(error)
-	if custom {
-		id, resolveID, rejectID = NewOutput(nil)
-	}
-
-	state := make(map[string]*Output)
-	resolveState := make(map[string]func(interface{}, bool))
-	rejectState := make(map[string]func(error))
-	for _, key := range keys {
-		state[key], resolveState[key], rejectState[key] = NewOutput(nil)
+		return nil, err
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
@@ -238,68 +248,161 @@ func (ctx *Context) RegisterResource(
 		resp, err := ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 			Type:         t,
 			Name:         name,
-			Parent:       string(parentURN),
-			Object:       rpcProps,
+			Parent:       op.parent,
+			Object:       op.rpcProps,
 			Custom:       custom,
-			Protect:      protect,
-			Dependencies: depURNs,
+			Protect:      op.protect,
+			Dependencies: op.deps,
 		})
-		var outprops map[string]interface{}
-		if err == nil {
-			outprops, err = unmarshalOutputs(resp.Object)
-		}
 		if err != nil {
-			// If there was an error, we must reject everything: URN, ID, and state properties.
 			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
-			rejectURN(err)
-			if rejectID != nil {
-				rejectID(err)
-			}
-			for _, reject := range rejectState {
-				reject(err)
-			}
 		} else {
-			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s %d", t, name, resp.Urn, resp.Id, len(outprops))
-
-			// Resolve the URN and ID.
-			resolveURN(URN(resp.Urn), true)
-			if resolveID != nil {
-				resolveID(ID(resp.Id), true)
-			}
-
-			// During previews, it's possible that nils will be returned due to unknown values.  This function
-			// determines the known-ed-ness of a given value below.
-			isKnown := func(v interface{}) bool {
-				return !ctx.DryRun() || v != nil
-			}
-
-			// Now resolve all output properties.
-			seen := make(map[string]bool)
-			for key, v := range outprops {
-				if resolve, has := resolveState[key]; has {
-					resolve(v, isKnown(v))
-					seen[key] = true
-				}
-			}
-
-			// If we didn't get back any inputs as outputs, resolve them to the inputs.
-			for key, resolve := range resolveState {
-				if !seen[key] {
-					v := props[key]
-					resolve(v, isKnown(v))
-				}
-			}
+			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
 		}
+
+		// No matter the outcome, make sure all promises are resolved.
+		op.complete(err, resp.Urn, resp.Id, resp.Object)
 
 		// Signal the completion of this RPC and notify any potential awaiters.
 		ctx.endRPC()
 	}()
 
+	outs := make(map[string]*Output)
+	for k, s := range op.outState {
+		outs[k] = s.out
+	}
 	return &ResourceState{
-		URN:   urn,
-		ID:    id,
-		State: state,
+		URN:   (*URNOutput)(op.outURN.out),
+		ID:    (*IDOutput)(op.outID.out),
+		State: outs,
 	}, nil
+}
+
+// resourceOperation reflects all of the inputs necessary to perform core resource RPC operations.
+type resourceOperation struct {
+	ctx      *Context
+	parent   string
+	deps     []string
+	protect  bool
+	props    map[string]interface{}
+	rpcProps *structpb.Struct
+	outURN   *resourceOutput
+	outID    *resourceOutput
+	outState map[string]*resourceOutput
+}
+
+// newResourceOperation prepares the inputs for a resource operation, shared between read and register.
+func (ctx *Context) newResourceOperation(custom bool, props map[string]interface{},
+	opts ...ResourceOpt) (*resourceOperation, error) {
+	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
+	// explicit parent, and a root stack resource exists, we will automatically parent to that.
+	parent, optDeps, protect := ctx.getOpts(opts...)
+
+	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	keys, rpcProps, rpcDeps, err := marshalInputs(props)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling properties")
+	}
+
+	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
+	var deps []string
+	depMap := make(map[URN]bool)
+	for _, dep := range append(optDeps, rpcDeps...) {
+		if _, has := depMap[dep]; !has {
+			deps = append(deps, string(dep))
+			depMap[dep] = true
+		}
+	}
+	sort.Strings(deps)
+
+	// Create a set of resolvers that we'll use to finalize state, for URNs, IDs, and output properties.
+	outURN, resolveURN, rejectURN := NewOutput(nil)
+	urn := &resourceOutput{out: outURN, resolve: resolveURN, reject: rejectURN}
+
+	var id *resourceOutput
+	if custom {
+		outID, resolveID, rejectID := NewOutput(nil)
+		id = &resourceOutput{out: outID, resolve: resolveID, reject: rejectID}
+	}
+
+	state := make(map[string]*resourceOutput)
+	for _, key := range keys {
+		outState, resolveState, rejectState := NewOutput(nil)
+		state[key] = &resourceOutput{
+			out:     outState,
+			resolve: resolveState,
+			reject:  rejectState,
+		}
+	}
+
+	return &resourceOperation{
+		ctx:      ctx,
+		parent:   string(parent),
+		deps:     deps,
+		protect:  protect,
+		props:    props,
+		rpcProps: rpcProps,
+		outURN:   urn,
+		outID:    id,
+		outState: state,
+	}, nil
+}
+
+// complete finishes a resource operation given the set of RPC results.
+func (op *resourceOperation) complete(err error, urn string, id string, result *structpb.Struct) {
+	var outprops map[string]interface{}
+	if err == nil {
+		outprops, err = unmarshalOutputs(result)
+	}
+	if err != nil {
+		// If there was an error, we must reject everything: URN, ID, and state properties.
+		op.outURN.reject(err)
+		if op.outID != nil {
+			op.outID.reject(err)
+		}
+		for _, s := range op.outState {
+			s.reject(err)
+		}
+	} else {
+		// Resolve the URN and ID.
+		op.outURN.resolve(URN(urn), true)
+		if op.outID != nil {
+			if id == "" && op.ctx.DryRun() {
+				op.outID.resolve("", false)
+			} else {
+				op.outID.resolve(ID(id), true)
+			}
+		}
+
+		// During previews, it's possible that nils will be returned due to unknown values.  This function
+		// determines the known-ed-ness of a given value below.
+		isKnown := func(v interface{}) bool {
+			return !op.ctx.DryRun() || v != nil
+		}
+
+		// Now resolve all output properties.
+		seen := make(map[string]bool)
+		for k, v := range outprops {
+			if s, has := op.outState[k]; has {
+				s.resolve(v, isKnown(v))
+				seen[k] = true
+			}
+		}
+
+		// If we didn't get back any inputs as outputs, resolve them to the inputs.
+		for k, s := range op.outState {
+			if !seen[k] {
+				v := op.props[k]
+				s.resolve(v, isKnown(v))
+			}
+		}
+	}
+}
+
+type resourceOutput struct {
+	out     *Output
+	resolve func(interface{}, bool)
+	reject  func(error)
 }
 
 // getOpts returns a set of resource options from an array of them.  This includes the parent URN, any
@@ -389,9 +492,9 @@ func (ctx *Context) waitForRPCs() {
 // ResourceState contains the results of a resource registration operation.
 type ResourceState struct {
 	// URN will resolve to the resource's URN after registration has completed.
-	URN *Output
+	URN *URNOutput
 	// ID will resolve to the resource's ID after registration, provided this is for a custom resource.
-	ID *Output
+	ID *IDOutput
 	// State contains the full set of expected output properties and will resolve after completion.
 	State Outputs
 }

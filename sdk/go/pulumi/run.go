@@ -69,7 +69,7 @@ func RunErr(body RunFunc) error {
 	if err != nil {
 		return err
 	}
-	ctx.stackR, err = reg.URN.URN()
+	ctx.stackR, err = reg.URN.Value()
 	if err != nil {
 		return err
 	}
