@@ -21,6 +21,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -43,6 +44,17 @@ func RunErr(body RunFunc) error {
 	// boilerplate to a minimum in the average Pulumi Go program.
 	// TODO(joe): this is a fine default, but consider `...RunOpt`s to control how we get the various addresses, etc.
 	info := getEnvInfo()
+
+	// Validate some properties.
+	if info.Project == "" {
+		return errors.New("missing project name")
+	} else if info.Stack == "" {
+		return errors.New("missing stack name")
+	} else if info.MonitorAddr == "" {
+		return errors.New("missing resource monitor RPC address")
+	} else if info.EngineAddr == "" {
+		return errors.New("missing engine RPC address")
+	}
 
 	// Create a fresh context.
 	ctx, err := NewContext(context.TODO(), info)

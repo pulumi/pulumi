@@ -43,28 +43,27 @@ type Context struct {
 
 // NewContext creates a fresh run context out of the given metadata.
 func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
-	// Validate some properties.
-	if info.Project == "" {
-		return nil, errors.New("missing project name")
-	}
-	if info.Stack == "" {
-		return nil, errors.New("missing stack name")
-	}
-	if info.MonitorAddr == "" {
-		return nil, errors.New("missing resource monitor RPC address")
-	}
-	if info.EngineAddr == "" {
-		return nil, errors.New("missing engine RPC address")
+	// Connect to the gRPC endpoints if we have addresses for them.
+	var monitorConn *grpc.ClientConn
+	var monitor pulumirpc.ResourceMonitorClient
+	if addr := info.MonitorAddr; addr != "" {
+		conn, err := grpc.Dial(info.MonitorAddr, grpc.WithInsecure())
+		if err != nil {
+			return nil, errors.Wrap(err, "connecting to resource monitor over RPC")
+		}
+		monitorConn = conn
+		monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
 	}
 
-	monitorConn, err := grpc.Dial(info.MonitorAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, errors.Wrap(err, "connecting to resource monitor over RPC")
-	}
-
-	engineConn, err := grpc.Dial(info.EngineAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, errors.Wrap(err, "connecting to engine over RPC")
+	var engineConn *grpc.ClientConn
+	var engine pulumirpc.EngineClient
+	if addr := info.EngineAddr; addr != "" {
+		conn, err := grpc.Dial(info.EngineAddr, grpc.WithInsecure())
+		if err != nil {
+			return nil, errors.Wrap(err, "connecting to engine over RPC")
+		}
+		engineConn = conn
+		engine = pulumirpc.NewEngineClient(engineConn)
 	}
 
 	mutex := &sync.Mutex{}
@@ -73,9 +72,9 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		info:        info,
 		exports:     make(map[string]interface{}),
 		monitorConn: monitorConn,
-		monitor:     pulumirpc.NewResourceMonitorClient(monitorConn),
+		monitor:     monitor,
 		engineConn:  engineConn,
-		engine:      pulumirpc.NewEngineClient(engineConn),
+		engine:      engine,
 		rpcs:        0,
 		rpcsLock:    mutex,
 		rpcsDone:    sync.NewCond(mutex),
@@ -84,11 +83,15 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 
 // Close implements io.Closer and relinquishes any outstanding resources held by the context.
 func (ctx *Context) Close() error {
-	if err := ctx.engineConn.Close(); err != nil {
-		return err
+	if ctx.engineConn != nil {
+		if err := ctx.engineConn.Close(); err != nil {
+			return err
+		}
 	}
-	if err := ctx.monitorConn.Close(); err != nil {
-		return err
+	if ctx.monitorConn != nil {
+		if err := ctx.monitorConn.Close(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -104,6 +107,12 @@ func (ctx *Context) Parallel() int { return ctx.info.Parallel }
 
 // DryRun is true when evaluating a program for purposes of planning, instead of performing a true deployment.
 func (ctx *Context) DryRun() bool { return ctx.info.DryRun }
+
+// GetConfig returns the config value, as a string, and a bool indicating whether it exists or not.
+func (ctx *Context) GetConfig(key string) (string, bool) {
+	v, ok := ctx.info.Config[key]
+	return v, ok
+}
 
 // Invoke will invoke a provider's function, identified by its token tok.
 func (ctx *Context) Invoke(tok string, args map[string]interface{}) (Outputs, error) {
