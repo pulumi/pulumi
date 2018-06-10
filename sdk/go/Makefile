@@ -17,8 +17,8 @@ install::
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 lint::
-	$(GOMETALINTER) ./pulumi/... | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	$(GOMETALINTER) ./pulumi-language-go/... | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./pulumi/... | sort
+	$(GOMETALINTER) ./pulumi-language-go/... | sort
 
 test_fast::
 	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}

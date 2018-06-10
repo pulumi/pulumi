@@ -112,17 +112,17 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 			return nil, nil, err
 		}
 
+		// If the value is known, marshal it.
 		if known {
-			// If the value is known, marshal it.
 			e, d, merr := marshalInput(ov)
 			if merr != nil {
 				return nil, nil, merr
 			}
 			return e, append(t.Deps(), d...), nil
-		} else {
-			// Otherwise, simply return the unknown value sentinel.
-			return rpcTokenUnknownValue, t.Deps(), nil
 		}
+
+		// Otherwise, simply return the unknown value sentinel.
+		return rpcTokenUnknownValue, t.Deps(), nil
 	case CustomResource:
 		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
 		e, d, err := marshalInput(t.ID())
