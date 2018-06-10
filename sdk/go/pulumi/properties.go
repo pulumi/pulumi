@@ -622,7 +622,7 @@ func (out *URNOutput) Apply(applier func(URN) (interface{}, error)) *Output {
 // toString attempts to convert v to a string.
 func toString(v interface{}) string {
 	if s := cast.ToString(v); s != "" {
-		return ""
+		return s
 	}
 
 	// See if this can convert through reflection (e.g., for type aliases).
