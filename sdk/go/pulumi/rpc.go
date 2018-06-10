@@ -105,24 +105,10 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 			"path":                t.Path(),
 			"uri":                 t.URI(),
 		}, nil, nil
+	case Output:
+		return marshalInputOutput(&t)
 	case *Output:
-		// Await the value and return its raw value.
-		ov, known, err := t.Value()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// If the value is known, marshal it.
-		if known {
-			e, d, merr := marshalInput(ov)
-			if merr != nil {
-				return nil, nil, merr
-			}
-			return e, append(t.Deps(), d...), nil
-		}
-
-		// Otherwise, simply return the unknown value sentinel.
-		return rpcTokenUnknownValue, t.Deps(), nil
+		return marshalInputOutput(t)
 	case CustomResource:
 		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
 		e, d, err := marshalInput(t.ID())
@@ -170,16 +156,44 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		}
 		return obj, deps, nil
 	case reflect.Ptr:
-		// For pointers, recurse into the underlying value.
+		// See if this is an alias for *Output.  If so, convert to an *Output, and recurse.
+		e := rv.Elem()
+		ot := reflect.TypeOf(Output{})
+		if e.Type().ConvertibleTo(ot) {
+			oo := e.Convert(ot)
+			return marshalInput(oo.Interface())
+		}
+
+		// For all other pointers, recurse into the underlying value.
 		if rv.IsNil() {
 			return nil, nil, nil
 		}
-		return marshalInput(rv.Interface())
+		return marshalInput(e.Interface())
 	case reflect.String:
 		return marshalInput(rv.String())
 	}
 
 	return nil, nil, errors.Errorf("unrecognized input property type: %v (%v)", v, reflect.TypeOf(v))
+}
+
+func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
+	// Await the value and return its raw value.
+	ov, known, err := out.Value()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// If the value is known, marshal it.
+	if known {
+		e, d, merr := marshalInput(ov)
+		if merr != nil {
+			return nil, nil, merr
+		}
+		return e, append(out.Deps(), d...), nil
+	}
+
+	// Otherwise, simply return the unknown value sentinel.
+	return rpcTokenUnknownValue, out.Deps(), nil
 }
 
 // unmarshalOutputs unmarshals all the outputs into a simple map.

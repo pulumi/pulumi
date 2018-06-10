@@ -25,6 +25,11 @@ import (
 // resources, allowing that new resource to know both the value as well as the resource the value came from.  This
 // allows for a precise "dependency graph" to be created, which properly tracks the relationship between resources.
 type Output struct {
+	s *outputState // protect against value aliasing.
+}
+
+// outputState is a heap-allocated block of state for each output property, in case of aliasing.
+type outputState struct {
 	sync chan *valueOrError // the channel for outputs whose values are not yet known.
 	voe  *valueOrError      // the value or error, after the channel has been rendezvoused with.
 	deps []Resource         // the dependencies associated with this output property.
@@ -42,8 +47,10 @@ type valueOrError struct {
 // error; exactly one function must be called.  This acts like a promise.
 func NewOutput(deps []Resource) (*Output, func(interface{}, bool), func(error)) {
 	out := &Output{
-		sync: make(chan *valueOrError, 1),
-		deps: deps,
+		s: &outputState{
+			sync: make(chan *valueOrError, 1),
+			deps: deps,
+		},
 	}
 	return out, out.resolve, out.reject
 }
@@ -62,14 +69,14 @@ func (out *Output) resolve(v interface{}, known bool) {
 			}
 		}()
 	} else {
-		out.sync <- &valueOrError{value: v, known: known}
+		out.s.sync <- &valueOrError{value: v, known: known}
 	}
 }
 
 // reject will reject the output.  It is not exported, because we want to control the capabilities tightly, such
 // that anybody who happens to have an Output is not allowed to reject it; only those who created it can.
 func (out *Output) reject(err error) {
-	out.sync <- &valueOrError{err: err}
+	out.s.sync <- &valueOrError{err: err}
 }
 
 // Apply transforms the data of the output property using the applier func.  The result remains an output property,
@@ -114,19 +121,19 @@ func (out *Output) Apply(applier func(v interface{}) (interface{}, error)) *Outp
 }
 
 // Deps returns the dependencies for this output property.
-func (out *Output) Deps() []Resource { return out.deps }
+func (out *Output) Deps() []Resource { return out.s.deps }
 
 // Value retrieves the underlying value for this output property.
 func (out *Output) Value() (interface{}, bool, error) {
 	// If neither error nor value are available, first await the channel.  Only one Goroutine will make it through this
 	// and is responsible for closing the channel, to signal to other awaiters that it's safe to read the values.
-	if out.voe == nil {
-		if voe := <-out.sync; voe != nil {
-			out.voe = voe
-			close(out.sync)
+	if out.s.voe == nil {
+		if voe := <-out.s.sync; voe != nil {
+			out.s.voe = voe
+			close(out.s.sync)
 		}
 	}
-	return out.voe.value, out.voe.known, out.voe.err
+	return out.s.voe.value, out.s.voe.known, out.s.voe.err
 }
 
 // Archive retrives the underlying value for this output property as an archive.
