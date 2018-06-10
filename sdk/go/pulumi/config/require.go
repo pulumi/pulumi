@@ -30,79 +30,79 @@ func Require(ctx *pulumi.Context, key string) string {
 	return v
 }
 
-// Require loads an optional configuration value by its key, as a bool, or panics if it doesn't exist.
+// RequireBool loads an optional configuration value by its key, as a bool, or panics if it doesn't exist.
 func RequireBool(ctx *pulumi.Context, key string) bool {
 	v := Require(ctx, key)
 	return cast.ToBool(v)
 }
 
-// Require loads an optional configuration value by its key, as a float32, or panics if it doesn't exist.
+// RequireFloat32 loads an optional configuration value by its key, as a float32, or panics if it doesn't exist.
 func RequireFloat32(ctx *pulumi.Context, key string) float32 {
 	v := Require(ctx, key)
 	return cast.ToFloat32(v)
 }
 
-// Require loads an optional configuration value by its key, as a float64, or panics if it doesn't exist.
+// RequireFloat64 loads an optional configuration value by its key, as a float64, or panics if it doesn't exist.
 func RequireFloat64(ctx *pulumi.Context, key string) float64 {
 	v := Require(ctx, key)
 	return cast.ToFloat64(v)
 }
 
-// Require loads an optional configuration value by its key, as a int, or panics if it doesn't exist.
+// RequireInt loads an optional configuration value by its key, as a int, or panics if it doesn't exist.
 func RequireInt(ctx *pulumi.Context, key string) int {
 	v := Require(ctx, key)
 	return cast.ToInt(v)
 }
 
-// Require loads an optional configuration value by its key, as a int8, or panics if it doesn't exist.
+// RequireInt8 loads an optional configuration value by its key, as a int8, or panics if it doesn't exist.
 func RequireInt8(ctx *pulumi.Context, key string) int8 {
 	v := Require(ctx, key)
 	return cast.ToInt8(v)
 }
 
-// Require loads an optional configuration value by its key, as a int16, or panics if it doesn't exist.
+// RequireInt16 loads an optional configuration value by its key, as a int16, or panics if it doesn't exist.
 func RequireInt16(ctx *pulumi.Context, key string) int16 {
 	v := Require(ctx, key)
 	return cast.ToInt16(v)
 }
 
-// Require loads an optional configuration value by its key, as a int32, or panics if it doesn't exist.
+// RequireInt32 loads an optional configuration value by its key, as a int32, or panics if it doesn't exist.
 func RequireInt32(ctx *pulumi.Context, key string) int32 {
 	v := Require(ctx, key)
 	return cast.ToInt32(v)
 }
 
-// Require loads an optional configuration value by its key, as a int64, or panics if it doesn't exist.
+// RequireInt64 loads an optional configuration value by its key, as a int64, or panics if it doesn't exist.
 func RequireInt64(ctx *pulumi.Context, key string) int64 {
 	v := Require(ctx, key)
 	return cast.ToInt64(v)
 }
 
-// Require loads an optional configuration value by its key, as a uint, or panics if it doesn't exist.
+// RequireUint loads an optional configuration value by its key, as a uint, or panics if it doesn't exist.
 func RequireUint(ctx *pulumi.Context, key string) uint {
 	v := Require(ctx, key)
 	return cast.ToUint(v)
 }
 
-// Require loads an optional configuration value by its key, as a uint8, or panics if it doesn't exist.
+// RequireUint8 loads an optional configuration value by its key, as a uint8, or panics if it doesn't exist.
 func RequireUint8(ctx *pulumi.Context, key string) uint8 {
 	v := Require(ctx, key)
 	return cast.ToUint8(v)
 }
 
-// Require loads an optional configuration value by its key, as a uint16, or panics if it doesn't exist.
+// RequireUint16 loads an optional configuration value by its key, as a uint16, or panics if it doesn't exist.
 func RequireUint16(ctx *pulumi.Context, key string) uint16 {
 	v := Require(ctx, key)
 	return cast.ToUint16(v)
 }
 
-// Require loads an optional configuration value by its key, as a uint32, or panics if it doesn't exist.
+// RequireUint32 loads an optional configuration value by its key, as a uint32, or panics if it doesn't exist.
 func RequireUint32(ctx *pulumi.Context, key string) uint32 {
 	v := Require(ctx, key)
 	return cast.ToUint32(v)
 }
 
-// Require loads an optional configuration value by its key, as a uint64, or panics if it doesn't exist.
+// RequireUint64 loads an optional configuration value by its key, as a uint64, or panics if it doesn't exist.
 func RequireUint64(ctx *pulumi.Context, key string) uint64 {
 	v := Require(ctx, key)
 	return cast.ToUint64(v)

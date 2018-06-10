@@ -31,7 +31,7 @@ func Try(ctx *pulumi.Context, key string) (string, error) {
 	return v, nil
 }
 
-// Try loads an optional configuration value by its key, as a bool, or returns an error if it doesn't exist.
+// TryBool loads an optional configuration value by its key, as a bool, or returns an error if it doesn't exist.
 func TryBool(ctx *pulumi.Context, key string) (bool, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -40,7 +40,7 @@ func TryBool(ctx *pulumi.Context, key string) (bool, error) {
 	return cast.ToBool(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a float32, or returns an error if it doesn't exist.
+// TryFloat32 loads an optional configuration value by its key, as a float32, or returns an error if it doesn't exist.
 func TryFloat32(ctx *pulumi.Context, key string) (float32, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -49,7 +49,7 @@ func TryFloat32(ctx *pulumi.Context, key string) (float32, error) {
 	return cast.ToFloat32(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a float64, or returns an error if it doesn't exist.
+// TryFloat64 loads an optional configuration value by its key, as a float64, or returns an error if it doesn't exist.
 func TryFloat64(ctx *pulumi.Context, key string) (float64, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -58,7 +58,7 @@ func TryFloat64(ctx *pulumi.Context, key string) (float64, error) {
 	return cast.ToFloat64(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a int, or returns an error if it doesn't exist.
+// TryInt loads an optional configuration value by its key, as a int, or returns an error if it doesn't exist.
 func TryInt(ctx *pulumi.Context, key string) (int, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -67,7 +67,7 @@ func TryInt(ctx *pulumi.Context, key string) (int, error) {
 	return cast.ToInt(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a int8, or returns an error if it doesn't exist.
+// TryInt8 loads an optional configuration value by its key, as a int8, or returns an error if it doesn't exist.
 func TryInt8(ctx *pulumi.Context, key string) (int8, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -76,7 +76,7 @@ func TryInt8(ctx *pulumi.Context, key string) (int8, error) {
 	return cast.ToInt8(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a int16, or returns an error if it doesn't exist.
+// TryInt16 loads an optional configuration value by its key, as a int16, or returns an error if it doesn't exist.
 func TryInt16(ctx *pulumi.Context, key string) (int16, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -85,7 +85,7 @@ func TryInt16(ctx *pulumi.Context, key string) (int16, error) {
 	return cast.ToInt16(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a int32, or returns an error if it doesn't exist.
+// TryInt32 loads an optional configuration value by its key, as a int32, or returns an error if it doesn't exist.
 func TryInt32(ctx *pulumi.Context, key string) (int32, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -94,7 +94,7 @@ func TryInt32(ctx *pulumi.Context, key string) (int32, error) {
 	return cast.ToInt32(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a int64, or returns an error if it doesn't exist.
+// TryInt64 loads an optional configuration value by its key, as a int64, or returns an error if it doesn't exist.
 func TryInt64(ctx *pulumi.Context, key string) (int64, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -103,7 +103,7 @@ func TryInt64(ctx *pulumi.Context, key string) (int64, error) {
 	return cast.ToInt64(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a uint, or returns an error if it doesn't exist.
+// TryUint loads an optional configuration value by its key, as a uint, or returns an error if it doesn't exist.
 func TryUint(ctx *pulumi.Context, key string) (uint, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -112,7 +112,7 @@ func TryUint(ctx *pulumi.Context, key string) (uint, error) {
 	return cast.ToUint(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a uint8, or returns an error if it doesn't exist.
+// TryUint8 loads an optional configuration value by its key, as a uint8, or returns an error if it doesn't exist.
 func TryUint8(ctx *pulumi.Context, key string) (uint8, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -121,7 +121,7 @@ func TryUint8(ctx *pulumi.Context, key string) (uint8, error) {
 	return cast.ToUint8(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a uint16, or returns an error if it doesn't exist.
+// TryUint16 loads an optional configuration value by its key, as a uint16, or returns an error if it doesn't exist.
 func TryUint16(ctx *pulumi.Context, key string) (uint16, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -130,7 +130,7 @@ func TryUint16(ctx *pulumi.Context, key string) (uint16, error) {
 	return cast.ToUint16(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a uint32, or returns an error if it doesn't exist.
+// TryUint32 loads an optional configuration value by its key, as a uint32, or returns an error if it doesn't exist.
 func TryUint32(ctx *pulumi.Context, key string) (uint32, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
@@ -139,7 +139,7 @@ func TryUint32(ctx *pulumi.Context, key string) (uint32, error) {
 	return cast.ToUint32(v), nil
 }
 
-// Try loads an optional configuration value by its key, as a uint64, or returns an error if it doesn't exist.
+// TryUint64 loads an optional configuration value by its key, as a uint64, or returns an error if it doesn't exist.
 func TryUint64(ctx *pulumi.Context, key string) (uint64, error) {
 	v, err := Try(ctx, key)
 	if err != nil {
