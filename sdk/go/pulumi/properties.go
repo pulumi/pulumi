@@ -15,6 +15,8 @@
 package pulumi
 
 import (
+	"reflect"
+
 	"github.com/spf13/cast"
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi/asset"
@@ -129,8 +131,8 @@ func (out *Output) Value() (interface{}, bool, error) {
 	// and is responsible for closing the channel, to signal to other awaiters that it's safe to read the values.
 	if out.s.voe == nil {
 		if voe := <-out.s.sync; voe != nil {
-			out.s.voe = voe
-			close(out.s.sync)
+			out.s.voe = voe   // first time through, publish the value.
+			close(out.s.sync) // and close the channel to signal to others that the memozied value is available.
 		}
 	}
 	return out.s.voe.value, out.s.voe.known, out.s.voe.err
@@ -205,7 +207,7 @@ func (out *Output) ID() (ID, bool, error) {
 	if err != nil || !known {
 		return "", known, err
 	}
-	return ID(cast.ToString(v)), true, nil
+	return ID(toString(v)), true, nil
 }
 
 // Int retrives the underlying value for this output property as a int.
@@ -259,7 +261,7 @@ func (out *Output) String() (string, bool, error) {
 	if err != nil || !known {
 		return "", known, err
 	}
-	return cast.ToString(v), true, nil
+	return toString(v), true, nil
 }
 
 // Uint retrives the underlying value for this output property as a uint.
@@ -313,7 +315,7 @@ func (out *Output) URN() (URN, error) {
 	if err != nil || !known {
 		return "", err
 	}
-	return URN(cast.ToString(v)), nil
+	return URN(toString(v)), nil
 }
 
 // Outputs is a map of property name to value, one for each resource output property.
@@ -420,7 +422,7 @@ func (out *IDOutput) Value() (ID, bool, error) {
 // Apply applies a transformation to the ID value when it is available.
 func (out *IDOutput) Apply(applier func(ID) (interface{}, error)) *Output {
 	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
-		return applier(ID(cast.ToString(v)))
+		return applier(ID(toString(v)))
 	})
 }
 
@@ -523,7 +525,7 @@ func (out *StringOutput) Value() (string, bool, error) {
 // Apply applies a transformation to the number value when it is available.
 func (out *StringOutput) Apply(applier func(string) (interface{}, error)) *Output {
 	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
-		return applier(cast.ToString(v))
+		return applier(toString(v))
 	})
 }
 
@@ -613,6 +615,22 @@ func (out *URNOutput) Value() (URN, error) {
 // Apply applies a transformation to the URN value when it is available.
 func (out *URNOutput) Apply(applier func(URN) (interface{}, error)) *Output {
 	return (*Output)(out).Apply(func(v interface{}) (interface{}, error) {
-		return applier(URN(cast.ToString(v)))
+		return applier(URN(toString(v)))
 	})
+}
+
+// toString attempts to convert v to a string.
+func toString(v interface{}) string {
+	if s := cast.ToString(v); s != "" {
+		return ""
+	}
+
+	// See if this can convert through reflection (e.g., for type aliases).
+	st := reflect.TypeOf("")
+	sv := reflect.ValueOf(v)
+	if sv.Type().ConvertibleTo(st) {
+		return sv.Convert(st).Interface().(string)
+	}
+
+	return ""
 }
