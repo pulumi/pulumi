@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -24,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
-	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newStackRmCmd() *cobra.Command {
@@ -57,22 +55,12 @@ func newStackRmCmd() *cobra.Command {
 				return errors.New("confirmation declined")
 			}
 
-			hasResources, err := s.Remove(commandContext(), force)
+			hasResources, err := removeStack(s, force)
 			if err != nil {
 				if hasResources {
 					return errors.Errorf(
 						"'%s' still has resources; removal rejected; pass --force to override", s.Name())
 				}
-				return err
-			}
-
-			// Blow away stack specific settings if they exist
-			path, err := workspace.DetectProjectStackPath(s.Name().StackName())
-			if err != nil {
-				return err
-			}
-
-			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 				return err
 			}
 

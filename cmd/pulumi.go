@@ -123,6 +123,7 @@ func NewPulumiCmd() *cobra.Command {
 	// set to true.
 	if hasDebugCommands() {
 		cmd.AddCommand(newArchiveCommand())
+		cmd.AddCommand(newRunCmd())
 
 		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 			"Include the tracing header with the given contents.")

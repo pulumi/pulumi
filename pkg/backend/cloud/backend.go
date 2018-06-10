@@ -499,11 +499,11 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'", stack.Name())
+	fmt.Printf(colors.ColorizeText(colors.BrightMagenta+"Created stack '%s'"), stack.Name())
 	if !stack.RunLocally() {
 		fmt.Printf(" in PPC %s", stack.CloudName())
 	}
-	fmt.Println(".")
+	fmt.Printf(colors.ColorizeText(colors.Reset) + "\n")
 
 	return stack, nil
 }
