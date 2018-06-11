@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -973,7 +974,11 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Ensure GOPATH is known.
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
-		return errors.New("$GOPATH must be set to test a Go project")
+		usr, err := user.Current()
+		if err != nil {
+			return err
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
 	}
 
 	// To compile, simply run `go build -o $GOPATH/bin/<projname> .` from the project's working directory.
