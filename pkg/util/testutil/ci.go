@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package testutil
 
 import (
 	"os"
@@ -53,7 +53,7 @@ var vendors = []vendor{
 	makeVendor("AWS CodeBuild", []string{"CODEBUILD_BUILD_ARN"}, nil),
 }
 
-func isCI() bool {
+func IsCI() bool {
 	for _, v := range vendors {
 		if v.isCI() {
 			return true
