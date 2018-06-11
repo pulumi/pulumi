@@ -35,6 +35,10 @@ var (
 
 // PyPiVersionFromNpmVersion returns a PEP-440 compliant version for a given semver version. This method does not
 // support all possible semver strings, but instead just supports versions that we generate for our node packages.
+//
+// NOTE: We do not include git information in the generated version (even within the local part, which PEP440 would
+// allow) because we publish dev packages to PyPI, which does not allow local parts. Instead, we only add a local part
+// when the build is dirty (which has the nice side effect of preventing us from publishing a build from dirty bits).
 func PyPiVersionFromNpmVersion(s string) (string, error) {
 	var b bytes.Buffer
 
@@ -43,7 +47,6 @@ func PyPiVersionFromNpmVersion(s string) (string, error) {
 		mustFprintf(&b, "%s", capMap["version"])
 		writePostBuildAndDirtyInfoToReleaseVersion(&b, capMap)
 		return b.String(), nil
-
 	} else if rcVersionRegex.MatchString(s) {
 		capMap := captureToMap(rcVersionRegex, s)
 		mustFprintf(&b, "%src%s", capMap["version"], capMap["rcN"])
@@ -51,9 +54,9 @@ func PyPiVersionFromNpmVersion(s string) (string, error) {
 		return b.String(), nil
 	} else if devVersionRegex.MatchString(s) {
 		capMap := captureToMap(devVersionRegex, s)
-		mustFprintf(&b, "%s.dev%s+%s", capMap["version"], capMap["time"], capMap["gitInfo"])
+		mustFprintf(&b, "%s.dev%s", capMap["version"], capMap["time"])
 		if capMap["dirty"] != "" {
-			mustFprintf(&b, ".dirty")
+			mustFprintf(&b, "+dirty")
 		}
 		return b.String(), nil
 	}
@@ -80,9 +83,8 @@ func captureToMap(r *regexp.Regexp, s string) map[string]string {
 func writePostBuildAndDirtyInfoToReleaseVersion(w io.Writer, capMap map[string]string) {
 	if capMap["time"] != "" {
 		mustFprintf(w, ".post%s", capMap["time"])
-		mustFprintf(w, "+%s", capMap["gitInfo"])
 		if capMap["dirty"] != "" {
-			mustFprintf(w, ".dirty")
+			mustFprintf(w, "+dirty")
 		}
 	} else if capMap["dirty"] != "" {
 		mustFprintf(w, "+dirty")
