@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -462,39 +463,41 @@ func (pt *programTester) runYarnCommand(name string, args []string, wd string) e
 }
 
 func (pt *programTester) testLifeCycleInitAndDestroy() error {
-	dir, err := pt.copyTestToTemporaryDirectory()
+	tmpdir, projdir, err := pt.copyTestToTemporaryDirectory()
 	if err != nil {
 		return errors.Wrap(err, "copying test to temp dir")
 	}
 
 	testFinished := false
-	defer func() {
-		if !testFinished || pt.t.Failed() {
-			// Test aborted or failed. Maybe copy to "failed tests" directory.
-			failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
-			if failedTestsDir != "" {
-				dest := filepath.Join(failedTestsDir, pt.t.Name()+uniqueSuffix())
-				contract.IgnoreError(fsutil.CopyFile(dest, dir, nil))
+	if tmpdir != "" {
+		defer func() {
+			if !testFinished || pt.t.Failed() {
+				// Test aborted or failed. Maybe copy to "failed tests" directory.
+				failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
+				if failedTestsDir != "" {
+					dest := filepath.Join(failedTestsDir, pt.t.Name()+uniqueSuffix())
+					contract.IgnoreError(fsutil.CopyFile(dest, tmpdir, nil))
+				}
+			} else {
+				contract.IgnoreError(os.RemoveAll(tmpdir))
 			}
-		} else {
-			contract.IgnoreError(os.RemoveAll(dir))
-		}
-	}()
+		}()
+	}
 
-	err = pt.testLifeCycleInitialize(dir)
+	err = pt.testLifeCycleInitialize(projdir)
 	if err != nil {
 		return errors.Wrap(err, "initializing test project")
 	}
 
 	// Ensure that before we exit, we attempt to destroy and remove the stack.
 	defer func() {
-		if dir != "" {
-			destroyErr := pt.testLifeCycleDestroy(dir)
+		if projdir != "" {
+			destroyErr := pt.testLifeCycleDestroy(projdir)
 			assert.NoError(pt.t, destroyErr)
 		}
 	}()
 
-	if err = pt.testPreviewUpdateAndEdits(dir); err != nil {
+	if err = pt.testPreviewUpdateAndEdits(projdir); err != nil {
 		return errors.Wrap(err, "running test preview, update, and edits")
 	}
 
@@ -750,7 +753,7 @@ func (pt *programTester) testEdit(dir string, i int, edit EditDir) error {
 		dirToDelete = dirOld
 	}
 
-	err := pt.prepareProject(dir)
+	err := pt.prepareProjectDir(dir)
 	if err != nil {
 		return errors.Wrapf(err, "Couldn't prepare project in %v", dir)
 	}
@@ -843,10 +846,16 @@ func (pt *programTester) performExtraRuntimeValidation(
 }
 
 // copyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
-func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) {
+func (pt *programTester) copyTestToTemporaryDirectory() (string, string, error) {
+	// Get the source dir and project info.
+	sourceDir := pt.opts.Dir
+	projinfo, err := pt.getProjinfo(sourceDir)
+	if err != nil {
+		return "", "", err
+	}
+
 	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
 	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
-	sourceDir := pt.opts.Dir
 	var prefix string
 	if len(sourceDir) <= 30 {
 		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir)
@@ -867,42 +876,56 @@ func (pt *programTester) copyTestToTemporaryDirectory() (dir string, err error) 
 	fprintf(pt.opts.Stdout, "sample: %v\n", sourceDir)
 	bin, err := pt.getBin()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
 
-	stackName := string(pt.opts.GetStackName())
-	targetDir, err := ioutil.TempDir("", stackName+"-")
+	// For most projects, we will copy to a temporary directory.  For Go projects, however, we must not perturb
+	// the source layout, due to GOPATH and vendoring.  So, skip it for Go.
+	var tmpdir, projdir string
+	if projinfo.Proj.Runtime == "go" {
+		projdir = projinfo.Root
+	} else {
+		stackName := string(pt.opts.GetStackName())
+		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
+		if tempErr != nil {
+			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
+		}
+
+		// Copy the source project.
+		if copyErr := fsutil.CopyFile(targetDir, sourceDir, nil); copyErr != nil {
+			return "", "", copyErr
+		}
+
+		// Set tmpdir so that the caller will clean up afterwards.
+		tmpdir = targetDir
+		projdir = targetDir
+	}
+	projinfo.Root = projdir
+
+	err = pt.prepareProject(projinfo)
 	if err != nil {
-		return "", errors.Wrap(err, "Couldn't create temporary directory")
+		return "", "", errors.Wrapf(err, "Failed to prepare %v", projdir)
 	}
 
-	// Copy the source project
-	if err = fsutil.CopyFile(targetDir, sourceDir, nil); err != nil {
-		return "", err
-	}
-
-	err = pt.prepareProject(targetDir)
-	if err != nil {
-		return "", errors.Wrapf(err, "Failed to prepare %v", targetDir)
-	}
-
-	fprintf(stdout, "projdir: %v\n", targetDir)
-	return targetDir, nil
+	fprintf(stdout, "projdir: %v\n", projdir)
+	return tmpdir, projdir, nil
 }
 
-// prepareProject runs setup necessary to get the project ready for `pulumi` commands.
-func (pt *programTester) prepareProject(projectDir string) error {
+func (pt *programTester) getProjinfo(projectDir string) (*engine.Projinfo, error) {
 	// Load up the package so we know things like what language the project is.
 	projfile := filepath.Join(projectDir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	projinfo := &engine.Projinfo{Proj: proj, Root: projectDir}
+	return &engine.Projinfo{Proj: proj, Root: projectDir}, nil
+}
 
+// prepareProject runs setup necessary to get the project ready for `pulumi` commands.
+func (pt *programTester) prepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
-	switch proj.Runtime {
+	switch rt := projinfo.Proj.Runtime; rt {
 	case "nodejs":
 		return pt.prepareNodeJSProject(projinfo)
 	case "python":
@@ -910,8 +933,17 @@ func (pt *programTester) prepareProject(projectDir string) error {
 	case "go":
 		return pt.prepareGoProject(projinfo)
 	default:
-		return errors.Errorf("unrecognized project runtime: %s", proj.Runtime)
+		return errors.Errorf("unrecognized project runtime: %s", rt)
 	}
+}
+
+// prepareProjectDir runs setup necessary to get the project ready for `pulumi` commands.
+func (pt *programTester) prepareProjectDir(projectDir string) error {
+	projinfo, err := pt.getProjinfo(projectDir)
+	if err != nil {
+		return err
+	}
+	return pt.prepareProject(projinfo)
 }
 
 // prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
@@ -963,7 +995,11 @@ func (pt *programTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Ensure GOPATH is known.
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
-		return errors.New("$GOPATH must be set to test a Go project")
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
 	}
 
 	// To compile, simply run `go build -o $GOPATH/bin/<projname> .` from the project's working directory.
