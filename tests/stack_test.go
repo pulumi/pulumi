@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 
@@ -199,6 +200,10 @@ func TestStackCommands(t *testing.T) {
 		defer func() {
 			e.DeleteEnvironment()
 		}()
+
+		if testutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skip("Skipping; PULUMI_ACCESS_TOKEN is not set")
+		}
 
 		// Random stack name to avoid collisions in the service.
 		stackName := addRandomSufix("roundtrip")
