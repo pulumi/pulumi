@@ -959,8 +959,9 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer) error {
 		Method: zip.Deflate,
 	}
 
-	// Set a nonzero -- but constant -- modification time.
-	// Otherwise, some agents (e.g. Azure websites) can't extract the resulting archive.
+	// Set a nonzero -- but constant -- modification time. Otherwise, some agents (e.g. Azure websites) can't extract the
+	// resulting archive. We use `SetModTime` for go1.9 compatibility.
+	// nolint: megacheck
 	fh.SetModTime(time.Unix(0, 0))
 
 	fw, err := zw.CreateHeader(fh)
