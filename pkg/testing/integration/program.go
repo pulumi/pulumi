@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/fsutil"
 	"github.com/pulumi/pulumi/pkg/util/retry"
+	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -315,6 +316,10 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	}
 
 	t.Parallel()
+
+	if testutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skip("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
 
 	// If the test panics, recover and log instead of letting the panic escape the test. Even though *this* test will
 	// have run deferred functions and cleaned up, if the panic reaches toplevel it will kill the process and prevent

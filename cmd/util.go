@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -466,7 +467,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 // isInteractive returns true if the environment and command line options indicate we should
 // do things interactively
 func isInteractive(nonInteractive bool) bool {
-	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !isCI()
+	return !nonInteractive && terminal.IsTerminal(int(os.Stdout.Fd())) && !testutil.IsCI()
 }
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
