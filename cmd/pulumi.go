@@ -80,7 +80,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		defaultHelp(cmd, args)
 		fmt.Println("")
-		fmt.Println("Additional documentation available at https://docs.pulumi.com")
+		fmt.Println("Additional documentation available at https://pulumi.io")
 	})
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
