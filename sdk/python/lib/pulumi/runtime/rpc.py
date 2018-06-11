@@ -19,6 +19,7 @@ out of RPC calls.
 import six
 from six.moves import map
 from google.protobuf import struct_pb2
+from .unknown import Unknown
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -50,6 +51,9 @@ def serialize_resource_value(value):
     elif isinstance(value, list):
         # Deeply serialize lists.
         return list(map(serialize_resource_value, value))
+    elif isinstance(value, Unknown):
+        # Serialize instances of Unknown as the UNKNOWN guid
+        return UNKNOWN
     else:
         # All other values are directly serializable.
         # TODO[pulumi/pulumi#1063]: eventually, we want to think about Output, Properties, and so on.
@@ -77,7 +81,7 @@ def deserialize_property(prop):
     """
 
     if prop == UNKNOWN:
-        return None
+        return Unknown()
 
     # ListValues are projected to lists
     if isinstance(prop, struct_pb2.ListValue):

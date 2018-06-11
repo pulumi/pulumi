@@ -15,7 +15,7 @@
 import unittest
 from google.protobuf import struct_pb2
 from pulumi import CustomResource
-from pulumi.runtime import rpc
+from pulumi.runtime import rpc, Unknown
 
 class PropertySerializeTests(unittest.TestCase):
     """
@@ -47,6 +47,19 @@ class PropertySerializeTests(unittest.TestCase):
         self.assertEqual(1, proto_list[0])
         self.assertEqual("2", proto_list[1])
         self.assertEqual(True, proto_list[2])
+
+    def test_unknown(self):
+        """
+        Tests that we serialize instances of the Unknown class to
+        the unknown GUID.
+        """
+        struct = rpc.serialize_resource_props({
+            "unknown_prop": Unknown()
+        })
+
+        # pylint: disable=unsubscriptable-object
+        unknown = struct["unknown_prop"]
+        self.assertEqual(rpc.UNKNOWN, unknown)
 
 class FakeCustomResource(object):
     """
