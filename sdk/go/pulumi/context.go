@@ -202,7 +202,13 @@ func (ctx *Context) ReadResource(
 		}
 
 		// No matter the outcome, make sure all promises are resolved.
-		op.complete(err, resp.Urn, string(id), resp.Properties)
+		var urn, id string
+		var props *structpb.Struct
+		if resp != nil {
+			urn, id = resp.Urn, string(id)
+			props = resp.Properties
+		}
+		op.complete(err, urn, id, props)
 
 		// Signal the completion of this RPC and notify any potential awaiters.
 		ctx.endRPC()
@@ -261,7 +267,13 @@ func (ctx *Context) RegisterResource(
 		}
 
 		// No matter the outcome, make sure all promises are resolved.
-		op.complete(err, resp.Urn, resp.Id, resp.Object)
+		var urn, id string
+		var props *structpb.Struct
+		if resp != nil {
+			urn, id = resp.Urn, string(id)
+			props = resp.Object
+		}
+		op.complete(err, urn, id, props)
 
 		// Signal the completion of this RPC and notify any potential awaiters.
 		ctx.endRPC()
