@@ -16,6 +16,7 @@ package colors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/reconquest/loreley"
 
@@ -44,6 +45,12 @@ func ColorizeText(s string) string {
 	c, err := loreley.CompileAndExecuteToString(s, nil, nil)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
 	return c
+}
+
+// Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with
+// a "highlighted" version surrounded by those commands and a final reset afterwards.
+func Highlight(s, text, commands string) string {
+	return strings.Replace(s, text, commands+text+Reset, -1)
 }
 
 // Basic colors.
