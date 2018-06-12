@@ -5,7 +5,7 @@ set -o nounset -o errexit -o pipefail
 make ensure
 
 # Ensure the working tree is clean (make ensure may have updated lock files)
-$(go env GOPATH)/src/github.com/pulumi/home/scripts/check-worktree-is-clean.sh
+$(go env GOPATH)/src/github.com/pulumi/scripts/ci/check-worktree-is-clean.sh
 
 # Set stdout back to blocking to avoid problems writing large outputs.
 # https://github.com/pulumi/pulumi-ppc/issues/176

@@ -4,6 +4,7 @@
 # we can in a subshell.
 
 export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
+export PULUMI_SCRIPTS="$(go env GOPATH)/src/github.com/pulumi/scripts"
 
 (
     set -o nounset -o errexit -o pipefail
@@ -13,8 +14,12 @@ export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
         sudo chown "${USER}" /opt/pulumi
     fi
 
-    # We have some shared scripts in pulumi/home, and we use them in other steps
-    git clone git@github.com:pulumi/home "${PULUMI_HOME}"
+    # We have some shared scripts in pulumi/home and pulumi/scripts that are used in other steps.
+    # We only clone the former if we have secure envvars.
+    if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then
+        git clone git@github.com:pulumi/home "${PULUMI_HOME}"
+    fi
+    git clone git@github.com:pulumi/scripts "${PULUMI_SCRIPTS}"
 
     # If we have an NPM token, put it in the .npmrc file, so we can use it:
     if [ ! -z "${NPM_TOKEN:-}" ]; then
@@ -22,7 +27,7 @@ export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
     fi
 
     # Put static entries for Pulumi backends in /etc/hosts
-    "${PULUMI_HOME}/scripts/pulumi-hosts" | sudo tee -a /etc/hosts
+    "${PULUMI_SCRIPTS}/ci/pulumi-hosts" | sudo tee -a /etc/hosts
 ) || exit 1  # Abort outer script if subshell fails.
 
 export PULUMI_ROOT=/opt/pulumi
