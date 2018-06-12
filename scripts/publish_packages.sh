@@ -21,8 +21,7 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
 
     echo "Publishing Pip package to pulumi.com:"
     twine upload \
-        --repository-url https://test.pypi.org/legacy/ \
-        -u pulumi -p ${PYPI_TEST_PASSWORD} \
+        -u pulumi -p ${PYPI_PASSWORD} \
         ${ROOT}/sdk/python/env/src/dist/*.whl
 fi
 
