@@ -16,6 +16,7 @@ package colors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/reconquest/loreley"
 
@@ -46,7 +47,13 @@ func ColorizeText(s string) string {
 	return c
 }
 
-// Basic
+// Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with
+// a "highlighted" version surrounded by those commands and a final reset afterwards.
+func Highlight(s, text, commands string) string {
+	return strings.Replace(s, text, commands+text+Reset, -1)
+}
+
+// Basic colors.
 var (
 	Black         = Command("fg 0")
 	Red           = Command("fg 1")
@@ -64,8 +71,14 @@ var (
 	BrightMagenta = Command("fg 13")
 	BrightCyan    = Command("fg 14")
 	BrightWhite   = Command("fg 15")
-	Reset         = Command("reset")
 )
+
+var (
+	Bold      = Command("bold")
+	Underline = Command("underline")
+)
+
+var Reset = Command("reset")
 
 // Special predefined colors for logical conditions.
 var (

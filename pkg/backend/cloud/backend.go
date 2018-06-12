@@ -263,9 +263,25 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	if accessToken != "" {
 		fmt.Printf("Using access token from %s\n", AccessTokenEnvVar)
 	} else {
-		token, readerr := cmdutil.ReadConsoleNoEcho(
-			fmt.Sprintf("Enter your Pulumi access token from %s (or hit enter to log in with your browser)",
-				cloudConsoleURL(cloudURL, "account")))
+		line1 := "We need your Pulumi account to identify you."
+		line1 = colors.Highlight(line1, "Pulumi account", colors.BrightWhite+colors.Underline+colors.Bold)
+		fmt.Printf(colors.ColorizeText(line1) + "\n")
+
+		accountLink := cloudConsoleURL(cloudURL, "account")
+		line2 := fmt.Sprintf("Enter your access token from %s", accountLink)
+		line2len := len(line2)
+		line2 = colors.Highlight(line2, "access token", colors.BrightCyan+colors.Bold)
+		line2 = colors.Highlight(line2, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Printf(colors.ColorizeText(line2) + "\n")
+
+		line3 := "    or hit <ENTER> to log in using your browser"
+		var padding string
+		if pad := line2len - len(line3); pad > 0 {
+			padding = strings.Repeat(" ", pad)
+		}
+		line3 = colors.Highlight(line3, "<ENTER>", colors.BrightCyan+colors.Bold)
+
+		token, readerr := cmdutil.ReadConsoleNoEcho(colors.ColorizeText(line3 + padding))
 		if readerr != nil {
 			return nil, readerr
 		}
