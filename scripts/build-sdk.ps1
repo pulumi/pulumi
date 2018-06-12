@@ -6,7 +6,7 @@
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = "Stop"
 
-$S3ProdBucketRoot="s3://rel.pulumi.com/releases/"
+$S3ProdBucketRoot="s3://get.pulumi.com/releases/"
 $S3EngBucketRoot="s3://eng.pulumi.com/releases/"
 $S3PublishFolderSdk="${S3ProdBucketRoot}sdk/"
 
@@ -38,7 +38,7 @@ function Download-Release ($repoName, $repoCommit, [ValidateSet("zip", "tgz")]$e
 if (!$VersionTag) { $VersionTag=Get-Date -UFormat '%Y%m%d_%H%M%S' }
 if (!$PulumiRef) { $PulumiRef="master" }
 
-$SdkFileName="pulumi-$VersionTag-windows.x64.zip"
+$SdkFileName="pulumi-$VersionTag-windows-x64.zip"
 
 $PulumiFolder=(Join-Path (New-TemporaryDirectory) "Pulumi")
 
@@ -72,7 +72,7 @@ $env:AWS_ACCESS_KEY_ID=$AWSCreds.Credentials.AccessKeyId
 $env:AWS_SECRET_ACCESS_KEY=$AWSCreds.Credentials.SecretAccessKey
 $env:AWS_SECURITY_TOKEN=$AWSCreds.Credentials.SessionToken
 
-aws s3 cp --only-show-errors "$SdkPackagePath" "${S3PublishFolderSdk}${SdkFileName}"
+aws s3 cp --acl public-read --only-show-errors "$SdkPackagePath" "${S3PublishFolderSdk}${SdkFileName}"
 
 Pop-Location | Out-Null
 
