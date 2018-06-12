@@ -6,7 +6,7 @@
 set -o nounset -o errexit -o pipefail
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 
-S3_PROD_BUCKET_ROOT="s3://rel.pulumi.com/releases/"
+S3_PROD_BUCKET_ROOT="s3://get.pulumi.com/releases/"
 S3_ENG_BUCKET_ROOT="s3://eng.pulumi.com/releases/"
 S3_PUBLISH_FOLDER_SDK="${S3_PROD_BUCKET_ROOT}sdk/"
 
@@ -56,7 +56,7 @@ case $(uname) in
     *) echo "error: unknown host os $(uname)" ; exit 1;;
 esac
 
-SDK_FILENAME=pulumi-${1:-$(date +"%Y%m%d_%H%M%S")}-${OS}.x64.tar.gz
+SDK_FILENAME=pulumi-${1:-$(date +"%Y%m%d_%H%M%S")}-${OS}-x64.tar.gz
 PULUMI_REF=${2:-master}
 
 # setup temporary folder to process the package
@@ -96,7 +96,7 @@ export AWS_ACCESS_KEY_ID=$(echo ${CREDS_JSON}     | jq ".Credentials.AccessKeyId
 export AWS_SECRET_ACCESS_KEY=$(echo ${CREDS_JSON} | jq ".Credentials.SecretAccessKey" --raw-output)
 export AWS_SECURITY_TOKEN=$(echo ${CREDS_JSON}    | jq ".Credentials.SessionToken" --raw-output)
 
-aws s3 cp --only-show-errors "${SDK_PACKAGE_PATH}" "${S3_PUBLISH_FOLDER_SDK}${SDK_FILENAME}"
+aws s3 cp --acl public-read --only-show-errors "${SDK_PACKAGE_PATH}" "${S3_PUBLISH_FOLDER_SDK}${SDK_FILENAME}"
 
 rm "${SDK_PACKAGE_PATH}"
 rm -rf "${PULUMI_FOLDER}/"
