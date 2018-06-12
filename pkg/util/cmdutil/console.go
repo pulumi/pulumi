@@ -22,8 +22,6 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
-
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
@@ -46,9 +44,7 @@ func Interactive() bool {
 // ReadConsole reads the console with the given prompt text.
 func ReadConsole(prompt string) (string, error) {
 	if prompt != "" {
-		prompt = colors.ColorizeText(
-			fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
-		fmt.Print(prompt)
+		fmt.Print(prompt + ": ")
 	}
 
 	reader := bufio.NewReader(os.Stdin)

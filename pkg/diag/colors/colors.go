@@ -46,7 +46,7 @@ func ColorizeText(s string) string {
 	return c
 }
 
-// Basic
+// Basic colors.
 var (
 	Black         = Command("fg 0")
 	Red           = Command("fg 1")
@@ -64,8 +64,14 @@ var (
 	BrightMagenta = Command("fg 13")
 	BrightCyan    = Command("fg 14")
 	BrightWhite   = Command("fg 15")
-	Reset         = Command("reset")
 )
+
+var (
+	Bold      = Command("bold")
+	Underline = Command("underline")
+)
+
+var Reset = Command("reset")
 
 // Special predefined colors for logical conditions.
 var (
