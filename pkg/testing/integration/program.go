@@ -300,6 +300,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi config set --secret <each opts.Secrets>
 //   pulumi preview
 //   pulumi update
+//   pulumi stack export --file stack.json
+//   pulumi stack import --file stack.json
 //   pulumi preview (expected to be empty)
 //   pulumi update (expected to be empty)
 //   pulumi destroy --yes
@@ -620,6 +622,13 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.Quick {
+
+		fprintf(pt.opts.Stdout, "Roundtripping checkpoint via stack export and stack import\n")
+
+		if err := pt.exportImport(dir); err != nil {
+			return err
+		}
+
 		msg := ""
 		if !pt.opts.AllowEmptyUpdateChanges {
 			msg = "(no changes expected)"
@@ -639,6 +648,21 @@ func (pt *programTester) testPreviewUpdateAndEdits(dir string) error {
 
 	// If there are any edits, apply them and run a preview and update for each one.
 	return pt.testEdits(dir)
+}
+
+func (pt *programTester) exportImport(dir string) error {
+	exportCmd := []string{"stack", "export", "--file", "stack.json"}
+	importCmd := []string{"stack", "import", "--file", "stack.json"}
+
+	defer func() {
+		contract.IgnoreError(os.Remove(filepath.Join(dir, "stack.json")))
+	}()
+
+	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir); err != nil {
+		return err
+	}
+
+	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir)
 }
 
 func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
