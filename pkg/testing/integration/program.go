@@ -474,8 +474,8 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 	}
 
 	testFinished := false
-	if tmpdir != "" {
-		defer func() {
+	defer func() {
+		if tmpdir != "" {
 			if !testFinished || pt.t.Failed() {
 				// Test aborted or failed. Maybe copy to "failed tests" directory.
 				failedTestsDir := os.Getenv("PULUMI_FAILED_TESTS_DIR")
@@ -486,8 +486,15 @@ func (pt *programTester) testLifeCycleInitAndDestroy() error {
 			} else {
 				contract.IgnoreError(os.RemoveAll(tmpdir))
 			}
-		}()
-	}
+		} else {
+			// When tmpdir is empty, we ran "in tree", which means we wrote output
+			// to the "command-output" folder in the projdir, and we should clean
+			// it up if the test passed
+			if testFinished && !pt.t.Failed() {
+				contract.IgnoreError(os.RemoveAll(filepath.Join(projdir, commandOutputFolderName)))
+			}
+		}
+	}()
 
 	err = pt.testLifeCycleInitialize(projdir)
 	if err != nil {

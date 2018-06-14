@@ -64,8 +64,12 @@ func uniqueSuffix() string {
 	return suffix
 }
 
+const (
+	commandOutputFolderName = "command-output"
+)
+
 func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
-	logFileDir := filepath.Join(runDir, "command-output")
+	logFileDir := filepath.Join(runDir, commandOutputFolderName)
 	if err := os.MkdirAll(logFileDir, 0700); err != nil {
 		return "", errors.Wrapf(err, "Failed to create '%s'", logFileDir)
 	}
