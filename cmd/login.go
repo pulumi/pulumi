@@ -46,7 +46,12 @@ func newLoginCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Logged into %s\n", b.Name())
+			if currentUser, err := b.CurrentUser(); err == nil {
+				fmt.Printf("Logged into %s as %s\n", b.Name(), currentUser)
+			} else {
+				fmt.Printf("Logged into %s\n", b.Name())
+			}
+
 			return nil
 		}),
 	}
