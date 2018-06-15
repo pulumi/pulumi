@@ -1,4 +1,7 @@
-This test attempts to exhaustively test all interesting combinations of resource steps.  This includes:
+# tests/integration/steps
+
+This test attempts to exhaustively try all interesting combinations of resource steps. This
+includes:
 
 * Same
 * Create
@@ -7,11 +10,13 @@ This test attempts to exhaustively test all interesting combinations of resource
 * CreateReplacement
 * DeleteReplaced
 
-In addition to the ability to recover from failures.  For example, there is a "pending deletion" capability
-that will remember resources that were meant to be deleted, but couldn't be, due to a failure partway through.
+in addition to the ability to recover from failures.  For example, there is a "pending deletion"
+capability that will remember resources that were meant to be deleted, but couldn't be, due to a
+failure partway through.
 
-The test is broken into a series of steps that will be executed in order.  Because the steps create different
-resources, we will end up with a specific sequence of CRUD operations that we will validate.
+The test is broken into a series of steps that will be executed in order.  Because the steps create
+different resources, we will end up with a specific sequence of CRUD operations that we will
+validate.
 
 # Step 1
 

@@ -2,8 +2,9 @@
 
 Pulumi is a cloud development platform that makes creating cloud programs easy and productive.
 
-Author cloud programs in your favorite favorite language and Pulumi will automatically keep your infrastructure
-up-to-date.  Skip learning yet another YAML dialect.  Pulumi is multi-language and multi-cloud, and fully extensible.
+Author cloud programs in your favorite favorite language and Pulumi will automatically keep your
+infrastructure up-to-date.  Skip learning yet another YAML dialect.  Pulumi is multi-language and
+multi-cloud, and fully extensible.
 
 To install the latest Pulumi release, run:
 
