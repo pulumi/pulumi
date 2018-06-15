@@ -30,8 +30,11 @@ function CopyPackage($pathToModule, $moduleName) {
 
 RunGoBuild "github.com/pulumi/pulumi"
 RunGoBuild "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs"
+RunGoBuild "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python"
+RunGoBuild "github.com/pulumi/pulumi/sdk/go/pulumi-language-go"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
+Copy-Item "$Root\sdk\python\cmd\pulumi-language-python-exec" "$PublishDir\bin"
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"
 
 # By default, if the archive already exists, 7zip will just add files to it, so blow away the existing
