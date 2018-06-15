@@ -46,7 +46,7 @@ import (
 
 const (
 	// By convention, the executor is the name of the current program (pulumi-language-python) plus this suffix.
-	pythonExecSuffix = "-exec" // the exec shim for Pulumi to run Python programs.
+	pythonDefaultExec = "pulumi-language-python-exec" // the exec shim for Pulumi to run Python programs.
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -68,18 +68,19 @@ func main() {
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
+
 	var pythonExec string
 	if givenExecutor == "" {
-		// The -exec binary is the same name as the current language host, except that we must trim off
-		// the file extension (if any) and then append -exec to it.
-		bin := os.Args[0]
-		if ext := filepath.Ext(bin); ext != "" {
-			bin = bin[:len(bin)-len(ext)]
-		}
-		bin += pythonExecSuffix
-		pathExec, err := exec.LookPath(bin)
+		// By default, the -exec script is installed next to the language host.
+		thisPath, err := os.Executable()
 		if err != nil {
-			err = errors.Wrapf(err, "could not find `%s` on the $PATH", bin)
+			err = errors.Wrap(err, "could not determine current executable")
+			cmdutil.Exit(err)
+		}
+
+		pathExec := filepath.Join(filepath.Dir(thisPath), pythonDefaultExec)
+		if _, err = os.Stat(pathExec); os.IsNotExist(err) {
+			err = errors.Errorf("missing executor %s", pathExec)
 			cmdutil.Exit(err)
 		}
 
@@ -142,7 +143,9 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	args := host.constructArguments(req)
+	args := []string{host.exec}
+	args = append(args, host.constructArguments(req)...)
+
 	config, err := host.constructConfig(req)
 	if err != nil {
 		err = errors.Wrap(err, "failed to serialize configuration")
@@ -156,7 +159,12 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
+	pythonCmd := os.Getenv("PULUMI_PYTHON_CMD")
+	if pythonCmd == "" {
+		pythonCmd = "python"
+	}
+
+	cmd := exec.Command(pythonCmd, args...) // nolint: gas, intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if config != "" {
