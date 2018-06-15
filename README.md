@@ -29,7 +29,7 @@ This repo contains the CLI, language SDKs, and the core Pulumi engine.  Individu
 | -------- | ------ | ------- | -------- |
 | JavaScript | Stable | Node.js 6.x-10.x | [Readme](./sdk/nodejs) |
 | TypeScript | Stable | Node.js 6.x-10.x | [Readme](./sdk/nodejs) |
-| Python | Beta | Python 2.7 | [Readme](./sdk/python) |
+| Python | Preview | Python 2.7 | [Readme](./sdk/python) |
 | Go | Preview | Go 1.x | [Readme](./sdk/go) |
 
 ## Clouds
@@ -37,9 +37,9 @@ This repo contains the CLI, language SDKs, and the core Pulumi engine.  Individu
 | Cloud | Status | Docs | Repo |
 | ----- | ------ | ---- | ---- |
 | Amazon Web Services | Stable | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws/) | [pulumi/pulumi-aws](https://github.com/pulumi/pulumi-aws) |
-| Microsoft Azure | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/azure/) | [pulumi/pulumi-azure](https://github.com/pulumi/pulumi-azure) |
+| Microsoft Azure | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/azure/) | [pulumi/pulumi-azure](https://github.com/pulumi/pulumi-azure) |
 | Google Cloud Platform | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/gcp/) | [pulumi/pulumi-gcp](https://github.com/pulumi/pulumi-gcp) |
-| Kubernetes | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/kubernetes/) | [pulumi/pulumi-kubernetes](https://github.com/pulumi/pulumi-kubernetes) |
+| Kubernetes | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/kubernetes/) | [pulumi/pulumi-kubernetes](https://github.com/pulumi/pulumi-kubernetes) |
 
 ## Libraries
 
@@ -48,8 +48,8 @@ There are several libraries that encapsulate best practices and common patterns:
 | Library | Status | Docs | Repo |
 | ------- | ------ | ---- | ---- |
 | AWS Serverless | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-serverless/) | [pulumi/pulumi-aws-serverless](https://github.com/pulumi/pulumi-aws-serverless) |
-| AWS Infrastructure | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-infra/) | [pulumi/pulumi-aws-infra](https://github.com/pulumi/pulumi-aws-infra) |
-| Pulumi Multi-Cloud Framework | Beta | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/cloud/) | [pulumi/pulumi-cloud](https://github.com/pulumi/pulumi-cloud) |
+| AWS Infrastructure | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws-infra/) | [pulumi/pulumi-aws-infra](https://github.com/pulumi/pulumi-aws-infra) |
+| Pulumi Multi-Cloud Framework | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/cloud/) | [pulumi/pulumi-cloud](https://github.com/pulumi/pulumi-cloud) |
 
 ## Examples
 
