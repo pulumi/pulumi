@@ -20,6 +20,7 @@ setup(name='pulumi',
       version='${VERSION}',
       description='Pulumi\'s Python SDK',
       url='https://github.com/pulumi/pulumi',
+      license='Apache 2.0',
       packages=find_packages(),
       install_requires=[
           'google==2.0.1',
