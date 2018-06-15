@@ -1,6 +1,6 @@
 # tests/integration/steps
 
-This test attempts to exhaustively test all interesting combinations of resource steps.  This
+This test attempts to exhaustively try all interesting combinations of resource steps. This
 includes:
 
 * Same
@@ -10,7 +10,7 @@ includes:
 * CreateReplacement
 * DeleteReplaced
 
-In addition to the ability to recover from failures.  For example, there is a "pending deletion"
+in addition to the ability to recover from failures.  For example, there is a "pending deletion"
 capability that will remember resources that were meant to be deleted, but couldn't be, due to a
 failure partway through.
 
