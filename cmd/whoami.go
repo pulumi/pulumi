@@ -19,42 +19,32 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/backend/cloud"
-	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newLoginCmd() *cobra.Command {
-	var cloudURL string
+func newWhoAmICmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "Log into the Pulumi Cloud",
-		Long:  "Log into the Pulumi Cloud.  You can script by using PULUMI_ACCESS_TOKEN environment variable.",
-		Args:  cmdutil.NoArgs,
+		Use:   "whoami",
+		Short: "Display current logged in user",
+		Long: "Display current logged in user\n" +
+			"\n" +
+			"Displays the username of the currently logged in user.",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			var b backend.Backend
-			var err error
-
-			if local.IsLocalBackendURL(cloudURL) {
-				b, err = local.Login(cmdutil.Diag(), cloudURL)
-			} else {
-				b, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL)
-			}
-
+			b, err := currentBackend()
 			if err != nil {
 				return err
 			}
 
-			if currentUser, err := b.CurrentUser(); err == nil {
-				fmt.Printf("Logged into %s as %s\n", b.Name(), currentUser)
-			} else {
-				fmt.Printf("Logged into %s\n", b.Name())
+			name, err := b.CurrentUser()
+			if err != nil {
+				return err
 			}
 
+			fmt.Println(name)
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log into")
+
 	return cmd
 }

@@ -410,6 +410,10 @@ func (b *localBackend) Logout() error {
 	return workspace.DeleteAccessToken(b.url)
 }
 
+func (b *localBackend) CurrentUser() (string, error) {
+	return "", errors.New("the local backend does not support multiple users")
+}
+
 func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	var stacks []tokens.QName
 
