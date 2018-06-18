@@ -291,7 +291,7 @@ func (a *Asset) Read() (*Blob, error) {
 	} else if a.IsURI() {
 		return a.readURI()
 	}
-	return nil, nil
+	return nil, errors.New("unrecognized asset type")
 }
 
 func (a *Asset) readText() (*Blob, error) {
