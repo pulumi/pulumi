@@ -58,7 +58,7 @@ func TestRunCommandLog(t *testing.T) {
 	err = RunCommand(nil, "node", args, tempdir, opts)
 	assert.Nil(t, err)
 
-	matches, err := filepath.Glob(filepath.Join(tempdir, "command-output", "node.*"))
+	matches, err := filepath.Glob(filepath.Join(tempdir, commandOutputFolderName, "node.*"))
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(matches))
 
