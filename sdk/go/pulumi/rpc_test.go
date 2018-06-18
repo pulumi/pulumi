@@ -50,7 +50,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	}
 
 	// Marshal those inputs.
-	_, m, deps, err := marshalInputs(input)
+	_, m, deps, err := marshalInputs(nil, input)
 	if !assert.Nil(t, err) {
 		assert.Equal(t, 0, len(deps))
 
