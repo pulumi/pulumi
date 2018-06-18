@@ -3,6 +3,7 @@
 package ints
 
 import (
+	"bytes"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -167,6 +168,22 @@ func TestStackOutputs(t *testing.T) {
 				assert.Equal(t, "ABC", stackRes.Outputs["xyz"])
 				assert.Equal(t, float64(42), stackRes.Outputs["foo"])
 			}
+		},
+	})
+}
+
+// TestStackOutputsDisplayed ensures that outputs are printed at the end of an update
+func TestStackOutputsDisplayed(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "stack_outputs",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        false,
+		Verbose:      true,
+		Stdout:       stdout,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"")
 		},
 	})
 }
