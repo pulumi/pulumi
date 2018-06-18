@@ -15,7 +15,7 @@ git:
   depth: false
 before_install:
     - source ./build/travis/prepare-environment.sh
-    - if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then source "${PULUMI_HOME}/scripts/keep-failed-tests.sh"; fi
+    - if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then source "${PULUMI_SCRIPTS}/ci/keep-failed-tests.sh"; fi
 install:
     - source ./build/travis/install-common-toolchain.sh
 before_script:
@@ -23,6 +23,6 @@ before_script:
 script:
     - make travis_${TRAVIS_EVENT_TYPE}
 after_failure:
-    - if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then "${PULUMI_HOME}/scripts/upload-failed-tests"; fi
+    - if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then "${PULUMI_SCRIPTS}/ci/upload-failed-tests"; fi
 notifications:
     webhooks: https://ufci1w66n3.execute-api.us-west-2.amazonaws.com/stage/travis
