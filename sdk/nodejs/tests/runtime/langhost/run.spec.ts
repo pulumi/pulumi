@@ -378,6 +378,38 @@ describe("rpc", () => {
             program: path.join(base, "016.promise_leak"),
             expectError: "Program exited with non-zero exit code: 1",
         },
+        "read_dependency": {
+            program: path.join(base, "017.read_dependency"),
+            expectResourceCount: 3,
+            readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
+                assert.strictEqual(t, "custom:read:Read");
+                assert.strictEqual(name, "test");
+                assert.strictEqual(id, "foobar");
+                return {
+                    urn: makeUrn(t, name),
+                    props: {
+                        field: "foobar",
+                    },
+                };
+            },
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string,
+                               res: any, dependencies: string[]) => {
+                assert.strictEqual(t, "custom:read:Read");
+                if (name === "dependent" || name === "dependson") {
+                    assert.deepEqual(dependencies, [
+                        makeUrn(t, "not-read"),
+                    ]);
+                }
+
+                return {
+                    id: name,
+                    urn: makeUrn(t, name),
+                    props: {
+                        field: res.field,
+                    },
+                };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
