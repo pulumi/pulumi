@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <Content Include="pulumi-language-dotnet-exec" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Pulumirpc\Pulumirpc.csproj" />
     <ProjectReference Include="..\Pulumi\Pulumi.csproj" />
   </ItemGroup>

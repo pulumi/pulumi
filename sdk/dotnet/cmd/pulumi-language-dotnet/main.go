@@ -1,14 +1,14 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
 
-// pulumi-language-python serves as the "language host" for Pulumi programs written in Python.  It is ultimately
+// pulumi-language-dotnet serves as the "language host" for Pulumi programs written in .NET.  It is ultimately
 // responsible for spawning the language runtime that executes the program.
 //
-// The program being executed is executed by a shim script called `pulumi-language-python-exec`. This script is
-// written in the hosted language (in this case, Python) and is responsible for initiating RPC links to the resource
+// The program being executed is executed by a shim exe called `pulumi-language-dotnet-exec`. This script is
+// written in the hosted language (in this case, C#) and is responsible for initiating RPC links to the resource
 // monitor and engine.
 //
 // It's therefore the responsibility of this program to implement the LanguageHostServer endpoint by spawning
-// instances of `pulumi-language-python-exec` and forwarding the RPC request arguments to the command-line.
+// instances of `pulumi-language-dotnet-exec` and forwarding the RPC request arguments to the command-line.
 package main
 
 import (
@@ -26,6 +26,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	"github.com/pulumi/pulumi/pkg/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -33,8 +34,8 @@ import (
 )
 
 const (
-	// By convention, the executor is the name of the current program (pulumi-language-python) plus this suffix.
-	pythonExecSuffix = "-exec" // the exec shim for Pulumi to run Python programs.
+	// By convention, the executor is the name of the current program (pulumi-language-dotnet) plus this suffix.
+	dotnetExecSuffix = "-exec" // the exec shim for Pulumi to run Python programs.
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
@@ -54,17 +55,17 @@ func main() {
 
 	flag.Parse()
 	args := flag.Args()
-	cmdutil.InitLogging(false, 0, false)
-	cmdutil.InitTracing(os.Args[0], tracing)
-	var pythonExec string
+	logging.InitLogging(false, 0, false)
+	cmdutil.InitTracing("pulumi-language-dotnet", "pulumi-language-dotnet", tracing)
+	var dotnetExec string
 	if givenExecutor == "" {
 		// The -exec binary is the same name as the current language host, except that we must trim off
 		// the file extension (if any) and then append -exec to it.
-		bin := os.Args[0]
+		bin := filepath.Base(os.Args[0])
 		if ext := filepath.Ext(bin); ext != "" {
 			bin = bin[:len(bin)-len(ext)]
 		}
-		bin += pythonExecSuffix
+		bin += dotnetExecSuffix
 		pathExec, err := exec.LookPath(bin)
 		if err != nil {
 			err = errors.Wrapf(err, "could not find `%s` on the $PATH", bin)
@@ -72,10 +73,10 @@ func main() {
 		}
 
 		glog.V(3).Infof("language host identified executor from path: `%s`", pathExec)
-		pythonExec = pathExec
+		dotnetExec = pathExec
 	} else {
 		glog.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
-		pythonExec = givenExecutor
+		dotnetExec = givenExecutor
 	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
@@ -87,7 +88,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing)
+			host := newLanguageHost(dotnetExec, engineAddress, tracing)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -105,7 +106,7 @@ func main() {
 	}
 }
 
-// pythonLanguageHost implements the LanguageRuntimeServer interface
+// dotnetLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type dotnetLanguageHost struct {
 	exec          string
@@ -171,7 +172,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	return &pulumirpc.RunResponse{Error: errResult}, nil
 }
 
-// constructArguments constructs a command-line for `pulumi-language-python`
+// constructArguments constructs a command-line for `pulumi-language-dotnet`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
 func (host *dotnetLanguageHost) constructArguments(req *pulumirpc.RunRequest) []string {
