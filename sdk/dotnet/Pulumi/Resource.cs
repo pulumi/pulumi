@@ -70,8 +70,10 @@ namespace Pulumi
         }
 
         private Value SerializeProperty(object o) {
-            if (o.GetType() == typeof(string)) {
+            if (o is string) {
                 return Value.ForString((string)o);
+            } else if (o is Task<string>) {
+                return Value.ForString(((Task<string>)o).Result);
             }
 
             throw new NotImplementedException($"cannot marshal object of type ${o.GetType()}");
