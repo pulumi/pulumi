@@ -8,7 +8,7 @@ namespace Pulumi
     {
         public ComponentResource(string type, string name, Dictionary<string, object> properties = null, ResourceOptions options = default(ResourceOptions))
         {
-            Register(type, name, false, properties, options);
+            RegisterAsync(type, name, false, properties, options);
         }
     }
 }

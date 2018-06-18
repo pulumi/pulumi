@@ -4,3 +4,4 @@ using System;
 
 Config config = new Config("hello-dotnet");
 CustomResource r = new CustomResource("aws:s3/bucket:Bucket", config["name"]);
+Console.WriteLine($"provided assigned id: {r.Id.Result}");

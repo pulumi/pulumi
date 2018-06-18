@@ -19,8 +19,7 @@ Add the Publish Pulumi.Host and add the folder to you $PATH:
 
 ```
 $ dotnet publish Pulumi.Host/pulumi-language-dotnet-exec.csproj
-$ export PATH=$(go env
-GOPATH)/src/github.com/pulumi/pulumi/sdk/dotnet/Pulumi.Host/bin/Debug/netcoreapp2.0/publish:$PATH
+$ export PATH=$(go env GOPATH)/src/github.com/pulumi/pulumi/sdk/dotnet/Pulumi.Host/bin/Debug/netcoreapp2.0/publish:$PATH
 ```
 
 Write a little sample app as a csharp script.  You have to include the full Path to Pulumi.dll in

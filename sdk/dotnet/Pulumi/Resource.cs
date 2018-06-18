@@ -1,12 +1,13 @@
 using Pulumirpc;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Pulumi
 {
     public abstract class Resource
     {
-        public string Urn { get; private set; }
+        public Task<string> Urn { get; private set; }
 
         public const string UnkownResourceId = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 
@@ -14,7 +15,7 @@ namespace Pulumi
         {
         }
 
-        protected RegisterResourceResponse Register(string type, string name, bool custom, Dictionary<string, object> properties, ResourceOptions options) {
+        protected Task<RegisterResourceResponse> RegisterAsync(string type, string name, bool custom, Dictionary<string, object> properties, ResourceOptions options) {
             if (string.IsNullOrEmpty(type))
             {
                 throw new ArgumentException(nameof(type));
@@ -25,7 +26,18 @@ namespace Pulumi
                 throw new ArgumentException(nameof(name));
             }
 
-            RegisterResourceResponse res = Runtime.Monitor.RegisterResource(
+
+            Task<string> parentUrn;
+
+            if (options.Parent != null) {
+                parentUrn = options.Parent.Urn;
+            } else if (Runtime.Root != null) {
+                parentUrn = Runtime.Root.Urn;
+            } else {
+                parentUrn = Task.FromResult("");
+            }
+
+            var res = Runtime.Monitor.RegisterResourceAsync(
                 new RegisterResourceRequest()
                 {
                     Type = type,
@@ -33,12 +45,12 @@ namespace Pulumi
                     Custom = custom,
                     Protect = false,
                     Object = new Google.Protobuf.WellKnownTypes.Struct(),
-                    Parent = options.Parent?.Urn ?? Runtime.Root?.Urn ?? "",
-                });
+                    Parent = parentUrn.Result
+                }
+            );
 
-            Urn = res.Urn;
-
-            return res;
+            Urn = res.ResponseAsync.ContinueWith((x) => x.Result.Urn);
+            return res.ResponseAsync;
         }
     }
 }
