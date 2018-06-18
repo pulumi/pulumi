@@ -398,6 +398,7 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 
 	urnToTreeNode[urn] = node
 
+	// if it's the not the root item, attach it as a child node to an appropriate parent item.
 	if urn != "" && urn != display.stackUrn {
 		var parentURN resource.URN
 
@@ -407,18 +408,18 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 		}
 
 		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
+
 		if !hasParentRow {
-			// if we couldn't find a parent for this yet, parent this to the stack if we
-			// have an entry for that.  Otherwise, we'll just make this a top level item.
+			// If we haven't heard about this node's parent, then  just parent it to the stack.
+			// Note: getting the parent row for the stack-urn will always succeed as we ensure that
+			// such a row is always there in ensureHeaderAndStackRows
 			parentURN = display.stackUrn
-			parentRow, hasParentRow = display.eventUrnToResourceRow[parentURN]
+			parentRow = display.eventUrnToResourceRow[parentURN]
 		}
 
-		if hasParentRow {
-			parentNode := display.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
-			parentNode.childNodes = append(parentNode.childNodes, node)
-			return node
-		}
+		parentNode := display.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
+		parentNode.childNodes = append(parentNode.childNodes, node)
+		return node
 	}
 
 	*result = append(*result, node)
@@ -774,9 +775,10 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	// If this is the first time we're seeing an event for the stack resource, check to see if we've already
 	// recorded root events that we want to reassociate with this URN.
 	if isRootURN(urn) {
+		display.stackUrn = urn
+
 		if row, has = display.eventUrnToResourceRow[""]; has {
 			row.SetStep(step)
-			display.stackUrn = urn
 			display.eventUrnToResourceRow[urn] = row
 			delete(display.eventUrnToResourceRow, "")
 			return row
@@ -792,7 +794,8 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	}
 
 	display.eventUrnToResourceRow[urn] = row
-	display.ensureHeaderRow()
+
+	display.ensureHeaderAndStackRows()
 	display.resourceRows = append(display.resourceRows, row)
 	return row
 }
@@ -886,7 +889,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
 	// Make sure we have a header to display
-	display.ensureHeaderRow()
+	display.ensureHeaderAndStackRows()
 
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
 
@@ -900,11 +903,30 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 	}
 }
 
-func (display *ProgressDisplay) ensureHeaderRow() {
+func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	if display.headerRow == nil {
 		// about to make our first status message.  make sure we present the header line first.
 		display.headerRow = &headerRowData{display: display}
 	}
+
+	// we've added at least one row to the table.  make sure we have a row to designate the
+	// stack if we haven't already heard about it yet.  This also ensures that as we build
+	// the tree we can always guarantee there's a 'root' to parent anything to.
+	_, hasStackRow := display.eventUrnToResourceRow[display.stackUrn]
+	if hasStackRow {
+		return
+	}
+
+	stackRow := &resourceRowData{
+		display:              display,
+		tick:                 display.currentTick,
+		diagInfo:             &DiagInfo{},
+		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+		hideRowIfUnnecessary: false,
+	}
+
+	display.eventUrnToResourceRow[display.stackUrn] = stackRow
+	display.resourceRows = append(display.resourceRows, stackRow)
 }
 
 func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
