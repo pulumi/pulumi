@@ -3,7 +3,6 @@
 # they would be set in the outer shell as well, so do as much logic as
 # we can in a subshell.
 
-export PULUMI_HOME="$(go env GOPATH)/src/github.com/pulumi/home"
 export PULUMI_SCRIPTS="$(go env GOPATH)/src/github.com/pulumi/scripts"
 
 (
@@ -14,12 +13,7 @@ export PULUMI_SCRIPTS="$(go env GOPATH)/src/github.com/pulumi/scripts"
         sudo chown "${USER}" /opt/pulumi
     fi
 
-    # We have some shared scripts in pulumi/home and pulumi/scripts that are used in other steps.
-    # We only clone the former if we have secure envvars.
-    if [ "${TRAVIS_SECURE_ENV_VARS:-}" = "true" ]; then
-        git clone git@github.com:pulumi/home "${PULUMI_HOME}"
-    fi
-    git clone git@github.com:pulumi/scripts "${PULUMI_SCRIPTS}"
+    git clone https://github.com/pulumi/scripts "${PULUMI_SCRIPTS}"
 
     # If we have an NPM token, put it in the .npmrc file, so we can use it:
     if [ ! -z "${NPM_TOKEN:-}" ]; then
