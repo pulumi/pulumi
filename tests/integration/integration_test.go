@@ -183,7 +183,10 @@ func TestStackOutputsDisplayed(t *testing.T) {
 		Stdout:       stdout,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			output := stdout.String()
-			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"")
+
+			// ensure we get the --outputs:-- info both for the normal update, and for the no-change update.
+			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"\n\ninfo: 1 change performed")
+			assert.Contains(t, output, "---outputs:---\nfoo: 42\nxyz: \"ABC\"\n\ninfo: no changes required")
 		},
 	})
 }
