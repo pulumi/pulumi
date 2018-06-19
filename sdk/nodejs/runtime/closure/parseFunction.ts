@@ -501,22 +501,8 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // We want to capture a specific set of properties.  Add this set of properties
         // into the existing set.
         const combined = existing || [];
-
-        // See if we've already marked this property as captured.  If so, make sure we still record
-        // if this property was invoked or not.
-        // if (current.infos[current.infos.length - 1].invoked) {
-
-        // }
-
-        // for (const existingProp of combined) {
-        //     if (existingProp.name === current.name) {
-        //         existingProp.invoked = existingProp.invoked || current.invoked;
-        //         return combined;
-        //     }
-        // }
-
-        // Haven't seen this property.  Record that we're capturing it.
         combined.push(current);
+
         return combined;
     }
 
