@@ -4485,6 +4485,180 @@ return function () { console.log(o1); console.log(o2.b.d); };
         });
     }
 
+    {
+        const o1 = { c: 2, d: 3 };
+        const o2 = { a: 1, b: o1 };
+        const o3 = { a: 1, b: o1 };
+
+        cases.push({
+            title: "Analyze property chain #16",
+            func: function () { console.log(o2.b.c); console.log(o3.b.d); },
+            expectText: `exports.handler = __f0;
+
+var __o2 = {};
+var __o2_b = {c: 2, d: 3};
+__o2.b = __o2_b;
+var __o3 = {};
+__o3.b = __o2_b;
+
+function __f0() {
+  return (function() {
+    with({ o2: __o2, o3: __o3 }) {
+
+return function () { console.log(o2.b.c); console.log(o3.b.d); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o1 = { c: 2, d: 3 };
+        const o2 = { a: 1, b: o1 };
+        const o3 = { a: 1, b: o1 };
+
+        cases.push({
+            title: "Analyze property chain #17",
+            func: function () { console.log(o2.b.d); console.log(o3.b.d); },
+            expectText: `exports.handler = __f0;
+
+var __o2 = {};
+var __o2_b = {d: 3};
+__o2.b = __o2_b;
+var __o3 = {};
+__o3.b = __o2_b;
+
+function __f0() {
+  return (function() {
+    with({ o2: __o2, o3: __o3 }) {
+
+return function () { console.log(o2.b.d); console.log(o3.b.d); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o1 = { c: 2, d: 3 };
+        const o2 = { a: 1, b: o1 };
+        const o3 = { a: 1, b: o1 };
+
+        cases.push({
+            title: "Analyze property chain #18",
+            func: function () { console.log(o2.b); console.log(o2.b.d); console.log(o3.b.d); },
+            expectText: `exports.handler = __f0;
+
+var __o2 = {};
+var __o2_b = {c: 2, d: 3};
+__o2.b = __o2_b;
+var __o3 = {};
+__o3.b = __o2_b;
+
+function __f0() {
+  return (function() {
+    with({ o2: __o2, o3: __o3 }) {
+
+return function () { console.log(o2.b); console.log(o2.b.d); console.log(o3.b.d); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o1 = { c: 2, d: 3 };
+        const o2 = { a: 1, b: o1 };
+        const o3 = { a: 1, b: o1 };
+
+        cases.push({
+            title: "Analyze property chain #19",
+            func: function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o2.b); },
+            expectText: `exports.handler = __f0;
+
+var __o2 = {};
+var __o2_b = {c: 2, d: 3};
+__o2.b = __o2_b;
+var __o3 = {};
+__o3.b = __o2_b;
+
+function __f0() {
+  return (function() {
+    with({ o2: __o2, o3: __o3 }) {
+
+return function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o2.b); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o1 = { c: 2, d: 3 };
+        const o2 = { a: 1, b: o1 };
+        const o3 = { a: 1, b: o1 };
+
+        cases.push({
+            title: "Analyze property chain #20",
+            func: function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o1); },
+            expectText: `exports.handler = __f0;
+
+var __o2 = {};
+var __o2_b = {d: 3, c: 2};
+__o2.b = __o2_b;
+var __o3 = {};
+__o3.b = __o2_b;
+
+function __f0() {
+  return (function() {
+    with({ o2: __o2, o3: __o3, o1: __o2_b }) {
+
+return function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o1); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o1 = { c: 2, d: 3 };
+        const o2 = { a: 1, b: o1 };
+        const o3 = { a: 1, b: o1 };
+
+        cases.push({
+            title: "Analyze property chain #21",
+            func: function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d);  },
+            expectText: `exports.handler = __f0;
+
+var __o1 = {c: 2, d: 3};
+var __o2 = {};
+__o2.b = __o1;
+var __o3 = {};
+__o3.b = __o1;
+
+function __f0() {
+  return (function() {
+    with({ o1: __o1, o2: __o2, o3: __o3 }) {
+
+return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async

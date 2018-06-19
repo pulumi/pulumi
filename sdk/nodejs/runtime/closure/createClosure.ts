@@ -923,6 +923,10 @@ function getOrCreateEntry(
                 // Determine what chained property names we're accessing off of this sub-property.
                 // if we have no sub property name chain, then indicate that with an empty array
                 // so that we capture the entire object.
+                //
+                // i.e.: if we started with a.b.c.d, and we've finally gotten to the point where
+                // we're serializing out the 'd' property, then we need to serialize it out fully
+                // since there are no more accesses off of it.
                 let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
                 if (nestedPropChains.some(chain => chain.infos.length === 0)) {
                     nestedPropChains = [];
