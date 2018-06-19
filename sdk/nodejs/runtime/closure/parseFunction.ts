@@ -60,6 +60,14 @@ export interface CapturedPropertyChain {
     infos: CapturedPropertyInfo[];
 }
 
+// A mapping from the names of variables we captured, to information about how those variables were
+// used.  For example, if we see "a.b.c()" (and 'a' is not declared in the function), we'll record a
+// mapping of { "a": ['b', 'c' (invoked)] }.  i.e. we captured 'a', accessed the properties 'b.c'
+// off of it, and we invoked that property access.  With this information we can decide the totality
+// of what we need to capture for 'a'.
+//
+// Note: if we want to capture everything, we just use an empty array for 'CapturedPropertyChain[]'.
+// Otherwise, we'll use the chains to determine what portions of the object to serialize.
 export type CapturedVariableMap = Map<string, CapturedPropertyChain[]>;
 
 // The set of variables the function attempts to capture.  There is a required set an an optional
