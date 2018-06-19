@@ -509,7 +509,8 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     function determineCapturedPropertyChain(node: ts.Node): CapturedPropertyChain | undefined {
         let infos: CapturedPropertyInfo[] | undefined;
 
-        // Walk up a sequence of dotted names until we hit something else.
+        // Walk up a sequence of property-access'es, recording the names we hit, until we hit
+        // something that isn't a property-access.
         while (node &&
                node.parent &&
                ts.isPropertyAccessExpression(node.parent) &&
@@ -531,6 +532,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
 
         if (infos) {
+            // Invariant checking.
             if (infos.length === 0) {
                 throw new Error("How did we end up with an empty list?");
             }
