@@ -198,6 +198,10 @@ class SerializedOutput<T> implements resource.Output<T> {
 export async function createFunctionInfoAsync(
     func: Function, serialize: (o: any) => boolean): Promise<FunctionInfo> {
 
+    if ("a".length > 0) {
+        throw new RunError("blah blah");
+    }
+
     const context: Context = {
         cache: new Map(),
         classInstanceMemberToSuperEntry: new Map(),
@@ -602,10 +606,10 @@ function throwSerializationError(func: Function, context: Context, info: string)
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
         else if (frame.capturedModuleName) {
-            message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+            message += `module1 '${frame.capturedModuleName}' which indirectly referenced\n`;
         }
         else if (frame.capturedVariableName) {
-            message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
+            message += `variable1 '${frame.capturedVariableName}' which indirectly referenced\n`;
         }
     }
 
