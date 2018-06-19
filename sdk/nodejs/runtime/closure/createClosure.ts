@@ -314,9 +314,6 @@ function createFunctionInfo(
         serialize: (o: any) => boolean, logInfo?: boolean): FunctionInfo {
 
     // logInfo = logInfo || func.name === "addHandler";
-    if (logInfo) {
-        console.log("Serializing " + func.name);
-    }
 
     const file: string =  v8.getFunctionFile(func);
     const line: number = v8.getFunctionLine(func);
@@ -367,20 +364,6 @@ function createFunctionInfo(
         const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
             throwSerializationError(func, context, error);
-        }
-
-        if (logInfo) {
-            console.log("required variables: " + JSON.stringify(makeObject(parsedFunction.capturedVariables.required)));
-        }
-
-        function makeObject(map: Map<string, any>) {
-            const res: any = {};
-
-            map.forEach((v, k) => {
-                res[k] = v;
-            });
-
-            return res;
         }
 
         const funcExprWithName = parsedFunction.funcExprWithName;
@@ -530,10 +513,6 @@ function createFunctionInfo(
 
             const properties = capturedVariables.get(name);
             const serializedName = getOrCreateEntry(name, undefined, context, serialize, logInfo);
-
-            if (logInfo) {
-                console.log("Serializing " + name + ", " + JSON.stringify(properties));
-            }
 
             // try to only serialize out the properties that were used by the user's code.
             const serializedValue = getOrCreateEntry(value, properties, context, serialize, logInfo);
@@ -825,17 +804,8 @@ function getOrCreateEntry(
     function serializeObject() {
         // Serialize the set of property names asked for.  If we discover that any of them
         // use this/super, then go and reserialize all the properties.
-
-        if (logInfo) {
-            console.log("First trying to serialize some props.");
-        }
-
         const serializeAll = serializeObjectWorker(capturedObjectProperties || []);
         if (serializeAll) {
-            if (logInfo) {
-                console.log("Falling back to trying to serialize all props.");
-            }
-
             serializeObjectWorker([]);
         }
     }
@@ -846,10 +816,6 @@ function getOrCreateEntry(
         const objectInfo: ObjectInfo = entry.object || { env: new Map() };
         entry.object = objectInfo;
         const environment = entry.object.env;
-
-        if (logInfo) {
-            console.log("Serializing object");
-        }
 
         if (localCapturedPropertyChains.length === 0) {
             serializeAllObjectProperties(environment);
@@ -862,10 +828,6 @@ function getOrCreateEntry(
     // Serializes out all the properties of this object.  Used when we can't prove that
     // only a subset of properties are used on this object.
     function serializeAllObjectProperties(environment: PropertyMap) {
-        if (logInfo) {
-            console.log("Serializing all props.");
-        }
-
         // we wanted to capture everything (including the prototype chain)
         const ownPropertyNamesAndSymbols = getOwnPropertyNamesAndSymbols(obj);
 
@@ -907,11 +869,8 @@ function getOrCreateEntry(
     // and have recorded in localCapturedPropertyChains
     function serializeSomeObjectProperties(
             environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
-        if (logInfo) {
-            console.log("Serializing some props " + JSON.stringify(localCapturedPropertyChains));
-        }
 
-        // validate our invariants.
+                // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
             if (chain.infos.length === 0) {
                 throw new Error("We should never have gotten an empty chain.");
