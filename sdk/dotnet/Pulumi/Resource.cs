@@ -12,11 +12,13 @@ namespace Pulumi
 
         public const string UnkownResourceId = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 
-        public Resource()
+        protected Resource()
         {
         }
 
-        protected Task<RegisterResourceResponse> RegisterAsync(string type, string name, bool custom, Dictionary<string, object> properties, ResourceOptions options) {
+        public Task<RegisterResourceResponse> RegisterAsync(string type, string name, bool custom, Dictionary<string, object> properties, ResourceOptions options) {
+            Console.WriteLine($"RegisterAsync({type}, {name}) called");
+
             if (string.IsNullOrEmpty(type))
             {
                 throw new ArgumentException(nameof(type));
@@ -70,10 +72,28 @@ namespace Pulumi
         }
 
         private Value SerializeProperty(object o) {
-            if (o is string) {
-                return Value.ForString((string)o);
-            } else if (o is Task<string>) {
-                return Value.ForString(((Task<string>)o).Result);
+            Console.WriteLine($"SerializeProperty({o})");
+
+            var input = o as IInput;
+            if (input != null) {
+                // Get the ground value.
+                var v = input.GetTask().Result;
+
+                if (v == null) {
+                    return Value.ForNull();
+                }
+
+                if (v is string) {
+                    return Value.ForString((string)v);
+                }
+
+                // We marshal custom resources as strings of their provider generated IDs.
+                var cr = v as CustomResource;
+                if (cr != null) {
+                    return Value.ForString(cr.Id.Result);
+                }
+
+                throw new NotImplementedException($"cannot marshal Input with underlying type ${input.GetType()}");
             }
 
             throw new NotImplementedException($"cannot marshal object of type ${o.GetType()}");
