@@ -4007,9 +4007,7 @@ return function () { console.log(exports.exportedValue); };
             expectText: `exports.handler = __f0;
 
 var __module = {};
-var __module_exports = {};
-Object.defineProperty(__module_exports, "__esModule", { value: true });
-__module_exports.exportedValue = 42;
+var __module_exports = {exportedValue: 42};
 __module.exports = __module_exports;
 
 function __f0() {
@@ -4032,7 +4030,7 @@ return function () { console.log(module.exports.exportedValue); };
         }
 
         cases.push({
-            title: "Required pacakges #1",
+            title: "Required packages #1",
             func: function () { require("typescript"); foo(); if (true) { require("os") } },
             expectPackages: new Set(["os", "typescript", "./util"]),
             expectText: `exports.handler = __f0;
@@ -4056,6 +4054,377 @@ function __f0() {
 return function () { require("typescript"); foo(); if (true) {
                 require("os");
             } };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: 2, d: 3 } };
+
+        cases.push({
+            title: "Analyze property chain #1",
+            func: function () { console.log(o.b.c); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {c: 2};
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.c); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: 2, d: 3 } };
+
+        cases.push({
+            title: "Analyze property chain #2",
+            func: function () { console.log(o.b); console.log(o.b.c); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {c: 2, d: 3};
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b); console.log(o.b.c); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: 2, d: 3 } };
+
+        cases.push({
+            title: "Analyze property chain #3",
+            func: function () { console.log(o.b); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {c: 2, d: 3};
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: 2, d: 3 } };
+
+        cases.push({
+            title: "Analyze property chain #4",
+            func: function () { console.log(o.a); },
+            expectText: `exports.handler = __f0;
+
+var __o = {a: 1};
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.a); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: { d: 1, e: 3 } } };
+
+        cases.push({
+            title: "Analyze property chain #5",
+            func: function () { console.log(o.b.c.d); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {};
+var __o_b_c = {d: 1};
+__o_b.c = __o_b_c;
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.c.d); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: { d: 1, e: 3 } } };
+
+        cases.push({
+            title: "Analyze property chain #6",
+            func: function () { console.log(o.b.c.d); console.log(o.b); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {};
+var __o_b_c = {d: 1, e: 3};
+__o_b.c = __o_b_c;
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.c.d); console.log(o.b); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: { d: 1, e: 3 } } };
+
+        cases.push({
+            title: "Analyze property chain #7",
+            func: function () { console.log(o.b.c.d); console.log(o.b.c); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {};
+var __o_b_c = {d: 1, e: 3};
+__o_b.c = __o_b_c;
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.c.d); console.log(o.b.c); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: { c: { d: 1, e: 3 } } };
+
+        cases.push({
+            title: "Analyze property chain #8",
+            func: function () { console.log(o.b.c.d); console.log(o.b.c); console.log(o.b); },
+            expectText: `exports.handler = __f0;
+
+var __o = {};
+var __o_b = {};
+var __o_b_c = {d: 1, e: 3};
+__o_b.c = __o_b_c;
+__o.b = __o_b;
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.c.d); console.log(o.b.c); console.log(o.b); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: function () { } };
+
+        cases.push({
+            title: "Analyze property chain #9",
+            func: function () { console.log(o.b.name); },
+            expectText: `exports.handler = __f0;
+
+var __o = {b: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function () { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.name); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: function () { } };
+
+        cases.push({
+            title: "Analyze property chain #10",
+            func: function () { console.log(o.b.name); console.log(o.b()); },
+            expectText: `exports.handler = __f0;
+
+var __o = {b: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function () { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.name); console.log(o.b()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: function () { } };
+
+        cases.push({
+            title: "Analyze property chain #11",
+            func: function () { console.log(o.b()); console.log(o.b.name); },
+            expectText: `exports.handler = __f0;
+
+var __o = {b: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function () { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b()); console.log(o.b.name); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: function () { return this; } };
+
+        cases.push({
+            title: "Analyze property chain #12",
+            func: function () { console.log(o.b.name); console.log(o.b()); },
+            expectText: `exports.handler = __f0;
+
+var __o = {a: 1, b: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function () { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b.name); console.log(o.b()); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const o = { a: 1, b: function () { return this; } };
+
+        cases.push({
+            title: "Analyze property chain #13",
+            func: function () { console.log(o.b()); console.log(o.b.name); },
+            expectText: `exports.handler = __f0;
+
+var __o = {a: 1, b: __f1};
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function () { return this; };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ o: __o }) {
+
+return function () { console.log(o.b()); console.log(o.b.name); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

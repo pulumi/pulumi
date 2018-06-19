@@ -53,7 +53,14 @@ export interface CapturedPropertyInfo {
     invoked: boolean;
 }
 
-export type CapturedVariableMap = Map<string, CapturedPropertyInfo[]>;
+// Information about a chain of captured properties.  i.e. if you have "foo.bar.baz.quux()", we'll
+// say that 'foo' was captured, but that "[bar, baz, quux]" was accessed off of it.  We'll also note
+// that 'quux' was invoked.
+export interface CapturedPropertyChain {
+    infos: CapturedPropertyInfo[];
+}
+
+export type CapturedVariableMap = Map<string, CapturedPropertyChain[]>;
 
 // The set of variables the function attempts to capture.  There is a required set an an optional
 // set. The optional set will not block closure-serialization if we cannot find them, while the
@@ -422,14 +429,14 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
 
         // We reached the top of the scope chain and this wasn't found; it's captured.
-        const capturedProperty = determineCapturedPropertyInfo(node);
+        const capturedPropertyChain = determineCapturedPropertyChain(node);
         if (node.parent!.kind === ts.SyntaxKind.TypeOfExpression) {
             // "typeof undeclared_id" is legal in JS (and is actually used in libraries). So keep
             // track that we would like to capture this variable, but mark that capture as optional
             // so we will not throw if we aren't able to find it in scope.
-            optional.set(name, combineProperties(optional.get(name), capturedProperty));
+            optional.set(name, combineProperties(optional.get(name), capturedPropertyChain));
         } else {
-            required.set(name, combineProperties(required.get(name), capturedProperty));
+            required.set(name, combineProperties(required.get(name), capturedPropertyChain));
         }
     }
 
@@ -474,11 +481,12 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     }
 
     function visitThisExpression(node: ts.ThisExpression): void {
-        required.set("this", combineProperties(required.get("this"), determineCapturedPropertyInfo(node)));
+        required.set(
+            "this", combineProperties(required.get("this"), determineCapturedPropertyChain(node)));
     }
 
-    function combineProperties(existing: CapturedPropertyInfo[] | undefined,
-                               current: CapturedPropertyInfo | undefined) {
+    function combineProperties(existing: CapturedPropertyChain[] | undefined,
+                               current: CapturedPropertyChain | undefined) {
         if (existing && existing.length === 0) {
             // We already want to capture everything.  Keep things that way.
             return existing;
@@ -496,29 +504,58 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
         // See if we've already marked this property as captured.  If so, make sure we still record
         // if this property was invoked or not.
-        for (const existingProp of combined) {
-            if (existingProp.name === current.name) {
-                existingProp.invoked = existingProp.invoked || current.invoked;
-                return combined;
-            }
-        }
+        // if (current.infos[current.infos.length - 1].invoked) {
+
+        // }
+
+        // for (const existingProp of combined) {
+        //     if (existingProp.name === current.name) {
+        //         existingProp.invoked = existingProp.invoked || current.invoked;
+        //         return combined;
+        //     }
+        // }
 
         // Haven't seen this property.  Record that we're capturing it.
         combined.push(current);
         return combined;
     }
 
-    function determineCapturedPropertyInfo(node: ts.Node): CapturedPropertyInfo | undefined {
-        if (node.parent &&
-            ts.isPropertyAccessExpression(node.parent) &&
-            node.parent.expression === node) {
+    function determineCapturedPropertyChain(node: ts.Node): CapturedPropertyChain | undefined {
+        let infos: CapturedPropertyInfo[] | undefined;
+
+        // Walk up a sequence of dotted names until we hit something else.
+        while (node &&
+               node.parent &&
+               ts.isPropertyAccessExpression(node.parent) &&
+               node.parent.expression === node) {
 
             const propertyAccess = <ts.PropertyAccessExpression>node.parent;
             const invoked = propertyAccess.parent !== undefined &&
                             ts.isCallExpression(propertyAccess.parent) &&
                             propertyAccess.parent.expression === propertyAccess;
 
-            return { name: node.parent.name.text, invoked };
+            if (!infos) {
+                infos = [];
+            }
+
+            // Keep track if this name was invoked.  If so, we'll have to analyze it later
+            // to see if it captured 'this'
+            infos.push({ name: node.parent.name.text, invoked });
+            node = node.parent;
+        }
+
+        if (infos) {
+            if (infos.length === 0) {
+                throw new Error("How did we end up with an empty list?");
+            }
+
+            for (let i = 0; i < infos.length - 1; i++) {
+                if (infos[i].invoked) {
+                    throw new Error("Only the last item in the dotted chain is allowed to be invoked.");
+                }
+            }
+
+            return { infos };
         }
 
         // For all other cases, capture everything.
