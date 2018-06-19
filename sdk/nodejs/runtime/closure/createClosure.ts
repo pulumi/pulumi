@@ -870,7 +870,7 @@ function getOrCreateEntry(
     function serializeSomeObjectProperties(
             environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
 
-                // validate our invariants.
+        // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
             if (chain.infos.length === 0) {
                 throw new Error("We should never have gotten an empty chain.");
@@ -884,9 +884,9 @@ function getOrCreateEntry(
         // this is slightly tricky as it's not obvious if a property is a getter/setter
         // and this is implicitly invoked just by access it.
 
-
         // Find the list of property names *directly* accessed off this object.
-        const propChainFirstNames = new Set(localCapturedPropertyChains.map(chain => chain.infos[0].name));
+        const propChainFirstNames = new Set(localCapturedPropertyChains.map(
+            chain => chain.infos[0].name));
 
         // Now process each top level property name accessed off of this object in turn. For
         // example, if we say "foo.bar.baz", "foo.bar.quux", "foo.ztesch", this would "bar" and
@@ -899,52 +899,54 @@ function getOrCreateEntry(
             // Now, make an entry just for this name.
             const keyEntry = getOrCreateEntry(propName, undefined, context, serialize, logInfo);
 
-            if (!environment.has(keyEntry)) {
-                // we're about to recurse inside this object.  In order to prevent infinite
-                // loops, put a dummy entry in the environment map.  That way, if we hit
-                // this object again while recursing we won't try to generate this property.
-                environment.set(keyEntry, <any>undefined);
-                const objPropValue = obj[propName];
+            if (environment.has(keyEntry)) {
+                continue;
+            }
 
-                const propertyInfo = getPropertyInfo(obj, propName);
-                if (!propertyInfo) {
-                    if (objPropValue !== undefined) {
-                        throw new Error("Could not find property info for real property on object: " + propName);
-                    }
+            // we're about to recurse inside this object.  In order to prevent infinite
+            // loops, put a dummy entry in the environment map.  That way, if we hit
+            // this object again while recursing we won't try to generate this property.
+            environment.set(keyEntry, <any>undefined);
+            const objPropValue = obj[propName];
 
-                    // User code referenced a property not actually on the object at all.
-                    // So to properly represent that, we don't place any information about
-                    // this property on the object.
-                    environment.delete(keyEntry);
-                } else {
-                    // Determine what chained property names we're accessing off of this sub-property.
-                    // if we have no sub property name chain, then indicate that with an empty array
-                    // so that we capture the entire object.
-                    let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
-                    if (nestedPropChains.some(chain => chain.infos.length === 0)) {
-                        nestedPropChains = [];
-                    }
-
-                    // Note: objPropValue can be undefined here.  That's the case where the
-                    // object does have the property, but the property is just set to the
-                    // undefined value.
-                    const valEntry = getOrCreateEntry(
-                        objPropValue, nestedPropChains, context, serialize, logInfo);
-
-                    const infos = propChains.map(chain => chain.infos[0]);
-                    if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
-                        // the referenced function captured 'this'.  Have to serialize out
-                        // this entire object.  Undo the work we did to just serialize out a
-                        // few properties.
-                        environment.clear();
-
-                        // Signal our caller to serialize the entire object.
-                        return true;
-                    }
-
-                    // Now, replace the dummy entry with the actual one we want.
-                    environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+            const propertyInfo = getPropertyInfo(obj, propName);
+            if (!propertyInfo) {
+                if (objPropValue !== undefined) {
+                    throw new Error("Could not find property info for real property on object: " + propName);
                 }
+
+                // User code referenced a property not actually on the object at all.
+                // So to properly represent that, we don't place any information about
+                // this property on the object.
+                environment.delete(keyEntry);
+            } else {
+                // Determine what chained property names we're accessing off of this sub-property.
+                // if we have no sub property name chain, then indicate that with an empty array
+                // so that we capture the entire object.
+                let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
+                if (nestedPropChains.some(chain => chain.infos.length === 0)) {
+                    nestedPropChains = [];
+                }
+
+                // Note: objPropValue can be undefined here.  That's the case where the
+                // object does have the property, but the property is just set to the
+                // undefined value.
+                const valEntry = getOrCreateEntry(
+                    objPropValue, nestedPropChains, context, serialize, logInfo);
+
+                const infos = propChains.map(chain => chain.infos[0]);
+                if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
+                    // the referenced function captured 'this'.  Have to serialize out
+                    // this entire object.  Undo the work we did to just serialize out a
+                    // few properties.
+                    environment.clear();
+
+                    // Signal our caller to serialize the entire object.
+                    return true;
+                }
+
+                // Now, replace the dummy entry with the actual one we want.
+                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
             }
         }
 
