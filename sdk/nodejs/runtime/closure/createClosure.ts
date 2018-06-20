@@ -754,10 +754,6 @@ function getOrCreateEntry(
             // caller explicitly does not want us to capture this value.
             entry.json = undefined;
         }
-        else if (obj instanceof Function) {
-            // Serialize functions recursively, and store them in a closure property.
-            entry.function = createFunctionInfo(obj, context, serialize, logInfo);
-        }
         else if (obj && obj.doNotCapture) {
             // object has set itself as something that should not be captured.
             entry.json = undefined;
