@@ -903,7 +903,7 @@ function getOrCreateEntry(
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
             if (chain.infos.length === 0) {
-                throw new Error("We should never have gotten an empty chain.");
+                throw new Error("Expected a non-empty chain.");
             }
         }
 
