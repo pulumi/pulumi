@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Pulumirpc;
 
 namespace Pulumi
@@ -29,7 +30,7 @@ namespace Pulumi
         public static void RunInStack(Action run)
         {
             Root = new ComponentResource("pulumi:pulumi:Stack", $"{Runtime.Project}-{Runtime.Stack}", null, ResourceOptions.None);
-            run();
+            Task.Run(run).Wait();
         }
 
         public class Settings

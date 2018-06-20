@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -31,14 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 	"google.golang.org/grpc"
-)
-
-const (
-	// By convention, the executor is the name of the current program (pulumi-language-dotnet) plus this suffix.
-	dotnetExecSuffix = "-exec" // the exec shim for Pulumi to run Python programs.
-
-	// The runtime expects the config object to be saved to this environment variable.
-	pulumiConfigVar = "PULUMI_CONFIG"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -59,16 +50,9 @@ func main() {
 	cmdutil.InitTracing("pulumi-language-dotnet", "pulumi-language-dotnet", tracing)
 	var dotnetExec string
 	if givenExecutor == "" {
-		// The -exec binary is the same name as the current language host, except that we must trim off
-		// the file extension (if any) and then append -exec to it.
-		bin := filepath.Base(os.Args[0])
-		if ext := filepath.Ext(bin); ext != "" {
-			bin = bin[:len(bin)-len(ext)]
-		}
-		bin += dotnetExecSuffix
-		pathExec, err := exec.LookPath(bin)
+		pathExec, err := exec.LookPath("dotnet")
 		if err != nil {
-			err = errors.Wrapf(err, "could not find `%s` on the $PATH", bin)
+			err = errors.Wrap(err, "could not find `dotnet` on the $PATH")
 			cmdutil.Exit(err)
 		}
 
@@ -131,11 +115,16 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
-	args := host.constructArguments(req)
 	config, err := host.constructConfig(req)
 	if err != nil {
 		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
+	}
+
+	args := []string{"run"}
+
+	if req.GetProgram() != "" {
+		args = append(args, req.GetProgram())
 	}
 
 	if glog.V(5) {
@@ -148,9 +137,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	cmd := exec.Command(host.exec, args...) // nolint: gas, intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if config != "" {
-		cmd.Env = append(os.Environ(), pulumiConfigVar+"="+config)
-	}
+	cmd.Env = host.constructEnv(req, config)
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
@@ -172,36 +159,26 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	return &pulumirpc.RunResponse{Error: errResult}, nil
 }
 
-// constructArguments constructs a command-line for `pulumi-language-dotnet`
-// by enumerating all of the optional and non-optional arguments present
-// in a RunRequest.
-func (host *dotnetLanguageHost) constructArguments(req *pulumirpc.RunRequest) []string {
-	var args []string
-	maybeAppendArg := func(k, v string) {
+func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config string) []string {
+	env := os.Environ()
+
+	maybeAppendEnv := func(k, v string) {
 		if v != "" {
-			args = append(args, "--"+k, v)
+			env = append(env, strings.ToUpper("PULUMI_"+k)+"="+v)
 		}
 	}
 
-	maybeAppendArg("monitor", req.GetMonitorAddress())
-	maybeAppendArg("engine", host.engineAddress)
-	maybeAppendArg("project", req.GetProject())
-	maybeAppendArg("stack", req.GetStack())
-	maybeAppendArg("pwd", req.GetPwd())
-	maybeAppendArg("dry_run", fmt.Sprintf("%v", req.GetDryRun()))
-	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
-	maybeAppendArg("tracing", host.tracing)
+	maybeAppendEnv("monitor", req.GetMonitorAddress())
+	maybeAppendEnv("engine", host.engineAddress)
+	maybeAppendEnv("project", req.GetProject())
+	maybeAppendEnv("stack", req.GetStack())
+	maybeAppendEnv("pwd", req.GetPwd())
+	maybeAppendEnv("dry_run", fmt.Sprintf("%v", req.GetDryRun()))
+	maybeAppendEnv("parallel", fmt.Sprint(req.GetParallel()))
+	maybeAppendEnv("tracing", host.tracing)
+	maybeAppendEnv("config", config)
 
-	// If no program is specified, just default to the current directory (which will invoke "__main__.py").
-	if req.GetProgram() == "" {
-		args = append(args, ".")
-	} else {
-		args = append(args, req.GetProgram())
-	}
-
-	args = append(args, req.GetArgs()...)
-	return args
-
+	return env
 }
 
 // constructConfig json-serializes the configuration data given as part of a RunRequest.

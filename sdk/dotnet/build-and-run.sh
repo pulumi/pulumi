@@ -3,7 +3,6 @@ set -eou pipefail
 IFS="\n\t"
 
 GOBIN=/opt/pulumi/bin go install ./cmd/pulumi-language-dotnet
-dotnet publish Pulumi.Host/pulumi-language-dotnet-exec.csproj
-export PATH=/opt/pulumi/bin:$(go env GOPATH)/src/github.com/pulumi/pulumi/sdk/dotnet/Pulumi.Host/bin/Debug/netcoreapp2.0/publish:$PATH
-cd examples
+export PATH=/opt/pulumi/bin:$PATH
+cd examples/bucket
 pulumi update  --diff --yes
