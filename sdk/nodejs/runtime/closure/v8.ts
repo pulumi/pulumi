@@ -62,8 +62,17 @@ interface V8SourceLocation {
 // index i.
 const getFunctionScopeDetails: (func: Function, index: number) => any[] =
     new Function("func", "index", "return %GetFunctionScopeDetails(func, index);") as any;
+
 const getFunctionScopeCount: (func: Function) => number =
     new Function("func", "return %GetFunctionScopeCount(func);") as any;
+
+// All of these functions contain syntax that is not legal TS/JS (i.e. "%Whatever").  As such,
+// we cannot serialize them.  In case they somehow get captured, just block them from closure
+// serialization entirely.
+(<any>getScript).doNotCapture = true;
+(<any>getSourcePosition).doNotCapture = true;
+(<any>getFunctionScopeDetails).doNotCapture = true;
+(<any>getFunctionScopeCount).doNotCapture = true;
 
 // `GetFunctionScopeDetails` returns a raw JavaScript array. This enum enumerates the objects that
 // are at specific indices of the array. We only care about one of these.
