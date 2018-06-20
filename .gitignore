@@ -3,6 +3,8 @@
 **/.vscode/
 coverage.cov
 *.coverprofile
+Pipfile.lock
+**/dist
 
 # Go tests run "in tree" and this folder will linger if they fail (the integration test framework cleans
 # it up when they pass.)
