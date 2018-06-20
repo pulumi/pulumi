@@ -438,6 +438,7 @@ function serializeJavaScriptText(
         }
     }
 }
+(<any>serializeJavaScriptText).doNotCapture = true;
 
 const makeLegalRegex = /[^0-9a-zA-Z_]/g;
 function makeLegalJSName(n: string) {

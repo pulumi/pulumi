@@ -3852,6 +3852,46 @@ return function /*f1*/() {
     }
 
     {
+        const o = { a: 1, b: () => console.log("the actual function") };
+        (<any>o.b).doNotCapture = true;
+
+        function f1() {
+            console.log(o);
+        }
+
+        cases.push({
+            title: "Do not capture #2",
+            func: f1,
+            expectText: `exports.handler = __f1;
+
+var __o = {a: 1, b: __f0};
+
+function __f0() {
+  return (function() {
+    with({ message: "Function 'b' cannot be called at runtime. It can only be used at deployment time.\\n\\nFunction code:\\n  () => console.log(\\"the actual function\\")\\n" }) {
+
+return () => { throw new Error(message); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ o: __o, f1: __f1 }) {
+
+return function /*f1*/() {
+            console.log(o);
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+});
+    }
+
+    {
         const lambda1 = () => console.log(1);
         const lambda2 = () => console.log(1);
 

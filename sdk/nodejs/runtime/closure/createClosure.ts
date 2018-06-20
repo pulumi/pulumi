@@ -305,6 +305,10 @@ export async function createFunctionInfoAsync(
     }
 }
 
+// This function ends up capturing many external modules that cannot themselves be serialized.
+// Do not allow it to be captured.
+(<any>createFunctionInfoAsync).doNotCapture = true;
+
 /**
  * createFunctionInfo does the work to create an asynchronous dataflow graph that resolves to a
  * final FunctionInfo.
@@ -612,19 +616,7 @@ function throwSerializationError(func: Function, context: Context, info: string)
     }
 
     message += "  ".repeat(i) + info + "\n\n";
-    message += "Function code:\n";
-
-    const funcString = func.toString();
-
-    // include up to the first 5 lines of the function to help show what is wrong with it.
-    let split = funcString.split(/\r?\n/);
-    if (split.length > 5) {
-        split = split.slice(0, 5);
-        split.push("...");
-    }
-    for (const line of split) {
-        message += "  " + line + "\n";
-    }
+    message += getTrimmedFunctionCode(func);
 
     const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
     if (moduleIndex >= 0) {
@@ -638,6 +630,24 @@ Consider using import('${moduleName}') or require('${moduleName}') inside ${loca
     }
 
     throw new RunError(message);
+}
+
+function getTrimmedFunctionCode(func: Function): string {
+    const funcString = func.toString();
+
+    // include up to the first 5 lines of the function to help show what is wrong with it.
+    let split = funcString.split(/\r?\n/);
+    if (split.length > 5) {
+        split = split.slice(0, 5);
+        split.push("...");
+    }
+
+    let code = "Function code:\n";
+    for (const line of split) {
+        code += "  " + line + "\n";
+    }
+
+    return code;
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
@@ -701,6 +711,7 @@ function getOrCreateEntry(
         context: Context,
         serialize: (o: any) => boolean,
         logInfo: boolean | undefined): Entry {
+
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(obj)!;
     if (entry) {
@@ -715,6 +726,21 @@ function getOrCreateEntry(
         return entry;
     }
 
+    if (obj instanceof Function && obj.doNotCapture) {
+        // If we get a function we're not supposed to capture, then actually just serialize
+        // out a function that will throw at runtime so the user can understand the problem
+        // better.
+        const funcName = obj.name || "anonymous";
+        const funcCode = getTrimmedFunctionCode(obj);
+
+        const message =
+            `Function '${funcName}' cannot be called at runtime. ` +
+            `It can only be used at deployment time.\n\n${funcCode}`;
+        const errorFunc = () => { throw new Error(message); };
+
+        obj = errorFunc;
+    }
+
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
     // entry in the cache.  That way, if we encounter this obj again while recursing we can just
     // return that placeholder.
@@ -727,6 +753,10 @@ function getOrCreateEntry(
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
             entry.json = undefined;
+        }
+        else if (obj instanceof Function) {
+            // Serialize functions recursively, and store them in a closure property.
+            entry.function = createFunctionInfo(obj, context, serialize, logInfo);
         }
         else if (obj && obj.doNotCapture) {
             // object has set itself as something that should not be captured.
