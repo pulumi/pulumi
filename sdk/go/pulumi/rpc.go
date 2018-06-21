@@ -28,7 +28,7 @@ import (
 )
 
 // marshalInputs turns resource property inputs into a gRPC struct suitable for marshaling.
-func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []URN, error) {
+func marshalInputs(ctx *Context, props map[string]interface{}) ([]string, *structpb.Struct, []URN, error) {
 	var keys []string
 	for key := range props {
 		keys = append(keys, key)
@@ -39,16 +39,19 @@ func marshalInputs(props map[string]interface{}) ([]string, *structpb.Struct, []
 	pmap := make(map[string]interface{})
 	for _, key := range keys {
 		// Get the underlying value, possibly waiting for an output to arrive.
-		v, deps, err := marshalInput(props[key])
+		v, deps, err := marshalInput(ctx, props[key])
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", key)
 		}
 
 		pmap[key] = v
 
-		// Record all dependencies accumulated from reading this property.
+		// Record all dependencies accumulated from reading this property, if those
+		// resources came from resources owned by us.
 		for _, dep := range deps {
-			depURNs = append(depURNs, dep.URN())
+			if !ctx.resourceWasRead(dep.URN()) {
+				depURNs = append(depURNs, dep.URN())
+			}
 		}
 	}
 
@@ -69,7 +72,7 @@ const (
 )
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInput(v interface{}) (interface{}, []Resource, error) {
+func marshalInput(ctx *Context, v interface{}) (interface{}, []Resource, error) {
 	// If nil, just return that.
 	if v == nil {
 		return nil, nil, nil
@@ -91,7 +94,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		if as := t.Assets(); as != nil {
 			assets = make(map[string]interface{})
 			for k, a := range as {
-				aa, _, err := marshalInput(a)
+				aa, _, err := marshalInput(ctx, a)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -106,12 +109,12 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 			"uri":                 t.URI(),
 		}, nil, nil
 	case Output:
-		return marshalInputOutput(&t)
+		return marshalInputOutput(ctx, &t)
 	case *Output:
-		return marshalInputOutput(t)
+		return marshalInputOutput(ctx, t)
 	case CustomResource:
 		// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.a
-		e, d, err := marshalInput(t.ID())
+		e, d, err := marshalInput(ctx, t.ID())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -127,7 +130,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		var deps []Resource
 		for i := 0; i < rv.Len(); i++ {
 			elem := rv.Index(i)
-			e, d, err := marshalInput(elem.Interface())
+			e, d, err := marshalInput(ctx, elem.Interface())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -146,7 +149,7 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 					errors.Errorf("expected map keys to be strings; got %v", reflect.TypeOf(key.Interface()))
 			}
 			value := rv.MapIndex(key)
-			mv, d, err := marshalInput(value.Interface())
+			mv, d, err := marshalInput(ctx, value.Interface())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -160,22 +163,22 @@ func marshalInput(v interface{}) (interface{}, []Resource, error) {
 		ot := reflect.TypeOf(&Output{})
 		if rv.Type().ConvertibleTo(ot) {
 			oo := rv.Convert(ot)
-			return marshalInput(oo.Interface())
+			return marshalInput(ctx, oo.Interface())
 		}
 
 		// For all other pointers, recurse into the underlying value.
 		if rv.IsNil() {
 			return nil, nil, nil
 		}
-		return marshalInput(rv.Elem().Interface())
+		return marshalInput(ctx, rv.Elem().Interface())
 	case reflect.String:
-		return marshalInput(rv.String())
+		return marshalInput(ctx, rv.String())
 	}
 
 	return nil, nil, errors.Errorf("unrecognized input property type: %v (%v)", v, reflect.TypeOf(v))
 }
 
-func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
+func marshalInputOutput(ctx *Context, out *Output) (interface{}, []Resource, error) {
 	// Await the value and return its raw value.
 	ov, known, err := out.Value()
 	if err != nil {
@@ -184,7 +187,7 @@ func marshalInputOutput(out *Output) (interface{}, []Resource, error) {
 
 	// If the value is known, marshal it.
 	if known {
-		e, d, merr := marshalInput(ov)
+		e, d, merr := marshalInput(ctx, ov)
 		if merr != nil {
 			return nil, nil, merr
 		}

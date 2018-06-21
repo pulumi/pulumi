@@ -34,6 +34,14 @@ export abstract class Resource {
      // tslint:disable-next-line:variable-name
      /* @internal */ private readonly __pulumiResource: boolean = true;
 
+
+    /**
+     * An internal field that indicates whether or not this resource originated from
+     * a `readResource` call, rather than `registerResource`. Originating from `readResource`
+     * means that Pulumi does not manage this resource.
+     */
+    /* @internal */ public wasRead: boolean = false;
+
     /**
      * urn is the stable logical URN used to distinctly address a resource, both before and after
      * deployments.
@@ -79,6 +87,7 @@ export abstract class Resource {
                 throw new RunError("Cannot read an existing resource unless it has a custom provider");
             }
             readResource(this, t, name, props, opts);
+            this.wasRead = true;
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so

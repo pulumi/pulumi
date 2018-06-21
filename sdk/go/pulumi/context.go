@@ -25,22 +25,24 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
-	ctx         context.Context
-	info        RunInfo
-	stackR      URN
-	exports     map[string]interface{}
-	monitor     pulumirpc.ResourceMonitorClient
-	monitorConn *grpc.ClientConn
-	engine      pulumirpc.EngineClient
-	engineConn  *grpc.ClientConn
-	rpcs        int         // the number of outstanding RPC requests.
-	rpcsDone    *sync.Cond  // an event signaling completion of RPCs.
-	rpcsLock    *sync.Mutex // a lock protecting the RPC count and event.
+	ctx          context.Context
+	info         RunInfo
+	stackR       URN
+	exports      map[string]interface{}
+	monitor      pulumirpc.ResourceMonitorClient
+	monitorConn  *grpc.ClientConn
+	engine       pulumirpc.EngineClient
+	engineConn   *grpc.ClientConn
+	rpcs         int         // the number of outstanding RPC requests.
+	rpcsDone     *sync.Cond  // an event signaling completion of RPCs.
+	rpcsLock     *sync.Mutex // a lock protecting the RPC count and event.
+	resourceMeta sync.Map    // side-table of metadata for resources created by this context
 }
 
 // NewContext creates a fresh run context out of the given metadata.
@@ -124,7 +126,7 @@ func (ctx *Context) Invoke(tok string, args map[string]interface{}) (map[string]
 
 	// Serialize arguments, first by awaiting them, and then marshaling them to the requisite gRPC values.
 	// TODO[pulumi/pulumi#1483]: feels like we should be propagating dependencies to the outputs, instead of ignoring.
-	_, rpcArgs, _, err := marshalInputs(args)
+	_, rpcArgs, _, err := marshalInputs(ctx, args)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling arguments")
 	}
@@ -196,9 +198,9 @@ func (ctx *Context) ReadResource(
 			Properties: op.rpcProps,
 		})
 		if err != nil {
-			glog.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+			glog.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
 		} else {
-			glog.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
+			glog.V(9).Infof("ReadResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
 		}
 
 		// No matter the outcome, make sure all promises are resolved.
@@ -208,6 +210,12 @@ func (ctx *Context) ReadResource(
 			urn, resID = resp.Urn, string(id)
 			props = resp.Properties
 		}
+
+		if err == nil {
+			ctx.initializeMetadata(URN(urn))
+			ctx.setResourceWasRead(URN(urn), true)
+		}
+
 		op.complete(err, urn, resID, props)
 
 		// Signal the completion of this RPC and notify any potential awaiters.
@@ -273,6 +281,11 @@ func (ctx *Context) RegisterResource(
 			urn, resID = resp.Urn, resp.Id
 			props = resp.Object
 		}
+
+		if err == nil {
+			ctx.initializeMetadata(URN(urn))
+		}
+
 		op.complete(err, urn, resID, props)
 
 		// Signal the completion of this RPC and notify any potential awaiters.
@@ -315,7 +328,7 @@ func (ctx *Context) newResourceOperation(custom bool, props map[string]interface
 	parent, optDeps, protect := ctx.getOpts(opts...)
 
 	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	keys, rpcProps, rpcDeps, err := marshalInputs(props)
+	keys, rpcProps, rpcDeps, err := marshalInputs(ctx, props)
 	if err != nil {
 		return nil, errors.Wrap(err, "marshaling properties")
 	}
@@ -324,7 +337,7 @@ func (ctx *Context) newResourceOperation(custom bool, props map[string]interface
 	var deps []string
 	depMap := make(map[URN]bool)
 	for _, dep := range append(optDeps, rpcDeps...) {
-		if _, has := depMap[dep]; !has {
+		if _, has := depMap[dep]; !has && !ctx.resourceWasRead(dep) {
 			deps = append(deps, string(dep))
 			depMap[dep] = true
 		}
@@ -523,4 +536,32 @@ func (ctx *Context) RegisterResourceOutputs(urn URN, outs map[string]interface{}
 // Export registers a key and value pair with the current context's stack.
 func (ctx *Context) Export(name string, value interface{}) {
 	ctx.exports[name] = value
+}
+
+// resourceMetadata contains metadata about particular resources as they are created.
+// It is attached to resources via a side table in the Context object.
+type resourceMetadata struct {
+	wasRead bool
+}
+
+// resourceWasRead returns whether or not this resource was created as result of
+// a `ReadResource` operation.
+func (ctx *Context) resourceWasRead(resUrn URN) bool {
+	value, ok := ctx.resourceMeta.Load(resUrn)
+	contract.Assertf(ok, "Resource '%s' not found in metadata map", resUrn)
+	return value.(*resourceMetadata).wasRead
+}
+
+// Sets that a resource with the given URN was created through a call to `ReadResource`.
+func (ctx *Context) setResourceWasRead(resUrn URN, value bool) {
+	meta, ok := ctx.resourceMeta.Load(resUrn)
+	contract.Assertf(ok, "Resource '%s' was not found in metadata map", resUrn)
+	meta.(*resourceMetadata).wasRead = value
+}
+
+// Initializes the metadata side-table for a resource with the given URN.
+func (ctx *Context) initializeMetadata(resUrn URN) {
+	ctx.resourceMeta.Store(resUrn, &resourceMetadata{
+		wasRead: false,
+	})
 }

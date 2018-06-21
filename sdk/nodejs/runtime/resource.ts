@@ -215,18 +215,23 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         parentURN = await opts.parent.urn.promise();
     }
 
-    const dependencies: Set<URN> = new Set<URN>(explicitURNDeps);
-    for (const implicitDep of implicitDependencies) {
-        dependencies.add(await implicitDep.urn.promise());
-    }
-
+    // Report all resource dependencies to the engine. Note that we explicitly exclude
+    // resources that were created via `readResource`, since Pulumi is not managing them
+    //
+    // It is still important that we record these dependencies, so that the above await logic
+    // can complete once all outstanding `Read` calls have completed, but the engine does not
+    // need to know about such dependencies.
+    const dependencyUrnsPromises = dependsOn.concat(implicitDependencies)
+        .filter(r => !r.wasRead)
+        .map(r => r.urn.promise());
+    const dependencyUrns = await Promise.all(dependencyUrnsPromises);
     return {
         resolveURN: resolveURN!,
         resolveID: resolveID,
         resolvers: resolvers,
         serializedProps: serializedProps,
         parentURN: parentURN,
-        dependencies: dependencies,
+        dependencies: new Set(dependencyUrns),
     };
 }
 
