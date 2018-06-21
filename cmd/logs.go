@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	mobytime "github.com/moby/moby/api/types/time"
+	mobytime "github.com/docker/docker/api/types/time"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
