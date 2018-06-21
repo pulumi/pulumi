@@ -11,15 +11,13 @@ ifeq ($(PIP),)
 endif
 
 ifneq ($(PYTHON_3),)
-	PIPENV_ARGS := --three
+	PIPENV_PYTHON_VERSION := --three
 else
-	PIPENV_ARGS := --two
+	PIPENV_PYTHON_VERSION := --two
 endif
 
 PYENV := ./env
-PYENVBIN := $(PYENV)/bin
 PYENVSRC := $(PYENV)/src
-PYENVLIB := $(PYENV)/lib
 
 GOMETALINTERBIN := gometalinter
 GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
@@ -28,7 +26,7 @@ include ../../build/common.mk
 
 ensure::
 	$(PIP) install pipenv --user
-	pipenv $(PIPENV_ARGS) install --dev
+	pipenv $(PIPENV_PYTHON_VERSION) install --dev
 	mkdir -p $(PYENVSRC)
 	
 build::
