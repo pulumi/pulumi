@@ -7,7 +7,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        Deployment.Run(async () => {
+        Deployment.Run(() => {
             Config config = new Config("hello-dotnet");
 
             // Create the bucket, and make it readable.
@@ -32,9 +32,9 @@ class Program
             //
             // TODO(ellismg): We need to come up with a solution here. We probably want to track all the pending tasks generated
             // by Pulumi during execution and await them to complete in the host itself...
-            Console.WriteLine($"Bucket ID id  :  {await bucket.Id}");
-            Console.WriteLine($"Content ID id : {await content.Id}");
-            Console.WriteLine($"https://{await bucket.BucketDomainName}/hello.txt");
+            Console.WriteLine($"Bucket ID id  :  {bucket.Id.Result}");
+            Console.WriteLine($"Content ID id : {content.Id.Result}");
+            Console.WriteLine($"https://{bucket.BucketDomainName.Result}/hello.txt");
         });
     }
 }

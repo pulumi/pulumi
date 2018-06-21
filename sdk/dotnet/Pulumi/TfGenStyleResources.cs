@@ -2,6 +2,7 @@
 // the shape right "by hand" and then work on the code-gen to stub everything else out:
 
 using Pulumi;
+using Pulumirpc;
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -11,19 +12,34 @@ namespace AWS.S3 {
 
         // TODO(ellismg): These should be Output<T>.
         public Task<string> BucketDomainName { get; private set; }
-        public Bucket(string name, BucketArgs args = default(BucketArgs), ResourceOptions opts = default(ResourceOptions)) :
-            base("aws:s3/bucket:Bucket", name, new Dictionary<string, object> {
-                {"acl", args.Acl},
-            }, opts)
+        private TaskCompletionSource<string> m_BucketDomainNameCompletionSource;
+        public Bucket(string name, BucketArgs args = default(BucketArgs), ResourceOptions opts = default(ResourceOptions))
         {
-            BucketDomainName = m_registrationResponse.ContinueWith((x) => {
-                var fields = x.Result.Object.Fields;
+            m_BucketDomainNameCompletionSource = new TaskCompletionSource<string>();
+            BucketDomainName = m_BucketDomainNameCompletionSource.Task;
 
-                // TODO(ellismg): This is not correct, the result from the provider may not contain this key in the case
-                // where it's value is unknown, e.g. during an initial preview. When we do the Output<T> work here
-                // we'll need to have a better story.
-                return fields.ContainsKey("bucketDomainName") ? fields["bucketDomainName"].StringValue : null;
-            });
+            RegisterAsync("aws:s3/bucket:Bucket", name, true, new Dictionary<string, object> {
+                {"acl", args.Acl},
+            }, opts);
+        }
+
+        protected override void OnResourceRegistrationCompete(Task<RegisterResourceResponse> resp)
+        {
+            base.OnResourceRegistrationCompete(resp);
+
+            if (resp.IsCanceled) {
+                m_BucketDomainNameCompletionSource.SetCanceled();
+            } else if (resp.IsFaulted) {
+                m_BucketDomainNameCompletionSource.SetException(resp.Exception);
+            }
+
+            var fields = resp.Result.Object.Fields;
+
+            foreach (var kvp in fields) {
+                Serilog.Log.Debug("got property {key}", kvp.Key);
+            }
+
+            m_BucketDomainNameCompletionSource.SetResult(fields.ContainsKey("bucketDomainName") ? fields["bucketDomainName"].StringValue : null);
         }
     }
 
@@ -33,16 +49,14 @@ namespace AWS.S3 {
     }
 
     public class BucketObject : CustomResource{
-        public BucketObject(string name, BucketObjectArgs args = default(BucketObjectArgs), ResourceOptions opts = default(ResourceOptions)) :
-            base("aws:s3/bucketObject:BucketObject", name, new Dictionary<string, object> {
+        public BucketObject(string name, BucketObjectArgs args = default(BucketObjectArgs), ResourceOptions opts = default(ResourceOptions)) {
+            RegisterAsync("aws:s3/bucketObject:BucketObject", name, true, new Dictionary<string, object> {
                 {"acl", args.Acl},
                 {"bucket", args.Bucket},
                 {"contentBase64", args.ContentBase64},
                 {"contentType", args.ContentType},
                 {"key", args.Key},
-            }, opts)
-        {
-
+            }, opts);
         }
     }
 
