@@ -40,6 +40,13 @@ $PROTOC --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=$JS_PULUMIRPC --plugin=
 PY_PULUMIRPC=../python/lib/pulumi/runtime/proto/
 echo -e "\tPython: $PY_PULUMIRPC"
 mkdir -p $PY_PULUMIRPC
-python -m grpc_tools.protoc -I./ --python_out=$PY_PULUMIRPC --grpc_python_out=$PY_PULUMIRPC *.proto
+
+
+TEMP_DIR=$(mktemp -d)
+echo -e "\tPython temp dir: $TEMP_DIR"
+python -m grpc_tools.protoc -I./ --python_out=$TEMP_DIR --grpc_python_out=$TEMP_DIR *.proto
+sed -i '.old' "s/^import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" $TEMP_DIR/*.py
+cp $TEMP_DIR/*.py $PY_PULUMIRPC
+rm -rf $TEMP_DIR
 
 echo Done.
