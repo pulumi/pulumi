@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
+from __future__ import absolute_import
+import six
 
-from runtime.resource import register_resource, register_resource_outputs
-from runtime.rpc import register_custom_resource_type
-from runtime.settings import get_root_resource
-from runtime.unknown import Unknown
+from .runtime.resource import register_resource, register_resource_outputs
+from .runtime.rpc import register_custom_resource_type
+from .runtime.settings import get_root_resource
+from .runtime.unknown import Unknown
 
 class Resource(object):
     """
@@ -26,11 +28,11 @@ class Resource(object):
     def __init__(self, t, name, custom, props=None, opts=None):
         if not t:
             raise TypeError('Missing resource type argument')
-        if not isinstance(t, basestring):
+        if not isinstance(t, six.string_types):
             raise TypeError('Expected resource type to be a string')
         if not name:
             raise TypeError('Missing resource name argument (for URN creation)')
-        if not isinstance(name, basestring):
+        if not isinstance(name, six.string_types):
             raise TypeError('Expected resource name to be a string')
 
         # Properties and options can be missing; simply, initialize to empty dictionaries.

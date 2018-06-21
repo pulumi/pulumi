@@ -15,9 +15,11 @@
 """
 The config module contains all configuration management functionality.
 """
+from __future__ import absolute_import
+import six
 
-import errors
-from runtime.config import get_config
+from . import errors
+from .runtime.config import get_config
 
 class Config(object):
     """
@@ -30,7 +32,7 @@ class Config(object):
     def __init__(self, name):
         if not name:
             raise TypeError('Missing name argument')
-        if not isinstance(name, basestring):
+        if not isinstance(name, six.string_types):
             raise TypeError('Expected name to be a string')
         self.name = name
         """The configuration bag's logical name that uniquely identifies it."""

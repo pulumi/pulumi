@@ -15,9 +15,11 @@
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
+from __future__ import absolute_import
 
 import six
 from six.moves import map
+
 from google.protobuf import struct_pb2
 from .unknown import Unknown
 
@@ -32,7 +34,7 @@ def serialize_resource_props(props):
     Serializes resource properties so that they are ready for marshaling to the gRPC endpoint.
     """
     struct = struct_pb2.Struct()
-    for k, v in props.items():
+    for k, v in list(props.items()):
         struct[k] = serialize_resource_value(v) # pylint: disable=unsupported-assignment-operation
     return struct
 
@@ -47,7 +49,7 @@ def serialize_resource_value(value):
         return serialize_resource_value(value.id)
     elif isinstance(value, dict):
         # Deeply serialize dictionaries.
-        return {k: serialize_resource_value(v) for (k, v) in value.items()}
+        return {k: serialize_resource_value(v) for (k, v) in list(value.items())}
     elif isinstance(value, list):
         # Deeply serialize lists.
         return list(map(serialize_resource_value, value))
@@ -72,7 +74,7 @@ def deserialize_resource_props(props_struct):
     assert isinstance(props_struct, struct_pb2.Struct)
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways.
-    return {k: deserialize_property(v) for (k, v) in props_struct.items()}
+    return {k: deserialize_property(v) for (k, v) in list(props_struct.items())}
 
 def deserialize_property(prop):
     """

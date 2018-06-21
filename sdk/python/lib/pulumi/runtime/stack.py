@@ -15,9 +15,10 @@
 """
 Support for automatic stack components.
 """
+from __future__ import absolute_import
 
 from ..resource import ComponentResource
-from settings import get_project, get_stack, get_root_resource, set_root_resource
+from .settings import get_project, get_stack, get_root_resource, set_root_resource
 
 def run_in_stack(func):
     """

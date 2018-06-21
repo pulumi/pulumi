@@ -15,6 +15,7 @@
 """
 Runtime support for the Pulumi configuration system.  Please use pulumi.Config instead.
 """
+from __future__ import absolute_import
 
 import json
 import os
@@ -57,7 +58,7 @@ def get_config(k):
     Returns a configuration variable's value or None if it is unset.
     """
     # If the config has been set explicitly, use it.
-    if k in CONFIG.keys():
+    if k in list(CONFIG.keys()):
         return CONFIG[k]
 
     # If there is a specific PULUMI_CONFIG_<k> environment variable, use it.
@@ -67,7 +68,7 @@ def get_config(k):
 
     # If the config hasn't been set, but there is a process-wide PULUMI_CONFIG environment variable, use it.
     env_dict = get_config_env()
-    if env_dict is not None and k in env_dict.keys():
+    if env_dict is not None and k in list(env_dict.keys()):
         return env_dict[k]
 
     return None

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+
 class RunError(Exception):
     """
     Can be used for terminating a program abruptly, but resulting in a clean exit rather than the usual
