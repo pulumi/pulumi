@@ -17,7 +17,7 @@ namespace Pulumi
         }
 
         public Task<RegisterResourceResponse> RegisterAsync(string type, string name, bool custom, Dictionary<string, object> properties, ResourceOptions options) {
-            Console.WriteLine($"RegisterAsync({type}, {name}) called");
+            Serilog.Log.Debug("RegisterAsync({type}, {name})", type, name);
 
             if (string.IsNullOrEmpty(type))
             {
@@ -72,7 +72,7 @@ namespace Pulumi
         }
 
         private Value SerializeProperty(object o) {
-            Console.WriteLine($"SerializeProperty({o})");
+            Serilog.Log.Debug("SerializeProperty({o})", o);
 
             var input = o as IInput;
             if (input != null) {

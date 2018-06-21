@@ -1,6 +1,7 @@
 using Grpc.Core;
 using Pulumi;
 using Pulumirpc;
+using Serilog;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -12,6 +13,9 @@ namespace Pulumi {
         // TODO(ellismg): Perhaps we should have another overload Run<T>(Func<T> f) and we use reflection over the T
         // to get all public fields and properties of type Input<T> and set them as outputs?
         public static void Run(Action a) {
+            if (Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOGGING") != null) {
+                Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
+            }
 
             // TODO(ellismg): any one of these could be null, and we need to guard against that for ones that must
             // be set (I don't know the set off the top of my head.  I think that everything except tracing is
