@@ -174,3 +174,11 @@ type Stack struct {
 
 	Version int `json:"version"`
 }
+
+// CommandInvocation describes a CLI command invocation, used for metric reporting.
+type CommandInvocation struct {
+	// Command invoked, e.g. "update" or "stack-rm".
+	Command string `json:"command"`
+	// Flags explicitly set, e.g. ["--force", "--yes"].
+	Flags []string `json:"flags"`
+}

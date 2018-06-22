@@ -16,14 +16,20 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -128,6 +134,8 @@ func NewPulumiCmd() *cobra.Command {
 			"Include the tracing header with the given contents.")
 	}
 
+	reportCommandInvocations(cmd.Name(), cmd)
+
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
 	// which calls flag.Parse under the hood doesn't yell at you.
 	//
@@ -152,4 +160,56 @@ func confirmPrompt(prompt string, name string) bool {
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name
+}
+
+// reportCommandInvocations hooks into the command's PreRun callback (chaining if necessary) to
+// send a telemetry event indiciating a CLI command was invoked. The command's name is prefixed
+// with namePrefix, so command names are registered as "pulumi-stack-ls".
+func reportCommandInvocations(namePrefix string, cmd *cobra.Command) {
+	// Chain in the PreRun callback.
+	prevPreRun := cmd.PreRun
+	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+		if prevPreRun != nil {
+			prevPreRun(cmd, args)
+		}
+
+		// Walk through the flags that have been set in lexicographical order.
+		var flags []string
+		cmd.Flags().Visit(func(f *pflag.Flag) {
+			flags = append(flags, f.Name)
+		})
+
+		err := reportCommanInvocation(apitype.CommandInvocation{
+			Command: namePrefix,
+			Flags:   flags,
+		})
+		if err != nil {
+			logging.V(7).Infof("error reporting command: %v", err)
+		}
+	}
+
+	// Report child commands if invoked, too.
+	for _, childCmd := range cmd.Commands() {
+		reportCommandInvocations(fmt.Sprintf("%s-%s", namePrefix, childCmd.Name()), childCmd)
+	}
+}
+
+// reportCommanInvocation sends the command invocation event to a web endpoint.
+func reportCommanInvocation(c apitype.CommandInvocation) error {
+	const endpoint = "https://api.pulumi.com/api/cli/invocation"
+
+	json, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	client := http.DefaultClient
+	resp, err := client.Post(endpoint, "application/json", bytes.NewBuffer(json))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 299 {
+		return errors.Errorf("got non-200 response code: %d", resp.StatusCode)
+	}
+	return nil
 }
