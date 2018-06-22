@@ -25,7 +25,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -35,6 +34,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
+
+// disableUsageReportingEnvVar is the environment variable controlling whether or not to opt-out of
+// reporting CLI invocations. If not empty, usage reporting will be disabled.
+const disableUsageReportingEnvVar = "PULUMI_DISABLE_USAGE_REPORTING"
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
@@ -134,7 +137,10 @@ func NewPulumiCmd() *cobra.Command {
 			"Include the tracing header with the given contents.")
 	}
 
-	reportCommandInvocations(cmd.Name(), cmd)
+	// Report command invocations for analytics purposes, unless opt-out environment variable is found.
+	if os.Getenv(disableUsageReportingEnvVar) == "" {
+		reportCommandInvocations(cmd.Name(), cmd)
+	}
 
 	// Tell flag about -C, so someone can do pulumi -C <working-directory> stack and the call to cmdutil.InitLogging
 	// which calls flag.Parse under the hood doesn't yell at you.
@@ -179,37 +185,37 @@ func reportCommandInvocations(namePrefix string, cmd *cobra.Command) {
 			flags = append(flags, f.Name)
 		})
 
-		err := reportCommanInvocation(apitype.CommandInvocation{
+		reportCommanInvocation(apitype.CommandInvocation{
 			Command: namePrefix,
 			Flags:   flags,
 		})
-		if err != nil {
-			logging.V(7).Infof("error reporting command: %v", err)
-		}
 	}
 
-	// Report child commands if invoked, too.
+	// Report child commands if invoked. The PreRun callback is only called
+	// on the child command, not its parent(s).
 	for _, childCmd := range cmd.Commands() {
 		reportCommandInvocations(fmt.Sprintf("%s-%s", namePrefix, childCmd.Name()), childCmd)
 	}
 }
 
 // reportCommanInvocation sends the command invocation event to a web endpoint.
-func reportCommanInvocation(c apitype.CommandInvocation) error {
+// Logs and swallows any errors that occur.
+func reportCommanInvocation(c apitype.CommandInvocation) {
 	const endpoint = "https://api.pulumi.com/api/cli/invocation"
 
 	json, err := json.Marshal(c)
 	if err != nil {
-		return err
+		logging.V(7).Infof("error encoding invocation: %v", err)
+		return
 	}
 
 	client := http.DefaultClient
 	resp, err := client.Post(endpoint, "application/json", bytes.NewBuffer(json))
 	if err != nil {
-		return err
+		logging.V(7).Infof("error posting invocation: %v", err)
+		return
 	}
 	if resp.StatusCode >= 299 {
-		return errors.Errorf("got non-200 response code: %d", resp.StatusCode)
+		logging.V(7).Infof("got non-200 response code: %d", resp.StatusCode)
 	}
-	return nil
 }
