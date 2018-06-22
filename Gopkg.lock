@@ -108,6 +108,7 @@
 [[projects]]
   name = "github.com/docker/docker"
   packages = [
+    "api/types/time",
     "pkg/term",
     "pkg/term/windows"
   ]
@@ -241,12 +242,6 @@
   name = "github.com/mitchellh/go-ps"
   packages = ["."]
   revision = "4fdf99ab29366514c69ccccddab5dc58b8d84062"
-
-[[projects]]
-  name = "github.com/moby/moby"
-  packages = ["api/types/time"]
-  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
-  version = "v1.13.1"
 
 [[projects]]
   name = "github.com/opentracing/opentracing-go"
@@ -560,6 +555,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f974a423ae8de19a1ba9f68115b5ab111040baece859d32f89e885094d3ebd86"
+  inputs-digest = "0bff1a5b9459d6e71d8e42332e8c67470efe703c93a73ea3f97c205e1e499973"
   solver-name = "gps-cdcl"
   solver-version = 1
