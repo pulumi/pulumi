@@ -109,42 +109,6 @@ PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
 
-# Ensure the requisite tools are on the PATH.
-#     - Prefer Python2 over Python.
-PYTHON := $(shell command -v python2 2>/dev/null)
-ifeq ($(PYTHON),)
-	PYTHON = $(shell command -v python 2>/dev/null)
-endif
-ifeq ($(PYTHON),)
-ensure::
-	$(error "missing python 2.7 (`python2` or `python`) from your $$PATH; \
-		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
-else
-PYTHON_VERSION := $(shell command $(PYTHON) --version 2>&1)
-ifeq (,$(findstring 2.7,$(PYTHON_VERSION)))
-ensure::
-	$(error "$(PYTHON) did not report a 2.7 version number ($(PYTHON_VERSION)); \
-		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
-endif
-endif
-#     - Prefer Pip2 over Pip.
-PIP := $(shell command -v pip2 2>/dev/null)
-ifeq ($(PIP),)
-	PIP = $(shell command -v pip 2>/dev/null)
-endif
-ifeq ($(PIP),)
-ensure::
-	$(error "missing pip 2.7 (`pip2` or `pip`) from your $$PATH; \
-		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
-else
-PIP_VERSION := $(shell command $(PIP) --version 2>&1)
-ifeq (,$(findstring python 2.7,$(PIP_VERSION)))
-ensure::
-	$(error "$(PIP) did not report a 2.7 version number ($(PIP_VERSION)); \
-		please see https://github.com/pulumi/home/wiki/Package-Management-Prerequisites")
-endif
-endif
-
 # If there are sub projects, our default, all, and ensure targets will
 # recurse into them.
 ifneq ($(SUB_PROJECTS),)
