@@ -174,3 +174,11 @@ type Stack struct {
 
 	Version int `json:"version"`
 }
+
+// CommandInvocation describes a CLI command invocation, used for metric reporting.
+type CommandInvocation struct {
+	// Command invoked, e.g. "pulumi-update" or "pulumi-stack-rm".
+	Command string `json:"command"`
+	// Flags explicitly set, e.g. ["force", "yes", "cloud-url"].
+	Flags []string `json:"flags"`
+}
