@@ -34,12 +34,8 @@ namespace AWS.S3 {
 
             var fields = resp.Result.Object.Fields;
 
-            foreach (var kvp in fields) {
-                Serilog.Log.Debug("got property {key}", kvp.Key);
-            }
-
             bool isKnown = fields.ContainsKey("bucketDomainName");
-            m_BucketDomainNameCompletionSource.SetResult(new OutputState<string>(isKnown ? fields["bucketDomainName"].StringValue : default(string), isKnown));
+            m_BucketDomainNameCompletionSource.SetResult(new OutputState<string>(isKnown ? fields["bucketDomainName"].StringValue : default(string), isKnown, this));
         }
     }
 

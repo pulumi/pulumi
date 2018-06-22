@@ -1,3 +1,4 @@
+using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Pulumirpc;
 using System;
@@ -25,7 +26,7 @@ namespace Pulumi
             } else if (resp.IsFaulted) {
                 m_UrnCompletionSource.SetException(resp.Exception);
             } else {
-                m_UrnCompletionSource.SetResult(new OutputState<string>(resp.Result.Urn, resp.Result.Urn != null));
+                m_UrnCompletionSource.SetResult(new OutputState<string>(resp.Result.Urn, resp.Result.Urn != null, this));
             }
         }
 
@@ -52,19 +53,45 @@ namespace Pulumi
                 parentUrn = urnOutput.GetOutputStateAsync().ContinueWith(x => (string)x.Result.Value);
             }
 
+            // Compute the set of dependencies this resource has. This is the union of resources the object explicitly depends on
+            // with the set of dependencies that any Output that is used as in Input has.
+            HashSet<string> dependsOnUrns = new HashSet<string>(StringComparer.Ordinal);
+
+            // Explicit dependencies.
+            if (options.DependsOn != null) {
+                foreach (Resource r in options.DependsOn) {
+                    dependsOnUrns.Add((string)(await ((IOutput)r.Urn).GetOutputStateAsync()).Value);
+                }
+            }
+
+            // Add any dependeices from any outputs that happend to be used as inputs.
+            if (properties != null) {
+                foreach (object o in properties.Values) {
+                    IInput input = o as IInput;
+                    if (input != null) {
+                        foreach (Resource r in (await input.GetValueAsOutputStateAsync()).DependsOn) {
+                            dependsOnUrns.Add((string)(await ((IOutput)r.Urn).GetOutputStateAsync()).Value);
+                        }
+                    }
+                }
+            }
+
+            foreach(string urn in dependsOnUrns) {
+                Serilog.Log.Debug("Dependency: {urn}", urn);
+            }
+
             // Kick off the registration, and when it completes, call the OnResourceRegistrationCompete method which will resolve all the tasks to their values. The fact that we don't
             // await here is by design. This method is called by child classes in their constructors, where were do not want to block.
             #pragma warning disable 4014
-            Runtime.Monitor.RegisterResourceAsync(
-                new RegisterResourceRequest()
-                {
-                    Type = type,
-                    Name = name,
-                    Custom = custom,
-                    Protect = false,
-                    Object = await SerializeProperties(properties),
-                    Parent = await parentUrn
-                }).ResponseAsync.ContinueWith((x) => OnResourceRegistrationComplete(x));
+            RegisterResourceRequest request = new RegisterResourceRequest();
+            request.Type = type;
+            request.Name = name;
+            request.Custom = custom;
+            request.Protect = options.Protect;
+            request.Object = await SerializeProperties(properties);
+            request.Parent = await parentUrn;
+            request.Dependencies.AddRange(dependsOnUrns);
+            Runtime.Monitor.RegisterResourceAsync(request).ResponseAsync.ContinueWith((x) => OnResourceRegistrationComplete(x));
             #pragma warning restore 4014
         }
 

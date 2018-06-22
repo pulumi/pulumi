@@ -23,7 +23,8 @@ namespace Pulumi {
             } else if (resp.IsFaulted) {
                 m_IdCompletionSoruce.SetException(resp.Exception);
             } else {
-                m_IdCompletionSoruce.SetResult(new OutputState<string>(resp.Result.Id, !string.IsNullOrEmpty(resp.Result.Id)));
+                Serilog.Log.Debug("Setting id to {id} for {urn} with dependency {this}", resp.Result.Id, resp.Result.Urn, this);
+                m_IdCompletionSoruce.SetResult(new OutputState<string>(resp.Result.Id, !string.IsNullOrEmpty(resp.Result.Id), this));
             }
         }
     }

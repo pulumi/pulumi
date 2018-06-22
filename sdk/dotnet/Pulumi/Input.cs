@@ -35,11 +35,14 @@ namespace Pulumi {
 
         public async Task<OutputState<object>> GetValueAsOutputStateAsync() {
             if (m_task != null) {
-                return new OutputState<object>(await m_task, true);
+                return new OutputState<object>(await m_task, true, Array.Empty<Resource>());
             } else if (m_output != null) {
                 return await ((IOutput)m_output).GetOutputStateAsync();
             } else {
-                return new OutputState<object>(m_rawValue, true);
+                // If the underlying value is a resource, ensure we flow the resource as a dependency in the synthetic output state.
+                // TODO(ellismg): Doing this here feels wrong for some reason.
+                Resource r = m_rawValue as Resource;
+                return new OutputState<object>(m_rawValue, true, r != null ? new Resource[] { r } : Array.Empty<Resource>());
             }
         }
     }
