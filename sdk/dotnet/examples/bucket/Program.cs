@@ -10,7 +10,7 @@ class Program
         Deployment.Run(() => {
             Config config = new Config("hello-dotnet");
 
-            // Create the bucket, and make it readable.
+            // Create the bucket, and make it public.
             var bucket = new Bucket(config["name"], new BucketArgs {
                     Acl = "public-read"
                 }
@@ -32,9 +32,9 @@ class Program
             //
             // TODO(ellismg): We need to come up with a solution here. We probably want to track all the pending tasks generated
             // by Pulumi during execution and await them to complete in the host itself...
-            Console.WriteLine($"Bucket ID id  :  {bucket.Id.Result}");
-            Console.WriteLine($"Content ID id : {content.Id.Result}");
-            Console.WriteLine($"https://{bucket.BucketDomainName.Result}/hello.txt");
+            bucket.Id.Apply(id => Console.WriteLine($"Bucket ID id: {id}"));
+            content.Id.Apply(id => Console.WriteLine($"Content ID id: {id}"));
+            bucket.BucketDomainName.Apply(domain => Console.WriteLine($"https://{domain}/hello.txt"));
         });
     }
 }

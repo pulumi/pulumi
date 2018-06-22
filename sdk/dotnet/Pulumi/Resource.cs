@@ -8,24 +8,24 @@ namespace Pulumi
 {
     public abstract class Resource
     {
-        public Task<string> Urn { get; private set; }
-        private TaskCompletionSource<string> m_UrnCompletionSource;
+        public Output<string> Urn { get; private set; }
+        private TaskCompletionSource<OutputState<string>> m_UrnCompletionSource;
 
         public const string UnkownResourceId = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 
         protected Resource()
         {
-            m_UrnCompletionSource = new TaskCompletionSource<string>();
-            Urn = m_UrnCompletionSource.Task;
+            m_UrnCompletionSource = new TaskCompletionSource<OutputState<string>>();
+            Urn = new Output<string>(m_UrnCompletionSource.Task);
         }
 
-        protected virtual void OnResourceRegistrationCompete(Task<RegisterResourceResponse> resp) {
+        protected virtual void OnResourceRegistrationComplete(Task<RegisterResourceResponse> resp) {
             if (resp.IsCanceled) {
                 m_UrnCompletionSource.SetCanceled();
             } else if (resp.IsFaulted) {
                 m_UrnCompletionSource.SetException(resp.Exception);
             } else {
-                m_UrnCompletionSource.SetResult(resp.Result.Urn);
+                m_UrnCompletionSource.SetResult(new OutputState<string>(resp.Result.Urn, resp.Result.Urn != null));
             }
         }
 
@@ -45,12 +45,11 @@ namespace Pulumi
             // Figure out the parent URN. If an explicit parent was passed in, use that. Otherwise use the global root URN. In the case where that hasn't been set yet, we must be creating
             // the ComponentResource that represents the global stack object, so pass along no parent.
             Task<string> parentUrn;
-            if (options.Parent != null) {
-                parentUrn = options.Parent.Urn;
-            } else if (Runtime.Root != null) {
-                parentUrn = Runtime.Root.Urn;
-            } else {
+            if (options.Parent == null && Runtime.Root == null) {
                 parentUrn = Task.FromResult("");
+            } else {
+                IOutput urnOutput = options.Parent?.Urn ?? Runtime.Root.Urn;
+                parentUrn = urnOutput.GetOutputStateAsync().ContinueWith(x => (string)x.Result.Value);
             }
 
             // Kick off the registration, and when it completes, call the OnResourceRegistrationCompete method which will resolve all the tasks to their values. The fact that we don't
@@ -64,8 +63,8 @@ namespace Pulumi
                     Custom = custom,
                     Protect = false,
                     Object = await SerializeProperties(properties),
-                    Parent = parentUrn.Result
-                }).ResponseAsync.ContinueWith((x) => OnResourceRegistrationCompete(x));;
+                    Parent = await parentUrn
+                }).ResponseAsync.ContinueWith((x) => OnResourceRegistrationComplete(x));
             #pragma warning restore 4014
         }
 
@@ -88,8 +87,13 @@ namespace Pulumi
 
             var input = o as IInput;
             if (input != null) {
-                // Get the ground value.
-                var v = await input.GetTask();
+                OutputState<object> state = await input.GetValueAsOutputStateAsync();
+
+                if (!state.IsKnown) {
+                    return Value.ForString(UnkownResourceId);
+                }
+
+                object v = state.Value;
 
                 if (v == null) {
                     return Value.ForNull();
@@ -102,7 +106,8 @@ namespace Pulumi
                 // We marshal custom resources as strings of their provider generated IDs.
                 var cr = v as CustomResource;
                 if (cr != null) {
-                    return Value.ForString(await cr.Id);
+                    OutputState<object> s = await ((IOutput)cr.Id).GetOutputStateAsync();
+                    return Value.ForString(s.IsKnown ? (string) s.Value : UnkownResourceId);
                 }
 
                 throw new NotImplementedException($"cannot marshal Input with underlying type ${input.GetType()}");

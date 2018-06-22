@@ -10,22 +10,21 @@ using System.Collections.Generic;
 namespace AWS.S3 {
     public class Bucket : CustomResource {
 
-        // TODO(ellismg): These should be Output<T>.
-        public Task<string> BucketDomainName { get; private set; }
-        private TaskCompletionSource<string> m_BucketDomainNameCompletionSource;
+        public Output<string> BucketDomainName { get; private set; }
+        private TaskCompletionSource<OutputState<string>> m_BucketDomainNameCompletionSource;
         public Bucket(string name, BucketArgs args = default(BucketArgs), ResourceOptions opts = default(ResourceOptions))
         {
-            m_BucketDomainNameCompletionSource = new TaskCompletionSource<string>();
-            BucketDomainName = m_BucketDomainNameCompletionSource.Task;
+            m_BucketDomainNameCompletionSource = new TaskCompletionSource<OutputState<string>>();
+            BucketDomainName = new Output<string>(m_BucketDomainNameCompletionSource.Task);
 
             RegisterAsync("aws:s3/bucket:Bucket", name, true, new Dictionary<string, object> {
                 {"acl", args.Acl},
             }, opts);
         }
 
-        protected override void OnResourceRegistrationCompete(Task<RegisterResourceResponse> resp)
+        protected override void OnResourceRegistrationComplete(Task<RegisterResourceResponse> resp)
         {
-            base.OnResourceRegistrationCompete(resp);
+            base.OnResourceRegistrationComplete(resp);
 
             if (resp.IsCanceled) {
                 m_BucketDomainNameCompletionSource.SetCanceled();
@@ -39,7 +38,8 @@ namespace AWS.S3 {
                 Serilog.Log.Debug("got property {key}", kvp.Key);
             }
 
-            m_BucketDomainNameCompletionSource.SetResult(fields.ContainsKey("bucketDomainName") ? fields["bucketDomainName"].StringValue : null);
+            bool isKnown = fields.ContainsKey("bucketDomainName");
+            m_BucketDomainNameCompletionSource.SetResult(new OutputState<string>(isKnown ? fields["bucketDomainName"].StringValue : default(string), isKnown));
         }
     }
 

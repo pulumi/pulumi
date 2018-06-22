@@ -9,21 +9,21 @@ namespace Pulumi {
     public abstract class CustomResource : Resource {
 
         protected Task<Pulumirpc.RegisterResourceResponse> m_registrationResponse;
-        public Task<string> Id { get; private set;}
-        TaskCompletionSource<string> m_IdCompletionSoruce;
+        public Output<string> Id { get; private set;}
+        TaskCompletionSource<OutputState<string>> m_IdCompletionSoruce;
         public CustomResource()  {
-            m_IdCompletionSoruce = new TaskCompletionSource<string>();
-            Id = m_IdCompletionSoruce.Task;
+            m_IdCompletionSoruce = new TaskCompletionSource<OutputState<string>>();
+            Id = new Output<string>(m_IdCompletionSoruce.Task);
         }
 
-        protected override void OnResourceRegistrationCompete(Task<RegisterResourceResponse> resp) {
-            base.OnResourceRegistrationCompete(resp);
+        protected override void OnResourceRegistrationComplete(Task<RegisterResourceResponse> resp) {
+            base.OnResourceRegistrationComplete(resp);
             if (resp.IsCanceled) {
                 m_IdCompletionSoruce.SetCanceled();
             } else if (resp.IsFaulted) {
                 m_IdCompletionSoruce.SetException(resp.Exception);
             } else {
-                m_IdCompletionSoruce.SetResult(resp.Result.Id);
+                m_IdCompletionSoruce.SetResult(new OutputState<string>(resp.Result.Id, !string.IsNullOrEmpty(resp.Result.Id)));
             }
         }
     }

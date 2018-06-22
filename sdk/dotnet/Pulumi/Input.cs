@@ -1,15 +1,19 @@
 
+using Google.Protobuf.WellKnownTypes;
 using System;
 using System.Threading.Tasks;
 
 namespace Pulumi {
     interface IInput {
-        Task<object> GetTask();
+        Task<OutputState<object>> GetValueAsOutputStateAsync();
     }
 
-    public struct Input<T> : IInput{
+    public sealed class Input<T> : IInput{
         T m_rawValue;
         Task<T> m_task;
+        Output<T> m_output;
+
+        private Input() {}
 
         public static implicit operator Input<T>(T rawValue) {
             return new Input<T> {
@@ -23,12 +27,19 @@ namespace Pulumi {
             };
         }
 
-        // TODO(ellismg): Maybe use a custom awaiter here insted...?
-        public Task<object> GetTask() {
+        public static implicit operator Input<T>(Output<T> output) {
+            return new Input<T> {
+                m_output = output,
+            };
+        }
+
+        public async Task<OutputState<object>> GetValueAsOutputStateAsync() {
             if (m_task != null) {
-                return m_task.ContinueWith(x => (object) x.Result);
+                return new OutputState<object>(await m_task, true);
+            } else if (m_output != null) {
+                return await ((IOutput)m_output).GetOutputStateAsync();
             } else {
-                return Task.FromResult((object) m_rawValue);
+                return new OutputState<object>(m_rawValue, true);
             }
         }
     }
