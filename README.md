@@ -75,21 +75,9 @@ Pulumi is written in Go, uses Dep for dependency management, and GoMetaLinter fo
     - `$ go get -u github.com/alecthomas/gometalinter`
     - `$ gometalinter --install`
 
-### Building from Source
-
-To install the pre-built SDK, please run `curl -fsSL https://get.pulumi.com/ | sh`, or see detailed installation
-instructions on [the project page](https://pulumi.io/).  Read on if you want to install from source.
-
-To build the Pulumi CLI from source, you may simply run:
-
-    $ go get -u github.com/pulumi/pulumi
-
-This installs the `pulumi` binary to `$GOPATH/bin`.
-
-To do anything interesting with Pulumi, you will need an SDK for your language of choice.  The SDK installation comes
-with pre-built language providers, however the `make` flow below will create a complete SDK distribution for you.
-
 ### Building and Testing
+
+To install the pre-built SDK, please run `curl -fsSL https://get.pulumi.com/ | sh`, or see detailed installation instructions on [the project page](https://pulumi.io/).  Read on if you want to install from source.
 
 To build a complete Pulumi SDK, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
