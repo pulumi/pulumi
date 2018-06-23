@@ -15,8 +15,6 @@
 #        and add the `grpc_tools_node_protoc_plugin` binary to your PATH.a
 #     5) Install the Python gRPC SDK, which includes the gRPC Python compiler plugin
 #            python -m pip install grpcio grpcio-tools
-#
-# The results are checked into bin/; at this moment, they need to be copied to their final destinations manually.
 set -e
 
 PROTOC=$(which protoc || { >&2 echo "error: Protobuf compiler (protoc) not found on PATH"; exit 1; })
