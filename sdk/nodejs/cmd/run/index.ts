@@ -16,9 +16,10 @@
 
 import * as fs from "fs";
 import * as minimist from "minimist";
+import * as os from "os";
 import * as path from "path";
+import * as tsnode from "ts-node";
 import * as util from "util";
-import * as pulumi from "../../";
 import { RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
@@ -180,8 +181,11 @@ export function main(args: string[]): void {
         }
     }
 
-    // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
+    // If there is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
     const dryRun: boolean = !!(argv["dry-run"]);
+
+    // If this is a typescript project, we'll want to load node-ts
+    const typeScript: boolean = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
 
     // If there is a monitor argument, connect to it.
     const monitorAddr = argv["monitor"];
@@ -201,6 +205,12 @@ export function main(args: string[]): void {
         monitorAddr: monitorAddr,
         engineAddr: engineAddr,
     });
+
+    if (typeScript) {
+        tsnode.register({
+            typeCheck: true,
+        });
+    }
 
     // Pluck out the program and arguments.
     if (argv._.length === 0) {

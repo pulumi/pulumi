@@ -353,10 +353,10 @@ func installDependencies() error {
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
 	var command string
 	var c *exec.Cmd
-	if strings.EqualFold(proj.Runtime, "nodejs") {
+	if strings.EqualFold(proj.RuntimeInfo.Name(), "nodejs") {
 		command = "npm install"
 		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
-	} else if strings.EqualFold(proj.Runtime, "python") {
+	} else if strings.EqualFold(proj.RuntimeInfo.Name(), "python") {
 		command = "pip install -r requirements.txt"
 		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
 	} else {

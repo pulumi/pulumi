@@ -64,10 +64,13 @@ const (
 // endpoint.
 func main() {
 	var tracing string
+	var typescript bool
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
-
+	flag.BoolVar(&typescript, "typescript", true,
+		"Use ts-node at runtime to support typescript source natively")
 	flag.Parse()
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-langauge-nodejs", tracing)
@@ -96,7 +99,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -121,14 +124,16 @@ type nodeLanguageHost struct {
 	runPath       string
 	engineAddress string
 	tracing       string
+	typescript    bool
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress, tracing string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(nodePath, runPath, engineAddress, tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		typescript:    typescript,
 	}
 }
 
@@ -264,28 +269,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		return nil, err
 	}
 
-	ourCmd, err := os.Executable()
-	if err != nil {
-		err = errors.Wrap(err, "failed to find our working directory")
-		return nil, err
-	}
-
-	// Older versions of the pulumi runtime used a custom node module (which only worked on node 6.10.X) to support
-	// closure serialization. While we no longer use this, we continue to ship this module with the language host in
-	// the SDK, so we can deploy programs using older versions of the Pulumi framework.  So, for now, let's add this
-	// folder with our native modules to the NODE_PATH so Node can find it.
-	//
-	// TODO(ellismg)[pulumi/pulumi#1298]: Remove this block of code when we no longer need to support older
-	// @pulumi/pulumi versions.
 	env := os.Environ()
-	existingNodePath := os.Getenv("NODE_PATH")
-	if existingNodePath != "" {
-		env = append(env, fmt.Sprintf("NODE_PATH=%s/v6.10.2:%s", filepath.Dir(ourCmd), existingNodePath))
-	} else {
-		env = append(env, "NODE_PATH="+filepath.Dir(ourCmd)+"/v6.10.2")
-	}
-
 	env = append(env, pulumiConfigVar+"="+string(config))
+
+	if host.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
 
 	if logging.V(5) {
 		commandStr := strings.Join(args, " ")

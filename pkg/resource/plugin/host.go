@@ -78,11 +78,12 @@ type Events interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, events Events) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource, events Events, runtimeOptions map[string]bool) (Host, error) {
 	host := &defaultHost{
 		ctx:             ctx,
 		config:          config,
 		events:          events,
+		runtimeOptions:  runtimeOptions,
 		analyzerPlugins: make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins: make(map[string]*languagePlugin),
 		resourcePlugins: make(map[tokens.Package]*resourcePlugin),
@@ -116,6 +117,7 @@ type defaultHost struct {
 	ctx             *Context                           // the shared context for this host.
 	config          ConfigSource                       // the source for provider configuration parameters.
 	events          Events                             // optional callbacks for plugin load events
+	runtimeOptions  map[string]bool                    // options to pass to the language plugins.
 	analyzerPlugins map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
 	languagePlugins map[string]*languagePlugin         // a cache of language plugins and their processes.
 	resourcePlugins map[tokens.Package]*resourcePlugin // a cache of resource plugins and their processes.
@@ -284,7 +286,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime)
+		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -356,12 +358,12 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]works
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(info.Proj.Runtime)
+		lang, err := host.LanguageRuntime(info.Proj.RuntimeInfo.Name())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime)
+			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.RuntimeInfo.Name())
 		}
 		plugins = append(plugins, workspace.PluginInfo{
-			Name: info.Proj.Runtime,
+			Name: info.Proj.RuntimeInfo.Name(),
 			Kind: workspace.LanguagePlugin,
 		})
 
