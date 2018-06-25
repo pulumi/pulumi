@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
@@ -64,6 +65,13 @@ func newNewCmd() *cobra.Command {
 				return errors.Errorf("'%s' is not a valid project name", name)
 			}
 
+			// Get the current working directory.
+			var cwd string
+			if cwd, err = os.Getwd(); err != nil {
+				return errors.Wrap(err, "getting the working directory")
+			}
+			originalCwd := cwd
+
 			// If dir was specified, ensure it exists and use it as the
 			// current working directory.
 			if dir != "" {
@@ -76,12 +84,11 @@ func newNewCmd() *cobra.Command {
 				if err = os.Chdir(dir); err != nil {
 					return errors.Wrap(err, "changing the working directory")
 				}
-			}
 
-			// Get the current working directory.
-			var cwd string
-			if cwd, err = os.Getwd(); err != nil {
-				return errors.Wrap(err, "getting the working directory")
+				// Get the new working directory.
+				if cwd, err = os.Getwd(); err != nil {
+					return errors.Wrap(err, "getting the working directory")
+				}
 			}
 
 			releases, err := cloud.New(cmdutil.Diag(), getCloudURL(cloudURL))
@@ -234,7 +241,29 @@ func newNewCmd() *cobra.Command {
 				fmt.Println("Finished installing dependencies.")
 
 				// Write a summary with next steps.
-				fmt.Println("New project is configured and ready to deploy with 'pulumi update'.")
+				fmt.Println("New project is configured and ready to deploy.")
+
+				// If the current working directory changed, add instructions to
+				// cd into the directory.
+				if originalCwd != cwd {
+					// If we can determine a relative path, use that, otherwise use
+					// the full path.
+					var cd string
+					if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
+						cd = rel
+					} else {
+						cd = cwd
+					}
+
+					// Surround the path with double quotes if it contains whitespace.
+					if containsWhiteSpace(cd) {
+						cd = fmt.Sprintf("\"%s\"", cd)
+					}
+
+					fmt.Printf("Run 'cd %s' then 'pulumi update'.\n", cd)
+				} else {
+					fmt.Println("Run 'pulumi update'.")
+				}
 			}
 
 			return nil
@@ -435,4 +464,14 @@ func templateArrayToStringArrayAndMap(templates []workspace.Template) ([]string,
 	sort.Strings(options)
 
 	return options, nameToTemplateMap
+}
+
+// containsWhiteSpace returns true if the string contains whitespace.
+func containsWhiteSpace(value string) bool {
+	for _, c := range value {
+		if unicode.IsSpace(c) {
+			return true
+		}
+	}
+	return false
 }
