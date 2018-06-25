@@ -41,12 +41,25 @@ PY_PULUMIRPC=../python/lib/pulumi/runtime/proto/
 echo -e "\tPython: $PY_PULUMIRPC"
 mkdir -p $PY_PULUMIRPC
 
+function on_exit() {
+    rm -rf "$TEMP_DIR"
+}
 
-TEMP_DIR=$(mktemp -d)
+# Protoc for Python has a bug where, if your proto files are all in the same directory relative
+# to one another, imports of said proto files will produce imports that don't work using Python 3.
+#
+# Since our proto files are all in the same directory, this little bit of sed rewrites the broken
+# imports that protoc produces, of the form
+#     import foo_pb2 as bar
+# to the form
+#     from . import foo_pb2 as bar
+# This form is semantically equivalent and is accepted by both Python 2 and Python 3.
+TEMP_DIR="$(mktemp -d)"
+trap on_exit EXIT
+
 echo -e "\tPython temp dir: $TEMP_DIR"
-python -m grpc_tools.protoc -I./ --python_out=$TEMP_DIR --grpc_python_out=$TEMP_DIR *.proto
-sed -i '.old' "s/^import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" $TEMP_DIR/*.py
-cp $TEMP_DIR/*.py $PY_PULUMIRPC
-rm -rf $TEMP_DIR
+python -m grpc_tools.protoc -I./ --python_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" *.proto
+sed -i '.old' "s/^import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$TEMP_DIR"/*.py
+cp "$TEMP_DIR"/*.py "$PY_PULUMIRPC"
 
 echo Done.
