@@ -16,6 +16,7 @@ else
 	PIPENV_PYTHON_VERSION := --two
 endif
 
+PIPENV_VERSION := 2018.05.18
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
@@ -25,7 +26,7 @@ GOMETALINTER    := ${GOMETALINTERBIN} --config=../../Gometalinter.json
 include ../../build/common.mk
 
 ensure::
-	$(PIP) install pipenv --user
+	$(PIP) install pipenv==$(PIPENV_VERSION) --user
 	pipenv $(PIPENV_PYTHON_VERSION) install --dev
 	mkdir -p $(PYENVSRC)
 	
