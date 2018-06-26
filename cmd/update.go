@@ -123,7 +123,7 @@ func newUpdateCmd() *cobra.Command {
 		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

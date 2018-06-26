@@ -100,7 +100,7 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"List configuration for a different stack than the currently selected stack")
+		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().BoolVarP(
 		&follow, "follow", "f", false,
 		"Follow the log stream in real time (like tail -f)")

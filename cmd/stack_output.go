@@ -25,7 +25,8 @@ import (
 )
 
 func newStackOutputCmd() *cobra.Command {
-	return &cobra.Command{
+	var stackName string
+	cmd := &cobra.Command{
 		Use:   "output [property-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Show a stack's output properties",
@@ -35,7 +36,7 @@ func newStackOutputCmd() *cobra.Command {
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Fetch the current stack and its output properties.
-			s, err := requireCurrentStack(false)
+			s, err := requireStack(stackName, false)
 			if err != nil {
 				return err
 			}
@@ -64,4 +65,7 @@ func newStackOutputCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	return cmd
 }
