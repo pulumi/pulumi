@@ -23,7 +23,7 @@ from concurrent import futures
 import subprocess
 from os import path
 import grpc
-from pulumi.runtime import proto
+from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc
 
 
@@ -44,8 +44,8 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         self.langhost_test = langhost_test
 
     def Invoke(self, request, context):
-        failures, ret = self.langhost_test.invoke(context, request.tok,
-                                                  request.args)
+        args = rpc.deserialize_resource_props(request.args)
+        failures, ret = self.langhost_test.invoke(context, request.tok, args)
         return proto.InvokeResponse(failures=failures, ret=ret)
 
     def ReadResource(self, request, context):
@@ -53,7 +53,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         name = request.name
         id_ = request.id
         parent = request.parent
-        state = request.properties
+        state = rpc.deserialize_resource_props(request.properties)
         outs = self.langhost_test.read_resource(context, type_, name, id_,
                                                 parent, state)
         return proto.ReadResourceResponse(
@@ -62,7 +62,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
     def RegisterResource(self, request, context):
         type_ = request.type
         name = request.name
-        props = request.object
+        props = rpc.deserialize_resource_props(request.object)
         deps = request.dependencies
         outs = {}
         if type_ != "pulumi:pulumi:Stack":
@@ -82,7 +82,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 
     def RegisterResourceOutputs(self, request, context):
         urn = request.urn
-        outs = request.outputs
+        outs = rpc.deserialize_resource_props(request.outputs)
         res = self.registrations.get(urn)
         if res:
             self.langhost_test.register_resource_outputs(
