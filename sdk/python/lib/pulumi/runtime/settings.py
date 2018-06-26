@@ -15,9 +15,10 @@
 """
 Runtime settings and configuration.
 """
+from __future__ import absolute_import
 
 import grpc
-from proto import engine_pb2_grpc, resource_pb2_grpc
+from .proto import engine_pb2_grpc, resource_pb2_grpc
 from ..errors import RunError
 
 class Settings(object):
