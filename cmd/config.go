@@ -60,7 +60,7 @@ func newConfigCmd() *cobra.Command {
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Operate on a different stack than the currently selected stack")
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.AddCommand(newConfigGetCmd(&stack))
 	cmd.AddCommand(newConfigRmCmd(&stack))

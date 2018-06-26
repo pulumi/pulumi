@@ -108,7 +108,7 @@ func newPreviewCmd() *cobra.Command {
 		"Return an error if any changes are proposed by this preview")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",

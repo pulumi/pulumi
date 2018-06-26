@@ -109,7 +109,7 @@ func newDestroyCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"Choose a stack other than the currently selected one")
+		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the destroy operation")
