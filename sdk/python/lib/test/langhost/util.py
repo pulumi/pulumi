@@ -227,8 +227,9 @@ class LanghostTest(unittest.TestCase):
         return ResourceMonitorEndpoint(monitor, server, "0.0.0.0:%d" % port)
 
     def _create_language_host(self):
+        exec_path = path.join(path.dirname(__file__), "..", "..", "..", "cmd", "pulumi-language-python-exec")
         proc = subprocess.Popen(
-            ["pulumi-language-python"],
+            ["pulumi-language-python", "--use-executor", exec_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         # The first line of output is the port that the language host gRPC server is listening on.
