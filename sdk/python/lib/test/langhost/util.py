@@ -233,7 +233,17 @@ class LanghostTest(unittest.TestCase):
             stderr=subprocess.PIPE)
         # The first line of output is the port that the language host gRPC server is listening on.
         first_line = proc.stdout.readline()
-        return LanguageHostEndpoint(proc, "0.0.0.0:%d" % int(first_line))
+        try:
+            return LanguageHostEndpoint(proc, "0.0.0.0:%d" % int(first_line))
+        except ValueError:
+            proc.kill()
+            stdout, stderr = proc.communicate()
+            print("language host did not respond with port")
+            print("stdout: ")
+            print(stdout)
+            print("stderr: ")
+            print(stderr)
+            raise
 
     def _run_program(self, stub, monitor, project, stack, program, pwd, args,
                      config, dryrun):
