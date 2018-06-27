@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	_struct "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -260,37 +261,53 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusOK, err
 	}
 
+	var id resource.ID
+	var properties *_struct.Struct
+	var resourceError *rpcerror.Error
+	var resourceStatus = resource.StatusOK
 	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, rpcErr := resourceStateAndError(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcErr)
-		return "", nil, resourceStatus, rpcErr
+		resourceStatus, resourceError = resourceStateAndError(err)
+		contract.Assert(resourceStatus != resource.StatusOK)
+		contract.Assert(resourceError != nil)
+		logging.V(7).Infof("%s failed: err=%v", label, resourceError)
+
+		for _, detail := range resourceError.Details() {
+			// If resource was successfully created but failed to initialize, the error will be packed
+			// with the live properties of the object.
+			if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
+				id = resource.ID(initErr.GetId())
+				properties = initErr.GetProperties()
+				resourceStatus = resource.StatusPartialFailure
+			}
+		}
+
+		if resourceStatus == resource.StatusUnknown {
+			return "", nil, resourceStatus, resourceError
+		}
+	} else {
+		id = resource.ID(resp.GetId())
+		properties = resp.GetProperties()
 	}
 
-	id := resource.ID(resp.GetId())
 	if id == "" {
 		return "", nil, resource.StatusUnknown,
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
 
-	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+	outs, err := UnmarshalProperties(properties, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
 	}
 
-	var resourceError error
-	resourceStatus := resource.StatusOK
-	if resp.GetError() != "" {
-		// The resource was created, but a follow-up step failed.
-		resourceError = errors.New(resp.GetError())
-		resourceStatus = resource.StatusPartialFailure
-	}
-
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+	if resourceError == nil {
+		return id, outs, resourceStatus, nil
+	}
 	return id, outs, resourceStatus, resourceError
 }
 
@@ -373,6 +390,9 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
+	var properties *_struct.Struct
+	var resourceError *rpcerror.Error
+	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
 		Id:   string(id),
 		Urn:  string(urn),
@@ -380,26 +400,37 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		resourceStatus, rpcErr := resourceStateAndError(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcErr)
-		return nil, resourceStatus, rpcErr
+		resourceStatus, resourceError = resourceStateAndError(err)
+		contract.Assert(resourceStatus != resource.StatusOK)
+		contract.Assert(resourceError != nil)
+		logging.V(7).Infof("%s failed: %v", label, resourceError)
+
+		for _, detail := range resourceError.Details() {
+			// If resource was successfully created but failed to initialize, the error will be packed
+			// with the live properties of the object.
+			if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
+				properties = initErr.GetProperties()
+				resourceStatus = resource.StatusPartialFailure
+			}
+		}
+
+		if resourceStatus == resource.StatusUnknown {
+			return nil, resourceStatus, resourceError
+		}
+	} else {
+		properties = resp.GetProperties()
 	}
 
-	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+	outs, err := UnmarshalProperties(properties, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
 		return nil, resource.StatusUnknown, err
 	}
 
-	var resourceError error
-	resourceStatus := resource.StatusOK
-	if resp.GetError() != "" {
-		// The resource was updated, but a follow-up step failed.
-		resourceError = errors.New(resp.GetError())
-		resourceStatus = resource.StatusPartialFailure
-	}
-
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
+	if resourceError == nil {
+		return outs, resourceStatus, nil
+	}
 	return outs, resourceStatus, resourceError
 }
 
@@ -551,7 +582,7 @@ func createConfigureError(rpcerr *rpcerror.Error) error {
 // In general, our resource state is only really unknown if the server
 // had an internal error, in which case it will serve one of `codes.Internal`,
 // `codes.DataLoss`, or `codes.Unknown` to us.
-func resourceStateAndError(err error) (resource.Status, error) {
+func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 	rpcError := rpcerror.Convert(err)
 	logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
 	switch rpcError.Code() {

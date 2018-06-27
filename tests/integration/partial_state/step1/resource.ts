@@ -14,27 +14,23 @@ export class Provider implements dynamic.ResourceProvider {
     }
 
     public async create(inputs: any): Promise<dynamic.CreateResult> {
-        let error: string | undefined = undefined;
         if (inputs.state === 4) {
-            error = "state can't be 4";
+            throw new Error("state can't be 4");
         }
 
         return {
             id: (this.id++).toString(),
             outs: inputs,
-            error: error,
         };
     }
 
     public async update(id: pulumi.ID, olds: any, news: any): Promise<dynamic.UpdateResult> {
-        let error: string | undefined = undefined;
         if (news.state === 4) {
-            error = "state can't be 4";
+            throw new Error("state can't be 4");
         }
 
         return {
             outs: news,
-            error: error,
         };
     }
 }
