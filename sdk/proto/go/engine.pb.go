@@ -6,7 +6,7 @@ package pulumirpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/empty"
+import empty "github.com/golang/protobuf/ptypes/empty"
 
 import (
 	context "golang.org/x/net/context"
@@ -17,6 +17,12 @@ import (
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
 type LogSeverity int32
@@ -44,18 +50,42 @@ var LogSeverity_value = map[string]int32{
 func (x LogSeverity) String() string {
 	return proto.EnumName(LogSeverity_name, int32(x))
 }
-func (LogSeverity) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
-
-type LogRequest struct {
-	Severity LogSeverity `protobuf:"varint,1,opt,name=severity,enum=pulumirpc.LogSeverity" json:"severity,omitempty"`
-	Message  string      `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
-	Urn      string      `protobuf:"bytes,3,opt,name=urn" json:"urn,omitempty"`
+func (LogSeverity) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_engine_9084b8160d1019f5, []int{0}
 }
 
-func (m *LogRequest) Reset()                    { *m = LogRequest{} }
-func (m *LogRequest) String() string            { return proto.CompactTextString(m) }
-func (*LogRequest) ProtoMessage()               {}
-func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+type LogRequest struct {
+	Severity             LogSeverity `protobuf:"varint,1,opt,name=severity,proto3,enum=pulumirpc.LogSeverity" json:"severity,omitempty"`
+	Message              string      `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Urn                  string      `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
+}
+
+func (m *LogRequest) Reset()         { *m = LogRequest{} }
+func (m *LogRequest) String() string { return proto.CompactTextString(m) }
+func (*LogRequest) ProtoMessage()    {}
+func (*LogRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_engine_9084b8160d1019f5, []int{0}
+}
+func (m *LogRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_LogRequest.Unmarshal(m, b)
+}
+func (m *LogRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_LogRequest.Marshal(b, m, deterministic)
+}
+func (dst *LogRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LogRequest.Merge(dst, src)
+}
+func (m *LogRequest) XXX_Size() int {
+	return xxx_messageInfo_LogRequest.Size(m)
+}
+func (m *LogRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LogRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LogRequest proto.InternalMessageInfo
 
 func (m *LogRequest) GetSeverity() LogSeverity {
 	if m != nil {
@@ -91,11 +121,12 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Engine service
-
+// EngineClient is the client API for Engine service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type EngineClient interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 }
 
 type engineClient struct {
@@ -106,20 +137,19 @@ func NewEngineClient(cc *grpc.ClientConn) EngineClient {
 	return &engineClient{cc}
 }
 
-func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
-	out := new(google_protobuf.Empty)
-	err := grpc.Invoke(ctx, "/pulumirpc.Engine/Log", in, out, c.cc, opts...)
+func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/pulumirpc.Engine/Log", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Engine service
-
+// EngineServer is the server API for Engine service.
 type EngineServer interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(context.Context, *LogRequest) (*google_protobuf.Empty, error)
+	Log(context.Context, *LogRequest) (*empty.Empty, error)
 }
 
 func RegisterEngineServer(s *grpc.Server, srv EngineServer) {
@@ -157,9 +187,9 @@ var _Engine_serviceDesc = grpc.ServiceDesc{
 	Metadata: "engine.proto",
 }
 
-func init() { proto.RegisterFile("engine.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("engine.proto", fileDescriptor_engine_9084b8160d1019f5) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor_engine_9084b8160d1019f5 = []byte{
 	// 239 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x8f, 0x4b, 0x4b, 0xc3, 0x40,
 	0x14, 0x85, 0x9b, 0x46, 0xdb, 0xe6, 0x56, 0x64, 0xb8, 0x60, 0x09, 0x75, 0x53, 0xba, 0x2a, 0x2e,

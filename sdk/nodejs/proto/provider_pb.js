@@ -26,6 +26,7 @@ goog.exportSymbol('proto.pulumirpc.DeleteRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.DiffRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.DiffResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.DiffResponse.DiffChanges', null, global);
+goog.exportSymbol('proto.pulumirpc.ErrorResourceInitFailed', null, global);
 goog.exportSymbol('proto.pulumirpc.InvokeRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.InvokeResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadRequest', null, global);
@@ -119,7 +120,7 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
     case 1:
       var value = msg.getVariablesMap();
       reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "");
          });
       break;
     default:
@@ -484,15 +485,15 @@ proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey.prototype.setDescription = 
 
 /**
  * repeated MissingKey missingKeys = 1;
- * @return {!Array.<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>}
+ * @return {!Array<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>}
  */
 proto.pulumirpc.ConfigureErrorMissingKeys.prototype.getMissingkeysList = function() {
-  return /** @type{!Array.<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} */ (
+  return /** @type{!Array<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey, 1));
 };
 
 
-/** @param {!Array.<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} value */
+/** @param {!Array<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} value */
 proto.pulumirpc.ConfigureErrorMissingKeys.prototype.setMissingkeysList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 1, value);
 };
@@ -882,15 +883,15 @@ proto.pulumirpc.InvokeResponse.prototype.hasReturn = function() {
 
 /**
  * repeated CheckFailure failures = 2;
- * @return {!Array.<!proto.pulumirpc.CheckFailure>}
+ * @return {!Array<!proto.pulumirpc.CheckFailure>}
  */
 proto.pulumirpc.InvokeResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array.<!proto.pulumirpc.CheckFailure>} */ (
+  return /** @type{!Array<!proto.pulumirpc.CheckFailure>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 2));
 };
 
 
-/** @param {!Array.<!proto.pulumirpc.CheckFailure>} value */
+/** @param {!Array<!proto.pulumirpc.CheckFailure>} value */
 proto.pulumirpc.InvokeResponse.prototype.setFailuresList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 2, value);
 };
@@ -1324,15 +1325,15 @@ proto.pulumirpc.CheckResponse.prototype.hasInputs = function() {
 
 /**
  * repeated CheckFailure failures = 2;
- * @return {!Array.<!proto.pulumirpc.CheckFailure>}
+ * @return {!Array<!proto.pulumirpc.CheckFailure>}
  */
 proto.pulumirpc.CheckResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array.<!proto.pulumirpc.CheckFailure>} */ (
+  return /** @type{!Array<!proto.pulumirpc.CheckFailure>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 2));
 };
 
 
-/** @param {!Array.<!proto.pulumirpc.CheckFailure>} value */
+/** @param {!Array<!proto.pulumirpc.CheckFailure>} value */
 proto.pulumirpc.CheckResponse.prototype.setFailuresList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 2, value);
 };
@@ -1960,14 +1961,14 @@ proto.pulumirpc.DiffResponse.DiffChanges = {
 
 /**
  * repeated string replaces = 1;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.pulumirpc.DiffResponse.prototype.getReplacesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.pulumirpc.DiffResponse.prototype.setReplacesList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
@@ -1989,14 +1990,14 @@ proto.pulumirpc.DiffResponse.prototype.clearReplacesList = function() {
 
 /**
  * repeated string stables = 2;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.pulumirpc.DiffResponse.prototype.getStablesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 2));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.pulumirpc.DiffResponse.prototype.setStablesList = function(value) {
   jspb.Message.setField(this, 2, value || []);
 };
@@ -3445,6 +3446,240 @@ proto.pulumirpc.DeleteRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.DeleteRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.pulumirpc.ErrorResourceInitFailed = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ErrorResourceInitFailed.repeatedFields_, null);
+};
+goog.inherits(proto.pulumirpc.ErrorResourceInitFailed, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.pulumirpc.ErrorResourceInitFailed.displayName = 'proto.pulumirpc.ErrorResourceInitFailed';
+}
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ErrorResourceInitFailed.repeatedFields_ = [3];
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.toObject = function(opt_includeInstance) {
+  return proto.pulumirpc.ErrorResourceInitFailed.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.pulumirpc.ErrorResourceInitFailed} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.pulumirpc.ErrorResourceInitFailed.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    reasonsList: jspb.Message.getRepeatedField(msg, 3)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.pulumirpc.ErrorResourceInitFailed}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.pulumirpc.ErrorResourceInitFailed;
+  return proto.pulumirpc.ErrorResourceInitFailed.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.pulumirpc.ErrorResourceInitFailed} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.pulumirpc.ErrorResourceInitFailed}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setId(value);
+      break;
+    case 2:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setProperties(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReasons(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.pulumirpc.ErrorResourceInitFailed.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.pulumirpc.ErrorResourceInitFailed} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.pulumirpc.ErrorResourceInitFailed.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getId();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getProperties();
+  if (f != null) {
+    writer.writeMessage(
+      2,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getReasonsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      3,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string id = 1;
+ * @return {string}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.getId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.setId = function(value) {
+  jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct properties = 2;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.getProperties = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.setProperties = function(value) {
+  jspb.Message.setWrapperField(this, 2, value);
+};
+
+
+proto.pulumirpc.ErrorResourceInitFailed.prototype.clearProperties = function() {
+  this.setProperties(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.hasProperties = function() {
+  return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * repeated string reasons = 3;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.getReasonsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
+};
+
+
+/** @param {!Array<string>} value */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.setReasonsList = function(value) {
+  jspb.Message.setField(this, 3, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.ErrorResourceInitFailed.prototype.addReasons = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+};
+
+
+proto.pulumirpc.ErrorResourceInitFailed.prototype.clearReasonsList = function() {
+  this.setReasonsList([]);
 };
 
 
