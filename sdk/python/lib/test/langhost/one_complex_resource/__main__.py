@@ -26,6 +26,10 @@ class MyResource(CustomResource):
             }
         })
 
+    def set_outputs(self, outputs):
+        self.outprop = outputs["outprop"]
+        self.outintprop = outputs["outintprop"]
+
 
 res = MyResource("testres")
 assert res.outprop == "output properties ftw"

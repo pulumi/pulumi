@@ -56,8 +56,12 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         state = rpc.deserialize_resource_props(request.properties)
         outs = self.langhost_test.read_resource(context, type_, name, id_,
                                                 parent, state)
+        if outs.has_key("properties"):
+            props_proto = rpc.serialize_resource_props(outs["properties"])
+        else:
+            props_proto = None
         return proto.ReadResourceResponse(
-            urn=outs.get("urn"), properties=outs.get("properties"))
+            urn=outs.get("urn"), properties=props_proto)
 
     def RegisterResource(self, request, context):
         type_ = request.type
@@ -77,8 +81,12 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
                 }
 
             self.reg_count += 1
+        if outs.has_key("object"):
+            obj_proto = rpc.serialize_resource_props(outs["object"])
+        else:
+            obj_proto = None
         return proto.RegisterResourceResponse(
-            urn=outs.get("urn"), id=outs.get("id"), object=outs.get("object"))
+            urn=outs.get("urn"), id=outs.get("id"), object=obj_proto)
 
     def RegisterResourceOutputs(self, request, context):
         urn = request.urn

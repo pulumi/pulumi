@@ -18,24 +18,22 @@ from ..util import LanghostTest
 from pulumi.runtime.rpc import Unknown
 
 class ResourceThensTest(LanghostTest):
-    @unittest.skip("pulumi/pulumi#1576")
     def test_resource_thens(self):
         self.run_test(
             program=path.join(self.base_path(), "resource_thens"),
-            expected_resource_count=1)
+            expected_resource_count=2)
 
     def register_resource(self, _ctx, dry_run, ty, name, resource,
                           _dependencies):
         id_ = None
-        props = {}
+        props = resource
+        props["stable"] = "yeah"
         if ty == "test:index:MyResource":
             self.assertEqual(name, "first")
             self.assertEqual(resource["foo"], "bar")
             if not dry_run:
                 id_ = name
-                props = {
-                    "outprop": "output yeah"
-                }
+                props["outprop"] = "output yeah"
         elif ty == "test:index:OtherResource":
             self.assertEqual(name, "second")
             if dry_run:
@@ -49,5 +47,5 @@ class ResourceThensTest(LanghostTest):
         return {
             "urn": self.make_urn(ty, name),
             "id": id_,
-            "props": props
+            "object": props
         }

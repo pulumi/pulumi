@@ -17,7 +17,6 @@ from ..util import LanghostTest
 
 
 class OneComplexResourceTest(LanghostTest):
-    @unittest.skip("pulumi/pulumi#1576")
     def test_one_complex_resource(self):
         self.run_test(
             program=path.join(self.base_path(), "one_complex_resource"),
@@ -38,7 +37,7 @@ class OneComplexResourceTest(LanghostTest):
         return {
             "urn": self.make_urn(ty, name),
             "id": name,
-            "props": {
+            "object": {
                 "outprop": "output properties ftw",
                 "outintprop": 99,
             }
