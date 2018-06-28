@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import path
-from .util import LanghostTest
+from ..util import LanghostTest
 
 
 class ConfigTest(LanghostTest):

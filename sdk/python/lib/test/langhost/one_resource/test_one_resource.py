@@ -12,34 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import path
-import unittest
-from .util import LanghostTest
+from ..util import LanghostTest
 
 
-class OneComplexResourceTest(LanghostTest):
-    @unittest.skip("pulumi/pulumi#1576")
-    def test_one_complex_resource(self):
+class OneResourceTest(LanghostTest):
+    def test_one_resource(self):
         self.run_test(
-            program=path.join(self.base_path(), "one_complex_resource"),
+            program=path.join(self.base_path(), "one_resource"),
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource,
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
                           _dependencies):
         self.assertEqual(ty, "test:index:MyResource")
-        self.assertEqual(name, "testres")
-        self.assertEqual(resource["falseprop"], False)
-        self.assertEqual(resource["trueprop"], True)
-        self.assertEqual(resource["intprop"], 42)
-        self.assertListEqual(resource["listprop"], [1, 2, "string", False])
-        self.assertDictEqual(resource["mapprop"], {
-            "foo": ["bar", "baz"]
-        })
-
+        self.assertEqual(name, "testResource1")
         return {
             "urn": self.make_urn(ty, name),
-            "id": name,
-            "props": {
-                "outprop": "output properties ftw",
-                "outintprop": 99,
-            }
         }

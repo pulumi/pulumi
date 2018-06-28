@@ -11,18 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os import path
-from .util import LanghostTest
-
-
-class EmptyTests(LanghostTest):
-    def test_empty(self):
-        self.run_test(
-            program=path.join(self.base_path(), "empty"),
-            expected_resource_count=0)
-
-    def test_empty_pwd(self):
-        self.run_test(
-            pwd=path.join(self.base_path(), "empty"),
-            expected_resource_count=0,
-            program="./")

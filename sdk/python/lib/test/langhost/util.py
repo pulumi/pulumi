@@ -103,6 +103,8 @@ class LanghostTest(unittest.TestCase):
     way that the Pulumi CLI will. Once the program completes and the language host
     exits, `run_test` will assert the expected errors and/or resource registration
     counts specified by the individual test.
+
+    Check out README.md in this directory for more details.
     """
 
     def run_test(self,
@@ -215,7 +217,7 @@ class LanghostTest(unittest.TestCase):
         """
         Returns the base path for language host tests.
         """
-        return path.join(path.dirname(__file__), "cases")
+        return path.dirname(__file__)
 
     def _create_mock_resource_monitor(self, dryrun):
         monitor = LanghostMockResourceMonitor(self, dryrun)

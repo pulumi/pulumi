@@ -13,7 +13,7 @@
 # limitations under the License.
 from os import path
 import unittest
-from .util import LanghostTest
+from ..util import LanghostTest
 
 from pulumi.runtime.rpc import Unknown
 
