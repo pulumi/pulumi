@@ -31,6 +31,7 @@ package rpcerror
 import (
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -167,6 +168,7 @@ func WithDetails(err error, details ...proto.Message) error {
 // Returns false if the given error is not a gRPC Status error.
 func FromError(err error) (*Error, bool) {
 	status, ok := status.FromError(err)
+	spew.Dump("our status: ", status.Proto())
 	if !ok {
 		rpcError, ok := err.(*Error)
 		return rpcError, ok
@@ -176,7 +178,9 @@ func FromError(err error) (*Error, bool) {
 	rpcError.code = status.Code()
 	rpcError.message = status.Message()
 	rpcError.details = status.Details()
+	spew.Dump("rpcerror: ", rpcError)
 	for _, details := range status.Details() {
+		spew.Dump("detail: ", details)
 		if errorCause, ok := details.(*pulumirpc.ErrorCause); ok {
 			contract.Assertf(rpcError.cause == nil, "RPC endpoint sent more than one ErrorCause")
 			rpcError.cause = &ErrorCause{

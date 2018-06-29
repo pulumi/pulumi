@@ -21,11 +21,13 @@ import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
 const grpc = require("grpc");
+const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 const provproto = require("../../proto/provider_pb.js");
 const provrpc = require("../../proto/provider_grpc_pb.js");
 const plugproto = require("../../proto/plugin_pb.js");
+const statusproto = require("../../proto/status_pb.js");
 
 const providerKey: string = "__provider";
 
@@ -154,20 +156,41 @@ async function createRPC(call: any, callback: any): Promise<void> {
         callback(undefined, resp);
     } catch (e) {
         console.error(`${e}: ${e.stack}`);
-        const m = new grpc.Metadata();
-        m.add("detail-bin", Buffer.from(JSON.stringify({id: "foo"})));
-        callback({
-            // code: grpc.status.Unknown,
+        const resp = new statusproto.Status();
+        const detail = new provproto.ErrorResourceInitFailed();
+        detail.setId("foo");
+        detail.setProperties(structproto.Struct.fromJavaScript({}));
+        detail.addReasons("foo bar");
+        const details = new anyproto.Any();
+        details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
+
+        resp.setCode(grpc.status.UNKNOWN);
+        resp.setMessage("status message");
+        resp.addDetails(details);
+        const metadata = new grpc.Metadata();
+        metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
+        // metadata.add("grpc-status", grpc.status.UNKNOWN.toString());
+        // metadata.add("grpc-message", "Length of `Name` cannot be more than 10 characters");
+        return callback({
+            code: grpc.status.UNKNOWN,
             message: "Length of `Name` cannot be more than 10 characters",
-            // details: [
-            //     {
-            //         id: "foo",
-            //         properties: {},
-            //         reasons: ["Length of `Name` cannot be more than 10 characters"],
-            //     },
-            // ],
-            metadata: m,
+            metadata: metadata,
         }, undefined);
+
+        // const m = new grpc.Metadata();
+        // m.add("detail-bin", Buffer.from(JSON.stringify({id: "foo"})));
+        // callback({
+        //     // code: grpc.status.Unknown,
+        //     message: "Length of `Name` cannot be more than 10 characters",
+        //     // details: [
+        //     //     {
+        //     //         id: "foo",
+        //     //         properties: {},
+        //     //         reasons: ["Length of `Name` cannot be more than 10 characters"],
+        //     //     },
+        //     // ],
+        //     metadata: m,
+        // }, undefined);
     }
 }
 

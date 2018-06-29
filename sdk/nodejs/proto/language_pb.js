@@ -352,15 +352,15 @@ proto.pulumirpc.GetRequiredPluginsResponse.serializeBinaryToWriter = function(me
 
 /**
  * repeated PluginDependency plugins = 1;
- * @return {!Array<!proto.pulumirpc.PluginDependency>}
+ * @return {!Array.<!proto.pulumirpc.PluginDependency>}
  */
 proto.pulumirpc.GetRequiredPluginsResponse.prototype.getPluginsList = function() {
-  return /** @type{!Array<!proto.pulumirpc.PluginDependency>} */ (
+  return /** @type{!Array.<!proto.pulumirpc.PluginDependency>} */ (
     jspb.Message.getRepeatedWrapperField(this, plugin_pb.PluginDependency, 1));
 };
 
 
-/** @param {!Array<!proto.pulumirpc.PluginDependency>} value */
+/** @param {!Array.<!proto.pulumirpc.PluginDependency>} value */
 proto.pulumirpc.GetRequiredPluginsResponse.prototype.setPluginsList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 1, value);
 };
@@ -503,7 +503,7 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 6:
       var value = msg.getConfigMap();
       reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "");
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
          });
       break;
     case 7:
@@ -672,14 +672,14 @@ proto.pulumirpc.RunRequest.prototype.setProgram = function(value) {
 
 /**
  * repeated string args = 5;
- * @return {!Array<string>}
+ * @return {!Array.<string>}
  */
 proto.pulumirpc.RunRequest.prototype.getArgsList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 5));
 };
 
 
-/** @param {!Array<string>} value */
+/** @param {!Array.<string>} value */
 proto.pulumirpc.RunRequest.prototype.setArgsList = function(value) {
   jspb.Message.setField(this, 5, value || []);
 };
