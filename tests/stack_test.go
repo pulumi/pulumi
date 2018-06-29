@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 
@@ -191,42 +190,6 @@ func TestStackCommands(t *testing.T) {
 				}
 			})
 		}
-	})
-
-	// This tests an export-import roundtrip. This is a common scenario after a user has cancelled
-	// a deployment.
-	t.Run("ExportImportRoundtrip", func(t *testing.T) {
-		e := ptesting.NewEnvironment(t)
-		defer func() {
-			e.DeleteEnvironment()
-		}()
-
-		if testutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-			t.Skip("Skipping; PULUMI_ACCESS_TOKEN is not set")
-		}
-
-		// Random stack name to avoid collisions in the service.
-		stackName := addRandomSufix("roundtrip")
-		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/empty/nodejs")
-
-		e.RunCommand("pulumi", "login")
-		e.RunCommand("pulumi", "stack", "init", stackName)
-
-		// Install, build, run. The "empty" program doesn't do anything so this
-		// should trivially succeed.
-		e.RunCommand("yarn", "install")
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "run", "build")
-		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
-
-		// Roundtrip the snapshot. This should be a no-op if working correctly.
-		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
-		e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
-
-		// After exporting and importing, the next update should proceed successfully.
-		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
-		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force", stackName)
 	})
 }
 

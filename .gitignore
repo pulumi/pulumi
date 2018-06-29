@@ -3,7 +3,12 @@
 **/.vscode/
 coverage.cov
 *.coverprofile
-custom_node/
+Pipfile.lock
+**/dist
 
-# Too much awesome to store in Git.
-.pulumi
+/.idea/
+*.iml
+
+# Go tests run "in tree" and this folder will linger if they fail (the integration test framework cleans
+# it up when they pass.)
+**/command-output/

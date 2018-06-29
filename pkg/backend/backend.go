@@ -101,6 +101,8 @@ type Backend interface {
 	ImportDeployment(ctx context.Context, stackRef StackReference, deployment *apitype.UntypedDeployment) error
 	// Logout logs you out of the backend and removes any stored credentials.
 	Logout() error
+	// Returns the identity of the current user for the backend.
+	CurrentUser() (string, error)
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.

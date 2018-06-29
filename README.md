@@ -2,9 +2,9 @@
 
 Pulumi is a cloud development platform that makes creating cloud programs easy and productive.
 
-Author cloud programs in your favorite favorite language and Pulumi will automatically keep your
-infrastructure up-to-date.  Skip learning yet another YAML dialect.  Pulumi is multi-language and
-multi-cloud, and fully extensible.
+Author cloud programs in your favorite language and Pulumi will automatically keep your
+infrastructure up-to-date.  Skip the YAML and just write code.  Pulumi is multi-language, multi-cloud
+and fully extensible in both its engine and ecosystem of packages.
 
 To install the latest Pulumi release, run:
 
@@ -12,7 +12,12 @@ To install the latest Pulumi release, run:
 $ curl -fsSL https://get.pulumi.com/ | sh
 ```
 
-If you are learning about Pulumi for the first time, please [visit the project website](https://pulumi.io/).
+After installing, you can get started with the `pulumi new` command,
+[our examples](https://github.com/pulumi/examples), or our [visit project website](https://pulumi.io/) which
+includes several [in-depth tutorials](https://pulumi.io/quickstart) and
+[an interactive tour](https://pulumi.io/tour) to walk through the core CLI usage and programming concepts.
+
+Please join [the conversation on Slack](https://slack.pulumi.io/).
 
 This repo contains the CLI, language SDKs, and the core Pulumi engine.  Individual libraries are in their own repos.
 
@@ -70,21 +75,9 @@ Pulumi is written in Go, uses Dep for dependency management, and GoMetaLinter fo
     - `$ go get -u github.com/alecthomas/gometalinter`
     - `$ gometalinter --install`
 
-### Building from Source
-
-To install the pre-built SDK, please run `curl -fsSL https://get.pulumi.com/ | sh`, or see detailed installation
-instructions on [the project page](https://pulumi.io/).  Read on if you want to install from source.
-
-To build the Pulumi CLI from source, you may simply run:
-
-    $ go get -u github.com/pulumi/pulumi
-
-This installs the `pulumi` binary to `$GOPATH/bin`.
-
-To do anything interesting with Pulumi, you will need an SDK for your language of choice.  The SDK installation comes
-with pre-built language providers, however the `make` flow below will create a complete SDK distribution for you.
-
 ### Building and Testing
+
+To install the pre-built SDK, please run `curl -fsSL https://get.pulumi.com/ | sh`, or see detailed installation instructions on [the project page](https://pulumi.io/).  Read on if you want to install from source.
 
 To build a complete Pulumi SDK, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 

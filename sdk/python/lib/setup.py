@@ -23,8 +23,8 @@ setup(name='pulumi',
       license='Apache 2.0',
       packages=find_packages(),
       install_requires=[
-          'google==2.0.1',
-          'grpcio==1.9.1',
-          'six==1.11.0'
+          'protobuf>=3.6.0',
+          'grpcio>=1.9.1',
+          'six>=1.11.0'
       ],
       zip_safe=False)

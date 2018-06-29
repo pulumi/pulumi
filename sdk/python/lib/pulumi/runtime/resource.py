@@ -15,12 +15,13 @@
 """
 Resource-related runtime functions.  These are not designed for external use.
 """
+from __future__ import absolute_import
 
 from ..errors import RunError
 from google.protobuf import struct_pb2
-from proto import provider_pb2, resource_pb2
-from settings import get_monitor
-import rpc
+from .proto import provider_pb2, resource_pb2
+from .settings import get_monitor
+from . import rpc
 import six
 import sys
 import grpc
@@ -69,7 +70,7 @@ def invoke(tok, args):
 
     return {}
 
-class RegisterResourceResult:
+class RegisterResourceResult(object):
     """
     RegisterResourceResult contains the assigned URN, the ID -- if applicable -- and the resulting resource
     output properties, representing a resource's state after registration has completed.

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class Unknown(unicode):
+from __future__ import absolute_import
+
+class Unknown(str):
     """
     Unknown is a class representing values that are not known during
     previews. This class is designed to lie its way through the entire
@@ -30,7 +32,7 @@ class Unknown(unicode):
         """
         return Unknown()
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Called whenever this value is coerced to a boolean, via "bool" or the "not"
         operator. This value is not zero, so we return True.

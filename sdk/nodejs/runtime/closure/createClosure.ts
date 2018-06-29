@@ -17,7 +17,7 @@ import { basename } from "path";
 import * as ts from "typescript";
 import { RunError } from "../../errors";
 import * as resource from "../../resource";
-import { CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
+import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import * as v8 from "./v8";
 
@@ -305,13 +305,19 @@ export async function createFunctionInfoAsync(
     }
 }
 
+// This function ends up capturing many external modules that cannot themselves be serialized.
+// Do not allow it to be captured.
+(<any>createFunctionInfoAsync).doNotCapture = true;
+
 /**
  * createFunctionInfo does the work to create an asynchronous dataflow graph that resolves to a
  * final FunctionInfo.
  */
 function createFunctionInfo(
         func: Function, context: Context,
-        serialize: (o: any) => boolean): FunctionInfo {
+        serialize: (o: any) => boolean, logInfo?: boolean): FunctionInfo {
+
+    // logInfo = logInfo || func.name === "addHandler";
 
     const file: string =  v8.getFunctionFile(func);
     const line: number = v8.getFunctionLine(func);
@@ -400,7 +406,7 @@ function createFunctionInfo(
             !isAsyncFunction &&
             !isDerivedNoCaptureConstructor(func)) {
 
-            const protoEntry = getOrCreateEntry(proto, undefined, context, serialize);
+            const protoEntry = getOrCreateEntry(proto, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
 
             if (isDerivedClassConstructor) {
@@ -429,8 +435,8 @@ function createFunctionInfo(
             }
 
             functionInfo.env.set(
-                getOrCreateEntry(keyOrSymbol, undefined, context, serialize),
-                { entry: getOrCreateEntry(funcProp, undefined, context, serialize) });
+                getOrCreateEntry(keyOrSymbol, undefined, context, serialize, logInfo),
+                { entry: getOrCreateEntry(funcProp, undefined, context, serialize, logInfo) });
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
@@ -439,7 +445,7 @@ function createFunctionInfo(
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
             capturedValues.set(
-                getOrCreateEntry("__super", undefined, context, serialize),
+                getOrCreateEntry("__super", undefined, context, serialize, logInfo),
                 { entry: superEntry });
 
             functionInfo.code = rewriteSuperReferences(
@@ -459,7 +465,7 @@ function createFunctionInfo(
         // itself.
         if (functionDeclarationName !== undefined) {
             capturedValues.set(
-                getOrCreateEntry(functionDeclarationName, undefined, context, serialize),
+                getOrCreateEntry(functionDeclarationName, undefined, context, serialize, logInfo),
                 { entry: funcEntry });
         }
 
@@ -510,10 +516,10 @@ function createFunctionInfo(
             capturedVariables: CapturedVariableMap, name: string, value: any) {
 
             const properties = capturedVariables.get(name);
-            const serializedName = getOrCreateEntry(name, undefined, context, serialize);
+            const serializedName = getOrCreateEntry(name, undefined, context, serialize, logInfo);
 
             // try to only serialize out the properties that were used by the user's code.
-            const serializedValue = getOrCreateEntry(value, properties, context, serialize);
+            const serializedValue = getOrCreateEntry(value, properties, context, serialize, logInfo);
 
             capturedValues.set(serializedName, { entry: serializedValue });
         }
@@ -610,19 +616,7 @@ function throwSerializationError(func: Function, context: Context, info: string)
     }
 
     message += "  ".repeat(i) + info + "\n\n";
-    message += "Function code:\n";
-
-    const funcString = func.toString();
-
-    // include up to the first 5 lines of the function to help show what is wrong with it.
-    let split = funcString.split(/\r?\n/);
-    if (split.length > 5) {
-        split = split.slice(0, 5);
-        split.push("...");
-    }
-    for (const line of split) {
-        message += "  " + line + "\n";
-    }
+    message += getTrimmedFunctionCode(func);
 
     const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
     if (moduleIndex >= 0) {
@@ -636,6 +630,24 @@ Consider using import('${moduleName}') or require('${moduleName}') inside ${loca
     }
 
     throw new RunError(message);
+}
+
+function getTrimmedFunctionCode(func: Function): string {
+    const funcString = func.toString();
+
+    // include up to the first 5 lines of the function to help show what is wrong with it.
+    let split = funcString.split(/\r?\n/);
+    if (split.length > 5) {
+        split = split.slice(0, 5);
+        split.push("...");
+    }
+
+    let code = "Function code:\n";
+    for (const line of split) {
+        code += "  " + line + "\n";
+    }
+
+    return code;
 }
 
 function getFunctionLocation(loc: FunctionLocation): string {
@@ -695,9 +707,11 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 function getOrCreateEntry(
-        obj: any, capturedObjectProperties: CapturedPropertyInfo[] | undefined,
+        obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
         context: Context,
-        serialize: (o: any) => boolean): Entry {
+        serialize: (o: any) => boolean,
+        logInfo: boolean | undefined): Entry {
+
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(obj)!;
     if (entry) {
@@ -710,6 +724,21 @@ function getOrCreateEntry(
         }
 
         return entry;
+    }
+
+    if (obj instanceof Function && obj.doNotCapture) {
+        // If we get a function we're not supposed to capture, then actually just serialize
+        // out a function that will throw at runtime so the user can understand the problem
+        // better.
+        const funcName = obj.name || "anonymous";
+        const funcCode = getTrimmedFunctionCode(obj);
+
+        const message =
+            `Function '${funcName}' cannot be called at runtime. ` +
+            `It can only be used at deployment time.\n\n${funcCode}`;
+        const errorFunc = () => { throw new Error(message); };
+
+        obj = errorFunc;
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
@@ -740,7 +769,7 @@ function getOrCreateEntry(
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
-            entry.function = createFunctionInfo(obj, context, serialize);
+            entry.function = createFunctionInfo(obj, context, serialize, logInfo);
         }
         else if (resource.Output.isInstance(obj)) {
             // captures the frames up to this point. so we can give a good message if we
@@ -753,7 +782,7 @@ function getOrCreateEntry(
                 const val = await obj.promise();
                 const oldFrames = context.frames;
                 context.frames = framesCopy;
-                entry.output = getOrCreateEntry(new SerializedOutput(val), undefined, context, serialize);
+                entry.output = getOrCreateEntry(new SerializedOutput(val), undefined, context, serialize, logInfo);
                 context.frames = oldFrames;
             });
         }
@@ -768,7 +797,7 @@ function getOrCreateEntry(
                 const val = await obj;
                 const oldFrames = context.frames;
                 context.frames = framesCopy;
-                entry.promise = getOrCreateEntry(val, undefined, context, serialize);
+                entry.promise = getOrCreateEntry(val, undefined, context, serialize, logInfo);
                 context.frames = oldFrames;
             });
         }
@@ -779,7 +808,7 @@ function getOrCreateEntry(
             for (const key of Object.getOwnPropertyNames(obj)) {
                 if (key !== "length" && obj.hasOwnProperty(key)) {
                     entry.array[<any>key] = getOrCreateEntry(
-                        obj[<any>key], undefined, context, serialize);
+                        obj[<any>key], undefined, context, serialize, logInfo);
                 }
             }
         }
@@ -788,7 +817,7 @@ function getOrCreateEntry(
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.array = [];
             for (const elem of obj) {
-                entry.array.push(getOrCreateEntry(elem, undefined, context, serialize));
+                entry.array.push(getOrCreateEntry(elem, undefined, context, serialize, logInfo));
             }
         }
         else {
@@ -801,7 +830,6 @@ function getOrCreateEntry(
     function serializeObject() {
         // Serialize the set of property names asked for.  If we discover that any of them
         // use this/super, then go and reserialize all the properties.
-
         const serializeAll = serializeObjectWorker(capturedObjectProperties || []);
         if (serializeAll) {
             serializeObjectWorker([]);
@@ -810,110 +838,154 @@ function getOrCreateEntry(
 
     // Returns 'true' if the caller (serializeObjectAsync) should call this again, but without any
     // property filtering.
-    function serializeObjectWorker(localObjectProperties: CapturedPropertyInfo[]): boolean {
+    function serializeObjectWorker(localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
         const objectInfo: ObjectInfo = entry.object || { env: new Map() };
         entry.object = objectInfo;
         const environment = entry.object.env;
 
-        if (localObjectProperties.length === 0) {
-            // we wanted to capture everything (including the prototype chain)
-            const ownPropertyNamesAndSymbols = getOwnPropertyNamesAndSymbols(obj);
-
-            for (const keyOrSymbol of ownPropertyNamesAndSymbols) {
-                // we're about to recurse inside this object.  In order to prever infinite
-                // loops, put a dummy entry in the environment map.  That way, if we hit
-                // this object again while recursing we won't try to generate this property.
-                const keyEntry = getOrCreateEntry(keyOrSymbol, undefined, context, serialize);
-                if (!environment.has(keyEntry)) {
-                    environment.set(keyEntry, <any>undefined);
-
-                    const propertyInfo = getPropertyInfo(keyOrSymbol);
-                    if (!propertyInfo) {
-                        throw new Error("Could not find property info for 'own' property.");
-                    }
-
-                    const valEntry = getOrCreateEntry(
-                        obj[keyOrSymbol], undefined, context, serialize);
-
-                    // Now, replace the dummy entry with the actual one we want.
-                    environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
-                }
-            }
-
-            // If the object's __proto__ is not Object.prototype, then we have to capture what it
-            // actually is.  On the other end, we'll use Object.create(deserializedProto) to set
-            // things up properly.
-            //
-            // We don't need to capture the prototype if the user is not capturing 'this' either.
-            if (!entry.object.proto) {
-                const proto = Object.getPrototypeOf(obj);
-                if (proto !== Object.prototype) {
-                    entry.object.proto = getOrCreateEntry(proto, undefined, context, serialize);
-                }
-            }
-
+        if (localCapturedPropertyChains.length === 0) {
+            serializeAllObjectProperties(environment);
             return false;
         } else {
-            // we only want to capture a subset of properties.  We can do this as long those
-            // properties don't somehow end up involving referencing "this" in an 'invokved'
-            // capacity (in which case we need to completely realize the object.
-            //
-            // this is slightly tricky as it's not obvious if a property is a getter/setter
-            // and this is implicitly invoked just by access it.
-            for (const capturedInfo of localObjectProperties) {
-                const propName = capturedInfo.name;
-
-                const keyEntry = getOrCreateEntry(propName, undefined, context, serialize);
-                if (!environment.has(keyEntry)) {
-                    // we're about to recurse inside this object.  In order to prever infinite
-                    // loops, put a dummy entry in the environment map.  That way, if we hit
-                    // this object again while recursing we won't try to generate this property.
-                    environment.set(keyEntry, <any>undefined);
-                    const objPropValue = obj[propName];
-
-                    const propertyInfo = getPropertyInfo(propName);
-                    if (!propertyInfo) {
-                        if (objPropValue !== undefined) {
-                            throw new Error("Could not find property info for real property on object: " + propName);
-                        }
-
-                        // User code referenced a property not actually on the object at all.
-                        // So to properly represent that, we don't place any information about
-                        // this property on the object.
-                        environment.delete(keyEntry);
-                    } else {
-                        // Note: objPropValue can be undefined here.  That's the case where the
-                        // object does have the property, but the property is just set to the
-                        // undefined value.
-                        const valEntry = getOrCreateEntry(
-                            objPropValue, undefined, context, serialize);
-
-                        if (propInfoUsesNonLexicalThis(capturedInfo, propertyInfo, valEntry)) {
-                            // the referenced function captured 'this'.  Have to serialize out
-                            // this entire object.  Undo the work we did to just serialize out a
-                            // few properties.
-                            for (const info of localObjectProperties) {
-                                const infoEntry = getOrCreateEntry(propName, undefined, context, serialize);
-                                environment.delete(infoEntry);
-                            }
-
-                            // Signal our caller to serialize the entire object.
-                            return true;
-                        }
-
-                        // Now, replace the dummy entry with the actual one we want.
-                        environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
-                    }
-                }
-            }
-
-            return false;
+            return serializeSomeObjectProperties(environment, localCapturedPropertyChains);
         }
     }
 
+    // Serializes out all the properties of this object.  Used when we can't prove that
+    // only a subset of properties are used on this object.
+    function serializeAllObjectProperties(environment: PropertyMap) {
+        // we wanted to capture everything (including the prototype chain)
+        const ownPropertyNamesAndSymbols = getOwnPropertyNamesAndSymbols(obj);
+
+        for (const keyOrSymbol of ownPropertyNamesAndSymbols) {
+            // we're about to recurse inside this object.  In order to prever infinite
+            // loops, put a dummy entry in the environment map.  That way, if we hit
+            // this object again while recursing we won't try to generate this property.
+            const keyEntry = getOrCreateEntry(keyOrSymbol, undefined, context, serialize, logInfo);
+            if (!environment.has(keyEntry)) {
+                environment.set(keyEntry, <any>undefined);
+
+                const propertyInfo = getPropertyInfo(obj, keyOrSymbol);
+                if (!propertyInfo) {
+                    throw new Error("Could not find property info for 'own' property.");
+                }
+
+                const valEntry = getOrCreateEntry(
+                    obj[keyOrSymbol], undefined, context, serialize, logInfo);
+
+                // Now, replace the dummy entry with the actual one we want.
+                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+            }
+        }
+
+        // If the object's __proto__ is not Object.prototype, then we have to capture what it
+        // actually is.  On the other end, we'll use Object.create(deserializedProto) to set
+        // things up properly.
+        //
+        // We don't need to capture the prototype if the user is not capturing 'this' either.
+        if (!entry.object!.proto) {
+            const proto = Object.getPrototypeOf(obj);
+            if (proto !== Object.prototype) {
+                entry.object!.proto = getOrCreateEntry(proto, undefined, context, serialize, logInfo);
+            }
+        }
+    }
+
+    // Serializes out only the subset of properties of this object that we have seen used
+    // and have recorded in localCapturedPropertyChains
+    function serializeSomeObjectProperties(
+            environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
+
+        // validate our invariants.
+        for (const chain of localCapturedPropertyChains) {
+            if (chain.infos.length === 0) {
+                throw new Error("Expected a non-empty chain.");
+            }
+        }
+
+        // we only want to capture a subset of properties.  We can do this as long those
+        // properties don't somehow end up involving referencing "this" in an 'invoked'
+        // capacity (in which case we need to completely realize the object.
+        //
+        // this is slightly tricky as it's not obvious if a property is a getter/setter
+        // and this is implicitly invoked just by access it.
+
+        // Find the list of property names *directly* accessed off this object.
+        const propChainFirstNames = new Set(localCapturedPropertyChains.map(
+            chain => chain.infos[0].name));
+
+        // Now process each top level property name accessed off of this object in turn. For
+        // example, if we say "foo.bar.baz", "foo.bar.quux", "foo.ztesch", this would "bar" and
+        // "ztesch".
+        for (const propName of propChainFirstNames) {
+            // Get the named chains starting with this prop name.  In the above example, if
+            // this was "bar", then we would get "[bar, baz]" and [bar, quux].
+            const propChains = localCapturedPropertyChains.filter(chain => chain.infos[0].name === propName);
+
+            // Now, make an entry just for this name.
+            const keyEntry = getOrCreateEntry(propName, undefined, context, serialize, logInfo);
+
+            if (environment.has(keyEntry)) {
+                continue;
+            }
+
+            // we're about to recurse inside this object.  In order to prevent infinite
+            // loops, put a dummy entry in the environment map.  That way, if we hit
+            // this object again while recursing we won't try to generate this property.
+            environment.set(keyEntry, <any>undefined);
+            const objPropValue = obj[propName];
+
+            const propertyInfo = getPropertyInfo(obj, propName);
+            if (!propertyInfo) {
+                if (objPropValue !== undefined) {
+                    throw new Error("Could not find property info for real property on object: " + propName);
+                }
+
+                // User code referenced a property not actually on the object at all.
+                // So to properly represent that, we don't place any information about
+                // this property on the object.
+                environment.delete(keyEntry);
+            } else {
+                // Determine what chained property names we're accessing off of this sub-property.
+                // if we have no sub property name chain, then indicate that with an empty array
+                // so that we capture the entire object.
+                //
+                // i.e.: if we started with a.b.c.d, and we've finally gotten to the point where
+                // we're serializing out the 'd' property, then we need to serialize it out fully
+                // since there are no more accesses off of it.
+                let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
+                if (nestedPropChains.some(chain => chain.infos.length === 0)) {
+                    nestedPropChains = [];
+                }
+
+                // Note: objPropValue can be undefined here.  That's the case where the
+                // object does have the property, but the property is just set to the
+                // undefined value.
+                const valEntry = getOrCreateEntry(
+                    objPropValue, nestedPropChains, context, serialize, logInfo);
+
+                const infos = propChains.map(chain => chain.infos[0]);
+                if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
+                    // the referenced function captured 'this'.  Have to serialize out
+                    // this entire object.  Undo the work we did to just serialize out a
+                    // few properties.
+                    environment.clear();
+
+                    // Signal our caller to serialize the entire object.
+                    return true;
+                }
+
+                // Now, replace the dummy entry with the actual one we want.
+                environment.set(keyEntry, { info: propertyInfo, entry: valEntry });
+            }
+        }
+
+        return false;
+    }
+
     function propInfoUsesNonLexicalThis(
-            capturedInfo: CapturedPropertyInfo, propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
-        if (capturedInfo.invoked) {
+            capturedInfos: CapturedPropertyInfo[], propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
+        if (capturedInfos.some(info => info.invoked)) {
             // If the property was invoked, then we have to check if that property ends
             // up using this/super.  if so, then we actually have to serialize out this
             // object entirely.
@@ -934,8 +1006,8 @@ function getOrCreateEntry(
         return false;
     }
 
-    function getPropertyInfo(key: PropertyKey): PropertyInfo | undefined {
-        for (let current = obj; current; current = Object.getPrototypeOf(current)) {
+    function getPropertyInfo(on: any, key: PropertyKey): PropertyInfo | undefined {
+        for (let current = on; current; current = Object.getPrototypeOf(current)) {
             const desc = Object.getOwnPropertyDescriptor(current, key);
             if (desc) {
                 const propertyInfo = <PropertyInfo>{ hasValue: desc.value !== undefined };
@@ -944,11 +1016,11 @@ function getOrCreateEntry(
                 propertyInfo.writable = desc.writable;
                 if (desc.get) {
                     propertyInfo.get = getOrCreateEntry(
-                        desc.get, undefined, context, serialize);
+                        desc.get, undefined, context, serialize, logInfo);
                 }
                 if (desc.set) {
                     propertyInfo.set = getOrCreateEntry(
-                        desc.set, undefined, context, serialize);
+                        desc.set, undefined, context, serialize, logInfo);
                 }
 
                 return propertyInfo;
