@@ -154,16 +154,19 @@ async function createRPC(call: any, callback: any): Promise<void> {
         callback(undefined, resp);
     } catch (e) {
         console.error(`${e}: ${e.stack}`);
+        const m = new grpc.Metadata();
+        m.add("detail-bin", Buffer.from(JSON.stringify({id: "foo"})));
         callback({
             // code: grpc.status.Unknown,
             message: "Length of `Name` cannot be more than 10 characters",
-            details: [
-                {
-                    id: "foo",
-                    properties: {},
-                    reasons: ["Length of `Name` cannot be more than 10 characters"],
-                },
-            ],
+            // details: [
+            //     {
+            //         id: "foo",
+            //         properties: {},
+            //         reasons: ["Length of `Name` cannot be more than 10 characters"],
+            //     },
+            // ],
+            metadata: m,
         }, undefined);
     }
 }

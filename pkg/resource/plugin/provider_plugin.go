@@ -265,10 +265,12 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	var properties *_struct.Struct
 	var resourceError *rpcerror.Error
 	var resourceStatus = resource.StatusOK
+	fmt.Println("BAZ BAZ BAZ")
 	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
+	fmt.Println("BAR BAR BAR")
 	if err != nil {
 		resourceStatus, resourceError = resourceStateAndError(err)
 		contract.Assert(resourceStatus != resource.StatusOK)
