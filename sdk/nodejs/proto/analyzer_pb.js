@@ -342,15 +342,15 @@ proto.pulumirpc.AnalyzeResponse.serializeBinaryToWriter = function(message, writ
 
 /**
  * repeated AnalyzeFailure failures = 1;
- * @return {!Array<!proto.pulumirpc.AnalyzeFailure>}
+ * @return {!Array.<!proto.pulumirpc.AnalyzeFailure>}
  */
 proto.pulumirpc.AnalyzeResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array<!proto.pulumirpc.AnalyzeFailure>} */ (
+  return /** @type{!Array.<!proto.pulumirpc.AnalyzeFailure>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.AnalyzeFailure, 1));
 };
 
 
-/** @param {!Array<!proto.pulumirpc.AnalyzeFailure>} value */
+/** @param {!Array.<!proto.pulumirpc.AnalyzeFailure>} value */
 proto.pulumirpc.AnalyzeResponse.prototype.setFailuresList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 1, value);
 };

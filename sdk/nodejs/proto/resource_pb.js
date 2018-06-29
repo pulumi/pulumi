@@ -791,14 +791,14 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setProtect = function(value) {
 
 /**
  * repeated string dependencies = 7;
- * @return {!Array<string>}
+ * @return {!Array.<string>}
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.getDependenciesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 7));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 7));
 };
 
 
-/** @param {!Array<string>} value */
+/** @param {!Array.<string>} value */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDependenciesList = function(value) {
   jspb.Message.setField(this, 7, value || []);
 };
@@ -1081,14 +1081,14 @@ proto.pulumirpc.RegisterResourceResponse.prototype.setStable = function(value) {
 
 /**
  * repeated string stables = 5;
- * @return {!Array<string>}
+ * @return {!Array.<string>}
  */
 proto.pulumirpc.RegisterResourceResponse.prototype.getStablesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 5));
 };
 
 
-/** @param {!Array<string>} value */
+/** @param {!Array.<string>} value */
 proto.pulumirpc.RegisterResourceResponse.prototype.setStablesList = function(value) {
   jspb.Message.setField(this, 5, value || []);
 };

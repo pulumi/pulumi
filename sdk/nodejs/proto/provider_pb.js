@@ -120,7 +120,7 @@ proto.pulumirpc.ConfigureRequest.deserializeBinaryFromReader = function(msg, rea
     case 1:
       var value = msg.getVariablesMap();
       reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "");
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString);
          });
       break;
     default:
@@ -485,15 +485,15 @@ proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey.prototype.setDescription = 
 
 /**
  * repeated MissingKey missingKeys = 1;
- * @return {!Array<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>}
+ * @return {!Array.<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>}
  */
 proto.pulumirpc.ConfigureErrorMissingKeys.prototype.getMissingkeysList = function() {
-  return /** @type{!Array<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} */ (
+  return /** @type{!Array.<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey, 1));
 };
 
 
-/** @param {!Array<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} value */
+/** @param {!Array.<!proto.pulumirpc.ConfigureErrorMissingKeys.MissingKey>} value */
 proto.pulumirpc.ConfigureErrorMissingKeys.prototype.setMissingkeysList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 1, value);
 };
@@ -883,15 +883,15 @@ proto.pulumirpc.InvokeResponse.prototype.hasReturn = function() {
 
 /**
  * repeated CheckFailure failures = 2;
- * @return {!Array<!proto.pulumirpc.CheckFailure>}
+ * @return {!Array.<!proto.pulumirpc.CheckFailure>}
  */
 proto.pulumirpc.InvokeResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array<!proto.pulumirpc.CheckFailure>} */ (
+  return /** @type{!Array.<!proto.pulumirpc.CheckFailure>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 2));
 };
 
 
-/** @param {!Array<!proto.pulumirpc.CheckFailure>} value */
+/** @param {!Array.<!proto.pulumirpc.CheckFailure>} value */
 proto.pulumirpc.InvokeResponse.prototype.setFailuresList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 2, value);
 };
@@ -1325,15 +1325,15 @@ proto.pulumirpc.CheckResponse.prototype.hasInputs = function() {
 
 /**
  * repeated CheckFailure failures = 2;
- * @return {!Array<!proto.pulumirpc.CheckFailure>}
+ * @return {!Array.<!proto.pulumirpc.CheckFailure>}
  */
 proto.pulumirpc.CheckResponse.prototype.getFailuresList = function() {
-  return /** @type{!Array<!proto.pulumirpc.CheckFailure>} */ (
+  return /** @type{!Array.<!proto.pulumirpc.CheckFailure>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.pulumirpc.CheckFailure, 2));
 };
 
 
-/** @param {!Array<!proto.pulumirpc.CheckFailure>} value */
+/** @param {!Array.<!proto.pulumirpc.CheckFailure>} value */
 proto.pulumirpc.CheckResponse.prototype.setFailuresList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 2, value);
 };
@@ -1961,14 +1961,14 @@ proto.pulumirpc.DiffResponse.DiffChanges = {
 
 /**
  * repeated string replaces = 1;
- * @return {!Array<string>}
+ * @return {!Array.<string>}
  */
 proto.pulumirpc.DiffResponse.prototype.getReplacesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
-/** @param {!Array<string>} value */
+/** @param {!Array.<string>} value */
 proto.pulumirpc.DiffResponse.prototype.setReplacesList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
@@ -1990,14 +1990,14 @@ proto.pulumirpc.DiffResponse.prototype.clearReplacesList = function() {
 
 /**
  * repeated string stables = 2;
- * @return {!Array<string>}
+ * @return {!Array.<string>}
  */
 proto.pulumirpc.DiffResponse.prototype.getStablesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 2));
 };
 
 
-/** @param {!Array<string>} value */
+/** @param {!Array.<string>} value */
 proto.pulumirpc.DiffResponse.prototype.setStablesList = function(value) {
   jspb.Message.setField(this, 2, value || []);
 };
@@ -3656,14 +3656,14 @@ proto.pulumirpc.ErrorResourceInitFailed.prototype.hasProperties = function() {
 
 /**
  * repeated string reasons = 3;
- * @return {!Array<string>}
+ * @return {!Array.<string>}
  */
 proto.pulumirpc.ErrorResourceInitFailed.prototype.getReasonsList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 3));
 };
 
 
-/** @param {!Array<string>} value */
+/** @param {!Array.<string>} value */
 proto.pulumirpc.ErrorResourceInitFailed.prototype.setReasonsList = function(value) {
   jspb.Message.setField(this, 3, value || []);
 };

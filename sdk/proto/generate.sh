@@ -18,6 +18,8 @@
 set -e
 
 PROTOC=$(which protoc || { >&2 echo "error: Protobuf compiler (protoc) not found on PATH"; exit 1; })
+PROTO_FILES=$(find . -name "*.proto" -not -name "status.proto")
+JS_PROTO_FILES=$(find . -name "*.proto")
 
 echo Generating Protobuf/gRPC SDK files:
 echo -e "\tVERSION: $(protoc --version)"
