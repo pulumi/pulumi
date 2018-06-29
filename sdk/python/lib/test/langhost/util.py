@@ -20,12 +20,23 @@ from __future__ import print_function
 import unittest
 from collections import namedtuple
 from concurrent import futures
+import logging
 import subprocess
 from os import path
 import grpc
 from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import resource_pb2_grpc, language_pb2_grpc
 
+# gRPC by default logs exceptions to the root `logging` logger. We don't
+# want this because it spews garbage to stderr and messes up our beautiful
+# test output.
+#
+# To combat this, we set the root logger handler to be `NullHandler`, which is
+# a logger that does nothing.
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+logging.getLogger().addHandler(NullHandler())
 
 class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
     """
@@ -123,7 +134,8 @@ class LanghostTest(unittest.TestCase):
                  args=None,
                  config=None,
                  expected_resource_count=None,
-                 expected_error=None):
+                 expected_error=None,
+                 expected_stderr_contains=None):
         """
         Runs a language host test. The basic flow of a language host test is that
         a test is launched using the real language host while mocking out the resource
@@ -138,6 +150,7 @@ class LanghostTest(unittest.TestCase):
         :param config: Configuration keys for the program.
         :param expected_resource_count: The number of resources this program is expected to create.
         :param expected_error: If present, the expected error that should arise when running this program.
+        :param expected_stderr_contains: If present, the standard error of the process should contain this string
         """
         # For each test case, we'll do a preview followed by an update.
         for dryrun in [True, False]:
@@ -160,7 +173,7 @@ class LanghostTest(unittest.TestCase):
             # Tear down the language host process we just spun up.
             langhost.process.kill()
             stdout, stderr = langhost.process.communicate()
-            if stdout or stderr:
+            if not expected_stderr_contains and (stdout or stderr):
                 print("PREVIEW:" if dryrun else "UPDATE:")
                 print("stdout:", stdout)
                 print("stderr:", stderr)
@@ -169,6 +182,11 @@ class LanghostTest(unittest.TestCase):
             # that there wasn't an error.
             expected = expected_error or ""
             self.assertEqual(result, expected)
+
+            if expected_stderr_contains:
+                if not expected_stderr_contains in stderr:
+                    print("stderr:", stderr)
+                    self.fail("expected stderr to contain '" + expected_stderr_contains + "'")
 
             if expected_resource_count is not None:
                 self.assertEqual(expected_resource_count,
