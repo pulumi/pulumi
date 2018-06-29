@@ -15,7 +15,7 @@ export class Provider implements dynamic.ResourceProvider {
 
     public async create(inputs: any): Promise<dynamic.CreateResult> {
         if (inputs.state === 4) {
-            throw new Error("state can't be 4");
+            return Promise.reject("state can't be 4");
         }
 
         return {
@@ -26,7 +26,7 @@ export class Provider implements dynamic.ResourceProvider {
 
     public async update(id: pulumi.ID, olds: any, news: any): Promise<dynamic.UpdateResult> {
         if (news.state === 4) {
-            throw new Error("state can't be 4");
+            return Promise.reject("state can't be 4");
         }
 
         return {

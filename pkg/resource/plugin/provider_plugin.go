@@ -275,7 +275,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		contract.Assert(resourceError != nil)
 		logging.V(7).Infof("%s failed: err=%v", label, resourceError)
 
+		fmt.Println("FOO FOO FOO")
+		fmt.Printf("%s %v\n", resourceError.Message(), resourceError.Details())
 		for _, detail := range resourceError.Details() {
+			fmt.Printf("%v\n", detail)
 			// If resource was successfully created but failed to initialize, the error will be packed
 			// with the live properties of the object.
 			if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {

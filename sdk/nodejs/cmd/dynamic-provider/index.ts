@@ -154,7 +154,17 @@ async function createRPC(call: any, callback: any): Promise<void> {
         callback(undefined, resp);
     } catch (e) {
         console.error(`${e}: ${e.stack}`);
-        callback(e, undefined);
+        callback({
+            // code: grpc.status.Unknown,
+            message: "Length of `Name` cannot be more than 10 characters",
+            details: [
+                {
+                    id: "foo",
+                    properties: {},
+                    reasons: ["Length of `Name` cannot be more than 10 characters"],
+                },
+            ],
+        }, undefined);
     }
 }
 
