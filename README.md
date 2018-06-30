@@ -6,7 +6,7 @@
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
 
-**The Pulumi Cloud Development Platform** -- the easiest way to create and deploy cloud programs that use containers,
+**The Pulumi Cloud Development Platform** is the easiest way to create and deploy cloud programs that use containers,
 serverless functions, hosted services, and infrastructure, on any cloud.
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your AWS, Azure, Google
@@ -113,21 +113,21 @@ Please head on over to [the project website](https://pulumi.io) for much more in
 
 ### Languages
 
-| Language | Status | Runtime | Readme |
-| -------- | ------ | ------- | -------- |
-| JavaScript | Stable | Node.js 6.x-10.x | [Readme](./sdk/nodejs) |
-| TypeScript | Stable | Node.js 6.x-10.x | [Readme](./sdk/nodejs) |
-| Python | Preview | Python 2.7 | [Readme](./sdk/python) |
-| Go | Preview | Go 1.x | [Readme](./sdk/go) |
+|    | Language | Status | Runtime |
+| -- | -------- | ------ | ------- |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-js.png" height=38 /> | [JavaScript](./sdk/nodejs) | Stable | Node.js 6.x-10.x |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-ts.png" height=38 /> | [TypeScript](./sdk/nodejs) | Stable | Node.js 6.x-10.x |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python) | Preview | Python 2.7 |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go) | Preview | Go 1.x |
 
 ### Clouds
 
-| Cloud | Status | Docs | Repo |
-| ----- | ------ | ---- | ---- |
-| Amazon Web Services | Stable | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws/) | [pulumi/pulumi-aws](https://github.com/pulumi/pulumi-aws) |
-| Microsoft Azure | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/azure/) | [pulumi/pulumi-azure](https://github.com/pulumi/pulumi-azure) |
-| Google Cloud Platform | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/gcp/) | [pulumi/pulumi-gcp](https://github.com/pulumi/pulumi-gcp) |
-| Kubernetes | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/kubernetes/) | [pulumi/pulumi-kubernetes](https://github.com/pulumi/pulumi-kubernetes) |
+|    | Cloud | Status | Docs |
+| -- | ----- | ------ | ---- |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-aws.png" height=38 /> | [Amazon Web Services](https://github.com/pulumi/pulumi-aws) | Stable | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/aws/) |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-azure.png" height=38 /> | [Microsoft Azure](https://github.com/pulumi/pulumi-azure) | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/azure/) |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-gd.png" height=38 /> | [Google Cloud Platform](https://github.com/pulumi/pulumi-gcp) | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/gcp/) |
+| <img src="https://www.pulumi.com/assets/logos/tech/logo-kubernetes.png" height=38 /> | [Kubernetes](https://github.com/pulumi/pulumi-kubernetes) | Preview | [Docs](https://pulumi.io/reference/pkg/nodejs/@pulumi/kubernetes/) |
 
 ### Libraries
 
