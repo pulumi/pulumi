@@ -57,6 +57,7 @@ keyword arguments:
 * `config` - A dict of configuration keys and values to pass to the program.
 * `expected_resource_count` - The number of resources this test is expected to register.
 * `expected_error` - If non-None, the *exact* error text that is expected to be received.
+* `expected_stderr_contains` - If non-None, asserts that the given substring exists in stderr
 
 If `expected_error` is None, the expected error is asserted to be the empty string.
 
