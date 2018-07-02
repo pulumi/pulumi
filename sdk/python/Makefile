@@ -29,10 +29,16 @@ ensure::
 	$(PIP) install pipenv==$(PIPENV_VERSION) --user
 	pipenv $(PIPENV_PYTHON_VERSION) install --dev
 	mkdir -p $(PYENVSRC)
-	
+
 build::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	if [ ! -z "$$(command -v pandoc)" ]; then \
+		pandoc --from=markdown --to=rst --output="$(PYENVSRC)/README.rst" ../../README.md; \
+	else \
+		echo "warning: pandoc not found, generating empty README.rst"; \
+		echo "" > "$(PYENVSRC)/README.rst"; \
+	fi
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
