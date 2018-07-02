@@ -47,7 +47,7 @@ def serialize_resource_value(value):
     Serializes a resource property value so that it's ready for marshaling to the gRPC endpoint.
     """
 
-    assert _custom_resource_type is not None, "failed to set CustomResource type"
+    assert known_types._custom_resource_type is not None, "failed to set CustomResource type"
     if known_types.is_custom_resource(value):
         # Resource objects aren't serializable.  Instead, serialize them as references to their IDs.
         return serialize_resource_value(value.id)
