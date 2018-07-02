@@ -16,8 +16,8 @@
 from __future__ import absolute_import
 import six
 
+from .runtime import known_types
 from .runtime.resource import register_resource, register_resource_outputs
-from .runtime.rpc import register_custom_resource_type
 from .runtime.settings import get_root_resource
 from .runtime.unknown import Unknown
 
@@ -87,6 +87,7 @@ class ResourceOptions(object):
         self.depends_on = depends_on
         self.protect = protect
 
+@known_types.custom_resource
 class CustomResource(Resource):
     """
     CustomResource is a resource whose CRUD operations are managed by performing external operations on some
@@ -96,8 +97,6 @@ class CustomResource(Resource):
     def __init__(self, t, name, props=None, opts=None):
         Resource.__init__(self, t, name, True, props, opts)
 
-# Elsewhere in the runtime, we depend on the object identity of the CustomResource class.
-register_custom_resource_type(CustomResource)
 
 class ComponentResource(Resource):
     """

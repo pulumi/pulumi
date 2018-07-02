@@ -14,6 +14,7 @@
 
 import unittest
 from google.protobuf import struct_pb2
+from pulumi.asset import FileAsset, StringAsset
 from pulumi.runtime import rpc, Unknown
 
 class PropertyDeserializeTests(unittest.TestCase):
@@ -73,5 +74,34 @@ class PropertyDeserializeTests(unittest.TestCase):
         deserialized = rpc.deserialize_resource_props(proto)
         self.assertTrue(isinstance(deserialized["vpc_id"], Unknown))
 
+    def test_file_asset(self):
+        """
+        Tests that we deserialize file assets correctly.
+        """
+        proto = struct_pb2.Struct()
+        
+        # pylint: disable=no-member
+        subproto = proto.get_or_create_struct("asset")
+        subproto[rpc._special_sig_key] = rpc._special_asset_sig
+        subproto["path"] = "foo.txt"
+        deserialized = rpc.deserialize_resource_props(proto)
+        self.assertIsInstance(deserialized["asset"], FileAsset)
+        self.assertEqual("foo.txt", deserialized["asset"].path)
+
+    def test_string_asset(self):
+        """
+        Tests that we deserialize string assets correctly.
+        """
+        proto = struct_pb2.Struct()
+        
+        # pylint: disable=no-member
+        subproto = proto.get_or_create_struct("asset")
+        subproto[rpc._special_sig_key] = rpc._special_asset_sig
+        subproto["text"] = u"this is some text"
+        deserialized = rpc.deserialize_resource_props(proto)
+        self.assertIsInstance(deserialized["asset"], StringAsset)
+        self.assertEqual(u"this is some text", deserialized["asset"].text)
+
+        
 if __name__ == '__main__':
     unittest.main()
