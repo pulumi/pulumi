@@ -67,6 +67,13 @@ nvm install ${NODE_VERSION-v8.11.1}
 
     echo "installing Wheel and Twine, so we can publish Python packages"
     pip install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
+
+    echo "installing pandoc, so we can generate README.rst for Python packages"
+    if [ "${TRAVIS_OS_NAME:-}" = "linux" ]; then
+        sudo apt-get install pandoc
+    else
+        brew install pandoc
+    fi
 )
 
 # If the sub shell failed, bail out now.
@@ -76,7 +83,7 @@ nvm install ${NODE_VERSION-v8.11.1}
 
 # On OSX, the user folder that `pip` installs tools to is not on the
 # $PATH by default.
-if [[ "${TRAVIS_OS_NAME:-}" == "osx" ]]; then
+if [ "${TRAVIS_OS_NAME:-}" = "osx" ]; then
     export PATH=$PATH:$HOME/Library/Python/2.7/bin
     export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
 fi
