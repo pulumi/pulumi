@@ -39,6 +39,13 @@ class Unknown(str):
         """
         return True
 
+    def __nonzero__(self):
+        """
+        Python 2/3 compatibility shim for __bool__. Also returns True if this
+        value is not zero, which it is.
+        """
+        return True
+
     def __str__(self):
         """
         Called whenever this value is coerced to a string, via "str".
