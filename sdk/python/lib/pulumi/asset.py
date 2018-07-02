@@ -55,7 +55,6 @@ class StringAsset(Asset):
             self.text = text
 
 
-
 @known_types.remote_asset
 class RemoteAsset(Asset):
     """
@@ -68,5 +67,55 @@ class RemoteAsset(Asset):
         # type: (str) -> None
         if not isinstance(uri, six.string_types):
             raise TypeError("RemoteAsset URI must be a string")
+
+        self.uri = uri
+
+
+@known_types.archive
+class Archive(object):
+    """
+    Asset represents a collection of named assets.
+    """
+    pass
+
+
+@known_types.asset_archive
+class AssetArchive(Archive):
+    """
+    An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
+    """
+    def __init__(self, assets):
+        if not isinstance(assets, dict):
+            raise TypeError("AssetArchive assets must be a dictionary")
+        for k, v in assets.items():
+            if not isinstance(v, Asset) and not isinstance(v, Archive):
+                raise TypeError("AssetArchive assets must contain only Assets or Archives")
+        self.assets = assets
+
+
+@known_types.file_archive
+class FileArchive(Archive):
+    """
+    A FileArchive is a file-based archive, or collection of file-based assets.  This can be
+    a raw directory or a single archive file in one of the supported formats (.tar, .tar.gz, or .zip).
+    """
+    def __init__(self, path):
+        # type: (str) -> None
+        if not isinstance(path, six.string_types):
+            raise TypeError("FileArchive path must be a string")
+        self.path = path
+
+
+@known_types.remote_archive
+class RemoteArchive(Archive):
+    """
+    A RemoteArchive is a file-based archive fetched from a remote location.  The URI's scheme dictates
+    the protocol for fetching contents: "file://" specifies a local file, "http://" and "https://"
+    specify HTTP and HTTPS, respectively, and specific providers may recognize custom schemes.
+    """
+    def __init__(self, uri):
+        # type: (str) -> None
+        if not isinstance(uri, six.string_types):
+            raise TypeError("RemoteArchive URI must be a string")
 
         self.uri = uri

@@ -33,6 +33,9 @@ _special_sig_key = "4dabf18193072939515e22adb298388d"
 _special_asset_sig = "c44067f5952c0a294b673a41bacd8c17"
 """specialAssetSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
 
+_special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
+"""specialArchiveSig is a randomly assigned hash used to identify assets in maps.  See pkg/resource/asset.go."""
+
 def serialize_resource_props(props):
     """
     Serializes resource properties so that they are ready for marshaling to the gRPC endpoint.
@@ -61,7 +64,7 @@ def serialize_resource_value(value):
         # Serialize instances of Unknown as the UNKNOWN guid
         return UNKNOWN
     elif known_types.is_asset(value):
-        # Serializing an asset or archive requires the use of a magical signature key, since otherwise it would look
+        # Serializing an asset requires the use of a magical signature key, since otherwise it would look
         # like any old weakly typed object/map when received by the other side of the RPC boundary.
         obj = {
             _special_sig_key: _special_asset_sig
@@ -75,6 +78,23 @@ def serialize_resource_value(value):
             obj["uri"] = value.uri
         else:
             raise AssertionError("unknown asset type: " + str(value))
+
+        return obj
+    elif known_types.is_archive(value):
+        # Serializing an archive requires the use of a magical signature key, since otherwise it would look
+        # like any old weakly typed object/map when received by the other side of the RPC boundary.
+        obj = {
+            _special_sig_key: _special_archive_sig
+        }
+
+        if hasattr(value, "assets"):
+            obj["assets"] = serialize_resource_value(value.assets)
+        elif hasattr(value, "path"):
+            obj["path"] = value.path
+        elif hasattr(value, "uri"):
+            obj["uri"] = value.uri
+        else:
+            raise AssertionError("unknown archive type: " + str(value))
 
         return obj
     else:
@@ -104,6 +124,14 @@ def deserialize_resource_props(props_struct):
             if "uri" in props_struct:
                 return known_types.new_remote_asset(props_struct["uri"])
             raise AssertionError("Invalid asset encountered when unmarshaling resource property")
+        elif props_struct[_special_sig_key] == _special_archive_sig:
+            # This is an archive. Re-hydrate this object into an Archive.
+            if "assets" in props_struct:
+                return known_types.new_asset_archive(deserialize_property(props_struct["assets"]))
+            if "path" in props_struct:
+                return known_types.new_file_archive(props_struct["path"])
+            if "uri" in props_struct:
+                return known_types.new_remote_archive(props_struct["uri"])
 
         raise AssertionError("Unrecognized signature when unmarshaling resource property")
 
