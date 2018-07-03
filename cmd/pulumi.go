@@ -45,7 +45,6 @@ func NewPulumiCmd() *cobra.Command {
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cmdFlag := cmd.Flag("color")
 			if cmdFlag != nil {
-				fmt.Printf("Got a color flag!\n")
 				var color colorFlag
 				err := color.Set(cmdFlag.Value.String())
 				if err != nil {
