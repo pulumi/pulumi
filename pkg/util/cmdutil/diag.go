@@ -24,11 +24,29 @@ import (
 
 var snk diag.Sink
 
+var globalColorization colors.Colorization = colors.Always
+
+// GetGlobalColorization gets the global setting for how things should be colored.
+// This is helpful for the parts of our stack that do not take a DisplayOptions struct.
+func GetGlobalColorization() colors.Colorization {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return colors.Never
+	}
+
+	return globalColorization
+}
+
+// SetGlobalColorization sets the global setting for how things should be colored.
+// This is helpful for the parts of our stack that do not take a DisplayOptions struct.
+func SetGlobalColorization(color colors.Colorization) {
+	globalColorization = color
+}
+
 // Diag lazily allocates a sink to be used if we can't create a compiler.
 func Diag() diag.Sink {
 	if snk == nil {
 		snk = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-			Color: colors.Always, // turn on colorization of warnings/errors.
+			Color: GetGlobalColorization(),
 		})
 	}
 	return snk

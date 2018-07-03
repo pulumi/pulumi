@@ -210,14 +210,14 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+	surveycore.SelectFocusIcon = cmdutil.GetGlobalColorization().Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a stack"
 	if offerNew {
 		message += ", or create a new one:"
 	} else {
 		message += ":"
 	}
-	message = colors.ColorizeText(colors.BrightWhite + message + colors.Reset)
+	message = cmdutil.GetGlobalColorization().Colorize(colors.BrightWhite + message + colors.Reset)
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
@@ -303,6 +303,10 @@ func (cf *colorFlag) Type() string {
 }
 
 func (cf *colorFlag) Colorization() colors.Colorization {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return colors.Never
+	}
+
 	if cf.value == "" {
 		return colors.Always
 	}

@@ -265,14 +265,14 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	} else {
 		line1 := "We need your Pulumi account to identify you."
 		line1 = colors.Highlight(line1, "Pulumi account", colors.BrightWhite+colors.Underline+colors.Bold)
-		fmt.Printf(colors.ColorizeText(line1) + "\n")
+		fmt.Printf(cmdutil.GetGlobalColorization().Colorize(line1) + "\n")
 
 		accountLink := cloudConsoleURL(cloudURL, "account")
 		line2 := fmt.Sprintf("Enter your access token from %s", accountLink)
 		line2len := len(line2)
 		line2 = colors.Highlight(line2, "access token", colors.BrightCyan+colors.Bold)
 		line2 = colors.Highlight(line2, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Printf(colors.ColorizeText(line2) + "\n")
+		fmt.Printf(cmdutil.GetGlobalColorization().Colorize(line2) + "\n")
 
 		line3 := "    or hit <ENTER> to log in using your browser"
 		var padding string
@@ -281,7 +281,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 		}
 		line3 = colors.Highlight(line3, "<ENTER>", colors.BrightCyan+colors.Bold)
 
-		token, readerr := cmdutil.ReadConsoleNoEcho(colors.ColorizeText(line3 + padding))
+		token, readerr := cmdutil.ReadConsoleNoEcho(cmdutil.GetGlobalColorization().Colorize(line3 + padding))
 		if readerr != nil {
 			return nil, readerr
 		}
@@ -429,8 +429,8 @@ func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.Plugin
 	if progress && size != -1 {
 		bar := pb.New(int(size))
 		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading plugin: "))
-		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.Prefix(cmdutil.GetGlobalColorization().Colorize(colors.SpecUnimportant + "Downloading plugin: "))
+		bar.Postfix(cmdutil.GetGlobalColorization().Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
 		bar.Start()
@@ -453,8 +453,8 @@ func (b *cloudBackend) DownloadTemplate(ctx context.Context, name string, progre
 	if progress && size != -1 {
 		bar := pb.New(int(size))
 		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading template: "))
-		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.Prefix(cmdutil.GetGlobalColorization().Colorize(colors.SpecUnimportant + "Downloading template: "))
+		bar.Postfix(cmdutil.GetGlobalColorization().Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
 		bar.Start()
@@ -705,7 +705,7 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 
 		surveycore.DisableColor = true
 		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+		surveycore.SelectFocusIcon = opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 
 		choices := []string{string(yes), string(no)}
 
@@ -722,7 +722,7 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 		}
 
 		if err := survey.AskOne(&survey.Select{
-			Message: "\b" + colors.ColorizeText(
+			Message: "\b" + opts.Display.Color.Colorize(
 				colors.BrightWhite+fmt.Sprintf("Do you want to perform this %s%s?",
 					updateKind, previewWarning)+colors.Reset),
 			Options: choices,
@@ -857,7 +857,7 @@ func (b *cloudBackend) updateStack(
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
 	fmt.Printf(
-		colors.ColorizeText(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
+		opts.Display.Color.Colorize(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
@@ -878,7 +878,7 @@ func (b *cloudBackend) updateStack(
 		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
 			defer func() {
 				fmt.Printf(
-					colors.ColorizeText(
+					opts.Display.Color.Colorize(
 						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
 			}()
 		}
@@ -916,8 +916,8 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 	if progress {
 		bar := pb.New(archiveContents.Len())
 		archiveReader = newBarProxyReadCloser(bar, archiveReader)
-		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Uploading program: "))
-		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.Prefix(cmdutil.GetGlobalColorization().Colorize(colors.SpecUnimportant + "Uploading program: "))
+		bar.Postfix(cmdutil.GetGlobalColorization().Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
 		bar.Start()

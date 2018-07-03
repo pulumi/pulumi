@@ -60,7 +60,7 @@ func newLogsCmd() *cobra.Command {
 			}
 
 			fmt.Printf(
-				colors.ColorizeText(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
+				cmdutil.GetGlobalColorization().Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 				s.Name().String(),
 				startTime.Format(timeFormat),
 			)

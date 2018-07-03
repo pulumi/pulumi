@@ -57,7 +57,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will irreversably cancel the currently running update for '%s'!", s.Name())
+			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", s.Name())
 			if !yes && !confirmPrompt(prompt, s.Name().String()) {
 				return errors.New("confirmation declined")
 			}
@@ -69,7 +69,7 @@ func newCancelCmd() *cobra.Command {
 
 			msg := fmt.Sprintf("%sThe currently running update for '%s' has been canceled!%s", colors.SpecAttention, s.Name(),
 				colors.Reset)
-			fmt.Println(colors.ColorizeText(msg))
+			fmt.Println(cmdutil.GetGlobalColorization().Colorize(msg))
 
 			return nil
 		}),

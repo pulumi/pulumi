@@ -92,7 +92,7 @@ func newPluginRmCmd() *cobra.Command {
 				suffix = "s"
 			}
 			fmt.Print(
-				colors.ColorizeText(
+				cmdutil.GetGlobalColorization().Colorize(
 					fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
 						colors.SpecAttention, len(deletes), suffix, colors.Reset)))
 			for _, del := range deletes {

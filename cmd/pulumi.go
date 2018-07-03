@@ -43,6 +43,18 @@ func NewPulumiCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "pulumi",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			cmdFlag := cmd.Flag("color")
+			if cmdFlag != nil {
+				fmt.Printf("Got a color flag!\n")
+				var color colorFlag
+				err := color.Set(cmdFlag.Value.String())
+				if err != nil {
+					return err
+				}
+
+				cmdutil.SetGlobalColorization(color.Colorization())
+			}
+
 			if cwd != "" {
 				if err := os.Chdir(cwd); err != nil {
 					return err
@@ -141,12 +153,12 @@ func NewPulumiCmd() *cobra.Command {
 func confirmPrompt(prompt string, name string) bool {
 	if prompt != "" {
 		fmt.Print(
-			colors.ColorizeText(
+			cmdutil.GetGlobalColorization().Colorize(
 				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
 	}
 
 	fmt.Print(
-		colors.ColorizeText(
+		cmdutil.GetGlobalColorization().Colorize(
 			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
 				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
 

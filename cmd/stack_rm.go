@@ -77,7 +77,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
-			fmt.Println(colors.ColorizeText(msg))
+			fmt.Println(cmdutil.GetGlobalColorization().Colorize(msg))
 
 			return state.SetCurrentStack("")
 		}),

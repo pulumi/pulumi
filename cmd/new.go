@@ -399,9 +399,9 @@ func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+	surveycore.SelectFocusIcon = cmdutil.GetGlobalColorization().Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
-	message = colors.ColorizeText(colors.BrightWhite + message + colors.Reset)
+	message = cmdutil.GetGlobalColorization().Colorize(colors.BrightWhite + message + colors.Reset)
 
 	options, _ := templateArrayToStringArrayAndMap(templates)
 
@@ -427,10 +427,10 @@ func promptForValue(yes bool, prompt string, defaultValue string, isValidFn func
 
 	for {
 		if defaultValue == "" {
-			prompt = colors.ColorizeText(
+			prompt = cmdutil.GetGlobalColorization().Colorize(
 				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
 		} else {
-			prompt = colors.ColorizeText(
+			prompt = cmdutil.GetGlobalColorization().Colorize(
 				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValue, colors.Reset))
 		}
 		fmt.Print(prompt)
