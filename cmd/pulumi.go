@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -149,15 +150,15 @@ func NewPulumiCmd() *cobra.Command {
 	return cmd
 }
 
-func confirmPrompt(prompt string, name string) bool {
+func confirmPrompt(prompt string, name string, opts backend.DisplayOptions) bool {
 	if prompt != "" {
 		fmt.Print(
-			cmdutil.GetGlobalColorization().Colorize(
+			opts.Color.Colorize(
 				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
 	}
 
 	fmt.Print(
-		cmdutil.GetGlobalColorization().Colorize(
+		opts.Color.Colorize(
 			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
 				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
 

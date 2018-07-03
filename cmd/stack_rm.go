@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/state"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -46,14 +47,19 @@ func newStackRmCmd() *cobra.Command {
 			if len(args) > 0 {
 				stack = args[0]
 			}
-			s, err := requireStack(stack, false)
+
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stack, false, opts)
 			if err != nil {
 				return err
 			}
 
 			// Ensure the user really wants to do this.
 			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Name())
-			if !yes && !confirmPrompt(prompt, s.Name().String()) {
+			if !yes && !confirmPrompt(prompt, s.Name().String(), opts) {
 				return errors.New("confirmation declined")
 			}
 
@@ -77,7 +83,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Name(), colors.Reset)
-			fmt.Println(cmdutil.GetGlobalColorization().Colorize(msg))
+			fmt.Println(opts.Color.Colorize(msg))
 
 			return state.SetCurrentStack("")
 		}),

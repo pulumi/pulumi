@@ -57,21 +57,6 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(stack, true)
-			if err != nil {
-				return err
-			}
-
-			proj, root, err := readProject()
-			if err != nil {
-				return err
-			}
-
-			m, err := getUpdateMetadata("", root)
-			if err != nil {
-				return errors.Wrap(err, "gathering environment metadata")
-			}
-
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					Analyzers: analyzers,
@@ -88,6 +73,22 @@ func newPreviewCmd() *cobra.Command {
 					Debug:                debug,
 				},
 			}
+
+			s, err := requireStack(stack, true, opts.Display)
+			if err != nil {
+				return err
+			}
+
+			proj, root, err := readProject()
+			if err != nil {
+				return err
+			}
+
+			m, err := getUpdateMetadata("", root)
+			if err != nil {
+				return errors.Wrap(err, "gathering environment metadata")
+			}
+
 			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
 			switch {
 			case err != nil:

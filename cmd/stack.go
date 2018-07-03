@@ -23,6 +23,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -31,6 +32,7 @@ import (
 func newStackCmd() *cobra.Command {
 	var showIDs bool
 	var showURNs bool
+
 	cmd := &cobra.Command{
 		Use:   "stack",
 		Short: "Manage stacks",
@@ -41,7 +43,11 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireCurrentStack(true)
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireCurrentStack(true, opts)
 			if err != nil {
 				return err
 			}

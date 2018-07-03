@@ -27,19 +27,24 @@ import (
 
 func newLoginCmd() *cobra.Command {
 	var cloudURL string
+
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Log into the Pulumi Cloud",
 		Long:  "Log into the Pulumi Cloud.  You can script by using PULUMI_ACCESS_TOKEN environment variable.",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			displayOptions := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			var b backend.Backend
 			var err error
 
 			if local.IsLocalBackendURL(cloudURL) {
 				b, err = local.Login(cmdutil.Diag(), cloudURL)
 			} else {
-				b, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL)
+				b, err = cloud.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
 			}
 
 			if err != nil {
@@ -56,5 +61,6 @@ func newLoginCmd() *cobra.Command {
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log into")
+
 	return cmd
 }

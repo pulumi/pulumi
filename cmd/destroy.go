@@ -67,7 +67,17 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(stack, false)
+			opts.Display = backend.DisplayOptions{
+				Color:                color.Colorization(),
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSameResources:    showSames,
+				IsInteractive:        interactive,
+				DiffDisplay:          diffDisplay,
+				Debug:                debug,
+			}
+
+			s, err := requireStack(stack, false, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -85,15 +95,6 @@ func newDestroyCmd() *cobra.Command {
 				Analyzers: analyzers,
 				Parallel:  parallel,
 				Debug:     debug,
-			}
-			opts.Display = backend.DisplayOptions{
-				Color:                color.Colorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
-				Debug:                debug,
 			}
 
 			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)

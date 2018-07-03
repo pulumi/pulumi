@@ -66,7 +66,17 @@ func newRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(stack, true)
+			opts.Display = backend.DisplayOptions{
+				Color:                color.Colorization(),
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSameResources:    showSames,
+				IsInteractive:        interactive,
+				DiffDisplay:          diffDisplay,
+				Debug:                debug,
+			}
+
+			s, err := requireStack(stack, true, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -85,15 +95,6 @@ func newRefreshCmd() *cobra.Command {
 				Analyzers: analyzers,
 				Parallel:  parallel,
 				Debug:     debug,
-			}
-			opts.Display = backend.DisplayOptions{
-				Color:                color.Colorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
-				Debug:                debug,
 			}
 
 			_, err = s.Refresh(commandContext(), proj, root, m, opts, cancellationScopes)
