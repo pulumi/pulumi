@@ -21,6 +21,7 @@ from __future__ import absolute_import
 __all__ = ['runtime']
 
 # Make all module members inside of this package available as package members.
+from .asset import *
 from .config import *
 from .errors import *
 from .metadata import *
