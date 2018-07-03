@@ -15,7 +15,8 @@
 import unittest
 from google.protobuf import struct_pb2
 from pulumi import CustomResource
-from pulumi.runtime import rpc, Unknown
+from pulumi.runtime import rpc, known_types, Unknown
+from pulumi.asset import FileAsset, StringAsset, RemoteAsset
 
 class PropertySerializeTests(unittest.TestCase):
     """
@@ -61,6 +62,43 @@ class PropertySerializeTests(unittest.TestCase):
         unknown = struct["unknown_prop"]
         self.assertEqual(rpc.UNKNOWN, unknown)
 
+    def test_file_asset(self):
+        """
+        Tests that we serialize file assets correctly.
+        """
+        struct = rpc.serialize_resource_props({
+            "asset": FileAsset("file.txt")
+        })
+
+        asset = struct["asset"]
+        self.assertEqual(rpc._special_asset_sig, asset[rpc._special_sig_key])
+        self.assertEqual("file.txt", asset["path"])
+
+    def test_string_asset(self):
+        """
+        Tests that we serialize string assets correctly.
+        """
+        struct = rpc.serialize_resource_props({
+            "asset": StringAsset("how do i python")
+        })
+
+        asset = struct["asset"]
+        self.assertEqual(rpc._special_asset_sig, asset[rpc._special_sig_key])
+        self.assertEqual("how do i python", asset["text"])
+
+    def test_remote_asset(self):
+        """
+        Tests that we serialize remote assets correctly.
+        """
+        struct = rpc.serialize_resource_props({
+            "asset": RemoteAsset("https://pulumi.io")
+        })
+
+        asset = struct["asset"]
+        self.assertEqual(rpc._special_asset_sig, asset[rpc._special_sig_key])
+        self.assertEqual("https://pulumi.io", asset["uri"])
+
+
 class FakeCustomResource(object):
     """
     Fake CustomResource class that duck-types to the real CustomResource.
@@ -80,13 +118,13 @@ class CustomResourceSerializeTest(unittest.TestCase):
         system knows about with the above FakeCustomResource, which doesn't interact
         with the resource monitor.
         """
-        rpc.register_custom_resource_type(FakeCustomResource)
+        known_types._custom_resource_type = FakeCustomResource
 
     def tearDown(self):
         """
         Tears down the test by re-setting the rpc serialization system's known CustomResource.
         """
-        rpc.register_custom_resource_type(CustomResource)
+        known_types._custom_resource_type = CustomResource
 
     def test_custom_resource(self):
         """

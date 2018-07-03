@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pulumi
 
-"""
-The primary Pulumi Python SDK package.
-"""
-from __future__ import absolute_import
 
-# Make subpackages available.
-__all__ = ['runtime']
-
-# Make all module members inside of this package available as package members.
-from .asset import *
-from .config import *
-from .errors import *
-from .metadata import *
-from .resource import *
+config = pulumi.Config("test")
+assert pulumi.get_project() == "myproject"
+assert pulumi.get_stack() == "mystack"
+assert config.get("known") == "knownkey"
+assert config.get("unknown") is None
+assert config.get_bool('lowercase_true')
+assert config.get_bool('uppercase_true')
+assert not config.get_bool('lowercase_false')
+assert not config.get_bool('uppercase_false')
+try:
+    config.get_bool('not_a_bool')
+except pulumi.ConfigTypeError as exn:
+    assert exn.key == 'test:not_a_bool'
+    assert exn.expect_type == 'bool'

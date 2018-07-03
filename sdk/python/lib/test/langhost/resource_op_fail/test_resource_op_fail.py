@@ -11,18 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from os import path
+from ..util import LanghostTest
 
-"""
-The primary Pulumi Python SDK package.
-"""
-from __future__ import absolute_import
 
-# Make subpackages available.
-__all__ = ['runtime']
+class UnhandledExceptionTest(LanghostTest):
+    def test_unhandled_exception(self):
+        self.run_test(
+            program=path.join(self.base_path(), "resource_op_fail"),
+            expected_stderr_contains="oh no",
+            expected_error="Program exited with non-zero exit code: 1")
 
-# Make all module members inside of this package available as package members.
-from .asset import *
-from .config import *
-from .errors import *
-from .metadata import *
-from .resource import *
+    def register_resource(self, _ctx, _dry_run, _ty, _name, _resource,
+                          _dependencies):
+        raise Exception("oh no")

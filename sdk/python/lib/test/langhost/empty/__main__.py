@@ -12,17 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-The primary Pulumi Python SDK package.
-"""
-from __future__ import absolute_import
-
-# Make subpackages available.
-__all__ = ['runtime']
-
-# Make all module members inside of this package available as package members.
-from .asset import *
-from .config import *
-from .errors import *
-from .metadata import *
-from .resource import *
+# This file deliberately left empty.

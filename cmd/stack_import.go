@@ -32,6 +32,7 @@ import (
 func newStackImportCmd() *cobra.Command {
 	var force bool
 	var file string
+	var stackName string
 	cmd := &cobra.Command{
 		Use:   "import",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -44,7 +45,7 @@ func newStackImportCmd() *cobra.Command {
 			"The updated deployment will be read from standard in.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Fetch the current stack and import a deployment.
-			s, err := requireCurrentStack(false)
+			s, err := requireStack(stackName, false)
 			if err != nil {
 				return err
 			}
@@ -113,6 +114,8 @@ func newStackImportCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)")

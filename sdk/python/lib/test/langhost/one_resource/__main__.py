@@ -11,18 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pulumi import CustomResource
 
-"""
-The primary Pulumi Python SDK package.
-"""
-from __future__ import absolute_import
 
-# Make subpackages available.
-__all__ = ['runtime']
+class MyResource(CustomResource):
+    def __init__(self, name):
+        CustomResource.__init__(self, "test:index:MyResource", name)
 
-# Make all module members inside of this package available as package members.
-from .asset import *
-from .config import *
-from .errors import *
-from .metadata import *
-from .resource import *
+
+MyResource("testResource1")

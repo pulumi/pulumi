@@ -111,6 +111,11 @@ def register_resource(typ, name, custom, props, opts):
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
             wait_for_death()
 
+        # If the RPC otherwise failed, re-throw an exception with the message details - the contents
+        # are suitable for user presentation.
+        raise Exception(exn.details())
+
+
     # Return the URN, ID, and output properties.
     urn = resp.urn
     if custom:
@@ -151,6 +156,11 @@ def register_resource_outputs(res, outputs):
         # pylint: disable=no-member
         if exn.code() == grpc.StatusCode.UNAVAILABLE:
             wait_for_death()
+            
+        # If the RPC otherwise failed, re-throw an exception with the message details - the contents
+        # are suitable for user presentation.
+        raise Exception(exn.details())
+
 
 
 # wait_for_death loops forever. This is a hack.

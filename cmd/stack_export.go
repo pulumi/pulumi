@@ -26,6 +26,7 @@ import (
 
 func newStackExportCmd() *cobra.Command {
 	var file string
+	var stackName string
 	cmd := &cobra.Command{
 		Use:   "export",
 		Args:  cmdutil.MaximumNArgs(0),
@@ -38,7 +39,7 @@ func newStackExportCmd() *cobra.Command {
 			"resources, etc.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Fetch the current stack and export its deployment
-			s, err := requireCurrentStack(false)
+			s, err := requireStack(stackName, false)
 			if err != nil {
 				return err
 			}
@@ -66,6 +67,8 @@ func newStackExportCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVarP(
 		&file, "file", "", "", "A filename to write stack output to")
 	return cmd
