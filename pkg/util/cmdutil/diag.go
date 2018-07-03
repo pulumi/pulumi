@@ -24,7 +24,7 @@ import (
 
 var snk diag.Sink
 
-var globalColorization colors.Colorization = colors.Always
+var globalColorization = colors.Always
 
 // GetGlobalColorization gets the global setting for how things should be colored.
 // This is helpful for the parts of our stack that do not take a DisplayOptions struct.
