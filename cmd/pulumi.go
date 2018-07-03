@@ -44,6 +44,9 @@ func NewPulumiCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "pulumi",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// For all commands, attempt to grab out the --color value provided so we
+			// can set the GlobalColorization value to be used by any code that doesn't
+			// get DisplayOptions passed in.
 			cmdFlag := cmd.Flag("color")
 			if cmdFlag != nil {
 				var color colorFlag
