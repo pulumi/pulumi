@@ -135,7 +135,10 @@ type Backend interface {
 
 	CloudURL() string
 
-	DownloadPlugin(ctx context.Context, info workspace.PluginInfo, progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
+	DownloadPlugin(
+		ctx context.Context, info workspace.PluginInfo,
+		progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
+
 	DownloadTemplate(ctx context.Context, name string, progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
 	ListTemplates(ctx context.Context) ([]workspace.Template, error)
 
@@ -443,7 +446,10 @@ func (b *cloudBackend) ListTemplates(ctx context.Context) ([]workspace.Template,
 	return b.client.ListTemplates(ctx)
 }
 
-func (b *cloudBackend) DownloadTemplate(ctx context.Context, name string, progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
+func (b *cloudBackend) DownloadTemplate(
+	ctx context.Context, name string,
+	progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
+
 	result, size, err := b.client.DownloadTemplate(ctx, name)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to download template")
@@ -904,7 +910,10 @@ func (b *cloudBackend) updateStack(
 // uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
-func getUpdateContents(context string, useDefaultIgnores bool, progress bool, opts backend.DisplayOptions) (io.ReadCloser, int64, error) {
+func getUpdateContents(
+	context string, useDefaultIgnores bool,
+	progress bool, opts backend.DisplayOptions) (io.ReadCloser, int64, error) {
+
 	archiveContents, err := archive.Process(context, useDefaultIgnores)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "creating archive")
