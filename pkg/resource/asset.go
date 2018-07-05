@@ -81,7 +81,7 @@ func NewURIAsset(uri string) (*Asset, error) {
 	return a, err
 }
 
-func (a *Asset) IsText() bool { return a.Text != "" }
+func (a *Asset) IsText() bool { return !a.IsPath() && !a.IsURI() }
 func (a *Asset) IsPath() bool { return a.Path != "" }
 func (a *Asset) IsURI() bool  { return a.URI != "" }
 
@@ -283,7 +283,6 @@ func (a *Asset) Bytes() ([]byte, error) {
 
 // Read begins reading an asset.
 func (a *Asset) Read() (*Blob, error) {
-	contract.Assertf(a.HasContents(), "cannot read an asset that has no contents")
 	if a.IsText() {
 		return a.readText()
 	} else if a.IsPath() {

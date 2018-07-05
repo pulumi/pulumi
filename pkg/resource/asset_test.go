@@ -62,6 +62,20 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Equal(t, text3, asset3.Text)
 		assert.Equal(t, "9a6ed070e1ff834427105844ffd8a399a634753ce7a60ec5aae541524bbe7036", asset3.Hash)
 
+		// check that an empty asset also works correctly.
+		empty, err := NewTextAsset("")
+		assert.Nil(t, err)
+		assert.Equal(t, "", empty.Text)
+		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", empty.Hash)
+		emptySer := empty.Serialize()
+		emptyDes, isasset, err := DeserializeAsset(emptySer)
+		assert.Nil(t, err)
+		assert.True(t, isasset)
+		assert.True(t, emptyDes.IsText())
+		assert.Equal(t, "", emptyDes.Text)
+		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", emptyDes.Hash)
+
+		// now a map of nested assets and/or archives.
 		arch, err := NewAssetArchive(map[string]interface{}{"foo": asset})
 		assert.Nil(t, err)
 		assert.Equal(t, "d8ce0142b3b10300c7c76487fad770f794c1e84e1b0c73a4b2e1503d4fbac093", arch.Hash)
