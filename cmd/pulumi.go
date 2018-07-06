@@ -114,8 +114,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().Var(
+		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
 	cmd.AddCommand(newCancelCmd())
