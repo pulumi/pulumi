@@ -31,7 +31,6 @@ func newPreviewCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
-	var color colorFlag
 	var diffDisplay bool
 	var nonInteractive bool
 	var parallel int
@@ -64,7 +63,7 @@ func newPreviewCmd() *cobra.Command {
 					Debug:     debug,
 				},
 				Display: backend.DisplayOptions{
-					Color:                color.Colorization(),
+					Color:                cmdutil.GetGlobalColorization(),
 					ShowConfig:           showConfig,
 					ShowReplacementSteps: showReplacementSteps,
 					ShowSameResources:    showSames,
@@ -119,8 +118,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
