@@ -25,9 +25,6 @@ build-proto::
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
-install::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
-
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
@@ -41,7 +38,7 @@ test_fast::
 	go test -timeout $(TEST_FAST_TIMEOUT) -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 test_all::
-	PATH=$(PULUMI_ROOT)/bin:$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
+	PATH=$(PULUMI_BIN):$(PATH) go test -cover -parallel ${TESTPARALLELISM} ${EXTRA_TEST_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:

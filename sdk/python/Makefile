@@ -41,17 +41,13 @@ build::
 	fi
 	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
+	cd "$(PYENVSRC)" && $(PIP) install --user -e .
+	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 
 lint::
 	pipenv run pylint -E ./lib/pulumi --ignore-patterns '.*_pb2_.*.py'
 	$(GOMETALINTER) ./cmd/pulumi-language-python/... | sort ; exit $${PIPESTATUS[0]}
 	$(GOMETALINTER) ./pkg/... | sort ; exit $${PIPESTATUS[0]}
-
-install::
-	cd $(PYENVSRC) && $(PIP) install --user -e .
-	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
-	GOBIN=$(PULUMI_BIN) go install \
-		  -ldflags "-X github.com/pulumi/pulumi/sdk/python/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 test_fast::
 	pipenv run pip install ./env/src

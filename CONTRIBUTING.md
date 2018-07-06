@@ -28,8 +28,6 @@ brew install node pipenv python@2 typescript dep yarn pandoc
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 
-For historical reasons (which we'd [like to address](https://github.com/pulumi/pulumi/issues/1515)) our build system requires that the folder `/opt/pulumi` exists and is writable by the current user. If you'd like, you can override this location by setting `PULUMI_ROOT` in your environment. The build is known to fail if this doesn't exist, so you'll need to create it first.
-
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
 1. `make`, which builds Pulumi and runs a quick set of tests

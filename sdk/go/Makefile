@@ -13,9 +13,6 @@ include ../../build/common.mk
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
 
-install::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}
-
 lint::
 	$(GOMETALINTER) ./pulumi/... | sort
 	$(GOMETALINTER) ./pulumi-language-go/... | sort

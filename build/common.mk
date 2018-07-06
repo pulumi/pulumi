@@ -8,15 +8,7 @@
 #  - ensure: restores and dependencies needed for the build from
 #            remote sources (e.g dep ensure or yarn install)
 #
-#  - build: builds a project but does not install it. In the case of
-#           go code, this usually means running go install (which
-#           would place them in `GOBIN`, but not `PULUMI_ROOT`
-#
-#  - install: copies the bits we plan to ship into a layout in
-#             `PULUMI_ROOT` that looks like what a customer would get
-#             when they download and install Pulumi. For JavaScript
-#             projects, installing also runs yarn link to register
-#             this package, so that other projects can depend on it.
+#  - build: builds a project and installs it
 #
 #  - lint: runs relevent linters for the project
 #
@@ -34,21 +26,22 @@
 # In addition, we have a few higher level targets that just depend on
 # these targets:
 #
-#  - only_build: this target runs build and install targets
+#  - only_build: this target runs this project's build target
+#                and any sub projects.
 #
-#  - only_test: this target runs the list and test_all targets
+#  - only_test: this target runs the lint and test_all targets
 #               (test_all itself runs test_fast)
 #
 #  - default: this is the target that is run by default when no
 #             arguments are passed to make, it runs the build, lint,
-#             install and test_fast targets
+#             and test_fast targets
 #
 #  - core: this target behaves like `default` except for the case
 #          where a project declares SUB_PROJECTS (see a discussion on
 #          that later). In that case, building `core` target does not
 #          build sub projects.
 #
-#  - all: this target runs build, lint, install and test_all (which
+#  - all: this target runs build, lint and test_all (which
 #         itself runs test_fast).
 #
 # Before including this makefile, a project may define some values
@@ -68,10 +61,6 @@
 #                 that specific target. These can be handy targets to
 #                 build explicitly on the command line from time to
 #                 time.
-#
-# - NODE_MODULE_NAME: If set, an install target will be auto-generated
-#                     that installs the module to
-#                     $(PULUMI_ROOT)/node_modules/$(NODE_MODULE_NAME)
 #
 # This Makefile also provides some convience methods:
 #
@@ -95,16 +84,9 @@ SHELL       := /bin/bash
 
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
 
-# Our install targets place items item into $PULUMI_ROOT, if it's
-# unset, default to /opt/pulumi.
-ifeq ($(PULUMI_ROOT),)
-	PULUMI_ROOT:=/opt/pulumi
-endif
+PULUMI_BIN := $(shell go env GOPATH)/bin
 
-PULUMI_BIN          := $(PULUMI_ROOT)/bin
-PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
-
-.PHONY: default all ensure only_build only_test build lint install test_fast test_all core
+.PHONY: default all ensure only_build only_test build lint test_fast test_all core
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
@@ -121,7 +103,7 @@ dist:: $(SUB_PROJECTS:%=%_dist)
 endif
 
 # `core` is like `default` except it does not build sub projects.
-core:: build lint install test_fast
+core:: build lint test_fast
 
 # If $(PROJECT_NAME) has been set, have our default and all targets
 # print a nice banner.
@@ -136,8 +118,8 @@ all::
 	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
 endif
 
-default:: build install lint test_fast
-all:: build install lint test_all
+default:: build lint test_fast
+all:: build lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
@@ -153,31 +135,14 @@ lint::
 test_fast::
 	$(call STEP_MESSAGE)
 
-install::
-	$(call STEP_MESSAGE)
-	@mkdir -p $(PULUMI_BIN)
-	@mkdir -p $(PULUMI_NODE_MODULES)
-
 dist::
 	$(call STEP_MESSAGE)
 
 test_all:: test_fast
 	$(call STEP_MESSAGE)
 
-ifneq ($(NODE_MODULE_NAME),)
-install::
-	[ ! -e "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" ] || rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	mkdir -p "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp -r bin/. "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
-	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
-	yarn install --prefer-offline --production && \
-	(yarn unlink > /dev/null 2>&1 || true) && \
-	yarn link
-endif
+only_build:: build
 
-only_build:: build install
 only_test:: lint test_all
 
 # Generate targets for each sub project. This project's default and
@@ -197,8 +162,6 @@ $(SUB_PROJECTS:%=%_lint):
 	@$(MAKE) -C ./$(@:%_lint=%) lint
 $(SUB_PROJECTS:%=%_test_fast):
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
-$(SUB_PROJECTS:%=%_install):
-	@$(MAKE) -C ./$(@:%_install=%) install
 $(SUB_PROJECTS:%=%_only_build):
 	@$(MAKE) -C ./$(@:%_only_build=%) only_build
 $(SUB_PROJECTS:%=%_only_test):

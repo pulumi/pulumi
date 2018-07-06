@@ -21,6 +21,8 @@ lint::
 
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
+	rm -rf bin || true
 	tsc
 	cp tests/runtime/jsClosureCases.js bin/tests/runtime
 	cp README.md ../../LICENSE package.json ./dist/* bin/
@@ -29,12 +31,12 @@ build::
 	cp -R proto/. bin/proto/
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
+	cd bin/ && \
+		cp ../yarn.lock . && \
+		(yarn unlink > /dev/null 2>&1 || true) && \
+		yarn link && \
+		yarn install --offline --production
 
-install::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
-	mkdir -p "$(PULUMI_BIN)/v6.10.2"
-	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/tests"
 
 test_fast::
 	istanbul test --print none _mocha -- --timeout 15000 'bin/tests/**/*.spec.js'

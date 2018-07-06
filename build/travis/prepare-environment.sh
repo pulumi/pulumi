@@ -23,5 +23,3 @@ export PULUMI_SCRIPTS="$(go env GOPATH)/src/github.com/pulumi/scripts"
     # Put static entries for Pulumi backends in /etc/hosts
     "${PULUMI_SCRIPTS}/ci/pulumi-hosts" | sudo tee -a /etc/hosts
 ) || exit 1  # Abort outer script if subshell fails.
-
-export PULUMI_ROOT=/opt/pulumi
