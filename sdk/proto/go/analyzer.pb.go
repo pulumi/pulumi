@@ -2,7 +2,7 @@
 // source: analyzer.proto
 
 /*
-Package pulumirpc is a generated protocol buffer package.
+Package status is a generated protocol buffer package.
 
 It is generated from these files:
 	analyzer.proto
@@ -12,6 +12,7 @@ It is generated from these files:
 	plugin.proto
 	provider.proto
 	resource.proto
+	status.proto
 
 It has these top-level messages:
 	AnalyzeRequest
@@ -41,13 +42,15 @@ It has these top-level messages:
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest
+	ErrorResourceInitFailed
 	ReadResourceRequest
 	ReadResourceResponse
 	RegisterResourceRequest
 	RegisterResourceResponse
 	RegisterResourceOutputsRequest
+	Status
 */
-package pulumirpc
+package status
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"

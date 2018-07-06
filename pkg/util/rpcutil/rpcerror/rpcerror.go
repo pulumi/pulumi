@@ -50,6 +50,8 @@ type Error struct {
 	details []interface{}
 }
 
+var _ error = (*Error)(nil)
+
 func (r *Error) Error() string {
 	if r.cause != nil {
 		return fmt.Sprintf("%s: %s", r.message, r.cause.Message())
