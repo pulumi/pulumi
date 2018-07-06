@@ -262,7 +262,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 	}
 
 	var id resource.ID
-	var properties *_struct.Struct
+	var liveObject *_struct.Struct
 	var resourceError *rpcerror.Error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
@@ -270,26 +270,16 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, resourceError = resourceStateAndError(err)
-		contract.Assert(resourceError != nil)
-		logging.V(7).Infof("%s failed: err=%v", label, resourceError)
-
-		for _, detail := range resourceError.Details() {
-			// If resource was successfully created but failed to initialize, the error will be packed
-			// with the live properties of the object.
-			if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
-				id = resource.ID(initErr.GetId())
-				properties = initErr.GetProperties()
-				resourceStatus = resource.StatusPartialFailure
-			}
-		}
+		resourceStatus, resourceError, liveObject = parseError(err)
+		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus == resource.StatusUnknown {
 			return "", nil, resourceStatus, resourceError
 		}
+		// Else it's a `StatusPartialFailure`.
 	} else {
 		id = resource.ID(resp.GetId())
-		properties = resp.GetProperties()
+		liveObject = resp.GetProperties()
 	}
 
 	if id == "" {
@@ -297,10 +287,10 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
 
-	outs, err := UnmarshalProperties(properties, MarshalOptions{
+	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
-		return "", nil, resource.StatusUnknown, err
+		return "", nil, resourceStatus, err
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
@@ -389,7 +379,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
-	var properties *_struct.Struct
+	var liveObject *_struct.Struct
 	var resourceError *rpcerror.Error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
@@ -399,30 +389,21 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		resourceStatus, resourceError = resourceStateAndError(err)
-		contract.Assert(resourceError != nil)
+		resourceStatus, resourceError, liveObject = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
-
-		// If resource was successfully created but failed to initialize, the error will be packed
-		// with the live properties of the object.
-		for _, detail := range resourceError.Details() {
-			if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
-				properties = initErr.GetProperties()
-				resourceStatus = resource.StatusPartialFailure
-			}
-		}
 
 		if resourceStatus == resource.StatusUnknown {
 			return nil, resourceStatus, resourceError
 		}
+		// Else it's a `StatusPartialFailure`.
 	} else {
-		properties = resp.GetProperties()
+		liveObject = resp.GetProperties()
 	}
 
-	outs, err := UnmarshalProperties(properties, MarshalOptions{
+	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return nil, resourceStatus, err
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
@@ -591,4 +572,30 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 
 	logging.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcError.Code())
 	return resource.StatusOK, rpcError
+}
+
+// parseError parses a gRPC error into a set of values that represent the state of a resource. They
+// are: (1) the `resourceStatus`, indicating the last known state (e.g., `StatusOK`, representing
+// success, `StatusUnknown`, representing internal failure); (2) the `*rpcerror.Error`, our internal
+// representation for RPC errors; and optionally (3) `liveObject`, containing the last known live
+// version of the object that has successfully created but failed to initialize (e.g., because the
+// object was created, but app code is continually crashing and the resource never achieves
+// liveness).
+func parseError(err error) (
+	resourceStatus resource.Status, resourceErr *rpcerror.Error, liveObject *_struct.Struct,
+) {
+	resourceStatus, resourceErr = resourceStateAndError(err)
+	contract.Assert(resourceErr != nil)
+
+	// If resource was successfully created but failed to initialize, the error will be packed
+	// with the live properties of the object.
+	for _, detail := range resourceErr.Details() {
+		if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
+			liveObject = initErr.GetProperties()
+			resourceStatus = resource.StatusPartialFailure
+			break
+		}
+	}
+
+	return resourceStatus, resourceErr, liveObject
 }

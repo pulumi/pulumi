@@ -155,32 +155,7 @@ async function createRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        // Create response object.
-        const resp = new statusproto.Status();
-        resp.setCode(grpc.status.UNKNOWN);
-        resp.setMessage(e.message);
-
-        // Pack initialization failure into details.
-        const metadata = new grpc.Metadata();
-        if (e.id) {
-            const detail = new provproto.ErrorResourceInitFailed();
-            detail.setId(e.id);
-            detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
-            detail.addReasons(e.reasons || []);
-
-            const details = new anyproto.Any();
-            details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
-
-            // Add details to metadata.
-            resp.addDetails(details);
-            metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
-        }
-
-        return callback({
-            code: grpc.status.UNKNOWN,
-            message: e.message,
-            metadata: metadata,
-        });
+        return callback(grpcResponseFromError(e));
     }
 }
 
@@ -233,32 +208,7 @@ async function updateRPC(call: any, callback: any): Promise<void> {
 
         callback(undefined, resp);
     } catch (e) {
-        // Create response object.
-        const resp = new statusproto.Status();
-        resp.setCode(grpc.status.UNKNOWN);
-        resp.setMessage(e.message);
-
-        // Pack initialization failure into details.
-        const metadata = new grpc.Metadata();
-        if (e.id) {
-            const detail = new provproto.ErrorResourceInitFailed();
-            detail.setId(e.id);
-            detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
-            detail.addReasons(e.reasons || []);
-
-            const details = new anyproto.Any();
-            details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
-
-            // Add details to metadata.
-            resp.addDetails(details);
-            metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
-        }
-
-        return callback({
-            code: grpc.status.UNKNOWN,
-            message: e.message,
-            metadata: metadata,
-        });
+        return callback(grpcResponseFromError(e));
     }
 }
 
@@ -287,6 +237,45 @@ function resultIncludingProvider(result: any, props: any): any {
     return Object.assign(result || {}, {
         [providerKey]: props[providerKey],
     });
+}
+
+// grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
+// resource. This is typically either a creation error, in which the API server has (virtually)
+// rejected the resource, or an initialization error, where the API server has accepted the
+// resource, but it failed to initialize (e.g., the app code is continually crashing and the
+// resource has failed to become alive).
+function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}): any {
+    // Create response object.
+    const resp = new statusproto.Status();
+    resp.setCode(grpc.status.UNKNOWN);
+    resp.setMessage(e.message);
+
+    const metadata = new grpc.Metadata();
+    if (e.id) {
+        // Object created successfully, but failed to initialize. Pack initialization failure into
+        // details.
+        const detail = new provproto.ErrorResourceInitFailed();
+        detail.setId(e.id);
+        detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
+        detail.addReasons(e.reasons || []);
+
+        const details = new anyproto.Any();
+        details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");
+
+        // Add details to metadata.
+        resp.addDetails(details);
+        // NOTE: `grpc-status-details-bin` is a magic field that allows us to send structured
+        // protobuf data as an error back through gRPC. This notion of details is a first-class in
+        // the Go gRPC implementation, and the nodejs implementation has not quite caught up to it,
+        // which is why it's cumbersome here.
+        metadata.add("grpc-status-details-bin", Buffer.from(resp.serializeBinary()));
+    }
+
+    return {
+        code: grpc.status.UNKNOWN,
+        message: e.message,
+        metadata: metadata,
+    };
 }
 
 export function main(args: string[]): void {
