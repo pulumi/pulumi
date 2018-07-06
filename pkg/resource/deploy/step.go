@@ -182,6 +182,9 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	s.reg.Done(&RegisterResult{State: s.new})
+	if resourceError == nil {
+		return resourceStatus, nil
+	}
 	return resourceStatus, resourceError
 }
 
@@ -328,6 +331,9 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 
 	// Finally, mark this operation as complete.
 	s.reg.Done(&RegisterResult{State: s.new, Stables: s.stables})
+	if resourceError == nil {
+		return resourceStatus, nil
+	}
 	return resourceStatus, resourceError
 }
 
