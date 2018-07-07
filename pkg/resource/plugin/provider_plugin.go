@@ -270,7 +270,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, resourceError, liveObject = parseError(err)
+		resourceStatus, resourceError, id, liveObject = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus == resource.StatusUnknown {
@@ -389,7 +389,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		resourceStatus, resourceError, liveObject = parseError(err)
+		resourceStatus, resourceError, _, liveObject = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus == resource.StatusUnknown {
@@ -582,7 +582,8 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 // object was created, but app code is continually crashing and the resource never achieves
 // liveness).
 func parseError(err error) (
-	resourceStatus resource.Status, resourceErr *rpcerror.Error, liveObject *_struct.Struct,
+	resourceStatus resource.Status, resourceErr *rpcerror.Error, id resource.ID,
+	liveObject *_struct.Struct,
 ) {
 	resourceStatus, resourceErr = resourceStateAndError(err)
 	contract.Assert(resourceErr != nil)
@@ -591,11 +592,12 @@ func parseError(err error) (
 	// with the live properties of the object.
 	for _, detail := range resourceErr.Details() {
 		if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
+			id = resource.ID(initErr.GetId())
 			liveObject = initErr.GetProperties()
 			resourceStatus = resource.StatusPartialFailure
 			break
 		}
 	}
 
-	return resourceStatus, resourceErr, liveObject
+	return resourceStatus, resourceErr, id, liveObject
 }
