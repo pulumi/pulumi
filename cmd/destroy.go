@@ -33,7 +33,6 @@ func newDestroyCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
-	var color colorFlag
 	var diffDisplay bool
 	var parallel int
 	var showConfig bool
@@ -67,7 +66,17 @@ func newDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(stack, false)
+			opts.Display = backend.DisplayOptions{
+				Color:                cmdutil.GetGlobalColorization(),
+				ShowConfig:           showConfig,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSameResources:    showSames,
+				IsInteractive:        interactive,
+				DiffDisplay:          diffDisplay,
+				Debug:                debug,
+			}
+
+			s, err := requireStack(stack, false, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -85,15 +94,6 @@ func newDestroyCmd() *cobra.Command {
 				Analyzers: analyzers,
 				Parallel:  parallel,
 				Debug:     debug,
-			}
-			opts.Display = backend.DisplayOptions{
-				Color:                color.Colorization(),
-				ShowConfig:           showConfig,
-				ShowReplacementSteps: showReplacementSteps,
-				ShowSameResources:    showSames,
-				IsInteractive:        interactive,
-				DiffDisplay:          diffDisplay,
-				Debug:                debug,
 			}
 
 			_, err = s.Destroy(commandContext(), proj, root, m, opts, cancellationScopes)
@@ -118,8 +118,6 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

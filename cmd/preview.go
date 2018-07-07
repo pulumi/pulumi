@@ -31,7 +31,6 @@ func newPreviewCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
-	var color colorFlag
 	var diffDisplay bool
 	var nonInteractive bool
 	var parallel int
@@ -57,7 +56,24 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(stack, true)
+			opts := backend.UpdateOptions{
+				Engine: engine.UpdateOptions{
+					Analyzers: analyzers,
+					Parallel:  parallel,
+					Debug:     debug,
+				},
+				Display: backend.DisplayOptions{
+					Color:                cmdutil.GetGlobalColorization(),
+					ShowConfig:           showConfig,
+					ShowReplacementSteps: showReplacementSteps,
+					ShowSameResources:    showSames,
+					IsInteractive:        isInteractive(nonInteractive),
+					DiffDisplay:          diffDisplay,
+					Debug:                debug,
+				},
+			}
+
+			s, err := requireStack(stack, true, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -72,22 +88,6 @@ func newPreviewCmd() *cobra.Command {
 				return errors.Wrap(err, "gathering environment metadata")
 			}
 
-			opts := backend.UpdateOptions{
-				Engine: engine.UpdateOptions{
-					Analyzers: analyzers,
-					Parallel:  parallel,
-					Debug:     debug,
-				},
-				Display: backend.DisplayOptions{
-					Color:                color.Colorization(),
-					ShowConfig:           showConfig,
-					ShowReplacementSteps: showReplacementSteps,
-					ShowSameResources:    showSames,
-					IsInteractive:        isInteractive(nonInteractive),
-					DiffDisplay:          diffDisplay,
-					Debug:                debug,
-				},
-			}
 			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)
 			switch {
 			case err != nil:
@@ -118,8 +118,6 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this update")
-	cmd.PersistentFlags().VarP(
-		&color, "color", "c", "Colorize output. Choices are: always, never, raw, auto")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")

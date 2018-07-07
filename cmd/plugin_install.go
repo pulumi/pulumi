@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -35,6 +36,7 @@ func newPluginInstallCmd() *cobra.Command {
 	var file string
 	var reinstall bool
 	var verbose bool
+
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME VERSION]",
 		Args:  cmdutil.MaximumNArgs(3),
@@ -49,6 +51,10 @@ func newPluginInstallCmd() *cobra.Command {
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			displayOpts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Parse the kind, name, and version, if specified.
 			var installs []workspace.PluginInfo
 			if len(args) > 0 {
@@ -135,7 +141,7 @@ func newPluginInstallCmd() *cobra.Command {
 						cmdutil.Diag().Infoerrf(
 							diag.Message("", "%s downloading from %s"), label, source)
 					}
-					if tarball, err = releases.DownloadPlugin(commandContext(), install, true); err != nil {
+					if tarball, err = releases.DownloadPlugin(commandContext(), install, true, displayOpts); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, source)
 					}
 				} else {

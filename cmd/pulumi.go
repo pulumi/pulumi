@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -39,10 +40,24 @@ func NewPulumiCmd() *cobra.Command {
 	var tracingHeaderFlag string
 	var profiling string
 	var verbose int
+	var color colorFlag
 
 	cmd := &cobra.Command{
 		Use: "pulumi",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			// For all commands, attempt to grab out the --color value provided so we
+			// can set the GlobalColorization value to be used by any code that doesn't
+			// get DisplayOptions passed in.
+			cmdFlag := cmd.Flag("color")
+			if cmdFlag != nil {
+				err := color.Set(cmdFlag.Value.String())
+				if err != nil {
+					return err
+				}
+
+				cmdutil.SetGlobalColorization(color.Colorization())
+			}
+
 			if cwd != "" {
 				if err := os.Chdir(cwd); err != nil {
 					return err
@@ -99,6 +114,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	cmd.PersistentFlags().Var(
+		&color, "color", "Colorize output. Choices are: always, never, raw, auto")
 
 	// Common commands:
 	cmd.AddCommand(newCancelCmd())
@@ -138,15 +155,15 @@ func NewPulumiCmd() *cobra.Command {
 	return cmd
 }
 
-func confirmPrompt(prompt string, name string) bool {
+func confirmPrompt(prompt string, name string, opts backend.DisplayOptions) bool {
 	if prompt != "" {
 		fmt.Print(
-			colors.ColorizeText(
+			opts.Color.Colorize(
 				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
 	}
 
 	fmt.Print(
-		colors.ColorizeText(
+		opts.Color.Colorize(
 			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
 				colors.SpecAttention, colors.BrightWhite, name, colors.SpecAttention, colors.Reset)))
 

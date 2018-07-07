@@ -50,7 +50,7 @@ func hasDebugCommands() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
 }
 
-func currentBackend() (backend.Backend, error) {
+func currentBackend(opts backend.DisplayOptions) (backend.Backend, error) {
 	creds, err := workspace.GetStoredCredentials()
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func currentBackend() (backend.Backend, error) {
 	if local.IsLocalBackendURL(creds.Current) {
 		return local.New(cmdutil.Diag(), creds.Current), nil
 	}
-	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current)
+	return cloud.Login(commandContext(), cmdutil.Diag(), creds.Current, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -101,12 +101,12 @@ func createStack(b backend.Backend, stackRef backend.StackReference, opts interf
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
+func requireStack(stackName string, offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(offerNew)
+		return requireCurrentStack(offerNew, opts)
 	}
 
-	b, err := currentBackend()
+	b, err := currentBackend(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +140,9 @@ func requireStack(stackName string, offerNew bool) (backend.Stack, error) {
 	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool) (backend.Stack, error) {
+func requireCurrentStack(offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
 	// Search for the current stack.
-	b, err := currentBackend()
+	b, err := currentBackend(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +154,12 @@ func requireCurrentStack(offerNew bool) (backend.Stack, error) {
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(b, offerNew)
+	return chooseStack(b, offerNew, opts)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backends.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
+func chooseStack(b backend.Backend, offerNew bool, opts backend.DisplayOptions) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if offerNew {
@@ -210,14 +210,14 @@ func chooseStack(b backend.Backend, offerNew bool) (backend.Stack, error) {
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a stack"
 	if offerNew {
 		message += ", or create a new one:"
 	} else {
 		message += ":"
 	}
-	message = colors.ColorizeText(colors.BrightWhite + message + colors.Reset)
+	message = opts.Color.Colorize(colors.BrightWhite + message + colors.Reset)
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
@@ -303,6 +303,10 @@ func (cf *colorFlag) Type() string {
 }
 
 func (cf *colorFlag) Colorization() colors.Colorization {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return colors.Never
+	}
+
 	if cf.value == "" {
 		return colors.Always
 	}

@@ -46,7 +46,11 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use 'pulumi config get <key-name>'.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			stack, err := requireStack(stack, true)
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			stack, err := requireStack(stack, true, opts)
 			if err != nil {
 				return err
 			}
@@ -76,7 +80,11 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(*stack, true)
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(*stack, true, opts)
 			if err != nil {
 				return err
 			}
@@ -99,7 +107,11 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Short: "Remove configuration value",
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(*stack, true)
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(*stack, true, opts)
 			if err != nil {
 				return err
 			}
@@ -132,8 +144,12 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false)
+			s, err := requireStack(*stack, false, opts)
 			if err != nil {
 				return err
 			}
@@ -204,9 +220,12 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"may be set by piping a file to standard in.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, true)
+			s, err := requireStack(*stack, true, opts)
 			if err != nil {
 				return err
 			}

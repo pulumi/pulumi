@@ -42,7 +42,7 @@ func (c Colorization) Colorize(v string) string {
 		return v
 	case Always:
 		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
-		return ColorizeText(v)
+		return colorizeText(v)
 	case Never:
 		// Remove all the colors that any other layers added.
 		return tagRegexp.ReplaceAllString(v, "")

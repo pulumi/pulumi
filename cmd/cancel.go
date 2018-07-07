@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -45,7 +46,12 @@ func newCancelCmd() *cobra.Command {
 			if len(args) > 0 {
 				stack = args[0]
 			}
-			s, err := requireStack(stack, false)
+
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stack, false, opts)
 			if err != nil {
 				return err
 			}
@@ -57,8 +63,8 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will irreversably cancel the currently running update for '%s'!", s.Name())
-			if !yes && !confirmPrompt(prompt, s.Name().String()) {
+			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", s.Name())
+			if !yes && !confirmPrompt(prompt, s.Name().String(), opts) {
 				return errors.New("confirmation declined")
 			}
 
@@ -69,7 +75,7 @@ func newCancelCmd() *cobra.Command {
 
 			msg := fmt.Sprintf("%sThe currently running update for '%s' has been canceled!%s", colors.SpecAttention, s.Name(),
 				colors.Reset)
-			fmt.Println(colors.ColorizeText(msg))
+			fmt.Println(opts.Color.Colorize(msg))
 
 			return nil
 		}),
