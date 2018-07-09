@@ -26,7 +26,6 @@ interface ClosureCase {
     title: string;                  // a title banner for the test case.
     func: Function;                 // the function whose body and closure to serialize.
     expectText?: string;            // optionally also validate the serialization to JavaScript text.
-    expectPackages?: Set<string>;   // optionally also validate the packages required by the JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
 }
@@ -791,7 +790,6 @@ return () => {
     cases.push({
         title: "Don't capture built-ins",
         func: () => { let x: any = eval("undefined + null + NaN + Infinity + __filename"); require("os"); },
-        expectPackages: new Set(["os"]),
         expectText: `exports.handler = __f0;
 
 function __f0() {
@@ -812,7 +810,6 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
         cases.push({
             title: "Fail to capture built-in modules due to native functions",
             func: () => os,
-            expectPackages: new Set([]),
             expectText: undefined,
             error:
 `Error serializing '() => os': closure.spec.js(0,0)
@@ -4072,7 +4069,6 @@ return function () { console.log(module.exports.exportedValue); };
         cases.push({
             title: "Required packages #1",
             func: function () { require("typescript"); foo(); if (true) { require("os") } },
-            expectPackages: new Set(["os", "typescript", "./util"]),
             expectText: `exports.handler = __f0;
 
 function __foo() {
@@ -4731,12 +4727,6 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
             if (test.expectText) {
                 const sf = await runtime.serializeFunction(test.func);
                 assert.equal(sf.text, test.expectText);
-                if (test.expectPackages) {
-                    assert.equal(sf.requiredPackages.size, test.expectPackages.size)
-                    for (const p of sf.requiredPackages) {
-                        assert.equal(test.expectPackages.has(p), true);
-                    }
-                }
             }
             else {
                 const message = await assertAsyncThrows(async () => {

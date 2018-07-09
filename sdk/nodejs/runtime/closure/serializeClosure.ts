@@ -42,12 +42,6 @@ export interface SerializedFunction {
      * The name of the exported module member.
      */
     exportName: string;
-    /**
-     * The set of pacakges that were 'require'd by the transitive closure of functions serialized as part of the
-     * JavaScript function serialization.  These pacakges must be able to resolve in the target execution environment
-     * for the serialized function to be able to be loaded and evaluated correctly.
-     */
-    requiredPackages: Set<string>;
 }
 
 /**
@@ -117,7 +111,6 @@ function serializeJavaScriptText(
     const envEntryToEnvVar = new Map<closure.Entry, string>();
     const envVarNames = new Set<string>();
     const functionInfoToEnvVar = new Map<closure.FunctionInfo, string>();
-    const requiredPackages = new Set<string>();
 
     let environmentText = "";
     let functionText = "";
@@ -134,7 +127,6 @@ function serializeJavaScriptText(
     // console.log("Completed serializeJavaScriptTextAsync:\n" + func.toString());
     return {
         text: text,
-        requiredPackages: requiredPackages,
         exportName: exportName,
     };
 
@@ -150,10 +142,6 @@ function serializeJavaScriptText(
             functionInfoToEnvVar.set(functionInfo, functionName);
 
             emitFunctionWorker(functionInfo, functionName);
-        }
-
-        for (const p of functionInfo.requiredPackages) {
-            requiredPackages.add(p);
         }
 
         return functionName;
