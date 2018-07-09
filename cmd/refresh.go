@@ -41,6 +41,7 @@ func newRefreshCmd() *cobra.Command {
 	var nonInteractive bool
 	var skipPreview bool
 	var yes bool
+	var useParallelEngine bool
 
 	var cmd = &cobra.Command{
 		Use:   "refresh",
@@ -82,9 +83,10 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers: analyzers,
-				Parallel:  parallel,
-				Debug:     debug,
+				Analyzers:      analyzers,
+				Parallel:       parallel,
+				Debug:          debug,
+				ParallelEngine: useParallelEngine,
 			}
 			opts.Display = backend.DisplayOptions{
 				Color:                color.Colorization(),
@@ -141,6 +143,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
+	cmd.PersistentFlags().BoolVar(
+		&useParallelEngine, "use-parallel-engine", false,
+		"Use the new experimental parallel engine")
 
 	return cmd
 }

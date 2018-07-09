@@ -38,6 +38,7 @@ func newPreviewCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var useParallelEngine bool
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -74,9 +75,10 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					Analyzers: analyzers,
-					Parallel:  parallel,
-					Debug:     debug,
+					Analyzers:      analyzers,
+					Parallel:       parallel,
+					Debug:          debug,
+					ParallelEngine: useParallelEngine,
 				},
 				Display: backend.DisplayOptions{
 					Color:                color.Colorization(),
@@ -137,6 +139,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&useParallelEngine, "use-parallel-engine", false,
+		"Use the new experimental parallel engine")
 
 	return cmd
 }
