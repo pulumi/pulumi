@@ -186,8 +186,9 @@ func (res *planResult) Chdir() (func(), error) {
 func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (deploy.PlanSummary,
 	deploy.Step, resource.Status, error) {
 	opts := deploy.Options{
-		Events:   events,
-		Parallel: res.Options.Parallel,
+		Events:         events,
+		Parallel:       res.Options.Parallel,
+		ParallelEngine: res.Options.ParallelEngine,
 	}
 
 	// Fetch a plan iterator and keep walking it until we are done.

@@ -41,6 +41,7 @@ func newUpdateCmd() *cobra.Command {
 	var showSames bool
 	var skipPreview bool
 	var yes bool
+	var useParallelEngine bool
 
 	var cmd = &cobra.Command{
 		Use:        "update",
@@ -96,9 +97,10 @@ func newUpdateCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Analyzers: analyzers,
-				Parallel:  parallel,
-				Debug:     debug,
+				Analyzers:      analyzers,
+				Parallel:       parallel,
+				Debug:          debug,
+				ParallelEngine: useParallelEngine,
 			}
 
 			changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
@@ -156,6 +158,9 @@ func newUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
+	cmd.PersistentFlags().BoolVar(
+		&useParallelEngine, "use-parallel-engine", false,
+		"Use the new experimental parallel engine")
 
 	return cmd
 }

@@ -29,8 +29,9 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Events   Events // an optional events callback interface.
-	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
+	Events         Events // an optional events callback interface.
+	Parallel       int    // the degree of parallelism for resource operations (<=1 for serial).
+	ParallelEngine bool   // if enabled, uses the new parallel engine instead of the legacy engine
 }
 
 // Events is an interface that can be used to hook interesting engine/planning events.

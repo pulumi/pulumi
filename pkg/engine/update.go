@@ -35,6 +35,9 @@ type UpdateOptions struct {
 
 	// true if debugging output it enabled
 	Debug bool
+
+	// true if using the new parallel engine, false if using the legacy engine.
+	ParallelEngine bool
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
