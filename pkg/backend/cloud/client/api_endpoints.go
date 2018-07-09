@@ -78,7 +78,6 @@ func init() {
 	// nolint: lll
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
-
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
 	addEndpoint("POST", "/api/stacks/{orgName}", "createStack")
 	addEndpoint("DELETE", "/api/stacks/{orgName}/{stackName}", "deleteStack")
