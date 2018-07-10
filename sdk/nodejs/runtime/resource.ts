@@ -215,12 +215,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         : Promise.resolve<URN | undefined>(undefined);
 
     // Run as many dependency steps in parallel.
-    const promiseResults = await Promise.all(
+    const [explicitURNDeps, serializedProps, parentURN] = await Promise.all(
         [explicitURNDepsPromise, serializedPropsPromise, parentURNPromise]);
-
-    const explicitURNDeps = promiseResults[0];
-    const serializedProps = promiseResults[1];
-    const parentURN = promiseResults[2];
 
     // Once we've completed serializing out all properties, we'll also have collected
     // a set of implicit dependencies.  Also, in parallel, ensure that we know and
