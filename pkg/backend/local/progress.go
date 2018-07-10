@@ -106,6 +106,10 @@ type ProgressDisplay struct {
 	// a status message to help indicate that things are still working.
 	currentTick int
 
+	// The time we displayed out last output message.  Useful for knowing how much time has passed
+	// and if we should print out a status message of some sort.
+	lastOutputTick int
+
 	headerRow    Row
 	resourceRows []ResourceRow
 
@@ -196,6 +200,7 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 	}
 
 	display.progressOutput <- progress
+	display.lastOutputTick = display.currentTick
 }
 
 func (display *ProgressDisplay) writeSimpleMessage(msg string) {
@@ -752,11 +757,22 @@ func splitIntoDisplayableLines(msg string) []string {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all  resources if we're in a terminal.  If we're not, then this won't do
-	// anything.
+	// Got a tick.  Update the progress display if we're in a terminal.  If we're not,
+	// print a hearbeat message every 10 seconds after our last output so that the user
+	// knows something is going on.  This is also helpful for hosts like jenkins that
+	// often timeout a process if output is not seen in a while.
 	display.currentTick++
 
-	display.refreshAllRowsIfInTerminal()
+	if display.isTerminal {
+		display.refreshAllRowsIfInTerminal()
+	} else {
+		// Print out a message every 10 seconds after the last output, letting the user know that
+		// that work is still happening.
+		timeSinceLastOutput := display.currentTick - display.lastOutputTick
+		if timeSinceLastOutput >= 10 && timeSinceLastOutput%10 == 0 {
+			display.writeSimpleMessage("Still working...")
+		}
+	}
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
