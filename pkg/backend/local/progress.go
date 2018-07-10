@@ -106,6 +106,10 @@ type ProgressDisplay struct {
 	// a status message to help indicate that things are still working.
 	currentTick int
 
+	// The time we displayed out last output message.  Useful for knowing how much time has passed
+	// and if we should print out a status message of some sort.
+	lastOutputTick int
+
 	headerRow    Row
 	resourceRows []ResourceRow
 
@@ -196,6 +200,7 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 	}
 
 	display.progressOutput <- progress
+	display.lastOutputTick = display.currentTick
 }
 
 func (display *ProgressDisplay) writeSimpleMessage(msg string) {
@@ -752,14 +757,18 @@ func splitIntoDisplayableLines(msg string) []string {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all resources if we're in a terminal.  If we're not, just display a
-	// message to let people know progress is still being made.
+	// Got a tick.  Update all resources if we're in a terminal.
 	display.currentTick++
 
 	if display.isTerminal {
 		display.refreshAllRowsIfInTerminal()
-	} else if display.currentTick%20 == 0 {
-		display.writeSimpleMessage("Still working...")
+	} else {
+		// Print out a message every 10 seconds after the last output, letting the user know that
+		// that work is still happening.
+		timeSinceLastOutput := display.currentTick - display.lastOutputTick
+		if timeSinceLastOutput >= 10 && timeSinceLastOutput%10 == 0 {
+			display.writeSimpleMessage("Still working...")
+		}
 	}
 }
 
