@@ -207,27 +207,21 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     // Serialize out all our props to their final values.  In doing so, we'll also collect all the
     // Resources pointed to by any Output objects we encounter, adding them to
     // 'implicitDependencies'.
-    const implicitDependencies: Resource[] = [];
-    const serializedPropsPromise = serializeResourceProperties(label, props, implicitDependencies);
+    const serializedPropsAndImplicitDepsPromise = serializeResourceProperties(label, props);
 
     const parentURNPromise = opts.parent
         ? debuggablePromise(opts.parent.urn.promise(), `parentUrn(${label})`)
         : Promise.resolve<URN | undefined>(undefined);
 
     // Run as many dependency steps in parallel.
-    const [explicitURNDeps, serializedProps, parentURN] = await Promise.all(
-        [explicitURNDepsPromise, serializedPropsPromise, parentURNPromise]);
+    const [explicitURNDeps, [serializedProps, implicitURNDeps], parentURN] =
+        await Promise.all(
+            [explicitURNDepsPromise, serializedPropsAndImplicitDepsPromise, parentURNPromise]);
 
     // Once we've completed serializing out all properties, we'll also have collected
     // a set of implicit dependencies.  Also, in parallel, ensure that we know and
     // have recorded all those in our total dependency set.
-    const dependencies: Set<URN> = new Set<URN>(explicitURNDeps);
-    const implicitDepUrns = await debuggablePromise(
-        Promise.all(implicitDependencies.map(d => d.urn.promise())), `implicitDeps(${label})`);
-
-    for (const implicitDepUrn of implicitDepUrns) {
-        dependencies.add(implicitDepUrn);
-    }
+    const dependencies = new Set<URN>(explicitURNDeps.concat(implicitURNDeps));
 
     return {
         resolveURN: resolveURN!,
