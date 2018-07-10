@@ -757,7 +757,10 @@ func splitIntoDisplayableLines(msg string) []string {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all resources if we're in a terminal.
+	// Got a tick.  Update the progress display if we're in a terminal.  If we're not,
+	// print a hearbeat message every 10 seconds after our last output so that the user
+	// knows something is going on.  This is also helpful for hosts like jenkins that
+	// often timeout a process if output is not seen in a while.
 	display.currentTick++
 
 	if display.isTerminal {
