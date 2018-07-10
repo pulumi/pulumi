@@ -298,9 +298,7 @@ export async function createFunctionInfoAsync(
             const queue = context.asyncWorkQueue;
             context.asyncWorkQueue = [];
 
-            for (const work of queue) {
-                await work();
-            }
+            await Promise.all(queue.map(w => w()));
         }
     }
 }
