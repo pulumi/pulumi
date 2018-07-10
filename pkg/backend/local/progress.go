@@ -758,7 +758,7 @@ func (display *ProgressDisplay) processTick() {
 
 	if display.isTerminal {
 		display.refreshAllRowsIfInTerminal()
-	} else {
+	} else if display.currentTick%20 == 0 {
 		display.writeSimpleMessage("Still working...")
 	}
 }
