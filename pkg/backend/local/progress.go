@@ -752,11 +752,15 @@ func splitIntoDisplayableLines(msg string) []string {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all  resources if we're in a terminal.  If we're not, then this won't do
-	// anything.
+	// Got a tick.  Update all resources if we're in a terminal.  If we're not, just display a
+	// message to let people know progress is still being made.
 	display.currentTick++
 
-	display.refreshAllRowsIfInTerminal()
+	if display.isTerminal {
+		display.refreshAllRowsIfInTerminal()
+	} else {
+		display.writeSimpleMessage("Still working...")
+	}
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
