@@ -134,13 +134,13 @@ type ResourceV1 struct {
 
 // ResourceV2 is the second version of the Resource API type. It absorbs two breaking changes:
 //   1. The deprecated `Defaults` field is removed because it is not used anywhere,
-//   2. It adds an additional bool field, "Read", which reflects whether or not this resource
+//   2. It adds an additional bool field, "External", which reflects whether or not this resource
 //      exists because of a call to `ReadResource`. This is motivated by a need to store
 //      resources that Pulumi does not own in the deployment.
 //
 // Migrating from ResourceV1 to ResourceV2 involves:
 //  1. Dropping the `Defaults` field (it should be empty anyway)
-//  2. Setting the `Read` field to "false", since a ResourceV1 existing for a resource
+//  2. Setting the `External` field to "false", since a ResourceV1 existing for a resource
 //     implies that it is owned by Pulumi. Note that since this is the default value for
 //     booleans in Go, no explicit assignment needs to be made.
 type ResourceV2 struct {
@@ -162,8 +162,8 @@ type ResourceV2 struct {
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
-	// Read is set to true when this resource was "read" and is not explicitly owned by Pulumi.
-	Read bool `json:"read,omitempty" yaml:"read,omitempty"`
+	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
+	External bool `json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
 }
