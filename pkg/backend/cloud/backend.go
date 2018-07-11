@@ -686,15 +686,19 @@ func (b *cloudBackend) PreviewThenPrompt(
 	// Perform the update operations, passing true for dryRun, so that we get a preview.
 	changes := engine.ResourceChanges(nil)
 	if !opts.SkipPreview {
-		c, err := b.updateStack(
+		changes, err := b.updateStack(
 			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel, true /*dryRun*/, scopes)
 		if err != nil {
-			return c, err
+			return changes, err
 		}
-		changes = c
+
+		// If the preview produced no changes, then there's nothing for us to do.
+		if !changes.HasChanges() {
+			return changes, nil
+		}
 	}
 
-	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
+	// If we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if opts.AutoApprove || updateKind == client.UpdateKindPreview {
 		return changes, nil
 	}
@@ -773,7 +777,7 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 
 	// Preview the operation to the user and ask them if they want to proceed.
 	changes, err := b.PreviewThenPrompt(ctx, updateKind, stack, pkg, root, m, opts, scopes)
-	if err != nil || updateKind == client.UpdateKindPreview {
+	if err != nil || updateKind == client.UpdateKindPreview || !changes.HasChanges() {
 		return changes, err
 	}
 
