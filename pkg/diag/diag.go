@@ -27,7 +27,10 @@ type Diag struct {
 	ID       ID           // a unique identifier for this diagnostic.
 	Message  string       // a human-friendly message for this diagnostic.
 	Raw      bool         // true if this diagnostic should not be formatted when displayed.
-	StreamID int32        // An ID used to collate a stream of conceptually sequention messages.
+
+	// An ID used to collate a stream of conceptually sequential messages.  0 means that the message
+	// is not part of any sequential message stream.
+	StreamID int32
 }
 
 // Message returns an anonymous diagnostic message without any source or ID information.
