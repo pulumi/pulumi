@@ -63,7 +63,8 @@ proto.pulumirpc.LogRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     severity: jspb.Message.getFieldWithDefault(msg, 1, 0),
     message: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    urn: jspb.Message.getFieldWithDefault(msg, 3, "")
+    urn: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    streamid: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -111,6 +112,10 @@ proto.pulumirpc.LogRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setUrn(value);
+      break;
+    case 4:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setStreamid(value);
       break;
     default:
       reader.skipField();
@@ -162,6 +167,13 @@ proto.pulumirpc.LogRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getStreamid();
+  if (f !== 0) {
+    writer.writeInt32(
+      4,
+      f
+    );
+  }
 };
 
 
@@ -207,6 +219,21 @@ proto.pulumirpc.LogRequest.prototype.getUrn = function() {
 /** @param {string} value */
 proto.pulumirpc.LogRequest.prototype.setUrn = function(value) {
   jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional int32 streamId = 4;
+ * @return {number}
+ */
+proto.pulumirpc.LogRequest.prototype.getStreamid = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/** @param {number} value */
+proto.pulumirpc.LogRequest.prototype.setStreamid = function(value) {
+  jspb.Message.setProto3IntField(this, 4, value);
 };
 
 
