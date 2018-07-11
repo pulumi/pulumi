@@ -53,12 +53,6 @@ func (p *Plan) Start(opts Options) (*PlanIterator, error) {
 		opts:        opts,
 		src:         src,
 		stepGen:     newStepGenerator(p, opts),
-		urns:        make(map[resource.URN]bool),
-		creates:     make(map[resource.URN]bool),
-		updates:     make(map[resource.URN]bool),
-		replaces:    make(map[resource.URN]bool),
-		deletes:     make(map[resource.URN]bool),
-		sames:       make(map[resource.URN]bool),
 		pendingNews: make(map[resource.URN]Step),
 		dones:       make(map[*resource.State]bool),
 	}, nil
@@ -82,13 +76,6 @@ type PlanIterator struct {
 	src     SourceIterator // the iterator that fetches source resources.
 	stepGen *stepGenerator // the step generator for this plan.
 
-	urns     map[resource.URN]bool // URNs discovered.
-	creates  map[resource.URN]bool // URNs discovered to be created.
-	updates  map[resource.URN]bool // URNs discovered to be updated.
-	replaces map[resource.URN]bool // URNs discovered to be replaced.
-	deletes  map[resource.URN]bool // URNs discovered to be deleted.
-	sames    map[resource.URN]bool // URNs discovered to be the same.
-
 	pendingNews map[resource.URN]Step // a map of logical steps currently active.
 
 	stepqueue []Step                   // a queue of steps to drain.
@@ -102,7 +89,7 @@ type PlanIterator struct {
 
 func (iter *PlanIterator) Plan() *Plan { return iter.p }
 func (iter *PlanIterator) Steps() int {
-	return len(iter.creates) + len(iter.updates) + len(iter.replaces) + len(iter.deletes)
+	return len(iter.Creates()) + len(iter.Updates()) + len(iter.Replaces()) + len(iter.Deletes())
 }
 func (iter *PlanIterator) Creates() map[resource.URN]bool  { return iter.stepGen.Creates() }
 func (iter *PlanIterator) Updates() map[resource.URN]bool  { return iter.stepGen.Updates() }
