@@ -57,6 +57,11 @@ class ResourceProviderStub(object):
         request_serializer=provider__pb2.DeleteRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
+    self.Cancel = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/Cancel',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
     self.GetPluginInfo = channel.unary_unary(
         '/pulumirpc.ResourceProvider/GetPluginInfo',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -131,6 +136,13 @@ class ResourceProviderServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def Cancel(self, request, context):
+    """Cancel signals the provider to abort all outstanding resource operations.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def GetPluginInfo(self, request, context):
     """GetPluginInfo returns generic information about this plugin, like its version.
     """
@@ -179,6 +191,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
       'Delete': grpc.unary_unary_rpc_method_handler(
           servicer.Delete,
           request_deserializer=provider__pb2.DeleteRequest.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'Cancel': grpc.unary_unary_rpc_method_handler(
+          servicer.Cancel,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
       ),
       'GetPluginInfo': grpc.unary_unary_rpc_method_handler(
