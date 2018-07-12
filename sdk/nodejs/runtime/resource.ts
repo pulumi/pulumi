@@ -200,28 +200,25 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
+    // Before we can proceed, all our dependencies must be finished.
     const dependsOn = opts.dependsOn || [];
-    const explicitURNDepsPromise = debuggablePromise(
+    const explicitURNDeps = await debuggablePromise(
         Promise.all(dependsOn.map(d => d.urn.promise())), `dependsOn(${label})`);
 
-    // Serialize out all our props to their final values.  In doing so, we'll also collect all the
-    // Resources pointed to by any Output objects we encounter, adding them to
-    // 'implicitDependencies'.
-    const serializedPropsAndImplicitDepsPromise = serializeResourceProperties(label, props);
+    // Serialize out all our props to their final values.  In doing so, we'll also collect all
+    // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+    const implicitDependencies: Resource[] = [];
+    const serializedProps = await serializeResourceProperties(label, props, implicitDependencies);
 
-    const parentURNPromise = opts.parent
-        ? debuggablePromise(opts.parent.urn.promise(), `parentUrn(${label})`)
-        : Promise.resolve<URN | undefined>(undefined);
+    let parentURN: URN | undefined;
+    if (opts.parent) {
+        parentURN = await opts.parent.urn.promise();
+    }
 
-    // Run as many dependency steps in parallel.
-    const [explicitURNDeps, [serializedProps, implicitURNDeps], parentURN] =
-        await Promise.all(
-            [explicitURNDepsPromise, serializedPropsAndImplicitDepsPromise, parentURNPromise]);
-
-    // Once we've completed serializing out all properties, we'll also have collected
-    // a set of implicit dependencies.  Also, in parallel, ensure that we know and
-    // have recorded all those in our total dependency set.
-    const dependencies = new Set<URN>(explicitURNDeps.concat(implicitURNDeps));
+    const dependencies: Set<URN> = new Set<URN>(explicitURNDeps);
+    for (const implicitDep of implicitDependencies) {
+        dependencies.add(await implicitDep.urn.promise());
+    }
 
     return {
         resolveURN: resolveURN!,
