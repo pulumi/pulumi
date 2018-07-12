@@ -106,9 +106,9 @@ type ProgressDisplay struct {
 	// a status message to help indicate that things are still working.
 	currentTick int
 
-	// The time we displayed out last output message.  Useful for knowing how much time has passed
-	// and if we should print out a status message of some sort.
-	lastOutputTick int
+	// A spinner to use to show that we're still doing work even when no output has been
+	// printed to the console in a while.
+	nonInteractiveSpinner cmdutil.Spinner
 
 	headerRow    Row
 	resourceRows []ResourceRow
@@ -199,8 +199,12 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 		display.printedProgressCache[progress.ID] = progress
 	}
 
+	if !display.isTerminal {
+		// We're about to display something.  Reset our spinner so that it will go on the next line.
+		display.nonInteractiveSpinner.Reset()
+	}
+
 	display.progressOutput <- progress
-	display.lastOutputTick = display.currentTick
 }
 
 func (display *ProgressDisplay) writeSimpleMessage(msg string) {
@@ -219,7 +223,7 @@ func DisplayProgressEvents(
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
-	_, ticker := cmdutil.NewSpinnerAndTicker(
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
 		nil, 1 /*timesPerSecond*/)
 
@@ -237,6 +241,7 @@ func DisplayProgressEvents(
 		colorizedToUncolorized: make(map[string]string),
 		printedProgressCache:   make(map[string]Progress),
 		displayOrderCounter:    1,
+		nonInteractiveSpinner:  spinner,
 	}
 
 	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
@@ -766,12 +771,8 @@ func (display *ProgressDisplay) processTick() {
 	if display.isTerminal {
 		display.refreshAllRowsIfInTerminal()
 	} else {
-		// Print out a message every 10 seconds after the last output, letting the user know that
-		// that work is still happening.
-		timeSinceLastOutput := display.currentTick - display.lastOutputTick
-		if timeSinceLastOutput >= 10 && timeSinceLastOutput%10 == 0 {
-			display.writeSimpleMessage("Still working...")
-		}
+		// Update the spinner to let the user know that that work is still happening.
+		display.nonInteractiveSpinner.Tick()
 	}
 }
 
