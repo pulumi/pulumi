@@ -19,6 +19,10 @@ else
 TEST_FAST_TIMEOUT := 2m
 endif
 
+build-proto::
+	docker build -t pulumi/protobuf-builder sdk/proto
+	cd sdk/proto && ./generate.sh
+
 build::
 	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${PROJECT}
 
