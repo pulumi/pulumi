@@ -58,6 +58,13 @@ type Host interface {
 	// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 	GetRequiredPlugins(info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error)
 
+	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
+	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
+	// will either a creation error or an initialization error. SignalCancellation is advisory and
+	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
+	// called before (e.g.) hard-closing any gRPC connection.
+	SignalCancellation() error
+
 	// Close reclaims any resources associated with the host.
 	Close() error
 }
@@ -116,6 +123,8 @@ type defaultHost struct {
 	loadRequests    chan pluginLoadRequest             // a channel used to satisfy plugin load requests.
 	server          *hostServer                        // the server's RPC machinery.
 }
+
+var _ Host = (*defaultHost)(nil)
 
 type analyzerPlugin struct {
 	Plugin Analyzer
@@ -385,6 +394,18 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]works
 	}
 
 	return plugins, nil
+}
+
+func (host *defaultHost) SignalCancellation() error {
+	var result error
+	for _, plug := range host.resourcePlugins {
+		if err := plug.Plugin.SignalCancellation(); err != nil {
+			result = multierror.Append(result, errors.Wrapf(err,
+				"Error signaling cancellation to resource provider '%s'", plug.Info.Name))
+		}
+	}
+
+	return result
 }
 
 func (host *defaultHost) Close() error {
