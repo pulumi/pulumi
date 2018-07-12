@@ -520,6 +520,22 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
+func (p *provider) SignalCancellation() error {
+	_, err := p.clientRaw.Cancel(p.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
+			rpcError.Message())
+		switch rpcError.Code() {
+		case codes.Unimplemented:
+			// For backwards compatibility, do nothing if it's not implemented.
+			return nil
+		}
+	}
+
+	return err
+}
+
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
 	return p.plug.Close()

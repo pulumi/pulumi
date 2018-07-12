@@ -17,8 +17,8 @@ package engine
 import (
 	"os"
 
+	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -240,6 +240,20 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 
 		// Finally, return a summary and the resulting plan information.
 		rst, err = resource.StatusOK, nil
+	}()
+
+	// Asynchronously listen for cancellation, and deliver that signal to plan.
+	go func() {
+		select {
+		case <-ctx.Cancel.Canceled():
+			cancelErr := res.Plan.SignalCancellation()
+			if cancelErr != nil {
+				glog.V(3).Infof("Attempted to signal cancellation to resource providers, but failed: %s",
+					cancelErr.Error())
+			}
+		case <-done:
+			return
+		}
 	}()
 
 	select {

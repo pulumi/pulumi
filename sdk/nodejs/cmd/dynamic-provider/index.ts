@@ -47,6 +47,10 @@ function getProvider(props: any): dynamic.ResourceProvider {
 // This allows the creation of the replacement resource to use the new provider while the deletion of the old
 // resource uses the provider with which it was created.
 
+function cancelRPC(call: any, callback: any): void {
+    callback(undefined, new emptyproto.Empty());
+}
+
 function configureRPC(call: any, callback: any): void {
     callback(undefined, new emptyproto.Empty());
 }
@@ -291,6 +295,7 @@ export function main(args: string[]): void {
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server();
     server.addService(provrpc.ResourceProviderService, {
+        cancel: cancelRPC,
         configure: configureRPC,
         invoke: invokeRPC,
         check: checkRPC,

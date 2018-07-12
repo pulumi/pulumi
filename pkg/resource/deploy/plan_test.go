@@ -357,6 +357,9 @@ type testProviderHost struct {
 	langhost func(runtime string) (plugin.LanguageRuntime, error)
 }
 
+func (host *testProviderHost) SignalCancellation() error {
+	return nil
+}
 func (host *testProviderHost) Close() error {
 	return nil
 }
@@ -407,6 +410,9 @@ type testProvider struct {
 	invoke func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 }
 
+func (prov *testProvider) SignalCancellation() error {
+	return nil
+}
 func (prov *testProvider) Close() error {
 	return nil
 }
