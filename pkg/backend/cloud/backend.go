@@ -658,6 +658,8 @@ func createDiff(events []engine.Event, displayOpts backend.DisplayOptions) strin
 	return strings.TrimSpace(buff.String())
 }
 
+// PreviewThenPrompt performs a preview operation on the stack, and then prompts the user to continue.
+// Returns non-nil error if the user declines to proceed.
 func (b *cloudBackend) PreviewThenPrompt(
 	ctx context.Context, updateKind client.UpdateKind, stack backend.Stack, pkg *workspace.Project, root string,
 	m backend.UpdateMetadata, opts backend.UpdateOptions,
@@ -846,7 +848,8 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	if action == client.UpdateKindUpdate {
+	// Any non-preview update will be considered part of the stack's update history.
+	if !dryRun {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
@@ -866,28 +869,26 @@ func (b *cloudBackend) updateStack(
 		opts.Display.Color.Colorize(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
-	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
-	var update client.UpdateIdentifier
-	var version int
-	var token string
-	var err error
-	if !stack.(Stack).RunLocally() || !dryRun {
-		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
-	}
+	// Create an update object.
+	update, version, token, err := b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
 	if err != nil {
 		return nil, err
 	}
 
-	if version != 0 {
-		// Print a URL afterwards to redirect to the version URL.
-		base := b.cloudConsoleStackPath(update.StackIdentifier)
-		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
-			defer func() {
-				fmt.Printf(
-					opts.Display.Color.Colorize(
-						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
-			}()
-		}
+	// Print a URL at the end of the update pointing to the Pulumi Service.
+	var link string
+	base := b.cloudConsoleStackPath(update.StackIdentifier)
+	if !dryRun {
+		link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
+	} else {
+		link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+	}
+	if link != "" {
+		defer func() {
+			fmt.Printf(
+				opts.Display.Color.Colorize(
+					colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
+		}()
 	}
 
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
@@ -1004,16 +1005,14 @@ func (b *cloudBackend) runEngineAction(
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
-	if !dryRun {
-		status := apitype.UpdateStatusSucceeded
-		if err != nil {
-			status = apitype.UpdateStatusFailed
-		}
+	status := apitype.UpdateStatusSucceeded
+	if err != nil {
+		status = apitype.UpdateStatusFailed
+	}
 
-		completeErr := u.Complete(status)
-		if completeErr != nil {
-			err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
-		}
+	completeErr := u.Complete(status)
+	if completeErr != nil {
+		err = multierror.Append(err, errors.Wrap(completeErr, "failed to complete update"))
 	}
 
 	return changes, err
