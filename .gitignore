@@ -3,7 +3,6 @@
 **/.vscode/
 coverage.cov
 *.coverprofile
-Pipfile.lock
 **/dist
 
 /.idea/
