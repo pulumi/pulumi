@@ -34,8 +34,6 @@ type UpdateKind string
 const (
 	// DeployUpdate is the prototypical Pulumi program update.
 	DeployUpdate UpdateKind = "update"
-	// PreviewUpdate is a preview of an update, without impacting resources.
-	PreviewUpdate UpdateKind = "preview"
 	// RefreshUpdate is an update that adopts a cloud's existing resource state.
 	RefreshUpdate UpdateKind = "refresh"
 	// DestroyUpdate is an update which removes all resources.

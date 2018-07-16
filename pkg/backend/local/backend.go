@@ -206,7 +206,8 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 func (b *localBackend) Preview(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.performEngineOp("previewing", backend.PreviewUpdate,
+	return b.performEngineOp(
+		"previewing", backend.DeployUpdate, true, /* dryRun */
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Update)
 }
 
@@ -225,27 +226,31 @@ func (b *localBackend) Update(
 	if err = backend.ValidateStackProperties(string(stackName), tags); err != nil {
 		return nil, errors.Wrap(err, "validating stack properties")
 	}
-	return b.performEngineOp("updating", backend.DeployUpdate,
+	return b.performEngineOp(
+		"updating", backend.DeployUpdate, false,
 		stackName, proj, root, m, opts, scopes, engine.Update)
 }
 
 func (b *localBackend) Refresh(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.performEngineOp("refreshing", backend.RefreshUpdate,
+	return b.performEngineOp(
+		"refreshing", backend.RefreshUpdate, false,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Refresh)
 }
 
 func (b *localBackend) Destroy(
 	_ context.Context, stackRef backend.StackReference, proj *workspace.Project, root string, m backend.UpdateMetadata,
 	opts backend.UpdateOptions, scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.performEngineOp("destroying", backend.DestroyUpdate,
+	return b.performEngineOp(
+		"destroying", backend.DestroyUpdate, false,
 		stackRef.StackName(), proj, root, m, opts, scopes, engine.Destroy)
 }
 
 type engineOpFunc func(engine.UpdateInfo, *engine.Context, engine.UpdateOptions, bool) (engine.ResourceChanges, error)
 
-func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
+func (b *localBackend) performEngineOp(
+	op string, kind backend.UpdateKind, dryRun bool,
 	stackName tokens.QName, proj *workspace.Project, root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
 	scopes backend.CancellationScopeSource, performEngineOp engineOpFunc) (engine.ResourceChanges, error) {
 
@@ -255,7 +260,6 @@ func (b *localBackend) performEngineOp(op string, kind backend.UpdateKind,
 	}
 
 	events := make(chan engine.Event)
-	dryRun := (kind == backend.PreviewUpdate)
 
 	cancelScope := scopes.NewScope(events, dryRun)
 	defer cancelScope.Close()
