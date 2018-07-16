@@ -63,8 +63,14 @@ func makeActionProgress(id string, action string) Progress {
 type DiagInfo struct {
 	ErrorCount, WarningCount, InfoCount, DebugCount int
 
-	// The last event of each severity kind.  We'll print out the most significant of these next
-	// to a resource while it is in progress.
+	// The very last diagnostic event we got for this resource (regardless of severity). We'll print
+	// this out in the non-interactive mode whenever we get new events. Importantly, we don't want
+	// to print out the most significant diagnostic, as that means a flurry of event swill cause us
+	// to keep printing out the most significant diagnostic over and over again.
+	LastDiag *engine.DiagEventPayload
+
+	// The last event of each severity kind.  We'll print out the most significant of these (in the
+	// tree-view) next to a resource while it is in progress.
 	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.DiagEventPayload
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
