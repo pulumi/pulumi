@@ -412,8 +412,9 @@ func chooseTemplate(backend cloud.Backend, offline bool, opts backend.DisplayOpt
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message: message,
-		Options: options,
+		Message:  message,
+		Options:  options,
+		PageSize: len(options),
 	}, &option, nil); err != nil {
 		return "", errors.New(chooseTemplateErr)
 	}
