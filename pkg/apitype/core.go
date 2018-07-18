@@ -39,16 +39,8 @@ import (
 const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.
 	// Any deployments newer than this version will be rejected.
-	DeploymentSchemaVersionCurrent = 1
+	DeploymentSchemaVersionCurrent = 2
 )
-
-// We alias the latest versions of the various types below to their friendly names here.
-
-type Checkpoint = CheckpointV1
-type Deployment = DeploymentV1
-type Manifest = ManifestV1
-type PluginInfo = PluginInfoV1
-type Resource = ResourceV1
 
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
 // version of the Checkpoint structure the Checkpoint member's json document can decode into.

@@ -20,9 +20,11 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 const (
@@ -30,9 +32,6 @@ const (
 	// still support, i.e. we can produce a `deploy.Snapshot` from. This will generally
 	// need to be at least one less than the current schema version so that old deployments can
 	// be migrated to the current schema.
-	//
-	// We only have one version today (version 1) so the oldest supported version is the
-	// current version.
 	DeploymentSchemaVersionOldestSupported = 1
 )
 
@@ -47,11 +46,11 @@ var (
 )
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
+func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
-	manifest := apitype.Manifest{
+	manifest := apitype.ManifestV1{
 		Time:    snap.Manifest.Time,
 		Magic:   snap.Manifest.Magic,
 		Version: snap.Manifest.Version,
@@ -61,7 +60,7 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
 		if plug.Version != nil {
 			version = plug.Version.String()
 		}
-		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfo{
+		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
 			Name:    plug.Name,
 			Path:    plug.Path,
 			Type:    plug.Kind,
@@ -70,12 +69,12 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.Deployment {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resources []apitype.Resource
+	var resources []apitype.ResourceV2
 	for _, res := range snap.Resources {
 		resources = append(resources, SerializeResource(res))
 	}
 
-	return &apitype.Deployment{
+	return &apitype.DeploymentV2{
 		Manifest:  manifest,
 		Resources: resources,
 	}
@@ -93,16 +92,30 @@ func DeserializeDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snaps
 		return nil, ErrDeploymentSchemaVersionTooOld
 	}
 
-	checkpoint := &apitype.CheckpointV1{}
-	if err := json.Unmarshal([]byte(deployment.Deployment), &checkpoint.Latest); err != nil {
-		return nil, err
+	var checkpoint apitype.CheckpointV2
+	switch deployment.Version {
+	case 1:
+		v1checkpoint := apitype.CheckpointV1{}
+		if err := json.Unmarshal([]byte(deployment.Deployment), &v1checkpoint.Latest); err != nil {
+			return nil, err
+		}
+
+		logging.V(7).Infof("DeserializeDeployment: migrating V1 checkpoint to V2")
+		checkpoint = migrate.UpToCheckpointV2(v1checkpoint)
+	case 2:
+		v2checkpoint := apitype.CheckpointV2{}
+		if err := json.Unmarshal([]byte(deployment.Deployment), &v2checkpoint.Latest); err != nil {
+			return nil, err
+		}
+
+		checkpoint = v2checkpoint
 	}
 
-	return DeserializeCheckpoint(checkpoint)
+	return DeserializeCheckpoint(&checkpoint)
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State) apitype.Resource {
+func SerializeResource(res *resource.State) apitype.ResourceV2 {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
@@ -116,7 +129,7 @@ func SerializeResource(res *resource.State) apitype.Resource {
 		outputs = SerializeProperties(outp)
 	}
 
-	return apitype.Resource{
+	return apitype.ResourceV2{
 		URN:          res.URN,
 		Custom:       res.Custom,
 		Delete:       res.Delete,
@@ -176,26 +189,15 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.Resource) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs)
-	if err != nil {
-		return nil, err
-	}
-	defaults, err := DeserializeProperties(res.Defaults)
 	if err != nil {
 		return nil, err
 	}
 	outputs, err := DeserializeProperties(res.Outputs)
 	if err != nil {
 		return nil, err
-	}
-
-	// If this is an old checkpoint that still had defaults, merge the inputs into the defaults.
-	//
-	// TODO[pulumi/pulumi#637]: we will remove support for defaults entirely in the future.
-	if inputs != nil && defaults != nil {
-		inputs = defaults.Merge(inputs)
 	}
 
 	return resource.NewState(

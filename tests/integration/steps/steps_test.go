@@ -12,7 +12,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
-func validateResources(t *testing.T, resources []apitype.Resource, expectedNames ...string) {
+func validateResources(t *testing.T, resources []apitype.ResourceV2, expectedNames ...string) {
 	// Build the lookup table of expected resource names.
 	expectedNamesTable := make(map[string]struct{})
 	for _, n := range expectedNames {
