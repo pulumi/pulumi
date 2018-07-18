@@ -195,6 +195,17 @@ outer:
 						return nil, err
 					}
 					continue outer
+				case ReadResourceEvent:
+					steps, steperr := iter.stepGen.GenerateReadSteps(e)
+					if steperr != nil {
+						return nil, steperr
+					}
+
+					contract.Assert(len(steps) > 0)
+					if len(steps) > 1 {
+						iter.stepqueue = steps[1:]
+					}
+					return steps[0], nil
 				default:
 					contract.Failf("Unrecognized intent from source iterator: %v", reflect.TypeOf(event))
 				}
