@@ -1,0 +1,3 @@
+name: double_pending_delete
+description: A program that produces multiple pending deletes for the same URN
+runtime: nodejs
