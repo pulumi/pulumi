@@ -307,10 +307,36 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 			res := prev.Resources[i]
 			if res.Delete {
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
-				contract.Assert(!sg.deletes[res.URN])
+				// The below assert is commented-out because it's believed to be wrong.
+				//
+				// The original justification for this assert is that the author (swgillespie) believed that
+				// it was impossible for a single URN to be deleted multiple times in the same program.
+				// This has empirically been proven to be false - it is possible using today engine to construct
+				// a series of actions that puts arbitrarily many pending delete resources with the same URN in
+				// the snapshot.
+				//
+				// It is not clear whether or not this is OK. I (swgillespie), the author of this comment, have
+				// seen no evidence that it is *not* OK. However, concerns were raised about what this means for
+				// structural resources, and so until that question is answered, I am leaving this comment and
+				// assert in the code.
+				//
+				// Regardless, it is better to admit strange behavior in corner cases than it is to crash the CLI
+				// whenever we see multiple deletes for the same URN.
+				// contract.Assert(!sg.deletes[res.URN])
+				if sg.deletes[res.URN] {
+					logging.V(7).Infof(
+						"Planner is deleting pending-delete urn '%v' that has already been deleted", res.URN)
+				}
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
 			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.deletes[res.URN] {
+				// In addition to the above comment, I am fairly certain there is a bug here. If a resource
+				// is not registered in a plan, but there exists a pending delete copy of that resource in the
+				// snapshot, we will choose not to delete the live resource and instead be content with deleting
+				// the pending delete resource.
+				//
+				// This is fairly benign, since in the worst case we'll delete the resource on the next plan, but
+				// it points to a need for a more principled handling of pending deletions.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteStep(sg.plan, res))
