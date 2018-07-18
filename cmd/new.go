@@ -241,7 +241,7 @@ func newNewCmd() *cobra.Command {
 				fmt.Println("Installing dependencies...")
 				err = installDependencies()
 				if err != nil {
-					return errors.Wrap(err, "installing dependencies")
+					return err
 				}
 				fmt.Println("Finished installing dependencies.")
 
@@ -341,19 +341,25 @@ func installDependencies() error {
 	}
 
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	var command string
 	var c *exec.Cmd
 	if strings.EqualFold(proj.Runtime, "nodejs") {
+		command = "npm install"
 		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
 	} else if strings.EqualFold(proj.Runtime, "python") {
+		command = "pip install -r requirements.txt"
 		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
 	} else {
 		return nil
 	}
 
 	// Run the command.
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	return c.Run()
+	if out, err := c.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s", out)
+		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again", command)
+	}
+
+	return nil
 }
 
 // getCloudURL returns the URL used to download the template.
