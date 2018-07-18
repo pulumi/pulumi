@@ -323,6 +323,10 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				// Regardless, it is better to admit strange behavior in corner cases than it is to crash the CLI
 				// whenever we see multiple deletes for the same URN.
 				// contract.Assert(!sg.deletes[res.URN])
+				if sg.deletes[res.URN] {
+					logging.V(7).Infof(
+						"Planner is deleting pending-delete urn '%v' that has already been deleted", res.URN)
+				}
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
 			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.deletes[res.URN] {
