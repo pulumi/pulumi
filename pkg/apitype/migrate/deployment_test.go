@@ -26,10 +26,10 @@ func TestDeploymentV1ToV2(t *testing.T) {
 	v1 := apitype.DeploymentV1{
 		Manifest: apitype.ManifestV1{},
 		Resources: []apitype.ResourceV1{
-			apitype.ResourceV1{
+			{
 				URN: resource.URN("a"),
 			},
-			apitype.ResourceV1{
+			{
 				URN: resource.URN("b"),
 			},
 		},
@@ -46,10 +46,10 @@ func TestDeploymentV2ToV1(t *testing.T) {
 	v2 := apitype.DeploymentV2{
 		Manifest: apitype.ManifestV1{},
 		Resources: []apitype.ResourceV2{
-			apitype.ResourceV2{
+			{
 				URN: resource.URN("a"),
 			},
-			apitype.ResourceV2{
+			{
 				URN: resource.URN("b"),
 				// this resource gets excluded from the V1 snapshot because it's external
 				External: true,
