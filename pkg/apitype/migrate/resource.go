@@ -43,6 +43,7 @@ func UpToResourceV2(v1 apitype.ResourceV1) apitype.ResourceV2 {
 	// owned by Pulumi, this is `false` for all V1 resources.
 	v2.External = false
 	v2.Dependencies = append(v1.Dependencies, v2.Dependencies...)
+	v2.InitErrors = append(v1.InitErrors, v2.InitErrors...)
 	return v2
 }
 
@@ -68,5 +69,6 @@ func DownToResourceV1(v2 apitype.ResourceV2) apitype.ResourceV1 {
 	v1.Parent = v2.Parent
 	v1.Protect = v2.Protect
 	v1.Dependencies = append(v1.Dependencies, v2.Dependencies...)
+	v1.InitErrors = append(v1.InitErrors, v2.InitErrors...)
 	return v1
 }

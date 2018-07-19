@@ -263,14 +263,14 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 
 	var id resource.ID
 	var liveObject *_struct.Struct
-	var resourceError *rpcerror.Error
+	var resourceError error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, resourceError, id, liveObject = parseError(err)
+		resourceStatus, id, liveObject, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus == resource.StatusUnknown {
@@ -380,7 +380,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	var liveObject *_struct.Struct
-	var resourceError *rpcerror.Error
+	var resourceError error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
 		Id:   string(id),
@@ -389,7 +389,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		resourceStatus, resourceError, _, liveObject = parseError(err)
+		resourceStatus, _, liveObject, resourceError = parseError(err)
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus == resource.StatusUnknown {
@@ -598,22 +598,40 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 // object was created, but app code is continually crashing and the resource never achieves
 // liveness).
 func parseError(err error) (
-	resourceStatus resource.Status, resourceErr *rpcerror.Error, id resource.ID,
-	liveObject *_struct.Struct,
+	resourceStatus resource.Status, id resource.ID, liveObject *_struct.Struct, resourceErr error,
 ) {
-	resourceStatus, resourceErr = resourceStateAndError(err)
-	contract.Assert(resourceErr != nil)
+	var responseErr *rpcerror.Error
+	resourceStatus, responseErr = resourceStateAndError(err)
+	contract.Assert(responseErr != nil)
 
 	// If resource was successfully created but failed to initialize, the error will be packed
 	// with the live properties of the object.
-	for _, detail := range resourceErr.Details() {
+	resourceErr = responseErr
+	for _, detail := range responseErr.Details() {
 		if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
 			id = resource.ID(initErr.GetId())
 			liveObject = initErr.GetProperties()
 			resourceStatus = resource.StatusPartialFailure
+			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
 	}
 
-	return resourceStatus, resourceErr, id, liveObject
+	return resourceStatus, id, liveObject, resourceErr
+}
+
+// InitError represents a failure to initialize a resource, i.e., the resource has been successfully
+// created, but it has failed to initialize.
+type InitError struct {
+	Reasons []string
+}
+
+var _ error = (*InitError)(nil)
+
+func (ie *InitError) Error() string {
+	var err error
+	for _, reason := range ie.Reasons {
+		err = multierror.Append(err, errors.New(reason))
+	}
+	return err.Error()
 }

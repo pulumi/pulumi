@@ -261,7 +261,7 @@ function grpcResponseFromError(e: {id: string, properties: any, message: string,
         const detail = new provproto.ErrorResourceInitFailed();
         detail.setId(e.id);
         detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
-        detail.addReasons(e.reasons || []);
+        detail.setReasonsList(e.reasons || []);
 
         const details = new anyproto.Any();
         details.pack(detail.serializeBinary(), "pulumirpc.ErrorResourceInitFailed");

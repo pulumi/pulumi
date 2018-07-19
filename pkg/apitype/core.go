@@ -122,6 +122,9 @@ type ResourceV1 struct {
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
 }
 
 // ResourceV2 is the second version of the Resource API type. It absorbs two breaking changes:
@@ -158,6 +161,9 @@ type ResourceV2 struct {
 	External bool `json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
 	Dependencies []resource.URN `json:"dependencies" yaml:"dependencies,omitempty"`
+	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+	// during create or update).
+	InitErrors []string `json:"initErrors" yaml:"initErrors,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

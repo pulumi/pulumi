@@ -73,6 +73,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			resource.URN("foo:bar:baz"),
 			resource.URN("foo:bar:boo"),
 		},
+		[]string{},
 	)
 
 	dep := SerializeResource(res)
