@@ -175,6 +175,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"",
 		false,
 		nil,
+		[]string{},
 	)
 	oldResC := resource.NewState(typC, urnC, true, false, resource.ID("c-c-c"),
 		resource.PropertyMap{
@@ -188,6 +189,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"",
 		false,
 		nil,
+		[]string{},
 	)
 	oldResD := resource.NewState(typD, urnD, true, false, resource.ID("d-d-d"),
 		resource.PropertyMap{
@@ -198,6 +200,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"",
 		false,
 		nil,
+		[]string{},
 	)
 	oldsnap := NewSnapshot(Manifest{}, []*resource.State{oldResB, oldResC, oldResD})
 

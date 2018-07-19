@@ -29,9 +29,10 @@ func TestPartialState(t *testing.T) {
 			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
 			a := stackInfo.Deployment.Resources[1]
 
-			// We should still have persisted the resource and its outputs to the snapshot.
+			// We should still have persisted the resource and its outputs to the snapshot
 			assert.Equal(t, "doomed", string(a.URN.Name()))
 			assert.Equal(t, 4.0, a.Outputs["state"].(float64))
+			assert.Equal(t, []string{"state can't be 4"}, a.InitErrors)
 		},
 		EditDirs: []integration.EditDir{
 			{
@@ -54,9 +55,11 @@ func TestPartialState(t *testing.T) {
 					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+
 					a := stackInfo.Deployment.Resources[1]
 					assert.Equal(t, "not-doomed", string(a.URN.Name()))
 					assert.Equal(t, 5.0, a.Outputs["state"].(float64))
+					assert.Nil(t, nil)
 				},
 			},
 			{
@@ -75,6 +78,7 @@ func TestPartialState(t *testing.T) {
 					// to the snapshot.
 					assert.Equal(t, "not-doomed", string(a.URN.Name()))
 					assert.Equal(t, 4.0, a.Outputs["state"].(float64))
+					assert.Equal(t, []string{"state can't be 4"}, a.InitErrors)
 				},
 			},
 		},

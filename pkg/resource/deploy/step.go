@@ -166,6 +166,10 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 				contract.Assert(rst == resource.StatusPartialFailure)
 				resourceError = err
 				resourceStatus = rst
+
+				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+					s.new.InitErrors = initErr.Reasons
+				}
 			}
 
 			contract.Assert(id != "")
@@ -322,6 +326,10 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 				contract.Assert(rst == resource.StatusPartialFailure)
 				resourceError = upderr
 				resourceStatus = rst
+
+				if initErr, isInitErr := upderr.(*plugin.InitError); isInitErr {
+					s.new.InitErrors = initErr.Reasons
+				}
 			}
 
 			// Now copy any output state back in case the update triggered cascading updates to other properties.

@@ -405,7 +405,7 @@ func (sg *stepGenerator) getResourcePropertyStates(urn resource.URN, goal *resou
 	}
 	return props, inputs, outputs,
 		resource.NewState(goal.Type, urn, goal.Custom, false, "",
-			inputs, outputs, goal.Parent, goal.Protect, goal.Dependencies)
+			inputs, outputs, goal.Parent, goal.Protect, goal.Dependencies, []string{})
 
 }
 
