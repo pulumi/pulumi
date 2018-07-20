@@ -94,6 +94,10 @@ func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
 func (p *Plan) Source() Source                         { return p.source }
 func (p *Plan) IsRefresh() bool                        { return p.source.IsRefresh() }
 
+func (p *Plan) SignalCancellation() error {
+	return p.ctx.Host.SignalCancellation()
+}
+
 // Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
 // provider could not be found, or an error occurred while creating it, a non-nil error is returned.
 func (p *Plan) Provider(pkg tokens.Package) (plugin.Provider, error) {

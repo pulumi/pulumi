@@ -6,7 +6,7 @@ package pulumirpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/empty"
+import empty "github.com/golang/protobuf/ptypes/empty"
 
 import (
 	context "golang.org/x/net/context"
@@ -18,16 +18,44 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+
 type GetRequiredPluginsRequest struct {
-	Project string `protobuf:"bytes,1,opt,name=project" json:"project,omitempty"`
-	Pwd     string `protobuf:"bytes,2,opt,name=pwd" json:"pwd,omitempty"`
-	Program string `protobuf:"bytes,3,opt,name=program" json:"program,omitempty"`
+	Project              string   `protobuf:"bytes,1,opt,name=project" json:"project,omitempty"`
+	Pwd                  string   `protobuf:"bytes,2,opt,name=pwd" json:"pwd,omitempty"`
+	Program              string   `protobuf:"bytes,3,opt,name=program" json:"program,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetRequiredPluginsRequest) Reset()                    { *m = GetRequiredPluginsRequest{} }
-func (m *GetRequiredPluginsRequest) String() string            { return proto.CompactTextString(m) }
-func (*GetRequiredPluginsRequest) ProtoMessage()               {}
-func (*GetRequiredPluginsRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (m *GetRequiredPluginsRequest) Reset()         { *m = GetRequiredPluginsRequest{} }
+func (m *GetRequiredPluginsRequest) String() string { return proto.CompactTextString(m) }
+func (*GetRequiredPluginsRequest) ProtoMessage()    {}
+func (*GetRequiredPluginsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_language_840dd930e81005a9, []int{0}
+}
+func (m *GetRequiredPluginsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetRequiredPluginsRequest.Unmarshal(m, b)
+}
+func (m *GetRequiredPluginsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetRequiredPluginsRequest.Marshal(b, m, deterministic)
+}
+func (dst *GetRequiredPluginsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetRequiredPluginsRequest.Merge(dst, src)
+}
+func (m *GetRequiredPluginsRequest) XXX_Size() int {
+	return xxx_messageInfo_GetRequiredPluginsRequest.Size(m)
+}
+func (m *GetRequiredPluginsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetRequiredPluginsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetRequiredPluginsRequest proto.InternalMessageInfo
 
 func (m *GetRequiredPluginsRequest) GetProject() string {
 	if m != nil {
@@ -51,13 +79,35 @@ func (m *GetRequiredPluginsRequest) GetProgram() string {
 }
 
 type GetRequiredPluginsResponse struct {
-	Plugins []*PluginDependency `protobuf:"bytes,1,rep,name=plugins" json:"plugins,omitempty"`
+	Plugins              []*PluginDependency `protobuf:"bytes,1,rep,name=plugins" json:"plugins,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
-func (m *GetRequiredPluginsResponse) Reset()                    { *m = GetRequiredPluginsResponse{} }
-func (m *GetRequiredPluginsResponse) String() string            { return proto.CompactTextString(m) }
-func (*GetRequiredPluginsResponse) ProtoMessage()               {}
-func (*GetRequiredPluginsResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{1} }
+func (m *GetRequiredPluginsResponse) Reset()         { *m = GetRequiredPluginsResponse{} }
+func (m *GetRequiredPluginsResponse) String() string { return proto.CompactTextString(m) }
+func (*GetRequiredPluginsResponse) ProtoMessage()    {}
+func (*GetRequiredPluginsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_language_840dd930e81005a9, []int{1}
+}
+func (m *GetRequiredPluginsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetRequiredPluginsResponse.Unmarshal(m, b)
+}
+func (m *GetRequiredPluginsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetRequiredPluginsResponse.Marshal(b, m, deterministic)
+}
+func (dst *GetRequiredPluginsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetRequiredPluginsResponse.Merge(dst, src)
+}
+func (m *GetRequiredPluginsResponse) XXX_Size() int {
+	return xxx_messageInfo_GetRequiredPluginsResponse.Size(m)
+}
+func (m *GetRequiredPluginsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetRequiredPluginsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetRequiredPluginsResponse proto.InternalMessageInfo
 
 func (m *GetRequiredPluginsResponse) GetPlugins() []*PluginDependency {
 	if m != nil {
@@ -68,21 +118,43 @@ func (m *GetRequiredPluginsResponse) GetPlugins() []*PluginDependency {
 
 // RunRequest asks the interpreter to execute a program.
 type RunRequest struct {
-	Project        string            `protobuf:"bytes,1,opt,name=project" json:"project,omitempty"`
-	Stack          string            `protobuf:"bytes,2,opt,name=stack" json:"stack,omitempty"`
-	Pwd            string            `protobuf:"bytes,3,opt,name=pwd" json:"pwd,omitempty"`
-	Program        string            `protobuf:"bytes,4,opt,name=program" json:"program,omitempty"`
-	Args           []string          `protobuf:"bytes,5,rep,name=args" json:"args,omitempty"`
-	Config         map[string]string `protobuf:"bytes,6,rep,name=config" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	DryRun         bool              `protobuf:"varint,7,opt,name=dryRun" json:"dryRun,omitempty"`
-	Parallel       int32             `protobuf:"varint,8,opt,name=parallel" json:"parallel,omitempty"`
-	MonitorAddress string            `protobuf:"bytes,9,opt,name=monitor_address,json=monitorAddress" json:"monitor_address,omitempty"`
+	Project              string            `protobuf:"bytes,1,opt,name=project" json:"project,omitempty"`
+	Stack                string            `protobuf:"bytes,2,opt,name=stack" json:"stack,omitempty"`
+	Pwd                  string            `protobuf:"bytes,3,opt,name=pwd" json:"pwd,omitempty"`
+	Program              string            `protobuf:"bytes,4,opt,name=program" json:"program,omitempty"`
+	Args                 []string          `protobuf:"bytes,5,rep,name=args" json:"args,omitempty"`
+	Config               map[string]string `protobuf:"bytes,6,rep,name=config" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	DryRun               bool              `protobuf:"varint,7,opt,name=dryRun" json:"dryRun,omitempty"`
+	Parallel             int32             `protobuf:"varint,8,opt,name=parallel" json:"parallel,omitempty"`
+	MonitorAddress       string            `protobuf:"bytes,9,opt,name=monitor_address,json=monitorAddress" json:"monitor_address,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
-func (m *RunRequest) Reset()                    { *m = RunRequest{} }
-func (m *RunRequest) String() string            { return proto.CompactTextString(m) }
-func (*RunRequest) ProtoMessage()               {}
-func (*RunRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{2} }
+func (m *RunRequest) Reset()         { *m = RunRequest{} }
+func (m *RunRequest) String() string { return proto.CompactTextString(m) }
+func (*RunRequest) ProtoMessage()    {}
+func (*RunRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_language_840dd930e81005a9, []int{2}
+}
+func (m *RunRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RunRequest.Unmarshal(m, b)
+}
+func (m *RunRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RunRequest.Marshal(b, m, deterministic)
+}
+func (dst *RunRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RunRequest.Merge(dst, src)
+}
+func (m *RunRequest) XXX_Size() int {
+	return xxx_messageInfo_RunRequest.Size(m)
+}
+func (m *RunRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RunRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RunRequest proto.InternalMessageInfo
 
 func (m *RunRequest) GetProject() string {
 	if m != nil {
@@ -149,13 +221,35 @@ func (m *RunRequest) GetMonitorAddress() string {
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
 type RunResponse struct {
-	Error string `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	Error                string   `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RunResponse) Reset()                    { *m = RunResponse{} }
-func (m *RunResponse) String() string            { return proto.CompactTextString(m) }
-func (*RunResponse) ProtoMessage()               {}
-func (*RunResponse) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{3} }
+func (m *RunResponse) Reset()         { *m = RunResponse{} }
+func (m *RunResponse) String() string { return proto.CompactTextString(m) }
+func (*RunResponse) ProtoMessage()    {}
+func (*RunResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_language_840dd930e81005a9, []int{3}
+}
+func (m *RunResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RunResponse.Unmarshal(m, b)
+}
+func (m *RunResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RunResponse.Marshal(b, m, deterministic)
+}
+func (dst *RunResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RunResponse.Merge(dst, src)
+}
+func (m *RunResponse) XXX_Size() int {
+	return xxx_messageInfo_RunResponse.Size(m)
+}
+func (m *RunResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RunResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RunResponse proto.InternalMessageInfo
 
 func (m *RunResponse) GetError() string {
 	if m != nil {
@@ -168,6 +262,7 @@ func init() {
 	proto.RegisterType((*GetRequiredPluginsRequest)(nil), "pulumirpc.GetRequiredPluginsRequest")
 	proto.RegisterType((*GetRequiredPluginsResponse)(nil), "pulumirpc.GetRequiredPluginsResponse")
 	proto.RegisterType((*RunRequest)(nil), "pulumirpc.RunRequest")
+	proto.RegisterMapType((map[string]string)(nil), "pulumirpc.RunRequest.ConfigEntry")
 	proto.RegisterType((*RunResponse)(nil), "pulumirpc.RunResponse")
 }
 
@@ -187,7 +282,7 @@ type LanguageRuntimeClient interface {
 	// Run executes a program and returns its result.
 	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(ctx context.Context, in *google_protobuf.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
+	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 }
 
 type languageRuntimeClient struct {
@@ -216,7 +311,7 @@ func (c *languageRuntimeClient) Run(ctx context.Context, in *RunRequest, opts ..
 	return out, nil
 }
 
-func (c *languageRuntimeClient) GetPluginInfo(ctx context.Context, in *google_protobuf.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
+func (c *languageRuntimeClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
 	out := new(PluginInfo)
 	err := grpc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GetPluginInfo", in, out, c.cc, opts...)
 	if err != nil {
@@ -233,7 +328,7 @@ type LanguageRuntimeServer interface {
 	// Run executes a program and returns its result.
 	Run(context.Context, *RunRequest) (*RunResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(context.Context, *google_protobuf.Empty) (*PluginInfo, error)
+	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
 }
 
 func RegisterLanguageRuntimeServer(s *grpc.Server, srv LanguageRuntimeServer) {
@@ -277,7 +372,7 @@ func _LanguageRuntime_Run_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(google_protobuf.Empty)
+	in := new(empty.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -289,7 +384,7 @@ func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context
 		FullMethod: "/pulumirpc.LanguageRuntime/GetPluginInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LanguageRuntimeServer).GetPluginInfo(ctx, req.(*google_protobuf.Empty))
+		return srv.(LanguageRuntimeServer).GetPluginInfo(ctx, req.(*empty.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -315,9 +410,9 @@ var _LanguageRuntime_serviceDesc = grpc.ServiceDesc{
 	Metadata: "language.proto",
 }
 
-func init() { proto.RegisterFile("language.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("language.proto", fileDescriptor_language_840dd930e81005a9) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor_language_840dd930e81005a9 = []byte{
 	// 451 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x93, 0xcf, 0x6e, 0xd4, 0x30,
 	0x10, 0xc6, 0x9b, 0xa6, 0xfb, 0x6f, 0x16, 0x5a, 0x64, 0xb5, 0x2b, 0x93, 0x5e, 0x42, 0x00, 0x91,

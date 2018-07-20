@@ -65,6 +65,10 @@ func newNewCmd() *cobra.Command {
 				return errors.Errorf("'%s' is not a valid project name", name)
 			}
 
+			displayOpts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Get the current working directory.
 			var cwd string
 			if cwd, err = os.Getwd(); err != nil {
@@ -100,7 +104,7 @@ func newNewCmd() *cobra.Command {
 			// will kick off the login flow (if not already logged-in).
 			var b backend.Backend
 			if !generateOnly {
-				b, err = currentBackend()
+				b, err = currentBackend(displayOpts)
 				if err != nil {
 					return err
 				}
@@ -111,7 +115,7 @@ func newNewCmd() *cobra.Command {
 			if len(args) > 0 {
 				templateName = strings.ToLower(args[0])
 			} else {
-				if templateName, err = chooseTemplate(releases, offline); err != nil {
+				if templateName, err = chooseTemplate(releases, offline, displayOpts); err != nil {
 					return err
 				}
 			}
@@ -120,7 +124,8 @@ func newNewCmd() *cobra.Command {
 			if !offline {
 				var tarball io.ReadCloser
 				source := releases.CloudURL()
-				if tarball, err = releases.DownloadTemplate(commandContext(), templateName, false); err != nil {
+
+				if tarball, err = releases.DownloadTemplate(commandContext(), templateName, false, displayOpts); err != nil {
 					message := ""
 					// If the local template is available locally, provide a nicer error message.
 					if localTemplates, localErr := workspace.ListLocalTemplates(); localErr == nil && len(localTemplates) > 0 {
@@ -167,13 +172,13 @@ func newNewCmd() *cobra.Command {
 			// Prompt for the project name, if it wasn't already specified.
 			if name == "" {
 				defaultValue := workspace.ValueOrSanitizedDefaultProjectName(name, filepath.Base(cwd))
-				name = promptForValue(yes, "project name", defaultValue, workspace.IsValidProjectName)
+				name = promptForValue(yes, "project name", defaultValue, workspace.IsValidProjectName, displayOpts)
 			}
 
 			// Prompt for the project description, if it wasn't already specified.
 			if description == "" {
 				defaultValue := workspace.ValueOrDefaultProjectDescription(description, template.Description)
-				description = promptForValue(yes, "project description", defaultValue, nil)
+				description = promptForValue(yes, "project description", defaultValue, nil, displayOpts)
 			}
 
 			// Actually copy the files.
@@ -192,7 +197,7 @@ func newNewCmd() *cobra.Command {
 				defaultValue := getDevStackName(name)
 
 				for {
-					stackName := promptForValue(yes, "stack name", defaultValue, nil)
+					stackName := promptForValue(yes, "stack name", defaultValue, nil, displayOpts)
 					stack, err = stackInit(b, stackName)
 					if err != nil {
 						if !yes {
@@ -219,7 +224,7 @@ func newNewCmd() *cobra.Command {
 
 					c := make(config.Map)
 					for _, k := range keys {
-						value := promptForValue(yes, k.String(), template.Config[k], nil)
+						value := promptForValue(yes, k.String(), template.Config[k], nil, displayOpts)
 						c[k] = config.NewValue(value)
 					}
 
@@ -236,7 +241,7 @@ func newNewCmd() *cobra.Command {
 				fmt.Println("Installing dependencies...")
 				err = installDependencies()
 				if err != nil {
-					return errors.Wrap(err, "installing dependencies")
+					return err
 				}
 				fmt.Println("Finished installing dependencies.")
 
@@ -336,19 +341,25 @@ func installDependencies() error {
 	}
 
 	// TODO[pulumi/pulumi#1307]: move to the language plugins so we don't have to hard code here.
+	var command string
 	var c *exec.Cmd
 	if strings.EqualFold(proj.Runtime, "nodejs") {
+		command = "npm install"
 		c = exec.Command("npm", "install") // nolint: gas, intentionally launching with partial path
 	} else if strings.EqualFold(proj.Runtime, "python") {
+		command = "pip install -r requirements.txt"
 		c = exec.Command("pip", "install", "-r", "requirements.txt") // nolint: gas, intentionally launching with partial path
 	} else {
 		return nil
 	}
 
 	// Run the command.
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	return c.Run()
+	if out, err := c.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s", out)
+		return errors.Wrapf(err, "installing dependencies; rerun '%s' manually to try again", command)
+	}
+
+	return nil
 }
 
 // getCloudURL returns the URL used to download the template.
@@ -368,7 +379,7 @@ func getCloudURL(cloudURL string) string {
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
+func chooseTemplate(backend cloud.Backend, offline bool, opts backend.DisplayOptions) (string, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
 	if !cmdutil.Interactive() {
 		return "", errors.New(chooseTemplateErr)
@@ -399,16 +410,17 @@ func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
-	message = colors.ColorizeText(colors.BrightWhite + message + colors.Reset)
+	message = opts.Color.Colorize(colors.BrightWhite + message + colors.Reset)
 
 	options, _ := templateArrayToStringArrayAndMap(templates)
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
-		Message: message,
-		Options: options,
+		Message:  message,
+		Options:  options,
+		PageSize: len(options),
 	}, &option, nil); err != nil {
 		return "", errors.New(chooseTemplateErr)
 	}
@@ -420,17 +432,20 @@ func chooseTemplate(backend cloud.Backend, offline bool) (string, error) {
 // default. If yes is true, defaultValue is returned without prompting. isValidFn is an optional parameter;
 // when specified, it will be run to validate that value entered. An invalid value will result in an error
 // message followed by another prompt for the value.
-func promptForValue(yes bool, prompt string, defaultValue string, isValidFn func(value string) bool) string {
+func promptForValue(
+	yes bool, prompt string, defaultValue string,
+	isValidFn func(value string) bool, opts backend.DisplayOptions) string {
+
 	if yes {
 		return defaultValue
 	}
 
 	for {
 		if defaultValue == "" {
-			prompt = colors.ColorizeText(
+			prompt = opts.Color.Colorize(
 				fmt.Sprintf("%s%s:%s ", colors.BrightCyan, prompt, colors.Reset))
 		} else {
-			prompt = colors.ColorizeText(
+			prompt = opts.Color.Colorize(
 				fmt.Sprintf("%s%s: (%s)%s ", colors.BrightCyan, prompt, defaultValue, colors.Reset))
 		}
 		fmt.Print(prompt)

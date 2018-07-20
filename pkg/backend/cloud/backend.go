@@ -135,8 +135,11 @@ type Backend interface {
 
 	CloudURL() string
 
-	DownloadPlugin(ctx context.Context, info workspace.PluginInfo, progress bool) (io.ReadCloser, error)
-	DownloadTemplate(ctx context.Context, name string, progress bool) (io.ReadCloser, error)
+	DownloadPlugin(
+		ctx context.Context, info workspace.PluginInfo,
+		progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
+
+	DownloadTemplate(ctx context.Context, name string, progress bool, opts backend.DisplayOptions) (io.ReadCloser, error)
 	ListTemplates(ctx context.Context) ([]workspace.Template, error)
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
@@ -241,7 +244,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string) (Backen
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts backend.DisplayOptions) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -265,14 +268,14 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	} else {
 		line1 := "We need your Pulumi account to identify you."
 		line1 = colors.Highlight(line1, "Pulumi account", colors.BrightWhite+colors.Underline+colors.Bold)
-		fmt.Printf(colors.ColorizeText(line1) + "\n")
+		fmt.Printf(opts.Color.Colorize(line1) + "\n")
 
 		accountLink := cloudConsoleURL(cloudURL, "account")
 		line2 := fmt.Sprintf("Enter your access token from %s", accountLink)
 		line2len := len(line2)
 		line2 = colors.Highlight(line2, "access token", colors.BrightCyan+colors.Bold)
 		line2 = colors.Highlight(line2, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-		fmt.Printf(colors.ColorizeText(line2) + "\n")
+		fmt.Printf(opts.Color.Colorize(line2) + "\n")
 
 		line3 := "    or hit <ENTER> to log in using your browser"
 		var padding string
@@ -281,7 +284,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 		}
 		line3 = colors.Highlight(line3, "<ENTER>", colors.BrightCyan+colors.Bold)
 
-		token, readerr := cmdutil.ReadConsoleNoEcho(colors.ColorizeText(line3 + padding))
+		token, readerr := cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line3 + padding))
 		if readerr != nil {
 			return nil, readerr
 		}
@@ -401,7 +404,7 @@ func (b *cloudBackend) Logout() error {
 // that reads the tar.gz file, which should be expanded and closed after the download completes.  If progress
 // is true, the download will display a progress bar using stdout.
 func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
-	progress bool) (io.ReadCloser, error) {
+	progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
 
 	// Figure out the OS/ARCH pair for the download URL.
 	var os string
@@ -429,8 +432,8 @@ func (b *cloudBackend) DownloadPlugin(ctx context.Context, info workspace.Plugin
 	if progress && size != -1 {
 		bar := pb.New(int(size))
 		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading plugin: "))
-		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading plugin: "))
+		bar.Postfix(opts.Color.Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
 		bar.Start()
@@ -443,7 +446,10 @@ func (b *cloudBackend) ListTemplates(ctx context.Context) ([]workspace.Template,
 	return b.client.ListTemplates(ctx)
 }
 
-func (b *cloudBackend) DownloadTemplate(ctx context.Context, name string, progress bool) (io.ReadCloser, error) {
+func (b *cloudBackend) DownloadTemplate(
+	ctx context.Context, name string,
+	progress bool, opts backend.DisplayOptions) (io.ReadCloser, error) {
+
 	result, size, err := b.client.DownloadTemplate(ctx, name)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to download template")
@@ -453,8 +459,8 @@ func (b *cloudBackend) DownloadTemplate(ctx context.Context, name string, progre
 	if progress && size != -1 {
 		bar := pb.New(int(size))
 		result = newBarProxyReadCloser(bar, result)
-		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Downloading template: "))
-		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Downloading template: "))
+		bar.Postfix(opts.Color.Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
 		bar.Start()
@@ -705,7 +711,7 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 
 		surveycore.DisableColor = true
 		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = colors.ColorizeText(colors.BrightGreen + ">" + colors.Reset)
+		surveycore.SelectFocusIcon = opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 
 		choices := []string{string(yes), string(no)}
 
@@ -722,7 +728,7 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 		}
 
 		if err := survey.AskOne(&survey.Select{
-			Message: "\b" + colors.ColorizeText(
+			Message: "\b" + opts.Display.Color.Colorize(
 				colors.BrightWhite+fmt.Sprintf("Do you want to perform this %s%s?",
 					updateKind, previewWarning)+colors.Reset),
 			Options: choices,
@@ -822,7 +828,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	getContents := func() (io.ReadCloser, int64, error) {
 		const showProgress = true
-		return getUpdateContents(programContext, pkg.UseDefaultIgnores(), showProgress)
+		return getUpdateContents(programContext, pkg.UseDefaultIgnores(), showProgress, opts.Display)
 	}
 	update, err := b.client.CreateUpdate(
 		ctx, action, stack, pkg, workspaceStack.Config, main, metadata, opts.Engine, dryRun, getContents)
@@ -857,7 +863,7 @@ func (b *cloudBackend) updateStack(
 	// Print a banner so it's clear this is going to the cloud.
 	actionLabel := getActionLabel(string(action), dryRun)
 	fmt.Printf(
-		colors.ColorizeText(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
+		opts.Display.Color.Colorize(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
 	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
@@ -878,7 +884,7 @@ func (b *cloudBackend) updateStack(
 		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
 			defer func() {
 				fmt.Printf(
-					colors.ColorizeText(
+					opts.Display.Color.Colorize(
 						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
 			}()
 		}
@@ -904,7 +910,10 @@ func (b *cloudBackend) updateStack(
 // uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
 // meaning whatever Pulumi program is found in the CWD or parent directory.
 // If set, printSize will print the size of the data being uploaded.
-func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (io.ReadCloser, int64, error) {
+func getUpdateContents(
+	context string, useDefaultIgnores bool,
+	progress bool, opts backend.DisplayOptions) (io.ReadCloser, int64, error) {
+
 	archiveContents, err := archive.Process(context, useDefaultIgnores)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "creating archive")
@@ -916,8 +925,8 @@ func getUpdateContents(context string, useDefaultIgnores bool, progress bool) (i
 	if progress {
 		bar := pb.New(archiveContents.Len())
 		archiveReader = newBarProxyReadCloser(bar, archiveReader)
-		bar.Prefix(colors.ColorizeText(colors.SpecUnimportant + "Uploading program: "))
-		bar.Postfix(colors.ColorizeText(colors.Reset))
+		bar.Prefix(opts.Color.Colorize(colors.SpecUnimportant + "Uploading program: "))
+		bar.Postfix(opts.Color.Colorize(colors.Reset))
 		bar.SetMaxWidth(80)
 		bar.SetUnits(pb.U_BYTES)
 		bar.Start()

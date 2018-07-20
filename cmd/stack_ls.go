@@ -52,8 +52,12 @@ func newStackLsCmd() *cobra.Command {
 				return errors.Wrap(err, "could not load current project")
 			}
 
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Get a list of all known backends, as we will query them all.
-			b, err := currentBackend()
+			b, err := currentBackend(opts)
 			if err != nil {
 				return err
 			}

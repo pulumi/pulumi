@@ -20,6 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	_struct "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -260,30 +261,43 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusOK, err
 	}
 
+	var id resource.ID
+	var liveObject *_struct.Struct
+	var resourceError *rpcerror.Error
+	var resourceStatus = resource.StatusOK
 	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 	})
 	if err != nil {
-		resourceStatus, rpcErr := resourceStateAndError(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcErr)
-		return "", nil, resourceStatus, rpcErr
+		resourceStatus, resourceError, id, liveObject = parseError(err)
+		logging.V(7).Infof("%s failed: %v", label, resourceError)
+
+		if resourceStatus == resource.StatusUnknown {
+			return "", nil, resourceStatus, resourceError
+		}
+		// Else it's a `StatusPartialFailure`.
+	} else {
+		id = resource.ID(resp.GetId())
+		liveObject = resp.GetProperties()
 	}
 
-	id := resource.ID(resp.GetId())
 	if id == "" {
 		return "", nil, resource.StatusUnknown,
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
 
-	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
-		return "", nil, resource.StatusUnknown, err
+		return "", nil, resourceStatus, err
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
-	return id, outs, resource.StatusOK, nil
+	if resourceError == nil {
+		return id, outs, resourceStatus, nil
+	}
+	return id, outs, resourceStatus, resourceError
 }
 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
@@ -365,6 +379,9 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
+	var liveObject *_struct.Struct
+	var resourceError *rpcerror.Error
+	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
 		Id:   string(id),
 		Urn:  string(urn),
@@ -372,19 +389,28 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		News: mnews,
 	})
 	if err != nil {
-		resourceStatus, rpcErr := resourceStateAndError(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcErr)
-		return nil, resourceStatus, rpcErr
+		resourceStatus, resourceError, _, liveObject = parseError(err)
+		logging.V(7).Infof("%s failed: %v", label, resourceError)
+
+		if resourceStatus == resource.StatusUnknown {
+			return nil, resourceStatus, resourceError
+		}
+		// Else it's a `StatusPartialFailure`.
+	} else {
+		liveObject = resp.GetProperties()
 	}
 
-	outs, err := UnmarshalProperties(resp.GetProperties(), MarshalOptions{
+	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label: fmt.Sprintf("%s.outputs", label), RejectUnknowns: true})
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return nil, resourceStatus, err
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
-	return outs, resource.StatusOK, nil
+	if resourceError == nil {
+		return outs, resourceStatus, nil
+	}
+	return outs, resourceStatus, resourceError
 }
 
 // Delete tears down an existing resource.
@@ -494,6 +520,22 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}, nil
 }
 
+func (p *provider) SignalCancellation() error {
+	_, err := p.clientRaw.Cancel(p.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
+			rpcError.Message())
+		switch rpcError.Code() {
+		case codes.Unimplemented:
+			// For backwards compatibility, do nothing if it's not implemented.
+			return nil
+		}
+	}
+
+	return err
+}
+
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
 	return p.plug.Close()
@@ -535,7 +577,7 @@ func createConfigureError(rpcerr *rpcerror.Error) error {
 // In general, our resource state is only really unknown if the server
 // had an internal error, in which case it will serve one of `codes.Internal`,
 // `codes.DataLoss`, or `codes.Unknown` to us.
-func resourceStateAndError(err error) (resource.Status, error) {
+func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 	rpcError := rpcerror.Convert(err)
 	logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
 	switch rpcError.Code() {
@@ -546,4 +588,32 @@ func resourceStateAndError(err error) (resource.Status, error) {
 
 	logging.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcError.Code())
 	return resource.StatusOK, rpcError
+}
+
+// parseError parses a gRPC error into a set of values that represent the state of a resource. They
+// are: (1) the `resourceStatus`, indicating the last known state (e.g., `StatusOK`, representing
+// success, `StatusUnknown`, representing internal failure); (2) the `*rpcerror.Error`, our internal
+// representation for RPC errors; and optionally (3) `liveObject`, containing the last known live
+// version of the object that has successfully created but failed to initialize (e.g., because the
+// object was created, but app code is continually crashing and the resource never achieves
+// liveness).
+func parseError(err error) (
+	resourceStatus resource.Status, resourceErr *rpcerror.Error, id resource.ID,
+	liveObject *_struct.Struct,
+) {
+	resourceStatus, resourceErr = resourceStateAndError(err)
+	contract.Assert(resourceErr != nil)
+
+	// If resource was successfully created but failed to initialize, the error will be packed
+	// with the live properties of the object.
+	for _, detail := range resourceErr.Details() {
+		if initErr, ok := detail.(*pulumirpc.ErrorResourceInitFailed); ok {
+			id = resource.ID(initErr.GetId())
+			liveObject = initErr.GetProperties()
+			resourceStatus = resource.StatusPartialFailure
+			break
+		}
+	}
+
+	return resourceStatus, resourceErr, id, liveObject
 }

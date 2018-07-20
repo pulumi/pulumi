@@ -38,7 +38,7 @@ type Host interface {
 
 	// Log logs a message, including errors and warnings.  Messages can have a resource URN
 	// associated with them.  If no urn is provided, the message is global.
-	Log(sev diag.Severity, urn resource.URN, msg string)
+	Log(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
 	// could not be found, or an error occurred while creating it, a non-nil error is returned.
@@ -57,6 +57,13 @@ type Host interface {
 	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error
 	// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 	GetRequiredPlugins(info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error)
+
+	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
+	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
+	// will either a creation error or an initialization error. SignalCancellation is advisory and
+	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
+	// called before (e.g.) hard-closing any gRPC connection.
+	SignalCancellation() error
 
 	// Close reclaims any resources associated with the host.
 	Close() error
@@ -117,6 +124,8 @@ type defaultHost struct {
 	server          *hostServer                        // the server's RPC machinery.
 }
 
+var _ Host = (*defaultHost)(nil)
+
 type analyzerPlugin struct {
 	Plugin Analyzer
 	Info   workspace.PluginInfo
@@ -136,8 +145,8 @@ func (host *defaultHost) ServerAddr() string {
 	return host.server.Address()
 }
 
-func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string) {
-	host.ctx.Diag.Logf(sev, diag.RawMessage(urn, msg))
+func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	host.ctx.Diag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
@@ -385,6 +394,18 @@ func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]works
 	}
 
 	return plugins, nil
+}
+
+func (host *defaultHost) SignalCancellation() error {
+	var result error
+	for _, plug := range host.resourcePlugins {
+		if err := plug.Plugin.SignalCancellation(); err != nil {
+			result = multierror.Append(result, errors.Wrapf(err,
+				"Error signaling cancellation to resource provider '%s'", plug.Info.Name))
+		}
+	}
+
+	return result
 }
 
 func (host *defaultHost) Close() error {

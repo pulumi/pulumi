@@ -63,8 +63,14 @@ func makeActionProgress(id string, action string) Progress {
 type DiagInfo struct {
 	ErrorCount, WarningCount, InfoCount, DebugCount int
 
-	// The last event of each severity kind.  We'll print out the most significant of these next
-	// to a resource while it is in progress.
+	// The very last diagnostic event we got for this resource (regardless of severity). We'll print
+	// this out in the non-interactive mode whenever we get new events. Importantly, we don't want
+	// to print out the most significant diagnostic, as that means a flurry of event swill cause us
+	// to keep printing out the most significant diagnostic over and over again.
+	LastDiag *engine.DiagEventPayload
+
+	// The last event of each severity kind.  We'll print out the most significant of these (in the
+	// tree-view) next to a resource while it is in progress.
 	LastError, LastWarning, LastInfoError, LastInfo, LastDebug *engine.DiagEventPayload
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
@@ -105,6 +111,10 @@ type ProgressDisplay struct {
 	// What tick we're currently on.  Used to determine the number of ellipses to concat to
 	// a status message to help indicate that things are still working.
 	currentTick int
+
+	// A spinner to use to show that we're still doing work even when no output has been
+	// printed to the console in a while.
+	nonInteractiveSpinner cmdutil.Spinner
 
 	headerRow    Row
 	resourceRows []ResourceRow
@@ -195,6 +205,11 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 		display.printedProgressCache[progress.ID] = progress
 	}
 
+	if !display.isTerminal {
+		// We're about to display something.  Reset our spinner so that it will go on the next line.
+		display.nonInteractiveSpinner.Reset()
+	}
+
 	display.progressOutput <- progress
 }
 
@@ -214,7 +229,7 @@ func DisplayProgressEvents(
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
-	_, ticker := cmdutil.NewSpinnerAndTicker(
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action),
 		nil, 1 /*timesPerSecond*/)
 
@@ -232,6 +247,7 @@ func DisplayProgressEvents(
 		colorizedToUncolorized: make(map[string]string),
 		printedProgressCache:   make(map[string]Progress),
 		displayOrderCounter:    1,
+		nonInteractiveSpinner:  spinner,
 	}
 
 	// display.writeSimpleMessage(fmt.Sprintf("Max suffix length %v", display.maxSuffixLength))
@@ -752,11 +768,18 @@ func splitIntoDisplayableLines(msg string) []string {
 }
 
 func (display *ProgressDisplay) processTick() {
-	// Got a tick.  Update all  resources if we're in a terminal.  If we're not, then this won't do
-	// anything.
+	// Got a tick.  Update the progress display if we're in a terminal.  If we're not,
+	// print a hearbeat message every 10 seconds after our last output so that the user
+	// knows something is going on.  This is also helpful for hosts like jenkins that
+	// often timeout a process if output is not seen in a while.
 	display.currentTick++
 
-	display.refreshAllRowsIfInTerminal()
+	if display.isTerminal {
+		display.refreshAllRowsIfInTerminal()
+	} else {
+		// Update the spinner to let the user know that that work is still happening.
+		display.nonInteractiveSpinner.Tick()
+	}
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {

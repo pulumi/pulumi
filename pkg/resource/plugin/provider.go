@@ -62,6 +62,13 @@ type Provider interface {
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+
+	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
+	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
+	// will either a creation error or an initialization error. SignalCancellation is advisory and
+	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
+	// called before (e.g.) hard-closing any gRPC connection.
+	SignalCancellation() error
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

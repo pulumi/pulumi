@@ -194,6 +194,8 @@ func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
 	diagInfo := data.diagInfo
 	payload := event.Payload.(engine.DiagEventPayload)
 
+	diagInfo.LastDiag = &payload
+
 	switch payload.Severity {
 	case diag.Error:
 		diagInfo.LastError = &payload
@@ -286,11 +288,11 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		columns[statusColumn] = data.display.getStepInProgressDescription(step)
 	}
 
-	columns[infoColumn] = data.getInfo()
+	columns[infoColumn] = data.getInfoColumn()
 	return columns
 }
 
-func (data *resourceRowData) getInfo() string {
+func (data *resourceRowData) getInfoColumn() string {
 	step := data.step
 	changesBuf := &bytes.Buffer{}
 
@@ -354,14 +356,28 @@ func (data *resourceRowData) getInfo() string {
 		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
 	}
 
-	// If we're not totally done, also print out the worst diagnostic next to the status message.
-	// This is helpful for long running tasks to know what's going on.  However, once done, we print
-	// the diagnostics at the bottom, so we don't need to show this.
-	worstDiag := getWorstDiagnostic(data.diagInfo)
-	if worstDiag != nil && !data.display.Done {
-		eventMsg := data.display.renderProgressDiagEvent(*worstDiag, true /*includePrefix:*/)
-		if eventMsg != "" {
-			diagMsg += ". " + eventMsg
+	if !data.display.Done {
+		// If we're not totally done, and we're in the tree-view also print out the worst diagnostic
+		// next to the status message. This is helpful for long running tasks to know what's going
+		// on. However, once done, we print the diagnostics at the bottom, so we don't need to show
+		// this.
+		//
+		// if we're not in the tree-view (i.e. non-interactive mode), then we want to print out
+		// whatever the last diagnostics was that we got.  This way, as we're hearing about
+		// diagnostic events, we're always printing out the last one.
+
+		var diagnostic *engine.DiagEventPayload
+		if data.display.isTerminal {
+			diagnostic = data.diagInfo.LastDiag
+		} else {
+			diagnostic = getWorstDiagnostic(data.diagInfo)
+		}
+
+		if diagnostic != nil {
+			eventMsg := data.display.renderProgressDiagEvent(*diagnostic, true /*includePrefix:*/)
+			if eventMsg != "" {
+				diagMsg += ". " + eventMsg
+			}
 		}
 	}
 

@@ -304,6 +304,18 @@ var ResourceProviderService = exports.ResourceProviderService = {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  // Cancel signals the provider to abort all outstanding resource operations.
+  cancel: {
+    path: '/pulumirpc.ResourceProvider/Cancel',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // GetPluginInfo returns generic information about this plugin, like its version.
   getPluginInfo: {
     path: '/pulumirpc.ResourceProvider/GetPluginInfo',

@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/operations"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -44,7 +45,11 @@ func newLogsCmd() *cobra.Command {
 		Short: "Show aggregated logs for a stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			s, err := requireStack(stack, false)
+			opts := backend.DisplayOptions{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(stack, false, opts)
 			if err != nil {
 				return err
 			}
@@ -60,7 +65,7 @@ func newLogsCmd() *cobra.Command {
 			}
 
 			fmt.Printf(
-				colors.ColorizeText(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
+				opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 				s.Name().String(),
 				startTime.Format(timeFormat),
 			)

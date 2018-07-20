@@ -38,10 +38,10 @@ func Command(s string) string {
 
 func Colorize(s fmt.Stringer) string {
 	txt := s.String()
-	return ColorizeText(txt)
+	return colorizeText(txt)
 }
 
-func ColorizeText(s string) string {
+func colorizeText(s string) string {
 	c, err := loreley.CompileAndExecuteToString(s, nil, nil)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
 	return c

@@ -20,3 +20,4 @@ message ErrorCause {
     string message = 1;
     string stackTrace = 2;
 }
+

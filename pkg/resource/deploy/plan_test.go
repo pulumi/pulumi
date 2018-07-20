@@ -357,6 +357,9 @@ type testProviderHost struct {
 	langhost func(runtime string) (plugin.LanguageRuntime, error)
 }
 
+func (host *testProviderHost) SignalCancellation() error {
+	return nil
+}
 func (host *testProviderHost) Close() error {
 	return nil
 }
@@ -364,8 +367,8 @@ func (host *testProviderHost) ServerAddr() string {
 	contract.Failf("Host RPC address not available")
 	return ""
 }
-func (host *testProviderHost) Log(sev diag.Severity, urn resource.URN, msg string) {
-	cmdutil.Diag().Logf(sev, diag.RawMessage(urn, msg))
+func (host *testProviderHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	cmdutil.Diag().Logf(sev, diag.StreamMessage(urn, msg, streamID))
 }
 func (host *testProviderHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
 	return resource.PropertyValue{}, errors.New("Invalid location")
@@ -407,6 +410,9 @@ type testProvider struct {
 	invoke func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 }
 
+func (prov *testProvider) SignalCancellation() error {
+	return nil
+}
 func (prov *testProvider) Close() error {
 	return nil
 }

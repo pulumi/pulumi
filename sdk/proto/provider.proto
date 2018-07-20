@@ -45,6 +45,8 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+    // Cancel signals the provider to abort all outstanding resource operations.
+    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
@@ -115,6 +117,8 @@ message CreateRequest {
 }
 
 message CreateResponse {
+    // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+
     string id = 1;                         // the ID of the created resource.
     google.protobuf.Struct properties = 2; // any properties that were computed during creation.
 }
@@ -131,6 +135,8 @@ message ReadResponse {
 }
 
 message UpdateRequest {
+    // NOTE: The partial-update-error equivalent of this message is `ErrorResourceInitFailed`.
+
     string id = 1;                   // the ID of the resource to update.
     string urn = 2;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3; // the old values of provider inputs for the resource to update.
@@ -145,4 +151,12 @@ message DeleteRequest {
     string id = 1;                         // the ID of the resource to delete.
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
+}
+
+// ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
+// resource was created successfully, but failed to initialize.
+message ErrorResourceInitFailed {
+    string id = 1;                         // the ID of the created resource.
+    google.protobuf.Struct properties = 2; // any properties that were computed during updating.
+    repeated string reasons = 3;           // error messages associated with initialization failure.
 }

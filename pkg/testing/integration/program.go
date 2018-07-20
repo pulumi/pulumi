@@ -139,6 +139,8 @@ type ProgramTestOptions struct {
 	Quick bool
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi update` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
+	// SkipBuild indicates that the build step should be skipped (e.g. no `yarn build` for `nodejs` programs)
+	SkipBuild bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -283,6 +285,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.ReportStats != nil {
 		opts.ReportStats = overrides.ReportStats
+	}
+	if overrides.SkipBuild {
+		opts.SkipBuild = overrides.SkipBuild
 	}
 	return opts
 }
@@ -1011,8 +1016,15 @@ func (pt *programTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	// And finally compile it using whatever build steps are in the package.json file.
-	return pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd)
+	if !pt.opts.SkipBuild {
+		// And finally compile it using whatever build steps are in the package.json file.
+		if err = pt.runYarnCommand("yarn-build", []string{"run", "build"}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
