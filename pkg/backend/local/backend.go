@@ -387,17 +387,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	var latest apitype.Deployment
-	if err = json.Unmarshal(deployment.Deployment, &latest); err != nil {
-		return err
-	}
-
-	checkpoint := &apitype.CheckpointV1{
-		Stack:  stackName,
-		Config: config,
-		Latest: &latest,
-	}
-	snap, err := stack.DeserializeCheckpoint(checkpoint)
+	snap, err := stack.DeserializeDeployment(deployment)
 	if err != nil {
 		return err
 	}
