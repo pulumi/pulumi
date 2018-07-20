@@ -382,6 +382,8 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	} else {
 		hash := head.Hash()
 		m.Environment[backend.GitHead] = hash.String()
+		m.Environment[backend.GitRefName] = head.Name().String()
+
 		commit, commitErr := repo.CommitObject(hash)
 		if commitErr != nil {
 			cmdutil.Diag().Warningf(
