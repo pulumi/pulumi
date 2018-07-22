@@ -58,6 +58,9 @@ const (
 const (
 	// GitHead is the commit hash of HEAD.
 	GitHead = "git.head"
+	// GitRefName is the name of the current reference at HEAD. Typically a branch, e.g. refs/heads/master.
+	// If in a detached HEAD state, will simply be HEAD.
+	GitRefName = "git.ref"
 	// GitDirty ("true", "false") indiciates if there are any unstaged or modified files in the local repo.
 	GitDirty = "git.dirty"
 
