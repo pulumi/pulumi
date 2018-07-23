@@ -35,6 +35,7 @@ message ReadResourceRequest {
     string name = 3;                       // the name, for URN purposes, of the object.
     string parent = 4;                     // an optional parent URN that this child resource belongs to.
     google.protobuf.Struct properties = 5; // optional state sufficient to uniquely identify the resource.
+    repeated string dependencies = 6;      // a list of URNs that this read depends on, as observed by the language host.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
