@@ -102,6 +102,7 @@ func NewCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) S
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
+	contract.Assert(!new.External)
 	return &CreateStep{
 		plan: plan,
 		reg:  reg,
@@ -121,6 +122,7 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
+	contract.Assert(!new.External)
 	return &CreateStep{
 		plan:          plan,
 		reg:           reg,
@@ -191,7 +193,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 	return resourceStatus, resourceError
 }
 
-// DeleteStep is a mutating step that deletes an existing resource.
+// DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
+// DeleteStep is a no-op.
 type DeleteStep struct {
 	plan      *Plan           // the current plan.
 	old       *resource.State // the state of the existing resource.
@@ -244,7 +247,8 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 			errors.Errorf("refusing to delete protected resource '%s'", s.old.URN)
 	}
 
-	if !preview {
+	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
+	if !preview && !s.old.External {
 		if s.old.Custom && !s.plan.IsRefresh() {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
@@ -282,6 +286,8 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
+	contract.Assert(!new.External)
+	contract.Assert(!old.External)
 	return &UpdateStep{
 		plan:    plan,
 		reg:     reg,
@@ -364,7 +370,7 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
-	contract.Assert(new.ID == "")
+	// contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &ReplaceStep{
 		plan:          plan,
@@ -391,6 +397,103 @@ func (s *ReplaceStep) Apply(preview bool) (resource.Status, error) {
 	return resource.StatusOK, nil
 }
 
+// ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
+// model. Resources that are read are marked with the "External" bit which indicates to the engine that it does
+// not own this resource's lifeycle.
+//
+// A resource with a given URN can transition freely between an "external" state and a non-external state. If
+// a URN that was previously marked "External" (i.e. was the target of a ReadStep in a previous plan) is the
+// target of a RegisterResource in the next plan, a CreateReplacement step will be issued to indicate the transition
+// from external to owned. If a URN that was previously not marked "External" is the target of a ReadResource in the
+// next plan, a ReadReplacement step will be issued to indicate the transition from owned to external.
+type ReadStep struct {
+	plan      *Plan             // the plan that produced this read
+	event     ReadResourceEvent // the event that should be signaled upon completion
+	old       *resource.State   // the old resource state, if one exists for this urn
+	new       *resource.State   // the new resource state, to be used to query the provider
+	replacing bool              // whether or not the new resource is replacing the old resource
+}
+
+// NewReadStep creates a new Read step.
+func NewReadStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *resource.State) Step {
+	contract.Assert(new != nil)
+	contract.Assertf(new.External, "target of Read step must be marked External")
+	contract.Assertf(new.Custom, "target of Read step must be Custom")
+
+	// If Old was given, it can't be an external resource.
+	contract.Assert(old == nil || old.External)
+	return &ReadStep{
+		plan:      plan,
+		event:     event,
+		old:       old,
+		new:       new,
+		replacing: false,
+	}
+}
+
+// NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
+// it will pend deletion of the "old" resource, which must not be an external resource.
+func NewReadReplacementStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *resource.State) Step {
+	contract.Assert(new != nil)
+	contract.Assertf(new.External, "target of ReadReplacement step must be marked External")
+	contract.Assertf(new.Custom, "target of ReadReplacement step must be Custom")
+	contract.Assert(old != nil)
+	contract.Assertf(!old.External, "old target of ReadReplacement step must not be External")
+	return &ReadStep{
+		plan:      plan,
+		event:     event,
+		old:       old,
+		new:       new,
+		replacing: true,
+	}
+}
+
+func (s *ReadStep) Op() StepOp {
+	if s.replacing {
+		return OpReadReplacement
+	}
+
+	return OpRead
+}
+
+func (s *ReadStep) Plan() *Plan          { return s.plan }
+func (s *ReadStep) Type() tokens.Type    { return s.new.Type }
+func (s *ReadStep) URN() resource.URN    { return s.new.URN }
+func (s *ReadStep) Old() *resource.State { return s.old }
+func (s *ReadStep) New() *resource.State { return s.new }
+func (s *ReadStep) Res() *resource.State { return s.new }
+func (s *ReadStep) Logical() bool        { return !s.replacing }
+
+func (s *ReadStep) Apply(preview bool) (resource.Status, error) {
+	urn := s.new.URN
+	id := s.new.ID
+
+	// Unlike most steps, Read steps run during previews. The only time
+	// we can't run is if the ID we are given is unknown.
+	if id != plugin.UnknownStringValue {
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+
+		result, err := prov.Read(urn, id, s.new.Inputs)
+		if err != nil {
+			return resource.StatusUnknown, err
+		}
+
+		s.new.Outputs = result
+	}
+
+	// If we were asked to replace an existing, non-External resource, pend the
+	// deletion here.
+	if s.replacing {
+		s.old.Delete = true
+	}
+
+	s.event.Done(&ReadResult{State: s.new})
+	return resource.StatusOK, nil
+}
+
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
 type StepOp string
 
@@ -402,6 +505,8 @@ const (
 	OpReplace           StepOp = "replace"            // replacing a resource with a new one.
 	OpCreateReplacement StepOp = "create-replacement" // creating a new resource for a replacement.
 	OpDeleteReplaced    StepOp = "delete-replaced"    // deleting an existing resource after replacement.
+	OpRead              StepOp = "read"               // reading an existing resource.
+	OpReadReplacement   StepOp = "read-replacement"   // reading an existing resource for a replacement.
 )
 
 // StepOps contains the full set of step operation types.
@@ -413,6 +518,7 @@ var StepOps = []StepOp{
 	OpReplace,
 	OpCreateReplacement,
 	OpDeleteReplaced,
+	OpRead,
 }
 
 // Color returns a suggested color for lines of this op type.
@@ -432,6 +538,10 @@ func (op StepOp) Color() string {
 		return colors.SpecCreateReplacement
 	case OpDeleteReplaced:
 		return colors.SpecDeleteReplaced
+	case OpRead:
+		return colors.SpecCreate
+	case OpReadReplacement:
+		return colors.SpecReplace
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -460,6 +570,10 @@ func (op StepOp) RawPrefix() string {
 		return "++"
 	case OpDeleteReplaced:
 		return "--"
+	case OpRead:
+		return ">-"
+	case OpReadReplacement:
+		return ">~"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -468,8 +582,10 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
-	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate:
+	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
+	case OpRead:
+		return "read"
 	default:
 		contract.Failf("Unexpected resource step op: %v", op)
 		return ""
@@ -478,7 +594,7 @@ func (op StepOp) PastTense() string {
 
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
-	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace {
+	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpReadReplacement {
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""
