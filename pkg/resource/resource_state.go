@@ -32,14 +32,15 @@ type State struct {
 	Outputs      PropertyMap // the resource's complete output state (as returned by the resource provider).
 	Parent       URN         // an optional parent URN that this resource belongs to.
 	Protect      bool        // true to "protect" this resource (protected resources cannot be deleted).
+	External     bool        // true if this resource is "external" to Pulumi and we don't control the lifecycle
 	Dependencies []URN       // the resource's dependencies
 	InitErrors   []string    // the set of errors encountered in the process of initializing resource.
 }
 
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
-	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool, dependencies []URN,
-	initErrors []string) *State {
+	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
+	external bool, dependencies []URN, initErrors []string) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
@@ -53,6 +54,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Outputs:      outputs,
 		Parent:       parent,
 		Protect:      protect,
+		External:     external,
 		Dependencies: dependencies,
 		InitErrors:   initErrors,
 	}

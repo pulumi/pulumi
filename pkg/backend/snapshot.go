@@ -156,6 +156,8 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &deleteSnapshotMutation{sm}, nil
 	case deploy.OpReplace:
 		return &replaceSnapshotMutation{}, nil
+	case deploy.OpRead, deploy.OpReadReplacement:
+		return &readSnapshotMutation{sm}, nil
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -242,6 +244,24 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 type replaceSnapshotMutation struct{}
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }
+
+type readSnapshotMutation struct {
+	manager *SnapshotManager
+}
+
+func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
+	contract.Require(step != nil, "step != nil")
+	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
+	return rsm.manager.mutate(func() {
+		if successful {
+			if step.Old() != nil {
+				rsm.manager.markDone(step.Old())
+			}
+
+			rsm.manager.markNew(step.New())
+		}
+	})
+}
 
 // refresh does a no-op mutation that forces the SnapshotManager to persist the
 // snapshot exactly as it is currently to disk. This is useful when a mutation

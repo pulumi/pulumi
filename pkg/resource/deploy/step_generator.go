@@ -34,11 +34,49 @@ type stepGenerator struct {
 	opts Options // options for this step generator
 
 	urns     map[resource.URN]bool // set of URNs discovered for this plan
+	reads    map[resource.URN]bool // set of URNs read for this plan
 	deletes  map[resource.URN]bool // set of URNs deleted in this plan
 	replaces map[resource.URN]bool // set of URNs replaced in this plan
 	updates  map[resource.URN]bool // set of URNs updated in this plan
 	creates  map[resource.URN]bool // set of URNs created in this plan
 	sames    map[resource.URN]bool // set of URNs that were not changed in this plan
+}
+
+// GenerateReadSteps is responsible for producing one or more steps required to service
+// a ReadResourceEvent coming from the language host.
+func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+	urn := sg.generateURN(event.Parent(), event.Type(), event.Name())
+	newState := resource.NewState(event.Type(),
+		urn,
+		true,  /*custom*/
+		false, /*delete*/
+		event.ID(),
+		event.Properties(),
+		make(resource.PropertyMap), /* outputs */
+		event.Parent(),
+		false, /*protect*/
+		true,  /*external*/
+		event.Dependencies())
+	old, hasOld := sg.plan.Olds()[urn]
+
+	// If the snapshot has an old resource for this URN and it's not external, we're going
+	// to have to delete the old resource and conceptually replace it with the resource we
+	// are about to read.
+	//
+	// We accomplish this through the "read-replacement" step, which atomically reads a resource
+	// and marks the resource it is replacing as pending deletion.
+	if hasOld && !old.External {
+		sg.replaces[urn] = true
+		return []Step{
+			NewReadReplacementStep(sg.plan, event, old, newState),
+			NewReplaceStep(sg.plan, old, newState, nil, true),
+		}, nil
+	}
+
+	sg.reads[urn] = true
+	return []Step{
+		NewReadStep(sg.plan, event, old, newState),
+	}, nil
 }
 
 // GenerateSteps produces one or more steps required to achieve the goal state
@@ -52,7 +90,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 	goal := event.Goal()
 	// generate an URN for this new resource.
-	urn := sg.generateURN(event)
+	urn := sg.generateURN(goal.Parent, goal.Type, goal.Name)
 	if sg.urns[urn] {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
@@ -90,14 +128,18 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	// We may be re-creating this resource if it got deleted earlier in the execution of this plan.
 	_, recreating := sg.deletes[urn]
 
+	// We may be creating this resource if it previously existed in the snapshot as an External resource
+	wasExternal := hasOld && old.External
+
 	// If this isn't a refresh, ensure the provider is okay with this resource and fetch the inputs to pass to
 	// subsequent methods.  If these are not inputs, we are just going to blindly store the outputs, so skip this.
 	if prov != nil && !refresh {
 		var failures []plugin.CheckFailure
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
-		// invalid (they got deleted) so don't consider them.
-		if recreating {
+		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
+		// don't consider those inputs since Pulumi does not own them.
+		if recreating || wasExternal {
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
 		} else {
 			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
@@ -138,7 +180,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		return nil, errors.New("One or more resource validation errors occurred; refusing to proceed")
 	}
 
-	// There are three cases we need to consider when figuring out what to do with this resource.
+	// There are four cases we need to consider when figuring out what to do with this resource.
 	//
 	// Case 1: recreating
 	//  In this case, we have seen a resource with this URN before and we have already issued a
@@ -166,7 +208,28 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	// Case 2: hasOld
+	// Case 2: wasExternal
+	//  In this case, the resource we are operating upon exists in the old snapshot, but it
+	//  was "external" - Pulumi does not own its lifecycle. Conceptually, this operation is
+	//  akin to "taking ownership" of a resource that we did not previously control.
+	//
+	//  Since we are not allowed to manipulate the existing resource, we must create a resource
+	//  to take its place. Since this is technically a replacement operation, we pend deletion of
+	//  read until the end of the plan.
+	if wasExternal {
+		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
+		sg.creates[urn] = true
+		if err != nil {
+			return nil, err
+		}
+
+		return []Step{
+			NewCreateReplacementStep(sg.plan, event, old, new, nil, true),
+			NewReplaceStep(sg.plan, old, new, nil, true),
+		}, nil
+	}
+
+	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the provider's
 	//  response to `Diff`. We must:
@@ -251,8 +314,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 							dependentResource.URN, urn)
-						steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
 
+						steps = append(steps, NewDeleteReplacementStep(sg.plan, dependentResource, false))
 						// Mark the condemned resource as deleted. We won't know until later in the plan whether
 						// or not we're going to be replacing this resource.
 						sg.deletes[dependentResource.URN] = true
@@ -288,7 +351,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		return []Step{NewSameStep(sg.plan, event, old, new)}, nil
 	}
 
-	// Case 3: Not Case 1 or Case 2
+	// Case 4: Not Case 1, 2, or 3
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
 	sg.creates[urn] = true
@@ -329,7 +392,8 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				}
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
-			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.deletes[res.URN] {
+			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
+				!sg.deletes[res.URN] && !sg.reads[res.URN] {
 				// In addition to the above comment, I am fairly certain there is a bug here. If a resource
 				// is not registered in a plan, but there exists a pending delete copy of that resource in the
 				// snapshot, we will choose not to delete the live resource and instead be content with deleting
@@ -405,21 +469,18 @@ func (sg *stepGenerator) getResourcePropertyStates(urn resource.URN, goal *resou
 	}
 	return props, inputs, outputs,
 		resource.NewState(goal.Type, urn, goal.Custom, false, "",
-			inputs, outputs, goal.Parent, goal.Protect, goal.Dependencies, []string{})
-
+			inputs, outputs, goal.Parent, goal.Protect, false, goal.Dependencies, []string{})
 }
 
-func (sg *stepGenerator) generateURN(e RegisterResourceEvent) resource.URN {
+func (sg *stepGenerator) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
 	// Use the resource goal state name to produce a globally unique URN.
-
-	goal := e.Goal()
 	parentType := tokens.Type("")
-	if p := goal.Parent; p != "" && p.Type() != resource.RootStackType {
+	if parent != "" && parent.Type() != resource.RootStackType {
 		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
-		parentType = p.QualifiedType()
+		parentType = parent.QualifiedType()
 	}
 
-	return resource.NewURN(sg.plan.Target().Name, sg.plan.source.Project(), parentType, goal.Type, goal.Name)
+	return resource.NewURN(sg.plan.Target().Name, sg.plan.source.Project(), parentType, ty, name)
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.
@@ -466,6 +527,7 @@ func newStepGenerator(plan *Plan, opts Options) *stepGenerator {
 		plan:     plan,
 		opts:     opts,
 		urns:     make(map[resource.URN]bool),
+		reads:    make(map[resource.URN]bool),
 		creates:  make(map[resource.URN]bool),
 		sames:    make(map[resource.URN]bool),
 		replaces: make(map[resource.URN]bool),

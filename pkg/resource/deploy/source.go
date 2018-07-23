@@ -77,3 +77,22 @@ type RegisterResourceOutputsEvent interface {
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done()
 }
+
+// ReadResourceEvent is an event that asks the engine to read the state of a resource that already exists.
+type ReadResourceEvent interface {
+	SourceEvent
+
+	ID() resource.ID
+	Name() tokens.QName
+	Type() tokens.Type
+	Parent() resource.URN
+	Properties() resource.PropertyMap
+	Dependencies() []resource.URN
+
+	// Done indicates that we are done with this event.
+	Done(result *ReadResult)
+}
+
+type ReadResult struct {
+	State *resource.State
+}
