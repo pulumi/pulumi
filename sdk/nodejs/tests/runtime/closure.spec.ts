@@ -4810,7 +4810,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
 var __testConfig_proto = {};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
 var __runtime = {getConfig: __getConfig};
 Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f3 });
 __f6.isInstance = __f7;
@@ -4876,7 +4876,7 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-var __0_config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)};
+var __0_config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
 var __runtime = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f3 });
 __f6.isInstance = __f7;
@@ -5047,6 +5047,9 @@ function compareTextWithWildcards(expected: string, actual: string) {
             const indexAfter = index + wildcard.length;
             assert.equal(line.substring(0, index), expectedLine.substring(0, index));
 
+            if (indexAfter === expectedLine.length) {
+                continue;
+            }
             let repetitionIndex = index;
             for (; repetitionIndex < line.length; repetitionIndex++) {
                 if (line[repetitionIndex] === expectedLine[indexAfter]) {
