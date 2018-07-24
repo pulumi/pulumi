@@ -4814,7 +4814,7 @@ var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "Te
 var __runtime = {getConfig: __getConfig};
 Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f3 });
 __f6.isInstance = __f7;
-Object.setPrototypeOf(__f6, Object.getPrototypeOf(global.EvalError));
+(...)
 Object.setPrototypeOf(__f5, __f6);
 Object.defineProperty(__testConfig_proto, "getBoolean", { configurable: true, writable: true, value: __f4 });
 Object.defineProperty(__testConfig_proto, "getNumber", { configurable: true, writable: true, value: __f8 });
@@ -4880,7 +4880,7 @@ var __0_config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "
 var __runtime = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f3 });
 __f6.isInstance = __f7;
-Object.setPrototypeOf(__f6, Object.getPrototypeOf(global.EvalError));
+(...)
 Object.setPrototypeOf(__f5, __f6);
 Object.defineProperty(__f1_prototype, "getBoolean", { configurable: true, writable: true, value: __f4 });
 Object.defineProperty(__f1_prototype, "getNumber", { configurable: true, writable: true, value: __f8 });
