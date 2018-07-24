@@ -17,9 +17,9 @@
 import * as assert from "assert";
 import { EOL } from "os";
 import { runtime } from "../../index";
-import * as resource from "../../resource";
-import { Output, output } from "../../resource";
+import { output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
+import * as config from "../../config";
 
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
@@ -810,15 +810,38 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
         const os = require("os");
 
         cases.push({
-            title: "Fail to capture built-in modules due to native functions",
+            title: "Capture built in module by ref",
             func: () => os,
+            expectPackages: new Set([]),
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ os: require("os") }) {
+
+return () => os;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        const fs = require("fs");
+        fs.captureAsValue = true;
+
+        cases.push({
+            title: "Fail to capture built-in module (by value) due to native functions",
+            func: () => fs,
             expectPackages: new Set([]),
             expectText: undefined,
             error:
-`Error serializing '() => os': closure.spec.js(0,0)
+`Error serializing '() => fs': closure.spec.js(0,0)
 
-'() => os': closure.spec.js(0,0): captured
-  module 'os' which indirectly referenced
+'() => fs': closure.spec.js(0,0): captured
+  module 'fs' which indirectly referenced
       (...)
       it was a native code function.
 
@@ -826,7 +849,7 @@ Function code:
   function (...)() { [native code] }
 
 Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
+Consider using import('fs') or require('fs') inside '() => fs': closure.spec.js(0,0)`,
         });
     }
 
@@ -842,19 +865,21 @@ Consider using import('os') or require('os') inside '() => os': closure.spec.js(
                            os;
                        return { v };
                    },
-            expectText: undefined,
-            error: `Error serializing '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'(a, b, c) => { const v = os; ...': closure.spec.js(0,0): captured
-  module 'os' which indirectly referenced
-    (...)
-      it was a native code function.
+function __f0() {
+  return (function() {
+    with({ os: require("os") }) {
 
-Function code:
-  function (...)() { [native code] }
+return (a, b, c) => {
+                const v = os;
+                return { v };
+            };
 
-Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside '(a, b, c) => { const v = os; ...': closure.spec.js(0,0)`,
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -867,48 +892,119 @@ Consider using import('os') or require('os') inside '(a, b, c) => { const v = os
         const func = wrap(() => os);
 
         cases.push({
-            title: "Fail to capture module through indirect function references",
+            title: "Capture module through indirect function references",
             func: func,
-            expectText: undefined,
-            error:
-`Error serializing '() => handler': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'() => handler': closure.spec.js(0,0): captured
-  'handler', a function defined at
-    '() => os': closure.spec.js(0,0): which captured
-      module 'os' which indirectly referenced
-        (...)
-          it was a native code function.
+function __f1() {
+  return (function() {
+    with({ os: require("os") }) {
 
-Function code:
-  function (...)() { [native code] }
+return () => os;
 
-Capturing modules can sometimes cause problems.
-Consider using import('os') or require('os') inside '() => os': closure.spec.js(0,0)`,
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ handler: __f1 }) {
+
+return () => handler;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
     {
         const util = require("../util");
         cases.push({
-            title: "Fail to capture user-defined modules due to native functions",
+            title: "Capture user-defined module by value",
             func: () => util,
-            expectText: undefined,
-            error:
-`Error serializing '() => util': closure.spec.js(0,0)
+            expectText: `exports.handler = __f0;
 
-'() => util': closure.spec.js(0,0): captured
-  module './bin/tests/util.js' which indirectly referenced
-    function 'assertAsyncThrows': util.js(0,0): which captured
-      module 'assert' which indirectly referenced
-        (...)
-          it was a native code function.
+var __util = {};
+Object.defineProperty(__util, "__esModule", { value: true });
+__util.asyncTest = __asyncTest;
+__util.assertAsyncThrows = __assertAsyncThrows;
 
-Function code:
-  function (...)() { [native code] }
+function __f1() {
+  return (function() {
+    with({  }) {
 
-Capturing modules can sometimes cause problems.
-Consider using import('./bin/tests/util.js') or require('./bin/tests/util.js') inside '() => util': closure.spec.js(0,0)`,
+return function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __asyncTest() {
+  return (function() {
+    with({ __awaiter: __f1, asyncTest: __asyncTest }) {
+
+return function /*asyncTest*/(test) {
+    return (done) => {
+        const go = () => __awaiter(this, void 0, void 0, function* () {
+            let caught;
+            try {
+                yield test();
+            }
+            catch (err) {
+                caught = err;
+            }
+            finally {
+                done(caught);
+            }
+        });
+        go();
+    };
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __assertAsyncThrows() {
+  return (function() {
+    with({ __awaiter: __f1, assert: require("assert"), assertAsyncThrows: __assertAsyncThrows }) {
+
+return function /*assertAsyncThrows*/(test) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            yield test();
+        }
+        catch (err) {
+            return err.message;
+        }
+        assert(false, "Function was expected to throw, but didn't");
+        return "";
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ util: __util }) {
+
+return () => util;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
         });
     }
 
@@ -4699,6 +4795,143 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
         });
     }
 
+    {
+        // Used just to validate that if we capture a Config object we see these values serialized over.
+        // Specifically, the module that Config uses needs to be captured by value and not be
+        // 'require-reference'.
+        runtime.setConfig("test:TestingKey1", "TestingValue1");
+        const testConfig = new config.Config("test");
+
+        cases.push({
+            title: "Capture config created on the outside",
+            func: function () { const v = testConfig.get("TestingKey1"); console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __testConfig_proto = {};
+__f1.prototype = __testConfig_proto;
+Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
+var __runtime = {getConfig: __getConfig};
+Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f3 });
+__f6.isInstance = __f7;
+Object.setPrototypeOf(__f6, Object.getPrototypeOf(global.EvalError));
+Object.setPrototypeOf(__f5, __f6);
+Object.defineProperty(__testConfig_proto, "getBoolean", { configurable: true, writable: true, value: __f4 });
+Object.defineProperty(__testConfig_proto, "getNumber", { configurable: true, writable: true, value: __f8 });
+Object.defineProperty(__testConfig_proto, "getObject", { configurable: true, writable: true, value: __f9 });
+Object.setPrototypeOf(__f11, __f6);
+Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f10 });
+Object.defineProperty(__testConfig_proto, "requireBoolean", { configurable: true, writable: true, value: __f12 });
+Object.defineProperty(__testConfig_proto, "requireNumber", { configurable: true, writable: true, value: __f13 });
+Object.defineProperty(__testConfig_proto, "requireObject", { configurable: true, writable: true, value: __f14 });
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f15 });
+var __testConfig = Object.create(__testConfig_proto);
+__testConfig.name = "test";
+(...)
+function __getConfig() {
+  return (function() {
+    with({ ensureConfig: __ensureConfig, config: __config, getConfig: __getConfig }) {
+
+return function /*getConfig*/(k) {
+    ensureConfig();
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ runtime: __runtime }) {
+
+return function /*get*/(key) {
+        return runtime.getConfig(this.fullKey(key));
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+(...)
+function __f0() {
+  return (function() {
+    with({ testConfig: __testConfig }) {
+
+return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        runtime.setConfig("test:TestingKey2", "TestingValue2");
+
+        cases.push({
+            title: "Capture config created on the inside",
+            func: function () { const v = new config.Config("test").get("TestingKey2"); console.log(v); },
+            expectText: `exports.handler = __f0;
+
+var __f1_prototype = {};
+Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
+var __0_config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
+var __runtime = {getConfig: __getConfig};
+Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f3 });
+__f6.isInstance = __f7;
+Object.setPrototypeOf(__f6, Object.getPrototypeOf(global.EvalError));
+Object.setPrototypeOf(__f5, __f6);
+Object.defineProperty(__f1_prototype, "getBoolean", { configurable: true, writable: true, value: __f4 });
+Object.defineProperty(__f1_prototype, "getNumber", { configurable: true, writable: true, value: __f8 });
+Object.defineProperty(__f1_prototype, "getObject", { configurable: true, writable: true, value: __f9 });
+Object.setPrototypeOf(__f11, __f6);
+Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f10 });
+Object.defineProperty(__f1_prototype, "requireBoolean", { configurable: true, writable: true, value: __f12 });
+Object.defineProperty(__f1_prototype, "requireNumber", { configurable: true, writable: true, value: __f13 });
+Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, writable: true, value: __f14 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f15 });
+__f1.prototype = __f1_prototype;
+var __config = {Config: __f1};
+(...)
+function __getConfig() {
+  return (function() {
+    with({ ensureConfig: __ensureConfig, config: __0_config, getConfig: __getConfig }) {
+
+return function /*getConfig*/(k) {
+    ensureConfig();
+    return config[k];
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3() {
+  return (function() {
+    with({ runtime: __runtime }) {
+
+return function /*get*/(key) {
+        return runtime.getConfig(this.fullKey(key));
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+(...)
+function __f0() {
+  return (function() {
+    with({ config: __config }) {
+
+return function () { const v = new config.Config("test").get("TestingKey2"); console.log(v); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
     // can't do this in TS as TS will convert the async-function to be a normal non-async
@@ -4730,7 +4963,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
             // Invoke the test case.
             if (test.expectText) {
                 const sf = await runtime.serializeFunction(test.func);
-                assert.equal(sf.text, test.expectText);
+                compareTextWithWildcards(test.expectText, sf.text);
                 if (test.expectPackages) {
                     assert.equal(sf.requiredPackages.size, test.expectPackages.size)
                     for (const p of sf.requiredPackages) {
@@ -4748,7 +4981,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
                 const regex = /\([0-9]+,[0-9]+\)/g;
                 const withoutLocations = message.replace(regex, "(0,0)");
                 if (test.error) {
-                    compareErrorText(test.error, withoutLocations);
+                    compareTextWithWildcards(test.error, withoutLocations);
                 }
             }
         }));
@@ -4777,7 +5010,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
  * @param expected The expected error message string, potentially containing repetitions
  * @param actual The actual error message string
  */
-function compareErrorText(expected: string, actual: string) {
+function compareTextWithWildcards(expected: string, actual: string) {
     const wildcard = "(...)";
 
     if (!expected.includes(wildcard)) {
