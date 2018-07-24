@@ -788,9 +788,6 @@ function getOrCreateEntry(
         }
 
         const moduleName = findModuleName(obj);
-        if (moduleName) {
-            console.log("Detected use of : " + moduleName + "\n");
-        }
         if (moduleName && !obj.captureAsValue && moduleName[0] !== ".") {
             // This name bound to a module, and the module did not opt into having itself captured
             // by value. In this case serialize it out as a direct 'require' call
