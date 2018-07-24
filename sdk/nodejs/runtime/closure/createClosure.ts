@@ -98,6 +98,9 @@ export interface Entry {
     // an array which may contain nested closures.
     array?: Entry[];
 
+    // a reference to a requirable module name.
+    module?: string;
+
     // A promise value.  this will be serialized as the underlyign value the promise
     // points to.  And deserialized as Promise.resolve(<underlying_value>)
     promise?: Entry;
@@ -749,23 +752,55 @@ function getOrCreateEntry(
     dispatchAny();
     return entry;
 
-    function dispatchAny(): void {
+    function doNotCapture() {
         if (!serialize(obj)) {
             // caller explicitly does not want us to capture this value.
-            entry.json = undefined;
+            return true;
         }
-        else if (obj && obj.doNotCapture) {
+
+        if (obj && obj.doNotCapture) {
             // object has set itself as something that should not be captured.
-            entry.json = undefined;
+            return true;
         }
-        else if (isDerivedNoCaptureConstructor(obj)) {
+
+        if (isDerivedNoCaptureConstructor(obj)) {
             // this was a constructor that derived from something that should not be captured.
-            entry.json = undefined;
+            return true;
         }
-        else if (obj === undefined || obj === null ||
+
+        return false;
+    }
+
+    function dispatchAny(): void {
+        if (doNotCapture()) {
+            // We do not want to capture this object.  Explicit set .json to undefined so
+            // that we will see that the property is set and we will simply roundtrip this
+            // as the 'undefined value.
+            entry.json = undefined;
+            return;
+        }
+
+        if (obj === undefined || obj === null ||
             typeof obj === "boolean" || typeof obj === "number" || typeof obj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
+            return;
+        }
+
+        const moduleName = findModuleName(obj);
+        if (moduleName) {
+            console.log("Detected use of : " + moduleName + "\n");
+        }
+        if (moduleName && !obj.captureAsValue && moduleName[0] !== ".") {
+            // This name bound to a module, and the module did not opt into having itself captured
+            // by value. In this case serialize it out as a direct 'require' call
+            //
+            // Also, importantly, if this is a reference to a local module (i.e. starts with '.'),
+            // then always capture it as a value.  The reason for this is that otherwise we won't
+            // actually know or walk into the rest of the user's code. This means we won't properly
+            // serialize it into the index.js handler and things will not work in the
+            // cloud-callback.
+            entry.module = moduleName;
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.

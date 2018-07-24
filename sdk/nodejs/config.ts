@@ -34,11 +34,8 @@ export class Config {
         // To ease migration of code that already does new Config("<package>:config"), treat this as if
         // just new Config("<package>") was called.
         if (name.endsWith(":config")) {
-            const newName = name.replace(/:config$/, "");
-            log.warn(util.format("`:config` is no longer required at the end of configuration " +
-                "bag names and support will be removed in a future version, please " +
-                "use new Config(\"%s\") instead.", newName));
-            name = newName;
+            name = name.replace(/:config$/, "");
+            warnAtDeploymentTime(name);
         }
 
         this.name = name;
@@ -172,6 +169,15 @@ export class Config {
         return `${this.name}:${key}`;
     }
 }
+
+function warnAtDeploymentTime(newName: string) {
+    log.warn(util.format("`:config` is no longer required at the end of configuration " +
+        "bag names and support will be removed in a future version, please " +
+        "use new Config(\"%s\") instead.", newName));
+}
+
+// warnAtDeploymentTime sends RPC messages and this is only available at deployment time.
+(<any>warnAtDeploymentTime).doNotCapture = true;
 
 /**
  * ConfigTypeError is used when a configuration value is of the wrong type.

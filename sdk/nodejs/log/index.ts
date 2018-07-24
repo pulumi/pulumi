@@ -14,7 +14,6 @@
 
 // The log module logs messages in a way that tightly integrates with the resource engine's interface.
 
-import * as util from "util";
 import * as resourceTypes from "../resource";
 import { getEngine, rpcKeepAlive } from "../runtime/settings";
 const engproto = require("../proto/engine_pb.js");
@@ -121,3 +120,6 @@ function log(
     return lastLog;
 }
 
+// 'log' module is not usable on the inside of a pulumi cloud function.  It expects to be able to
+// make RPC calls to the engine, which is only supported at deployment time.
+export const doNotCapture = true;
