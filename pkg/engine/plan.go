@@ -15,20 +15,18 @@
 package engine
 
 import (
-	"bytes"
-	"fmt"
 	"os"
 
 	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -199,15 +197,7 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 		return nil, nil, resource.StatusOK, err
 	}
 
-	step, err := iter.Next()
-	if err != nil {
-		closeErr := iter.Close() // ignore close errors; the Next error trumps
-		contract.IgnoreError(closeErr)
-		return nil, nil, resource.StatusOK, err
-	}
-
-	// Iterate the plan in a goroutine while listening for termination.
-	var rst resource.Status
+	logging.V(1).Infof("parallel: beginning plan walk")
 	done := make(chan bool)
 	go func() {
 		defer func() {
@@ -219,47 +209,71 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 			close(done)
 		}()
 
-		for step != nil {
-			// Check for cancellation and termination.
-			if cancelErr := ctx.Cancel.CancelErr(); cancelErr != nil {
-				rst, err = resource.StatusOK, cancelErr
-				return
-			}
-
-			// Warn the user if they're not updating a resource whose initialization failed.
-			if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
-				indent := "         "
-
-				// TODO: Move indentation to the display logic, instead of doing it ourselves.
-				var warning bytes.Buffer
-				warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
-				warning.WriteString(indent + "to update it to fix these issues:\n")
-				for i, err := range step.Old().InitErrors {
-					warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
-						colors.Reset + " " + err + "\n")
-				}
-				res.Options.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
-			}
-
-			// Perform any per-step actions.
-			rst, err = iter.Apply(step, preview)
-
-			// If an error occurred, exit early.
-			if err != nil {
-				return
-			}
-			contract.Assert(rst == resource.StatusOK)
-
-			step, err = iter.Next()
-			if err != nil {
-				return
-			}
-		}
-
-		// Finally, return a summary and the resulting plan information.
-		rst, err = resource.StatusOK, nil
+		err = iter.Run(preview)
 	}()
 
+	/*
+		step, err := iter.Next()
+		if err != nil {
+			closeErr := iter.Close() // ignore close errors; the Next error trumps
+			contract.IgnoreError(closeErr)
+			return nil, nil, resource.StatusOK, err
+		}
+
+		// Iterate the plan in a goroutine while listening for termination.
+		var rst resource.Status
+		go func() {
+			defer func() {
+				// Close the iterator. If we have already observed another error, that error trumps the close error.
+				closeErr := iter.Close()
+				if err == nil {
+					err = closeErr
+				}
+				close(done)
+			}()
+
+			for step != nil {
+				// Check for cancellation and termination.
+				if cancelErr := ctx.Cancel.CancelErr(); cancelErr != nil {
+					rst, err = resource.StatusOK, cancelErr
+					return
+				}
+
+				// Warn the user if they're not updating a resource whose initialization failed.
+				if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
+					indent := "         "
+
+					// TODO: Move indentation to the display logic, instead of doing it ourselves.
+					var warning bytes.Buffer
+					warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
+					warning.WriteString(indent + "to update it to fix these issues:\n")
+					for i, err := range step.Old().InitErrors {
+						warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
+							colors.Reset + " " + err + "\n")
+					}
+					res.Options.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
+				}
+
+				// Perform any per-step actions.
+				rst, err = iter.Apply(step, preview)
+
+				// If an error occurred, exit early.
+				if err != nil {
+					return
+				}
+				contract.Assert(rst == resource.StatusOK)
+
+				step, err = iter.Next()
+				if err != nil {
+					return
+				}
+			}
+
+			// Finally, return a summary and the resulting plan information.
+			rst, err = resource.StatusOK, nil
+		}()
+
+	*/
 	// Asynchronously listen for cancellation, and deliver that signal to plan.
 	go func() {
 		select {
@@ -276,10 +290,10 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 
 	select {
 	case <-ctx.Cancel.Terminated():
-		return iter, step, rst, ctx.Cancel.TerminateErr()
+		return iter, nil /*step*/, resource.StatusOK /*rst*/, ctx.Cancel.TerminateErr()
 
 	case <-done:
-		return iter, step, rst, err
+		return iter, nil /*step*/, resource.StatusOK, err
 	}
 }
 

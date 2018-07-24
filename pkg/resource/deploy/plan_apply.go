@@ -160,6 +160,48 @@ func (iter *PlanIterator) Close() error {
 	return iter.src.Close()
 }
 
+func (iter *PlanIterator) Run(preview bool) error {
+	executor := newStepExecutor(iter.p, iter.opts, preview)
+	logging.V(1).Infof("beginning plan execution")
+	go func() {
+		for {
+			logging.V(1).Infof("plan iterator preparing to wait for event")
+			event, err := iter.src.Next()
+			if err != nil {
+				panic(err) // TODO
+			}
+
+			if event == nil {
+				logging.V(1).Infof("plan interator received nil event, signalling completion")
+				deletes := iter.stepGen.GenerateDeletes()
+				executor.ExecuteSync(deletes)
+				executor.SignalCompletion()
+				logging.V(1).Infof("plan iterator exiting inner goroutine")
+				return
+			}
+
+			logging.V(1).Infof("plan iterator received event: %v", event)
+			switch e := event.(type) {
+			case RegisterResourceEvent:
+				steps, steperr := iter.stepGen.GenerateSteps(e)
+				if steperr != nil {
+					panic(steperr) // TODO
+				}
+
+				logging.V(1).Infof("plan iterator submitting chain for execution")
+				executor.Execute(steps)
+			case RegisterResourceOutputsEvent:
+				logging.V(1).Infof("plan iterator handling register resource outputs")
+				executor.ExecuteRegisterResourceOutputs(e)
+			}
+		}
+	}()
+
+	err := executor.Wait()
+	executor.Close()
+	return err
+}
+
 // Next advances the plan by a single step, and returns the next step to be performed.  In doing so, it will perform
 // evaluation of the program as much as necessary to determine the next step.  If there is no further action to be
 // taken, Next will return a nil step pointer.

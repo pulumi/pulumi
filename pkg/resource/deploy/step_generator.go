@@ -344,7 +344,6 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 		}
 	}
 	return dels
-
 }
 
 // diff returns a DiffResult for the given resource.
