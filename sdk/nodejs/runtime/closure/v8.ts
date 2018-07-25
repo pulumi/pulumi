@@ -40,6 +40,7 @@ interface V8Script {
     locationFromPosition(pos: V8SourcePosition): V8SourceLocation;
 }
 
+// Check if we're on node 10.  We need to call specific intrinsics depending on which version we're on.
 const isNodeV10 = semver.gte(process.version, "10.0.0");
 
 // The second intrinsic is `FunctionGetScriptSourcePosition`, which does about what you'd
