@@ -364,7 +364,7 @@ function createFunctionInfo(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(func.name, functionString);
+        const [error, parsedFunction] = parseFunction(functionString);
         if (error) {
             throwSerializationError(func, context, error);
         }
