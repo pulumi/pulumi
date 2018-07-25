@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"runtime"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -86,6 +88,10 @@ func newPreviewCmd() *cobra.Command {
 			m, err := getUpdateMetadata("", root)
 			if err != nil {
 				return errors.Wrap(err, "gathering environment metadata")
+			}
+
+			if parallel < 1 {
+				parallel = runtime.GOMAXPROCS(0)
 			}
 
 			changes, err := s.Preview(commandContext(), proj, root, m, opts, cancellationScopes)

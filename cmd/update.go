@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -93,6 +94,10 @@ func newUpdateCmd() *cobra.Command {
 			m, err := getUpdateMetadata(message, root)
 			if err != nil {
 				return errors.Wrap(err, "gathering environment metadata")
+			}
+
+			if parallel < 1 {
+				parallel = runtime.GOMAXPROCS(0)
 			}
 
 			opts.Engine = engine.UpdateOptions{
