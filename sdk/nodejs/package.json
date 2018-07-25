@@ -17,6 +17,7 @@
         "@types/minimist": "^1.2.0",
         "@types/mocha": "^2.2.42",
         "@types/node": "^8.0.25",
+        "@types/semver": "^5.5.0",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
         "node-gyp": "^3.6.2",

@@ -3,11 +3,11 @@ if: branch = master OR branch =~ ^release/ OR tag IS present
 matrix:
   include:
     - os: linux
-      env: NODE_VERSION=v6.10.3
-    - os: linux
       env: NODE_VERSION=v8.11.1 TRAVIS_PUBLISH_PACKAGES=true
+    - os: linux
+      env: NODE_VERSION=v10.7
     - os: osx
-      env: NODE_VERSION=v9.11.1
+      env: NODE_VERSION=v6.10.3
 language: go
 go: 1.9
 sudo: true # give us 7.5GB and >2 bursted cores.

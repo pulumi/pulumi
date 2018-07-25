@@ -4717,7 +4717,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
             return;
         }
 
-        // if (test.title !== "Invocation of async function that does not capture this.") {
+        // if (test.title !== "Two level static inheritance") {
         //     continue;
         // }
 

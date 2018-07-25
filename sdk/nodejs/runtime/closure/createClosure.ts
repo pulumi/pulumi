@@ -319,9 +319,8 @@ function createFunctionInfo(
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const file: string =  v8.getFunctionFile(func);
-    const line: number = v8.getFunctionLine(func);
-    const column: number = v8.getFunctionColumn(func);
+    const file =  v8.getFunctionFile(func);
+    const { line, column } = v8.getFunctionLocation(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
