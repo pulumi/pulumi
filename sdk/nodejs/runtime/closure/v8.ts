@@ -19,6 +19,7 @@
 //
 // As a side-effect of importing this file, we must enable the --allow-natives-syntax V8
 // flag. This is because we are using V8 intrinsics in order to implement this module.
+import * as semver from "semver";
 import * as v8 from "v8";
 v8.setFlagsFromString("--allow-natives-syntax");
 
@@ -44,6 +45,9 @@ interface V8Script {
 // to produce a `V8SourceLocation`.
 const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
+
+const scriptPositionInfo: (script: V8Script, pos: V8SourcePosition) => { line: number, column: number } =
+    new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any;
 
 // V8SourcePosition is an opaque value that should be passed verbatim to `V8Script.locationFromPosition`
 // in order to receive a V8SourceLocation.
@@ -146,11 +150,23 @@ export function getFunctionLocation(func: Function): { line: number, column: num
     const script = getScript(func);
     if (script) {
         const pos = getSourcePosition(func);
+
         try {
-            const location = script.locationFromPosition(pos);
-            return location;
+            if (semver.gte(process.version, "10.0.0")) {
+                return scriptPositionInfo(script, pos);
+            } else {
+                return script.locationFromPosition(pos);
+            }
         } catch (err) {
-            // Be resilient to this native function not being available so that we can run on NodeV10.
+            // Be resilient to native functions not being available. In this case, we just return
+            // '0,0'.  That's not great, but it at least lets us run, and it isn't a terrible
+            // experience.
+            //
+            // Specifically, we only need these locations when we're printing out an error about not
+            // being able to serialize something.  In that case, we still print out the names of the
+            // functions (as well as the call-tree that got us there), *and* we print out the body
+            // of the function.  With both of these, it is generally not too difficult to find out
+            // where the code actually lives.
         }
     }
 
