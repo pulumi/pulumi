@@ -319,9 +319,8 @@ function createFunctionInfo(
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const file: string =  v8.getFunctionFile(func);
-    const line: number = v8.getFunctionLine(func);
-    const column: number = v8.getFunctionColumn(func);
+    const file =  v8.getFunctionFile(func);
+    const { line, column } = v8.getFunctionLocation(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
 
@@ -365,7 +364,7 @@ function createFunctionInfo(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(functionString);
+        const [error, parsedFunction] = parseFunction(func.name, functionString);
         if (error) {
             throwSerializationError(func, context, error);
         }

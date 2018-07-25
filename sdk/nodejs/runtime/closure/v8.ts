@@ -47,7 +47,7 @@ const getSourcePosition: (func: Function) => V8SourcePosition =
 
 // V8SourcePosition is an opaque value that should be passed verbatim to `V8Script.locationFromPosition`
 // in order to receive a V8SourceLocation.
-interface V8SourcePosition {}
+interface V8SourcePosition { }
 
 // V8SourceLocation contains metadata about a single location within a Script. For a function, it
 // refers to the last character of that function's declaration.
@@ -139,31 +139,20 @@ export function getFunctionFile(func: Function): string {
 }
 
 /**
- * Given a function, returns the line number in the file where this function was defined.
- * Returns 0 if the given function has no Script.
+ * Given a function, returns the line and column number in the file where this function was defined.
+ * Returns { 0, 0 } if the location cannot be found if the given function has no Script.
  */
-export function getFunctionLine(func: Function): number {
+export function getFunctionLocation(func: Function): { line: number, column: number } {
     const script = getScript(func);
-    if (!script) {
-        return 0;
+    if (script) {
+        const pos = getSourcePosition(func);
+        try {
+            const location = script.locationFromPosition(pos);
+            return location;
+        } catch (err) {
+            // Be resilient to this native function not being available so that we can run on NodeV10.
+        }
     }
 
-    const pos = getSourcePosition(func);
-    const location = script.locationFromPosition(pos);
-    return location.line;
-}
-
-/**
- * Given a function, returns the column in the file where this function was defined.
- * Returns 0 if the given function has no script.
- */
-export function getFunctionColumn(func: Function): number {
-    const script = getScript(func);
-    if (!script) {
-        return 0;
-    }
-
-    const pos = getSourcePosition(func);
-    const location = script.locationFromPosition(pos);
-    return location.column;
+    return { line: 0, column: 0 };
 }

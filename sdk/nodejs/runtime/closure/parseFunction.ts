@@ -97,8 +97,8 @@ const nodeModuleGlobals: {[key: string]: boolean} = {
 // function declaration.  Note: this ties us heavily to V8 and its representation for functions.  In
 // particular, it has expectations around how functions/lambdas/methods/generators/constructors etc.
 // are represented.  If these change, this will likely break us.
-export function parseFunction(funcString: string): [string, ParsedFunction] {
-    const [error, functionCode] = parseFunctionCode(funcString);
+export function parseFunction(funcName: string, funcString: string): [string, ParsedFunction] {
+    const [error, functionCode] = parseFunctionCode(funcName, funcString);
     if (error) {
         return [error, <any>undefined];
     }
@@ -132,7 +132,7 @@ export function parseFunction(funcString: string): [string, ParsedFunction] {
     return ["", result];
 }
 
-function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
+function parseFunctionCode(funcName: string, funcString: string): [string, ParsedFunctionCode] {
     if (funcString.startsWith("[Function:")) {
         return [`the function form was not understood.`, <any>undefined];
     }
@@ -252,7 +252,8 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             return [`the function form was not understood.`, <any>undefined];
         }
 
-        if (openParenIndex === 0) {
+        if (isComputed(v, openParenIndex)) {
+            v = v.substr(openParenIndex);
             return ["", {
                 funcExprWithoutName: prefix + v,
                 funcExprWithName: prefix + "__computed" + v,
@@ -261,20 +262,39 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             }];
         }
 
-        const nameChunk = v.substr(0, openParenIndex);
-        const funcName = closure.isLegalMemberName(nameChunk)
+        let nameChunk = v.substr(0, openParenIndex);
+        const funcDeclName = closure.isLegalMemberName(nameChunk)
             ? closure.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
             : "";
+
+        if (nameChunk.startsWith("get ") || nameChunk.startsWith("set ")) {
+            nameChunk = nameChunk.substr("get ".length);
+        }
+
         const commentedName = closure.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
         v = v.substr(openParenIndex).trimLeft();
 
         return ["", {
             funcExprWithoutName: prefix + commentedName + v,
-            funcExprWithName: prefix + funcName + v,
-            functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
+            funcExprWithName: prefix + funcDeclName + v,
+            functionDeclarationName: isFunctionDeclaration ? funcDeclName : undefined,
             isArrowFunction: false,
         }];
     }
+}
+
+function isComputed(v: string, openParenIndex: number) {
+    if (openParenIndex === 0) {
+        // node 8 and lower use no name at all for computed members.
+        return true;
+    }
+
+    if (v.length > 0 && v.charAt(0) === "[") {
+        // node 10 actually has the name as: [expr]
+        return true;
+    }
+
+    return false;
 }
 
 function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.SourceFile | null] {
