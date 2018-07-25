@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
@@ -160,7 +161,7 @@ func (iter *PlanIterator) Close() error {
 	return iter.src.Close()
 }
 
-func (iter *PlanIterator) Run(preview bool) error {
+func (iter *PlanIterator) Run(cancel *cancel.Context, preview bool) error {
 	executor := newStepExecutor(iter.p, iter.opts, preview)
 	logging.V(1).Infof("beginning plan execution")
 	done := make(chan bool)
@@ -214,6 +215,17 @@ func (iter *PlanIterator) Run(preview bool) error {
 				logging.V(1).Infof("plan iterator handling register resource outputs")
 				executor.ExecuteRegisterResourceOutputs(e)
 			}
+		}
+	}()
+
+	go func() {
+		select {
+		case <-done:
+			return
+		case <-cancel.Canceled():
+			logging.V(1).Infof("plan iterator signalling cancellation to executor")
+			executor.Abort()
+			return
 		}
 	}()
 

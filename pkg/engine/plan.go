@@ -210,7 +210,7 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 			close(done)
 		}()
 
-		err = iter.Run(preview)
+		err = iter.Run(ctx.Cancel, preview)
 	}()
 
 	/*

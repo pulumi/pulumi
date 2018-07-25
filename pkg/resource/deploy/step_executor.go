@@ -214,6 +214,7 @@ func newStepExecutor(p *Plan, opts Options, preview bool) *stepExecutor {
 		parallelFactor = 1
 	}
 
+	logging.V(stepExecutorLogLevel).Infof("StepExecutor: launching %d workers", parallelFactor)
 	executor.workers.Add(parallelFactor)
 	for i := 0; i < parallelFactor; i++ {
 		go executor.worker(i)
