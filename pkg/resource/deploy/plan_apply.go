@@ -18,7 +18,6 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"google.golang.org/grpc/transport"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -182,13 +181,10 @@ func (iter *PlanIterator) Run(preview bool) error {
 			}
 
 			if err != nil {
-				if err == transport.ErrConnClosing {
-					logging.V(1).Infof("plan iterator received ErrConnClosing, assuming shutdown and exiting")
-					close(done)
-					return
-				}
-
-				panic(err) // TODO
+				logging.V(1).Infof("plan iterator received error, assuming shutdown and exiting")
+				executor.Abort()
+				close(done)
+				return
 			}
 
 			if event == nil {
@@ -206,7 +202,10 @@ func (iter *PlanIterator) Run(preview bool) error {
 			case RegisterResourceEvent:
 				steps, steperr := iter.stepGen.GenerateSteps(e)
 				if steperr != nil {
-					panic(steperr) // TODO
+					logging.V(1).Infof("plan iterator received step gen error,  exiting")
+					executor.Abort()
+					close(done)
+					return
 				}
 
 				logging.V(1).Infof("plan iterator submitting chain for execution")

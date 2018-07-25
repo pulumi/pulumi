@@ -16,6 +16,7 @@ package engine
 
 import (
 	"os"
+	"sync"
 
 	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
@@ -327,33 +328,35 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 type planActions struct {
 	Refresh bool
 	Ops     map[deploy.StepOp]int
+	OpsLock sync.Mutex
 	Opts    planOptions
-	Seen    map[resource.URN]deploy.Step
+	Seen    sync.Map
 }
 
 func newPlanActions(opts planOptions) *planActions {
 	return &planActions{
 		Ops:  make(map[deploy.StepOp]int),
 		Opts: opts,
-		Seen: make(map[resource.URN]deploy.Step),
 	}
 }
 
 func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
-	acts.Seen[step.URN()] = step
+	acts.Seen.Store(step.URN(), step)
 	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 	return nil, nil
 }
 
 func (acts *planActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
-	assertSeen(acts.Seen, step)
+	assertSeen(&acts.Seen, step)
 
 	if err != nil {
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(step.URN()), err)
 	} else {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if step.Logical() {
+			acts.OpsLock.Lock()
+			defer acts.OpsLock.Unlock()
 			acts.Ops[step.Op()]++
 		}
 
@@ -364,7 +367,7 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
-	assertSeen(acts.Seen, step)
+	assertSeen(&acts.Seen, step)
 
 	// Print the resource outputs separately, unless this is a refresh in which case they are already printed.
 	if !acts.Opts.SkipOutputs {
@@ -374,7 +377,7 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 	return nil
 }
 
-func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
-	_, has := seen[step.URN()]
+func assertSeen(seen *sync.Map, step deploy.Step) {
+	_, has := seen.Load(step.URN())
 	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())
 }

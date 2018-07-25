@@ -45,6 +45,11 @@ type stepExecutor struct {
 	workers        sync.WaitGroup
 }
 
+func (se *stepExecutor) Abort() {
+	logging.V(stepExecutorLogLevel).Infof("StepExecutor: signalling external abort")
+	close(se.abort)
+}
+
 func (se *stepExecutor) Aborted() bool {
 	select {
 	case <-se.abort:

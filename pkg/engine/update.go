@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"sync"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -175,7 +176,8 @@ type updateActions struct {
 	Context      *Context
 	Steps        int
 	Ops          map[deploy.StepOp]int
-	Seen         map[resource.URN]deploy.Step
+	OpsLock      sync.Mutex
+	Seen         sync.Map
 	MaybeCorrupt bool
 	Update       UpdateInfo
 	Opts         planOptions
@@ -185,7 +187,6 @@ func newUpdateActions(context *Context, u UpdateInfo, opts planOptions) *updateA
 	return &updateActions{
 		Context: context,
 		Ops:     make(map[deploy.StepOp]int),
-		Seen:    make(map[resource.URN]deploy.Step),
 		Update:  u,
 		Opts:    opts,
 	}
@@ -193,7 +194,7 @@ func newUpdateActions(context *Context, u UpdateInfo, opts planOptions) *updateA
 
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Ensure we've marked this step as observed.
-	acts.Seen[step.URN()] = step
+	acts.Seen.Store(step.URN(), step)
 
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
 
@@ -204,7 +205,7 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
 
-	assertSeen(acts.Seen, step)
+	assertSeen(&acts.Seen, step)
 
 	// If we've already been terminated, exit without writing the checkpoint. We explicitly want to leave the
 	// checkpoint in an inconsistent state in this event.
@@ -225,6 +226,8 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 	} else {
 		if step.Logical() {
 			// Increment the counters.
+			acts.OpsLock.Lock()
+			defer acts.OpsLock.Unlock()
 			acts.Steps++
 			acts.Ops[stepop]++
 		}
@@ -244,7 +247,7 @@ func (acts *updateActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
-	assertSeen(acts.Seen, step)
+	assertSeen(&acts.Seen, step)
 
 	acts.Opts.Events.resourceOutputsEvent(step, false /*planning*/, acts.Opts.Debug)
 
