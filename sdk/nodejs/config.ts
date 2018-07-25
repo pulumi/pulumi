@@ -14,8 +14,7 @@
 
 import * as util from "util";
 import { RunError } from "./errors";
-import * as log from "./log";
-import * as runtime from "./runtime";
+import { getConfig } from "./runtime";
 
 /**
  * Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
@@ -35,7 +34,9 @@ export class Config {
         // just new Config("<package>") was called.
         if (name.endsWith(":config")) {
             name = name.replace(/:config$/, "");
-            warnAtDeploymentTime(name);
+            console.log(util.format("`:config` is no longer required at the end of configuration " +
+                "bag names and support will be removed in a future version, please " +
+                "use new Config(\"%s\") instead.", name));
         }
 
         this.name = name;
@@ -47,7 +48,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public get(key: string): string | undefined {
-        return runtime.getConfig(this.fullKey(key));
+        return getConfig(this.fullKey(key));
     }
 
     /**
@@ -169,15 +170,6 @@ export class Config {
         return `${this.name}:${key}`;
     }
 }
-
-function warnAtDeploymentTime(newName: string) {
-    log.warn(util.format("`:config` is no longer required at the end of configuration " +
-        "bag names and support will be removed in a future version, please " +
-        "use new Config(\"%s\") instead.", newName));
-}
-
-// warnAtDeploymentTime sends RPC messages and this is only available at deployment time.
-(<any>warnAtDeploymentTime).doNotCapture = true;
 
 /**
  * ConfigTypeError is used when a configuration value is of the wrong type.

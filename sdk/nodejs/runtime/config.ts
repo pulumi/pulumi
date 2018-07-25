@@ -19,11 +19,6 @@ const configEnvKey = "PULUMI_CONFIG";
 
 const config: {[key: string]: string} = {};
 
-// We want this module to actually be captured as a value in a pulumi program.
-// That way, any actual values set at deployment time will also be available at
-// cloud-runtime.
-export const captureAsValue = true;
-
 /**
  * allConfig returns a copy of the full config map.
  */

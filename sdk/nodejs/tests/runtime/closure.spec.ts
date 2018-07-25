@@ -829,31 +829,6 @@ return () => os;
     }
 
     {
-        const fs = require("fs");
-        fs.captureAsValue = true;
-
-        cases.push({
-            title: "Fail to capture built-in module (by value) due to native functions",
-            func: () => fs,
-            expectPackages: new Set([]),
-            expectText: undefined,
-            error:
-`Error serializing '() => fs': closure.spec.js(0,0)
-
-'() => fs': closure.spec.js(0,0): captured
-  module 'fs' which indirectly referenced
-      (...)
-      it was a native code function.
-
-Function code:
-  function (...)() { [native code] }
-
-Capturing modules can sometimes cause problems.
-Consider using import('fs') or require('fs') inside '() => fs': closure.spec.js(0,0)`,
-        });
-    }
-
-    {
         const os = require("os");
 
         cases.push({
@@ -4811,23 +4786,60 @@ var __testConfig_proto = {};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
-var __runtime = {getConfig: __getConfig};
-Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f3 });
-__f6.isInstance = __f7;
-(...)
-Object.setPrototypeOf(__f5, __f6);
-Object.defineProperty(__testConfig_proto, "getBoolean", { configurable: true, writable: true, value: __f4 });
-Object.defineProperty(__testConfig_proto, "getNumber", { configurable: true, writable: true, value: __f8 });
-Object.defineProperty(__testConfig_proto, "getObject", { configurable: true, writable: true, value: __f9 });
-Object.setPrototypeOf(__f11, __f6);
-Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f10 });
-Object.defineProperty(__testConfig_proto, "requireBoolean", { configurable: true, writable: true, value: __f12 });
-Object.defineProperty(__testConfig_proto, "requireNumber", { configurable: true, writable: true, value: __f13 });
-Object.defineProperty(__testConfig_proto, "requireObject", { configurable: true, writable: true, value: __f14 });
-Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f15 });
+var __runtime_1 = {getConfig: __getConfig};
+Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
+__f5.isInstance = __f6;
+Object.setPrototypeOf(__f5, Object.getPrototypeOf(global.EvalError));
+Object.setPrototypeOf(__f4, __f5);
+Object.defineProperty(__testConfig_proto, "getBoolean", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__testConfig_proto, "getNumber", { configurable: true, writable: true, value: __f7 });
+Object.defineProperty(__testConfig_proto, "getObject", { configurable: true, writable: true, value: __f8 });
+Object.setPrototypeOf(__f10, __f5);
+Object.defineProperty(__testConfig_proto, "require", { configurable: true, writable: true, value: __f9 });
+Object.defineProperty(__testConfig_proto, "requireBoolean", { configurable: true, writable: true, value: __f11 });
+Object.defineProperty(__testConfig_proto, "requireNumber", { configurable: true, writable: true, value: __f12 });
+Object.defineProperty(__testConfig_proto, "requireObject", { configurable: true, writable: true, value: __f13 });
+Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f14 });
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
 (...)
+function __cleanKey() {
+  return (function() {
+    with({ cleanKey: __cleanKey }) {
+
+return function /*cleanKey*/(key) {
+    const idx = key.indexOf(":");
+    if (idx > 0 && key.startsWith("config:", idx + 1)) {
+        return key.substring(0, idx) + ":" + key.substring(idx + 1 + "config:".length);
+    }
+    return key;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __ensureConfig() {
+  return (function() {
+    with({ loaded: true, config: __config, cleanKey: __cleanKey, ensureConfig: __ensureConfig }) {
+
+return function /*ensureConfig*/() {
+    if (!loaded) {
+        const envConfig = process.env.PULUMI_CONFIG;
+        if (envConfig) {
+            const envObject = JSON.parse(envConfig);
+            for (const k of Object.keys(envObject)) {
+                config[cleanKey(k)] = envObject[k];
+            }
+        }
+        loaded = true;
+    }
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
 function __getConfig() {
   return (function() {
     with({ ensureConfig: __ensureConfig, config: __config, getConfig: __getConfig }) {
@@ -4841,12 +4853,12 @@ return function /*getConfig*/(k) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f2() {
   return (function() {
-    with({ runtime: __runtime }) {
+    with({ runtime_1: __runtime_1 }) {
 
 return function /*get*/(key) {
-        return runtime.getConfig(this.fullKey(key));
+        return runtime_1.getConfig(this.fullKey(key));
     };
 
     }
@@ -4877,23 +4889,60 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 var __0_config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
-var __runtime = {getConfig: __getConfig};
-Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f3 });
-__f6.isInstance = __f7;
-(...)
-Object.setPrototypeOf(__f5, __f6);
-Object.defineProperty(__f1_prototype, "getBoolean", { configurable: true, writable: true, value: __f4 });
-Object.defineProperty(__f1_prototype, "getNumber", { configurable: true, writable: true, value: __f8 });
-Object.defineProperty(__f1_prototype, "getObject", { configurable: true, writable: true, value: __f9 });
-Object.setPrototypeOf(__f11, __f6);
-Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f10 });
-Object.defineProperty(__f1_prototype, "requireBoolean", { configurable: true, writable: true, value: __f12 });
-Object.defineProperty(__f1_prototype, "requireNumber", { configurable: true, writable: true, value: __f13 });
-Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, writable: true, value: __f14 });
-Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f15 });
+var __runtime_1 = {getConfig: __getConfig};
+Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
+__f5.isInstance = __f6;
+Object.setPrototypeOf(__f5, Object.getPrototypeOf(global.EvalError));
+Object.setPrototypeOf(__f4, __f5);
+Object.defineProperty(__f1_prototype, "getBoolean", { configurable: true, writable: true, value: __f3 });
+Object.defineProperty(__f1_prototype, "getNumber", { configurable: true, writable: true, value: __f7 });
+Object.defineProperty(__f1_prototype, "getObject", { configurable: true, writable: true, value: __f8 });
+Object.setPrototypeOf(__f10, __f5);
+Object.defineProperty(__f1_prototype, "require", { configurable: true, writable: true, value: __f9 });
+Object.defineProperty(__f1_prototype, "requireBoolean", { configurable: true, writable: true, value: __f11 });
+Object.defineProperty(__f1_prototype, "requireNumber", { configurable: true, writable: true, value: __f12 });
+Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, writable: true, value: __f13 });
+Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f14 });
 __f1.prototype = __f1_prototype;
 var __config = {Config: __f1};
 (...)
+function __cleanKey() {
+  return (function() {
+    with({ cleanKey: __cleanKey }) {
+
+return function /*cleanKey*/(key) {
+    const idx = key.indexOf(":");
+    if (idx > 0 && key.startsWith("config:", idx + 1)) {
+        return key.substring(0, idx) + ":" + key.substring(idx + 1 + "config:".length);
+    }
+    return key;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __ensureConfig() {
+  return (function() {
+    with({ loaded: true, config: __0_config, cleanKey: __cleanKey, ensureConfig: __ensureConfig }) {
+
+return function /*ensureConfig*/() {
+    if (!loaded) {
+        const envConfig = process.env.PULUMI_CONFIG;
+        if (envConfig) {
+            const envObject = JSON.parse(envConfig);
+            for (const k of Object.keys(envObject)) {
+                config[cleanKey(k)] = envObject[k];
+            }
+        }
+        loaded = true;
+    }
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
 function __getConfig() {
   return (function() {
     with({ ensureConfig: __ensureConfig, config: __0_config, getConfig: __getConfig }) {
@@ -4907,12 +4956,12 @@ return function /*getConfig*/(k) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
-function __f3() {
+function __f2() {
   return (function() {
-    with({ runtime: __runtime }) {
+    with({ runtime_1: __runtime_1 }) {
 
 return function /*get*/(key) {
-        return runtime.getConfig(this.fullKey(key));
+        return runtime_1.getConfig(this.fullKey(key));
     };
 
     }
