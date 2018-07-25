@@ -144,7 +144,7 @@ export function getFunctionFile(func: Function): string {
 
 /**
  * Given a function, returns the line and column number in the file where this function was defined.
- * Returns { 0, 0 } if the location cannot be found if the given function has no Script.
+ * Returns { 0, 0 } if the location cannot be found or if the given function has no Script.
  */
 export function getFunctionLocation(func: Function): { line: number, column: number } {
     const script = getScript(func);
