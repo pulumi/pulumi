@@ -197,6 +197,11 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
     }
 
+    if (funcString.startsWith("get ") || funcString.startsWith("set ")) {
+        const trimmed = funcString.substr("get ".length);
+        return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ false);
+    }
+
     if (funcString.startsWith("function")) {
         const trimmed = funcString.substr("function".length);
         return makeFunctionDeclaration(trimmed, /*isFunctionDeclaration: */ true);
@@ -262,22 +267,17 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             }];
         }
 
-        let nameChunk = v.substr(0, openParenIndex);
-        const funcDeclName = closure.isLegalMemberName(nameChunk)
+        const nameChunk = v.substr(0, openParenIndex);
+        const funcName = closure.isLegalMemberName(nameChunk)
             ? closure.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
             : "";
-
-        if (nameChunk.startsWith("get ") || nameChunk.startsWith("set ")) {
-            nameChunk = nameChunk.substr("get ".length);
-        }
-
         const commentedName = closure.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
         v = v.substr(openParenIndex).trimLeft();
 
         return ["", {
             funcExprWithoutName: prefix + commentedName + v,
-            funcExprWithName: prefix + funcDeclName + v,
-            functionDeclarationName: isFunctionDeclaration ? funcDeclName : undefined,
+            funcExprWithName: prefix + funcName + v,
+            functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
             isArrowFunction: false,
         }];
     }
