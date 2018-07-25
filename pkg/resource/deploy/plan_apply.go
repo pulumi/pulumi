@@ -18,6 +18,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/transport"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -163,11 +164,30 @@ func (iter *PlanIterator) Close() error {
 func (iter *PlanIterator) Run(preview bool) error {
 	executor := newStepExecutor(iter.p, iter.opts, preview)
 	logging.V(1).Infof("beginning plan execution")
+	done := make(chan bool)
 	go func() {
 		for {
+			if executor.Aborted() {
+				logging.V(1).Infof("plan iterator noticed executor aborted due to error, exiting")
+				close(done)
+				return
+			}
+
 			logging.V(1).Infof("plan iterator preparing to wait for event")
 			event, err := iter.src.Next()
+			if executor.Aborted() {
+				logging.V(1).Infof("plan iterator noticed executor aborted due to error, exiting")
+				close(done)
+				return
+			}
+
 			if err != nil {
+				if err == transport.ErrConnClosing {
+					logging.V(1).Infof("plan iterator received ErrConnClosing, assuming shutdown and exiting")
+					close(done)
+					return
+				}
+
 				panic(err) // TODO
 			}
 
@@ -177,6 +197,7 @@ func (iter *PlanIterator) Run(preview bool) error {
 				executor.ExecuteSync(deletes)
 				executor.SignalCompletion()
 				logging.V(1).Infof("plan iterator exiting inner goroutine")
+				close(done)
 				return
 			}
 
@@ -197,8 +218,13 @@ func (iter *PlanIterator) Run(preview bool) error {
 		}
 	}()
 
+	logging.V(1).Infof("plan iterator waiting for completion")
 	err := executor.Wait()
+	logging.V(1).Infof("plan iterator waiting for sub goroutine to complete")
+	<-done
+	logging.V(1).Infof("plan iterator closing executor")
 	executor.Close()
+	logging.V(1).Infof("plan iterator run done")
 	return err
 }
 

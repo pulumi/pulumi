@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
@@ -28,7 +27,7 @@ const (
 )
 
 var (
-	ErrStepExecutionFailed = errors.New("oh no it failed")
+	ErrStepExecutionFailed = errors.New("deployment failed")
 )
 
 // A Chain is a sequence of Steps which are required to execute in order and
@@ -36,7 +35,7 @@ var (
 type Chain = []Step
 
 type stepExecutor struct {
-	pendingNews    map[resource.URN]Step
+	pendingNews    sync.Map
 	abort          chan struct{}
 	done           chan struct{}
 	plan           *Plan
@@ -44,6 +43,15 @@ type stepExecutor struct {
 	incomingChains chan Chain
 	preview        bool
 	workers        sync.WaitGroup
+}
+
+func (se *stepExecutor) Aborted() bool {
+	select {
+	case <-se.abort:
+		return true
+	default:
+		return false
+	}
 }
 
 func (se *stepExecutor) Execute(chain Chain) {
@@ -57,10 +65,11 @@ func (se *stepExecutor) ExecuteSync(chain Chain) {
 func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
-	reg, has := se.pendingNews[urn]
+	value, has := se.pendingNews.Load(urn)
+	reg := value.(Step)
 	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
-	delete(se.pendingNews, urn)
+	se.pendingNews.Delete(urn)
 
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
 	// might already be there, since otherwise "deleting" outputs would have no affect.
@@ -84,16 +93,21 @@ func (se *stepExecutor) SignalCompletion() {
 }
 
 func (se *stepExecutor) Wait() error {
+	logging.V(stepExecutorLogLevel).Infoln("StepExecutor: waiting for completion")
 	select {
 	case <-se.abort:
+		logging.V(stepExecutorLogLevel).Infoln("StepExecutor: waiting complete: aborted")
 		return ErrStepExecutionFailed
 	case <-se.done:
+		logging.V(stepExecutorLogLevel).Infoln("StepExecutor: waiting complete: successful")
 		return nil
 	}
 }
 
 func (se *stepExecutor) Close() {
+	logging.V(stepExecutorLogLevel).Infof("StepExecutor: waiting for termination of workers")
 	se.workers.Wait()
+	logging.V(stepExecutorLogLevel).Infof("StepExecutor: workers have all terminated")
 }
 
 func (se *stepExecutor) worker(id int) {
@@ -130,17 +144,19 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 
 func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 	var preCtx interface{}
+	urn := step.URN()
 	events := se.opts.Events
 	if events != nil {
 		var eventerr error
-		logging.V(7).Infof("StepExecutor worker(%d)")
 		preCtx, eventerr = events.OnResourceStepPre(step)
 		if eventerr != nil {
-			panic(eventerr) // TODO
+			logging.V(stepExecutorLogLevel).Infof(
+				"StepExecutor worker(%d): Step %v on %v failed pre-resource step", workerID, step.Op(), urn)
+			close(se.abort)
+			return false
 		}
 	}
 
-	urn := step.URN()
 	logging.V(stepExecutorLogLevel).Infof(
 		"StepExecutor worker(%d): Applying step %v on %v (preview %v)", workerID, step.Op(), urn, se.preview)
 	status, err := step.Apply(se.preview)
@@ -149,17 +165,20 @@ func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
-			if _, has := se.pendingNews[urn]; has {
+			if _, has := se.pendingNews.Load(urn); has {
 				panic(has) // TODO
 			}
 
-			se.pendingNews[urn] = step
+			se.pendingNews.Store(urn, step)
 		}
 	}
 
 	if events != nil {
 		if eventerr := events.OnResourceStepPost(preCtx, step, status, err); eventerr != nil {
-			panic(eventerr) // TODO
+			logging.V(stepExecutorLogLevel).Infof(
+				"StepExecutor worker(%d): Step %v on %v failed post-resource step", workerID, step.Op(), urn)
+			close(se.abort)
+			return false
 		}
 	}
 
@@ -177,7 +196,6 @@ func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 func newStepExecutor(p *Plan, opts Options, preview bool) *stepExecutor {
 	logging.V(1).Infoln("initializing plan executor")
 	executor := &stepExecutor{
-		pendingNews:    make(map[resource.URN]Step),
 		abort:          make(chan struct{}),
 		done:           make(chan struct{}),
 		plan:           p,
