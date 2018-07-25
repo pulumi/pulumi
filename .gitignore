@@ -1,5 +1,6 @@
 *.swp
 /vendor/
+**/node_modules/
 **/.vscode/
 coverage.cov
 *.coverprofile
