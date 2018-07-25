@@ -40,6 +40,8 @@ interface V8Script {
     locationFromPosition(pos: V8SourcePosition): V8SourceLocation;
 }
 
+const isNodeV10 = semver.gte(process.version, "10.0.0");
+
 // The second intrinsic is `FunctionGetScriptSourcePosition`, which does about what you'd
 // expect. It returns a `V8SourcePosition`, which can be passed to `V8Script::locationFromPosition`
 // to produce a `V8SourceLocation`.
@@ -47,7 +49,9 @@ const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
 
 const scriptPositionInfo: (script: V8Script, pos: V8SourcePosition) => { line: number, column: number } =
-    new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any;
+    isNodeV10
+        ? new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any
+        : <any>undefined;
 
 // V8SourcePosition is an opaque value that should be passed verbatim to `V8Script.locationFromPosition`
 // in order to receive a V8SourceLocation.
@@ -152,7 +156,7 @@ export function getFunctionLocation(func: Function): { line: number, column: num
         const pos = getSourcePosition(func);
 
         try {
-            if (semver.gte(process.version, "10.0.0")) {
+            if (isNodeV10) {
                 return scriptPositionInfo(script, pos);
             } else {
                 return script.locationFromPosition(pos);
