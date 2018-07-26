@@ -788,7 +788,16 @@ function getOrCreateEntry(
 
         const moduleName = findModuleName(obj);
         if (moduleName && moduleName[0] !== ".") {
+            // @pulumi modules can't ever be referenced on the 'inside'.  Not only are they not
+            // written to support being used on the inside, but serialization also explicitly
+            // removes these modules from node_modules to trim down the total upload size.
+            //
+            // If the user's code actually explicitly references this, then emit a hard error
+            // to let them know what's going on.
             if (moduleName.startsWith("@pulumi")) {
+                // Find the 'func' to report this issue against. Note: we will always find some
+                // 'func' in the context chain as the only reason we ever even get into closure
+                // creation is because we're serializing out some function.
                 let func: Function = <any>undefined;
                 for (let i = context.frames.length - 1; i >= 0; i--) {
                     const frame = context.frames[i];
@@ -798,7 +807,7 @@ function getOrCreateEntry(
                 }
 
                 throwSerializationError(func, context,
-                    "'@pulumi' modules cannot be used inside a cloud-callback.");
+                    "'@pulumi' modules cannot be referenced inside a function that will execute in the Cloud.");
             }
 
             // This name bound to a module, and the module did not opt into having itself captured
