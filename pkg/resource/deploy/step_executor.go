@@ -27,13 +27,15 @@ const (
 )
 
 var (
-	ErrStepExecutionFailed = errors.New("deployment failed")
+	ErrStepExecutionFailed = errors.New("update failed")
 )
 
 // A Chain is a sequence of Steps which are required to execute in order and
 // not in parallel.
 type Chain = []Step
 
+// A stepExecutor is responsible for orchestrating the execution of sequences of steps, or "chains",
+// across potentially many worker goroutines.
 type stepExecutor struct {
 	pendingNews    sync.Map
 	abort          chan struct{}
@@ -106,18 +108,14 @@ func (se *stepExecutor) Wait() error {
 		logging.V(stepExecutorLogLevel).Infoln("StepExecutor: waiting complete: successful")
 	}
 
-	se.Close()
+	logging.V(stepExecutorLogLevel).Infof("StepExecutor: waiting for termination of workers")
+	se.workers.Wait()
+	logging.V(stepExecutorLogLevel).Infof("StepExecutor: workers have all terminated")
 	if se.Aborted() {
 		return ErrStepExecutionFailed
 	}
 
 	return nil
-}
-
-func (se *stepExecutor) Close() {
-	logging.V(stepExecutorLogLevel).Infof("StepExecutor: waiting for termination of workers")
-	se.workers.Wait()
-	logging.V(stepExecutorLogLevel).Infof("StepExecutor: workers have all terminated")
 }
 
 func (se *stepExecutor) worker(id int) {
