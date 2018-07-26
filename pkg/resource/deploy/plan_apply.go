@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -161,6 +162,47 @@ func (iter *PlanIterator) Close() error {
 	return iter.src.Close()
 }
 
+func (iter *PlanIterator) pollForNextEvent(executor *stepExecutor) (SourceEvent, error) {
+	var nextEvent struct {
+		event SourceEvent
+		err   error
+	}
+
+	pollDone := make(chan bool)
+	abort := make(chan bool)
+	go func() {
+		event, err := iter.src.Next()
+		nextEvent.event = event
+		nextEvent.err = err
+		close(pollDone)
+	}()
+
+	go func() {
+		c := time.Tick(1 * time.Second)
+		for {
+			select {
+			case <-pollDone:
+				return
+			case <-c:
+				if executor.Aborted() {
+					logging.V(1).Infof("plan iterator noticed executor aborted while polling")
+					nextEvent.event = nil
+					nextEvent.err = errors.New("poll aborted")
+					close(abort)
+					return
+				}
+
+			}
+		}
+	}()
+
+	select {
+	case <-pollDone:
+	case <-abort:
+	}
+	return nextEvent.event, nextEvent.err
+}
+
 func (iter *PlanIterator) Run(cancel *cancel.Context, preview bool) error {
 	executor := newStepExecutor(iter.p, iter.opts, preview)
 	logging.V(1).Infof("beginning plan execution")
@@ -174,7 +216,7 @@ func (iter *PlanIterator) Run(cancel *cancel.Context, preview bool) error {
 			}
 
 			logging.V(1).Infof("plan iterator preparing to wait for event")
-			event, err := iter.src.Next()
+			event, err := iter.pollForNextEvent(executor)
 			if executor.Aborted() {
 				logging.V(1).Infof("plan iterator noticed executor aborted due to error, exiting")
 				close(done)
@@ -232,7 +274,7 @@ func (iter *PlanIterator) Run(cancel *cancel.Context, preview bool) error {
 	logging.V(1).Infof("plan iterator waiting for completion")
 	err := executor.Wait()
 	logging.V(1).Infof("plan iterator waiting for sub goroutine to complete")
-	//<-done
+	<-done
 	logging.V(1).Infof("plan iterator run done")
 	return err
 }
