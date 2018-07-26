@@ -54,9 +54,10 @@ func newNewCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "new [template]",
-		Short: "Create a new Pulumi project",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:        "new [template]",
+		SuggestFor: []string{"init", "create"},
+		Short:      "Create a new Pulumi project",
+		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			var err error
 
@@ -246,13 +247,15 @@ func newNewCmd() *cobra.Command {
 				fmt.Println("Finished installing dependencies.")
 
 				// Write a summary with next steps.
-				fmt.Println("New project is configured and ready to deploy.")
+				fmt.Println(
+					displayOpts.Color.Colorize(
+						colors.BrightGreen+colors.Bold+"Your new project is configured and ready to go!"+colors.Reset) +
+						" " + cmdutil.EmojiOr("✨", ""))
 
-				// If the current working directory changed, add instructions to
-				// cd into the directory.
+				// If the current working directory changed, add instructions to cd into the directory.
+				var deployMsg string
 				if originalCwd != cwd {
-					// If we can determine a relative path, use that, otherwise use
-					// the full path.
+					// If we can determine a relative path, use that, otherwise use the full path.
 					var cd string
 					if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
 						cd = rel
@@ -265,10 +268,17 @@ func newNewCmd() *cobra.Command {
 						cd = fmt.Sprintf("\"%s\"", cd)
 					}
 
-					fmt.Printf("Run 'cd %s' then 'pulumi update'.\n", cd)
+					cd = fmt.Sprintf("cd %s", cd)
+
+					deployMsg = "To deploy it, '" + cd + "' and then run 'pulumi up'."
+					deployMsg = colors.Highlight(deployMsg, cd, colors.BrightBlue+colors.Underline+colors.Bold)
 				} else {
-					fmt.Println("Run 'pulumi update'.")
+					deployMsg = "To deploy it, run 'pulumi up'."
 				}
+
+				// Colorize and print the next step deploy action.
+				deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Underline+colors.Bold)
+				fmt.Println(displayOpts.Color.Colorize(deployMsg))
 			}
 
 			return nil
