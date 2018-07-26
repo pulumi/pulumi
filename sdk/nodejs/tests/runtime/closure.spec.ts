@@ -4999,7 +4999,7 @@ return function () { const v = new config.Config("test").get("TestingKey2"); con
             return;
         }
 
-        // if (test.title !== "Invocation of async function that does not capture this.") {
+        // if (test.title !== "Two level static inheritance") {
         //     continue;
         // }
 
