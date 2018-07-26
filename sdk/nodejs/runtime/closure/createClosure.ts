@@ -789,7 +789,16 @@ function getOrCreateEntry(
         const moduleName = findModuleName(obj);
         if (moduleName && moduleName[0] !== ".") {
             if (moduleName.startsWith("@pulumi")) {
-                throw new RunError("'@pulumi' modules cannot be used inside a cloud-callback.");
+                let func: Function = <any>undefined;
+                for (let i = context.frames.length - 1; i >= 0; i--) {
+                    const frame = context.frames[i];
+                    if (frame.functionLocation) {
+                        func = frame.functionLocation.func;
+                    }
+                }
+
+                throwSerializationError(func, context,
+                    "'@pulumi' modules cannot be used inside a cloud-callback.");
             }
 
             // This name bound to a module, and the module did not opt into having itself captured
