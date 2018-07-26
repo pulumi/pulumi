@@ -102,11 +102,16 @@ func (se *stepExecutor) Wait() error {
 	select {
 	case <-se.abort:
 		logging.V(stepExecutorLogLevel).Infoln("StepExecutor: waiting complete: aborted")
-		return ErrStepExecutionFailed
 	case <-se.done:
 		logging.V(stepExecutorLogLevel).Infoln("StepExecutor: waiting complete: successful")
-		return nil
 	}
+
+	se.Close()
+	if se.Aborted() {
+		return ErrStepExecutionFailed
+	}
+
+	return nil
 }
 
 func (se *stepExecutor) Close() {

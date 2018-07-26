@@ -233,8 +233,8 @@ func (iter *PlanIterator) Run(cancel *cancel.Context, preview bool) error {
 	err := executor.Wait()
 	logging.V(1).Infof("plan iterator waiting for sub goroutine to complete")
 	<-done
-	logging.V(1).Infof("plan iterator closing executor")
-	executor.Close()
+	//logging.V(1).Infof("plan iterator closing executor")
+	//executor.Close()
 	logging.V(1).Infof("plan iterator run done")
 	return err
 }
