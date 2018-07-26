@@ -167,6 +167,24 @@
   version = "v1.6.1"
 
 [[projects]]
+  name = "github.com/graphql-go/graphql"
+  packages = [
+    ".",
+    "gqlerrors",
+    "language/ast",
+    "language/kinds",
+    "language/lexer",
+    "language/location",
+    "language/parser",
+    "language/printer",
+    "language/source",
+    "language/typeInfo",
+    "language/visitor"
+  ]
+  revision = "1e23489041ba90a66f317fe0deccb236a2fff3cb"
+  version = "v0.7.5"
+
+[[projects]]
   branch = "master"
   name = "github.com/grpc-ecosystem/grpc-opentracing"
   packages = ["go/otgrpc"]
@@ -555,6 +573,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "09466a544e10908eeb96ddc4a6cf596a72aec1c36bab6a1f02cf5ac0dfa0986c"
+  inputs-digest = "1b0c915feaba44621a9f5670c7e0841b595c63c11e0f64f62c120bc13910a291"
   solver-name = "gps-cdcl"
   solver-version = 1
