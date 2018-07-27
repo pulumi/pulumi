@@ -13,14 +13,14 @@
 // limitations under the License.
 
 // Package migrate is responsible for converting to and from the various API
-// type versions that are in use in Pulumi. This package can migrate "up" and
-// "down" versions for every versioned API that needs to be migrated between
-// versions. Today, there are three versionable entities that can be migrated
+// type versions that are in use in Pulumi. This package can migrate "up" for
+// every versioned API that needs to be migrated between versions. Today, there
+// are three versionable entities that can be migrated
 // with this package:
 //   * Checkpoint, the on-disk format for Fire-and-Forget stack state,
 //   * Deployment, the wire format for service-managed stacks,
 //   * Resource, the wire format for resources saved in deployments,
 //
 // The migrations in this package are designed to preserve semantics between
-// versions. It is always safe to migrate an entity from one version to another.
+// versions. It is always safe to migrate an entity up from one version to another.
 package migrate

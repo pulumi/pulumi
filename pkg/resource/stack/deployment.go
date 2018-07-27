@@ -20,11 +20,9 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
 const (
@@ -46,7 +44,7 @@ var (
 )
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
+func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV1 {
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
@@ -69,12 +67,12 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resources []apitype.ResourceV2
+	var resources []apitype.ResourceV1
 	for _, res := range snap.Resources {
 		resources = append(resources, SerializeResource(res))
 	}
 
-	return &apitype.DeploymentV2{
+	return &apitype.DeploymentV1{
 		Manifest:  manifest,
 		Resources: resources,
 	}
@@ -92,30 +90,19 @@ func DeserializeDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snaps
 		return nil, ErrDeploymentSchemaVersionTooOld
 	}
 
-	var checkpoint apitype.CheckpointV2
+	var checkpoint apitype.CheckpointV1
 	switch deployment.Version {
 	case 1:
-		v1checkpoint := apitype.CheckpointV1{}
-		if err := json.Unmarshal([]byte(deployment.Deployment), &v1checkpoint.Latest); err != nil {
+		if err := json.Unmarshal([]byte(deployment.Deployment), &checkpoint.Latest); err != nil {
 			return nil, err
 		}
-
-		logging.V(7).Infof("DeserializeDeployment: migrating V1 checkpoint to V2")
-		checkpoint = migrate.UpToCheckpointV2(v1checkpoint)
-	case 2:
-		v2checkpoint := apitype.CheckpointV2{}
-		if err := json.Unmarshal([]byte(deployment.Deployment), &v2checkpoint.Latest); err != nil {
-			return nil, err
-		}
-
-		checkpoint = v2checkpoint
 	}
 
 	return DeserializeCheckpoint(&checkpoint)
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State) apitype.ResourceV2 {
+func SerializeResource(res *resource.State) apitype.ResourceV1 {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
@@ -129,7 +116,7 @@ func SerializeResource(res *resource.State) apitype.ResourceV2 {
 		outputs = SerializeProperties(outp)
 	}
 
-	return apitype.ResourceV2{
+	return apitype.ResourceV1{
 		URN:          res.URN,
 		Custom:       res.Custom,
 		Delete:       res.Delete,
@@ -190,7 +177,7 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV1) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs)
 	if err != nil {
