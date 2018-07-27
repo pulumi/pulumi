@@ -159,11 +159,10 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 			}
 			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs)
 			if err != nil {
-				if rst == resource.StatusUnknown {
+				if rst != resource.StatusPartialFailure {
 					return rst, err
 				}
 
-				contract.Assert(rst == resource.StatusPartialFailure)
 				resourceError = err
 				resourceStatus = rst
 
@@ -319,11 +318,10 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
 			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), s.new.Inputs)
 			if upderr != nil {
-				if rst == resource.StatusUnknown {
+				if rst != resource.StatusPartialFailure {
 					return rst, upderr
 				}
 
-				contract.Assert(rst == resource.StatusPartialFailure)
 				resourceError = upderr
 				resourceStatus = rst
 
