@@ -66,7 +66,6 @@ type PlanSummary interface {
 	Replaces() map[resource.URN]bool
 	Deletes() map[resource.URN]bool
 	Sames() map[resource.URN]bool
-	Resources() []*resource.State
 }
 
 // PlanIterator can be used to step through and/or execute a plan's proposed actions.
@@ -96,7 +95,6 @@ func (iter *PlanIterator) Updates() map[resource.URN]bool  { return iter.stepGen
 func (iter *PlanIterator) Replaces() map[resource.URN]bool { return iter.stepGen.Replaces() }
 func (iter *PlanIterator) Deletes() map[resource.URN]bool  { return iter.stepGen.Deletes() }
 func (iter *PlanIterator) Sames() map[resource.URN]bool    { return iter.stepGen.Sames() }
-func (iter *PlanIterator) Resources() []*resource.State    { return iter.resources }
 func (iter *PlanIterator) Dones() map[*resource.State]bool { return iter.dones }
 func (iter *PlanIterator) Done() bool                      { return iter.done }
 

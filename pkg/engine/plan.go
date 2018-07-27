@@ -15,15 +15,12 @@
 package engine
 
 import (
-	"bytes"
-	"fmt"
 	"os"
 
 	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -186,78 +183,24 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (deploy.PlanSummary,
-	deploy.Step, resource.Status, error) {
+func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
 	opts := deploy.Options{
 		Events:   events,
 		Parallel: res.Options.Parallel,
 	}
 
-	// Fetch a plan iterator and keep walking it until we are done.
-	iter, err := res.Plan.Start(opts)
+	src, err := res.Plan.Source().Iterate(opts)
 	if err != nil {
-		return nil, nil, resource.StatusOK, err
+		return nil, err
 	}
 
-	step, err := iter.Next()
-	if err != nil {
-		closeErr := iter.Close() // ignore close errors; the Next error trumps
-		contract.IgnoreError(closeErr)
-		return nil, nil, resource.StatusOK, err
-	}
-
-	// Iterate the plan in a goroutine while listening for termination.
-	var rst resource.Status
 	done := make(chan bool)
+	var summary deploy.PlanSummary
 	go func() {
-		defer func() {
-			// Close the iterator. If we have already observed another error, that error trumps the close error.
-			closeErr := iter.Close()
-			if err == nil {
-				err = closeErr
-			}
-			close(done)
-		}()
-
-		for step != nil {
-			// Check for cancellation and termination.
-			if cancelErr := ctx.Cancel.CancelErr(); cancelErr != nil {
-				rst, err = resource.StatusOK, cancelErr
-				return
-			}
-
-			// Warn the user if they're not updating a resource whose initialization failed.
-			if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
-				indent := "         "
-
-				// TODO: Move indentation to the display logic, instead of doing it ourselves.
-				var warning bytes.Buffer
-				warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
-				warning.WriteString(indent + "to update it to fix these issues:\n")
-				for i, err := range step.Old().InitErrors {
-					warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
-						colors.Reset + " " + err + "\n")
-				}
-				res.Options.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
-			}
-
-			// Perform any per-step actions.
-			rst, err = iter.Apply(step, preview)
-
-			// If an error occurred, exit early.
-			if err != nil {
-				return
-			}
-			contract.Assert(rst == resource.StatusOK)
-
-			step, err = iter.Next()
-			if err != nil {
-				return
-			}
-		}
-
-		// Finally, return a summary and the resulting plan information.
-		rst, err = resource.StatusOK, nil
+		planExec := deploy.NewPlanExecutor(ctx.Cancel, res.Plan, opts, preview, src)
+		err = planExec.Execute()
+		summary = planExec.Summary()
+		close(done)
 	}()
 
 	// Asynchronously listen for cancellation, and deliver that signal to plan.
@@ -276,10 +219,10 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 
 	select {
 	case <-ctx.Cancel.Terminated():
-		return iter, step, rst, ctx.Cancel.TerminateErr()
+		return summary, ctx.Cancel.TerminateErr()
 
 	case <-done:
-		return iter, step, rst, err
+		return summary, err
 	}
 }
 
@@ -293,14 +236,8 @@ func printPlan(ctx *Context, result *planResult, dryRun bool) (ResourceChanges, 
 
 	// Walk the plan's steps and and pretty-print them out.
 	actions := newPlanActions(result.Options)
-	_, step, _, err := result.Walk(ctx, actions, true)
+	_, err := result.Walk(ctx, actions, true)
 	if err != nil {
-		var failedUrn resource.URN
-		if step != nil {
-			failedUrn = step.URN()
-		}
-
-		result.Options.Diag.Errorf(diag.Message(failedUrn, err.Error()))
 		return nil, errors.New("an error occurred while advancing the preview")
 	}
 

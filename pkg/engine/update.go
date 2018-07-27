@@ -15,9 +15,12 @@
 package engine
 
 import (
+	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -131,22 +134,13 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 			// Walk the plan, reporting progress and executing the actual operations as we go.
 			start := time.Now()
 			actions := newUpdateActions(ctx, info.Update, opts)
-			summary, step, _, err := result.Walk(ctx, actions, false)
+			summary, err := result.Walk(ctx, actions, false)
 			if err != nil && summary == nil {
 				// Something went wrong, and no changes were made.
 				return resourceChanges, err
 			}
 
 			contract.Assert(summary != nil)
-			if err != nil {
-				var failedUrn resource.URN
-				if step != nil {
-					failedUrn = step.URN()
-				}
-
-				opts.Diag.Errorf(diag.Message(failedUrn, err.Error()))
-			}
-
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			resourceChanges = ResourceChanges(actions.Ops)
 			opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start), resourceChanges)
@@ -196,6 +190,21 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 	acts.Seen[step.URN()] = step
 
 	acts.Opts.Events.resourcePreEvent(step, false /*planning*/, acts.Opts.Debug)
+
+	// Warn the user if they're not updating a resource whose initialization failed.
+	if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
+		indent := "         "
+
+		// TODO: Move indentation to the display logic, instead of doing it ourselves.
+		var warning bytes.Buffer
+		warning.WriteString("This resource failed to initialize in a previous deployment. It is recommended\n")
+		warning.WriteString(indent + "to update it to fix these issues:\n")
+		for i, err := range step.Old().InitErrors {
+			warning.WriteString(colors.SpecImportant + indent + fmt.Sprintf("  - Problem #%d", i+1) +
+				colors.Reset + " " + err + "\n")
+		}
+		acts.Opts.Diag.Warningf(diag.RawMessage(step.URN(), warning.String()))
+	}
 
 	// Inform the snapshot service that we are about to perform a step.
 	return acts.Context.SnapshotManager.BeginMutation(step)

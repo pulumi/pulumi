@@ -530,6 +530,10 @@ func (sg *stepGenerator) provider(t tokens.Type) (plugin.Provider, error) {
 	return prov, nil
 }
 
+func (sg *stepGenerator) Steps() int {
+	return len(sg.Creates()) + len(sg.Updates()) + len(sg.Replaces()) + len(sg.Deletes())
+}
+
 func (sg *stepGenerator) Creates() map[resource.URN]bool  { return sg.creates }
 func (sg *stepGenerator) Sames() map[resource.URN]bool    { return sg.sames }
 func (sg *stepGenerator) Updates() map[resource.URN]bool  { return sg.updates }
