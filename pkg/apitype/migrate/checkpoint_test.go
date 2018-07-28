@@ -42,23 +42,3 @@ func TestCheckpointV1ToV2(t *testing.T) {
 	}, v2.Config)
 	assert.Len(t, v2.Latest.Resources, 0)
 }
-
-func TestCheckpointV2ToV1(t *testing.T) {
-	v2 := apitype.CheckpointV2{
-		Stack: tokens.QName("mystack"),
-		Config: config.Map{
-			config.MustMakeKey("foo", "number"): config.NewValue("42"),
-		},
-		Latest: &apitype.DeploymentV2{
-			Manifest:  apitype.ManifestV1{},
-			Resources: []apitype.ResourceV2{},
-		},
-	}
-
-	v1 := DownToCheckpointV1(v2)
-	assert.Equal(t, tokens.QName("mystack"), v1.Stack)
-	assert.Equal(t, config.Map{
-		config.MustMakeKey("foo", "number"): config.NewValue("42"),
-	}, v1.Config)
-	assert.Len(t, v1.Latest.Resources, 0)
-}

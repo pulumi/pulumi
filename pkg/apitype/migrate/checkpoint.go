@@ -32,17 +32,3 @@ func UpToCheckpointV2(v1 apitype.CheckpointV1) apitype.CheckpointV2 {
 	v2.Latest = &v2deploy
 	return v2
 }
-
-// DownToCheckpointV1 migrates a CheckpointV2 to a CheckpointV1
-func DownToCheckpointV1(v2 apitype.CheckpointV2) apitype.CheckpointV1 {
-	var v1 apitype.CheckpointV1
-	v1.Stack = v2.Stack
-	v1.Config = make(config.Map)
-	for key, value := range v2.Config {
-		v1.Config[key] = value
-	}
-
-	v1deploy := DownToDeploymentV1(*v2.Latest)
-	v1.Latest = &v1deploy
-	return v1
-}

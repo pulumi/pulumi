@@ -16,7 +16,6 @@ package migrate
 
 import (
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
 // UpToResourceV2 migrates a resource from ResourceV1 to ResourceV2.
@@ -42,33 +41,12 @@ func UpToResourceV2(v1 apitype.ResourceV1) apitype.ResourceV2 {
 	// lifecycle is not owned by Pulumi. Since all V1 resources have their lifecycles
 	// owned by Pulumi, this is `false` for all V1 resources.
 	v2.External = false
-	v2.Dependencies = append(v1.Dependencies, v2.Dependencies...)
-	v2.InitErrors = append(v1.InitErrors, v2.InitErrors...)
+	// v2.Provider is a reference to a first-class provider associated with this resource.
+	v2.Provider = ""
+	// v2.Status is the "dirtiness" of this resource - if the engine knows that the last
+	// operation against it succeeded or not.
+	v2.Status = ""
+	v2.Dependencies = append(v2.Dependencies, v1.Dependencies...)
+	v2.InitErrors = append(v2.InitErrors, v1.InitErrors...)
 	return v2
-}
-
-// DownToResourceV1 migrates a resource from ResourceV2 to ResourceV1.
-func DownToResourceV1(v2 apitype.ResourceV2) apitype.ResourceV1 {
-	contract.Assertf(!v2.External, "Can't convert a V2 External resource to V1")
-	var v1 apitype.ResourceV1
-	v1.URN = v2.URN
-	v1.Custom = v2.Custom
-	v1.Delete = v2.Delete
-	v1.ID = v2.ID
-	v1.Type = v2.Type
-	v1.Inputs = make(map[string]interface{})
-	for key, value := range v2.Inputs {
-		v1.Inputs[key] = value
-	}
-	// Defaults was deprecated in v2.
-	v1.Defaults = make(map[string]interface{})
-	v1.Outputs = make(map[string]interface{})
-	for key, value := range v2.Outputs {
-		v1.Outputs[key] = value
-	}
-	v1.Parent = v2.Parent
-	v1.Protect = v2.Protect
-	v1.Dependencies = append(v1.Dependencies, v2.Dependencies...)
-	v1.InitErrors = append(v1.InitErrors, v2.InitErrors...)
-	return v1
 }

@@ -41,24 +41,3 @@ func TestDeploymentV1ToV2(t *testing.T) {
 	assert.Equal(t, resource.URN("a"), v1.Resources[0].URN)
 	assert.Equal(t, resource.URN("b"), v1.Resources[1].URN)
 }
-
-func TestDeploymentV2ToV1(t *testing.T) {
-	v2 := apitype.DeploymentV2{
-		Manifest: apitype.ManifestV1{},
-		Resources: []apitype.ResourceV2{
-			{
-				URN: resource.URN("a"),
-			},
-			{
-				URN: resource.URN("b"),
-				// this resource gets excluded from the V1 snapshot because it's external
-				External: true,
-			},
-		},
-	}
-
-	v1 := DownToDeploymentV1(v2)
-	assert.Equal(t, v2.Manifest, v1.Manifest)
-	assert.Len(t, v1.Resources, 1)
-	assert.Equal(t, resource.URN("a"), v1.Resources[0].URN)
-}

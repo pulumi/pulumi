@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
@@ -35,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -499,13 +497,10 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV2,
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV1,
 	token string) error {
 
-	// TODO(pulumi/pulumi#1521): until the service can understand V2 checkpoints, downgrade to V1 before sending it.
-	logging.V(7).Infof("PatchUpdateCheckpoint: downgrading V2 checkpoint to V1 to speak to service")
-	v1deployment := migrate.DownToDeploymentV1(*deployment)
-	rawDeployment, err := json.Marshal(v1deployment)
+	rawDeployment, err := json.Marshal(deployment)
 	if err != nil {
 		return err
 	}

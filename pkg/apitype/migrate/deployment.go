@@ -27,19 +27,3 @@ func UpToDeploymentV2(v1 apitype.DeploymentV1) apitype.DeploymentV2 {
 
 	return v2
 }
-
-// DownToDeploymentV1 migrates a deployment from DeploymentV2 to DeploymentV1.
-func DownToDeploymentV1(v2 apitype.DeploymentV2) apitype.DeploymentV1 {
-	var v1 apitype.DeploymentV1
-	v1.Manifest = v2.Manifest
-	for _, res := range v2.Resources {
-		if res.External {
-			// External resources were not stored in the deployment prior to V2.
-			continue
-		}
-
-		v1.Resources = append(v1.Resources, DownToResourceV1(res))
-	}
-
-	return v1
-}
