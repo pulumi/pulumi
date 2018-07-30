@@ -19,10 +19,13 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/apitype"
+	"github.com/pulumi/pulumi/pkg/apitype/migrate"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 const (
@@ -44,7 +47,7 @@ var (
 )
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
-func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV1 {
+func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
@@ -67,21 +70,21 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV1 {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resources []apitype.ResourceV1
+	var resources []apitype.ResourceV2
 	for _, res := range snap.Resources {
 		resources = append(resources, SerializeResource(res))
 	}
 
-	return &apitype.DeploymentV1{
+	return &apitype.DeploymentV2{
 		Manifest:  manifest,
 		Resources: resources,
 	}
 }
 
-// DeserializeDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
+// DeserializeUntypedDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
 // from it. DeserializeDeployment will return an error if the untyped deployment's version is
 // not within the range `DeploymentSchemaVersionCurrent` and `DeploymentSchemaVersionOldestSupported`.
-func DeserializeDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snapshot, error) {
+func DeserializeUntypedDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snapshot, error) {
 	contract.Require(deployment != nil, "deployment")
 	switch {
 	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
@@ -90,19 +93,65 @@ func DeserializeDeployment(deployment *apitype.UntypedDeployment) (*deploy.Snaps
 		return nil, ErrDeploymentSchemaVersionTooOld
 	}
 
-	var checkpoint apitype.CheckpointV1
+	var v2deployment apitype.DeploymentV2
 	switch deployment.Version {
 	case 1:
-		if err := json.Unmarshal([]byte(deployment.Deployment), &checkpoint.Latest); err != nil {
+		var v1deployment apitype.DeploymentV1
+		if err := json.Unmarshal([]byte(deployment.Deployment), &v1deployment); err != nil {
 			return nil, err
 		}
+
+		v2deployment = migrate.UpToDeploymentV2(v1deployment)
+	case 2:
+		if err := json.Unmarshal([]byte(deployment.Deployment), &v2deployment); err != nil {
+			return nil, err
+		}
+	default:
+		contract.Failf("unrecognized version: %d", deployment.Version)
 	}
 
-	return DeserializeCheckpoint(&checkpoint)
+	return DeserializeDeployment(v2deployment)
+}
+
+// DeserializeDeployment deserializes a typed Deployment into a `deploy.Snapshot`.
+func DeserializeDeployment(deployment apitype.DeploymentV2) (*deploy.Snapshot, error) {
+	// Unpack the versions.
+	manifest := deploy.Manifest{
+		Time:    deployment.Manifest.Time,
+		Magic:   deployment.Manifest.Magic,
+		Version: deployment.Manifest.Version,
+	}
+	for _, plug := range deployment.Manifest.Plugins {
+		var version *semver.Version
+		if v := plug.Version; v != "" {
+			sv, err := semver.ParseTolerant(v)
+			if err != nil {
+				return nil, err
+			}
+			version = &sv
+		}
+		manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
+			Name:    plug.Name,
+			Kind:    plug.Type,
+			Version: version,
+		})
+	}
+
+	// For every serialized resource vertex, create a ResourceDeployment out of it.
+	var resources []*resource.State
+	for _, res := range deployment.Resources {
+		desres, err := DeserializeResource(res)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, desres)
+	}
+
+	return deploy.NewSnapshot(manifest, resources), nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State) apitype.ResourceV1 {
+func SerializeResource(res *resource.State) apitype.ResourceV2 {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
@@ -116,7 +165,7 @@ func SerializeResource(res *resource.State) apitype.ResourceV1 {
 		outputs = SerializeProperties(outp)
 	}
 
-	return apitype.ResourceV1{
+	return apitype.ResourceV2{
 		URN:          res.URN,
 		Custom:       res.Custom,
 		Delete:       res.Delete,
@@ -178,7 +227,7 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV1) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs)
 	if err != nil {

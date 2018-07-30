@@ -241,7 +241,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	snapshot, err := stack.DeserializeDeployment(untypedDeployment)
+	snapshot, err := stack.DeserializeUntypedDeployment(untypedDeployment)
 	if err != nil {
 		return nil, err
 	}
