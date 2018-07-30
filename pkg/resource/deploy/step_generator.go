@@ -66,12 +66,25 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	//
 	// We accomplish this through the "read-replacement" step, which atomically reads a resource
 	// and marks the resource it is replacing as pending deletion.
-	if hasOld && !old.External {
+	//
+	// In the event that the new "read" resource's ID matches the existing resource,
+	// we do not need to delete the resource - we know exactly what resource we are going
+	// to get from the read.
+	//
+	// This operation is tenatively called "relinquish" - it semantically represents the
+	// release of a resource from the management of Pulumi.
+	if hasOld && !old.External && old.ID != event.ID() {
+		logging.V(7).Infof(
+			"stepGenerator.GenerateReadSteps(...): replacing existing resource %s, ids don't match", urn)
 		sg.replaces[urn] = true
 		return []Step{
 			NewReadReplacementStep(sg.plan, event, old, newState),
 			NewReplaceStep(sg.plan, old, newState, nil, true),
 		}, nil
+	}
+
+	if logging.V(7) && old.ID == event.ID() {
+		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
 	sg.reads[urn] = true
