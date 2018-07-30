@@ -371,12 +371,7 @@ func (pc *Client) CreateUpdate(
 	var endpoint string
 	switch kind {
 	case UpdateKindUpdate:
-		if dryRun {
-			endpoint = "preview"
-			kind = UpdateKindPreview
-		} else {
-			endpoint = "update"
-		}
+		endpoint = "update"
 	case UpdateKindPreview:
 		endpoint = "preview"
 	case UpdateKindRefresh:
