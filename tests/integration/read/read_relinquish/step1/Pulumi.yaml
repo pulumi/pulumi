@@ -1,0 +1,3 @@
+name: read_relinquish
+description: A program that relinquishes a resource without deleting it
+runtime: nodejs

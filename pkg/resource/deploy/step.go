@@ -420,8 +420,12 @@ func NewReadStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *
 	contract.Assertf(new.External, "target of Read step must be marked External")
 	contract.Assertf(new.Custom, "target of Read step must be Custom")
 
-	// If Old was given, it can't be an external resource.
-	contract.Assert(old == nil || old.External)
+	// If Old was given, it's either an external resource or its ID is equal to the
+	// ID that we are preparing to read.
+	if old == nil {
+		contract.Assert(old.ID == new.ID || old.External)
+	}
+
 	return &ReadStep{
 		plan:      plan,
 		event:     event,
