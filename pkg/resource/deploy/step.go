@@ -422,7 +422,7 @@ func NewReadStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *
 
 	// If Old was given, it's either an external resource or its ID is equal to the
 	// ID that we are preparing to read.
-	if old == nil {
+	if old != nil {
 		contract.Assert(old.ID == new.ID || old.External)
 	}
 
