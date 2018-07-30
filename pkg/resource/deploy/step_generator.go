@@ -48,7 +48,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	urn := sg.generateURN(event.Parent(), event.Type(), event.Name())
 	newState := resource.NewState(event.Type(), urn, true /*custom*/, false /*delete*/, event.ID(),
 		event.Properties(), make(resource.PropertyMap) /* outputs */, event.Parent(), false, /*protect*/
-		true /*external*/, event.Dependencies())
+		true /*external*/, event.Dependencies(), nil /* initErrors */)
 	old, hasOld := sg.plan.Olds()[urn]
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
