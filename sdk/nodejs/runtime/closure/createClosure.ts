@@ -184,12 +184,12 @@ class SerializedOutput<T> implements resource.Output<T> {
 
     public apply<U>(func: (t: T) => resource.Input<U>): resource.Output<U> {
         throw new Error(
-"'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+            "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
     }
 
-     public get(): T {
-         return this.value;
-     }
+    public get(): T {
+        return this.value;
+    }
 }
 
 /**
@@ -208,7 +208,7 @@ export async function createFunctionInfoAsync(
         frames: [],
         asyncWorkQueue: [],
         simpleFunctions: [],
-     };
+    };
 
     // Add well-known javascript global variables into our cache.  This way, if there
     // is any code that references them, we can just emit that as simple expressions
@@ -252,7 +252,7 @@ export async function createFunctionInfoAsync(
 
     function addGlobalInfo(key: string) {
         const globalObj = (<any>global)[key];
-        const text = isLegalMemberName(key) ? `global.${key}` :  `global["${key}"]`;
+        const text = isLegalMemberName(key) ? `global.${key}` : `global["${key}"]`;
 
         if (!context.cache.has(globalObj)) {
             context.cache.set(globalObj, { expr: text });
@@ -260,12 +260,12 @@ export async function createFunctionInfoAsync(
 
         const proto1 = Object.getPrototypeOf(globalObj);
         if (proto1 && !context.cache.has(proto1)) {
-            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})`});
+            context.cache.set(proto1, { expr: `Object.getPrototypeOf(${text})` });
         }
 
         const proto2 = globalObj.prototype;
         if (proto2 && !context.cache.has(proto2)) {
-            context.cache.set(proto2, { expr: `${text}.prototype`});
+            context.cache.set(proto2, { expr: `${text}.prototype` });
         }
     }
 
@@ -287,7 +287,7 @@ export async function createFunctionInfoAsync(
     // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
     function addGeneratorEntries() {
         // tslint:disable-next-line:no-empty
-        const emptyGenerator = function*(): any {};
+        const emptyGenerator = function* (): any { };
 
         context.cache.set(Object.getPrototypeOf(emptyGenerator),
             { expr: "Object.getPrototypeOf(function*(){})" });
@@ -317,12 +317,12 @@ export async function createFunctionInfoAsync(
  * final FunctionInfo.
  */
 function createFunctionInfo(
-        func: Function, context: Context,
-        serialize: (o: any) => boolean, logInfo?: boolean): FunctionInfo {
+    func: Function, context: Context,
+    serialize: (o: any) => boolean, logInfo?: boolean): FunctionInfo {
 
     // logInfo = logInfo || func.name === "addHandler";
 
-    const file =  v8.getFunctionFile(func);
+    const file = v8.getFunctionFile(func);
     const { line, column } = v8.getFunctionLocation(func);
     const functionString = func.toString();
     const frame = { functionLocation: { func, file, line, column, functionString, isArrowFunction: false } };
@@ -442,7 +442,7 @@ function createFunctionInfo(
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
-                           context.classStaticMemberToSuperEntry.get(func);
+            context.classStaticMemberToSuperEntry.get(func);
         if (superEntry) {
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
@@ -474,7 +474,7 @@ function createFunctionInfo(
         return functionInfo;
 
         function processCapturedVariables(
-                capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
+            capturedVariables: CapturedVariableMap, throwOnFailure: boolean): void {
 
             for (const name of capturedVariables.keys()) {
                 let value: any;
@@ -709,10 +709,10 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 function getOrCreateEntry(
-        obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
-        context: Context,
-        serialize: (o: any) => boolean,
-        logInfo: boolean | undefined): Entry {
+    obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+    context: Context,
+    serialize: (o: any) => boolean,
+    logInfo: boolean | undefined): Entry {
 
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(obj)!;
@@ -787,38 +787,8 @@ function getOrCreateEntry(
         }
 
         const moduleName = findModuleName(obj);
-        if (moduleName && moduleName[0] !== ".") {
-            // @pulumi modules can't ever be referenced on the 'inside'.  Not only are they not
-            // written to support being used on the inside, but serialization also explicitly
-            // removes these modules from node_modules to trim down the total upload size.
-            //
-            // If the user's code actually explicitly references this, then emit a hard error
-            // to let them know what's going on.
-            if (moduleName.startsWith("@pulumi")) {
-                // Find the 'func' to report this issue against. Note: we will always find some
-                // 'func' in the context chain as the only reason we ever even get into closure
-                // creation is because we're serializing out some function.
-                let func: Function = <any>undefined;
-                for (let i = context.frames.length - 1; i >= 0; i--) {
-                    const frame = context.frames[i];
-                    if (frame.functionLocation) {
-                        func = frame.functionLocation.func;
-                    }
-                }
-
-                throwSerializationError(func, context,
-                    "'@pulumi' modules cannot be referenced inside a function that will execute in the Cloud.");
-            }
-
-            // This name bound to a module, and the module did not opt into having itself captured
-            // by value. In this case serialize it out as a direct 'require' call
-            //
-            // Also, importantly, if this is a reference to a local module (i.e. starts with '.'),
-            // then always capture it as a value.  The reason for this is that otherwise we won't
-            // actually know or walk into the rest of the user's code. This means we won't properly
-            // serialize it into the index.js handler and things will not work in the
-            // cloud-callback.
-            entry.module = moduleName;
+        if (moduleName) {
+            captureModule(moduleName);
         }
         else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
@@ -947,7 +917,7 @@ function getOrCreateEntry(
     // Serializes out only the subset of properties of this object that we have seen used
     // and have recorded in localCapturedPropertyChains
     function serializeSomeObjectProperties(
-            environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
+        environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
 
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
@@ -1037,7 +1007,7 @@ function getOrCreateEntry(
     }
 
     function propInfoUsesNonLexicalThis(
-            capturedInfos: CapturedPropertyInfo[], propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
+        capturedInfos: CapturedPropertyInfo[], propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
         if (capturedInfos.some(info => info.invoked)) {
             // If the property was invoked, then we have to check if that property ends
             // up using this/super.  if so, then we actually have to serialize out this
@@ -1086,6 +1056,50 @@ function getOrCreateEntry(
     function usesNonLexicalThis(localEntry: Entry | undefined) {
         return localEntry && localEntry.function && localEntry.function.usesNonLexicalThis;
     }
+
+    function captureModule(moduleName: string) {
+        if (moduleName[0] === ".") {
+            // This is a reference to a local module (i.e. starts with '.'). Always capture the
+            // local module as a value.  We do this because capturing as a reference (i.e.
+            // 'require(...)') has the following problems:
+            //
+            // 1. 'require(...)' will not work at run-time, because the user's code will not be
+            //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
+            //    into any sort of appropriate file/folder structure for those 'require's to work.
+            //
+            // 2. if we stop here and capture as a reference, then we won't actually see and walk
+            //    the code that exists in those local modules (direct or transitive). So we won't
+            //    actually generate the serialized code for the functions or values in that module.
+            //    This will also lead to code that simply will not work at run-time.
+            serializeObject();
+        }
+        else if (moduleName.startsWith("@pulumi")) {
+            // @pulumi modules can't ever be referenced on the 'inside'.  Not only are they not
+            // written to support being used on the inside, but serialization also explicitly
+            // removes these modules from node_modules to trim down the total upload size.
+            //
+            // If the user's code actually explicitly references this, then emit a hard error
+            // to let them know what's going on.
+
+            // Find the 'func' to report this issue against. Note: we will always find some
+            // 'func' in the context chain as the only reason we ever even get into closure
+            // creation is because we're serializing out some function.
+            let func: Function = <any>undefined;
+            for (let i = context.frames.length - 1; i >= 0; i--) {
+                const frame = context.frames[i];
+                if (frame.functionLocation) {
+                    func = frame.functionLocation.func;
+                }
+            }
+
+            throwSerializationError(func, context,
+                "'@pulumi' modules cannot be referenced inside a function that will execute in the Cloud.");
+        }
+        else  {
+            // This name bound to a module, serialize it out as a direct 'require(name)' call
+            entry.module = moduleName;
+        }
+    }
 }
 
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
@@ -1118,7 +1132,7 @@ for (const name of builtInModuleNames) {
 
 // findRequirableModuleName attempts to find a global name bound to the object, which can
 // be used as a stable reference across serialization.
-function findModuleName(obj: any): string | undefined  {
+function findModuleName(obj: any): string | undefined {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
     if (key) {
