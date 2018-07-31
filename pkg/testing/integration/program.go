@@ -674,7 +674,7 @@ func (pt *programTester) previewAndUpdate(dir string, name string, shouldFail, e
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
-	update := []string{"update", "--non-interactive", "--skip-preview"}
+	update := []string{"up", "--non-interactive", "--skip-preview"}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
