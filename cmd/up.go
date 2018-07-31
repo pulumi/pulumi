@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
 
-func newUpdateCmd() *cobra.Command {
+func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
@@ -43,20 +43,20 @@ func newUpdateCmd() *cobra.Command {
 	var yes bool
 
 	var cmd = &cobra.Command{
-		Use:        "update",
-		Aliases:    []string{"up"},
+		Use:        "up",
+		Aliases:    []string{"update"},
 		SuggestFor: []string{"deploy", "push"},
-		Short:      "Update the resources in a stack",
-		Long: "Update the resources in a stack.\n" +
+		Short:      "Create or update the resources in a stack",
+		Long: "Create or update the resources in a stack.\n" +
 			"\n" +
-			"This command updates an existing stack whose state is represented by the existing checkpoint\n" +
-			"file. The new desired state is computed by running a Pulumi program, and extracting all resource\n" +
-			"allocations from its resulting object graph. These allocations are then compared against the\n" +
-			"existing state to determine what operations must take place to achieve the desired state. This\n" +
-			"command results in a checkpoint containing a full snapshot of the stack's new resource state, so\n" +
-			"that it may be updated incrementally again later.\n" +
+			"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
+			"is computed by running the current Pulumi program and observing all resource allocations to produce a\n" +
+			"resource graph. This goal state is then compared against the existing state to determine what create,\n" +
+			"read, update, and/or delete operations must take place to achieve the desired goal state, in the most\n" +
+			"minimally disruptive way. This command records a full transactional snapshot of the stack's new state\n" +
+			"afterwards so that the stack may be updated incrementally again later on.\n" +
 			"\n" +
-			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
+			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
