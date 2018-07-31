@@ -228,6 +228,9 @@ function serializeJavaScriptText(
         else if (envEntry.function !== undefined) {
             return emitFunctionAndGetName(envEntry.function);
         }
+        else if (envEntry.module !== undefined) {
+            return `require("${envEntry.module}")`;
+        }
         else if (envEntry.output !== undefined) {
             return envEntryToString(envEntry.output, varName);
         }

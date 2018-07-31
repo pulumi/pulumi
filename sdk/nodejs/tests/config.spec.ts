@@ -18,12 +18,12 @@ import { Config, runtime } from "../index";
 describe("config", () => {
     it("works, basically", () => {
         // Set up some config and then read them back as strings.
-        runtime.setConfig("pkg:config:a", "foo");
-        runtime.setConfig("pkg:config:bar", "b");
-        runtime.setConfig("pkg:config:baz", "baz");
-        runtime.setConfig("otherpkg:config:a", "babble");
-        runtime.setConfig("otherpkg:config:nothere", "bazzle");
-        const config = new Config("pkg:config");
+        runtime.setConfig("pkg:a", "foo");
+        runtime.setConfig("pkg:bar", "b");
+        runtime.setConfig("pkg:baz", "baz");
+        runtime.setConfig("otherpkg:a", "babble");
+        runtime.setConfig("otherpkg:nothere", "bazzle");
+        const config = new Config("pkg");
         assert.strictEqual("foo", config.get("a"));
         assert.strictEqual("foo", config.require("a"));
         assert.strictEqual("b", config.get("bar"));
@@ -35,12 +35,12 @@ describe("config", () => {
     });
     it("does strongly typed too!", () => {
         // Set up some config and then read them back as typed things.
-        runtime.setConfig("pkg:config:boolf", "false");
-        runtime.setConfig("pkg:config:boolt", "true");
-        runtime.setConfig("pkg:config:num", "42.333");
-        runtime.setConfig("pkg:config:array", "[ 0, false, 2, \"foo\" ]");
-        runtime.setConfig("pkg:config:struct", "{ \"foo\": \"bar\", \"mim\": [] }");
-        const config = new Config("pkg:config");
+        runtime.setConfig("pkg:boolf", "false");
+        runtime.setConfig("pkg:boolt", "true");
+        runtime.setConfig("pkg:num", "42.333");
+        runtime.setConfig("pkg:array", "[ 0, false, 2, \"foo\" ]");
+        runtime.setConfig("pkg:struct", "{ \"foo\": \"bar\", \"mim\": [] }");
+        const config = new Config("pkg");
         assert.strictEqual(false, config.getBoolean("boolf"));
         assert.strictEqual(false, config.requireBoolean("boolf"));
         assert.strictEqual(true, config.getBoolean("boolt"));

@@ -14,8 +14,7 @@
 
 import * as util from "util";
 import { RunError } from "./errors";
-import * as log from "./log";
-import * as runtime from "./runtime";
+import { getConfig } from "./runtime";
 
 /**
  * Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
@@ -31,14 +30,8 @@ export class Config {
     public readonly name: string;
 
     constructor(name: string) {
-        // To ease migration of code that already does new Config("<package>:config"), treat this as if
-        // just new Config("<package>") was called.
         if (name.endsWith(":config")) {
-            const newName = name.replace(/:config$/, "");
-            log.warn(util.format("`:config` is no longer required at the end of configuration " +
-                "bag names and support will be removed in a future version, please " +
-                "use new Config(\"%s\") instead.", newName));
-            name = newName;
+            name = name.replace(/:config$/, "");
         }
 
         this.name = name;
@@ -50,7 +43,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public get(key: string): string | undefined {
-        return runtime.getConfig(this.fullKey(key));
+        return getConfig(this.fullKey(key));
     }
 
     /**
