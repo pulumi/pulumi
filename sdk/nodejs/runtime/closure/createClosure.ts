@@ -317,8 +317,8 @@ export async function createFunctionInfoAsync(
  * final FunctionInfo.
  */
 function createFunctionInfo(
-    func: Function, context: Context,
-    serialize: (o: any) => boolean, logInfo?: boolean): FunctionInfo {
+        func: Function, context: Context,
+        serialize: (o: any) => boolean, logInfo?: boolean): FunctionInfo {
 
     // logInfo = logInfo || func.name === "addHandler";
 
@@ -442,7 +442,7 @@ function createFunctionInfo(
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
-            context.classStaticMemberToSuperEntry.get(func);
+                           context.classStaticMemberToSuperEntry.get(func);
         if (superEntry) {
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
@@ -709,10 +709,10 @@ function isDefaultFunctionPrototype(func: Function, prototypeProp: any) {
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 function getOrCreateEntry(
-    obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
-    context: Context,
-    serialize: (o: any) => boolean,
-    logInfo: boolean | undefined): Entry {
+        obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+        context: Context,
+        serialize: (o: any) => boolean,
+        logInfo: boolean | undefined): Entry {
 
     // See if we have a cache hit.  If yes, use the object as-is.
     let entry = context.cache.get(obj)!;
@@ -917,7 +917,7 @@ function getOrCreateEntry(
     // Serializes out only the subset of properties of this object that we have seen used
     // and have recorded in localCapturedPropertyChains
     function serializeSomeObjectProperties(
-        environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
+            environment: PropertyMap, localCapturedPropertyChains: CapturedPropertyChain[]): boolean {
 
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
