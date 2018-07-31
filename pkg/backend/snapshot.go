@@ -27,14 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// SnapshotPersister is an interface implemented by our backends that implements snapshot
-// persistence. In order to fit into our current model, snapshot persisters have two functions:
-// saving snapshots and invalidating already-persisted snapshots.
+// SnapshotPersister is an interface implemented by our backends that implement snapshot persistence.
 type SnapshotPersister interface {
-	// Invalidates the last snapshot that was persisted. This is done as the first step
-	// of performing a mutation on the snapshot. Returns an error if the invalidation failed.
-	Invalidate() error
-
 	// Persists the given snapshot. Returns an error if the persistence failed.
 	Save(snapshot *deploy.Snapshot) error
 }
@@ -59,6 +53,7 @@ type SnapshotManager struct {
 	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
 	resources        []*resource.State        // The list of resources operated upon by this plan
 	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
+	abandons         map[*resource.State]bool // The set of resources whose modifications have been abandoned
 	doVerify         bool                     // If true, verify the snapshot before persisting it
 	plugins          []workspace.PluginInfo   // The list of plugins loaded by the plan, to be saved in the manifest
 	mutationRequests chan func()              // The queue of mutation requests, to be retired serially by the manager
@@ -138,26 +133,19 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
-	// This is for compat with the existing update model with the service. Invalidating a
-	// stack sets a bit in a database indicating that the stored snapshot is not valid.
-	if err := sm.persister.Invalidate(); err != nil {
-		logging.V(9).Infof("SnapshotManager: Failed to invalidate snapshot: %s", err.Error())
-		return nil, err
-	}
-
 	switch step.Op() {
 	case deploy.OpSame:
 		return &sameSnapshotMutation{sm}, nil
 	case deploy.OpCreate, deploy.OpCreateReplacement:
-		return &createSnapshotMutation{sm}, nil
+		return sm.doCreate(step)
 	case deploy.OpUpdate:
-		return &updateSnapshotMutation{sm}, nil
+		return sm.doUpdate(step)
 	case deploy.OpDelete, deploy.OpDeleteReplaced:
-		return &deleteSnapshotMutation{sm}, nil
+		return sm.doDelete(step)
 	case deploy.OpReplace:
 		return &replaceSnapshotMutation{sm}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
-		return &readSnapshotMutation{sm}, nil
+		return sm.doRead(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -192,6 +180,20 @@ type createSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doCreate(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.New().Status = resource.OperationStatusCreating
+		sm.markNew(step.New())
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &createSnapshotMutation{sm}, nil
+}
+
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
@@ -206,7 +208,9 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 			// Since we are storing the base snapshot and all resources by reference
 			// (we have pointers to engine-allocated objects), this transparently
 			// "just works" for the SnapshotManager.
-			csm.manager.markNew(step.New())
+			step.New().Status = resource.OperationStatusEmpty
+		} else {
+			csm.manager.markAbandoned(step.New())
 		}
 	})
 }
@@ -215,19 +219,50 @@ type updateSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doUpdate(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.New().Status = resource.OperationStatusUpdating
+		sm.markNew(step.New())
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &updateSnapshotMutation{sm}, nil
+}
+
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
 	return usm.manager.mutate(func() {
 		if successful {
+			// step.New has already been inserted into the snapshot and marked new.
+			// Nothing to do here other than clear the status bit.
+			step.New().Status = resource.OperationStatusEmpty
 			usm.manager.markDone(step.Old())
-			usm.manager.markNew(step.New())
+		} else {
+			usm.manager.markAbandoned(step.New())
 		}
 	})
 }
 
 type deleteSnapshotMutation struct {
 	manager *SnapshotManager
+}
+
+func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doDelete(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.Old().Status = resource.OperationStatusDeleting
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &deleteSnapshotMutation{sm}, nil
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -237,6 +272,8 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 		if successful {
 			contract.Assert(!step.Old().Protect)
 			dsm.manager.markDone(step.Old())
+		} else {
+			step.Old().Status = resource.OperationStatusEmpty
 		}
 	})
 }
@@ -256,6 +293,20 @@ type readSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doRead(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.New().Status = resource.OperationStatusReading
+		sm.markNew(step.New())
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &readSnapshotMutation{sm}, nil
+}
+
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
@@ -265,7 +316,9 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 				rsm.manager.markDone(step.Old())
 			}
 
-			rsm.manager.markNew(step.New())
+			step.New().Status = resource.OperationStatusEmpty
+		} else {
+			rsm.manager.markAbandoned(step.New())
 		}
 	})
 }
@@ -295,6 +348,15 @@ func (sm *SnapshotManager) markNew(state *resource.State) {
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
+// markAbandoned marks a resource as abandoned. A resource that has been abandoned will not be
+// added into the final snapshot, even if it was created during this plan. This is useful when
+// a pending operation adds a resource to the snapshot but the operation failed.
+func (sm *SnapshotManager) markAbandoned(state *resource.State) {
+	contract.Assert(state != nil)
+	sm.abandons[state] = true
+	logging.V(9).Infof("SnapshotManager.markAbandoned(%s): abandoned operation", state.URN)
+}
+
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
 func (sm *SnapshotManager) snap() *deploy.Snapshot {
@@ -303,7 +365,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
 	//
 	// - Begin with an empty merged DAG.
-	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG.
+	// - For each resource r in the current DAG, insert r and its outgoing edges into the merged DAG if it has not
+	//   been abandoned.
 	// - For each resource r in the base DAG:
 	//     - If r is in the merged DAG, we are done: if the resource is in the merged DAG, it must have been in the
 	//       current DAG, which accurately captures its current dependencies.
@@ -327,9 +390,16 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
 	//           they would have been appended to the list before r.
 
-	// Start with a copy of the resources produced during the evaluation of the current plan.
-	resources := make([]*resource.State, len(sm.resources))
-	copy(resources, sm.resources)
+	// Start with a copy of the non-abandoned resources produced during the evaluation of the current plan.
+	var resources []*resource.State
+	for _, res := range sm.resources {
+		// A resource being abandoned means that we previously added it to the snapshot, but we wish to no longer
+		// include it going forward. A concrete example of this is if we inserted a new "creating" resource into
+		// the snapshot, but the creation failed. We abandon the "creating" resource so it doesn't get saved.
+		if !sm.abandons[res] {
+			resources = append(resources, res)
+		}
+	}
 
 	// Append any resources from the base plan that were not produced by the current plan.
 	if base := sm.baseSnapshot; base != nil {
@@ -361,6 +431,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		persister:        persister,
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*resource.State]bool),
+		abandons:         make(map[*resource.State]bool),
 		doVerify:         true,
 		mutationRequests: make(chan func()),
 	}

@@ -56,6 +56,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		event.Parent(),
 		false, /*protect*/
 		true,  /*external*/
+		"",    /* status */
 		event.Dependencies(),
 		nil, /* initErrors */
 		event.Provider())
@@ -502,7 +503,7 @@ func (sg *stepGenerator) getResourcePropertyStates(urn resource.URN, goal *resou
 	}
 	return props, inputs, outputs,
 		resource.NewState(goal.Type, urn, goal.Custom, false, "",
-			inputs, outputs, goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider)
+			inputs, outputs, goal.Parent, goal.Protect, false, "", goal.Dependencies, nil, goal.Provider)
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.

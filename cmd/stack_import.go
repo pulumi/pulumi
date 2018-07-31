@@ -26,6 +26,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/resource/stack"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 )
@@ -89,6 +91,11 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			var result error
+
+			// Do a pass through every resource in the snapshot and clear out any resources that have the "Status"
+			// field set. `import` is the CLI gesture people will be using to repair their stacks if they become
+			// invalid due to interruption.
+			var importedResources []*resource.State
 			for _, res := range snapshot.Resources {
 				if res.URN.Stack() != s.Name().StackName() {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
@@ -104,14 +111,32 @@ func newStackImportCmd() *cobra.Command {
 						result = multierror.Append(result, errors.New(msg))
 					}
 				}
+
+				if res.Status != "" {
+					msg := fmt.Sprintf("repairing URN %s in invalid '%s' state", res.URN, res.Status)
+					cmdutil.Diag().Warningf(diag.Message(res.URN, msg))
+					continue
+				}
+
+				importedResources = append(importedResources, res)
 			}
 			if result != nil {
 				return multierror.Append(result,
 					errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
 			}
 
+			newSnap := deploy.NewSnapshot(snapshot.Manifest, importedResources)
+			bytes, err := json.Marshal(stack.SerializeDeployment(newSnap))
+			if err != nil {
+				return err
+			}
+			dep := apitype.UntypedDeployment{
+				Version:    apitype.DeploymentSchemaVersionCurrent,
+				Deployment: bytes,
+			}
+
 			// Now perform the deployment.
-			if err = s.ImportDeployment(commandContext(), &deployment); err != nil {
+			if err = s.ImportDeployment(commandContext(), &dep); err != nil {
 				return errors.Wrap(err, "could not import deployment")
 			}
 			fmt.Printf("Import successful.\n")

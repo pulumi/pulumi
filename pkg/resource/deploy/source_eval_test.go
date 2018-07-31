@@ -61,7 +61,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 			}
 			s.Done(&RegisterResult{
 				State: resource.NewState(g.Type, urn, g.Custom, false, id, g.Properties, outs, g.Parent, g.Protect,
-					false, g.Dependencies, nil, g.Provider),
+					false, resource.OperationStatusEmpty, g.Dependencies, nil, g.Provider),
 			})
 		}
 		return nil
@@ -196,7 +196,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		}
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider),
+				goal.Parent, goal.Protect, false, resource.OperationStatusEmpty, goal.Dependencies, nil, goal.Provider),
 		})
 
 		processed++
@@ -283,7 +283,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 
 		reg.Done(&RegisterResult{
 			State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-				goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider),
+				goal.Parent, goal.Protect, false, resource.OperationStatusEmpty, goal.Dependencies, nil, goal.Provider),
 		})
 
 		processed++
@@ -372,7 +372,8 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		urn := newURN(read.Type(), string(read.Name()), read.Parent())
 		read.Done(&ReadResult{
 			State: resource.NewState(read.Type(), urn, true, false, read.ID(), read.Properties(),
-				resource.PropertyMap{}, read.Parent(), false, false, read.Dependencies(), nil, read.Provider()),
+				resource.PropertyMap{}, read.Parent(), false, false, resource.OperationStatusEmpty,
+				read.Dependencies(), nil, read.Provider()),
 		})
 		reads++
 	}
@@ -456,7 +457,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 			e.Done(&RegisterResult{
 				State: resource.NewState(goal.Type, urn, goal.Custom, false, id, goal.Properties, resource.PropertyMap{},
-					goal.Parent, goal.Protect, false, goal.Dependencies, nil, goal.Provider),
+					goal.Parent, goal.Protect, false, resource.OperationStatusEmpty, goal.Dependencies, nil, goal.Provider),
 			})
 			registers++
 
@@ -464,7 +465,8 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 			urn := newURN(e.Type(), string(e.Name()), e.Parent())
 			e.Done(&ReadResult{
 				State: resource.NewState(e.Type(), urn, true, false, e.ID(), e.Properties(),
-					resource.PropertyMap{}, e.Parent(), false, false, e.Dependencies(), nil, e.Provider()),
+					resource.PropertyMap{}, e.Parent(), false, false, resource.OperationStatusEmpty,
+					e.Dependencies(), nil, e.Provider()),
 			})
 			reads++
 		}
