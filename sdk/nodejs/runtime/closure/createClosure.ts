@@ -184,7 +184,7 @@ class SerializedOutput<T> implements resource.Output<T> {
 
     public apply<U>(func: (t: T) => resource.Input<U>): resource.Output<U> {
         throw new Error(
-            "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+"'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
     }
 
     public get(): T {
