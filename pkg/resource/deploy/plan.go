@@ -15,6 +15,10 @@
 package deploy
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
@@ -24,6 +28,36 @@ import (
 )
 
 // TODO[pulumi/pulumi#106]: plan parallelism.
+
+// InvalidResourceError is returned by deploy.NewPlan when the engine observes
+// that one or more resources are in an invalid state. The engine populates `InvalidResources`
+// with the URNs of every resource that was invalid.
+type InvalidResourceError struct {
+	InvalidResources []*resource.State
+}
+
+func (ire InvalidResourceError) Error() string {
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	fmt.Fprintf(writer,
+		"error: the current deployment has %d resource(s) whose statuses are unknown:\n", len(ire.InvalidResources))
+
+	for _, res := range ire.InvalidResources {
+		fmt.Fprintf(writer, "  * %s, interrupted while %s\n", res.URN, res.Status)
+	}
+
+	fmt.Fprintf(writer, "\n")
+	fmt.Fprintf(writer, "These resources have unknown statuses because the Pulumi CLI was interrupted before it\n")
+	fmt.Fprintf(writer, "had the opportunity to see if an operation that it initiated was successful. You should\n")
+	fmt.Fprintf(writer, "confirm whether or not the above operations completed successfully with your cloud provider.\n")
+	fmt.Fprintf(writer, "\n")
+	fmt.Fprintf(writer, "Once you have confirmed the status of the interrupted operations, you can repair your stack\n")
+	fmt.Fprintf(writer, "using `pulumi stack export` to export your stack to a file. For each operation that succeeded,\n")
+	fmt.Fprintf(writer, "remove the `status` field. Once this is complete, use `pulumi stack export` to import the\n")
+	fmt.Fprintf(writer, "repaired stack.")
+	writer.Flush()
+	return buf.String()
+}
 
 // Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
 // deployment.  A plan can be generated out of whole cloth from a resource graph -- in the case of new deployments --
@@ -50,19 +84,25 @@ type Plan struct {
 // Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
 // a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
 func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName,
-	preview bool) *Plan {
+	preview bool) (*Plan, error) {
 
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
 	contract.Assert(source != nil)
 
 	var depGraph *graph.DependencyGraph
+	var invalidResources []*resource.State
 	// Produce a map of all old resources for fast resources.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
 		for _, oldres := range prev.Resources {
 			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
 			if oldres.Delete {
+				continue
+			}
+
+			if oldres.Status != "" {
+				invalidResources = append(invalidResources, oldres)
 				continue
 			}
 
@@ -74,6 +114,10 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		depGraph = graph.NewDependencyGraph(prev.Resources)
 	}
 
+	if invalidResources != nil {
+		return nil, InvalidResourceError{invalidResources}
+	}
+
 	return &Plan{
 		ctx:       ctx,
 		target:    target,
@@ -83,7 +127,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		analyzers: analyzers,
 		preview:   preview,
 		depGraph:  depGraph,
-	}
+	}, nil
 }
 
 func (p *Plan) Ctx() *plugin.Context                   { return p.ctx }

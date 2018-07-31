@@ -102,7 +102,7 @@ func (iter *refreshSourceIterator) newRefreshGoal(s *resource.State) (*resource.
 		}
 		s = resource.NewState(
 			s.Type, s.URN, s.Custom, s.Delete, s.ID, s.Inputs, refreshed,
-			s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors)
+			s.Parent, s.Protect, s.External, s.Status, s.Dependencies, s.InitErrors)
 	}
 
 	// Now just return the actual state as the goal state.

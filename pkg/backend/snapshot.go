@@ -27,14 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
-// SnapshotPersister is an interface implemented by our backends that implements snapshot
-// persistence. In order to fit into our current model, snapshot persisters have two functions:
-// saving snapshots and invalidating already-persisted snapshots.
+// SnapshotPersister is an interface implemented by our backends that implement snapshot persistance.
 type SnapshotPersister interface {
-	// Invalidates the last snapshot that was persisted. This is done as the first step
-	// of performing a mutation on the snapshot. Returns an error if the invalidation failed.
-	Invalidate() error
-
 	// Persists the given snapshot. Returns an error if the persistence failed.
 	Save(snapshot *deploy.Snapshot) error
 }
@@ -138,26 +132,19 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
-	// This is for compat with the existing update model with the service. Invalidating a
-	// stack sets a bit in a database indicating that the stored snapshot is not valid.
-	if err := sm.persister.Invalidate(); err != nil {
-		logging.V(9).Infof("SnapshotManager: Failed to invalidate snapshot: %s", err.Error())
-		return nil, err
-	}
-
 	switch step.Op() {
 	case deploy.OpSame:
 		return &sameSnapshotMutation{sm}, nil
 	case deploy.OpCreate, deploy.OpCreateReplacement:
-		return &createSnapshotMutation{sm}, nil
+		return sm.doCreate(step)
 	case deploy.OpUpdate:
-		return &updateSnapshotMutation{sm}, nil
+		return sm.doUpdate(step)
 	case deploy.OpDelete, deploy.OpDeleteReplaced:
-		return &deleteSnapshotMutation{sm}, nil
+		return sm.doDelete(step)
 	case deploy.OpReplace:
 		return &replaceSnapshotMutation{}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
-		return &readSnapshotMutation{sm}, nil
+		return sm.doRead(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
@@ -192,6 +179,20 @@ type createSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doCreate(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.New().Status = "creating"
+		sm.markNew(step.New())
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &createSnapshotMutation{sm}, nil
+}
+
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
@@ -206,7 +207,9 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 			// Since we are storing the base snapshot and all resources by reference
 			// (we have pointers to engine-allocated objects), this transparently
 			// "just works" for the SnapshotManager.
-			csm.manager.markNew(step.New())
+			step.New().Status = ""
+		} else {
+			csm.manager.markDone(step.New())
 		}
 	})
 }
@@ -215,19 +218,49 @@ type updateSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doCreate(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.New().Status = "updating"
+		sm.markNew(step.New())
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &updateSnapshotMutation{sm}, nil
+}
+
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
 	return usm.manager.mutate(func() {
 		if successful {
 			usm.manager.markDone(step.Old())
-			usm.manager.markNew(step.New())
+			step.New().Status = ""
+		} else {
+			usm.manager.markDone(step.New())
 		}
 	})
 }
 
 type deleteSnapshotMutation struct {
 	manager *SnapshotManager
+}
+
+func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doCreate(%v)", step.URN())
+	contract.Assert(!step.Old().Protect)
+	err := sm.mutate(func() {
+		step.Old().Status = "deleting"
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &deleteSnapshotMutation{sm}, nil
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -249,6 +282,20 @@ type readSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
+func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
+	logging.V(9).Infof("SnapshotManager: doCreate(%v)", step.URN())
+	err := sm.mutate(func() {
+		step.New().Status = "reading"
+		sm.markNew(step.New())
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &readSnapshotMutation{sm}, nil
+}
+
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
 	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
@@ -258,7 +305,7 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 				rsm.manager.markDone(step.Old())
 			}
 
-			rsm.manager.markNew(step.New())
+			step.New().Status = ""
 		}
 	})
 }

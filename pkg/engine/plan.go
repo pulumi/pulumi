@@ -146,7 +146,11 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun)
+	plan, err := deploy.NewPlan(plugctx, target, target.Snapshot, source, analyzers, dryRun)
+	if err != nil {
+		return nil, err
+	}
+
 	return &planResult{
 		Ctx:     info,
 		Plugctx: plugctx,

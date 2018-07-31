@@ -105,12 +105,15 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
-			if _, has := urns[urn]; has && !state.Delete {
-				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
-				return errors.Errorf("duplicate resource %s (not marked for deletion)", urn)
+			if _, has := urns[urn]; has && !state.Delete && state.Status == "" {
+				// The only time we should have duplicate URNs is when all but one of them are marked for deletion
+				// or have an operation pending on them.
+				return errors.Errorf("duplicate resource %s (not marked for deletion or pending operation)", urn)
 			}
 
-			urns[urn] = state
+			if state.Status == "" {
+				urns[urn] = state
+			}
 		}
 	}
 

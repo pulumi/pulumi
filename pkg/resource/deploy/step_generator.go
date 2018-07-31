@@ -56,6 +56,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		event.Parent(),
 		false, /*protect*/
 		true,  /*external*/
+		"",    /* status */
 		event.Dependencies(),
 		nil /* initErrors */)
 	old, hasOld := sg.plan.Olds()[urn]
@@ -483,7 +484,7 @@ func (sg *stepGenerator) getResourcePropertyStates(urn resource.URN, goal *resou
 	}
 	return props, inputs, outputs,
 		resource.NewState(goal.Type, urn, goal.Custom, false, "",
-			inputs, outputs, goal.Parent, goal.Protect, false, goal.Dependencies, []string{})
+			inputs, outputs, goal.Parent, goal.Protect, false, "", goal.Dependencies, []string{})
 }
 
 func (sg *stepGenerator) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
