@@ -30,6 +30,10 @@ export class Config {
     public readonly name: string;
 
     constructor(name: string) {
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+
         this.name = name;
     }
 
