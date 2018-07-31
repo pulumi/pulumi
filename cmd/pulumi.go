@@ -129,7 +129,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newRefreshCmd())
 	cmd.AddCommand(newStackCmd())
-	cmd.AddCommand(newUpdateCmd())
+	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newWhoAmICmd())
 
