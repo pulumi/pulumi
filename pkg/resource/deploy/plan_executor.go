@@ -40,7 +40,7 @@ var (
 )
 
 // PlanExecutor is responsible for taking a plan and driving it to completion.
-// Its primary responsibilty is to own a `stepGenerator` and `stepExecutor`, serving
+// Its primary responsibility is to own a `stepGenerator` and `stepExecutor`, serving
 // as the glue that links the two subsystems together.
 type PlanExecutor struct {
 	plan    *Plan          // The plan that we are executing
@@ -92,9 +92,9 @@ func (pe *PlanExecutor) Execute() error {
 	// a three ways we can exit this loop:
 	//  1. The SourceIterator sends us a `nil` event. This means that we're done processing source events and
 	//     we should begin processing deletes.
-	//  2. The SourceIterator sends us an error. This means some error occured in the source program and we
+	//  2. The SourceIterator sends us an error. This means some error occurred in the source program and we
 	//     should bail.
-	//  3. The stepExecCancel cancel context gets canceled. This means some error occured in the step executor
+	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 outer:
 	for {
@@ -173,7 +173,7 @@ func (pe *PlanExecutor) canceled() bool {
 
 // cancelDueToError cancels the step executor and signals shutdown because the plan executor witnessed
 // an error that the step executor would not have witnessed. The main reason this happens is because of errors
-// occuring in the source program that can't be translated into chains for the step executor to execute.
+// occurring in the source program that can't be translated into chains for the step executor to execute.
 func (pe *PlanExecutor) cancelDueToError() {
 	atomic.SwapUint32(&pe.sawError, 1)
 	pe.stepExecCancel.Cancel()
