@@ -65,11 +65,11 @@ export function ensureConfig() {
 }
 
 /**
- * cleanKey takes a configuration key, and if it is of the form "<string>:config:<string>" removes the ":config:"
- * portion. Previously, our keys always had the string ":config:" in them, and we'd like to remove it. However, the
- * language host needs to continue to set it so we can be compatable with older versions of our packages. Once we
- * stop supporting older packages, we can change the language host to not add this :config: thing and remove this
- * function.
+ * cleanKey takes a configuration key, and if it is of the form "<string>:config:<string>" removes
+ * the ":config:" portion. Previously, our keys always had the string ":config:" in them, and we'd
+ * like to remove it. However, the language host needs to continue to set it so we can be compatible
+ * with older versions of our packages. Once we stop supporting older packages, we can change the
+ * language host to not add this :config: thing and remove this function.
  */
 function cleanKey(key: string): string {
     const idx = key.indexOf(":");

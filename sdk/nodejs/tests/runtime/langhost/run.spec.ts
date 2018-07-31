@@ -314,8 +314,8 @@ describe("rpc", () => {
             project: "runtimeSettingsProject",
             stack: "runtimeSettingsStack",
             config: {
-                "myBag:config:A": "42",
-                "myBag:config:bbbb": "a string o' b's",
+                "myBag:A": "42",
+                "myBag:bbbb": "a string o' b's",
             },
             program: path.join(base, "010.runtime_settings"),
             expectResourceCount: 0,
@@ -366,7 +366,7 @@ describe("rpc", () => {
         "runtime_sxs": {
             program: path.join(base, "015.runtime_sxs"),
             config: {
-                "sxs:config:message": "SxS config works!",
+                "sxs:message": "SxS config works!",
             },
             expectResourceCount: 2,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
