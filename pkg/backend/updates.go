@@ -74,6 +74,13 @@ const (
 	GitHubLogin = "github.login"
 	// GitHubRepo is the name of the GitHub repo, if the local git repo's remote origin is hosted on GitHub.com.
 	GitHubRepo = "github.repo"
+
+	// CISystem is the name of the CI system running the pulumi operation.
+	CISystem = "ci.system"
+
+	// CIPRSourceSHA is the SHA of the HEAD commit of a pull request running on CI. This is needed since the CI
+	// server will run at a different, merge commit.
+	CIPRSourceSHA = "ci.pr.sourceSHA"
 )
 
 // UpdateInfo describes a previous update.

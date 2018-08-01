@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/gitutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/util/testutil"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
@@ -356,52 +355,75 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 		Environment: make(map[string]string),
 	}
 
+	if err := addGitMetadataToEnvironment(root, m.Environment); err != nil {
+		cmdutil.Diag().Warningf(diag.Message("", "adding git env data: %v"), err)
+	}
+	if err := addCIMetadataToEnvironment(m.Environment); err != nil {
+		cmdutil.Diag().Warningf(diag.Message("", "adding CI env data: %v"), err)
+	}
+
+	return m, nil
+}
+
+// addGitMetadataToEnvironment populate's the environment metadata bag with Git-related values.
+func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	repo, err := gitutil.GetGitRepository(root)
+	repo, err := gitutil.GetGitRepository(repoRoot)
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not detect Git repository: %v"), err)
+		return errors.Wrapf(err, "detecting Git repository")
 	}
 	if repo == nil {
-		logging.Infof("no git repository found")
-		return m, nil
+		return nil
 	}
 
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
 	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByRepo(repo)
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not detect GitHub project information: %v"), err)
-	} else {
-		m.Environment[backend.GitHubLogin] = ghLogin
-		m.Environment[backend.GitHubRepo] = ghRepo
+		return errors.Wrap(err, "detecting GitHub project information")
 	}
+	env[backend.GitHubLogin] = ghLogin
+	env[backend.GitHubRepo] = ghRepo
 
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not fetch Git repository HEAD info: %v"), err)
-	} else {
-		hash := head.Hash()
-		m.Environment[backend.GitHead] = hash.String()
-		commit, commitErr := repo.CommitObject(hash)
-		if commitErr != nil {
-			cmdutil.Diag().Warningf(
-				diag.Message("", "could not fetch Git repository HEAD commit info: %v"), commitErr)
-		} else {
-			m.Environment[backend.GitCommitter] = commit.Committer.Name
-			m.Environment[backend.GitCommitterEmail] = commit.Committer.Email
-			m.Environment[backend.GitAuthor] = commit.Author.Name
-			m.Environment[backend.GitAuthorEmail] = commit.Author.Email
-		}
+		return errors.Wrap(err, "getting repository HEAD")
 	}
+
+	hash := head.Hash()
+	env[backend.GitHead] = hash.String()
+	commit, commitErr := repo.CommitObject(hash)
+	if commitErr != nil {
+		return errors.Wrap(commitErr, "getting HEAD commit info")
+	}
+	env[backend.GitCommitter] = commit.Committer.Name
+	env[backend.GitCommitterEmail] = commit.Committer.Email
+	env[backend.GitAuthor] = commit.Author.Name
+	env[backend.GitAuthorEmail] = commit.Author.Email
 
 	isDirty, err := isGitWorkTreeDirty()
 	if err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "could not Git repository dirty worktree info: %v"), err)
-	} else {
-		m.Environment[backend.GitDirty] = fmt.Sprint(isDirty)
+		return errors.Wrapf(err, "checking git worktree dirty state")
+	}
+	env[backend.GitDirty] = fmt.Sprint(isDirty)
+
+	return nil
+}
+
+// addCIMetadataToEnvironment populate's the environment metadata bag with CI/CD-related values.
+func addCIMetadataToEnvironment(env map[string]string) error {
+	// Check if running on Travis CI. See:
+	// https://docs.travis-ci.com/user/environment-variables/
+	if os.Getenv("CI") == "true" && os.Getenv("TRAVIS") == "true" {
+		env[backend.CISystem] = "travis-ci"
+
+		// Pass pull request-specific vales as needed.
+		if sha := os.Getenv("TRAVIS_PULL_REQUEST_SHA"); sha != "" {
+			env[backend.CIPRSourceSHA] = sha
+		}
 	}
 
-	return m, nil
+	return nil
 }
 
 type cancellationScope struct {
