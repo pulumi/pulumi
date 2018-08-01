@@ -240,31 +240,9 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
-	if data.display.Done {
+	if data.display.done {
 		// if the display is done, then we're definitely done.
 		return true
-	}
-
-	// When we are in interactive mode, we collapse all replacements steps into one
-	// conceptual replacement going from "create-replacement/replace/delete-replaced" or
-	// "delete-replaced/replace/create-replacement".  So we only consider ourselves done
-	// if we've seen the output step for both the create-replacement *and* delete-replaced.
-	if data.display.isTerminal {
-		if data.ContainsOutputsStep(deploy.OpCreateReplacement) &&
-			!data.ContainsOutputsStep(deploy.OpDeleteReplaced) {
-
-			// we've heard about the create-replacement but not the delete-replacement yet.
-			// this resource is not done yet.
-			return false
-		}
-
-		if data.ContainsOutputsStep(deploy.OpDeleteReplaced) &&
-			!data.ContainsOutputsStep(deploy.OpCreateReplacement) {
-
-			// we've heard about the delete-replacement but not the create-replacement yet.
-			// this resource is not done yet.
-			return false
-		}
 	}
 
 	// We're done if we have the output-step for whatever step operation we're performing
@@ -282,7 +260,7 @@ func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
 }
 
 func (data *resourceRowData) ColorizedSuffix() string {
-	if !data.IsDone() {
+	if !data.IsDone() && data.display.isTerminal {
 		op := data.display.getStepOp(data.step)
 		if op != deploy.OpSame || isRootURN(data.step.URN) {
 			suffixes := data.display.suffixesArray
@@ -401,7 +379,7 @@ func (data *resourceRowData) getInfoColumn() string {
 		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
 	}
 
-	if !data.display.Done {
+	if !data.display.done {
 		// If we're not totally done, and we're in the tree-view also print out the worst diagnostic
 		// next to the status message. This is helpful for long running tasks to know what's going
 		// on. However, once done, we print the diagnostics at the bottom, so we don't need to show

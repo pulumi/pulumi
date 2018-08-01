@@ -131,7 +131,7 @@ type ProgressDisplay struct {
 	terminalWidth int
 
 	// If all progress messages are done and we can print out the final display.
-	Done bool
+	done bool
 
 	// The column that the suffix should be added to
 	suffixColumn int
@@ -638,7 +638,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// transition the display to the 'done' state.  this will transitively cause all
 	// rows to become done.
-	display.Done = true
+	display.done = true
 
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
@@ -992,7 +992,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we still just print the same thing we
 		// did while running the step.
-		return op.Color() + getPreviewText(op) + colors.Reset
+		return op.Color() + display.getPreviewText(op) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
@@ -1027,9 +1027,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			case deploy.OpReplace:
 				return "replaced"
 			case deploy.OpCreateReplacement:
-				return "created for replacement"
+				return "created replacement"
 			case deploy.OpDeleteReplaced:
-				return "deleted for replacement"
+				return "deleted original"
 			}
 		}
 
@@ -1044,7 +1044,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	return op.Color() + getDescription() + colors.Reset
 }
 
-func getPreviewText(op deploy.StepOp) string {
+func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
 	switch op {
 	case deploy.OpSame:
 		return "no change"
@@ -1057,9 +1057,9 @@ func getPreviewText(op deploy.StepOp) string {
 	case deploy.OpReplace:
 		return "replace"
 	case deploy.OpCreateReplacement:
-		return "create for replacement"
+		return "create replacement"
 	case deploy.OpDeleteReplaced:
-		return "delete for replacement"
+		return "delete original"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
@@ -1069,10 +1069,22 @@ func getPreviewText(op deploy.StepOp) string {
 func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.StepOp {
 	op := step.Op
 
-	// In the progress-display, show all the steps for a replace as 'OpReplace'
+	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
+	// replacement', 'replace', 'delete original'.  During the actual application of these steps we
+	// want to see these individual steps.  However, both before we apply all of them, and after
+	// they're all done, we want to show this as a single conceptual 'replace'/'replaced' step.
+	//
+	// Note: in non-interactive mode we can show these all as individual steps.  This only applies
+	// to interactive mode, where there is only one line shown per resource, and we want it to be as
+	// clear as possible
 	if display.isTerminal {
-		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-			return deploy.OpReplace
+		// During preview, show the steps for replacing as a single 'replace' plan.
+		// Once done, show the steps for replacing as a single 'replaced' step.
+		// During update, we'll show these individual steps.
+		if display.isPreview || display.done {
+			if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+				return deploy.OpReplace
+			}
 		}
 	}
 
@@ -1094,7 +1106,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 
 	getDescription := func() string {
 		if display.isPreview {
-			return getPreviewText(op)
+			return display.getPreviewText(op)
 		}
 
 		switch op {
@@ -1109,9 +1121,9 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		case deploy.OpReplace:
 			return "replacing"
 		case deploy.OpCreateReplacement:
-			return "creating for replacement"
+			return "creating replacement"
 		case deploy.OpDeleteReplaced:
-			return "deleting for replacement"
+			return "deleting original"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
