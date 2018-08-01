@@ -319,8 +319,25 @@ func (data *resourceRowData) getInfoColumn() string {
 
 	changesBuf := &bytes.Buffer{}
 
-	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
-		diff := step.Old.Inputs.Diff(step.New.Inputs)
+	if step.Old != nil && step.New != nil {
+		var diff *resource.ObjectDiff
+		if step.Old.Inputs != nil && step.New.Inputs != nil {
+			diff = step.Old.Inputs.Diff(step.New.Inputs)
+		}
+		if step.Old.Provider != step.New.Provider {
+			if diff == nil {
+				diff = &resource.ObjectDiff{
+					Adds:    make(resource.PropertyMap),
+					Deletes: make(resource.PropertyMap),
+					Sames:   make(resource.PropertyMap),
+					Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+				}
+			}
+			diff.Updates["provider"] = resource.ValueDiff{
+				Old: resource.NewStringProperty(step.Old.Provider),
+				New: resource.NewStringProperty(step.New.Provider),
+			}
+		}
 
 		if diff != nil {
 			writeString(changesBuf, "changes:")
