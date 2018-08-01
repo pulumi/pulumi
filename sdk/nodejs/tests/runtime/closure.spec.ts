@@ -20,6 +20,7 @@ import { runtime } from "../../index";
 import { output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as config from "../../config";
+import * as typescript from "typescript";
 
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
@@ -4762,6 +4763,25 @@ function __f0() {
     with({ o1: __o1, o2: __o2, o3: __o3 }) {
 
 return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Capture non-built-in module",
+            func: function () { typescript.parseCommandLine([""]); },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ typescript: require("./node_modules/typescript/lib/typescript.js") }) {
+
+return function () { typescript.parseCommandLine([""]); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

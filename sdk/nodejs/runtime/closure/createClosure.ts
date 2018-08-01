@@ -1058,7 +1058,7 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        if (moduleName[0] === ".") {
+        if (moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/")) {
             // This is a reference to a local module (i.e. starts with '.'). Always capture the
             // local module as a value.  We do this because capturing as a reference (i.e.
             // 'require(...)') has the following problems:
