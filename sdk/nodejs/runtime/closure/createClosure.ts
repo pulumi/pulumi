@@ -1140,8 +1140,11 @@ for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
 }
 
-// findRequirableModuleName attempts to find a global name bound to the object, which can
-// be used as a stable reference across serialization.
+// findRequirableModuleName attempts to find a global name bound to the object, which can be used as
+// a stable reference across serialization.  For built-in modules (i.e. "os", "fs", etc.) this will
+// return that exact name of the module.  Otherwise, this will return the relative path to the
+// module from the current working directory of the process.  This will normally be something of the
+// form ./node_modules/<package_name>...
 function findModuleName(obj: any): string | undefined {
     // First, check the built-in modules
     const key = builtInModules.get(obj);
