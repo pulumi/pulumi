@@ -294,12 +294,12 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	var name string
 	var typ string
-	if step.URN == "" {
+	if data.step.URN == "" {
 		name = "global"
 		typ = "global"
 	} else {
-		name = string(step.URN.Name())
-		typ = simplifyTypeName(step.URN.Type())
+		name = string(data.step.URN.Name())
+		typ = simplifyTypeName(data.step.URN.Type())
 	}
 
 	columns := make([]string, 5)
