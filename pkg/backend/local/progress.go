@@ -871,10 +871,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	if event.Type == engine.ResourcePreEvent {
 		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
-		if step.Op == "" {
-			contract.Failf("Got empty op for %s", event.Type)
-		}
-
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		// transition the status to done.
@@ -956,13 +952,30 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
+	f, err := os.OpenFile("/home/cyrusn/go/src/github.com/pulumi/pulumi-aws/examples/minimal/out.txt",
+		os.O_APPEND|os.O_WRONLY, 0600)
 
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	i := 0
 	for {
 		select {
 		case <-ticker.C:
 			display.processTick()
 
 		case event := <-events:
+			if event.Type != engine.DiagEvent {
+				i++
+				text := fmt.Sprintf("%v:%v: %v\n", i, time.Now(), event)
+				if _, err = f.WriteString(text); err != nil {
+					panic(err)
+				}
+			}
+
 			if event.Type == "" || event.Type == engine.CancelEvent {
 				// Engine finished sending events.  Do all the final processing and return
 				// from this local func.  This will print out things like full diagnostic
@@ -1012,13 +1025,13 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			switch op {
 			case deploy.OpSame:
 				return "failed"
-			case deploy.OpCreate, deploy.OpCreateReplacement:
+			case deploy.OpCreate:
 				return "creating failed"
 			case deploy.OpUpdate:
 				return "updating failed"
-			case deploy.OpDelete, deploy.OpDeleteReplaced:
+			case deploy.OpDelete:
 				return "deleting failed"
-			case deploy.OpReplace:
+			case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
 				return "replacing failed"
 			}
 		} else {
@@ -1031,12 +1044,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "updated"
 			case deploy.OpDelete:
 				return "deleted"
-			case deploy.OpReplace:
+			case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
 				return "replaced"
-			case deploy.OpCreateReplacement:
-				return "created for replacement"
-			case deploy.OpDeleteReplaced:
-				return "deleted for replacement"
 			}
 		}
 
@@ -1061,12 +1070,8 @@ func getPreviewText(op deploy.StepOp) string {
 		return "update"
 	case deploy.OpDelete:
 		return "delete"
-	case deploy.OpReplace:
+	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
 		return "replace"
-	case deploy.OpCreateReplacement:
-		return "create for replacement"
-	case deploy.OpDeleteReplaced:
-		return "delete for replacement"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
