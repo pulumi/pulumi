@@ -245,24 +245,30 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
-	if data.ContainsOutputsStep(deploy.OpCreateReplacement) &&
-		!data.ContainsOutputsStep(deploy.OpDeleteReplaced) {
+	// When we are in interactive mode, we collapse all replacements steps into one
+	// conceptual replacement going from "create-replacement/replace/delete-replaced" or
+	// "delete-replaced/replace/create-replacement".  So we only consider ourselves done
+	// if we've seen the output step for both the create-replacement *and* delete-replaced.
+	if data.display.isTerminal {
+		if data.ContainsOutputsStep(deploy.OpCreateReplacement) &&
+			!data.ContainsOutputsStep(deploy.OpDeleteReplaced) {
 
-		// we've heard about the create-replacement but not the delete-replacement yet.
-		// this resource is not done yet.
-		return false
+			// we've heard about the create-replacement but not the delete-replacement yet.
+			// this resource is not done yet.
+			return false
+		}
+
+		if data.ContainsOutputsStep(deploy.OpDeleteReplaced) &&
+			!data.ContainsOutputsStep(deploy.OpCreateReplacement) {
+
+			// we've heard about the delete-replacement but not the create-replacement yet.
+			// this resource is not done yet.
+			return false
+		}
 	}
 
-	if data.ContainsOutputsStep(deploy.OpDeleteReplaced) &&
-		!data.ContainsOutputsStep(deploy.OpCreateReplacement) {
-
-		// we've heard about the delete-replacement but not the create-replacement yet.
-		// this resource is not done yet.
-		return false
-	}
-
-	// if we have had any output steps, we're done
-	return len(data.outputSteps) > 0
+	// We're done if we have the output-step for whatever step operation we're performing
+	return data.ContainsOutputsStep(data.step.Op)
 }
 
 func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
