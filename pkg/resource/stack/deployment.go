@@ -178,6 +178,7 @@ func SerializeResource(res *resource.State) apitype.ResourceV2 {
 		External:     res.External,
 		Dependencies: res.Dependencies,
 		InitErrors:   res.InitErrors,
+		Provider:     res.Provider,
 	}
 }
 
@@ -240,7 +241,7 @@ func DeserializeResource(res apitype.ResourceV2) (*resource.State, error) {
 
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
-		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors), nil
+		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
