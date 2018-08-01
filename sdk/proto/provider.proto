@@ -68,6 +68,7 @@ message ConfigureErrorMissingKeys {
 message InvokeRequest {
     string tok = 1;                  // the function token to invoke.
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
+    string provider = 3;             // an optional reference to the provider to use for this invoke.
 }
 
 message InvokeResponse {
