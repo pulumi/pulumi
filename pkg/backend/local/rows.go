@@ -49,7 +49,6 @@ type ResourceRow interface {
 	Tick() int
 
 	IsDone() bool
-	// SetDone()
 
 	SetFailed()
 
@@ -154,14 +153,6 @@ func (data *resourceRowData) Step() engine.StepEventMetadata {
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
-	// never update a 'replace' step with an CreateReplacement DeleteReplacement step.
-	// in the progress view we never want to show those individually, we always want
-	// them combined since we only show a single line per resource.
-	if data.step.Op == deploy.OpReplace &&
-		(step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced) {
-		return
-	}
-
 	data.step = step
 }
 

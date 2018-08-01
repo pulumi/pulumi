@@ -990,7 +990,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we still just print the same thing we
 		// did while running the step.
-		return step.Op.Color() + getPreviewText(step.Op) + colors.Reset
+		return step.Op.Color() + display.getPreviewText(step.Op) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
@@ -999,8 +999,12 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	}
 
 	op := step.Op
-	if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-		op = deploy.OpReplace
+
+	// In the progress-display, show all the steps for a replace as 'OpReplace'
+	if display.isTerminal {
+		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+			op = deploy.OpReplace
+		}
 	}
 
 	getDescription := func() string {
@@ -1043,9 +1047,13 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	return op.Color() + getDescription() + colors.Reset
 }
 
-func getPreviewText(op deploy.StepOp) string {
-	if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-		op = deploy.OpReplace
+func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
+
+	// In the progress-display, show all the steps for a replace as 'OpReplace'
+	if display.isTerminal {
+		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+			op = deploy.OpReplace
+		}
 	}
 
 	switch op {
@@ -1078,13 +1086,16 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		return "running"
 	}
 
-	if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-		op = deploy.OpReplace
+	// In the progress-display, show all the steps for a replace as 'OpReplace'
+	if display.isTerminal {
+		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+			op = deploy.OpReplace
+		}
 	}
 
 	getDescription := func() string {
 		if display.isPreview {
-			return getPreviewText(op)
+			return display.getPreviewText(op)
 		}
 
 		switch op {
