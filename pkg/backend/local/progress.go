@@ -628,11 +628,11 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
 	// Figure out the rows that are currently in progress.
-	nonDoneRows := []ResourceRow{}
+	inProgressRows := []ResourceRow{}
 
 	for _, v := range display.eventUrnToResourceRow {
 		if !v.IsDone() {
-			nonDoneRows = append(nonDoneRows, v)
+			inProgressRows = append(inProgressRows, v)
 		}
 	}
 
@@ -643,7 +643,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
 	if !display.isTerminal {
-		for _, v := range nonDoneRows {
+		for _, v := range inProgressRows {
 			display.refreshSingleRow("", v, nil)
 		}
 	}
