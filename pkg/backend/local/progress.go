@@ -1005,11 +1005,11 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			switch op {
 			case deploy.OpSame:
 				return "failed"
-			case deploy.OpCreate:
+			case deploy.OpCreate, deploy.OpCreateReplacement:
 				return "creating failed"
 			case deploy.OpUpdate:
 				return "updating failed"
-			case deploy.OpDelete:
+			case deploy.OpDelete, deploy.OpDeleteReplaced:
 				return "deleting failed"
 			case deploy.OpReplace:
 				return "replacing failed"
@@ -1026,6 +1026,10 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "deleted"
 			case deploy.OpReplace:
 				return "replaced"
+			case deploy.OpCreateReplacement:
+				return "created for replacement"
+			case deploy.OpDeleteReplaced:
+				return "deleted for replacement"
 			}
 		}
 
@@ -1041,14 +1045,6 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 }
 
 func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
-
-	// In the progress-display, show all the steps for a replace as 'OpReplace'
-	if display.isTerminal {
-		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-			op = deploy.OpReplace
-		}
-	}
-
 	switch op {
 	case deploy.OpSame:
 		return "no change"
@@ -1060,6 +1056,10 @@ func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
 		return "delete"
 	case deploy.OpReplace:
 		return "replace"
+	case deploy.OpCreateReplacement:
+		return "create for replacement"
+	case deploy.OpDeleteReplaced:
+		return "delete for replacement"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", op)
@@ -1108,6 +1108,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "deleting"
 		case deploy.OpReplace:
 			return "replacing"
+		case deploy.OpCreateReplacement:
+			return "creating for replacement"
+		case deploy.OpDeleteReplaced:
+			return "deleting for replacement"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
