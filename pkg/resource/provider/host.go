@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/diag"
+	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/rpcutil"
 	lumirpc "github.com/pulumi/pulumi/sdk/proto/go"
@@ -50,7 +51,9 @@ func (host *HostClient) Close() error {
 }
 
 // Log logs a global message, including errors and warnings.
-func (host *HostClient) Log(context context.Context, sev diag.Severity, msg string) error {
+func (host *HostClient) Log(
+	context context.Context, sev diag.Severity, urn resource.URN, msg string,
+) error {
 	var rpcsev lumirpc.LogSeverity
 	switch sev {
 	case diag.Debug:
@@ -67,6 +70,7 @@ func (host *HostClient) Log(context context.Context, sev diag.Severity, msg stri
 	_, err := host.client.Log(context, &lumirpc.LogRequest{
 		Severity: rpcsev,
 		Message:  msg,
+		Urn:      string(urn),
 	})
 	return err
 }
