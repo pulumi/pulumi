@@ -58,6 +58,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		sg.plan.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
+	sg.urns[urn] = true
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or to diff.
 	old, hasOld := sg.plan.Olds()[urn]
