@@ -15,8 +15,13 @@
 package deploy
 
 import (
+	"github.com/blang/semver"
+	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
+
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/graph"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -68,6 +73,65 @@ type Plan struct {
 	analyzers []tokens.QName                   // the analyzers to run during this plan's generation.
 	preview   bool                             // true if this plan is to be previewed rather than applied.
 	depGraph  *graph.DependencyGraph           // the dependency graph of the old snapshot
+	providers *providers.Registry              // the provider registry for this plan.
+}
+
+// addDefaultProviders adds any necessary default provider definitions to the given snapshot.
+func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
+	if prev == nil {
+		return nil
+	}
+
+	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+	for _, p := range prev.Manifest.Plugins {
+		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+	}
+
+	var defaultProviders []*resource.State
+	defaultProviderRefs := make(map[tokens.Package]providers.Reference)
+	for _, res := range prev.Resources {
+		if providers.IsProviderType(res.URN.Type()) || !res.Custom || res.Provider != "" {
+			continue
+		}
+
+		pkg := res.URN.Type().Package()
+		ref, ok := defaultProviderRefs[pkg]
+		if !ok {
+			cfg, err := target.GetPackageConfig(pkg)
+			if err != nil {
+				return errors.Errorf("could not fetch configuration for default provider '%v'", pkg)
+			}
+
+			inputs := make(resource.PropertyMap)
+			for k, v := range cfg {
+				inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
+			}
+			if version, ok := defaultProviderVersions[pkg]; ok {
+				inputs["version"] = resource.NewStringProperty(version.String())
+			}
+
+			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.NewV4().String())
+			ref, err = providers.NewReference(urn, id)
+			contract.Assert(err == nil)
+
+			provider := &resource.State{
+				Type:   urn.Type(),
+				URN:    urn,
+				Custom: true,
+				ID:     id,
+				Inputs: inputs,
+			}
+			defaultProviders = append(defaultProviders, provider)
+			defaultProviderRefs[pkg] = ref
+		}
+		res.Provider = ref.String()
+	}
+
+	if len(defaultProviders) != 0 {
+		prev.Resources = append(defaultProviders, prev.Resources...)
+	}
+
+	return nil
 }
 
 // NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
@@ -80,17 +144,26 @@ type Plan struct {
 // Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
 // a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
 func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source, analyzers []tokens.QName,
-	preview bool) *Plan {
+	preview bool) (*Plan, error) {
 
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
 	contract.Assert(source != nil)
 
+	// Add any necessary default provider references to the previous snapshot.
+	if err := addDefaultProviders(target, source, prev); err != nil {
+		return nil, err
+	}
+
 	var depGraph *graph.DependencyGraph
+	var oldResources []*resource.State
+
 	// Produce a map of all old resources for fast resources.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
-		for _, oldres := range prev.Resources {
+		oldResources = prev.Resources
+
+		for _, oldres := range oldResources {
 			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
 			if oldres.Delete {
 				continue
@@ -101,7 +174,13 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 			olds[urn] = oldres
 		}
 
-		depGraph = graph.NewDependencyGraph(prev.Resources)
+		depGraph = graph.NewDependencyGraph(oldResources)
+	}
+
+	// Create a new provider registry.
+	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Plan{
@@ -113,7 +192,8 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		analyzers: analyzers,
 		preview:   preview,
 		depGraph:  depGraph,
-	}
+		providers: reg,
+	}, nil
 }
 
 func (p *Plan) Ctx() *plugin.Context                   { return p.ctx }
@@ -128,10 +208,24 @@ func (p *Plan) SignalCancellation() error {
 	return p.ctx.Host.SignalCancellation()
 }
 
-// Provider fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
-// provider could not be found, or an error occurred while creating it, a non-nil error is returned.
-func (p *Plan) Provider(pkg tokens.Package) (plugin.Provider, error) {
-	// TODO: ideally we would flow versions on specific requests along to the underlying host function.  Absent that,
-	//     we will just pass nil, which returns us the most recent version available to us.
-	return p.ctx.Host.Provider(pkg, nil)
+func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
+	return p.providers.GetProvider(ref)
+}
+
+// generateURN generates a resource's URN from its parent, type, and name under the scope of the plan's stack and
+// project.
+func (p *Plan) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
+	// Use the resource goal state name to produce a globally unique URN.
+	parentType := tokens.Type("")
+	if parent != "" && parent.Type() != resource.RootStackType {
+		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
+		parentType = parent.QualifiedType()
+	}
+
+	return resource.NewURN(p.Target().Name, p.source.Project(), parentType, ty, name)
+}
+
+// defaultProviderURN generates the URN for the global provider given a package.
+func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
+	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
 }

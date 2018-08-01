@@ -82,14 +82,15 @@ type Events interface {
 func NewDefaultHost(ctx *Context, config ConfigSource, events Events,
 	runtimeOptions map[string]interface{}) (Host, error) {
 	host := &defaultHost{
-		ctx:             ctx,
-		config:          config,
-		events:          events,
-		runtimeOptions:  runtimeOptions,
-		analyzerPlugins: make(map[tokens.QName]*analyzerPlugin),
-		languagePlugins: make(map[string]*languagePlugin),
-		resourcePlugins: make(map[Provider]*resourcePlugin),
-		loadRequests:    make(chan pluginLoadRequest),
+		ctx:                     ctx,
+		config:                  config,
+		events:                  events,
+		runtimeOptions:          runtimeOptions,
+		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
+		languagePlugins:         make(map[string]*languagePlugin),
+		resourcePlugins:         make(map[Provider]*resourcePlugin),
+		reportedResourcePlugins: make(map[string]struct{}),
+		loadRequests:            make(chan pluginLoadRequest),
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -116,16 +117,17 @@ type pluginLoadRequest struct {
 }
 
 type defaultHost struct {
-	ctx             *Context                         // the shared context for this host.
-	config          ConfigSource                     // the source for provider configuration parameters.
-	events          Events                           // optional callbacks for plugin load events
-	runtimeOptions  map[string]interface{}           // options to pass to the language plugins.
-	analyzerPlugins map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
-	languagePlugins map[string]*languagePlugin       // a cache of language plugins and their processes.
-	resourcePlugins map[Provider]*resourcePlugin     // the set of loaded resource plugins.
-	plugins         []workspace.PluginInfo           // a list of plugins allocated by this host.
-	loadRequests    chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
-	server          *hostServer                      // the server's RPC machinery.
+	ctx                     *Context                         // the shared context for this host.
+	config                  ConfigSource                     // the source for provider configuration parameters.
+	events                  Events                           // optional callbacks for plugin load events
+	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
+	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
+	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
+	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
+	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
+	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
+	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
+	server                  *hostServer                      // the server's RPC machinery.
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -228,10 +230,19 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 				}
 			}
 
-			// Memoize the result.
-			host.plugins = append(host.plugins, info)
+			// Record the result and add the plugin's info to our list of loaded plugins if it's the first copy of its
+			// kind.
+			key := info.Name
+			if info.Version != nil {
+				key += info.Version.String()
+			}
+			_, alreadyReported := host.reportedResourcePlugins[key]
+			if !alreadyReported {
+				host.reportedResourcePlugins[key] = struct{}{}
+				host.plugins = append(host.plugins, info)
+			}
 			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info}
-			if host.events != nil {
+			if host.events != nil && !alreadyReported {
 				if eventerr := host.events.OnPluginLoad(info); eventerr != nil {
 					return nil, errors.Wrapf(eventerr, "failed to perform plugin load callback")
 				}

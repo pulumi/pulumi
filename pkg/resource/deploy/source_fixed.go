@@ -34,7 +34,7 @@ func (src *fixedSource) Project() tokens.PackageName { return src.ctx }
 func (src *fixedSource) Info() interface{}           { return nil }
 func (src *fixedSource) IsRefresh() bool             { return false }
 
-func (src *fixedSource) Iterate(opts Options) (SourceIterator, error) {
+func (src *fixedSource) Iterate(opts Options, providers ProviderSource) (SourceIterator, error) {
 	return &fixedSourceIterator{
 		src:     src,
 		current: -1,

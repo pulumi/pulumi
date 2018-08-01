@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -31,6 +32,7 @@ type Step interface {
 	Op() StepOp           // the operation performed by this step.
 	URN() resource.URN    // the resource URN (for before and after).
 	Type() tokens.Type    // the type affected by this step.
+	Provider() string     // the provider reference for this step.
 	Old() *resource.State // the state of the resource before performing this step.
 	New() *resource.State // the state of the resource after performing this step.
 	Res() *resource.State // the latest state for the resource that is known (worst case, old).
@@ -52,6 +54,7 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
@@ -68,6 +71,7 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 func (s *SameStep) Op() StepOp           { return OpSame }
 func (s *SameStep) Plan() *Plan          { return s.plan }
 func (s *SameStep) Type() tokens.Type    { return s.old.Type }
+func (s *SameStep) Provider() string     { return s.old.Provider }
 func (s *SameStep) URN() resource.URN    { return s.old.URN }
 func (s *SameStep) Old() *resource.State { return s.old }
 func (s *SameStep) New() *resource.State { return s.new }
@@ -101,6 +105,7 @@ func NewCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) S
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
 	return &CreateStep{
@@ -120,6 +125,7 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent,
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
+	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
 	contract.Assert(old.Type == new.Type)
 	contract.Assert(!new.External)
@@ -142,6 +148,7 @@ func (s *CreateStep) Op() StepOp {
 }
 func (s *CreateStep) Plan() *Plan                  { return s.plan }
 func (s *CreateStep) Type() tokens.Type            { return s.new.Type }
+func (s *CreateStep) Provider() string             { return s.new.Provider }
 func (s *CreateStep) URN() resource.URN            { return s.new.URN }
 func (s *CreateStep) Old() *resource.State         { return s.old }
 func (s *CreateStep) New() *resource.State         { return s.new }
@@ -207,6 +214,7 @@ func NewDeleteStep(plan *Plan, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!old.Delete)
 	return &DeleteStep{
 		plan: plan,
@@ -218,6 +226,7 @@ func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingDelete boo
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!pendingDelete || old.Delete)
 	return &DeleteStep{
 		plan:      plan,
@@ -234,6 +243,7 @@ func (s *DeleteStep) Op() StepOp {
 }
 func (s *DeleteStep) Plan() *Plan          { return s.plan }
 func (s *DeleteStep) Type() tokens.Type    { return s.old.Type }
+func (s *DeleteStep) Provider() string     { return s.old.Provider }
 func (s *DeleteStep) URN() resource.URN    { return s.old.URN }
 func (s *DeleteStep) Old() *resource.State { return s.old }
 func (s *DeleteStep) New() *resource.State { return nil }
@@ -280,6 +290,7 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
@@ -300,6 +311,7 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 func (s *UpdateStep) Op() StepOp           { return OpUpdate }
 func (s *UpdateStep) Plan() *Plan          { return s.plan }
 func (s *UpdateStep) Type() tokens.Type    { return s.old.Type }
+func (s *UpdateStep) Provider() string     { return s.old.Provider }
 func (s *UpdateStep) URN() resource.URN    { return s.old.URN }
 func (s *UpdateStep) Old() *resource.State { return s.old }
 func (s *UpdateStep) New() *resource.State { return s.new }
@@ -384,6 +396,7 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 func (s *ReplaceStep) Op() StepOp                   { return OpReplace }
 func (s *ReplaceStep) Plan() *Plan                  { return s.plan }
 func (s *ReplaceStep) Type() tokens.Type            { return s.old.Type }
+func (s *ReplaceStep) Provider() string             { return s.old.Provider }
 func (s *ReplaceStep) URN() resource.URN            { return s.old.URN }
 func (s *ReplaceStep) Old() *resource.State         { return s.old }
 func (s *ReplaceStep) New() *resource.State         { return s.new }
@@ -462,6 +475,7 @@ func (s *ReadStep) Op() StepOp {
 
 func (s *ReadStep) Plan() *Plan          { return s.plan }
 func (s *ReadStep) Type() tokens.Type    { return s.new.Type }
+func (s *ReadStep) Provider() string     { return s.new.Provider }
 func (s *ReadStep) URN() resource.URN    { return s.new.URN }
 func (s *ReadStep) Old() *resource.State { return s.old }
 func (s *ReadStep) New() *resource.State { return s.new }
@@ -607,5 +621,16 @@ func (op StepOp) Suffix() string {
 
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
-	return s.Plan().Provider(s.Type().Package())
+	if providers.IsProviderType(s.Type()) {
+		return s.Plan().providers, nil
+	}
+	ref, err := providers.ParseReference(s.Provider())
+	if err != nil {
+		return nil, errors.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+	}
+	provider, ok := s.Plan().GetProvider(ref)
+	if !ok {
+		return nil, errors.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.URN())
+	}
+	return provider, nil
 }

@@ -49,7 +49,7 @@ func newRefreshSource(opts planOptions, proj *workspace.Project, pwd, main strin
 	// First, consult the manifest for the plugins we will need to ask to refresh the state.
 	if target != nil && target.Snapshot != nil {
 		// We don't need the language plugin, since refresh doesn't run code, so we will leave that out.
-		kinds := plugin.AllPlugins & ^plugin.LanguagePlugins
+		kinds := plugin.AnalyzerPlugins
 		if err := plugctx.Host.EnsurePlugins(target.Snapshot.Manifest.Plugins, kinds); err != nil {
 			return nil, err
 		}
