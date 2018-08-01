@@ -992,7 +992,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we still just print the same thing we
 		// did while running the step.
-		return op.Color() + display.getPreviewText(op) + colors.Reset
+		return op.Color() + getPreviewText(op) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
@@ -1044,7 +1044,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	return op.Color() + getDescription() + colors.Reset
 }
 
-func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
+func getPreviewText(op deploy.StepOp) string {
 	switch op {
 	case deploy.OpSame:
 		return "no change"
@@ -1094,7 +1094,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 
 	getDescription := func() string {
 		if display.isPreview {
-			return display.getPreviewText(op)
+			return getPreviewText(op)
 		}
 
 		switch op {
