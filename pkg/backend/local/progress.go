@@ -640,6 +640,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	// rows to become done.
 	display.Done = true
 
+	// Now print out all those rows that were in progress.  They will now be 'done'
+	// since the display was marked 'done'.
 	if !display.isTerminal {
 		for _, v := range nonDoneRows {
 			display.refreshSingleRow("", v, nil)
@@ -875,6 +877,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
+		row.SetStep(step)
 		row.AddOutputStep(step)
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
@@ -947,30 +950,12 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
-	f, err := os.OpenFile("/home/cyrusn/go/src/github.com/pulumi/pulumi-aws/examples/minimal/out.txt",
-		os.O_APPEND|os.O_WRONLY, 0600)
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer f.Close()
-
-	i := 0
 	for {
 		select {
 		case <-ticker.C:
 			display.processTick()
 
 		case event := <-events:
-			if event.Type != engine.DiagEvent {
-				i++
-				text := fmt.Sprintf("%v:%v: %v\n", i, time.Now(), event)
-				if _, err = f.WriteString(text); err != nil {
-					panic(err)
-				}
-			}
-
 			if event.Type == "" || event.Type == engine.CancelEvent {
 				// Engine finished sending events.  Do all the final processing and return
 				// from this local func.  This will print out things like full diagnostic
