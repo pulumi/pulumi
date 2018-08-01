@@ -277,11 +277,12 @@ func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
 
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.IsDone() {
-		if data.step.Op != deploy.OpSame || isRootURN(data.step.URN) {
+		op := data.display.getStepOp(data.step)
+		if op != deploy.OpSame || isRootURN(data.step.URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-			return data.step.Op.Color() + ellipses + colors.Reset
+			return op.Color() + ellipses + colors.Reset
 		}
 	}
 

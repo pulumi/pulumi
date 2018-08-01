@@ -987,24 +987,17 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
+	op := display.getStepOp(step)
+
 	if display.isPreview {
 		// During a preview, when we transition to done, we still just print the same thing we
 		// did while running the step.
-		return step.Op.Color() + display.getPreviewText(step.Op) + colors.Reset
+		return op.Color() + display.getPreviewText(op) + colors.Reset
 	}
 
 	// most of the time a stack is unchanged.  in that case we just show it as "running->done"
-	if isRootStack(step) && step.Op == deploy.OpSame {
+	if isRootStack(step) && op == deploy.OpSame {
 		return "done"
-	}
-
-	op := step.Op
-
-	// In the progress-display, show all the steps for a replace as 'OpReplace'
-	if display.isTerminal {
-		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-			op = deploy.OpReplace
-		}
 	}
 
 	getDescription := func() string {
@@ -1073,24 +1066,30 @@ func (display *ProgressDisplay) getPreviewText(op deploy.StepOp) string {
 	return ""
 }
 
+func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.StepOp {
+	op := step.Op
+
+	// In the progress-display, show all the steps for a replace as 'OpReplace'
+	if display.isTerminal {
+		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+			return deploy.OpReplace
+		}
+	}
+
+	return op
+}
+
 func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata) string {
-	return step.Op.Prefix() + colors.Reset
+	return display.getStepOp(step).Prefix() + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
-	op := step.Op
+	op := display.getStepOp(step)
 
 	if isRootStack(step) && op == deploy.OpSame {
 		// most of the time a stack is unchanged.  in that case we just show it as "running->done".
 		// otherwise, we show what is actually happening to it.
 		return "running"
-	}
-
-	// In the progress-display, show all the steps for a replace as 'OpReplace'
-	if display.isTerminal {
-		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
-			op = deploy.OpReplace
-		}
 	}
 
 	getDescription := func() string {
