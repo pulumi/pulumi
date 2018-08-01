@@ -322,8 +322,8 @@ export class Output<T> {
         };
 
         this.get = () => {
-            throw new RunError(`Cannot call during deployment or preview.
-To manipulate the value of this dependency, use 'apply' instead.`);
+            throw new RunError(`Cannot call '.get' during update or preview.
+To manipulate the value of this Output, use '.apply' instead.`);
         };
     }
 }
