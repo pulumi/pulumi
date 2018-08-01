@@ -11,6 +11,7 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 - Go 1.9 or Later
 - NodeJS 6.10.X or 8.11.X (LTS releases).  Others may work, but there are [known issues using Node 10](https://github.com/pulumi/pulumi/issues/1270).
 - Python 2.7.X
+- [pipenv](https://github.com/pypa/pipenv)
 - [dep](https://github.com/golang/dep)
 - [Gometalinter](https://github.com/alecthomas/gometalinter)
 - [Yarn](https://yarnpkg.com/)
