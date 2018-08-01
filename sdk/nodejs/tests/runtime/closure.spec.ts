@@ -17,6 +17,7 @@
 import * as assert from "assert";
 import { EOL } from "os";
 import { runtime } from "../../index";
+import * as pulumi from "../../index";
 import { output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as config from "../../config";
@@ -4787,6 +4788,22 @@ return function () { typescript.parseCommandLine([""]); };
   }).apply(undefined, undefined).apply(this, arguments);
 }
 `,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Fail to capture non-deployment module",
+            func: function () { pulumi.output(1); },
+            error: `Error serializing function 'func': closure.spec.js(0,0)
+
+function 'func': closure.spec.js(0,0): captured
+  module './bin/index.js'
+    module './bin/index.js' can only be used at 'deployment time' and should not used inside a function intended for 'run time'.
+
+Function code:
+  function () { pulumi.output(1); }
+`
         });
     }
 

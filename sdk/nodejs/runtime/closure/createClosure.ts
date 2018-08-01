@@ -568,7 +568,10 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
     return names.concat(Object.getOwnPropertySymbols(obj));
 }
 
-function throwSerializationError(func: Function, context: Context, info: string): never {
+function throwSerializationError(
+    func: Function, context: Context, info: string,
+    omitRecommendation?: boolean): never {
+
     let message = "";
 
     const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
@@ -610,7 +613,12 @@ function throwSerializationError(func: Function, context: Context, info: string)
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
         else if (frame.capturedModuleName) {
-            message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+            if (i == n - 1) {
+                message += `module '${frame.capturedModuleName}'\n`;
+            }
+            else {
+                message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+            }
         }
         else if (frame.capturedVariableName) {
             message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
@@ -620,15 +628,17 @@ function throwSerializationError(func: Function, context: Context, info: string)
     message += "  ".repeat(i) + info + "\n\n";
     message += getTrimmedFunctionCode(func);
 
-    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
-    if (moduleIndex >= 0) {
-        const moduleName = context.frames[moduleIndex].capturedModuleName;
-        message += "\n";
+    if (!omitRecommendation) {
+        const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+        if (moduleIndex >= 0) {
+            const moduleName = context.frames[moduleIndex].capturedModuleName;
+            message += "\n";
 
-        const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
-        const location = getFunctionLocation(functionLocation);
-        message += `Capturing modules can sometimes cause problems.
+            const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
+            const location = getFunctionLocation(functionLocation);
+            message += `Capturing modules can sometimes cause problems.
 Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
+        }
     }
 
     throw new RunError(message);
@@ -1076,7 +1086,9 @@ function getOrCreateEntry(
             }
 
             throwSerializationError(func, context,
-`'${moduleName}' can only be used at 'deployment time' and should not used inside a function intended for 'run time'.`);
+// tslint:disable-next-line:max-line-length
+`module '${moduleName}' can only be used at 'deployment time' and should not used inside a function intended for 'run time'.`,
+true /*omitRecommendation*/);
         }
         else if (moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/")) {
             // This is a reference to a local module (i.e. starts with '.', but isn't in
