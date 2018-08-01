@@ -358,9 +358,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	if err := addGitMetadataToEnvironment(root, m.Environment); err != nil {
 		cmdutil.Diag().Warningf(diag.Message("", "adding git env data: %v"), err)
 	}
-	if err := addCIMetadataToEnvironment(m.Environment); err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "adding CI env data: %v"), err)
-	}
+	addCIMetadataToEnvironment(m.Environment)
 
 	return m, nil
 }
@@ -411,19 +409,17 @@ func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
 }
 
 // addCIMetadataToEnvironment populate's the environment metadata bag with CI/CD-related values.
-func addCIMetadataToEnvironment(env map[string]string) error {
+func addCIMetadataToEnvironment(env map[string]string) {
 	// Check if running on Travis CI. See:
 	// https://docs.travis-ci.com/user/environment-variables/
-	if os.Getenv("CI") == "true" && os.Getenv("TRAVIS") == "true" {
+	if os.Getenv("TRAVIS") == "true" {
 		env[backend.CISystem] = "travis-ci"
 
 		// Pass pull request-specific vales as needed.
 		if sha := os.Getenv("TRAVIS_PULL_REQUEST_SHA"); sha != "" {
-			env[backend.CIPRSourceSHA] = sha
+			env[backend.CIPRHeadSHA] = sha
 		}
 	}
-
-	return nil
 }
 
 type cancellationScope struct {

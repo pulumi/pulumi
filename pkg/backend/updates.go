@@ -78,9 +78,9 @@ const (
 	// CISystem is the name of the CI system running the pulumi operation.
 	CISystem = "ci.system"
 
-	// CIPRSourceSHA is the SHA of the HEAD commit of a pull request running on CI. This is needed since the CI
-	// server will run at a different, merge commit.
-	CIPRSourceSHA = "ci.pr.sourceSHA"
+	// CIPRHeadSHA is the SHA of the HEAD commit of a pull request running on CI. This is needed since the CI
+	// server will run at a different, merge commit. (headSHA merged into the target branch.)
+	CIPRHeadSHA = "ci.pr.headSHA"
 )
 
 // UpdateInfo describes a previous update.
