@@ -111,6 +111,10 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
+    /**
+     * An optional provider to use for this resource's CRUD operations.
+     */
+    provider?: CustomResource;
 }
 
 /**
