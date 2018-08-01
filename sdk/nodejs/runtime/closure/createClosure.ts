@@ -1058,28 +1058,11 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        if (moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/")) {
-            // This is a reference to a local module (i.e. starts with '.'). Always capture the
-            // local module as a value.  We do this because capturing as a reference (i.e.
-            // 'require(...)') has the following problems:
+        if (obj.deploymentOnlyModule) {
+            // A deployment-only modules can't ever be referenced on the 'inside'.
             //
-            // 1. 'require(...)' will not work at run-time, because the user's code will not be
-            //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
-            //    into any sort of appropriate file/folder structure for those 'require's to work.
-            //
-            // 2. if we stop here and capture as a reference, then we won't actually see and walk
-            //    the code that exists in those local modules (direct or transitive). So we won't
-            //    actually generate the serialized code for the functions or values in that module.
-            //    This will also lead to code that simply will not work at run-time.
-            serializeObject();
-        }
-        else if (moduleName.startsWith("@pulumi")) {
-            // @pulumi modules can't ever be referenced on the 'inside'.  Not only are they not
-            // written to support being used on the inside, but serialization also explicitly
-            // removes these modules from node_modules to trim down the total upload size.
-            //
-            // If the user's code actually explicitly references this, then emit a hard error
-            // to let them know what's going on.
+            // If the user's code actually explicitly references this, then emit a hard error to let
+            // them know what's going on.
 
             // Find the 'func' to report this issue against. Note: we will always find some
             // 'func' in the context chain as the only reason we ever even get into closure
@@ -1093,7 +1076,22 @@ function getOrCreateEntry(
             }
 
             throwSerializationError(func, context,
-                "'@pulumi' modules cannot be referenced inside a function that will execute in the Cloud.");
+`'${moduleName}' can only be used at 'deployment time' and should not used inside a function intended for 'run time'.`);
+        }
+        else if (moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/")) {
+            // This is a reference to a local module (i.e. starts with '.', but isn't in
+            // ./node_modules). Always capture the local module as a value.  We do this because
+            // capturing as a reference (i.e. 'require(...)') has the following problems:
+            //
+            // 1. 'require(...)' will not work at run-time, because the user's code will not be
+            //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
+            //    into any sort of appropriate file/folder structure for those 'require's to work.
+            //
+            // 2. if we stop here and capture as a reference, then we won't actually see and walk
+            //    the code that exists in those local modules (direct or transitive). So we won't
+            //    actually generate the serialized code for the functions or values in that module.
+            //    This will also lead to code that simply will not work at run-time.
+            serializeObject();
         }
         else  {
             // This name bound to a module, serialize it out as a direct 'require(name)' call
