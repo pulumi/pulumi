@@ -42,13 +42,14 @@ type ResourceRow interface {
 
 	Step() engine.StepEventMetadata
 	SetStep(step engine.StepEventMetadata)
+	AddOutputStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	Tick() int
 
-	Done() bool
-	SetDone()
+	IsDone() bool
+	// SetDone()
 
 	SetFailed()
 
@@ -111,14 +112,12 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step engine.StepEventMetadata
+	step        engine.StepEventMetadata
+	outputSteps []engine.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	tick int
-
-	// If the engine finished processing this resources.
-	done bool
 
 	// If we failed this operation for any reason.
 	failed bool
@@ -166,16 +165,12 @@ func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
 	data.step = step
 }
 
+func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
+	data.outputSteps = append(data.outputSteps, step)
+}
+
 func (data *resourceRowData) Tick() int {
 	return data.tick
-}
-
-func (data *resourceRowData) Done() bool {
-	return data.done
-}
-
-func (data *resourceRowData) SetDone() {
-	data.done = true
 }
 
 func (data *resourceRowData) Failed() bool {
@@ -248,8 +243,49 @@ const (
 	infoColumn   column = 4
 )
 
+func (data *resourceRowData) IsDone() bool {
+	if data.failed {
+		// consider a failed resource 'done'.
+		return true
+	}
+
+	if data.display.Done {
+		// if the display is done, then we're definitely done.
+		return true
+	}
+
+	if data.ContainsOutputsStep(deploy.OpCreateReplacement) &&
+		!data.ContainsOutputsStep(deploy.OpDeleteReplaced) {
+
+		// we've heard about the create-replacement but not the delete-replacement yet.
+		// this resource is not done yet.
+		return false
+	}
+
+	if data.ContainsOutputsStep(deploy.OpDeleteReplaced) &&
+		!data.ContainsOutputsStep(deploy.OpCreateReplacement) {
+
+		// we've heard about the delete-replacement but not the create-replacement yet.
+		// this resource is not done yet.
+		return false
+	}
+
+	// if we have had any output steps, we're done
+	return len(data.outputSteps) > 0
+}
+
+func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
+	for _, s := range data.outputSteps {
+		if s.Op == op {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (data *resourceRowData) ColorizedSuffix() string {
-	if !data.display.Done && !data.done {
+	if !data.IsDone() {
 		if data.step.Op != deploy.OpSame || isRootURN(data.step.URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
@@ -266,12 +302,12 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	var name string
 	var typ string
-	if data.step.URN == "" {
+	if step.URN == "" {
 		name = "global"
 		typ = "global"
 	} else {
-		name = string(data.step.URN.Name())
-		typ = simplifyTypeName(data.step.URN.Type())
+		name = string(step.URN.Name())
+		typ = simplifyTypeName(step.URN.Type())
 	}
 
 	columns := make([]string, 5)
@@ -281,7 +317,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	diagInfo := data.diagInfo
 
-	if data.done {
+	if data.IsDone() {
 		failed := data.failed || diagInfo.ErrorCount > 0
 		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
 	} else {

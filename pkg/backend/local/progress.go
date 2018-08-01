@@ -627,21 +627,22 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
-	display.Done = true
+	// Figure out the rows that are currently in progress.
+	nonDoneRows := []ResourceRow{}
 
 	for _, v := range display.eventUrnToResourceRow {
-		// transition everything to the done state.  If we're not in an a terminal and this is a
-		// transition, then print out the transition.  Don't bother doing this in a terminal as
-		// we're going to refresh everything when we break out of the loop.
-		if !v.Done() {
-			v.SetDone()
+		if !v.IsDone() {
+			nonDoneRows = append(nonDoneRows, v)
+		}
+	}
 
-			if !display.isTerminal {
-				display.refreshSingleRow("", v, nil)
-			}
-		} else {
-			// Explicitly transition the status so that we clear out any cached data for it.
-			v.SetDone()
+	// transition the display to the 'done' state.  this will transitively cause all
+	// rows to become done.
+	display.Done = true
+
+	if !display.isTerminal {
+		for _, v := range nonDoneRows {
+			display.refreshSingleRow("", v, nil)
 		}
 	}
 
@@ -873,13 +874,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		step := event.Payload.(engine.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
-		// transition the status to done.
-		if !isRootEvent {
-			row.SetDone()
-		}
-
 		step := event.Payload.(engine.ResourceOutputsEventPayload).Metadata
-		row.SetStep(step)
+		row.AddOutputStep(step)
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
@@ -888,7 +884,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			return
 		}
 	} else if event.Type == engine.ResourceOperationFailed {
-		row.SetDone()
 		row.SetFailed()
 	} else if event.Type == engine.DiagEvent {
 		// also record this diagnostic so we print it at the end.
@@ -1019,6 +1014,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	}
 
 	op := step.Op
+	if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+		op = deploy.OpReplace
+	}
 
 	getDescription := func() string {
 		if failed {
@@ -1031,7 +1029,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "updating failed"
 			case deploy.OpDelete:
 				return "deleting failed"
-			case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+			case deploy.OpReplace:
 				return "replacing failed"
 			}
 		} else {
@@ -1044,7 +1042,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "updated"
 			case deploy.OpDelete:
 				return "deleted"
-			case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+			case deploy.OpReplace:
 				return "replaced"
 			}
 		}
@@ -1061,6 +1059,10 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 }
 
 func getPreviewText(op deploy.StepOp) string {
+	if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+		op = deploy.OpReplace
+	}
+
 	switch op {
 	case deploy.OpSame:
 		return "no change"
@@ -1070,7 +1072,7 @@ func getPreviewText(op deploy.StepOp) string {
 		return "update"
 	case deploy.OpDelete:
 		return "delete"
-	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+	case deploy.OpReplace:
 		return "replace"
 	}
 
@@ -1091,6 +1093,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		return "running"
 	}
 
+	if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced {
+		op = deploy.OpReplace
+	}
+
 	getDescription := func() string {
 		if display.isPreview {
 			return getPreviewText(op)
@@ -1107,10 +1113,6 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "deleting"
 		case deploy.OpReplace:
 			return "replacing"
-		case deploy.OpCreateReplacement:
-			return "creating for replacement"
-		case deploy.OpDeleteReplaced:
-			return "deleting for replacement"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
