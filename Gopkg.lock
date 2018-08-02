@@ -244,6 +244,22 @@
   revision = "4fdf99ab29366514c69ccccddab5dc58b8d84062"
 
 [[projects]]
+  name = "github.com/nbutton23/zxcvbn-go"
+  packages = [
+    ".",
+    "adjacency",
+    "data",
+    "entropy",
+    "frequency",
+    "match",
+    "matching",
+    "scoring",
+    "utils/math"
+  ]
+  revision = "eafdab6b0663b4b528c35975c8b0e78be6e25261"
+  version = "v0.1"
+
+[[projects]]
   name = "github.com/opentracing/opentracing-go"
   packages = [
     ".",
@@ -555,6 +571,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "09466a544e10908eeb96ddc4a6cf596a72aec1c36bab6a1f02cf5ac0dfa0986c"
+  inputs-digest = "c841a519c28c6cb917a7d17871050063dc84af04c600b6d5b203e2d5dd0b3e84"
   solver-name = "gps-cdcl"
   solver-version = 1
