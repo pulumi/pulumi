@@ -201,7 +201,12 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
     // Before we can proceed, all our dependencies must be finished.
-    const dependsOn = opts.dependsOn || [];
+    let dependsOn: Resource[] = [];
+    if (Array.isArray(opts.dependsOn)) {
+        dependsOn = opts.dependsOn;
+    } else if (opts.dependsOn) {
+        dependsOn = [opts.dependsOn];
+    }
     const explicitURNDeps = await debuggablePromise(
         Promise.all(dependsOn.map(d => d.urn.promise())), `dependsOn(${label})`);
 
