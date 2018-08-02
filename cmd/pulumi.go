@@ -16,19 +16,36 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+
+	"github.com/djherbis/times"
+	"github.com/pulumi/pulumi/pkg/workspace"
+
+	"github.com/blang/semver"
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
+	"github.com/pulumi/pulumi/pkg/backend/cloud"
+	"github.com/pulumi/pulumi/pkg/backend/cloud/client"
 	"github.com/pulumi/pulumi/pkg/backend/local"
+	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/logging"
+	"github.com/pulumi/pulumi/pkg/version"
 )
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
@@ -76,6 +93,8 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
+			checkForUpdate()
+
 			return nil
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -87,6 +106,7 @@ func NewPulumiCmd() *cobra.Command {
 					logging.Warningf("could not close profiling: %v", err)
 				}
 			}
+
 		},
 	}
 
@@ -153,6 +173,170 @@ func NewPulumiCmd() *cobra.Command {
 	flag.StringVar(&cwd, "C", "", "Run pulumi as if it had been started in another directory")
 
 	return cmd
+}
+
+// checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
+// as to how it can be upgraded.
+func checkForUpdate() {
+	curVer, err := semver.ParseTolerant(version.Version)
+	if err != nil {
+		glog.V(3).Infof("error parsing current version: %s", err)
+	}
+
+	// We don't care about warning for you to update if you have installed a developer version
+	if isDevVersion(curVer) {
+		return
+	}
+
+	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
+	if err != nil {
+		glog.V(3).Infof("error fetching latest version information: %s", err)
+	}
+
+	if oldestAllowedVer.GT(curVer) {
+		cmdutil.Diag().Warningf(diag.RawMessage("", getUpgradeMessage(latestVer, curVer)))
+	}
+}
+
+// getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
+// allowed without warning. It caches data from the server for a day.
+func getCLIVersionInfo() (semver.Version, semver.Version, error) {
+	latest, oldest, err := getCachedVersionInfo()
+	if err == nil {
+		return latest, oldest, err
+	}
+
+	client := client.NewClient(cloud.DefaultURL(), "")
+	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	err = cacheVersionInfo(latest, oldest)
+	if err != nil {
+		glog.V(3).Infof("failed to cache version info: %s", err)
+	}
+
+	return latest, oldest, err
+}
+
+// cacheVersionInfo saves version information in a cache file to be looked up later.
+func cacheVersionInfo(latest semver.Version, oldest semver.Version) error {
+	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	if err != nil {
+		return err
+	}
+
+	file, err := os.OpenFile(updateCheckFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(file)
+
+	return json.NewEncoder(file).Encode(cachedVersionInfo{
+		LatestVersion:        latest.String(),
+		OldestWithoutWarning: oldest.String(),
+	})
+}
+
+// getCachedVersionInfo reads cached information about the newest CLI version, returning the newest version avaliaible
+// as well as the oldest version that should be allowed without warning the user they should upgrade.
+func getCachedVersionInfo() (semver.Version, semver.Version, error) {
+	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	ts, err := times.Stat(updateCheckFile)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	if time.Now().After(ts.ModTime().Add(24 * time.Hour)) {
+		return semver.Version{}, semver.Version{}, errors.New("cached expired")
+	}
+
+	file, err := os.OpenFile(updateCheckFile, os.O_RDONLY, 0600)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+	defer contract.IgnoreClose(file)
+
+	var cached cachedVersionInfo
+	if err = json.NewDecoder(file).Decode(&cached); err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	latest, err := semver.ParseTolerant(cached.LatestVersion)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	oldest, err := semver.ParseTolerant(cached.OldestWithoutWarning)
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	return latest, oldest, err
+}
+
+// cachedVersionInfo is the on disk format of the version information the CLI caches between runs.
+type cachedVersionInfo struct {
+	LatestVersion        string `json:"latestVersion"`
+	OldestWithoutWarning string `json:"oldestWithoutWarning"`
+}
+
+// getUpgradeMessage gets a message to display to a user instructing them they are out of date and how to move from
+// current to latest.
+func getUpgradeMessage(latest semver.Version, current semver.Version) string {
+	cmd := getUpgradeCommand()
+
+	msg := fmt.Sprintf("A new version of Pulumi is available. To upgrade from version '%s' to '%s', ", current, latest)
+	if cmd != "" {
+		msg += "run \n   " + cmd + "\nor "
+	}
+
+	msg += "visit https://pulumi.io/install for manual instructions and release notes."
+	return msg
+}
+
+// getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
+// the CLI was installed, the empty string is returned.
+func getUpgradeCommand() string {
+	curUser, err := user.Current()
+	if err != nil {
+		return ""
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+
+	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, ".pulumi", "bin") {
+		return ""
+	}
+
+	if runtime.GOOS != "windows" {
+		return "$ curl -sSL https://get.pulumi.com | sh"
+	}
+
+	powershellCmd := `"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"`
+
+	if _, err := exec.LookPath("powershell"); err == nil {
+		powershellCmd = "powershell"
+	}
+
+	return "> " + powershellCmd + ` -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ` +
+		`((New-Object System.Net.WebClient).DownloadString('https://get.pulumi.com/install.ps1'))"`
+}
+
+func isDevVersion(s semver.Version) bool {
+	if len(s.Pre) == 0 {
+		return false
+	}
+
+	return !s.Pre[0].IsNum && strings.HasPrefix("dev", s.Pre[0].VersionStr)
 }
 
 func confirmPrompt(prompt string, name string, opts backend.DisplayOptions) bool {
