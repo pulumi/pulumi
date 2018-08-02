@@ -4802,18 +4802,9 @@ function 'func': closure.spec.js(0,0): captured
       module './bin/runtime/settings.js' which indirectly referenced
         function 'getEngine': settings.js(0,0): which captured
           module './bin/proto/engine_grpc_pb.js' which indirectly referenced
-            function 'ServiceClient': client.js(0,0): which referenced
-              function 'Client': client.js(0,0): which referenced
-                function '<anonymous>': client.js(0,0): which referenced
-                  function 'ClientWritableStream': client.js(0,0): which referenced
-                    function 'Writable': _stream_writable.js(0,0): which captured
-                      'realHasInstance', a function defined at
-                        function '[Symbol.hasInstance]': which could not be serialized because
-                          it was a native code function.
-
+(...)
 Function code:
-  function [Symbol.hasInstance]() { [native code] }
-
+(...)
 Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
         });
     }
