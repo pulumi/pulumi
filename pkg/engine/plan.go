@@ -16,6 +16,7 @@ package engine
 
 import (
 	"os"
+	"sync"
 
 	"github.com/golang/glog"
 	"github.com/opentracing/opentracing-go"
@@ -252,6 +253,7 @@ type planActions struct {
 	Ops     map[deploy.StepOp]int
 	Opts    planOptions
 	Seen    map[resource.URN]deploy.Step
+	MapLock sync.Mutex
 }
 
 func newPlanActions(opts planOptions) *planActions {
@@ -263,21 +265,27 @@ func newPlanActions(opts planOptions) *planActions {
 }
 
 func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
+	acts.MapLock.Unlock()
 	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 	return nil, nil
 }
 
 func (acts *planActions) OnResourceStepPost(ctx interface{},
 	step deploy.Step, status resource.Status, err error) error {
+	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
+	acts.MapLock.Unlock()
 
 	if err != nil {
 		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(step.URN()), err)
 	} else {
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if step.Logical() {
+			acts.MapLock.Lock()
 			acts.Ops[step.Op()]++
+			acts.MapLock.Unlock()
 		}
 
 		_ = acts.OnResourceOutputs(step)
@@ -287,8 +295,9 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 }
 
 func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
+	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
-
+	acts.MapLock.Unlock()
 	// Print the resource outputs separately, unless this is a refresh in which case they are already printed.
 	if !acts.Opts.SkipOutputs {
 		acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
