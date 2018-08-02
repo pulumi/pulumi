@@ -24,17 +24,19 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/golang/glog"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/backend/cloud"
 	"github.com/pulumi/pulumi/pkg/backend/local"
 	"github.com/pulumi/pulumi/pkg/backend/state"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/util/cancel"
@@ -356,7 +358,7 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 	}
 
 	if err := addGitMetadataToEnvironment(root, m.Environment); err != nil {
-		cmdutil.Diag().Warningf(diag.Message("", "adding git env data: %v"), err)
+		glog.V(3).Infof("errors detecting git metadata: %s", err)
 	}
 	addCIMetadataToEnvironment(m.Environment)
 
@@ -365,6 +367,8 @@ func getUpdateMetadata(msg, root string) (backend.UpdateMetadata, error) {
 
 // addGitMetadataToEnvironment populate's the environment metadata bag with Git-related values.
 func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
+	var allErrors *multierror.Error
+
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
 	repo, err := gitutil.GetGitRepository(repoRoot)
 	if err != nil {
@@ -374,6 +378,18 @@ func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
 		return nil
 	}
 
+	if err := addGitHubMetadataToEnvironment(repo, env); err != nil {
+		allErrors = multierror.Append(allErrors, err)
+	}
+
+	if err := addGitCommitMetadataToEnvironment(repo, env); err != nil {
+		allErrors = multierror.Append(allErrors, err)
+	}
+
+	return allErrors.ErrorOrNil()
+}
+
+func addGitHubMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
 	// GitHub repo slug if applicable. We don't require GitHub, so swallow errors.
 	ghLogin, ghRepo, err := gitutil.GetGitHubProjectForOriginByRepo(repo)
 	if err != nil {
@@ -382,6 +398,10 @@ func addGitMetadataToEnvironment(repoRoot string, env map[string]string) error {
 	env[backend.GitHubLogin] = ghLogin
 	env[backend.GitHubRepo] = ghRepo
 
+	return nil
+}
+
+func addGitCommitMetadataToEnvironment(repo *git.Repository, env map[string]string) error {
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
