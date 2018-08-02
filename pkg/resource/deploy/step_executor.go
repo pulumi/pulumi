@@ -291,6 +291,7 @@ func newStepExecutor(cancel *cancel.Source, plan *Plan, opts Options, preview bo
 		cancel:         cancel,
 	}
 
+	exec.sawError.Store(false)
 	fanout := opts.Parallel
 	if fanout < 1 {
 		fanout = 1

@@ -209,7 +209,7 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 // NewPlanExecutor creates a new PlanExecutor suitable for executing the given plan.
 func NewPlanExecutor(ctx *cancel.Context, plan *Plan, opts Options, preview bool, src SourceIterator) *PlanExecutor {
 	_, execCancel := cancel.NewContext(context.Background())
-	return &PlanExecutor{
+	pe := &PlanExecutor{
 		plan:           plan,
 		opts:           opts,
 		src:            src,
@@ -219,4 +219,8 @@ func NewPlanExecutor(ctx *cancel.Context, plan *Plan, opts Options, preview bool
 		ctx:            ctx,
 		stepExecCancel: execCancel,
 	}
+
+	pe.sawError.Store(false)
+	pe.sawCancel.Store(false)
+	return pe
 }
