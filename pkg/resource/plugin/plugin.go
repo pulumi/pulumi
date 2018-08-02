@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unicode"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
