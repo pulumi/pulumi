@@ -54,8 +54,8 @@ type PlanExecutor struct {
 	ctx            *cancel.Context // Ctrl-C cancellation context, given to us by our caller.
 	stepExecCancel *cancel.Source  // step executor cancellation context, shared ownership between step executor and us.
 
-	sawError  uint32 // have we seen an error?
-	sawCancel uint32 // have we seen a cancel?
+	sawError  atomic.Value // have we seen an error?
+	sawCancel atomic.Value // have we seen a cancel?
 }
 
 // Execute executes a plan to completion, using the given cancellation context and running a preview
@@ -69,7 +69,7 @@ func (pe *PlanExecutor) Execute() error {
 	go func() {
 		<-pe.ctx.Canceled()
 		logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): received cancel signal")
-		atomic.SwapUint32(&pe.sawCancel, 1)
+		pe.sawCancel.Store(true)
 		pe.stepExecCancel.Cancel()
 	}()
 
@@ -163,19 +163,19 @@ func (pe *PlanExecutor) Summary() PlanSummary {
 
 // errored returns whether or not this plan failed due to an error in step application.
 func (pe *PlanExecutor) errored() bool {
-	return atomic.LoadUint32(&pe.sawError) == 1 || pe.stepExec.Errored()
+	return pe.sawError.Load().(bool) || pe.stepExec.Errored()
 }
 
 // canceled returns whether or not this plan failed because it was canceled through Ctrl-C.
 func (pe *PlanExecutor) canceled() bool {
-	return atomic.LoadUint32(&pe.sawCancel) == 1
+	return pe.sawCancel.Load().(bool)
 }
 
 // cancelDueToError cancels the step executor and signals shutdown because the plan executor witnessed
 // an error that the step executor would not have witnessed. The main reason this happens is because of errors
 // occurring in the source program that can't be translated into chains for the step executor to execute.
 func (pe *PlanExecutor) cancelDueToError() {
-	atomic.SwapUint32(&pe.sawError, 1)
+	pe.sawError.Store(true)
 	pe.stepExecCancel.Cancel()
 }
 
@@ -218,7 +218,5 @@ func NewPlanExecutor(ctx *cancel.Context, plan *Plan, opts Options, preview bool
 		stepExec:       newStepExecutor(execCancel, plan, opts, preview),
 		ctx:            ctx,
 		stepExecCancel: execCancel,
-		sawError:       0,
-		sawCancel:      0,
 	}
 }

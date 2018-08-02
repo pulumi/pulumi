@@ -55,7 +55,7 @@ type stepExecutor struct {
 
 	cancel *cancel.Source // Cancellation source for this step executor.
 
-	sawError uint32 // atomic boolean indicating whether or not the step excecutor saw that there was an error.
+	sawError atomic.Value // atomic boolean indicating whether or not the step excecutor saw that there was an error.
 }
 
 //
@@ -102,7 +102,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 
 // Errored returnes whether or not this step executor saw a step whose execution ended in failure.
 func (se *stepExecutor) Errored() bool {
-	return atomic.LoadUint32(&se.sawError) == 1
+	return se.sawError.Load().(bool)
 }
 
 // SignalCompletion signals to the stepExecutor that there are no more chains left to execute. All worker
@@ -145,7 +145,7 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 }
 
 func (se *stepExecutor) cancelDueToError() {
-	atomic.SwapUint32(&se.sawError, 1)
+	se.sawError.Store(true)
 	se.cancel.Cancel()
 }
 
@@ -289,7 +289,6 @@ func newStepExecutor(cancel *cancel.Source, plan *Plan, opts Options, preview bo
 		preview:        preview,
 		incomingChains: make(chan Chain),
 		cancel:         cancel,
-		sawError:       0,
 	}
 
 	fanout := opts.Parallel
