@@ -209,7 +209,7 @@ func TestStackParenting(t *testing.T) {
 			// with the caveat, of course, that A and F will share a common parent, the implicit stack.
 
 			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 8, len(stackInfo.Deployment.Resources)) {
+			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
@@ -230,6 +230,9 @@ func TestStackParenting(t *testing.T) {
 						assert.Equal(t, urns["c"], res.Parent)
 					case "g":
 						assert.Equal(t, urns["f"], res.Parent)
+					case "default":
+						// Default providers are not parented.
+						assert.Equal(t, "", string(res.Parent))
 					default:
 						t.Fatalf("unexpected name %s", res.URN.Name())
 					}
