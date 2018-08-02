@@ -297,7 +297,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //
 //   yarn install
 //   yarn link <each opts.Depencies>
-//   yarn run build
+//   (+) yarn run build
 //   pulumi init
 //   (*) pulumi login
 //   pulumi stack init integrationtesting
@@ -313,6 +313,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 //   pulumi stack rm --yes integrationtesting
 //
 //   (*) Only if PULUMI_ACCESS_TOKEN is set.
+//   (+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {

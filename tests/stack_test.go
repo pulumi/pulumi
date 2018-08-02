@@ -229,7 +229,6 @@ func TestStackBackups(t *testing.T) {
 		// Build the project.
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "run", "build")
 
 		// Now run pulumi update.
 		before := time.Now().UnixNano()

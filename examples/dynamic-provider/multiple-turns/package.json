@@ -1,11 +1,6 @@
 {
     "name": "minimal",
     "license": "Apache-2.0",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
-    "scripts": {
-        "build": "tsc"
-    },
     "devDependencies": {
         "@types/minimist": "^1.2.0",
         "@types/node": "^8.0.25",
