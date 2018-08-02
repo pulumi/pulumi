@@ -106,7 +106,7 @@ export interface ResourceOptions {
     /**
      * An optional additional explicit dependencies on other resources.
      */
-    dependsOn?: Resource[];
+    dependsOn?: Resource | Resource[];
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
