@@ -22,12 +22,12 @@ import (
 	"strconv"
 	"strings"
 
+	zxcvbn "github.com/nbutton23/zxcvbn-go"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
@@ -271,6 +271,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				v = config.NewSecureValue(enc)
 			} else {
 				v = config.NewValue(value)
+
+				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
+				if !plaintext && looksLikeSecret(value) {
+					return errors.Errorf(
+						"config value '%s' looks like a secret; "+
+							"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
+						value)
+				}
 			}
 
 			ps, err := workspace.DetectProjectStack(s.Name().StackName())
@@ -280,22 +288,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 			ps.Config[key] = v
 
-			err = workspace.SaveProjectStack(s.Name().StackName(), ps)
-			if err != nil {
-				return err
-			}
-
-			// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
-			if !secret && !plaintext {
-				cmdutil.Diag().Warningf(
-					diag.Message("", /*urn*/
-						"saved config key '%s' value '%s' as plaintext; "+
-							"re-run with --secret to encrypt the value instead. Use "+
-							"--plaintext to avoid this warning"),
-					key, value)
-			}
-
-			return nil
+			return workspace.SaveProjectStack(s.Name().StackName(), ps)
 		}),
 	}
 
@@ -420,4 +413,28 @@ func getConfig(stack backend.Stack, key config.Key) error {
 
 	return errors.Errorf(
 		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Name())
+}
+
+const (
+	// maxEntropyCheckLength is the maximum length of a possible secret for entropy checking.
+	maxEntropyCheckLength = 16
+	// entropyThreshold is the total entropy threshold a potential secret needs to pass before being flagged.
+	entropyThreshold = 80.0
+	// entropyCharThreshold is the per-char entropy threshold a potential secret needs to pass before being flagged.
+	entropyPerCharThreshold = 3.0
+)
+
+// looksLikeSecret returns true if a configuration value "looks" like a secret. This is always going to be a heuristic
+// that suffers from false positives, but is better (a) than our prior approach of unconditionally printing a warning
+// for all plaintext values, and (b)  to be paranoid about such things. Inspired by the gas linter and securego project.
+func looksLikeSecret(v string) bool {
+	if len(v) > maxEntropyCheckLength {
+		v = v[:maxEntropyCheckLength]
+	}
+
+	// Compute the strength use the resulting entropy to flag whether this looks like a secret.
+	info := zxcvbn.PasswordStrength(v, nil)
+	entropyPerChar := info.Entropy / float64(len(v))
+	return (info.Entropy >= entropyThreshold ||
+		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold))
 }
