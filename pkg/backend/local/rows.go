@@ -42,13 +42,13 @@ type ResourceRow interface {
 
 	Step() engine.StepEventMetadata
 	SetStep(step engine.StepEventMetadata)
+	AddOutputStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	Tick() int
 
-	Done() bool
-	SetDone()
+	IsDone() bool
 
 	SetFailed()
 
@@ -111,14 +111,12 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step engine.StepEventMetadata
+	step        engine.StepEventMetadata
+	outputSteps []engine.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
 	tick int
-
-	// If the engine finished processing this resources.
-	done bool
 
 	// If we failed this operation for any reason.
 	failed bool
@@ -155,27 +153,15 @@ func (data *resourceRowData) Step() engine.StepEventMetadata {
 }
 
 func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
-	// never update a 'replace' step with an CreateReplacement DeleteReplacement step.
-	// in the progress view we never want to show those individually, we always want
-	// them combined since we only show a single line per resource.
-	if data.step.Op == deploy.OpReplace &&
-		(step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced) {
-		return
-	}
-
 	data.step = step
+}
+
+func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
+	data.outputSteps = append(data.outputSteps, step)
 }
 
 func (data *resourceRowData) Tick() int {
 	return data.tick
-}
-
-func (data *resourceRowData) Done() bool {
-	return data.done
-}
-
-func (data *resourceRowData) SetDone() {
-	data.done = true
 }
 
 func (data *resourceRowData) Failed() bool {
@@ -248,13 +234,39 @@ const (
 	infoColumn   column = 4
 )
 
+func (data *resourceRowData) IsDone() bool {
+	if data.failed {
+		// consider a failed resource 'done'.
+		return true
+	}
+
+	if data.display.done {
+		// if the display is done, then we're definitely done.
+		return true
+	}
+
+	// We're done if we have the output-step for whatever step operation we're performing
+	return data.ContainsOutputsStep(data.step.Op)
+}
+
+func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
+	for _, s := range data.outputSteps {
+		if s.Op == op {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (data *resourceRowData) ColorizedSuffix() string {
-	if !data.display.Done && !data.done {
-		if data.step.Op != deploy.OpSame || isRootURN(data.step.URN) {
+	if !data.IsDone() && data.display.isTerminal {
+		op := data.display.getStepOp(data.step)
+		if op != deploy.OpSame || isRootURN(data.step.URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-			return data.step.Op.Color() + ellipses + colors.Reset
+			return op.Color() + ellipses + colors.Reset
 		}
 	}
 
@@ -281,7 +293,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	diagInfo := data.diagInfo
 
-	if data.done {
+	if data.IsDone() {
 		failed := data.failed || diagInfo.ErrorCount > 0
 		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
 	} else {
@@ -294,6 +306,17 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 func (data *resourceRowData) getInfoColumn() string {
 	step := data.step
+
+	if step.Op == deploy.OpCreateReplacement || step.Op == deploy.OpDeleteReplaced {
+		// if we're doing a replacement, see if we can find a replace step that contains useful
+		// information to display.
+		for _, outputStep := range data.outputSteps {
+			if outputStep.Op == deploy.OpReplace {
+				step = outputStep
+			}
+		}
+	}
+
 	changesBuf := &bytes.Buffer{}
 
 	if step.Old != nil && step.New != nil && step.Old.Inputs != nil && step.New.Inputs != nil {
@@ -356,7 +379,7 @@ func (data *resourceRowData) getInfoColumn() string {
 		appendDiagMessage(fmt.Sprintf("%v debug messages", diagInfo.DebugCount))
 	}
 
-	if !data.display.Done {
+	if !data.display.done {
 		// If we're not totally done, and we're in the tree-view also print out the worst diagnostic
 		// next to the status message. This is helpful for long running tasks to know what's going
 		// on. However, once done, we print the diagnostics at the bottom, so we don't need to show
