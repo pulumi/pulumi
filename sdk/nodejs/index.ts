@@ -27,3 +27,10 @@ import * as dynamic from "./dynamic";
 import * as log from "./log";
 import * as runtime from "./runtime";
 export { asset, dynamic, log, runtime };
+
+// @pulumi is a deployment-only module.  If someone tries to capture it, and we fail for some reason
+// we want to give a good message about what the problem likely is.  Note that capturing a
+// deployment time module can be ok in some cases.  For example, using "new pulumi.Config" is fine.
+// However, in general, the majority of this API is not safe to use at 'run time' and will fail.
+/* @internal */
+export const deploymentOnlyModule = true;

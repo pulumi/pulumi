@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// tslint:disable:max-line-length
+
 import { relative as pathRelative } from "path";
 import { basename } from "path";
 import * as ts from "typescript";
@@ -163,7 +165,7 @@ interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
-    capturedModuleName?: string;
+    capturedModule?: { name: string, value: any };
 }
 
 /*
@@ -488,7 +490,7 @@ function createFunctionInfo(
                 const moduleName = findModuleName(value);
                 const frameLength = context.frames.length;
                 if (moduleName) {
-                    context.frames.push({ capturedModuleName: moduleName });
+                    context.frames.push({ capturedModule: { name: moduleName, value: value } });
                 }
                 else if (value instanceof Function) {
                     // Only bother pushing on context frame if the name of the variable
@@ -568,7 +570,9 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
     return names.concat(Object.getOwnPropertySymbols(obj));
 }
 
-function throwSerializationError(func: Function, context: Context, info: string): never {
+function throwSerializationError(
+    func: Function, context: Context, info: string): never {
+
     let message = "";
 
     const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
@@ -609,8 +613,13 @@ function throwSerializationError(func: Function, context: Context, info: string)
         else if (frame.capturedFunctionName) {
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
-        else if (frame.capturedModuleName) {
-            message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+        else if (frame.capturedModule) {
+            if (i === n - 1) {
+                message += `module '${frame.capturedModule.name}'\n`;
+            }
+            else {
+                message += `module '${frame.capturedModule.name}' which indirectly referenced\n`;
+            }
         }
         else if (frame.capturedVariableName) {
             message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
@@ -620,15 +629,23 @@ function throwSerializationError(func: Function, context: Context, info: string)
     message += "  ".repeat(i) + info + "\n\n";
     message += getTrimmedFunctionCode(func);
 
-    const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
+    const moduleIndex = context.frames.findIndex(
+            f => f.capturedModule !== undefined);
+
     if (moduleIndex >= 0) {
-        const moduleName = context.frames[moduleIndex].capturedModuleName;
+        const module = context.frames[moduleIndex].capturedModule!;
+        const moduleName = module.name;
         message += "\n";
 
-        const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
-        const location = getFunctionLocation(functionLocation);
-        message += `Capturing modules can sometimes cause problems.
+        if (module.value.deploymentOnlyModule) {
+            message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
+        }
+        else {
+            const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
+            const location = getFunctionLocation(functionLocation);
+            message += `Capturing modules can sometimes cause problems.
 Consider using import('${moduleName}') or require('${moduleName}') inside ${location}`;
+        }
     }
 
     throw new RunError(message);
@@ -836,7 +853,6 @@ function getOrCreateEntry(
             }
         }
         else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
-            // tslint:disable-next-line:max-line-length
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.array = [];
             for (const elem of obj) {
@@ -1058,10 +1074,20 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        if (moduleName[0] === ".") {
-            // This is a reference to a local module (i.e. starts with '.'). Always capture the
-            // local module as a value.  We do this because capturing as a reference (i.e.
-            // 'require(...)') has the following problems:
+        const isLocalModule = moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/");
+
+        if (obj.deploymentOnlyModule || isLocalModule) {
+            // Try to serialize deployment-time and local-modules by-value.
+            //
+            // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
+            // parts of it may be serializable on the inside (i.e. pulumi.Config).  So just try to
+            // capture this as a value.  If it fails, we will give the user a good message.
+            // Otherwise, it may succeed if the user is only using a small part of the API that is
+            // serializable (like pulumi.Config)
+            //
+            // Or this is a reference to a local module (i.e. starts with '.', but isn't in
+            // ./node_modules). Always capture the local module as a value.  We do this because
+            // capturing as a reference (i.e. 'require(...)') has the following problems:
             //
             // 1. 'require(...)' will not work at run-time, because the user's code will not be
             //    serialized in a way that can actually be require'd (i.e. it is not ) serialized
@@ -1072,28 +1098,6 @@ function getOrCreateEntry(
             //    actually generate the serialized code for the functions or values in that module.
             //    This will also lead to code that simply will not work at run-time.
             serializeObject();
-        }
-        else if (moduleName.startsWith("@pulumi")) {
-            // @pulumi modules can't ever be referenced on the 'inside'.  Not only are they not
-            // written to support being used on the inside, but serialization also explicitly
-            // removes these modules from node_modules to trim down the total upload size.
-            //
-            // If the user's code actually explicitly references this, then emit a hard error
-            // to let them know what's going on.
-
-            // Find the 'func' to report this issue against. Note: we will always find some
-            // 'func' in the context chain as the only reason we ever even get into closure
-            // creation is because we're serializing out some function.
-            let func: Function = <any>undefined;
-            for (let i = context.frames.length - 1; i >= 0; i--) {
-                const frame = context.frames[i];
-                if (frame.functionLocation) {
-                    func = frame.functionLocation.func;
-                }
-            }
-
-            throwSerializationError(func, context,
-                "'@pulumi' modules cannot be referenced inside a function that will execute in the Cloud.");
         }
         else  {
             // This name bound to a module, serialize it out as a direct 'require(name)' call
@@ -1130,8 +1134,11 @@ for (const name of builtInModuleNames) {
     builtInModules.set(require(name), name);
 }
 
-// findRequirableModuleName attempts to find a global name bound to the object, which can
-// be used as a stable reference across serialization.
+// findRequirableModuleName attempts to find a global name bound to the object, which can be used as
+// a stable reference across serialization.  For built-in modules (i.e. "os", "fs", etc.) this will
+// return that exact name of the module.  Otherwise, this will return the relative path to the
+// module from the current working directory of the process.  This will normally be something of the
+// form ./node_modules/<package_name>...
 function findModuleName(obj: any): string | undefined {
     // First, check the built-in modules
     const key = builtInModules.get(obj);

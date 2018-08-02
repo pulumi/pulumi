@@ -17,9 +17,10 @@
 import * as assert from "assert";
 import { EOL } from "os";
 import { runtime } from "../../index";
+import * as pulumi from "../../index";
 import { output } from "../../resource";
 import { assertAsyncThrows, asyncTest } from "../util";
-import * as config from "../../config";
+import * as typescript from "typescript";
 
 interface ClosureCase {
     pre?: () => void;               // an optional function to run before this case.
@@ -4771,11 +4772,49 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
     }
 
     {
+        cases.push({
+            title: "Capture non-built-in module",
+            func: function () { typescript.parseCommandLine([""]); },
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ typescript: require("./node_modules/typescript/lib/typescript.js") }) {
+
+return function () { typescript.parseCommandLine([""]); };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
+        cases.push({
+            title: "Fail to capture non-deployment module due to native code",
+            func: function () { console.log(pulumi); },
+            error: `Error serializing function 'func': closure.spec.js(0,0)
+
+function 'func': closure.spec.js(0,0): captured
+  module './bin/index.js' which indirectly referenced
+    function 'debug': index.js(0,0): which captured
+      module './bin/runtime/settings.js' which indirectly referenced
+        function 'getEngine': settings.js(0,0): which captured
+          module './bin/proto/engine_grpc_pb.js' which indirectly referenced
+(...)
+Function code:
+(...)
+Module './bin/index.js' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`
+        });
+    }
+
+    {
         // Used just to validate that if we capture a Config object we see these values serialized over.
         // Specifically, the module that Config uses needs to be captured by value and not be
         // 'require-reference'.
         runtime.setConfig("test:TestingKey1", "TestingValue1");
-        const testConfig = new config.Config("test");
+        const testConfig = new pulumi.Config("test");
 
         cases.push({
             title: "Capture config created on the outside",
@@ -4883,12 +4922,12 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 
         cases.push({
             title: "Capture config created on the inside",
-            func: function () { const v = new config.Config("test").get("TestingKey2"); console.log(v); },
+            func: function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); },
             expectText: `exports.handler = __f0;
 
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-var __0_config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
 var __runtime_1 = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 __f5.isInstance = __f6;
@@ -4904,7 +4943,7 @@ Object.defineProperty(__f1_prototype, "requireNumber", { configurable: true, wri
 Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, writable: true, value: __f13 });
 Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f14 });
 __f1.prototype = __f1_prototype;
-var __config = {Config: __f1};
+var __pulumi = {Config: __f1};
 (...)
 function __cleanKey() {
   return (function() {
@@ -4924,7 +4963,7 @@ return function /*cleanKey*/(key) {
 
 function __ensureConfig() {
   return (function() {
-    with({ loaded: true, config: __0_config, cleanKey: __cleanKey, ensureConfig: __ensureConfig }) {
+    with({ loaded: true, config: __config, cleanKey: __cleanKey, ensureConfig: __ensureConfig }) {
 
 return function /*ensureConfig*/() {
     if (!loaded) {
@@ -4945,7 +4984,7 @@ return function /*ensureConfig*/() {
 
 function __getConfig() {
   return (function() {
-    with({ ensureConfig: __ensureConfig, config: __0_config, getConfig: __getConfig }) {
+    with({ ensureConfig: __ensureConfig, config: __config, getConfig: __getConfig }) {
 
 return function /*getConfig*/(k) {
     ensureConfig();
@@ -4970,9 +5009,9 @@ return function /*get*/(key) {
 (...)
 function __f0() {
   return (function() {
-    with({ config: __config }) {
+    with({ pulumi: __pulumi }) {
 
-return function () { const v = new config.Config("test").get("TestingKey2"); console.log(v); };
+return function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
