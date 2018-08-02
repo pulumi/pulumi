@@ -1077,8 +1077,13 @@ function getOrCreateEntry(
         const isLocalModule = moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/");
 
         if (obj.deploymentOnlyModule || isLocalModule) {
+            // Try to serialize deployment-time and local-modules by-value.
+            //
             // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
-            // parts of it may be serializable on the inside (i.e. pulumi.Config).
+            // parts of it may be serializable on the inside (i.e. pulumi.Config).  So just try to
+            // capture this as a value.  If it fails, we will give the user a good message.
+            // Otherwise, it may succeed if the user is only using a small part of the API that is
+            // serializable (like pulumi.Config)
             //
             // Or this is a reference to a local module (i.e. starts with '.', but isn't in
             // ./node_modules). Always capture the local module as a value.  We do this because
