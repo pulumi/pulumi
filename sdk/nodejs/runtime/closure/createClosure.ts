@@ -613,7 +613,7 @@ function throwSerializationError(
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
         else if (frame.capturedModuleName) {
-            if (i == n - 1) {
+            if (i === n - 1) {
                 message += `module '${frame.capturedModuleName}'\n`;
             }
             else {
