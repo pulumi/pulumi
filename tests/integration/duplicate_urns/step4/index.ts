@@ -21,6 +21,6 @@ const a = new Resource("a", { state: 7 });
 
 // "b" is not in the snapshot. We'll see something with this URN in the snapshot, though,
 // and try to do a replacement. This is bad because the thing we're replacing is pending deletion.
-const b = new Resource("a", { state: 5 }, { dependsOn: [a] });
+const b = new Resource("a", { state: 5 }, { dependsOn: a });
 
 // This should fail, but gracefully.
