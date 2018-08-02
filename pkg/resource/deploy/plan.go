@@ -29,6 +29,15 @@ type Options struct {
 	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
 }
 
+// DegreeOfParallelism returns the degree of parallelism that should be used during the
+// planning and deployment process.
+func (o Options) DegreeOfParallelism() int {
+	if o.Parallel <= 1 {
+		return 1
+	}
+	return o.Parallel
+}
+
 // Events is an interface that can be used to hook interesting engine/planning events.
 type Events interface {
 	OnResourceStepPre(step Step) (interface{}, error)

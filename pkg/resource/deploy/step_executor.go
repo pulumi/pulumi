@@ -67,6 +67,8 @@ type stepExecutor struct {
 // Execute submits a Chain for asynchronous execution. The execution of the chain will begin as soon as there
 // is a worker available to execute it.
 func (se *stepExecutor) Execute(chain Chain) {
+	// The select here is to avoid blocking on a send to se.incomingChains if a cancellation is pending.
+	// If one is pending, we should exit early - we will shortly be tearing down the engine and exiting.
 	select {
 	case se.incomingChains <- chain:
 	case <-se.cancel.Context().Canceled():
@@ -78,8 +80,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	value, has := se.pendingNews.Load(urn)
-	reg := value.(Step)
 	contract.Assertf(has, "cannot complete a resource '%v' whose registration isn't pending", urn)
+	reg := value.(Step)
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
@@ -292,11 +294,7 @@ func newStepExecutor(cancel *cancel.Source, plan *Plan, opts Options, preview bo
 	}
 
 	exec.sawError.Store(false)
-	fanout := opts.Parallel
-	if fanout < 1 {
-		fanout = 1
-	}
-
+	fanout := opts.DegreeOfParallelism()
 	for i := 0; i < fanout; i++ {
 		go exec.worker(i)
 	}
