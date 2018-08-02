@@ -29,4 +29,5 @@ import * as runtime from "./runtime";
 export { asset, dynamic, log, runtime };
 
 // @pulumi is a deployment-only module.  If someone tries to capture it, we want to hard fail.
+/* @internal */
 export const deploymentOnlyModule = true;

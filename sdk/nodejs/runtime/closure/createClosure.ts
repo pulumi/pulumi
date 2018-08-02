@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// tslint:disable:max-line-length
+
 import { relative as pathRelative } from "path";
 import { basename } from "path";
 import * as ts from "typescript";
@@ -163,7 +165,7 @@ interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
-    capturedModuleName?: string;
+    capturedModule?: { name: string, value: any };
 }
 
 /*
@@ -488,7 +490,7 @@ function createFunctionInfo(
                 const moduleName = findModuleName(value);
                 const frameLength = context.frames.length;
                 if (moduleName) {
-                    context.frames.push({ capturedModuleName: moduleName });
+                    context.frames.push({ capturedModule: { name: moduleName, value: value } });
                 }
                 else if (value instanceof Function) {
                     // Only bother pushing on context frame if the name of the variable
@@ -569,8 +571,7 @@ function getOwnPropertyNamesAndSymbols(obj: any): (string | symbol)[] {
 }
 
 function throwSerializationError(
-    func: Function, context: Context, info: string,
-    omitRecommendation?: boolean): never {
+    func: Function, context: Context, info: string): never {
 
     let message = "";
 
@@ -612,12 +613,12 @@ function throwSerializationError(
         else if (frame.capturedFunctionName) {
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
         }
-        else if (frame.capturedModuleName) {
+        else if (frame.capturedModule) {
             if (i === n - 1) {
-                message += `module '${frame.capturedModuleName}'\n`;
+                message += `module '${frame.capturedModule.name}'\n`;
             }
             else {
-                message += `module '${frame.capturedModuleName}' which indirectly referenced\n`;
+                message += `module '${frame.capturedModule.name}' which indirectly referenced\n`;
             }
         }
         else if (frame.capturedVariableName) {
@@ -628,12 +629,18 @@ function throwSerializationError(
     message += "  ".repeat(i) + info + "\n\n";
     message += getTrimmedFunctionCode(func);
 
-    if (!omitRecommendation) {
-        const moduleIndex = context.frames.findIndex(f => f.capturedModuleName !== undefined);
-        if (moduleIndex >= 0) {
-            const moduleName = context.frames[moduleIndex].capturedModuleName;
-            message += "\n";
+    const moduleIndex = context.frames.findIndex(
+            f => f.capturedModule !== undefined);
 
+    if (moduleIndex >= 0) {
+        const module = context.frames[moduleIndex].capturedModule!;
+        const moduleName = module.name;
+        message += "\n";
+
+        if (module.value.deploymentOnlyModule) {
+            message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
+        }
+        else {
             const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
             const location = getFunctionLocation(functionLocation);
             message += `Capturing modules can sometimes cause problems.
@@ -846,7 +853,6 @@ function getOrCreateEntry(
             }
         }
         else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
-            // tslint:disable-next-line:max-line-length
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.array = [];
             for (const elem of obj) {
@@ -1068,30 +1074,13 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        if (obj.deploymentOnlyModule) {
-            // A deployment-only modules can't ever be referenced on the 'inside'.
+        const isLocalModule = moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/");
+
+        if (obj.deploymentOnlyModule || isLocalModule) {
+            // A deployment-only modules can't ever be successfully 'required' on the 'inside'. But
+            // parts of it may be serializable on the inside (i.e. pulumi.Config).
             //
-            // If the user's code actually explicitly references this, then emit a hard error to let
-            // them know what's going on.
-
-            // Find the 'func' to report this issue against. Note: we will always find some
-            // 'func' in the context chain as the only reason we ever even get into closure
-            // creation is because we're serializing out some function.
-            let func: Function = <any>undefined;
-            for (let i = context.frames.length - 1; i >= 0; i--) {
-                const frame = context.frames[i];
-                if (frame.functionLocation) {
-                    func = frame.functionLocation.func;
-                }
-            }
-
-            throwSerializationError(func, context,
-// tslint:disable-next-line:max-line-length
-`module '${moduleName}' can only be used at 'deployment time' and should not used inside a function intended for 'run time'.`,
-true /*omitRecommendation*/);
-        }
-        else if (moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/")) {
-            // This is a reference to a local module (i.e. starts with '.', but isn't in
+            // Or this is a reference to a local module (i.e. starts with '.', but isn't in
             // ./node_modules). Always capture the local module as a value.  We do this because
             // capturing as a reference (i.e. 'require(...)') has the following problems:
             //
