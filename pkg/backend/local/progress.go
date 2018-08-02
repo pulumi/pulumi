@@ -734,11 +734,7 @@ func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 	payloads []engine.DiagEventPayload) engine.DiagEventPayload {
 	buf := bytes.Buffer{}
 
-	for i, p := range payloads {
-		if i != 0 {
-			buf.WriteString("\n")
-		}
-
+	for _, p := range payloads {
 		buf.WriteString(display.renderProgressDiagEvent(p, false /*includePrefix:*/))
 	}
 
