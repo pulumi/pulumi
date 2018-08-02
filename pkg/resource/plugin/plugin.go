@@ -120,7 +120,6 @@ func newPlugin(ctx *Context, bin string, prefix string, args []string) (*plugin,
 				break
 			}
 
-			msg = strings.TrimRightFunc(msg, unicode.IsSpace)
 			if strings.TrimSpace(msg) != "" {
 				if stderr {
 					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
