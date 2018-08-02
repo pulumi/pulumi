@@ -14,6 +14,7 @@
 
 import * as util from "util";
 import { RunError } from "./errors";
+import { getProject } from "./metadata";
 import { getConfig } from "./runtime";
 
 /**
@@ -25,11 +26,16 @@ import { getConfig } from "./runtime";
  */
 export class Config {
     /**
-     * name is the configuration bag's logical name and uniquely identifies it.
+     * name is the configuration bag's logical name and uniquely identifies it.  The default is the name of the current
+     * project.
      */
     public readonly name: string;
 
-    constructor(name: string) {
+    constructor(name?: string) {
+        if (name === undefined) {
+            name = getProject();
+        }
+
         if (name.endsWith(":config")) {
             name = name.replace(/:config$/, "");
         }

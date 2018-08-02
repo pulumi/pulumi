@@ -4822,10 +4822,12 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
             expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
+var __options = {project: undefined};
+var __runtime = {getConfig: __getConfig, getProject: __0_getProject};
+var __metadata_1 = {getProject: __getProject};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
-var __runtime_1 = {getConfig: __getConfig};
 Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
 __f5.isInstance = __f6;
 (...)
@@ -4842,21 +4844,6 @@ Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writa
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
 
-function __f1() {
-  return (function() {
-    with({  }) {
-
-return function /*constructor*/(name) {
-        if (name.endsWith(":config")) {
-            name = name.replace(/:config$/, "");
-        }
-        this.name = name;
-    };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
 function __getConfig() {
   return (function() {
     with({ config: __config, getConfig: __getConfig }) {
@@ -4869,9 +4856,55 @@ return function /*getConfig*/(k) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
+function __0_getProject() {
+  return (function() {
+    with({ options: __options, getProject: __0_getProject }) {
+
+return function /*getProject*/() {
+    return options.project;
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __getProject() {
+  return (function() {
+    with({ runtime: __runtime, getProject: __getProject }) {
+
+return function /*getProject*/() {
+    const project = runtime.getProject();
+    if (project) {
+        return project;
+    }
+    throw new Error("Project unknown; are you using the Pulumi CLI?");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ metadata_1: __metadata_1 }) {
+
+return function /*constructor*/(name) {
+        if (name === undefined) {
+            name = metadata_1.getProject();
+        }
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
 function __f2() {
   return (function() {
-    with({ runtime_1: __runtime_1 }) {
+    with({ runtime_1: __runtime }) {
 
 return function /*get*/(key) {
         return runtime_1.getConfig(this.fullKey(key));
@@ -4902,10 +4935,12 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
             func: function () { const v = new pulumi.Config("test").get("TestingKey2"); console.log(v); },
             expectText: `exports.handler = __f0;
 
+var __options = {project: undefined};
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
+var __runtime = {getProject: __0_getProject, getConfig: __getConfig};
+var __metadata_1 = {getProject: __getProject};
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
-var __runtime_1 = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 __f5.isInstance = __f6;
 (...)
@@ -4922,16 +4957,13 @@ Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable:
 __f1.prototype = __f1_prototype;
 var __pulumi = {Config: __f1};
 
-function __f1() {
+function __0_getProject() {
   return (function() {
-    with({  }) {
+    with({ options: __options, getProject: __0_getProject }) {
 
-return function /*constructor*/(name) {
-        if (name.endsWith(":config")) {
-            name = name.replace(/:config$/, "");
-        }
-        this.name = name;
-    };
+return function /*getProject*/() {
+    return options.project;
+};
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -4949,9 +4981,43 @@ return function /*getConfig*/(k) {
   }).apply(undefined, undefined).apply(this, arguments);
 }
 
+function __getProject() {
+  return (function() {
+    with({ runtime: __runtime, getProject: __getProject }) {
+
+return function /*getProject*/() {
+    const project = runtime.getProject();
+    if (project) {
+        return project;
+    }
+    throw new Error("Project unknown; are you using the Pulumi CLI?");
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ metadata_1: __metadata_1 }) {
+
+return function /*constructor*/(name) {
+        if (name === undefined) {
+            name = metadata_1.getProject();
+        }
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
+        }
+        this.name = name;
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
 function __f2() {
   return (function() {
-    with({ runtime_1: __runtime_1 }) {
+    with({ runtime_1: __runtime }) {
 
 return function /*get*/(key) {
         return runtime_1.getConfig(this.fullKey(key));

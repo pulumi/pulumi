@@ -28,6 +28,10 @@ type Config struct {
 
 // New creates a new config bag with the given context and namespace.
 func New(ctx *pulumi.Context, namespace string) *Config {
+	if namespace == "" {
+		namespace = ctx.Project()
+	}
+
 	return &Config{ctx: ctx, namespace: namespace}
 }
 
