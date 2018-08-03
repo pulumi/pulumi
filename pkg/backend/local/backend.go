@@ -373,7 +373,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    1,
+		Version:    2,
 		Deployment: json.RawMessage(data),
 	}, nil
 }
@@ -387,7 +387,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stackRef backend.St
 		return err
 	}
 
-	snap, err := stack.DeserializeDeployment(deployment)
+	snap, err := stack.DeserializeUntypedDeployment(deployment)
 	if err != nil {
 		return err
 	}

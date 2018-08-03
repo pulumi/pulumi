@@ -31,12 +31,19 @@ goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse', null, global);
  * @constructor
  */
 proto.pulumirpc.ReadResourceRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ReadResourceRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ReadResourceRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   proto.pulumirpc.ReadResourceRequest.displayName = 'proto.pulumirpc.ReadResourceRequest';
 }
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -70,7 +77,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     type: jspb.Message.getFieldWithDefault(msg, 2, ""),
     name: jspb.Message.getFieldWithDefault(msg, 3, ""),
     parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    dependenciesList: jspb.Message.getRepeatedField(msg, 6)
   };
 
   if (includeInstance) {
@@ -127,6 +135,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addDependencies(value);
       break;
     default:
       reader.skipField();
@@ -191,6 +203,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
       5,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getDependenciesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      6,
+      f
     );
   }
 };
@@ -283,6 +302,35 @@ proto.pulumirpc.ReadResourceRequest.prototype.clearProperties = function() {
  */
 proto.pulumirpc.ReadResourceRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * repeated string dependencies = 6;
+ * @return {!Array.<string>}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getDependenciesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 6));
+};
+
+
+/** @param {!Array.<string>} value */
+proto.pulumirpc.ReadResourceRequest.prototype.setDependenciesList = function(value) {
+  jspb.Message.setField(this, 6, value || []);
+};
+
+
+/**
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.addDependencies = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 6, value, opt_index);
+};
+
+
+proto.pulumirpc.ReadResourceRequest.prototype.clearDependenciesList = function() {
+  this.setDependenciesList([]);
 };
 
 

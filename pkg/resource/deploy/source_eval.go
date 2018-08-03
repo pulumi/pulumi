@@ -82,18 +82,20 @@ func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
-	mon, err := newResourceMonitor(src, regChan, regOutChan)
+	regReadChan := make(chan *readResourceEvent)
+	mon, err := newResourceMonitor(src, regChan, regOutChan, regReadChan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		mon:        mon,
-		src:        src,
-		regChan:    regChan,
-		regOutChan: regOutChan,
-		finChan:    make(chan error),
+		mon:         mon,
+		src:         src,
+		regChan:     regChan,
+		regOutChan:  regOutChan,
+		regReadChan: regReadChan,
+		finChan:     make(chan error),
 	}
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
@@ -105,12 +107,13 @@ func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
 }
 
 type evalSourceIterator struct {
-	mon        *resmon                            // the resource monitor, per iterator.
-	src        *evalSource                        // the owning eval source object.
-	regChan    chan *registerResourceEvent        // the channel that contains resource registrations.
-	regOutChan chan *registerResourceOutputsEvent // the channel that contains resource completions.
-	finChan    chan error                         // the channel that communicates completion.
-	done       bool                               // set to true when the evaluation is done.
+	mon         *resmon                            // the resource monitor, per iterator.
+	src         *evalSource                        // the owning eval source object.
+	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
+	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
+	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
+	finChan     chan error                         // the channel that communicates completion.
+	done        bool                               // set to true when the evaluation is done.
 }
 
 func (iter *evalSourceIterator) Close() error {
@@ -137,6 +140,10 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 		logging.V(5).Infof("EvalSourceIterator produced a completion: urn=%v,#outs=%v",
 			regOut.URN(), len(regOut.Outputs()))
 		return regOut, nil
+	case read := <-iter.regReadChan:
+		contract.Assert(read != nil)
+		logging.V(5).Infoln("EvalSourceIterator produced a read")
+		return read, nil
 	case err := <-iter.finChan:
 		// If we are finished, we can safely exit.  The contract with the language provider is that this implies
 		// that the language runtime has exited and so calling Close on the plugin is fine.
@@ -199,23 +206,25 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	src        *evalSource                        // the evaluation source.
-	regChan    chan *registerResourceEvent        // the channel to send resource registrations to.
-	regOutChan chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
-	addr       string                             // the address the host is listening on.
-	cancel     chan bool                          // a channel that can cancel the server.
-	done       chan error                         // a channel that resolves when the server completes.
+	src         *evalSource                        // the evaluation source.
+	regChan     chan *registerResourceEvent        // the channel to send resource registrations to.
+	regOutChan  chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
+	regReadChan chan *readResourceEvent            // the channel to send resource reads to.
+	addr        string                             // the address the host is listening on.
+	cancel      chan bool                          // a channel that can cancel the server.
+	done        chan error                         // a channel that resolves when the server completes.
 }
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, regChan chan *registerResourceEvent,
-	regOutChan chan *registerResourceOutputsEvent) (*resmon, error) {
+	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent) (*resmon, error) {
 	// New up an engine RPC server.
 	resmon := &resmon{
-		src:        src,
-		regChan:    regChan,
-		regOutChan: regOutChan,
-		cancel:     make(chan bool),
+		src:         src,
+		regChan:     regChan,
+		regOutChan:  regOutChan,
+		regReadChan: regReadChan,
+		cancel:      make(chan bool),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -300,41 +309,59 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, errors.Errorf("could not load resource provider for package '%v' from $PATH", t.Package())
 	}
 
-	// Manufacture a URN that is based on the program evaluation context.
-	var pt tokens.Type
-	if parent != "" {
-		pt = parent.Type()
-	}
-	urn := resource.NewURN(rm.src.Stack(), rm.src.Project(), pt, t, name)
-
-	// Now get the ID.  If it is an unknown value -- as might happen during planning when, for example, reading
-	// the output of another resource's output property -- then we can skip the RPC as it can't possibly do anything.
 	id := resource.ID(req.GetId())
 	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s)", id, t, name)
-	resp := &pulumirpc.ReadResourceResponse{Urn: string(urn)}
-
-	if id != plugin.UnknownStringValue {
-		// Unmarshal any additional state that came with the message.
-		props, err := plugin.UnmarshalProperties(
-			req.GetProperties(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to unmarshal read properties for resource %s", id)
-		}
-
-		// Now actually call the plugin to read the state and then return the results.
-		logging.V(5).Infof("ResourceMonitor.ReadResource received: %s #props=%d", label, len(props))
-		result, err := prov.Read(urn, id, props)
-		if err != nil {
-			return nil, errors.Wrapf(err, "reading resource %s state", urn)
-		}
-		marshaled, err := plugin.MarshalProperties(result, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to marshal %s return state", urn)
-		}
-		resp.Properties = marshaled
+	var deps []resource.URN
+	for _, depURN := range req.GetDependencies() {
+		deps = append(deps, resource.URN(depURN))
 	}
 
-	return resp, nil
+	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	event := &readResourceEvent{
+		id:           id,
+		name:         name,
+		baseType:     t,
+		parent:       parent,
+		props:        props,
+		dependencies: deps,
+		done:         make(chan *ReadResult),
+	}
+	select {
+	case rm.regReadChan <- event:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+	}
+
+	// Now block waiting for the operation to finish.
+	var result *ReadResult
+	select {
+	case result = <-event.done:
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
+		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+	}
+
+	contract.Assert(result != nil)
+	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
+		Label:        label,
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal %s return state", result.State.URN)
+	}
+
+	return &pulumirpc.ReadResourceResponse{
+		Urn:        string(result.State.URN),
+		Properties: marshaled,
+	}, nil
 }
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
@@ -496,4 +523,28 @@ func (g *registerResourceOutputsEvent) Outputs() resource.PropertyMap {
 func (g *registerResourceOutputsEvent) Done() {
 	// Communicate the resulting state back to the RPC thread, which is parked awaiting our reply.
 	g.done <- true
+}
+
+type readResourceEvent struct {
+	id           resource.ID
+	name         tokens.QName
+	baseType     tokens.Type
+	parent       resource.URN
+	props        resource.PropertyMap
+	dependencies []resource.URN
+	done         chan *ReadResult
+}
+
+var _ ReadResourceEvent = (*readResourceEvent)(nil)
+
+func (g *readResourceEvent) event() {}
+
+func (g *readResourceEvent) ID() resource.ID                  { return g.id }
+func (g *readResourceEvent) Name() tokens.QName               { return g.name }
+func (g *readResourceEvent) Type() tokens.Type                { return g.baseType }
+func (g *readResourceEvent) Parent() resource.URN             { return g.parent }
+func (g *readResourceEvent) Properties() resource.PropertyMap { return g.props }
+func (g *readResourceEvent) Dependencies() []resource.URN     { return g.dependencies }
+func (g *readResourceEvent) Done(result *ReadResult) {
+	g.done <- result
 }

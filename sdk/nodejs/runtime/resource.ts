@@ -73,6 +73,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setId(resolvedID);
         req.setParent(resop.parentURN);
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
+        req.setDependenciesList(Array.from(resop.dependencies));
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
