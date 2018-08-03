@@ -15,13 +15,13 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
@@ -53,9 +53,9 @@ type stepExecutor struct {
 	workers        sync.WaitGroup // WaitGroup tracking the worker goroutines that are owned by this step executor.
 	incomingChains chan Chain     // Incoming chains that we are to execute
 
-	cancel *cancel.Source // Cancellation source for this step executor.
-
-	sawError atomic.Value // atomic boolean indicating whether or not the step excecutor saw that there was an error.
+	ctx      context.Context    // cancellation context for the current plan.
+	cancel   context.CancelFunc // CancelFunc that cancels the above context.
+	sawError atomic.Value       // atomic boolean indicating whether or not the step excecutor saw that there was an error.
 }
 
 //
@@ -71,7 +71,7 @@ func (se *stepExecutor) Execute(chain Chain) {
 	// If one is pending, we should exit early - we will shortly be tearing down the engine and exiting.
 	select {
 	case se.incomingChains <- chain:
-	case <-se.cancel.Context().Canceled():
+	case <-se.ctx.Done():
 	}
 }
 
@@ -132,7 +132,7 @@ func (se *stepExecutor) WaitForCompletion() {
 func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 	for _, step := range chain {
 		select {
-		case <-se.cancel.Context().Canceled():
+		case <-se.ctx.Done():
 			se.log(workerID, "step %v on %v canceled", step.Op(), step.URN())
 			return
 		default:
@@ -148,7 +148,7 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 
 func (se *stepExecutor) cancelDueToError() {
 	se.sawError.Store(true)
-	se.cancel.Cancel()
+	se.cancel()
 }
 
 //
@@ -275,7 +275,7 @@ outer:
 
 			se.log(workerID, "worker received chain for execution")
 			se.executeChain(workerID, chain)
-		case <-se.cancel.Context().Canceled():
+		case <-se.ctx.Done():
 			se.log(workerID, "worker exiting due to cancellation")
 			break outer
 		}
@@ -284,12 +284,14 @@ outer:
 	se.log(workerID, "worker terminating")
 }
 
-func newStepExecutor(cancel *cancel.Source, plan *Plan, opts Options, preview bool) *stepExecutor {
+func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan, opts Options,
+	preview bool) *stepExecutor {
 	exec := &stepExecutor{
 		plan:           plan,
 		opts:           opts,
 		preview:        preview,
 		incomingChains: make(chan Chain),
+		ctx:            ctx,
 		cancel:         cancel,
 	}
 

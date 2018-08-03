@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"sync"
 
@@ -184,7 +185,7 @@ func (res *planResult) Chdir() (func(), error) {
 // Walk enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
+func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
 	opts := deploy.Options{
 		Events:   events,
 		Parallel: res.Options.Parallel,
@@ -195,10 +196,11 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 		return nil, err
 	}
 
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	done := make(chan bool)
 	var summary deploy.PlanSummary
 	go func() {
-		planExec := deploy.NewPlanExecutor(ctx.Cancel, res.Plan, opts, preview, src)
+		planExec := deploy.NewPlanExecutor(ctx, res.Plan, opts, preview, src)
 		err = planExec.Execute()
 		summary = planExec.Summary()
 		close(done)
@@ -207,7 +209,9 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 	// Asynchronously listen for cancellation, and deliver that signal to plan.
 	go func() {
 		select {
-		case <-ctx.Cancel.Canceled():
+		case <-cancelCtx.Cancel.Canceled():
+			// Cancel the plan executor's context, so it begins to shut down.
+			cancelFunc()
 			cancelErr := res.Plan.SignalCancellation()
 			if cancelErr != nil {
 				glog.V(3).Infof("Attempted to signal cancellation to resource providers, but failed: %s",
@@ -219,8 +223,8 @@ func (res *planResult) Walk(ctx *Context, events deploy.Events, preview bool) (d
 	}()
 
 	select {
-	case <-ctx.Cancel.Terminated():
-		return summary, ctx.Cancel.TerminateErr()
+	case <-cancelCtx.Cancel.Terminated():
+		return summary, cancelCtx.Cancel.TerminateErr()
 
 	case <-done:
 		return summary, err

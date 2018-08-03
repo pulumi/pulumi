@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/util/cancel"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
 
@@ -51,8 +50,8 @@ type PlanExecutor struct {
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
 
-	ctx            *cancel.Context // Ctrl-C cancellation context, given to us by our caller.
-	stepExecCancel *cancel.Source  // step executor cancellation context, shared ownership between step executor and us.
+	ctx    context.Context    // cancellation context for the current plan.
+	cancel context.CancelFunc // CancelFunc that cancels the above context.
 
 	sawError  atomic.Value // have we seen an error?
 	sawCancel atomic.Value // have we seen a cancel?
@@ -67,10 +66,9 @@ func (pe *PlanExecutor) Execute() error {
 	// that top-level cancellations result in quick teardown of all worker threads and the plan executor
 	// itself.
 	go func() {
-		<-pe.ctx.Canceled()
+		<-pe.ctx.Done()
 		logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): received cancel signal")
 		pe.sawCancel.Store(true)
-		pe.stepExecCancel.Cancel()
 	}()
 
 	// The second one polls for incoming source events and writes them to the `incomingEvents` channel,
@@ -125,7 +123,7 @@ outer:
 			}
 
 			pe.handleSingleEvent(event.Event)
-		case <-pe.stepExecCancel.Context().Canceled():
+		case <-pe.ctx.Done():
 			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): context canceled")
 			pe.cancelDueToError()
 			break outer
@@ -176,7 +174,7 @@ func (pe *PlanExecutor) canceled() bool {
 // occurring in the source program that can't be translated into chains for the step executor to execute.
 func (pe *PlanExecutor) cancelDueToError() {
 	pe.sawError.Store(true)
-	pe.stepExecCancel.Cancel()
+	pe.cancel()
 }
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
@@ -194,7 +192,7 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 		if steperr != nil {
 			logging.V(planExecutorLogLevel).Infof(
 				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
-			pe.stepExecCancel.Cancel()
+			pe.cancel()
 			return
 		}
 
@@ -207,17 +205,17 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 }
 
 // NewPlanExecutor creates a new PlanExecutor suitable for executing the given plan.
-func NewPlanExecutor(ctx *cancel.Context, plan *Plan, opts Options, preview bool, src SourceIterator) *PlanExecutor {
-	_, execCancel := cancel.NewContext(context.Background())
+func NewPlanExecutor(parentCtx context.Context, plan *Plan, opts Options, preview bool, src SourceIterator) *PlanExecutor {
+	ctx, cancel := context.WithCancel(parentCtx)
 	pe := &PlanExecutor{
-		plan:           plan,
-		opts:           opts,
-		src:            src,
-		preview:        preview,
-		stepGen:        newStepGenerator(plan, opts),
-		stepExec:       newStepExecutor(execCancel, plan, opts, preview),
-		ctx:            ctx,
-		stepExecCancel: execCancel,
+		plan:     plan,
+		opts:     opts,
+		src:      src,
+		preview:  preview,
+		stepGen:  newStepGenerator(plan, opts),
+		stepExec: newStepExecutor(ctx, cancel, plan, opts, preview),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
 	pe.sawError.Store(false)
