@@ -177,7 +177,6 @@ export class ComponentResource extends Resource {
      * @param name The _unique_ name of the resource.
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
-     * @param protect True to ensure this resource cannot be deleted.
      */
     constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
         super(t, name, false, props, opts);
