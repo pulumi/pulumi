@@ -4824,7 +4824,7 @@ Module './bin/index.js' is a 'deployment only' module. In general these cannot b
 var __testConfig_proto = {};
 __f1.prototype = __testConfig_proto;
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
 var __runtime_1 = {getConfig: __getConfig};
 Object.defineProperty(__testConfig_proto, "get", { configurable: true, writable: true, value: __f2 });
 __f5.isInstance = __f6;
@@ -4841,39 +4841,17 @@ Object.defineProperty(__testConfig_proto, "requireObject", { configurable: true,
 Object.defineProperty(__testConfig_proto, "fullKey", { configurable: true, writable: true, value: __f14 });
 var __testConfig = Object.create(__testConfig_proto);
 __testConfig.name = "test";
-(...)
-function __cleanKey() {
+
+function __f1() {
   return (function() {
-    with({ cleanKey: __cleanKey }) {
+    with({  }) {
 
-return function /*cleanKey*/(key) {
-    const idx = key.indexOf(":");
-    if (idx > 0 && key.startsWith("config:", idx + 1)) {
-        return key.substring(0, idx) + ":" + key.substring(idx + 1 + "config:".length);
-    }
-    return key;
-};
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __ensureConfig() {
-  return (function() {
-    with({ loaded: true, config: __config, cleanKey: __cleanKey, ensureConfig: __ensureConfig }) {
-
-return function /*ensureConfig*/() {
-    if (!loaded) {
-        const envConfig = process.env.PULUMI_CONFIG;
-        if (envConfig) {
-            const envObject = JSON.parse(envConfig);
-            for (const k of Object.keys(envObject)) {
-                config[cleanKey(k)] = envObject[k];
-            }
+return function /*constructor*/(name) {
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
         }
-        loaded = true;
-    }
-};
+        this.name = name;
+    };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -4881,10 +4859,9 @@ return function /*ensureConfig*/() {
 
 function __getConfig() {
   return (function() {
-    with({ ensureConfig: __ensureConfig, config: __config, getConfig: __getConfig }) {
+    with({ config: __config, getConfig: __getConfig }) {
 
 return function /*getConfig*/(k) {
-    ensureConfig();
     return config[k];
 };
 
@@ -4927,7 +4904,7 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
-var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"(...)
+var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2", ["pkg:a"]: "foo", ["pkg:bar"]: "b", ["pkg:baz"]: "baz", ["otherpkg:a"]: "babble", ["otherpkg:nothere"]: "bazzle", ["pkg:boolf"]: "false", ["pkg:boolt"]: "true", ["pkg:num"]: "42.333", ["pkg:array"]: "[ 0, false, 2, \\"foo\\" ]", ["pkg:struct"]: "{ \\"foo\\": \\"bar\\", \\"mim\\": [] }"};
 var __runtime_1 = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 __f5.isInstance = __f6;
@@ -4944,39 +4921,17 @@ Object.defineProperty(__f1_prototype, "requireObject", { configurable: true, wri
 Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f14 });
 __f1.prototype = __f1_prototype;
 var __pulumi = {Config: __f1};
-(...)
-function __cleanKey() {
+
+function __f1() {
   return (function() {
-    with({ cleanKey: __cleanKey }) {
+    with({  }) {
 
-return function /*cleanKey*/(key) {
-    const idx = key.indexOf(":");
-    if (idx > 0 && key.startsWith("config:", idx + 1)) {
-        return key.substring(0, idx) + ":" + key.substring(idx + 1 + "config:".length);
-    }
-    return key;
-};
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-
-function __ensureConfig() {
-  return (function() {
-    with({ loaded: true, config: __config, cleanKey: __cleanKey, ensureConfig: __ensureConfig }) {
-
-return function /*ensureConfig*/() {
-    if (!loaded) {
-        const envConfig = process.env.PULUMI_CONFIG;
-        if (envConfig) {
-            const envObject = JSON.parse(envConfig);
-            for (const k of Object.keys(envObject)) {
-                config[cleanKey(k)] = envObject[k];
-            }
+return function /*constructor*/(name) {
+        if (name.endsWith(":config")) {
+            name = name.replace(/:config$/, "");
         }
-        loaded = true;
-    }
-};
+        this.name = name;
+    };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -4984,10 +4939,9 @@ return function /*ensureConfig*/() {
 
 function __getConfig() {
   return (function() {
-    with({ ensureConfig: __ensureConfig, config: __config, getConfig: __getConfig }) {
+    with({ config: __config, getConfig: __getConfig }) {
 
 return function /*getConfig*/(k) {
-    ensureConfig();
     return config[k];
 };
 
