@@ -687,7 +687,8 @@ func (b *cloudBackend) PreviewThenPrompt(
 	changes := engine.ResourceChanges(nil)
 	if !opts.SkipPreview {
 		c, err := b.updateStack(
-			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel, true /*dryRun*/, scopes)
+			ctx, updateKind, stack, pkg, root, m, opts, eventsChannel,
+			true /*dryRun*/, false /* persist */, scopes)
 		if err != nil {
 			return c, err
 		}
@@ -778,13 +779,28 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	}
 
 	// Now do the real operation.  We don't care about the events it issues, so just pass a nil channel along.
-	return b.updateStack(ctx, updateKind, stack, pkg, root, m, opts, nil, false /*dryRun*/, scopes)
+	return b.updateStack(
+		ctx, updateKind, stack, pkg, root, m, opts, nil,
+		false /*dryRun*/, true /* persist */, scopes)
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
 	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	return b.PreviewThenPromptThenExecute(ctx, client.UpdateKindPreview, stackRef, pkg, root, m, opts, scopes)
+	// Get the stack.
+	stack, err := getStack(ctx, b, stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	// Persisting update previews is a new feature to pulumi.com, and is enabled via a flag
+	// so performance data can be gathered before enabling it by default.
+	persist := os.Getenv("PULUMI_PERSIST_PREVIEWS") != ""
+
+	// We can skip PreviewtTenPromptThenExecute, and just go straight to Execute.
+	return b.updateStack(
+		ctx, client.UpdateKindPreview, stack, pkg, root, m, opts, nil,
+		true /*dryRun*/, persist, scopes)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stackRef backend.StackReference, pkg *workspace.Project,
@@ -846,7 +862,8 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	if action == client.UpdateKindUpdate {
+	// Any non-preview update will be considered part of the stack's update history.
+	if action != client.UpdateKindPreview {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
@@ -857,7 +874,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) updateStack(
 	ctx context.Context, action client.UpdateKind, stack backend.Stack, pkg *workspace.Project,
 	root string, m backend.UpdateMetadata, opts backend.UpdateOptions,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, persist bool,
 	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
 
 	// Print a banner so it's clear this is going to the cloud.
@@ -871,17 +888,18 @@ func (b *cloudBackend) updateStack(
 	var version int
 	var token string
 	var err error
-	if !stack.(Stack).RunLocally() || !dryRun {
+	if !stack.(Stack).RunLocally() || persist {
 		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
-	}
-	if err != nil {
-		return nil, err
-	}
 
-	if version != 0 {
-		// Print a URL afterwards to redirect to the version URL.
+		// Print a URL at the end of the update pointing to the Pulumi Service.
+		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
-		if link := b.CloudConsoleURL(base, "updates", strconv.Itoa(version)); link != "" {
+		if !dryRun {
+			link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
+		} else {
+			link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+		}
+		if link != "" {
 			defer func() {
 				fmt.Printf(
 					opts.Display.Color.Colorize(
@@ -889,11 +907,15 @@ func (b *cloudBackend) updateStack(
 			}()
 		}
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
 	if stack.(Stack).RunLocally() {
 		return b.runEngineAction(
-			ctx, action, stack.Name(), pkg, root, opts, update, token, callerEventsOpt, dryRun, scopes)
+			ctx, action, stack.Name(), pkg, root, opts, update, token, callerEventsOpt,
+			dryRun, persist, scopes)
 	}
 
 	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
@@ -938,10 +960,9 @@ func getUpdateContents(
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, action client.UpdateKind, stackRef backend.StackReference, pkg *workspace.Project,
 	root string, opts backend.UpdateOptions, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool,
+	callerEventsOpt chan<- engine.Event, dryRun bool, persist bool,
 	scopes backend.CancellationScopeSource) (engine.ResourceChanges, error) {
-	contract.Assertf(dryRun || token != "", "expected a non-empty token when doing a non-dryrun update")
-
+	contract.Assertf(!persist || token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, pkg, root, update, token)
 	if err != nil {
 		return nil, err
@@ -1004,7 +1025,7 @@ func (b *cloudBackend) runEngineAction(
 	// Make sure that the goroutine writing to displayEvents and callerEventsOpt
 	// has exited before proceeding
 	<-eventsDone
-	if !dryRun {
+	if persist {
 		status := apitype.UpdateStatusSucceeded
 		if err != nil {
 			status = apitype.UpdateStatusFailed
