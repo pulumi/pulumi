@@ -198,6 +198,17 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 
 		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): submitting chain for execution")
 		pe.stepExec.Execute(step)
+	case ReadResourceEvent:
+		step, steperr := pe.stepGen.GenerateReadSteps(e)
+		if steperr != nil {
+			logging.V(planExecutorLogLevel).Infof(
+				"PlanExecutor.handleSingleEvent(...): received step event error: %v", steperr.Error())
+			pe.cancel()
+			return
+		}
+
+		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): submitting reads for execution")
+		pe.stepExec.Execute(step)
 	case RegisterResourceOutputsEvent:
 		logging.V(planExecutorLogLevel).Infof("PlanExecutor.handleSingleEvent(...): received register resource outputs")
 		pe.stepExec.ExecuteRegisterResourceOutputs(e)
