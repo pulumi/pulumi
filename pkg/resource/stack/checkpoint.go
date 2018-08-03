@@ -95,7 +95,7 @@ func SerializeCheckpoint(stack tokens.QName, config config.Map, snap *deploy.Sna
 func DeserializeCheckpoint(chkpoint *apitype.CheckpointV2) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 	if chkpoint.Latest != nil {
-		return DeserializeDeployment(*chkpoint.Latest)
+		return DeserializeDeploymentV2(*chkpoint.Latest)
 	}
 
 	return nil, nil

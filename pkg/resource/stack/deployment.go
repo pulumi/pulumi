@@ -110,11 +110,11 @@ func DeserializeUntypedDeployment(deployment *apitype.UntypedDeployment) (*deplo
 		contract.Failf("unrecognized version: %d", deployment.Version)
 	}
 
-	return DeserializeDeployment(v2deployment)
+	return DeserializeDeploymentV2(v2deployment)
 }
 
-// DeserializeDeployment deserializes a typed Deployment into a `deploy.Snapshot`.
-func DeserializeDeployment(deployment apitype.DeploymentV2) (*deploy.Snapshot, error) {
+// DeserializeDeploymentV2 deserializes a typed DeploymentV2 into a `deploy.Snapshot`.
+func DeserializeDeploymentV2(deployment apitype.DeploymentV2) (*deploy.Snapshot, error) {
 	// Unpack the versions.
 	manifest := deploy.Manifest{
 		Time:    deployment.Manifest.Time,

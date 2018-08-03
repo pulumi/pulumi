@@ -474,7 +474,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, error) {
 
 	// Unlike most steps, Read steps run during previews. The only time
 	// we can't run is if the ID we are given is unknown.
-	if id != plugin.UnknownStringValue {
+	if id != "" {
 		prov, err := getProvider(s)
 		if err != nil {
 			return resource.StatusOK, err
