@@ -178,7 +178,6 @@ func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
-		se.cancelDueToError()
 		return false
 	}
 
