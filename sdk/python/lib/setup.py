@@ -29,7 +29,7 @@ setup(name='pulumi',
       packages=find_packages(),
       install_requires=[
           'protobuf>=3.6.0',
-          'grpcio>=1.9.1',
+          'grpcio>=1.14.0',
           'six>=1.11.0'
       ],
       zip_safe=False)
