@@ -20,7 +20,6 @@ TEST_FAST_TIMEOUT := 2m
 endif
 
 build-proto::
-	docker build -t pulumi/protobuf-builder sdk/proto
 	cd sdk/proto && ./generate.sh
 
 build::
