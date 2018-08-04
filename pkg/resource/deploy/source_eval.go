@@ -15,12 +15,12 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -209,16 +209,9 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 	}()
 }
 
-type defaultProviderResponse struct {
-	ref providers.Reference
-	err error
-}
-
-type defaultProviderRequest struct {
-	pkg      tokens.Package
-	response chan<- defaultProviderResponse
-}
-
+// defaultProviders manages the registration of default providers. The default provider for a package is the provider
+// resource that will be used to manage resources that do not explicitly reference a provider. Default providers will
+// only be registered for packages that are used by resources registered by the user's Pulumi program.
 type defaultProviders struct {
 	versions  map[tokens.Package]*semver.Version
 	providers map[tokens.Package]providers.Reference
@@ -229,6 +222,18 @@ type defaultProviders struct {
 	cancel   <-chan bool
 }
 
+type defaultProviderResponse struct {
+	ref providers.Reference
+	err error
+}
+
+type defaultProviderRequest struct {
+	pkg      tokens.Package
+	response chan<- defaultProviderResponse
+}
+
+// newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
+// engine to register a default provider resource for the indicated package.
 func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	pkg tokens.Package) (*registerResourceEvent, <-chan *RegisterResult, error) {
 
@@ -256,53 +261,80 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	return event, done, nil
 }
 
+// handleRequest services a single default provider request. If the request is for a default provider that we have
+// already loaded, we will return its reference. If the request is for a default provider that has not yet been
+// loaded, we will send a register resource request to the engine, wait for it to complete, and then cache and return
+// the reference of the loaded provider.
+//
+// Note that this function must not be called from two goroutines concurrently; it is the responsibility of d.serve()
+// to ensure this.
+func (d *defaultProviders) handleRequest(pkg tokens.Package) (providers.Reference, error) {
+	logging.V(5).Infof("handling default provider request for package %s", pkg)
+
+	ref, ok := d.providers[pkg]
+	if ok {
+		return ref, nil
+	}
+
+	event, done, err := d.newRegisterDefaultProviderEvent(pkg)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+
+	select {
+	case d.regChan <- event:
+	case <-d.cancel:
+		return providers.Reference{}, context.Canceled
+	}
+
+	logging.V(5).Infof("waiting for default provider for package %s", pkg)
+
+	var result *RegisterResult
+	select {
+	case result = <-done:
+	case <-d.cancel:
+		return providers.Reference{}, context.Canceled
+	}
+
+	logging.V(5).Infof("registered default provider for package %s: %s", pkg, result.State.URN)
+
+	id := result.State.ID
+	if id == "" {
+		id = providers.UnknownID
+	}
+
+	ref, err = providers.NewReference(result.State.URN, id)
+	contract.Assert(err == nil)
+	d.providers[pkg] = ref
+
+	return ref, nil
+}
+
+// serve is the primary loop responsible for handling default provider requests.
 func (d *defaultProviders) serve() {
-	for req := range d.requests {
-		logging.V(5).Infof("handling default provider request for package %s", req.pkg)
-
-		ref, ok := d.providers[req.pkg]
-		if !ok {
-			logging.V(5).Infof("registering default provider for package %s", req.pkg)
-
-			event, done, err := d.newRegisterDefaultProviderEvent(req.pkg)
-			if err != nil {
-				req.response <- defaultProviderResponse{err: err}
-				continue
-			}
-
-			d.regChan <- event
-
-			logging.V(5).Infof("waiting for default provider for package %s", req.pkg)
-
-			var result *RegisterResult
-			select {
-			case result = <-done:
-			case <-d.cancel:
-				return
-			}
-
-			logging.V(5).Infof("registered default provider for package %s: %s", req.pkg, result.State.URN)
-
-			id := result.State.ID
-			if id == "" {
-				id = providers.UnknownID
-			}
-
-			ref, err = providers.NewReference(result.State.URN, id)
-			contract.Assert(err == nil)
-			d.providers[req.pkg] = ref
+	for {
+		select {
+		case req := <-d.requests:
+			// Note that we do not need to handle cancellation when sending the response: every message we receive is
+			// guaranteed to have something waiting on the other end of the response channel.
+			ref, err := d.handleRequest(req.pkg)
+			req.response <- defaultProviderResponse{ref: ref, err: err}
+		case <-d.cancel:
+			return
 		}
-		req.response <- defaultProviderResponse{ref: ref}
-
-		logging.V(5).Infof("handled default provider request for package %s: %s", req.pkg, ref)
 	}
 }
 
+// getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
 func (d *defaultProviders) getDefaultProviderRef(pkg tokens.Package) (providers.Reference, error) {
 	contract.Assert(pkg != "pulumi")
 
 	response := make(chan defaultProviderResponse)
-	d.requests <- defaultProviderRequest{pkg: pkg, response: response}
+	select {
+	case d.requests <- defaultProviderRequest{pkg: pkg, response: response}:
+	case <-d.cancel:
+		return providers.Reference{}, context.Canceled
+	}
 	res := <-response
 	return res.ref, res.err
 }
@@ -379,6 +411,9 @@ func (rm *resmon) Cancel() error {
 	return <-rm.done
 }
 
+// getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
+// given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
+// to the default provider for the indicated package.
 func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string) (providers.Reference, error) {
 	if pkg == "pulumi" {
 		return providers.Reference{}, errors.Errorf("cannot reference internal providers")
@@ -399,6 +434,9 @@ func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string
 	return ref, nil
 }
 
+// getProvider fetches the provider plugin for a resource, read, or invoke from the given package with the given
+// unparsed provider reference. If the unparsed provider reference is empty, this function returns the plugin for the
+// indicated package's default provider.
 func (rm *resmon) getProvider(pkg tokens.Package, rawProviderRef string) (plugin.Provider, error) {
 	providerRef, err := rm.getProviderReference(pkg, rawProviderRef)
 	if err != nil {

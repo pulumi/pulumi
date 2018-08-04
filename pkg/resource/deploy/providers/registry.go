@@ -30,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
+// getProviderVersion fetches and parses a provider version from the given property map. If the version property is not
+// present, this function returns nil.
 func getProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 	versionProp, ok := inputs["version"]
 	if !ok {
@@ -47,6 +49,17 @@ func getProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 	return &sv, nil
 }
 
+// Registry manages the lifecylce of provider resources and their plugins and handles the resolution of provider
+// references to loaded plugins.
+//
+// When a registry is created, it is handed the set of old provider resources that it will manage. Each provider
+// resource in this set is loaded and configured as per its recorded inputs and registered under the provider
+// reference that corresponds to its URN and ID, both of which must be known. At this point, the created registry is
+// prepared to be used to manage the lifecycle of these providers as well as any new provider resources requested by
+// invoking the registry's CRUD operations.
+//
+// In order to fit neatly in to the existing infrastructure for managing resources using Pulumi, a provider regidstry
+// itself implements the plugin.Provider interface.
 type Registry struct {
 	host      plugin.Host
 	isPreview bool
@@ -56,6 +69,9 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
+// NewRegistry creates a new provider registry using the given host and old resources. Each provider present in the old
+// resources will be loaded, configured, and added to the returned registry under its reference. If any provider is not
+// loadable/configurable or has an invalid ID, this function returns an error.
 func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool) (*Registry, error) {
 	r := &Registry{
 		host:      host,
@@ -106,6 +122,7 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool) (*Reg
 	return r, nil
 }
 
+// GetProvider returns the provider plugin that is currently registered under the given reference, if any.
 func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {
 	r.m.RLock()
 	defer r.m.RUnlock()
@@ -137,6 +154,8 @@ func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
 	return provider, true
 }
 
+// The rest of the methods below are the implementation of the plugin.Provider interface methods.
+
 func (r *Registry) Close() error {
 	return nil
 }
@@ -166,6 +185,14 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 	return errors.New("the provider registry is not configurable")
 }
 
+// Check validates the configuration for a particular provider resource.
+//
+// The particulars of Check are a bit subtle for a few reasons:
+// - we need to load the provider for the package indicated by the type name portion provider resource's URN in order
+//   to check its config
+// - we need to keep the newly-loaded provider around in case we need to diff its config
+// - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
+//   (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
@@ -211,6 +238,8 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	return inputs, nil, nil
 }
 
+// Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
+// previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 	allowUnknowns bool) (plugin.DiffResult, error) {
 
@@ -230,7 +259,9 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	}
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
-	// If the diff does not require replacement and we are running a preview, register it under its current ID.
+	//
+	// If the diff does not require replacement and we are running a preview, register it under its current ID so that
+	// references to the provider from other resources will resolve properly.
 	if len(diff.ReplaceKeys) != 0 {
 		closeErr := r.host.CloseProvider(provider)
 		contract.IgnoreError(closeErr)
@@ -241,6 +272,10 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	return diff, nil
 }
 
+// Create coonfigures the provider with the given URN using the indicated configuration, assigns it an ID, and
+// registers it under the assigned (URN, ID).
+//
+// The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(urn resource.URN,
 	news resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
@@ -264,12 +299,10 @@ func (r *Registry) Create(urn resource.URN,
 	return id, resource.PropertyMap{}, resource.StatusOK, nil
 }
 
-func (r *Registry) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (resource.PropertyMap, error) {
-	contract.Fail()
-	return nil, errors.New("providers may not be read")
-}
-
+// Update configures the provider with the given URN and ID using the indicated configuration and registers it at the
+// reference indicated by the (URN, ID) pair.
+//
+// THe provider must have been loaded by a prior call to Check.
 func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 	news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 
@@ -291,32 +324,41 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds,
 	return resource.PropertyMap{}, resource.StatusOK, nil
 }
 
+// Delete unregisters and unloads the provider with the given URN and ID. The provider must have been loaded when the
+// registry was created (i.e. it must have been present in the state handed to NewRegistry).
 func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
 	contract.Assert(!r.isPreview)
 
 	ref := mustNewReference(urn, id)
-	provider, ok := r.deleteProvider(ref)
-	if !ok {
-		return resource.StatusUnknown, errors.Errorf("unknown provider '%v'", ref)
-	}
+	provider, has := r.deleteProvider(ref)
+	contract.Assert(has)
+
 	closeErr := r.host.CloseProvider(provider)
 	contract.IgnoreError(closeErr)
 	return resource.StatusOK, nil
 }
 
+func (r *Registry) Read(urn resource.URN, id resource.ID,
+	props resource.PropertyMap) (resource.PropertyMap, error) {
+	return nil, errors.New("provider resources may not be read")
+}
+
 func (r *Registry) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
+	// It is the responsibility of the eval source to ensure that we never attempt an invoke using the provider
+	// registry.
 	contract.Fail()
-	return nil, nil, errors.New("the provider registry is not invokeable")
+	return nil, nil, errors.New("the provider registry is not invokable")
 }
 
 func (r *Registry) GetPluginInfo() (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
-	contract.Fail()
 	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
 }
 
 func (r *Registry) SignalCancellation() error {
-	// TODO: this should probably cancel any outstanding load requests and return
+	// At the moment there isn't anything reasonable we can do here. In the future, it might be nice to plumb
+	// cancellation through the plugin loader and cancel any outstanding load requests here.
 	return nil
 }

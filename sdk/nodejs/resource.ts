@@ -112,9 +112,11 @@ export interface ResourceOptions {
      */
     protect?: boolean;
     /**
-     * An optional provider to use for this resource's CRUD operations.
+     * An optional provider to use for this resource's CRUD operations. If no provider is supplied, the default
+     * provider for the resource's package will be used. It is an error to supply a provider to a ProviderResource or
+     * ComponentResource.
      */
-    provider?: CustomResource;
+    provider?: ProviderResource;
 }
 
 /**
@@ -165,6 +167,28 @@ export abstract class CustomResource extends Resource {
 (<any>CustomResource).doNotCapture = true;
 
 /**
+ * ProviderResource is a resource that implements CRUD operations for other custom resources. These resources are
+ * managed similarly to other resources, including the usual diffing and update semantics.
+ */
+export abstract class ProviderResource extends CustomResource {
+    /**
+     * Creates and registers a new provider resource for a particular package.
+     *
+     * @param pkg The package associated with this provider.
+     * @param name The _unique_ name of the provider.
+     * @param props The configuration to use for this provider.
+     * @param opts A bag of options that control this provider's behavior.
+     */
+    constructor(pkg: string, name: string, props?: Inputs, opts?: ResourceOptions) {
+        if (opts && opts.provider !== undefined) {
+            throw new RunError("Explicit providers may not be used with provider resources");
+        }
+
+        super(`pulumi:providers:${pkg}`, name, props, opts);
+    }
+}
+
+/**
  * ComponentResource is a resource that aggregates one or more other child resources into a higher
  * level abstraction. The component resource itself is a resource, but does not require custom CRUD
  * operations for provisioning.
@@ -183,6 +207,10 @@ export class ComponentResource extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
+        if (opts && opts.provider !== undefined) {
+            throw new RunError("Explicit providers may not be used with component resources");
+        }
+
         super(t, name, false, props, opts);
     }
 

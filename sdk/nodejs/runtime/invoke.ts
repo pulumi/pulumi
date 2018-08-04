@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import * as grpc from "grpc";
+import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { CustomResource, Inputs } from "../resource";
+import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
 import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
@@ -27,7 +28,7 @@ const resproto = require("../proto/resource_pb.js");
  * can be a bag of computed values (Ts or Promise<T>s), and the result is a Promise<any> that
  * resolves when the invoke finishes.
  */
-export async function invoke(tok: string, props: Inputs, provider?: CustomResource): Promise<any> {
+export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): Promise<any> {
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
@@ -42,9 +43,9 @@ export async function invoke(tok: string, props: Inputs, provider?: CustomResour
         const monitor: any = getMonitor();
 
         let providerRef: string | undefined;
-        if (provider !== undefined) {
-            const providerURN = await provider.urn.promise();
-            const providerID = await provider.id.promise() || unknownValue;
+        if (opts && opts.provider !== undefined) {
+            const providerURN = await opts.provider.urn.promise();
+            const providerID = await opts.provider.id.promise() || unknownValue;
             providerRef = `${providerURN}::${providerID}`;
         }
 

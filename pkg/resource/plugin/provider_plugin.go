@@ -104,8 +104,43 @@ func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.Proper
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, error) {
-	// Always return an empty diff result. In particular, never require replacement.
-	return DiffResult{Changes: DiffUnknown}, nil
+	// There are two interesting scenarios with the present gRPC interface:
+	// 1. Configuration differences in which all properties are known
+	// 2. Configuration differences in which some new property is unknown.
+	//
+	// Despite the fact that in both scenarios we know that configuration has changed, they differ in whether or not
+	// they return a diff result that indicates that the provider should be replaced (and thus require that any
+	// existing resource managed by the provider are also replaced).
+	//
+	// In the first case, we return a diff result that indicates that the provider _should not_ be replaced. We may
+	// encounter this scenario during any update or any preview in which all properties are known. Although this
+	// decision is not conservative--indeed, the conservative decision would be to always require replacement of a
+	// provider if any input has changed--we believe that it results in the best possible user experience for providers
+	// that do not implement DiffConfig functionality. If we took the conservative route here, any change to a
+	// provider's configuration (no matter how inconsequential) would cause all of its resources to be replaced. This
+	// is clearly a bad experience, and differs from how things worked prior to first-class providers.
+	//
+	// In the second case, we return a diff result that indicates that the provider _should_ be replaced. This may
+	// occur during any preview, but will never occur during an update. This decision is conservative because we
+	// believe that it is unlikely that a provider property that may be unknown is very likely to be a property that
+	// is fundamental to the provider's ability to manage its existing resources.
+	//
+	// The different decisions we make here cause a bit of a sharp edge: a provider with unknown configuration during
+	// preview will appear to require replacement, but will never actually require replacement during an update, as by
+	// that point all of its configuration will necessarily be known.
+
+	var replaceKeys []resource.PropertyKey
+	for k, v := range news {
+		// These are ensured during Check().
+		contract.Assert(v.IsString() || v.IsComputed())
+
+		// As per the note above, any unknown properties require replacement.
+		if v.IsComputed() {
+			replaceKeys = append(replaceKeys, k)
+		}
+	}
+
+	return DiffResult{Changes: DiffUnknown, ReplaceKeys: replaceKeys}, nil
 }
 
 // getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
@@ -247,11 +282,10 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, err
 	}
 
-	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
-	// property was sourced from another resource's output properties--don't call into the underlying provider.
-	if !p.cfgknown {
-		return DiffResult{Changes: DiffUnknown}, nil
-	}
+	// If this function is called, we must have complete configuration for the underlying provider. Per DiffConfig,
+	// any unknown input will cause the provider to be replaced, which will cause all of its resources to be replaced,
+	// and we do not call `Diff` for resources that are being replaced due to a change to their provider reference.
+	contract.Assert(p.cfgknown)
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
