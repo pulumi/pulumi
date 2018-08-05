@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu
+FROM node:8
 
 RUN apt-get update
-RUN apt-get install -y curl unzip golang git npm python-pip
+RUN apt-get install -y curl unzip golang git python-pip python-dev
+RUN pip install --upgrade pip
 
 # Install `protoc` v3.5.1.
 RUN curl -OL https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip
@@ -37,8 +38,9 @@ RUN git checkout v1.1.0
 RUN go install ./protoc-gen-go
 
 # Install node gRPC tools.
-RUN npm install -g grpc
-RUN npm install -g grpc-tools
+RUN ln -s /usr/bin/nodejs /usr/bin/node
+RUN npm install -g grpc --unsafe-perm
+RUN npm install -g grpc-tools --unsafe-perm
 
 # Install Python gRPC tools.
 RUN python -m pip install grpcio grpcio-tools
