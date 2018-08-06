@@ -12,8 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/apitype"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	ptesting "github.com/pulumi/pulumi/pkg/testing"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -398,6 +400,60 @@ func TestConfigBasicGo(t *testing.T) {
 		},
 		Secrets: map[string]string{
 			"bEncryptedSecret": "this super secret is encrypted",
+		},
+	})
+}
+
+// Tests an explicit provider instance.
+func TestExplicitProvider(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "explicit_provider",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			latest := stackInfo.Deployment
+
+			// Expect one stack resource, two provider resources, and two custom resources.
+			assert.True(t, len(latest.Resources) == 5)
+
+			var defaultProvider *apitype.ResourceV2
+			var explicitProvider *apitype.ResourceV2
+			for _, res := range latest.Resources {
+				urn := res.URN
+				switch urn.Name() {
+				case "default":
+					assert.True(t, providers.IsProviderType(res.Type))
+					assert.Nil(t, defaultProvider)
+					prov := res
+					defaultProvider = &prov
+
+				case "p":
+					assert.True(t, providers.IsProviderType(res.Type))
+					assert.Nil(t, explicitProvider)
+					prov := res
+					explicitProvider = &prov
+
+				case "a":
+					prov, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					assert.NotNil(t, defaultProvider)
+					defaultRef, err := providers.NewReference(defaultProvider.URN, defaultProvider.ID)
+					assert.NoError(t, err)
+					assert.Equal(t, defaultRef.String(), prov.String())
+
+				case "b":
+					prov, err := providers.ParseReference(res.Provider)
+					assert.NoError(t, err)
+					assert.NotNil(t, explicitProvider)
+					explicitRef, err := providers.NewReference(explicitProvider.URN, explicitProvider.ID)
+					assert.NoError(t, err)
+					assert.Equal(t, explicitRef.String(), prov.String())
+				}
+			}
+
+			assert.NotNil(t, defaultProvider)
+			assert.NotNil(t, explicitProvider)
 		},
 	})
 }
