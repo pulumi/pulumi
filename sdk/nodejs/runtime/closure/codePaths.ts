@@ -18,7 +18,16 @@ import * as readPackageTree from "read-package-tree";
 import * as asset from "../../asset";
 import { RunError } from "../../errors";
 
-// computeCodePaths computes the local node_module paths to include in an uploaded Lambda.
+// computeCodePaths computes the local node_module paths to include in an uploaded cloud 'Lambda'.
+// Specifically, it will examine the package.json for the caller's code, and will transitively walk
+// it's 'dependencies' section to determine what packages should be included.
+//
+// During this walk, if an @pulumi/... package is encountered, it will not be walked into.  @pulumi
+// packages are deployment-time only packages and will not runtime.  This prevents uploading
+// packages needlessly which can majorly bloat up the size of uploaded code.
+//
+// [extraIncludePaths], [extraExcludePackages] and [extraExcludePackages] can all be used to adjust
+// the final set of paths included in the resultant asset/archive map.
 export async function computeCodePaths(
     extraIncludePaths?: string[],
     extraIncludePackages?: string[],
@@ -50,10 +59,12 @@ export async function computeCodePaths(
 
     const codePaths: Map<string, asset.Asset | asset.Archive> = new Map();
 
-    // For each of the required paths, add the corresponding FileArchive or FileAsset to the AssetMap.
+    // For each of the required paths, add the corresponding FileArchive or FileAsset to the
+    // AssetMap.
     for (const path of pathSet.values()) {
-        // The Asset model does not support a consistent way to embed a file-or-directory into an `AssetArchive`, so
-        // we stat the path to figure out which it is and use the appropriate Asset constructor.
+        // The Asset model does not support a consistent way to embed a file-or-directory into an
+        // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
+        // Asset constructor.
         const stats = fs.lstatSync(path);
         if (stats.isDirectory()) {
             codePaths.set(path, new asset.FileArchive(path));
@@ -66,26 +77,12 @@ export async function computeCodePaths(
     return codePaths;
 }
 
-const lambdaRolePolicy = {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": "sts:AssumeRole",
-            "Principal": {
-                "Service": "lambda.amazonaws.com",
-            },
-            "Effect": "Allow",
-            "Sid": "",
-        },
-    ],
-};
-
 // Package is a node in the package tree returned by readPackageTree.
 interface Package {
     name: string;
     path: string;
     package: {
-        dependencies?: { [key: string]: string; };
+        dependencies?: Record<string, string>;
     };
     parent?: Package;
     children: Package[];
