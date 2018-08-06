@@ -34,6 +34,7 @@ func TestExamples(t *testing.T) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
 			assert.NotNil(t, stackInfo.Deployment)
 		},
+		RunBuild: true,
 	}
 
 	var formattableStdout, formattableStderr bytes.Buffer
@@ -88,6 +89,7 @@ func TestExamples(t *testing.T) {
 			Secrets: map[string]string{
 				"secret": "this is my secret message",
 			},
+			RunBuild: true,
 		},
 	}
 

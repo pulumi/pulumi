@@ -351,7 +351,7 @@ func (pc *Client) CreateUpdate(
 
 	updateRequest := apitype.UpdateProgramRequest{
 		Name:        string(pkg.Name),
-		Runtime:     pkg.Runtime,
+		Runtime:     pkg.RuntimeInfo.Name(),
 		Main:        main,
 		Description: description,
 		Config:      wireConfig,
