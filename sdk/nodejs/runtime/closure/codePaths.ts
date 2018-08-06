@@ -28,6 +28,11 @@ import { RunError } from "../../errors";
 //
 // [extraIncludePaths], [extraExcludePackages] and [extraExcludePackages] can all be used to adjust
 // the final set of paths included in the resultant asset/archive map.
+//
+// Note: this functionality is specifically intended for use by downstream library code that is
+// determining what is needed for a cloud-lambda.  i.e. the aws.serverless.Function or
+// azure.serverless.FunctionApp libraries.  In general, other clients should not need to use this
+// helper.
 export async function computeCodePaths(
     extraIncludePaths?: string[],
     extraIncludePackages?: string[],
