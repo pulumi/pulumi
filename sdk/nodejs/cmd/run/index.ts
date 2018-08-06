@@ -209,6 +209,12 @@ export function main(args: string[]): void {
     if (typeScript) {
         tsnode.register({
             typeCheck: true,
+            compilerOptions: {
+                target: "es6",
+                module: "commonjs",
+                moduleResolution: "node",
+                sourceMap: "true",
+            },
         });
     }
 
