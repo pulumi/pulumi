@@ -256,28 +256,24 @@ func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
 // and executes any that it gets from the channel.
 func (se *stepExecutor) worker(workerID int) {
 	se.log(workerID, "worker coming online")
-	se.workers.Add(1)
 	defer se.workers.Done()
 
-outer:
 	for {
 		se.log(workerID, "worker waiting for incoming chains")
 		select {
 		case chain := <-se.incomingChains:
 			if chain == nil {
 				se.log(workerID, "worker received nil chain, exiting")
-				break outer
+				return
 			}
 
 			se.log(workerID, "worker received chain for execution")
 			se.executeChain(workerID, chain)
 		case <-se.ctx.Done():
 			se.log(workerID, "worker exiting due to cancellation")
-			break outer
+			return
 		}
 	}
-
-	se.log(workerID, "worker terminating")
 }
 
 func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan, opts Options,
@@ -294,6 +290,7 @@ func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan,
 	exec.sawError.Store(false)
 	fanout := opts.DegreeOfParallelism()
 	for i := 0; i < fanout; i++ {
+		exec.workers.Add(1)
 		go exec.worker(i)
 	}
 

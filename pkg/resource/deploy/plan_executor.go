@@ -67,6 +67,12 @@ func (pe *PlanExecutor) Execute() error {
 	// that top-level cancellations result in quick teardown of all worker threads and the plan executor
 	// itself.
 	go func() {
+		// Note that there's a bug here in that it's a little nondeterministic what happens here when
+		// the cancel signal is sent. Which arm of this select that is selected depends on the Go runtime
+		// and so it's possible that we'll issue a bad error message.
+		//
+		// TODO[pulumi/pulumi#1712] - The plan executor doesn't really need to know about ctrl-c cancellation
+		// at all so it would be nice to lift this into Plan.Walk or something higher up the stack.
 		select {
 		case <-pe.parentCtx.Done():
 			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): received cancel signal")
