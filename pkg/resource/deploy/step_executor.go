@@ -165,26 +165,6 @@ func (se *stepExecutor) cancelDueToError() {
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
 func (se *stepExecutor) executeStep(workerID int, step Step) bool {
-	payload, ok := se.executePreEvents(workerID, step)
-	if !ok {
-		return false
-	}
-
-	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.preview)
-	status, err := step.Apply(se.preview)
-	if ok := se.executePostEvents(workerID, payload, step, status, err); !ok {
-		return false
-	}
-
-	if err != nil {
-		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
-		return false
-	}
-
-	return true
-}
-
-func (se *stepExecutor) executePreEvents(workerID int, step Step) (interface{}, bool) {
 	var payload interface{}
 	events := se.opts.Events
 	if events != nil {
@@ -193,15 +173,12 @@ func (se *stepExecutor) executePreEvents(workerID int, step Step) (interface{}, 
 		if err != nil {
 			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
 			se.writeError(step.URN(), "pre-step event returned an error: %s", err.Error())
-			return nil, false
+			return false
 		}
 	}
 
-	return payload, true
-}
-
-func (se *stepExecutor) executePostEvents(workerID int, payload interface{},
-	step Step, status resource.Status, err error) bool {
+	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.preview)
+	status, err := step.Apply(se.preview)
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
@@ -214,13 +191,17 @@ func (se *stepExecutor) executePostEvents(workerID int, payload interface{},
 		}
 	}
 
-	events := se.opts.Events
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
 			se.writeError(step.URN(), "post-step event returned an error: %s", postErr.Error())
 			return false
 		}
+	}
+
+	if err != nil {
+		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
+		return false
 	}
 
 	return true
