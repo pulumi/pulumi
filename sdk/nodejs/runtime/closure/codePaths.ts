@@ -39,25 +39,15 @@ export async function computeCodePaths(
     extraExcludePackages?: string[]): Promise<Map<string, asset.Asset | asset.Archive>> {
 
     // Construct the set of paths to include in the archive for upload.
-    extraIncludePaths = extraIncludePaths || [];
-    extraIncludePackages = extraIncludePackages || [];
-    extraExcludePackages = extraExcludePackages || [];
 
-    const includedPackages = new Set<string>();
-    const excludedPackages = new Set<string>();
-
-    for (const p of extraExcludePackages) {
-        excludedPackages.add(p);
-    }
-
-    for (const p of extraIncludePackages) {
-        includedPackages.add(p);
-    }
+    const includedPackages = new Set<string>(extraIncludePackages || []);
+    const excludedPackages = new Set<string>(extraExcludePackages || []);
 
     // Find folders for all packages requested by the user
     const pathSet = await allFoldersForPackages(includedPackages, excludedPackages);
 
     // Add all paths explicitly requested by the user
+    extraIncludePaths = extraIncludePaths || [];
     for (const path of extraIncludePaths) {
         pathSet.add(path);
     }
