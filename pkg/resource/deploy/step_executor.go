@@ -20,8 +20,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
 )
@@ -32,6 +32,10 @@ const (
 
 	// Utility constant for easy debugging.
 	stepExecutorLogLevel = 4
+)
+
+var (
+	errStepApplyFailed = errors.New("step application failed")
 )
 
 // A Chain is a sequence of Steps that must be executed in the given order.
@@ -94,7 +98,16 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	if e := se.opts.Events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
 			se.log(synchronousWorkerID, "register resource outputs failed: %s", eventerr.Error())
-			se.writeError(reg.URN(), "resource complete event returned an error: %s", eventerr.Error())
+
+			// This is a bit of a kludge, but ExecuteRegisterResourceOutputs is an odd duck
+			// in that it doesn't execute on worker goroutines. Arguably, it should, but today it's
+			// not possible to express RegisterResourceOutputs as a step. We could 1) more generally allow
+			// clients of stepExecutor to do work on worker threads by e.g. scheduling arbitrary callbacks
+			// or 2) promote RRE to be step-like so that it can be scheduled as if it were a step. Neither
+			// of these are particularly appealing right now.
+			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
+			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
+			se.plan.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
 			return
 		}
@@ -138,9 +151,18 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 		default:
 		}
 
-		if !se.executeStep(workerID, step) {
+		if err := se.executeStep(workerID, step); err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
 			se.cancelDueToError()
+			if err != errStepApplyFailed {
+				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
+				// but it means that at this level we shouldn't be logging any errors that came from there.
+				//
+				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
+				// error and that we shouldn't log it.
+				diagMsg := diag.RawMessage(step.URN(), err.Error())
+				se.plan.Diag().Errorf(diagMsg)
+			}
 			return
 		}
 	}
@@ -164,7 +186,7 @@ func (se *stepExecutor) cancelDueToError() {
 
 // executeStep executes a single step, returning true if the step execution was successful and
 // false if it was not.
-func (se *stepExecutor) executeStep(workerID int, step Step) bool {
+func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	var payload interface{}
 	events := se.opts.Events
 	if events != nil {
@@ -172,8 +194,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
 			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
-			se.writeError(step.URN(), "pre-step event returned an error: %s", err.Error())
-			return false
+			return errors.Wrap(err, "pre-step event returned an error")
 		}
 	}
 
@@ -183,8 +204,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
-				se.writeError(step.URN(), "resource '%s' registered twice (%s and %s)", prior.(Step).Op(), step.Op())
-				return false
+				return errors.Errorf(
+					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
 			}
 
 			se.pendingNews.Store(step.URN(), step)
@@ -194,17 +215,16 @@ func (se *stepExecutor) executeStep(workerID int, step Step) bool {
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
-			se.writeError(step.URN(), "post-step event returned an error: %s", postErr.Error())
-			return false
+			return errors.Wrap(postErr, "post-step event returned an error")
 		}
 	}
 
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
-		return false
+		return errStepApplyFailed
 	}
 
-	return true
+	return nil
 }
 
 // log is a simple logging helper for the step executor.
@@ -213,13 +233,6 @@ func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
 		message := fmt.Sprintf(msg, args...)
 		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)
 	}
-}
-
-// writeError writes an error to the standard diagnostic mechanism, with the given URN and message.
-// The message is anchored to the resource with the given URN's row in the CLI output.
-func (se *stepExecutor) writeError(urn resource.URN, msg string, args ...interface{}) {
-	diagMsg := diag.RawMessage(urn, fmt.Sprintf(msg, args...))
-	se.plan.Diag().Errorf(diagMsg)
 }
 
 //

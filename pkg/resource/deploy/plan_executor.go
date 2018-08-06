@@ -50,8 +50,9 @@ type PlanExecutor struct {
 	stepGen  *stepGenerator // step generator owned by this plan
 	stepExec *stepExecutor  // step executor owned by this plan
 
-	ctx    context.Context    // cancellation context for the current plan.
-	cancel context.CancelFunc // CancelFunc that cancels the above context.
+	parentCtx context.Context    // cancellation context for the current CLI session.
+	ctx       context.Context    // cancellation context for the current plan. Child of parentCtx.
+	cancel    context.CancelFunc // CancelFunc that cancels the above context.
 
 	sawError  atomic.Value // have we seen an error?
 	sawCancel atomic.Value // have we seen a cancel?
@@ -66,9 +67,13 @@ func (pe *PlanExecutor) Execute() error {
 	// that top-level cancellations result in quick teardown of all worker threads and the plan executor
 	// itself.
 	go func() {
-		<-pe.ctx.Done()
-		logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): received cancel signal")
-		pe.sawCancel.Store(true)
+		select {
+		case <-pe.parentCtx.Done():
+			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): received cancel signal")
+			pe.sawCancel.Store(true)
+		case <-pe.ctx.Done():
+			logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): cancel goroutine exiting")
+		}
 	}()
 
 	// The second one polls for incoming source events and writes them to the `incomingEvents` channel,
@@ -82,7 +87,12 @@ func (pe *PlanExecutor) Execute() error {
 	go func() {
 		for {
 			event, sourceErr := pe.src.Next()
-			incomingEvents <- nextEvent{event, sourceErr}
+			select {
+			case incomingEvents <- nextEvent{event, sourceErr}:
+			case <-pe.ctx.Done():
+				logging.V(planExecutorLogLevel).Infof("PlanExecutor.Execute(...): incoming events goroutine exiting")
+				return
+			}
 		}
 	}()
 
@@ -220,14 +230,15 @@ func NewPlanExecutor(parentCtx context.Context, plan *Plan, opts Options,
 	preview bool, src SourceIterator) *PlanExecutor {
 	ctx, cancel := context.WithCancel(parentCtx)
 	pe := &PlanExecutor{
-		plan:     plan,
-		opts:     opts,
-		src:      src,
-		preview:  preview,
-		stepGen:  newStepGenerator(plan, opts),
-		stepExec: newStepExecutor(ctx, cancel, plan, opts, preview),
-		ctx:      ctx,
-		cancel:   cancel,
+		plan:      plan,
+		opts:      opts,
+		src:       src,
+		preview:   preview,
+		stepGen:   newStepGenerator(plan, opts),
+		stepExec:  newStepExecutor(ctx, cancel, plan, opts, preview),
+		parentCtx: parentCtx,
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 
 	pe.sawError.Store(false)
