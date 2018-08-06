@@ -130,6 +130,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 	var prov plugin.Provider
 	var err error
 	if goal.Custom {
+		// If this resource is a provider resource, use the plan's provider registry for its CRUD operations.
+		// Otherwise, resolve the the resource's provider reference.
 		if providers.IsProviderType(goal.Type) {
 			prov = sg.plan.providers
 		} else {
@@ -161,6 +163,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// If this isn't a refresh, ensure the provider is okay with this resource and fetch the inputs to pass to
 	// subsequent methods.  If these are not inputs, we are just going to blindly store the outputs, so skip this.
+	// Note that we must always run `Check` for resource providers: the provider registry uses `Check` to load the
+	// appropriate provider plugin.
 	if prov != nil && (!refresh || providers.IsProviderType(goal.Type)) {
 		var failures []plugin.CheckFailure
 
@@ -259,11 +263,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
-	//  It must be an update or a replace. Which operation we do depends on the provider's
-	//  response to `Diff`. We must:
-	//    - Check whether the update requires replacement (`Diff`)
-	//    - If yes, create a new copy, and mark it as having been replaced.
-	//    - If no, simply update the existing resource in place.
+	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
+	//  resource's properties:
+	//  - If the resource's provider reference changed, the resource must be replaced. This behavior is founded upon
+	//    the assumption that providers are recreated iff their configuration changed in such a way that they are no
+	//    longer able to manage existing resources.
+	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
+	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
 		contract.Assert(old != nil && old.Type == new.Type)
 
