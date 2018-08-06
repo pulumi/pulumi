@@ -107,7 +107,7 @@ type StepEventMetadata struct {
 	Res      *StepEventStateMetadata // the latest state for the resource that is known (worst case, old).
 	Keys     []resource.PropertyKey  // the keys causing replacement (only for CreateStep and ReplaceStep).
 	Logical  bool                    // true if this step represents a logical operation in the program.
-	Provider string                  // the step's provider reference
+	Provider string                  // the provider that performed this step.
 }
 
 type StepEventStateMetadata struct {

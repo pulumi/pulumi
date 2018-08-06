@@ -407,9 +407,9 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 		return nil, err
 	}
 
-	// If the provider is not fully configured, just return the inputs.
+	// If the provider is not fully configured, return an empty bag.
 	if !p.cfgknown {
-		return props, nil
+		return resource.PropertyMap{}, nil
 	}
 
 	// Marshal the input state so we can perform the RPC.
