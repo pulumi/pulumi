@@ -216,7 +216,8 @@ func (pe *PlanExecutor) handleSingleEvent(event SourceEvent) {
 }
 
 // NewPlanExecutor creates a new PlanExecutor suitable for executing the given plan.
-func NewPlanExecutor(parentCtx context.Context, plan *Plan, opts Options, preview bool, src SourceIterator) *PlanExecutor {
+func NewPlanExecutor(parentCtx context.Context, plan *Plan, opts Options,
+	preview bool, src SourceIterator) *PlanExecutor {
 	ctx, cancel := context.WithCancel(parentCtx)
 	pe := &PlanExecutor{
 		plan:     plan,
