@@ -76,17 +76,27 @@ type Plan struct {
 	providers *providers.Registry              // the provider registry for this plan.
 }
 
-// addDefaultProviders adds any necessary default provider definitions to the given snapshot.
+// addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
+// information for these providers is sourced from the snapshot's manifest; inputs parameters are sourced from the
+// stack's configuration.
 func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	if prev == nil {
 		return nil
 	}
 
+	// Pull the versions we'll use for default providers from the snapshot's manifest.
 	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
 	for _, p := range prev.Manifest.Plugins {
 		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
 	}
 
+	// Determine the necessary set of default providers and inject references to default providers as appropriate.
+	//
+	// We do this by scraping the snapshot for custom resources that does not reference a provider and adding
+	// default providers for these resources' packages. Each of these resources is rewritten to reference the default
+	// provider for its package.
+	//
+	// The configuration for each default provider is pulled from the stack's configuration information.
 	var defaultProviders []*resource.State
 	defaultProviderRefs := make(map[tokens.Package]providers.Reference)
 	for _, res := range prev.Resources {
@@ -127,6 +137,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 		res.Provider = ref.String()
 	}
 
+	// If any default providers are necessary, prepend their definitions to the snapshot's resources. This trivially
+	// guarantees that all default provider references name providers that precede the referent in the snapshot.
 	if len(defaultProviders) != 0 {
 		prev.Resources = append(defaultProviders, prev.Resources...)
 	}
@@ -150,7 +162,10 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	contract.Assert(target != nil)
 	contract.Assert(source != nil)
 
-	// Add any necessary default provider references to the previous snapshot.
+	// Add any necessary default provider references to the previous snapshot in order to accommodate stacks that were
+	// created prior to the changes that added first-class providers. We do this here rather than in the migration
+	// package s.t. the inputs to any default providers (which we fetch from the stacks's configuration) are as
+	// accurate as possible.
 	if err := addDefaultProviders(target, source, prev); err != nil {
 		return nil, err
 	}
@@ -177,7 +192,9 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		depGraph = graph.NewDependencyGraph(oldResources)
 	}
 
-	// Create a new provider registry.
+	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
+	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
+	// so we just pass all of the old resources.
 	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview)
 	if err != nil {
 		return nil, err

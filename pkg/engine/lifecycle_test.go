@@ -204,7 +204,12 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 	if validate != nil {
 		err = validate(project, target, journal, err)
 	}
-	return journal.Snap(target.Snapshot), err
+
+	snap := journal.Snap(target.Snapshot)
+	if snap != nil {
+		err = snap.VerifyIntegrity()
+	}
+	return snap, err
 }
 
 type TestStep struct {
