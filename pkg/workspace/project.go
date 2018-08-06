@@ -128,10 +128,10 @@ func (ps *ProjectStack) Save(path string) error {
 
 type ProjectRuntimeInfo struct {
 	name    string
-	options map[string]bool
+	options map[string]interface{}
 }
 
-func NewProjectRuntimeInfo(name string, options map[string]bool) ProjectRuntimeInfo {
+func NewProjectRuntimeInfo(name string, options map[string]interface{}) ProjectRuntimeInfo {
 	return ProjectRuntimeInfo{
 		name:    name,
 		options: options,
@@ -142,7 +142,7 @@ func (info *ProjectRuntimeInfo) Name() string {
 	return info.name
 }
 
-func (info *ProjectRuntimeInfo) Options() map[string]bool {
+func (info *ProjectRuntimeInfo) Options() map[string]interface{} {
 	return info.options
 }
 
@@ -174,8 +174,8 @@ func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	var payload struct {
-		Name    string          `json:"name"`
-		Options map[string]bool `json:"options"`
+		Name    string                 `json:"name"`
+		Options map[string]interface{} `json:"options"`
 	}
 
 	if err := json.Unmarshal(data, &payload); err == nil {
@@ -193,8 +193,8 @@ func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error)
 	}
 
 	var payload struct {
-		Name    string          `yaml:"name"`
-		Options map[string]bool `yaml:"options"`
+		Name    string                 `yaml:"name"`
+		Options map[string]interface{} `yaml:"options"`
 	}
 
 	if err := unmarshal(&payload); err == nil {

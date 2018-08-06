@@ -20,8 +20,9 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Nil(t, riRountrip.Options())
 
-		ri = NewProjectRuntimeInfo("nodejs", map[string]bool{
-			"typescript": true,
+		ri = NewProjectRuntimeInfo("nodejs", map[string]interface{}{
+			"typescript":   true,
+			"stringOption": "hello",
 		})
 		byts, err = marshal(ri)
 		assert.NoError(t, err)
@@ -29,6 +30,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "nodejs", riRountrip.Name())
 		assert.Equal(t, true, riRountrip.Options()["typescript"])
+		assert.Equal(t, "hello", riRountrip.Options()["stringOption"])
 	}
 
 	doTest(yaml.Marshal, yaml.Unmarshal)

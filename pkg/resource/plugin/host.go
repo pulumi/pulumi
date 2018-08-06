@@ -78,7 +78,8 @@ type Events interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, events Events, runtimeOptions map[string]bool) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource, events Events,
+	runtimeOptions map[string]interface{}) (Host, error) {
 	host := &defaultHost{
 		ctx:             ctx,
 		config:          config,
@@ -117,7 +118,7 @@ type defaultHost struct {
 	ctx             *Context                           // the shared context for this host.
 	config          ConfigSource                       // the source for provider configuration parameters.
 	events          Events                             // optional callbacks for plugin load events
-	runtimeOptions  map[string]bool                    // options to pass to the language plugins.
+	runtimeOptions  map[string]interface{}             // options to pass to the language plugins.
 	analyzerPlugins map[tokens.QName]*analyzerPlugin   // a cache of analyzer plugins and their processes.
 	languagePlugins map[string]*languagePlugin         // a cache of language plugins and their processes.
 	resourcePlugins map[tokens.Package]*resourcePlugin // a cache of resource plugins and their processes.
