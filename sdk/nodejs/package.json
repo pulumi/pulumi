@@ -1,27 +1,28 @@
 {
-    "name": "@pulumi/pulumi",
-    "version": "${VERSION}",
-    "description": "Pulumi's Node.js SDK",
-    "license": "Apache-2.0",
-    "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
-    "dependencies": {
-        "google-protobuf": "^3.5.0",
-        "grpc": "^1.12.2",
-        "minimist": "^1.2.0",
-        "protobufjs": "^6.8.6",
-        "require-from-string": "^2.0.1",
-        "source-map-support": "^0.4.16",
-        "typescript": "^3.0.0",
-        "read-package-tree": "^5.2.1"
-    },
-    "devDependencies": {
-        "@types/minimist": "^1.2.0",
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^8.0.25",
-        "@types/semver": "^5.5.0",
-        "istanbul": "^0.4.5",
-        "mocha": "^3.5.0",
-        "node-gyp": "^3.6.2",
-        "tslint": "^5.7.0"
-    }
+  "name": "@pulumi/pulumi",
+  "version": "${VERSION}",
+  "description": "Pulumi's Node.js SDK",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/pulumi/pulumi/sdk/nodejs",
+  "dependencies": {
+    "google-protobuf": "^3.5.0",
+    "grpc": "^1.12.2",
+    "minimist": "^1.2.0",
+    "protobufjs": "^6.8.6",
+    "require-from-string": "^2.0.1",
+    "source-map-support": "^0.4.16",
+    "typescript": "^3.0.0",
+    "read-package-tree": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/minimist": "^1.2.0",
+    "@types/mocha": "^2.2.42",
+    "@types/node": "^8.0.25",
+    "@types/read-package-tree": "^5.2.0",
+    "@types/semver": "^5.5.0",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.5.0",
+    "node-gyp": "^3.6.2",
+    "tslint": "^5.7.0"
+  }
 }

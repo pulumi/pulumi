@@ -72,23 +72,11 @@ export async function computeCodePaths(
     return codePaths;
 }
 
-// Package is a node in the package tree returned by readPackageTree.
-interface Package {
-    name: string;
-    path: string;
-    package: {
-        dependencies?: Record<string, string>;
-    };
-    parent?: Package;
-    children: Package[];
-    error: any;
-}
-
 // allFolders computes the set of package folders that are transitively required by the root
 // 'dependencies' node in the client's project.json file.
 function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: Set<string>): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
-        readPackageTree(".", undefined, (err: any, root: Package) => {
+        readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
             if (err) {
                 return reject(err);
             }
@@ -127,7 +115,7 @@ function allFoldersForPackages(includedPackages: Set<string>, excludedPackages: 
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
-    root: Package, pkg: string, packagePaths: Set<string>, excludedPackages: Set<string>) {
+    root: readPackageTree.Node, pkg: string, packagePaths: Set<string>, excludedPackages: Set<string>) {
     // Don't process this packages if it was in the set the user wants to exclude.
 
     // Also, exclude it if it's an @pulumi package.  These packages are intended for deployment
@@ -140,7 +128,7 @@ function addPackageAndDependenciesToSet(
 
     const child = findDependency(root, pkg);
     if (!child) {
-        console.warn(`Could not include required dependency '${pkg}' in '${filepath.resolve(root.path)}'.`)
+        console.warn(`Could not include required dependency '${pkg}' in '${filepath.resolve(root.path)}'.`);
         return;
     }
 
@@ -156,13 +144,14 @@ function addPackageAndDependenciesToSet(
 // for the given name. It is assumed that the tree was correctly constructed such that dependencies
 // are resolved to compatible versions in the closest available match starting at the provided root
 // and walking up to the head of the tree.
-function findDependency(root: Package, name: string) {
+function findDependency(root: readPackageTree.Node | undefined | null, name: string) {
     for (; root; root = root.parent) {
         for (const child of root.children) {
             let childName = child.name;
-            // Note: `read-package-tree` returns incorrect `.name` properties for packages in an orgnaization - like
-            // `@types/express` or `@protobufjs/path`.  Compute the correct name from the `path` property instead. Match
-            // any name that ends with something that looks like `@foo/bar`, such as `node_modules/@foo/bar` or
+            // Note: `read-package-tree` returns incorrect `.name` properties for packages in an
+            // organization - like `@types/express` or `@protobufjs/path`.  Compute the correct name
+            // from the `path` property instead. Match any name that ends with something that looks
+            // like `@foo/bar`, such as `node_modules/@foo/bar` or
             // `node_modules/baz/node_modules/@foo/bar.
             const childFolderName = filepath.basename(child.path);
             const parentFolderName = filepath.basename(filepath.dirname(child.path));
@@ -175,4 +164,6 @@ function findDependency(root: Package, name: string) {
             }
         }
     }
+
+    return undefined;
 }
