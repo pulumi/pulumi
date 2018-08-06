@@ -35,6 +35,9 @@ const (
 )
 
 var (
+	// errStepApplyFailed is a sentinel error for errors that arise when step application fails.
+	// We (the step executor) are not responsible for reporting those errors so this sentinel ensures
+	// that we don't do so.
 	errStepApplyFailed = errors.New("step application failed")
 )
 
@@ -159,7 +162,7 @@ func (se *stepExecutor) executeChain(workerID int, chain Chain) {
 				// but it means that at this level we shouldn't be logging any errors that came from there.
 				//
 				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
-				// error and that we shouldn't log it.
+				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
 				diagMsg := diag.RawMessage(step.URN(), err.Error())
 				se.plan.Diag().Errorf(diagMsg)
 			}
