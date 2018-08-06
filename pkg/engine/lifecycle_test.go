@@ -265,8 +265,8 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 	}
 
 	project := &workspace.Project{
-		Name:    projectName,
-		Runtime: runtime,
+		Name:        projectName,
+		RuntimeInfo: workspace.NewProjectRuntimeInfo(runtime, nil),
 	}
 	target := &deploy.Target{
 		Name:      stack,

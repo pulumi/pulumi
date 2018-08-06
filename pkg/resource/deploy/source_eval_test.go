@@ -203,7 +203,7 @@ func newTestPluginContext(program testProgramFunc) (*plugin.Context, error) {
 			return &testLangHost{program: program}, nil
 		},
 	}
-	return plugin.NewContext(cmdutil.Diag(), host, nil, nil, "", nil)
+	return plugin.NewContext(cmdutil.Diag(), host, nil, nil, "", nil, nil)
 }
 
 type testProviderSource struct {
