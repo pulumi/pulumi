@@ -128,7 +128,7 @@ function addPackageAndDependenciesToSet(
 
     const child = findDependency(root, pkg);
     if (!child) {
-        console.warn(`Could not include required dependency '${pkg}' in '${filepath.resolve(root.path)}'.`)
+        console.warn(`Could not include required dependency '${pkg}' in '${filepath.resolve(root.path)}'.`);
         return;
     }
 
@@ -148,9 +148,10 @@ function findDependency(root: readPackageTree.Node | undefined | null, name: str
     for (; root; root = root.parent) {
         for (const child of root.children) {
             let childName = child.name;
-            // Note: `read-package-tree` returns incorrect `.name` properties for packages in an orgnaization - like
-            // `@types/express` or `@protobufjs/path`.  Compute the correct name from the `path` property instead. Match
-            // any name that ends with something that looks like `@foo/bar`, such as `node_modules/@foo/bar` or
+            // Note: `read-package-tree` returns incorrect `.name` properties for packages in an
+            // organization - like `@types/express` or `@protobufjs/path`.  Compute the correct name
+            // from the `path` property instead. Match any name that ends with something that looks
+            // like `@foo/bar`, such as `node_modules/@foo/bar` or
             // `node_modules/baz/node_modules/@foo/bar.
             const childFolderName = filepath.basename(child.path);
             const parentFolderName = filepath.basename(filepath.dirname(child.path));
