@@ -23,7 +23,37 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
-// TODO[pulumi/pulumi#106]: plan parallelism.
+// Options controls the planning and deployment process.
+type Options struct {
+	Events   Events // an optional events callback interface.
+	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
+}
+
+// DegreeOfParallelism returns the degree of parallelism that should be used during the
+// planning and deployment process.
+func (o Options) DegreeOfParallelism() int {
+	if o.Parallel <= 1 {
+		return 1
+	}
+	return o.Parallel
+}
+
+// Events is an interface that can be used to hook interesting engine/planning events.
+type Events interface {
+	OnResourceStepPre(step Step) (interface{}, error)
+	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
+	OnResourceOutputs(step Step) error
+}
+
+// PlanSummary is an interface for summarizing the progress of a plan.
+type PlanSummary interface {
+	Steps() int
+	Creates() map[resource.URN]bool
+	Updates() map[resource.URN]bool
+	Replaces() map[resource.URN]bool
+	Deletes() map[resource.URN]bool
+	Sames() map[resource.URN]bool
+}
 
 // Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
 // deployment.  A plan can be generated out of whole cloth from a resource graph -- in the case of new deployments --
