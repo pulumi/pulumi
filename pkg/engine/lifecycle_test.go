@@ -674,3 +674,110 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Steps = steps[2:]
 	p.Run(t, snap)
 }
+
+func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
+	loaders := []*enginetest.ProviderLoader{
+		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &enginetest.Provider{
+				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
+					// Always require replacement.
+					keys := []resource.PropertyKey{}
+					for k := range news {
+						keys = append(keys, k)
+					}
+					return plugin.DiffResult{ReplaceKeys: keys, DeleteBeforeReplace: true}, nil
+				},
+			}, nil
+		}),
+	}
+
+	providerInputs := resource.PropertyMap{
+		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+	}
+	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
+			false, nil, "", providerInputs)
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, provRef.String(),
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := enginetest.NewPluginHost(nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	// Build a basic lifecycle.
+	steps := MakeBasicLifecycleSteps(t, 2)
+
+	// Run the lifecycle through its no-op update+refresh.
+	p.Steps = steps[:4]
+	snap := p.Run(t, nil)
+
+	// Change the config and run an update. We expect everything to require replacement.
+	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	p.Steps = []TestStep{{
+		Op: Update,
+		Validate: func(project workspace.Project, target deploy.Target, j *Journal, err error) error {
+			provURN := p.NewProviderURN("pkgA", "provA", "")
+			resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+			// Look for replace steps on the provider and the resource.
+			createdProvider, createdResource := false, false
+			deletedProvider, deletedResource := false, false
+			for _, entry := range j.Entries {
+				if entry.Kind != JournalEntrySuccess {
+					continue
+				}
+
+				switch urn := entry.Step.URN(); urn {
+				case provURN:
+					if entry.Step.Op() == deploy.OpDeleteReplaced {
+						assert.False(t, createdProvider)
+						assert.False(t, createdResource)
+						assert.True(t, deletedResource)
+						deletedProvider = true
+					} else if entry.Step.Op() == deploy.OpCreateReplacement {
+						assert.True(t, deletedProvider)
+						assert.True(t, deletedResource)
+						assert.False(t, createdResource)
+						createdProvider = true
+					}
+				case resURN:
+					if entry.Step.Op() == deploy.OpDeleteReplaced {
+						assert.False(t, deletedProvider)
+						assert.False(t, deletedResource)
+						deletedResource = true
+					} else if entry.Step.Op() == deploy.OpCreateReplacement {
+						assert.True(t, deletedProvider)
+						assert.True(t, deletedResource)
+						assert.True(t, createdProvider)
+						createdResource = true
+					}
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			assert.True(t, deletedProvider)
+			assert.True(t, deletedResource)
+
+			return err
+		},
+	}}
+	snap = p.Run(t, snap)
+
+	// Resume the lifecycle with another no-op update.
+	p.Steps = steps[2:]
+	p.Run(t, snap)
+}
