@@ -25,9 +25,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+// StepCompleteFunc is the type of functions returned from Step.Apply. These functions are to be called
+// when the engine has fully retired a step.
+type StepCompleteFunc func()
+
 // Step is a specification for a deployment operation.
 type Step interface {
-	Apply(preview bool) (resource.Status, error) // applies or previews this step.
+	// Apply applies or previews this step. It returns the status of the resource after the step application,
+	// a function to call to signal that this step has fully completed, and an error, if one occurred while applying
+	// the step.
+	//
+	// The returned StepCompleteFunc, if not null, must be called after committing the results of this step into
+	// the state of the deployment.
+	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
 	Op() StepOp           // the operation performed by this step.
 	URN() resource.URN    // the resource URN (for before and after).
@@ -78,13 +88,13 @@ func (s *SameStep) New() *resource.State { return s.new }
 func (s *SameStep) Res() *resource.State { return s.new }
 func (s *SameStep) Logical() bool        { return true }
 
-func (s *SameStep) Apply(preview bool) (resource.Status, error) {
+func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Retain the URN, ID, and outputs:
 	s.new.URN = s.old.URN
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
-	s.reg.Done(&RegisterResult{State: s.new, Stable: true})
-	return resource.StatusOK, nil
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stable: true}) }
+	return resource.StatusOK, complete, nil
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -156,7 +166,7 @@ func (s *CreateStep) Res() *resource.State         { return s.new }
 func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *CreateStep) Logical() bool                { return !s.replacing }
 
-func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
+func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	var resourceError error
 	resourceStatus := resource.StatusOK
 	if !preview {
@@ -164,12 +174,12 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 			// Invoke the Create RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
-				return resource.StatusOK, err
+				return resource.StatusOK, nil, err
 			}
 			id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs)
 			if err != nil {
 				if rst != resource.StatusPartialFailure {
-					return rst, err
+					return rst, nil, err
 				}
 
 				resourceError = err
@@ -193,11 +203,11 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, error) {
 		s.old.Delete = true
 	}
 
-	s.reg.Done(&RegisterResult{State: s.new})
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	if resourceError == nil {
-		return resourceStatus, nil
+		return resourceStatus, complete, nil
 	}
-	return resourceStatus, resourceError
+	return resourceStatus, complete, resourceError
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -250,10 +260,10 @@ func (s *DeleteStep) New() *resource.State { return nil }
 func (s *DeleteStep) Res() *resource.State { return s.old }
 func (s *DeleteStep) Logical() bool        { return !s.replacing }
 
-func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
+func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources.
 	if s.old.Protect {
-		return resource.StatusOK,
+		return resource.StatusOK, nil,
 			errors.Errorf("refusing to delete protected resource '%s'", s.old.URN)
 	}
 
@@ -263,15 +273,15 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, error) {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
-				return resource.StatusOK, err
+				return resource.StatusOK, nil, err
 			}
 			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.All()); err != nil {
-				return rst, err
+				return rst, nil, err
 			}
 		}
 	}
 
-	return resource.StatusOK, nil
+	return resource.StatusOK, func() {}, nil
 }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
@@ -318,7 +328,7 @@ func (s *UpdateStep) New() *resource.State { return s.new }
 func (s *UpdateStep) Res() *resource.State { return s.new }
 func (s *UpdateStep) Logical() bool        { return true }
 
-func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
+func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the URN and ID, even in previews and refreshes.
 	s.new.URN = s.old.URN
 	s.new.ID = s.old.ID
@@ -330,14 +340,14 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 			// Invoke the Update RPC function for this provider:
 			prov, err := getProvider(s)
 			if err != nil {
-				return resource.StatusOK, err
+				return resource.StatusOK, nil, err
 			}
 
 			// Update to the combination of the old "all" state (including outputs), but overwritten with new inputs.
 			outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.All(), s.new.Inputs)
 			if upderr != nil {
 				if rst != resource.StatusPartialFailure {
-					return rst, upderr
+					return rst, nil, upderr
 				}
 
 				resourceError = upderr
@@ -354,11 +364,11 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, error) {
 	}
 
 	// Finally, mark this operation as complete.
-	s.reg.Done(&RegisterResult{State: s.new, Stables: s.stables})
+	complete := func() { s.reg.Done(&RegisterResult{State: s.new, Stables: s.stables}) }
 	if resourceError == nil {
-		return resourceStatus, nil
+		return resourceStatus, complete, nil
 	}
-	return resourceStatus, resourceError
+	return resourceStatus, complete, resourceError
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -404,10 +414,10 @@ func (s *ReplaceStep) Res() *resource.State         { return s.new }
 func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 func (s *ReplaceStep) Logical() bool                { return true }
 
-func (s *ReplaceStep) Apply(preview bool) (resource.Status, error) {
+func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
 	contract.Assert(!s.pendingDelete || s.old.Delete)
-	return resource.StatusOK, nil
+	return resource.StatusOK, func() {}, nil
 }
 
 // ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
@@ -482,7 +492,7 @@ func (s *ReadStep) New() *resource.State { return s.new }
 func (s *ReadStep) Res() *resource.State { return s.new }
 func (s *ReadStep) Logical() bool        { return !s.replacing }
 
-func (s *ReadStep) Apply(preview bool) (resource.Status, error) {
+func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
 	id := s.new.ID
 
@@ -491,12 +501,12 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, error) {
 	if id != "" {
 		prov, err := getProvider(s)
 		if err != nil {
-			return resource.StatusOK, err
+			return resource.StatusOK, nil, err
 		}
 
 		result, err := prov.Read(urn, id, s.new.Inputs)
 		if err != nil {
-			return resource.StatusUnknown, err
+			return resource.StatusUnknown, nil, err
 		}
 
 		s.new.Outputs = result
@@ -508,8 +518,8 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, error) {
 		s.old.Delete = true
 	}
 
-	s.event.Done(&ReadResult{State: s.new})
-	return resource.StatusOK, nil
+	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
+	return resource.StatusOK, complete, nil
 }
 
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.

@@ -202,7 +202,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	}
 
 	se.log(workerID, "applying step %v on %v (preview %v)", step.Op(), step.URN(), se.preview)
-	status, err := step.Apply(se.preview)
+	status, stepComplete, err := step.Apply(se.preview)
+
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
@@ -220,6 +221,13 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
 			return errors.Wrap(postErr, "post-step event returned an error")
 		}
+	}
+
+	// Calling stepComplete allows steps that depend on this step to continue. OnResourceStepPost saved the results
+	// of the step in the snapshot, so we are ready to go.
+	if stepComplete != nil {
+		se.log(workerID, "step %v on %v retired", step.Op(), step.URN())
+		stepComplete()
 	}
 
 	if err != nil {
