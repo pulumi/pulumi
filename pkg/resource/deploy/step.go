@@ -496,6 +496,8 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	urn := s.new.URN
 	id := s.new.ID
 
+	var resourceError error
+	resourceStatus := resource.StatusOK
 	// Unlike most steps, Read steps run during previews. The only time
 	// we can't run is if the ID we are given is unknown.
 	if id == "" || id == plugin.UnknownStringValue {
@@ -506,9 +508,18 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			return resource.StatusOK, nil, err
 		}
 
-		result, err := prov.Read(urn, id, s.new.Inputs)
+		result, rst, err := prov.Read(urn, id, s.new.Inputs)
 		if err != nil {
-			return resource.StatusUnknown, nil, err
+			if rst != resource.StatusPartialFailure {
+				return rst, nil, err
+			}
+
+			resourceError = err
+			resourceStatus = rst
+
+			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+				s.new.InitErrors = initErr.Reasons
+			}
 		}
 
 		s.new.Outputs = result
@@ -521,7 +532,10 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	}
 
 	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
-	return resource.StatusOK, complete, nil
+	if resourceError == nil {
+		return resourceStatus, complete, nil
+	}
+	return resourceStatus, complete, resourceError
 }
 
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.

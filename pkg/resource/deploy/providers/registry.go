@@ -339,8 +339,8 @@ func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.Prope
 }
 
 func (r *Registry) Read(urn resource.URN, id resource.ID,
-	props resource.PropertyMap) (resource.PropertyMap, error) {
-	return nil, errors.New("provider resources may not be read")
+	props resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
+	return nil, resource.StatusUnknown, errors.New("provider resources may not be read")
 }
 
 func (r *Registry) Invoke(tok tokens.ModuleMember,

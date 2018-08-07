@@ -1029,3 +1029,96 @@ func TestExternalRefresh(t *testing.T) {
 	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
 	assert.True(t, snap.Resources[1].External)
 }
+
+func TestRefreshInitFailure(t *testing.T) {
+	//
+	// Refresh will persist any initialization errors that are returned by `Read`. This provider
+	// will error out or not based on the value of `refreshShouldFail`.
+	//
+	refreshShouldFail := false
+
+	//
+	// Set up test environment to use `readFailProvider` as the underlying resource provider.
+	//
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, props resource.PropertyMap,
+				) (resource.PropertyMap, resource.Status, error) {
+					if refreshShouldFail {
+						err := &plugin.InitError{
+							Reasons: []string{"Refresh reports continued to fail to initialize"},
+						}
+						return resource.PropertyMap{}, resource.StatusPartialFailure, err
+					}
+					return resource.PropertyMap{}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+	}
+
+	provURN := p.NewProviderURN("pkgA", "default", "")
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	//
+	// Create an old snapshot with a single initialization failure.
+	//
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{{
+			Type:       resURN.Type(),
+			URN:        resURN,
+			Custom:     true,
+			ID:         "0",
+			Inputs:     resource.PropertyMap{},
+			Outputs:    resource.PropertyMap{},
+			InitErrors: []string{"Resource failed to initialize"},
+		}},
+	}
+
+	//
+	// Refresh DOES NOT fail, causing the initialization error to disappear.
+	//
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap := p.Run(t, old)
+
+	for _, resource := range snap.Resources {
+		switch urn := resource.URN; urn {
+		case provURN:
+			// break
+		case resURN:
+			assert.Equal(t, []string{}, resource.InitErrors)
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+	}
+
+	//
+	// Refresh DOES fail, causing the new initialization error to appear.
+	//
+	refreshShouldFail = true
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap = p.Run(t, old)
+	for _, resource := range snap.Resources {
+		switch urn := resource.URN; urn {
+		case provURN:
+			// break
+		case resURN:
+			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, resource.InitErrors)
+		default:
+			t.Fatalf("unexpected resource %v", urn)
+		}
+	}
+}
