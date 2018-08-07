@@ -16,13 +16,18 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/backend"
 	"github.com/pulumi/pulumi/pkg/engine"
+	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
 func newUpCmd() *cobra.Command {
@@ -30,6 +35,7 @@ func newUpCmd() *cobra.Command {
 	var expectNop bool
 	var message string
 	var stack string
+	var configArray []string
 
 	// Flags for engine.UpdateOptions.
 	var analyzers []string
@@ -43,7 +49,7 @@ func newUpCmd() *cobra.Command {
 	var yes bool
 
 	var cmd = &cobra.Command{
-		Use:        "up",
+		Use:        "up [url]",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"deploy", "push"},
 		Short:      "Create or update the resources in a stack",
@@ -58,7 +64,7 @@ func newUpCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.NoArgs,
+		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			interactive := isInteractive(nonInteractive)
 			if !interactive {
@@ -80,9 +86,107 @@ func newUpCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, true, opts.Display)
-			if err != nil {
-				return err
+			var c config.Map
+			var s backend.Stack
+			hasStack := false
+
+			if len(args) > 0 {
+				url := args[0]
+
+				if !workspace.IsTemplateURL(url) {
+					return errors.Errorf("%s is not a valid URL", url)
+				}
+
+				// Retrieve the template repo.
+				var repo workspace.TemplateRepository
+				if repo, err = workspace.RetrieveTemplates(url, false); err != nil {
+					return err
+				}
+
+				// List the templates from the repo.
+				var templates []workspace.Template
+				if templates, err = repo.Templates(); err != nil {
+					return err
+				}
+
+				// Make sure only a single template is found.
+				// Alternatively, we could consider prompting to choose one instead of failing.
+				if len(templates) != 1 {
+					return errors.Errorf("more than one app template found at %s", url)
+				}
+				template := templates[0]
+
+				// Create temp directory for the "virtual workspace".
+				var temp string
+				if temp, err = ioutil.TempDir("", "pulumi-up-"); err != nil {
+					return err
+				}
+
+				// TODO don't use template name/description for project name/description.
+				// Consider prompting if they are ${PROJECT} and ${DESCRIPTION}.
+				if err = template.CopyTemplateFiles(temp, true, template.Name, template.Description); err != nil {
+					return err
+				}
+
+				// Delete the template repo.
+				if err = repo.Delete(); err != nil {
+					return err
+				}
+
+				// Change the working directory to the "virtual workspace".
+				if err = os.Chdir(temp); err != nil {
+					return errors.Wrap(err, "changing the working directory")
+				}
+
+				// If it's an existing stack, use it to fetch the latest config.
+				var stackConfig config.Map
+				if stack != "" {
+					s, err = getStack(stack)
+					// TODO: if not found, offer to create it.
+					if err != nil {
+						return err
+					}
+					hasStack = true
+
+					stackConfig, err = backend.GetLatestConfiguration(commandContext(), s)
+					if err != nil {
+						return err
+					}
+
+					// TODO: if the stack exists, pull down the latest snapshot and see if it was
+					// the initial deployment used to save the config from the service and use
+					// that config as-is without prompting.
+				}
+
+				// Get config values passed on the command line.
+				var commandLineConfig config.Map
+				if commandLineConfig, err = parseConfig(configArray); err != nil {
+					return err
+				}
+
+				// Prompt for config as needed.
+				c, err = promptForConfig(template.Config, commandLineConfig, stackConfig, yes, opts.Display)
+				if err != nil {
+					return err
+				}
+
+				// Install dependencies.
+				if err = installDependencies(); err != nil {
+					return err
+				}
+			}
+
+			if !hasStack {
+				if s, err = requireStack(stack, true, opts.Display); err != nil {
+					return err
+				}
+			}
+
+			if c != nil {
+				if err = saveConfig(s.Name().StackName(), c); err != nil {
+					return errors.Wrap(err, "saving config")
+				}
+				fmt.Println("Saved config.")
 			}
 
 			proj, root, err := readProject()
@@ -100,6 +204,11 @@ func newUpCmd() *cobra.Command {
 				Parallel:  parallel,
 				Debug:     debug,
 			}
+
+			// TODO for the URL case:
+			// - suppress preview display/prompt unless error.
+			// - attempt `destroy` on any update errors.
+			// - show template.Quickstart?
 
 			changes, err := s.Update(commandContext(), proj, root, m, opts, cancellationScopes)
 			switch {
@@ -124,6 +233,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringArrayVarP(
+		&configArray, "config", "c", []string{},
+		"Config to use during the update")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
@@ -158,4 +270,31 @@ func newUpCmd() *cobra.Command {
 		"Automatically approve and perform the update after previewing it")
 
 	return cmd
+}
+
+// getStack gets the stack from the current backend.
+func getStack(stackName string) (backend.Stack, error) {
+	opts := backend.DisplayOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	b, err := currentBackend(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	stackRef, err := b.ParseStackReference(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	stack, err := b.GetStack(commandContext(), stackRef)
+	if err != nil {
+		return nil, err
+	}
+	if stack != nil {
+		return stack, err
+	}
+
+	return nil, errors.Errorf("no stack named '%s' found", stackName)
 }

@@ -125,27 +125,6 @@ func (pc *Client) DownloadPlugin(ctx context.Context, info workspace.PluginInfo,
 	return resp.Body, resp.ContentLength, nil
 }
 
-// ListTemplates lists all templates of which the Pulumi API knows.
-func (pc *Client) ListTemplates(ctx context.Context) ([]workspace.Template, error) {
-	// Query all templates.
-	var templates []workspace.Template
-	if err := pc.restCall(ctx, "GET", "/releases/templates", nil, nil, &templates); err != nil {
-		return nil, err
-	}
-	return templates, nil
-}
-
-// DownloadTemplate downloads the indicated template from the Pulumi API.
-func (pc *Client) DownloadTemplate(ctx context.Context, name string) (io.ReadCloser, int64, error) {
-	// Make the GET request to download the template.
-	endpoint := fmt.Sprintf("/releases/templates/%s.tar.gz", name)
-	_, resp, err := pc.apiCall(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return nil, 0, err
-	}
-	return resp.Body, resp.ContentLength, nil
-}
-
 // ListStacks lists all stacks for the indicated project.
 func (pc *Client) ListStacks(ctx context.Context, projectFilter *tokens.PackageName) ([]apitype.Stack, error) {
 
