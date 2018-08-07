@@ -207,11 +207,11 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 		return nil, []plugin.CheckFailure{{Property: "version", Reason: err.Error()}}, nil
 	}
 	provider, err := r.host.Provider(getProviderPackage(urn.Type()), version)
-	if provider == nil {
-		return nil, nil, errors.New("could not find plugin")
-	}
 	if err != nil {
 		return nil, nil, err
+	}
+	if provider == nil {
+		return nil, nil, errors.New("could not find plugin")
 	}
 
 	// Check the provider's config. If the check fails, unload the provider.
