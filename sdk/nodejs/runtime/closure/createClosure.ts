@@ -1074,7 +1074,8 @@ function getOrCreateEntry(
     }
 
     function captureModule(moduleName: string) {
-        const isLocalModule = moduleName.startsWith(".") && !moduleName.startsWith("./node_modules/");
+        const nodeModulesPrefix = "./node_modules/";
+        const isLocalModule = moduleName.startsWith(".") && !moduleName.startsWith(nodeModulesPrefix);
 
         if (obj.deploymentOnlyModule || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
@@ -1100,8 +1101,13 @@ function getOrCreateEntry(
             serializeObject();
         }
         else  {
-            // This name bound to a module, serialize it out as a direct 'require(name)' call
-            entry.module = moduleName;
+            // If the path goes into node_modules, strip off the node_modules part. This
+            // will help ensure that lookup of those modules will work on the cloud-side even if the
+            // module isn't in a relative node_modules directory.  For example, this happens with
+            // aws-sdk.  It ends up actually being in /var/runtime/node_modules inside aws lambda.
+            entry.module = moduleName.startsWith(nodeModulesPrefix)
+                ? moduleName.substring(nodeModulesPrefix.length)
+                : moduleName;
         }
     }
 }
@@ -1152,8 +1158,8 @@ function findModuleName(obj: any): string | undefined {
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
         if (require.cache[path].exports === obj) {
-            // Rewrite the path to be a local module reference relative to the
-            // current working directory
+            // Rewrite the path to be a local module reference relative to the current working
+            // directory.
             const modPath = pathRelative(process.cwd(), path).replace(/\\/g, "\\\\");
             return "./" + modPath;
         }
