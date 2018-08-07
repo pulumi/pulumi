@@ -432,15 +432,9 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 				}
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteReplacementStep(sg.plan, res, true))
-			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
-				!sg.deletes[res.URN] && !sg.reads[res.URN] {
-				// In addition to the above comment, I am fairly certain there is a bug here. If a resource
-				// is not registered in a plan, but there exists a pending delete copy of that resource in the
-				// snapshot, we will choose not to delete the live resource and instead be content with deleting
-				// the pending delete resource.
-				//
-				// This is fairly benign, since in the worst case we'll delete the resource on the next plan, but
-				// it points to a need for a more principled handling of pending deletions.
+			} else if !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] && !sg.reads[res.URN] {
+				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
+				// delete steps for the same URN if the old checkpoint contained pending deletes.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				dels = append(dels, NewDeleteStep(sg.plan, res))
@@ -448,7 +442,6 @@ func (sg *stepGenerator) GenerateDeletes() []Step {
 		}
 	}
 	return dels
-
 }
 
 // diff returns a DiffResult for the given resource.

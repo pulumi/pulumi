@@ -37,15 +37,11 @@ func TestDuplicateURNs(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 			},
-			/* TODO(pulumi/pulumi#1645) - This example runs into trouble with pending deletes.
-			   We currently have a bug where we can't delete a pending-delete resource in the same
-			   plan where we deleted the resource because it no longer exists.
 			{
 				Dir:           "step4",
 				Additive:      true,
 				ExpectFailure: true,
 			},
-			*/
 		},
 	})
 }
