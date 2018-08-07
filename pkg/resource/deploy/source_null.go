@@ -31,7 +31,7 @@ func (src *nullSource) Project() tokens.PackageName { return "" }
 func (src *nullSource) Info() interface{}           { return nil }
 func (src *nullSource) IsRefresh() bool             { return false }
 
-func (src *nullSource) Iterate(opts Options) (SourceIterator, error) {
+func (src *nullSource) Iterate(opts Options, providers ProviderSource) (SourceIterator, error) {
 	return &nullSourceIterator{}, nil
 }
 

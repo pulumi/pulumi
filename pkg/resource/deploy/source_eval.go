@@ -15,15 +15,17 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -46,18 +48,22 @@ type EvalRunInfo struct {
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo, dryRun bool) Source {
+func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
+	defaultProviderVersions map[tokens.Package]*semver.Version, dryRun bool) Source {
+
 	return &evalSource{
-		plugctx: plugctx,
-		runinfo: runinfo,
-		dryRun:  dryRun,
+		plugctx:                 plugctx,
+		runinfo:                 runinfo,
+		defaultProviderVersions: defaultProviderVersions,
+		dryRun:                  dryRun,
 	}
 }
 
 type evalSource struct {
-	plugctx *plugin.Context // the plugin context.
-	runinfo *EvalRunInfo    // the directives to use when running the program.
-	dryRun  bool            // true if this is a dry-run operation only.
+	plugctx                 *plugin.Context                    // the plugin context.
+	runinfo                 *EvalRunInfo                       // the directives to use when running the program.
+	defaultProviderVersions map[tokens.Package]*semver.Version // the default provider versions for this source.
+	dryRun                  bool                               // true if this is a dry-run operation only.
 }
 
 func (src *evalSource) Close() error {
@@ -78,12 +84,12 @@ func (src *evalSource) Info() interface{} { return src.runinfo }
 func (src *evalSource) IsRefresh() bool   { return false }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(opts Options) (SourceIterator, error) {
+func (src *evalSource) Iterate(opts Options, providers ProviderSource) (SourceIterator, error) {
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
-	mon, err := newResourceMonitor(src, regChan, regOutChan, regReadChan)
+	mon, err := newResourceMonitor(src, providers, regChan, regOutChan, regReadChan)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
@@ -203,28 +209,176 @@ func (iter *evalSourceIterator) forkRun(opts Options) {
 	}()
 }
 
+// defaultProviders manages the registration of default providers. The default provider for a package is the provider
+// resource that will be used to manage resources that do not explicitly reference a provider. Default providers will
+// only be registered for packages that are used by resources registered by the user's Pulumi program.
+type defaultProviders struct {
+	versions  map[tokens.Package]*semver.Version
+	providers map[tokens.Package]providers.Reference
+	config    plugin.ConfigSource
+
+	requests chan defaultProviderRequest
+	regChan  chan<- *registerResourceEvent
+	cancel   <-chan bool
+}
+
+type defaultProviderResponse struct {
+	ref providers.Reference
+	err error
+}
+
+type defaultProviderRequest struct {
+	pkg      tokens.Package
+	response chan<- defaultProviderResponse
+}
+
+// newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
+// engine to register a default provider resource for the indicated package.
+func (d *defaultProviders) newRegisterDefaultProviderEvent(
+	pkg tokens.Package) (*registerResourceEvent, <-chan *RegisterResult, error) {
+
+	// Attempt to get the config for the package.
+	cfg, err := d.config.GetPackageConfig(pkg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create the inputs for the provider resource.
+	inputs := make(resource.PropertyMap)
+	for k, v := range cfg {
+		inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
+	}
+	if version := d.versions[pkg]; version != nil {
+		inputs["version"] = resource.NewStringProperty(version.String())
+	}
+
+	// Create the result channel and the event.
+	done := make(chan *RegisterResult)
+	event := &registerResourceEvent{
+		goal: resource.NewGoal(providers.MakeProviderType(pkg), "default", true, inputs, "", false, nil, ""),
+		done: done,
+	}
+	return event, done, nil
+}
+
+// handleRequest services a single default provider request. If the request is for a default provider that we have
+// already loaded, we will return its reference. If the request is for a default provider that has not yet been
+// loaded, we will send a register resource request to the engine, wait for it to complete, and then cache and return
+// the reference of the loaded provider.
+//
+// Note that this function must not be called from two goroutines concurrently; it is the responsibility of d.serve()
+// to ensure this.
+func (d *defaultProviders) handleRequest(pkg tokens.Package) (providers.Reference, error) {
+	logging.V(5).Infof("handling default provider request for package %s", pkg)
+
+	ref, ok := d.providers[pkg]
+	if ok {
+		return ref, nil
+	}
+
+	event, done, err := d.newRegisterDefaultProviderEvent(pkg)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+
+	select {
+	case d.regChan <- event:
+	case <-d.cancel:
+		return providers.Reference{}, context.Canceled
+	}
+
+	logging.V(5).Infof("waiting for default provider for package %s", pkg)
+
+	var result *RegisterResult
+	select {
+	case result = <-done:
+	case <-d.cancel:
+		return providers.Reference{}, context.Canceled
+	}
+
+	logging.V(5).Infof("registered default provider for package %s: %s", pkg, result.State.URN)
+
+	id := result.State.ID
+	if id == "" {
+		id = providers.UnknownID
+	}
+
+	ref, err = providers.NewReference(result.State.URN, id)
+	contract.Assert(err == nil)
+	d.providers[pkg] = ref
+
+	return ref, nil
+}
+
+// serve is the primary loop responsible for handling default provider requests.
+func (d *defaultProviders) serve() {
+	for {
+		select {
+		case req := <-d.requests:
+			// Note that we do not need to handle cancellation when sending the response: every message we receive is
+			// guaranteed to have something waiting on the other end of the response channel.
+			ref, err := d.handleRequest(req.pkg)
+			req.response <- defaultProviderResponse{ref: ref, err: err}
+		case <-d.cancel:
+			return
+		}
+	}
+}
+
+// getDefaultProviderRef fetches the provider reference for the default provider for a particular package.
+func (d *defaultProviders) getDefaultProviderRef(pkg tokens.Package) (providers.Reference, error) {
+	contract.Assert(pkg != "pulumi")
+
+	response := make(chan defaultProviderResponse)
+	select {
+	case d.requests <- defaultProviderRequest{pkg: pkg, response: response}:
+	case <-d.cancel:
+		return providers.Reference{}, context.Canceled
+	}
+	res := <-response
+	return res.ref, res.err
+}
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	src         *evalSource                        // the evaluation source.
-	regChan     chan *registerResourceEvent        // the channel to send resource registrations to.
-	regOutChan  chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
-	regReadChan chan *readResourceEvent            // the channel to send resource reads to.
-	addr        string                             // the address the host is listening on.
-	cancel      chan bool                          // a channel that can cancel the server.
-	done        chan error                         // a channel that resolves when the server completes.
+	src              *evalSource                        // the evaluation source.
+	providers        ProviderSource                     // the provider source itself.
+	defaultProviders *defaultProviders                  // the default provider manager.
+	regChan          chan *registerResourceEvent        // the channel to send resource registrations to.
+	regOutChan       chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
+	regReadChan      chan *readResourceEvent            // the channel to send resource reads to.
+	addr             string                             // the address the host is listening on.
+	cancel           chan bool                          // a channel that can cancel the server.
+	done             chan error                         // a channel that resolves when the server completes.
 }
 
 // newResourceMonitor creates a new resource monitor RPC server.
-func newResourceMonitor(src *evalSource, regChan chan *registerResourceEvent,
+func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent) (*resmon, error) {
+
+	// Create our cancellation channel.
+	cancel := make(chan bool)
+
+	// Create a new default provider manager.
+	d := &defaultProviders{
+		versions:  src.defaultProviderVersions,
+		providers: make(map[tokens.Package]providers.Reference),
+		config:    src.runinfo.Target,
+		requests:  make(chan defaultProviderRequest),
+		regChan:   regChan,
+		cancel:    cancel,
+	}
+
 	// New up an engine RPC server.
 	resmon := &resmon{
-		src:         src,
-		regChan:     regChan,
-		regOutChan:  regOutChan,
-		regReadChan: regReadChan,
-		cancel:      make(chan bool),
+		src:              src,
+		providers:        provs,
+		defaultProviders: d,
+		regChan:          regChan,
+		regOutChan:       regOutChan,
+		regReadChan:      regReadChan,
+		cancel:           cancel,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -241,6 +395,8 @@ func newResourceMonitor(src *evalSource, regChan chan *registerResourceEvent,
 	resmon.addr = fmt.Sprintf("127.0.0.1:%d", port)
 	resmon.done = done
 
+	go d.serve()
+
 	return resmon, nil
 }
 
@@ -255,20 +411,56 @@ func (rm *resmon) Cancel() error {
 	return <-rm.done
 }
 
-// Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	// Fetch the token and load up the resource provider.
-	// TODO: we should be flowing version information about this request, but instead, we'll bind to the latest.
-	tok := tokens.ModuleMember(req.GetTok())
-	prov, err := rm.src.plugctx.Host.Provider(tok.Package(), nil)
-	if err != nil {
-		return nil, err
-	} else if prov == nil {
-		return nil, errors.Errorf("could not load resource provider for package '%v' from $PATH", tok.Package())
+// getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
+// given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
+// to the default provider for the indicated package.
+func (rm *resmon) getProviderReference(pkg tokens.Package, rawProviderRef string) (providers.Reference, error) {
+	if pkg == "pulumi" {
+		return providers.Reference{}, errors.Errorf("cannot reference internal providers")
 	}
 
-	// Now unpack all of the arguments and prepare to perform the invocation.
+	if rawProviderRef != "" {
+		ref, err := providers.ParseReference(rawProviderRef)
+		if err != nil {
+			return providers.Reference{}, errors.Errorf("could not parse provider reference: %v", err)
+		}
+		return ref, nil
+	}
+
+	ref, err := rm.defaultProviders.getDefaultProviderRef(pkg)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+	return ref, nil
+}
+
+// getProvider fetches the provider plugin for a resource, read, or invoke from the given package with the given
+// unparsed provider reference. If the unparsed provider reference is empty, this function returns the plugin for the
+// indicated package's default provider.
+func (rm *resmon) getProvider(pkg tokens.Package, rawProviderRef string) (plugin.Provider, error) {
+	providerRef, err := rm.getProviderReference(pkg, rawProviderRef)
+	if err != nil {
+		return nil, err
+	}
+	provider, ok := rm.providers.GetProvider(providerRef)
+	if !ok {
+		return nil, errors.Errorf("unknown provider '%v'", rawProviderRef)
+	}
+	return provider, nil
+}
+
+// Invoke performs an invocation of a member located in a resource provider.
+func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	// Fetch the token and load up the resource provider if necessary.
+	tok := tokens.ModuleMember(req.GetTok())
+
+	prov, err := rm.getProvider(tok.Package(), req.GetProvider())
+	if err != nil {
+		return nil, err
+	}
+
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
+
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
@@ -302,15 +494,18 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	t := tokens.Type(req.GetType())
 	name := tokens.QName(req.GetName())
 	parent := resource.URN(req.GetParent())
-	prov, err := rm.src.plugctx.Host.Provider(t.Package(), nil)
-	if err != nil {
-		return nil, err
-	} else if prov == nil {
-		return nil, errors.Errorf("could not load resource provider for package '%v' from $PATH", t.Package())
+
+	provider := req.GetProvider()
+	if !providers.IsProviderType(t) && provider == "" {
+		ref, err := rm.defaultProviders.getDefaultProviderRef(t.Package())
+		if err != nil {
+			return nil, err
+		}
+		provider = ref.String()
 	}
 
 	id := resource.ID(req.GetId())
-	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s)", id, t, name)
+	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s, %s)", id, t, name, provider)
 	var deps []resource.URN
 	for _, depURN := range req.GetDependencies() {
 		deps = append(deps, resource.URN(depURN))
@@ -328,6 +523,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		id:           id,
 		name:         name,
 		baseType:     t,
+		provider:     provider,
 		parent:       parent,
 		props:        props,
 		dependencies: deps,
@@ -376,6 +572,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	parent := resource.URN(req.GetParent())
 	protect := req.GetProtect()
 
+	provider := req.GetProvider()
+	if custom && !providers.IsProviderType(t) && provider == "" {
+		ref, err := rm.defaultProviders.getDefaultProviderRef(t.Package())
+		if err != nil {
+			return nil, err
+		}
+		provider = ref.String()
+	}
+
 	dependencies := []resource.URN{}
 	for _, dependingURN := range req.GetDependencies() {
 		dependencies = append(dependencies, resource.URN(dependingURN))
@@ -388,12 +593,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	logging.V(5).Infof(
-		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, deps=%v",
-		t, name, custom, len(props), parent, protect, dependencies)
+		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
+			"provider=%v, deps=%v",
+		t, name, custom, len(props), parent, protect, provider, dependencies)
 
 	// Send the goal state to the engine.
 	step := &registerResourceEvent{
-		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies),
+		goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies, provider),
 		done: make(chan *RegisterResult),
 	}
 
@@ -529,6 +735,7 @@ type readResourceEvent struct {
 	id           resource.ID
 	name         tokens.QName
 	baseType     tokens.Type
+	provider     string
 	parent       resource.URN
 	props        resource.PropertyMap
 	dependencies []resource.URN
@@ -542,6 +749,7 @@ func (g *readResourceEvent) event() {}
 func (g *readResourceEvent) ID() resource.ID                  { return g.id }
 func (g *readResourceEvent) Name() tokens.QName               { return g.name }
 func (g *readResourceEvent) Type() tokens.Type                { return g.baseType }
+func (g *readResourceEvent) Provider() string                 { return g.provider }
 func (g *readResourceEvent) Parent() resource.URN             { return g.parent }
 func (g *readResourceEvent) Properties() resource.PropertyMap { return g.props }
 func (g *readResourceEvent) Dependencies() []resource.URN     { return g.dependencies }

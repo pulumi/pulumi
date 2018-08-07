@@ -8,11 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
 // TestProtectedResources tests some interesting operations on protected resources.
-func TestSteps(t *testing.T) {
+func TestProtectedResources(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          "step1",
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -20,10 +21,12 @@ func TestSteps(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// A single synthetic stack and a single "eternal" resource.
 			assert.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+			assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
 			stackRes := stackInfo.Deployment.Resources[0]
 			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-			a := stackInfo.Deployment.Resources[1]
+			providerRes := stackInfo.Deployment.Resources[1]
+			assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+			a := stackInfo.Deployment.Resources[2]
 			assert.Equal(t, "eternal", string(a.URN.Name()))
 			assert.True(t, a.Protect)
 		},
@@ -34,10 +37,12 @@ func TestSteps(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// An update to "eternal"; should still be there.
 					assert.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Deployment.Resources[1]
+					providerRes := stackInfo.Deployment.Resources[1]
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					a := stackInfo.Deployment.Resources[2]
 					assert.Equal(t, "eternal", string(a.URN.Name()))
 					assert.True(t, a.Protect)
 				},
@@ -50,10 +55,12 @@ func TestSteps(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// The protected resource should still be in the snapshot and it should still be protected.
 					assert.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Deployment.Resources[1]
+					providerRes := stackInfo.Deployment.Resources[1]
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					a := stackInfo.Deployment.Resources[2]
 					assert.Equal(t, "eternal", string(a.URN.Name()))
 					assert.True(t, a.Protect)
 				},
@@ -64,10 +71,12 @@ func TestSteps(t *testing.T) {
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					// "eternal" should now be unprotected.
 					assert.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 2, len(stackInfo.Deployment.Resources))
+					assert.Equal(t, 3, len(stackInfo.Deployment.Resources))
 					stackRes := stackInfo.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stackInfo.Deployment.Resources[1]
+					providerRes := stackInfo.Deployment.Resources[1]
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					a := stackInfo.Deployment.Resources[2]
 					assert.Equal(t, "eternal", string(a.URN.Name()))
 					assert.False(t, a.Protect)
 				},

@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/resource"
-	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/util/logging"
@@ -42,6 +41,7 @@ type provider struct {
 	plug      *plugin                          // the actual plugin process wrapper.
 	clientRaw pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	cfgerr    error                            // non-nil if a configure call fails.
+	cfgknown  bool                             // true if all configuration values are known.
 	cfgdone   chan bool                        // closed when configuration has completed.
 }
 
@@ -79,7 +79,68 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
-	return fmt.Sprintf("Provider[%s]", p.pkg)
+	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
+}
+
+// CheckConfig validates the configuration for this resource provider.
+func (p *provider) CheckConfig(olds, news resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+	// Ensure that all config values are strings or unknowns.
+	var failures []CheckFailure
+	for k, v := range news {
+		if !v.IsString() && !v.IsComputed() {
+			failures = append(failures, CheckFailure{
+				Property: k,
+				Reason:   "provider property values must be strings",
+			})
+		}
+	}
+	if len(failures) != 0 {
+		return nil, failures, nil
+	}
+
+	// If all config values check out, simply return the new values.
+	return news, nil, nil
+}
+
+// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
+func (p *provider) DiffConfig(olds, news resource.PropertyMap) (DiffResult, error) {
+	// There are two interesting scenarios with the present gRPC interface:
+	// 1. Configuration differences in which all properties are known
+	// 2. Configuration differences in which some new property is unknown.
+	//
+	// Despite the fact that in both scenarios we know that configuration has changed, they differ in whether or not
+	// they return a diff result that indicates that the provider should be replaced (and thus require that any
+	// existing resource managed by the provider are also replaced).
+	//
+	// In the first case, we return a diff result that indicates that the provider _should not_ be replaced. We may
+	// encounter this scenario during any update or any preview in which all properties are known. Although this
+	// decision is not conservative--indeed, the conservative decision would be to always require replacement of a
+	// provider if any input has changed--we believe that it results in the best possible user experience for providers
+	// that do not implement DiffConfig functionality. If we took the conservative route here, any change to a
+	// provider's configuration (no matter how inconsequential) would cause all of its resources to be replaced. This
+	// is clearly a bad experience, and differs from how things worked prior to first-class providers.
+	//
+	// In the second case, we return a diff result that indicates that the provider _should_ be replaced. This may
+	// occur during any preview, but will never occur during an update. This decision is conservative because we
+	// believe that it is unlikely that a provider property that may be unknown is very likely to be a property that
+	// is fundamental to the provider's ability to manage its existing resources.
+	//
+	// The different decisions we make here cause a bit of a sharp edge: a provider with unknown configuration during
+	// preview will appear to require replacement, but will never actually require replacement during an update, as by
+	// that point all of its configuration will necessarily be known.
+
+	var replaceKeys []resource.PropertyKey
+	for k, v := range news {
+		// These are ensured during Check().
+		contract.Assert(v.IsString() || v.IsComputed())
+
+		// As per the note above, any unknown properties require replacement.
+		if v.IsComputed() {
+			replaceKeys = append(replaceKeys, k)
+		}
+	}
+
+	return DiffResult{Changes: DiffUnknown, ReplaceKeys: replaceKeys}, nil
 }
 
 // getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
@@ -100,14 +161,31 @@ func (p *provider) ensureConfigured() error {
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *provider) Configure(vars map[config.Key]string) error {
+func (p *provider) Configure(inputs resource.PropertyMap) error {
 	label := fmt.Sprintf("%s.Configure()", p.label())
-	logging.V(7).Infof("%s executing (#vars=%d)", label, len(vars))
+	logging.V(7).Infof("%s executing (#vars=%d)", label, len(inputs))
+
+	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leavce
+	// the cfgknown bit unset and carry on.
 	config := make(map[string]string)
-	for k, v := range vars {
-		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
-		// providers which are on the older plan.
-		config[k.Namespace()+":config:"+k.Name()] = v
+	for k, v := range inputs {
+		if k == "version" {
+			continue
+		}
+		switch {
+		case v.IsComputed():
+			p.cfgknown = false
+			close(p.cfgdone)
+			return nil
+		case v.IsString():
+			// Pass the older spelling of a configuration key across the RPC interface, for now, to support
+			// providers which are on the older plan.
+			config[string(p.Pkg())+":config:"+string(k)] = v.StringValue()
+		default:
+			p.cfgerr = errors.Errorf("provider property values must be strings; '%v' is a %v", k, v.TypeString())
+			close(p.cfgdone)
+			return p.cfgerr
+		}
 	}
 
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
@@ -120,7 +198,7 @@ func (p *provider) Configure(vars map[config.Key]string) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgerr = err
+		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
 
@@ -133,6 +211,18 @@ func (p *provider) Check(urn resource.URN,
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
+	// property was sourced from another resource's output properties--don't call into the underlying provider.
+	if !p.cfgknown {
+		return news, nil, nil
+	}
+
 	molds, err := MarshalProperties(olds, MarshalOptions{Label: fmt.Sprintf("%s.olds", label),
 		KeepUnknowns: allowUnknowns})
 	if err != nil {
@@ -140,12 +230,6 @@ func (p *provider) Check(urn resource.URN,
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
 		KeepUnknowns: allowUnknowns})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -192,6 +276,17 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	// If this function is called, we must have complete configuration for the underlying provider. Per DiffConfig,
+	// any unknown input will cause the provider to be replaced, which will cause all of its resources to be replaced,
+	// and we do not call `Diff` for resources that are being replaced due to a change to their provider reference.
+	contract.Assert(p.cfgknown)
+
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label: fmt.Sprintf("%s.olds", label), ElideAssetContents: true, KeepUnknowns: allowUnknowns})
 	if err != nil {
@@ -199,12 +294,6 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{Label: fmt.Sprintf("%s.news", label),
 		KeepUnknowns: allowUnknowns})
-	if err != nil {
-		return DiffResult{}, err
-	}
-
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -261,6 +350,9 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap) (resourc
 		return "", nil, resource.StatusOK, err
 	}
 
+	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
 	var id resource.ID
 	var liveObject *_struct.Struct
 	var resourceError error
@@ -309,14 +401,19 @@ func (p *provider) Read(urn resource.URN, id resource.ID, props resource.Propert
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	// Marshal the input state so we can perform the RPC.
-	marshaled, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
 	if err != nil {
 		return nil, err
 	}
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// If the provider is not fully configured, return an empty bag.
+	if !p.cfgknown {
+		return resource.PropertyMap{}, nil
+	}
+
+	// Marshal the input state so we can perform the RPC.
+	marshaled, err := MarshalProperties(props, MarshalOptions{Label: label, ElideAssetContents: true})
 	if err != nil {
 		return nil, err
 	}
@@ -379,6 +476,9 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		return nil, resource.StatusOK, err
 	}
 
+	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
 	var liveObject *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
@@ -432,6 +532,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		return resource.StatusOK, err
 	}
 
+	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
 	if _, err := client.Delete(p.ctx.Request(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
@@ -454,13 +557,18 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
 
-	margs, err := MarshalProperties(args, MarshalOptions{Label: fmt.Sprintf("%s.args", label)})
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// If the provider is not fully configured, return an empty property map.
+	if !p.cfgknown {
+		return resource.PropertyMap{}, nil, nil
+	}
+
+	margs, err := MarshalProperties(args, MarshalOptions{Label: fmt.Sprintf("%s.args", label)})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/workspace"
@@ -47,23 +48,28 @@ func (src *refreshSource) Project() tokens.PackageName { return src.proj.Name }
 func (src *refreshSource) Info() interface{}           { return nil }
 func (src *refreshSource) IsRefresh() bool             { return true }
 
-func (src *refreshSource) Iterate(opts Options) (SourceIterator, error) {
+func (src *refreshSource) Iterate(opts Options, provs ProviderSource) (SourceIterator, error) {
 	var states []*resource.State
 	if snap := src.target.Snapshot; snap != nil {
 		states = snap.Resources
 	}
+
 	return &refreshSourceIterator{
-		plugctx: src.plugctx,
-		states:  states,
-		current: -1,
+		plugctx:   src.plugctx,
+		target:    src.target,
+		providers: provs,
+		states:    states,
+		current:   -1,
 	}, nil
 }
 
 // refreshSourceIterator returns state from an existing snapshot, augmented by consulting the resource provider.
 type refreshSourceIterator struct {
-	plugctx *plugin.Context
-	states  []*resource.State
-	current int
+	plugctx   *plugin.Context
+	target    *Target
+	providers ProviderSource
+	states    []*resource.State
+	current   int
 }
 
 func (iter *refreshSourceIterator) Close() error {
@@ -89,10 +95,14 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 // newRefreshGoal refreshes the state, if appropriate, and returns a new goal state.
 func (iter *refreshSourceIterator) newRefreshGoal(s *resource.State) (*resource.Goal, error) {
 	// If this is a custom resource, go ahead and load up its plugin, and ask it to refresh the state.
-	if s.Custom {
-		provider, err := iter.plugctx.Host.Provider(s.Type.Package(), nil)
+	if s.Custom && !providers.IsProviderType(s.Type) {
+		providerRef, err := providers.ParseReference(s.Provider)
 		if err != nil {
-			return nil, errors.Wrapf(err, "fetching provider to refresh %s", s.URN)
+			return nil, err
+		}
+		provider, ok := iter.providers.GetProvider(providerRef)
+		if !ok {
+			return nil, errors.Errorf("unknown provider '%v' for resource '%v'", s.Provider, s.URN)
 		}
 		refreshed, err := provider.Read(s.URN, s.ID, s.Outputs)
 		if err != nil {
@@ -102,11 +112,12 @@ func (iter *refreshSourceIterator) newRefreshGoal(s *resource.State) (*resource.
 		}
 		s = resource.NewState(
 			s.Type, s.URN, s.Custom, s.Delete, s.ID, s.Inputs, refreshed,
-			s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors)
+			s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider)
 	}
 
 	// Now just return the actual state as the goal state.
-	return resource.NewGoal(s.Type, s.URN.Name(), s.Custom, s.Outputs, s.Parent, s.Protect, s.Dependencies), nil
+	return resource.NewGoal(s.Type, s.URN.Name(), s.Custom, s.Outputs, s.Parent, s.Protect, s.Dependencies,
+		s.Provider), nil
 }
 
 type refreshSourceEvent struct {

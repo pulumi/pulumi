@@ -12,6 +12,7 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/stretchr/testify/assert"
@@ -29,16 +30,18 @@ func TestDiffs(t *testing.T) {
 		UpdateCommandlineFlags: []string{"--color=raw", "--non-interactive", "--diff"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Deployment)
-			assert.Equal(t, 5, len(stack.Deployment.Resources))
+			assert.Equal(t, 6, len(stack.Deployment.Resources))
 			stackRes := stack.Deployment.Resources[0]
 			assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-			a := stack.Deployment.Resources[1]
+			providerRes := stack.Deployment.Resources[1]
+			assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+			a := stack.Deployment.Resources[2]
 			assert.Equal(t, "a", string(a.URN.Name()))
-			b := stack.Deployment.Resources[2]
+			b := stack.Deployment.Resources[3]
 			assert.Equal(t, "b", string(b.URN.Name()))
-			c := stack.Deployment.Resources[3]
+			c := stack.Deployment.Resources[4]
 			assert.Equal(t, "c", string(c.URN.Name()))
-			d := stack.Deployment.Resources[4]
+			d := stack.Deployment.Resources[5]
 			assert.Equal(t, "d", string(d.URN.Name()))
 		},
 		EditDirs: []integration.EditDir{
@@ -49,16 +52,18 @@ func TestDiffs(t *testing.T) {
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stack.Deployment)
-					assert.Equal(t, 5, len(stack.Deployment.Resources))
+					assert.Equal(t, 6, len(stack.Deployment.Resources))
 					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stack.Deployment.Resources[1]
+					providerRes := stack.Deployment.Resources[1]
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					a := stack.Deployment.Resources[2]
 					assert.Equal(t, "a", string(a.URN.Name()))
-					b := stack.Deployment.Resources[2]
+					b := stack.Deployment.Resources[3]
 					assert.Equal(t, "b", string(b.URN.Name()))
-					c := stack.Deployment.Resources[3]
+					c := stack.Deployment.Resources[4]
 					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stack.Deployment.Resources[4]
+					e := stack.Deployment.Resources[5]
 					assert.Equal(t, "e", string(e.URN.Name()))
 
 					expected :=
@@ -67,15 +72,17 @@ func TestDiffs(t *testing.T) {
     [urn=urn:pulumi:{{.StackName}}::steps::pulumi:pulumi:Stack::steps-{{.StackName}}]</unchanged>
     <added>+ pulumi-nodejs:dynamic:Resource: (create)
         [urn=urn:pulumi:{{.StackName}}::steps::pulumi-nodejs:dynamic:Resource::e]
+        [provider=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default::id]
         __provider: "exports.handler = __f0;\n\nvar __provider_proto = {};\n__f1.prototype = __provider_proto;\n__f1.instance = __provider;\nObject.defineProperty(__provider_proto, \"constructor\", { configurable: true, writable: true, value: __f1 });\nObject.defineProperty(__provider_proto, \"diff\", { configurable: true, writable: true, value: __f2 });\nObject.defineProperty(__provider_proto, \"create\", { configurable: true, writable: true, value: __f4 });\nObject.defineProperty(__provider_proto, \"update\", { configurable: true, writable: true, value: __f5 });\nObject.defineProperty(__provider_proto, \"delete\", { configurable: true, writable: true, value: __f6 });\nObject.defineProperty(__provider_proto, \"injectFault\", { configurable: true, writable: true, value: __f7 });\nvar __provider = Object.create(__provider_proto);\n\nfunction __f1() {\n  return (function() {\n    with({  }) {\n\nreturn function /*constructor*/() {\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f3() {\n  return (function() {\n    with({  }) {\n\nreturn function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f2() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*diff*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f4() {\n  return (function() {\n    with({ __awaiter: __f3, currentID: 0 }) {\n\nreturn function /*create*/(inputs) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f5() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*update*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f6() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*delete*/(id, props) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f7() {\n  return (function() {\n    with({  }) {\n\nreturn function /*injectFault*/(error) {\n        this.inject = error;\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f0() {\n  return (function() {\n    with({ provider: __provider }) {\n\nreturn () => provider;\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n"</added>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
-        [id=0]
+        [id=id]
         [urn=urn:pulumi:{{.StackName}}::steps::pulumi-nodejs:dynamic:Resource::d]
+        [provider=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default::id]
         __provider: "exports.handler = __f0;\n\nvar __provider_proto = {};\n__f1.prototype = __provider_proto;\n__f1.instance = __provider;\nObject.defineProperty(__provider_proto, \"constructor\", { configurable: true, writable: true, value: __f1 });\nObject.defineProperty(__provider_proto, \"diff\", { configurable: true, writable: true, value: __f2 });\nObject.defineProperty(__provider_proto, \"create\", { configurable: true, writable: true, value: __f4 });\nObject.defineProperty(__provider_proto, \"update\", { configurable: true, writable: true, value: __f5 });\nObject.defineProperty(__provider_proto, \"delete\", { configurable: true, writable: true, value: __f6 });\nObject.defineProperty(__provider_proto, \"injectFault\", { configurable: true, writable: true, value: __f7 });\nvar __provider = Object.create(__provider_proto);\n\nfunction __f1() {\n  return (function() {\n    with({  }) {\n\nreturn function /*constructor*/() {\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f3() {\n  return (function() {\n    with({  }) {\n\nreturn function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f2() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*diff*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f4() {\n  return (function() {\n    with({ __awaiter: __f3, currentID: 0 }) {\n\nreturn function /*create*/(inputs) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f5() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*update*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f6() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*delete*/(id, props) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f7() {\n  return (function() {\n    with({  }) {\n\nreturn function /*injectFault*/(error) {\n        this.inject = error;\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f0() {\n  return (function() {\n    with({ provider: __provider }) {\n\nreturn () => provider;\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n"</removed>
 <info>info</info>: 2 changes performed:
     <added>+ 1 resource created</added>
     <removed>- 1 resource deleted</removed>
-      4 resources unchanged`, stack.StackName)
+      5 resources unchanged`, stack.StackName)
 
 					assertPreviewOutput(t, expected, buf.String())
 
@@ -89,14 +96,16 @@ func TestDiffs(t *testing.T) {
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stack.Deployment)
-					assert.Equal(t, 4, len(stack.Deployment.Resources))
+					assert.Equal(t, 5, len(stack.Deployment.Resources))
 					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stack.Deployment.Resources[1]
+					providerRes := stack.Deployment.Resources[1]
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					a := stack.Deployment.Resources[2]
 					assert.Equal(t, "a", string(a.URN.Name()))
-					c := stack.Deployment.Resources[2]
+					c := stack.Deployment.Resources[3]
 					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stack.Deployment.Resources[3]
+					e := stack.Deployment.Resources[4]
 					assert.Equal(t, "e", string(e.URN.Name()))
 
 					expected :=
@@ -104,12 +113,13 @@ func TestDiffs(t *testing.T) {
 * pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:{{.StackName}}::steps::pulumi:pulumi:Stack::steps-{{.StackName}}]</unchanged>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
-        [id=0]
+        [id=id]
         [urn=urn:pulumi:{{.StackName}}::steps::pulumi-nodejs:dynamic:Resource::b]
+        [provider=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default::id]
         __provider: "exports.handler = __f0;\n\nvar __provider_proto = {};\n__f1.prototype = __provider_proto;\n__f1.instance = __provider;\nObject.defineProperty(__provider_proto, \"constructor\", { configurable: true, writable: true, value: __f1 });\nObject.defineProperty(__provider_proto, \"diff\", { configurable: true, writable: true, value: __f2 });\nObject.defineProperty(__provider_proto, \"create\", { configurable: true, writable: true, value: __f4 });\nObject.defineProperty(__provider_proto, \"update\", { configurable: true, writable: true, value: __f5 });\nObject.defineProperty(__provider_proto, \"delete\", { configurable: true, writable: true, value: __f6 });\nObject.defineProperty(__provider_proto, \"injectFault\", { configurable: true, writable: true, value: __f7 });\nvar __provider = Object.create(__provider_proto);\n\nfunction __f1() {\n  return (function() {\n    with({  }) {\n\nreturn function /*constructor*/() {\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f3() {\n  return (function() {\n    with({  }) {\n\nreturn function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f2() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*diff*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f4() {\n  return (function() {\n    with({ __awaiter: __f3, currentID: 0 }) {\n\nreturn function /*create*/(inputs) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f5() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*update*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f6() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*delete*/(id, props) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f7() {\n  return (function() {\n    with({  }) {\n\nreturn function /*injectFault*/(error) {\n        this.inject = error;\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f0() {\n  return (function() {\n    with({ provider: __provider }) {\n\nreturn () => provider;\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n"</removed>
 <info>info</info>: 1 change performed:
     <removed>- 1 resource deleted</removed>
-      4 resources unchanged`, stack.StackName)
+      5 resources unchanged`, stack.StackName)
 
 					assertPreviewOutput(t, expected, buf.String())
 
@@ -123,14 +133,16 @@ func TestDiffs(t *testing.T) {
 				Verbose:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stack.Deployment)
-					assert.Equal(t, 4, len(stack.Deployment.Resources))
+					assert.Equal(t, 5, len(stack.Deployment.Resources))
 					stackRes := stack.Deployment.Resources[0]
 					assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
-					a := stack.Deployment.Resources[1]
+					providerRes := stack.Deployment.Resources[1]
+					assert.True(t, providers.IsProviderType(providerRes.URN.Type()))
+					a := stack.Deployment.Resources[2]
 					assert.Equal(t, "a", string(a.URN.Name()))
-					c := stack.Deployment.Resources[2]
+					c := stack.Deployment.Resources[3]
 					assert.Equal(t, "c", string(c.URN.Name()))
-					e := stack.Deployment.Resources[3]
+					e := stack.Deployment.Resources[4]
 					assert.Equal(t, "e", string(e.URN.Name()))
 
 					expected := fillStackName(`<unchanged>Performing changes:
@@ -158,19 +170,25 @@ func TestDiffs(t *testing.T) {
 * pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:{{.StackName}}::steps::pulumi:pulumi:Stack::steps-{{.StackName}}]</unchanged>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
-        [id=0]
+        [id=id]
         [urn=urn:pulumi:{{.StackName}}::steps::pulumi-nodejs:dynamic:Resource::e]
+        [provider=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default::id]
         __provider: "exports.handler = __f0;\n\nvar __provider_proto = {};\n__f1.prototype = __provider_proto;\n__f1.instance = __provider;\nObject.defineProperty(__provider_proto, \"constructor\", { configurable: true, writable: true, value: __f1 });\nObject.defineProperty(__provider_proto, \"diff\", { configurable: true, writable: true, value: __f2 });\nObject.defineProperty(__provider_proto, \"create\", { configurable: true, writable: true, value: __f4 });\nObject.defineProperty(__provider_proto, \"update\", { configurable: true, writable: true, value: __f5 });\nObject.defineProperty(__provider_proto, \"delete\", { configurable: true, writable: true, value: __f6 });\nObject.defineProperty(__provider_proto, \"injectFault\", { configurable: true, writable: true, value: __f7 });\nvar __provider = Object.create(__provider_proto);\n\nfunction __f1() {\n  return (function() {\n    with({  }) {\n\nreturn function /*constructor*/() {\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f3() {\n  return (function() {\n    with({  }) {\n\nreturn function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f2() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*diff*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f4() {\n  return (function() {\n    with({ __awaiter: __f3, currentID: 0 }) {\n\nreturn function /*create*/(inputs) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f5() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*update*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f6() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*delete*/(id, props) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f7() {\n  return (function() {\n    with({  }) {\n\nreturn function /*injectFault*/(error) {\n        this.inject = error;\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f0() {\n  return (function() {\n    with({ provider: __provider }) {\n\nreturn () => provider;\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n"</removed>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
-        [id=0]
+        [id=id]
         [urn=urn:pulumi:{{.StackName}}::steps::pulumi-nodejs:dynamic:Resource::c]
+        [provider=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default::id]
         __provider: "exports.handler = __f0;\n\nvar __provider_proto = {};\n__f1.prototype = __provider_proto;\n__f1.instance = __provider;\nObject.defineProperty(__provider_proto, \"constructor\", { configurable: true, writable: true, value: __f1 });\nObject.defineProperty(__provider_proto, \"diff\", { configurable: true, writable: true, value: __f2 });\nObject.defineProperty(__provider_proto, \"create\", { configurable: true, writable: true, value: __f4 });\nObject.defineProperty(__provider_proto, \"update\", { configurable: true, writable: true, value: __f5 });\nObject.defineProperty(__provider_proto, \"delete\", { configurable: true, writable: true, value: __f6 });\nObject.defineProperty(__provider_proto, \"injectFault\", { configurable: true, writable: true, value: __f7 });\nvar __provider = Object.create(__provider_proto);\n\nfunction __f1() {\n  return (function() {\n    with({  }) {\n\nreturn function /*constructor*/() {\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f3() {\n  return (function() {\n    with({  }) {\n\nreturn function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f2() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*diff*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f4() {\n  return (function() {\n    with({ __awaiter: __f3, currentID: 0 }) {\n\nreturn function /*create*/(inputs) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f5() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*update*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f6() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*delete*/(id, props) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f7() {\n  return (function() {\n    with({  }) {\n\nreturn function /*injectFault*/(error) {\n        this.inject = error;\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f0() {\n  return (function() {\n    with({ provider: __provider }) {\n\nreturn () => provider;\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n"</removed>
     <removed>- pulumi-nodejs:dynamic:Resource: (delete)
-        [id=0]
+        [id=id]
         [urn=urn:pulumi:{{.StackName}}::steps::pulumi-nodejs:dynamic:Resource::a]
+        [provider=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default::id]
         __provider: "exports.handler = __f0;\n\nvar __provider_proto = {};\n__f1.prototype = __provider_proto;\n__f1.instance = __provider;\nObject.defineProperty(__provider_proto, \"constructor\", { configurable: true, writable: true, value: __f1 });\nObject.defineProperty(__provider_proto, \"diff\", { configurable: true, writable: true, value: __f2 });\nObject.defineProperty(__provider_proto, \"create\", { configurable: true, writable: true, value: __f4 });\nObject.defineProperty(__provider_proto, \"update\", { configurable: true, writable: true, value: __f5 });\nObject.defineProperty(__provider_proto, \"delete\", { configurable: true, writable: true, value: __f6 });\nObject.defineProperty(__provider_proto, \"injectFault\", { configurable: true, writable: true, value: __f7 });\nvar __provider = Object.create(__provider_proto);\n\nfunction __f1() {\n  return (function() {\n    with({  }) {\n\nreturn function /*constructor*/() {\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f3() {\n  return (function() {\n    with({  }) {\n\nreturn function (thisArg, _arguments, P, generator) {\n    return new (P || (P = Promise))(function (resolve, reject) {\n        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }\n        function rejected(value) { try { step(generator[\"throw\"](value)); } catch (e) { reject(e); } }\n        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }\n        step((generator = generator.apply(thisArg, _arguments || [])).next());\n    });\n};\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f2() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*diff*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            let replaces = [];\n            if (olds.replace !== news.replace) {\n                replaces.push(\"replace\");\n            }\n            return {\n                replaces: replaces,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f4() {\n  return (function() {\n    with({ __awaiter: __f3, currentID: 0 }) {\n\nreturn function /*create*/(inputs) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {\n                id: (currentID++).toString(),\n                outs: undefined,\n            };\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f5() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*update*/(id, olds, news) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n            return {};\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f6() {\n  return (function() {\n    with({ __awaiter: __f3 }) {\n\nreturn function /*delete*/(id, props) {\n        return __awaiter(this, void 0, void 0, function* () {\n            if (this.inject) {\n                throw this.inject;\n            }\n        });\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f7() {\n  return (function() {\n    with({  }) {\n\nreturn function /*injectFault*/(error) {\n        this.inject = error;\n    };\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n\nfunction __f0() {\n  return (function() {\n    with({ provider: __provider }) {\n\nreturn () => provider;\n\n    }\n  }).apply(undefined, undefined).apply(this, arguments);\n}\n"</removed>
-<info>info</info>: 3 changes performed:
-    <removed>- 3 resources deleted</removed>
+<removed>- pulumi:providers:pulumi-nodejs: (delete)
+    [id=id]
+    [urn=urn:pulumi:{{.StackName}}::steps::pulumi:providers:pulumi-nodejs::default]</removed>
+<info>info</info>: 4 changes performed:
+    <removed>- 4 resources deleted</removed>
       1 resource unchanged`, stack.StackName)
 
 					assertPreviewOutput(t, expected, buf.String())
@@ -196,6 +214,12 @@ func assertPreviewOutput(t *testing.T, expected, outputWithControlSeqeunces stri
 	// Remove lines from the output that differ across runs. The first two lines of the output are the command line
 	// we ran, the second is a message about updating the stack in the cloud, so we drop them.
 	lines = lines[2:]
+
+	// Strip any provider IDs from the output.
+	stripProviderID := regexp.MustCompile(`(?P<prefix>pulumi:providers:\S+::\S+::|\[id=)[0-9a-f-]+`)
+	for i, line := range lines {
+		lines[i] = stripProviderID.ReplaceAllString(line, "${prefix}id")
+	}
 
 	// The last two lines include a call to stack export and a blank line. Drop them as well.
 	lines = lines[:len(lines)-2]

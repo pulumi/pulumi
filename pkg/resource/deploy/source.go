@@ -18,8 +18,16 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 )
+
+// A ProviderSource allows a Source to lookup provider plugins.
+type ProviderSource interface {
+	// GetProvider fetches the provider plugin for the given reference.
+	GetProvider(ref providers.Reference) (plugin.Provider, bool)
+}
 
 // A Source can generate a new set of resources that the planner will process accordingly.
 type Source interface {
@@ -33,8 +41,8 @@ type Source interface {
 	// be assumed to reflect existing state, or whether the events should acted upon (false).
 	IsRefresh() bool
 
-	// Iterate begins iterating the source.  Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate(opts Options) (SourceIterator, error)
+	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
+	Iterate(opts Options, providers ProviderSource) (SourceIterator, error)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
@@ -88,6 +96,8 @@ type ReadResourceEvent interface {
 	Name() tokens.QName
 	// Type is type of the resource being read.
 	Type() tokens.Type
+	// Provider is a reference to the provider instance to use for this read.
+	Provider() string
 	// Parent is the parent resource of the resource being read.
 	Parent() resource.URN
 	// Properties is the property bag that will be passed to Read as search parameters.

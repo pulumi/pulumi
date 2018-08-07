@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/testing/integration"
 )
 
@@ -54,7 +55,7 @@ func TestExamples(t *testing.T) {
 			Dependencies: []string{"@pulumi/pulumi"},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				for _, res := range stackInfo.Deployment.Resources {
-					if res.Parent == "" {
+					if !providers.IsProviderType(res.Type) && res.Parent == "" {
 						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
 							"every resource but the root resource should have a parent, but %v didn't", res.URN)
 					}

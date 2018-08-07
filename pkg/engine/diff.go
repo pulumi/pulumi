@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
@@ -132,12 +133,32 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 		id = old.ID
 	}
 
-	// Always print the ID and URN.
+	// Always print the ID, URN, and provider.
 	if id != "" {
 		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
 	if urn != "" {
 		writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
+	}
+
+	if step.Provider != "" {
+		new := step.New
+		if old != nil && new != nil && old.Provider != new.Provider {
+			newProv, err := providers.ParseReference(new.Provider)
+			contract.Assert(err == nil)
+
+			writeWithIndentNoPrefix(&b, indent+1, deploy.OpUpdate, "[provider: ")
+			write(&b, deploy.OpDelete, "%s", old.Provider)
+			writeVerbatim(&b, deploy.OpUpdate, " => ")
+			if newProv.ID() == providers.UnknownID {
+				write(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::computed<string>")
+			} else {
+				write(&b, deploy.OpCreate, "%s", new.Provider)
+			}
+			writeVerbatim(&b, deploy.OpUpdate, "]\n")
+		} else {
+			writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[provider=%s]\n", step.Provider)
+		}
 	}
 
 	return b.String()
