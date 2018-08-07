@@ -927,3 +927,58 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	}}
 	p.Run(t, old)
 }
+
+func TestParallelRefresh(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Create a program that registers four resources, each of which depends on the resource that immediately precedes
+	// it.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+
+		resB, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, "", false, []resource.URN{resA}, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+
+		resC, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, "", false, []resource.URN{resB}, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, "", false, []resource.URN{resC}, "",
+			resource.PropertyMap{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Parallel: 4, host: host},
+	}
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	assert.Len(t, snap.Resources, 5)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
+	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
+	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+
+	p.Steps = []TestStep{{Op: Refresh}}
+	snap = p.Run(t, snap)
+
+	assert.Len(t, snap.Resources, 5)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
+	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
+	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+}

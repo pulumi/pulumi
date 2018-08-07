@@ -15,12 +15,16 @@
 package deploy
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
+	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
@@ -49,12 +53,14 @@ func (src *refreshSource) Info() interface{}           { return nil }
 func (src *refreshSource) IsRefresh() bool             { return true }
 
 func (src *refreshSource) Iterate(opts Options, provs ProviderSource) (SourceIterator, error) {
+	contract.Require(opts.Context != nil, "opts.Context != nil")
 	var states []*resource.State
 	if snap := src.target.Snapshot; snap != nil {
 		states = snap.Resources
 	}
 
 	return &refreshSourceIterator{
+		ctx:       opts.Context,
 		plugctx:   src.plugctx,
 		target:    src.target,
 		providers: provs,
@@ -65,11 +71,13 @@ func (src *refreshSource) Iterate(opts Options, provs ProviderSource) (SourceIte
 
 // refreshSourceIterator returns state from an existing snapshot, augmented by consulting the resource provider.
 type refreshSourceIterator struct {
+	ctx       context.Context // cancellation context for this source.
 	plugctx   *plugin.Context
 	target    *Target
 	providers ProviderSource
 	states    []*resource.State
 	current   int
+	lastEvent *refreshSourceEvent // the last event that we emitted, or nil if no such event exists.
 }
 
 func (iter *refreshSourceIterator) Close() error {
@@ -78,15 +86,37 @@ func (iter *refreshSourceIterator) Close() error {
 
 func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 	for {
+		// The engine requires that all SourceEvents returned by Next() are ready to execute.
+		// The strict definition of "ready" is that the list of resources that the current goal resource depends on
+		// must have completed execution before the SourceEvent corresponding to the current goal resource is
+		// returned from this function.
+		//
+		// The simplest way to guarantee this property is to serialize every event such that the next event isn't
+		// sent until the previous event retires. This isn't fast, but it works. We should come up with a more
+		// performant method at some point.
+		if iter.lastEvent != nil {
+			logging.V(7).Infof("refreshSourceIterator.Next(): waiting for previous event to retire")
+			select {
+			case <-iter.lastEvent.done:
+			case <-iter.ctx.Done():
+				logging.V(7).Infof("refreshSourceIterator.Next(): cancelled, exiting")
+				return nil, nil
+			}
+		}
+
+		logging.V(7).Infof("refreshSourceIterator.Next(): sending next goal state to engine")
 		iter.current++
 		if iter.current >= len(iter.states) {
+			logging.V(7).Infof("refreshSourceIterator.Next(): no more goal states")
 			return nil, nil
 		}
 		goal, err := iter.newRefreshGoal(iter.states[iter.current])
 		if err != nil {
+			logging.V(7).Infof("refreshSourceIterator.Next(): error: %s", err.Error())
 			return nil, err
 		} else if goal != nil {
-			return &refreshSourceEvent{goal: goal}, nil
+			iter.lastEvent = &refreshSourceEvent{goal: goal, done: make(chan struct{})}
+			return iter.lastEvent, nil
 		}
 		// If the goal was nil, it means the resource was deleted, and we should keep going.
 	}
@@ -122,8 +152,11 @@ func (iter *refreshSourceIterator) newRefreshGoal(s *resource.State) (*resource.
 
 type refreshSourceEvent struct {
 	goal *resource.Goal
+	done chan struct{}
 }
 
-func (rse *refreshSourceEvent) event()                      {}
-func (rse *refreshSourceEvent) Goal() *resource.Goal        { return rse.goal }
-func (rse *refreshSourceEvent) Done(result *RegisterResult) {}
+func (rse *refreshSourceEvent) event()               {}
+func (rse *refreshSourceEvent) Goal() *resource.Goal { return rse.goal }
+func (rse *refreshSourceEvent) Done(result *RegisterResult) {
+	rse.done <- struct{}{}
+}

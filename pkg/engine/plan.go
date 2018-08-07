@@ -193,17 +193,19 @@ func (res *planResult) Chdir() (func(), error) {
 // resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
 // failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
 func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	opts := deploy.Options{
+		Context:  ctx,
 		Events:   events,
 		Parallel: res.Options.Parallel,
 	}
 
 	src, err := res.Plan.Source().Iterate(opts, res.Plan)
 	if err != nil {
+		cancelFunc()
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
 	done := make(chan bool)
 	var summary deploy.PlanSummary
 	go func() {
