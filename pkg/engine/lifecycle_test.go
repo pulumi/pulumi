@@ -22,10 +22,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/engine/enginetest"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/config"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -360,10 +360,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 }
 
 func TestEmptyProgramLifecycle(t *testing.T) {
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program)
+	host := deploytest.NewPluginHost(nil, program)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -373,19 +373,19 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
-	loaders := []*enginetest.ProviderLoader{
-		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &enginetest.Provider{}, nil
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 			resource.PropertyMap{})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -395,13 +395,13 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
-	loaders := []*enginetest.ProviderLoader{
-		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &enginetest.Provider{}, nil
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
 			false, nil, "", resource.PropertyMap{})
 		assert.NoError(t, err)
@@ -419,7 +419,7 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -429,19 +429,19 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
-	loaders := []*enginetest.ProviderLoader{
-		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &enginetest.Provider{}, nil
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 			resource.PropertyMap{})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -514,9 +514,9 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderReplace(t *testing.T) {
-	loaders := []*enginetest.ProviderLoader{
-		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &enginetest.Provider{
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
 				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
@@ -529,13 +529,13 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 		}),
 	}
 
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, "", false, nil, "",
 			resource.PropertyMap{})
 		assert.NoError(t, err)
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -589,9 +589,9 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderReplace(t *testing.T) {
-	loaders := []*enginetest.ProviderLoader{
-		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &enginetest.Provider{
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
 				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
@@ -607,7 +607,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	providerInputs := resource.PropertyMap{
 		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
 	}
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
 			false, nil, "", providerInputs)
 		assert.NoError(t, err)
@@ -625,7 +625,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
@@ -676,9 +676,9 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
-	loaders := []*enginetest.ProviderLoader{
-		enginetest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &enginetest.Provider{
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
 				DiffConfigF: func(olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
@@ -694,7 +694,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	providerInputs := resource.PropertyMap{
 		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
 	}
-	program := enginetest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *enginetest.ResourceMonitor) error {
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, "",
 			false, nil, "", providerInputs)
 		assert.NoError(t, err)
@@ -712,7 +712,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 
 		return nil
 	})
-	host := enginetest.NewPluginHost(nil, program, loaders...)
+	host := deploytest.NewPluginHost(nil, program, loaders...)
 
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},

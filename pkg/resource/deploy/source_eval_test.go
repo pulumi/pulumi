@@ -15,172 +15,42 @@
 package deploy
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/util/contract"
 	"github.com/pulumi/pulumi/pkg/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/proto/go"
 )
 
-type testResmon struct {
-	resmon pulumirpc.ResourceMonitorClient
+type testRegEvent struct {
+	goal   *resource.Goal
+	result *RegisterResult
 }
 
-func (rm *testResmon) RegisterResource(t tokens.Type, name string, custom bool, parent resource.URN, protect bool,
-	dependencies []resource.URN, provider string,
-	inputs resource.PropertyMap) (resource.URN, resource.ID, resource.PropertyMap, error) {
+var _ RegisterResourceEvent = (*testRegEvent)(nil)
 
-	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
-	if err != nil {
-		return "", "", nil, err
-	}
+func (g *testRegEvent) event() {}
 
-	// marshal dependencies
-	deps := []string{}
-	for _, d := range dependencies {
-		deps = append(deps, string(d))
-	}
-
-	// submit request
-	resp, err := rm.resmon.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{
-		Type:         string(t),
-		Name:         name,
-		Custom:       custom,
-		Parent:       string(parent),
-		Protect:      protect,
-		Dependencies: deps,
-		Provider:     provider,
-		Object:       ins,
-	})
-	if err != nil {
-		return "", "", nil, err
-	}
-
-	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{KeepUnknowns: true})
-	if err != nil {
-		return "", "", nil, err
-	}
-
-	return resource.URN(resp.Urn), resource.ID(resp.Id), outs, nil
+func (g *testRegEvent) Goal() *resource.Goal {
+	return g.goal
 }
 
-func (rm *testResmon) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider string) (resource.URN, resource.PropertyMap, error) {
-
-	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
-	if err != nil {
-		return "", nil, err
-	}
-
-	// submit request
-	resp, err := rm.resmon.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
-		Type:       string(t),
-		Name:       name,
-		Parent:     string(parent),
-		Provider:   provider,
-		Properties: ins,
-	})
-	if err != nil {
-		return "", nil, err
-	}
-
-	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Properties, plugin.MarshalOptions{KeepUnknowns: true})
-	if err != nil {
-		return "", nil, err
-	}
-
-	return resource.URN(resp.Urn), outs, nil
+func (g *testRegEvent) Done(result *RegisterResult) {
+	contract.Assertf(g.result == nil, "Attempt to invoke testRegEvent.Done more than once")
+	g.result = result
 }
 
-func (rm *testResmon) Invoke(tok tokens.ModuleMember,
-	inputs resource.PropertyMap, provider string) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
-
-	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{KeepUnknowns: true})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// submit request
-	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.InvokeRequest{
-		Tok:      string(tok),
-		Provider: provider,
-		Args:     ins,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// handle failures
-	if len(resp.Failures) != 0 {
-		return nil, resp.Failures, nil
-	}
-
-	// unmarshal outputs
-	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{KeepUnknowns: true})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return outs, nil, nil
-}
-
-type testProgramFunc func(project, stack string, resmon *testResmon) error
-
-type testLangHost struct {
-	program testProgramFunc
-}
-
-func (p *testLangHost) Close() error {
-	return nil
-}
-
-func (p *testLangHost) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
-	return nil, nil
-}
-
-func (p *testLangHost) Run(info plugin.RunInfo) (string, error) {
-	// Connect to the resource monitor and create an appropriate client.
-	conn, err := grpc.Dial(info.MonitorAddress, grpc.WithInsecure())
-	if err != nil {
-		return "", errors.Wrapf(err, "could not connect to resource monitor")
-	}
-
-	// Fire up a resource monitor client
-	resmon := pulumirpc.NewResourceMonitorClient(conn)
-
-	// Run the program.
-	done := make(chan error)
-	go func() {
-		done <- p.program(info.Project, info.Stack, &testResmon{resmon: resmon})
-	}()
-	if progerr := <-done; progerr != nil {
-		return progerr.Error(), nil
-	}
-	return "", nil
-}
-
-func (p *testLangHost) GetPluginInfo() (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{Name: "testLang"}, nil
-}
-
-func fixedProgram(steps []RegisterResourceEvent) testProgramFunc {
-	return func(_, _ string, resmon *testResmon) error {
+func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
+	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		for _, s := range steps {
 			g := s.Goal()
 			urn, id, outs, err := resmon.RegisterResource(g.Type, string(g.Name), g.Custom, g.Parent, g.Protect,
@@ -197,13 +67,11 @@ func fixedProgram(steps []RegisterResourceEvent) testProgramFunc {
 	}
 }
 
-func newTestPluginContext(program testProgramFunc) (*plugin.Context, error) {
-	host := &testProviderHost{
-		langhost: func(runtime string) (plugin.LanguageRuntime, error) {
-			return &testLangHost{program: program}, nil
-		},
-	}
-	return plugin.NewContext(cmdutil.Diag(), host, nil, nil, "", nil, nil)
+func newTestPluginContext(program deploytest.ProgramFunc) (*plugin.Context, error) {
+	sink := cmdutil.Diag()
+	lang := deploytest.NewLanguageRuntime(program)
+	host := deploytest.NewPluginHost(sink, lang)
+	return plugin.NewContext(sink, host, nil, nil, "", nil, nil)
 }
 
 type testProviderSource struct {
@@ -449,8 +317,8 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	assert.NoError(t, err)
 
 	invokes := int32(0)
-	noopProvider := &testProvider{
-		invoke: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	noopProvider := &deploytest.Provider{
+		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 			atomic.AddInt32(&invokes, 1)
 			return resource.PropertyMap{}, nil, nil
 		},
@@ -465,7 +333,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	}
 
 	expectedReads, expectedInvokes := 3, 3
-	program := func(project, stack string, resmon *testResmon) error {
+	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
 		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String())
 		assert.NoError(t, perr)
@@ -527,15 +395,15 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	}
 
 	invokes := int32(0)
-	noopProvider := &testProvider{
-		invoke: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	noopProvider := &deploytest.Provider{
+		InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 			atomic.AddInt32(&invokes, 1)
 			return resource.PropertyMap{}, nil, nil
 		},
 	}
 
 	expectedReads, expectedInvokes := 3, 3
-	program := func(project, stack string, resmon *testResmon) error {
+	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "")
 		assert.NoError(t, err)

@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/resource"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
@@ -78,8 +79,8 @@ func TestRefresh(t *testing.T) {
 	}
 
 	reads := int32(0)
-	noopProvider := &testProvider{
-		read: func(resource.URN, resource.ID, resource.PropertyMap) (resource.PropertyMap, error) {
+	noopProvider := &deploytest.Provider{
+		ReadF: func(resource.URN, resource.ID, resource.PropertyMap) (resource.PropertyMap, error) {
 			atomic.AddInt32(&reads, 1)
 			return resource.PropertyMap{}, nil
 		},

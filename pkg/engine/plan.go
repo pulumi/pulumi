@@ -195,7 +195,7 @@ func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bo
 		Parallel: res.Options.Parallel,
 	}
 
-	src, err := res.Plan.Source().Iterate(opts)
+	src, err := res.Plan.Source().Iterate(opts, res.Plan)
 	if err != nil {
 		return nil, err
 	}
