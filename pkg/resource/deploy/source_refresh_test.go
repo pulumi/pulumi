@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"sync/atomic"
 	"testing"
 
@@ -113,7 +114,10 @@ func TestRefresh(t *testing.T) {
 	target.Snapshot = &Snapshot{Resources: olds}
 
 	// Create and iterate a source.
-	iter, err := NewRefreshSource(nil, proj, target, false).Iterate(Options{}, providerSource)
+	iter, err := NewRefreshSource(nil, proj, target, false).Iterate(Options{
+		// Context used for cancellation.
+		Context: context.Background(),
+	}, providerSource)
 	assert.NoError(t, err)
 
 	processed := 0
@@ -124,6 +128,12 @@ func TestRefresh(t *testing.T) {
 			break
 		}
 
+		regEvent, ok := event.(RegisterResourceEvent)
+		assert.True(t, ok)
+
+		// The real step executor executes this on a different goroutine. Since this involves a send on a channel
+		// that iter.Next() is reading from, we must write to the channel on another goroutine.
+		go regEvent.Done(nil)
 		processed++
 	}
 	assert.Equal(t, len(olds), processed)
