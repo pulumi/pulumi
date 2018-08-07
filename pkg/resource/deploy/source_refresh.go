@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
@@ -152,20 +151,29 @@ func (iter *refreshSourceIterator) newRefreshGoal(s *resource.State) (*resource.
 		if !ok {
 			return nil, errors.Errorf("unknown provider '%v' for resource '%v'", s.Provider, s.URN)
 		}
-		refreshed, err := provider.Read(s.URN, s.ID, s.Outputs)
+
+		initErrorReasons := []string{}
+		refreshed, resourceStatus, err := provider.Read(s.URN, s.ID, s.Outputs)
 		if err != nil {
-			return nil, errors.Wrapf(err, "refreshing %s's state", s.URN)
+			if resourceStatus != resource.StatusPartialFailure {
+				return nil, errors.Wrapf(err, "refreshing %s's state", s.URN)
+			}
+
+			// Else it's a `StatusPartialError`.
+			if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
+				initErrorReasons = initErr.Reasons
+			}
 		} else if refreshed == nil {
 			return nil, nil // the resource was deleted.
 		}
 		s = resource.NewState(
 			s.Type, s.URN, s.Custom, s.Delete, s.ID, s.Inputs, refreshed,
-			s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider)
+			s.Parent, s.Protect, s.External, s.Dependencies, initErrorReasons, s.Provider)
 	}
 
 	// Now just return the actual state as the goal state.
-	return resource.NewGoal(s.Type, s.URN.Name(), s.Custom, s.Outputs, s.Parent, s.Protect, s.Dependencies,
-		s.Provider), nil
+	return resource.NewGoal(s.Type, s.URN.Name(), s.Custom, s.Outputs, s.Parent, s.Protect,
+		s.Dependencies, s.Provider, s.InitErrors), nil
 }
 
 type refreshSourceEvent struct {

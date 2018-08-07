@@ -29,11 +29,12 @@ type Goal struct {
 	Protect      bool         // true to protect this resource from deletion.
 	Dependencies []URN        // dependencies of this resource object.
 	Provider     string       // the provider to use for this resource.
+	InitErrors   []string     // errors encountered as we attempted to initialize the resource.
 }
 
 // NewGoal allocates a new resource goal state.
 func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
-	parent URN, protect bool, dependencies []URN, provider string) *Goal {
+	parent URN, protect bool, dependencies []URN, provider string, initErrors []string) *Goal {
 	return &Goal{
 		Type:         t,
 		Name:         name,
@@ -43,5 +44,6 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		Protect:      protect,
 		Dependencies: dependencies,
 		Provider:     provider,
+		InitErrors:   initErrors,
 	}
 }
