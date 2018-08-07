@@ -75,8 +75,8 @@ func (a *analyzer) label() string {
 }
 
 // Analyze analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
-	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
+func (a *analyzer) Analyze(urn resource.URN, id resource.ID, props resource.PropertyMap) ([]AnalyzerDiagnostic, error) {
+	label := fmt.Sprintf("%s.Analyze(%s, %s, ...)", a.label(), urn, id)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 	mprops, err := MarshalProperties(props, MarshalOptions{})
 	if err != nil {
@@ -84,7 +84,8 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 	}
 
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
-		Type:       string(t),
+		Urn:        string(urn),
+		Id:         string(id),
 		Properties: mprops,
 	})
 	if err != nil {
@@ -93,15 +94,18 @@ func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]Analyze
 		return nil, rpcError
 	}
 
-	var failures []AnalyzeFailure
-	for _, failure := range resp.GetFailures() {
-		failures = append(failures, AnalyzeFailure{
-			Property: resource.PropertyKey(failure.Property),
-			Reason:   failure.Reason,
+	var ds []AnalyzerDiagnostic
+	for _, d := range resp.GetDiagnostics() {
+		ds = append(ds, AnalyzerDiagnostic{
+			ID:         d.GetId(),
+			Message:    d.GetMessage(),
+			Severity:   d.GetSeverity(),
+			Category:   d.GetCategory(),
+			Confidence: d.GetConfidence(),
 		})
 	}
-	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
-	return failures, nil
+	logging.V(7).Infof("%s success: ds=#%d", label, len(ds))
+	return ds, nil
 }
 
 // GetPluginInfo returns this plugin's information.

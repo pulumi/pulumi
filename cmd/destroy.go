@@ -116,7 +116,7 @@ func newDestroyCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
-		&analyzers, "analyzer", []string{},
+		&analyzers, "analyzer", nil,
 		"Run one or more analyzers as part of this update")
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,

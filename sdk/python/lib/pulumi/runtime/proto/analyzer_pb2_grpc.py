@@ -22,6 +22,11 @@ class AnalyzerStub(object):
         request_serializer=analyzer__pb2.AnalyzeRequest.SerializeToString,
         response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
         )
+    self.AnalyzeStack = channel.unary_unary(
+        '/pulumirpc.Analyzer/AnalyzeStack',
+        request_serializer=analyzer__pb2.AnalyzeStackRequest.SerializeToString,
+        response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
+        )
     self.GetPluginInfo = channel.unary_unary(
         '/pulumirpc.Analyzer/GetPluginInfo',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -41,6 +46,13 @@ class AnalyzerServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def AnalyzeStack(self, request, context):
+    """AnalyzeStack analyzes an entire stack of resources, and returns any errors that it finds.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def GetPluginInfo(self, request, context):
     """GetPluginInfo returns generic information about this plugin, like its version.
     """
@@ -54,6 +66,11 @@ def add_AnalyzerServicer_to_server(servicer, server):
       'Analyze': grpc.unary_unary_rpc_method_handler(
           servicer.Analyze,
           request_deserializer=analyzer__pb2.AnalyzeRequest.FromString,
+          response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
+      ),
+      'AnalyzeStack': grpc.unary_unary_rpc_method_handler(
+          servicer.AnalyzeStack,
+          request_deserializer=analyzer__pb2.AnalyzeStackRequest.FromString,
           response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
       ),
       'GetPluginInfo': grpc.unary_unary_rpc_method_handler(

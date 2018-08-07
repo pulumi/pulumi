@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='analyzer.proto',
   package='pulumirpc',
   syntax='proto3',
-  serialized_pb=_b('\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"K\n\x0e\x41nalyzeRequest\x12\x0c\n\x04type\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\">\n\x0f\x41nalyzeResponse\x12+\n\x08\x66\x61ilures\x18\x01 \x03(\x0b\x32\x19.pulumirpc.AnalyzeFailure\"2\n\x0e\x41nalyzeFailure\x12\x10\n\x08property\x18\x01 \x01(\t\x12\x0e\n\x06reason\x18\x02 \x01(\t2\x90\x01\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0e\x61nalyzer.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"V\n\x0e\x41nalyzeRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"C\n\x13\x41nalyzeStackRequest\x12,\n\tresources\x18\x01 \x03(\x0b\x32\x19.pulumirpc.AnalyzeRequest\"E\n\x0f\x41nalyzeResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.AnalyzerDiagnostic\"i\n\x12\x41nalyzerDiagnostic\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x10\n\x08severity\x18\x03 \x01(\t\x12\x10\n\x08\x63\x61tegory\x18\x04 \x01(\t\x12\x12\n\nconfidence\x18\x05 \x01(\x02\x32\xde\x01\n\x08\x41nalyzer\x12\x42\n\x07\x41nalyze\x12\x19.pulumirpc.AnalyzeRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12L\n\x0c\x41nalyzeStack\x12\x1e.pulumirpc.AnalyzeStackRequest\x1a\x1a.pulumirpc.AnalyzeResponse\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x62\x06proto3')
   ,
   dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
 
@@ -37,15 +37,22 @@ _ANALYZEREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='type', full_name='pulumirpc.AnalyzeRequest.type', index=0,
+      name='urn', full_name='pulumirpc.AnalyzeRequest.urn', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='properties', full_name='pulumirpc.AnalyzeRequest.properties', index=1,
-      number=2, type=11, cpp_type=10, label=1,
+      name='id', full_name='pulumirpc.AnalyzeRequest.id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.AnalyzeRequest.properties', index=2,
+      number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -63,19 +70,19 @@ _ANALYZEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=102,
-  serialized_end=177,
+  serialized_end=188,
 )
 
 
-_ANALYZERESPONSE = _descriptor.Descriptor(
-  name='AnalyzeResponse',
-  full_name='pulumirpc.AnalyzeResponse',
+_ANALYZESTACKREQUEST = _descriptor.Descriptor(
+  name='AnalyzeStackRequest',
+  full_name='pulumirpc.AnalyzeStackRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='failures', full_name='pulumirpc.AnalyzeResponse.failures', index=0,
+      name='resources', full_name='pulumirpc.AnalyzeStackRequest.resources', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -93,29 +100,22 @@ _ANALYZERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=179,
-  serialized_end=241,
+  serialized_start=190,
+  serialized_end=257,
 )
 
 
-_ANALYZEFAILURE = _descriptor.Descriptor(
-  name='AnalyzeFailure',
-  full_name='pulumirpc.AnalyzeFailure',
+_ANALYZERESPONSE = _descriptor.Descriptor(
+  name='AnalyzeResponse',
+  full_name='pulumirpc.AnalyzeResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='property', full_name='pulumirpc.AnalyzeFailure.property', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='reason', full_name='pulumirpc.AnalyzeFailure.reason', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      name='diagnostics', full_name='pulumirpc.AnalyzeResponse.diagnostics', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -131,15 +131,76 @@ _ANALYZEFAILURE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=243,
-  serialized_end=293,
+  serialized_start=259,
+  serialized_end=328,
+)
+
+
+_ANALYZERDIAGNOSTIC = _descriptor.Descriptor(
+  name='AnalyzerDiagnostic',
+  full_name='pulumirpc.AnalyzerDiagnostic',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.AnalyzerDiagnostic.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='pulumirpc.AnalyzerDiagnostic.message', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='severity', full_name='pulumirpc.AnalyzerDiagnostic.severity', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='category', full_name='pulumirpc.AnalyzerDiagnostic.category', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='confidence', full_name='pulumirpc.AnalyzerDiagnostic.confidence', index=4,
+      number=5, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=330,
+  serialized_end=435,
 )
 
 _ANALYZEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_ANALYZERESPONSE.fields_by_name['failures'].message_type = _ANALYZEFAILURE
+_ANALYZESTACKREQUEST.fields_by_name['resources'].message_type = _ANALYZEREQUEST
+_ANALYZERESPONSE.fields_by_name['diagnostics'].message_type = _ANALYZERDIAGNOSTIC
 DESCRIPTOR.message_types_by_name['AnalyzeRequest'] = _ANALYZEREQUEST
+DESCRIPTOR.message_types_by_name['AnalyzeStackRequest'] = _ANALYZESTACKREQUEST
 DESCRIPTOR.message_types_by_name['AnalyzeResponse'] = _ANALYZERESPONSE
-DESCRIPTOR.message_types_by_name['AnalyzeFailure'] = _ANALYZEFAILURE
+DESCRIPTOR.message_types_by_name['AnalyzerDiagnostic'] = _ANALYZERDIAGNOSTIC
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 AnalyzeRequest = _reflection.GeneratedProtocolMessageType('AnalyzeRequest', (_message.Message,), dict(
@@ -149,6 +210,13 @@ AnalyzeRequest = _reflection.GeneratedProtocolMessageType('AnalyzeRequest', (_me
   ))
 _sym_db.RegisterMessage(AnalyzeRequest)
 
+AnalyzeStackRequest = _reflection.GeneratedProtocolMessageType('AnalyzeStackRequest', (_message.Message,), dict(
+  DESCRIPTOR = _ANALYZESTACKREQUEST,
+  __module__ = 'analyzer_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzeStackRequest)
+  ))
+_sym_db.RegisterMessage(AnalyzeStackRequest)
+
 AnalyzeResponse = _reflection.GeneratedProtocolMessageType('AnalyzeResponse', (_message.Message,), dict(
   DESCRIPTOR = _ANALYZERESPONSE,
   __module__ = 'analyzer_pb2'
@@ -156,12 +224,12 @@ AnalyzeResponse = _reflection.GeneratedProtocolMessageType('AnalyzeResponse', (_
   ))
 _sym_db.RegisterMessage(AnalyzeResponse)
 
-AnalyzeFailure = _reflection.GeneratedProtocolMessageType('AnalyzeFailure', (_message.Message,), dict(
-  DESCRIPTOR = _ANALYZEFAILURE,
+AnalyzerDiagnostic = _reflection.GeneratedProtocolMessageType('AnalyzerDiagnostic', (_message.Message,), dict(
+  DESCRIPTOR = _ANALYZERDIAGNOSTIC,
   __module__ = 'analyzer_pb2'
-  # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzeFailure)
+  # @@protoc_insertion_point(class_scope:pulumirpc.AnalyzerDiagnostic)
   ))
-_sym_db.RegisterMessage(AnalyzeFailure)
+_sym_db.RegisterMessage(AnalyzerDiagnostic)
 
 
 
@@ -171,8 +239,8 @@ _ANALYZER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=296,
-  serialized_end=440,
+  serialized_start=438,
+  serialized_end=660,
   methods=[
   _descriptor.MethodDescriptor(
     name='Analyze',
@@ -184,9 +252,18 @@ _ANALYZER = _descriptor.ServiceDescriptor(
     options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='AnalyzeStack',
+    full_name='pulumirpc.Analyzer.AnalyzeStack',
+    index=1,
+    containing_service=None,
+    input_type=_ANALYZESTACKREQUEST,
+    output_type=_ANALYZERESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='GetPluginInfo',
     full_name='pulumirpc.Analyzer.GetPluginInfo',
-    index=1,
+    index=2,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=plugin__pb2._PLUGININFO,

@@ -31,13 +31,16 @@ type Analyzer interface {
 	// Name fetches an analyzer's qualified name.
 	Name() tokens.QName
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
-	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error)
+	Analyze(urn resource.URN, id resource.ID, props resource.PropertyMap) ([]AnalyzerDiagnostic, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 }
 
-// AnalyzeFailure indicates that resource analysis failed; it contains the property and reason for the failure.
-type AnalyzeFailure struct {
-	Property resource.PropertyKey // the property that failed the analysis.
-	Reason   string               // the reason the property failed the analysis.
+// AnalyzerDiagnostic reports a potential issue discovered by an analyzer along with metadata about that issue.
+type AnalyzerDiagnostic struct {
+	ID         string  // an optional identifier unique to this diagnostic.
+	Message    string  // a freeform message describing the issue discovered by the analyzer.
+	Severity   string  // the severity of this diagnostic, including how seriously it is to be taken.
+	Category   string  // a category classifying this diagnostic for purposes of aggregation.
+	Confidence float32 // a score from 0.0 to 1.0 indicating how confident the analyzer is about this issue.
 }

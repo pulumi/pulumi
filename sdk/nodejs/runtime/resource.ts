@@ -19,6 +19,7 @@ import { debuggablePromise, errorString } from "./debuggable";
 import {
     deserializeProperties,
     deserializeProperty,
+    OutputResolver,
     OutputResolvers,
     resolveProperties,
     serializeProperties,
@@ -36,7 +37,7 @@ interface ResourceResolverOperation {
     // A resolver for a resource's URN.
     resolveURN: (urn: URN) => void;
     // A resolver for a resource's ID (for custom resources only).
-    resolveID: ((v: ID, performApply: boolean) => void) | undefined;
+    resolveID: OutputResolver | undefined;
     // A collection of resolvers for a resource's properties.
     resolvers: OutputResolvers;
     // A parent URN, fully resolved, if any.
@@ -170,39 +171,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  */
 async function prepareResource(label: string, res: Resource, custom: boolean,
                                props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
-    // Simply initialize the URN property and get prepared to resolve it later on.
-    // Note: a resource urn will always get a value, and thus the output property
-    // for it can always run .apply calls.
-    let resolveURN: (urn: URN) => void;
-    (res as any).urn = Output.create(
-        res,
-        debuggablePromise(
-            new Promise<URN>(resolve => resolveURN = resolve),
-            `resolveURN(${label})`),
-        /*performApply:*/ Promise.resolve(true));
-
-    // If a custom resource, make room for the ID property.
-    let resolveID: ((v: any, performApply: boolean) => void) | undefined;
-    if (custom) {
-        let resolveValue: (v: ID) => void;
-        let resolvePerformApply: (v: boolean) => void;
-        (res as any).id = Output.create(
-            res,
-            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
-            debuggablePromise(new Promise<boolean>(
-                resolve => resolvePerformApply = resolve), `resolveIDPerformApply(${label})`));
-
-        resolveID = (v, performApply) => {
-            resolveValue(v);
-            resolvePerformApply(performApply);
-        };
-    }
-
-    // Now "transfer" all input properties into unresolved Promises on res.  This way,
-    // this resource will look like it has all its output properties to anyone it is
-    // passed to.  However, those promises won't actually resolve until the registerResource
-    // RPC returns
-    const resolvers = transferProperties(res, label, props);
+    // First initialize the basic resource properties and get their output resolvers.
+    const [resolveURN, resolveID, resolvers] = initResource(label, res, custom, props);
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
@@ -247,6 +217,47 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef: providerRef,
         dependencies: dependencies,
     };
+}
+
+/**
+ * initResource prepares a resource object by creating URN, ID, and property outputs. They are not yet resolved,
+ * and it returns a tuple for the resolvers of each of these output properties, respectively.
+ */
+export function initResource(label: string, res: Resource, custom: boolean,
+                             props: Inputs): [(urn: URN) => void, OutputResolver | undefined, OutputResolvers] {
+    // Simply initialize the URN property and get prepared to resolve it later on.
+    // Note: a resource urn will always get a value, and thus the output property
+    // for it can always run .apply calls.
+    let resolveURN: (urn: URN) => void;
+    (res as any).urn = Output.create(
+        res,
+        debuggablePromise(
+            new Promise<URN>(resolve => resolveURN = resolve),
+            `resolveURN(${label})`),
+        /*performApply:*/ Promise.resolve(true));
+
+    // If a custom resource, make room for the ID property.
+    let resolveID: OutputResolver | undefined;
+    if (custom) {
+        let resolveValue: (v: ID) => void;
+        let resolvePerformApply: (v: boolean) => void;
+        (res as any).id = Output.create(
+            res,
+            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
+            debuggablePromise(new Promise<boolean>(
+                resolve => resolvePerformApply = resolve), `resolveIDPerformApply(${label})`));
+
+        resolveID = (v, performApply) => {
+            resolveValue(v);
+            resolvePerformApply(performApply);
+        };
+    }
+
+    // Now "transfer" all input properties into unresolved Promises on res.  This way,
+    // this resource will look like it has all its output properties to anyone it is
+    // passed to.  However, those promises won't actually resolve until the registerResource RPC returns
+    const resolvers = transferProperties(res, label, props);
+    return [resolveURN!, resolveID, resolvers];
 }
 
 /**

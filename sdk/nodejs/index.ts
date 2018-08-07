@@ -22,11 +22,12 @@ export * from "./metadata";
 export * from "./resource";
 
 // Export submodules individually.
+import * as analyzer from "./analyzer";
 import * as asset from "./asset";
 import * as dynamic from "./dynamic";
 import * as log from "./log";
 import * as runtime from "./runtime";
-export { asset, dynamic, log, runtime };
+export { analyzer, asset, dynamic, log, runtime };
 
 // @pulumi is a deployment-only module.  If someone tries to capture it, and we fail for some reason
 // we want to give a good message about what the problem likely is.  Note that capturing a

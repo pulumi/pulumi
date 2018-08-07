@@ -15,6 +15,8 @@
 package deploy
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/diag"
@@ -195,15 +197,37 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, err
 		} else if analyzer == nil {
 			return nil, errors.Errorf("analyzer '%v' could not be loaded from your $PATH", a)
 		}
-		var failures []plugin.AnalyzeFailure
-		failures, err = analyzer.Analyze(new.Type, props)
+
+		var id resource.ID
+		if hasOld {
+			id = old.ID
+		}
+
+		var ds []plugin.AnalyzerDiagnostic
+		ds, err = analyzer.Analyze(new.URN, id, props)
 		if err != nil {
 			return nil, err
 		}
-		for _, failure := range failures {
+
+		for _, d := range ds {
 			invalid = true
-			sg.plan.Diag().Errorf(
-				diag.GetAnalyzeResourceFailureError(urn), a, urn, failure.Property, failure.Reason)
+
+			// For each failure, print it to the error stream, pretty printed with all of the metadata.
+			// This is done using the error sink, with the invalid bit above, to allow for multiple errors.
+			// TODO[pulumi/pulumi#xyz]: upload these results to the service in a structured manner for presentation.
+			analyzerMsg := fmt.Sprintf("analyzer '%s' reported an issue:\n", a)
+			analyzerMsg += fmt.Sprintf("    Resource: %s\n", urn)
+			if d.ID != "" {
+				analyzerMsg += fmt.Sprintf("ID: %s; ", d.ID)
+			}
+			analyzerMsg += fmt.Sprintf("    Category: %s; Severity: %s", d.Category, d.Severity)
+			if d.Confidence != 0.0 {
+				analyzerMsg += fmt.Sprintf("; Confidence: %.2f", d.Confidence)
+			}
+			analyzerMsg += "\n"
+			analyzerMsg += fmt.Sprintf("    Details: %s", d.Message)
+
+			sg.plan.Diag().Errorf(diag.Message(urn, analyzerMsg))
 		}
 	}
 

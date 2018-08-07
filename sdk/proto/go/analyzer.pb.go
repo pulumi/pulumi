@@ -26,8 +26,9 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type AnalyzeRequest struct {
-	Type                 string          `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Urn                  string          `protobuf:"bytes,1,opt,name=urn" json:"urn,omitempty"`
+	Id                   string          `protobuf:"bytes,2,opt,name=id" json:"id,omitempty"`
+	Properties           *_struct.Struct `protobuf:"bytes,3,opt,name=properties" json:"properties,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -37,7 +38,7 @@ func (m *AnalyzeRequest) Reset()         { *m = AnalyzeRequest{} }
 func (m *AnalyzeRequest) String() string { return proto.CompactTextString(m) }
 func (*AnalyzeRequest) ProtoMessage()    {}
 func (*AnalyzeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_4d94ca02b59f2385, []int{0}
+	return fileDescriptor_analyzer_5412e4a0ad9c40c6, []int{0}
 }
 func (m *AnalyzeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzeRequest.Unmarshal(m, b)
@@ -57,9 +58,16 @@ func (m *AnalyzeRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_AnalyzeRequest proto.InternalMessageInfo
 
-func (m *AnalyzeRequest) GetType() string {
+func (m *AnalyzeRequest) GetUrn() string {
 	if m != nil {
-		return m.Type
+		return m.Urn
+	}
+	return ""
+}
+
+func (m *AnalyzeRequest) GetId() string {
+	if m != nil {
+		return m.Id
 	}
 	return ""
 }
@@ -71,18 +79,56 @@ func (m *AnalyzeRequest) GetProperties() *_struct.Struct {
 	return nil
 }
 
-type AnalyzeResponse struct {
-	Failures             []*AnalyzeFailure `protobuf:"bytes,1,rep,name=failures" json:"failures,omitempty"`
+type AnalyzeStackRequest struct {
+	Resources            []*AnalyzeRequest `protobuf:"bytes,1,rep,name=resources" json:"resources,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *AnalyzeStackRequest) Reset()         { *m = AnalyzeStackRequest{} }
+func (m *AnalyzeStackRequest) String() string { return proto.CompactTextString(m) }
+func (*AnalyzeStackRequest) ProtoMessage()    {}
+func (*AnalyzeStackRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_analyzer_5412e4a0ad9c40c6, []int{1}
+}
+func (m *AnalyzeStackRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AnalyzeStackRequest.Unmarshal(m, b)
+}
+func (m *AnalyzeStackRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AnalyzeStackRequest.Marshal(b, m, deterministic)
+}
+func (dst *AnalyzeStackRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzeStackRequest.Merge(dst, src)
+}
+func (m *AnalyzeStackRequest) XXX_Size() int {
+	return xxx_messageInfo_AnalyzeStackRequest.Size(m)
+}
+func (m *AnalyzeStackRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AnalyzeStackRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AnalyzeStackRequest proto.InternalMessageInfo
+
+func (m *AnalyzeStackRequest) GetResources() []*AnalyzeRequest {
+	if m != nil {
+		return m.Resources
+	}
+	return nil
+}
+
+type AnalyzeResponse struct {
+	Diagnostics          []*AnalyzerDiagnostic `protobuf:"bytes,1,rep,name=diagnostics" json:"diagnostics,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
 func (m *AnalyzeResponse) Reset()         { *m = AnalyzeResponse{} }
 func (m *AnalyzeResponse) String() string { return proto.CompactTextString(m) }
 func (*AnalyzeResponse) ProtoMessage()    {}
 func (*AnalyzeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_4d94ca02b59f2385, []int{1}
+	return fileDescriptor_analyzer_5412e4a0ad9c40c6, []int{2}
 }
 func (m *AnalyzeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AnalyzeResponse.Unmarshal(m, b)
@@ -102,63 +148,88 @@ func (m *AnalyzeResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_AnalyzeResponse proto.InternalMessageInfo
 
-func (m *AnalyzeResponse) GetFailures() []*AnalyzeFailure {
+func (m *AnalyzeResponse) GetDiagnostics() []*AnalyzerDiagnostic {
 	if m != nil {
-		return m.Failures
+		return m.Diagnostics
 	}
 	return nil
 }
 
-type AnalyzeFailure struct {
-	Property             string   `protobuf:"bytes,1,opt,name=property" json:"property,omitempty"`
-	Reason               string   `protobuf:"bytes,2,opt,name=reason" json:"reason,omitempty"`
+type AnalyzerDiagnostic struct {
+	Id                   string   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Message              string   `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
+	Severity             string   `protobuf:"bytes,3,opt,name=severity" json:"severity,omitempty"`
+	Category             string   `protobuf:"bytes,4,opt,name=category" json:"category,omitempty"`
+	Confidence           float32  `protobuf:"fixed32,5,opt,name=confidence" json:"confidence,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AnalyzeFailure) Reset()         { *m = AnalyzeFailure{} }
-func (m *AnalyzeFailure) String() string { return proto.CompactTextString(m) }
-func (*AnalyzeFailure) ProtoMessage()    {}
-func (*AnalyzeFailure) Descriptor() ([]byte, []int) {
-	return fileDescriptor_analyzer_4d94ca02b59f2385, []int{2}
+func (m *AnalyzerDiagnostic) Reset()         { *m = AnalyzerDiagnostic{} }
+func (m *AnalyzerDiagnostic) String() string { return proto.CompactTextString(m) }
+func (*AnalyzerDiagnostic) ProtoMessage()    {}
+func (*AnalyzerDiagnostic) Descriptor() ([]byte, []int) {
+	return fileDescriptor_analyzer_5412e4a0ad9c40c6, []int{3}
 }
-func (m *AnalyzeFailure) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AnalyzeFailure.Unmarshal(m, b)
+func (m *AnalyzerDiagnostic) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AnalyzerDiagnostic.Unmarshal(m, b)
 }
-func (m *AnalyzeFailure) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AnalyzeFailure.Marshal(b, m, deterministic)
+func (m *AnalyzerDiagnostic) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AnalyzerDiagnostic.Marshal(b, m, deterministic)
 }
-func (dst *AnalyzeFailure) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AnalyzeFailure.Merge(dst, src)
+func (dst *AnalyzerDiagnostic) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AnalyzerDiagnostic.Merge(dst, src)
 }
-func (m *AnalyzeFailure) XXX_Size() int {
-	return xxx_messageInfo_AnalyzeFailure.Size(m)
+func (m *AnalyzerDiagnostic) XXX_Size() int {
+	return xxx_messageInfo_AnalyzerDiagnostic.Size(m)
 }
-func (m *AnalyzeFailure) XXX_DiscardUnknown() {
-	xxx_messageInfo_AnalyzeFailure.DiscardUnknown(m)
+func (m *AnalyzerDiagnostic) XXX_DiscardUnknown() {
+	xxx_messageInfo_AnalyzerDiagnostic.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AnalyzeFailure proto.InternalMessageInfo
+var xxx_messageInfo_AnalyzerDiagnostic proto.InternalMessageInfo
 
-func (m *AnalyzeFailure) GetProperty() string {
+func (m *AnalyzerDiagnostic) GetId() string {
 	if m != nil {
-		return m.Property
+		return m.Id
 	}
 	return ""
 }
 
-func (m *AnalyzeFailure) GetReason() string {
+func (m *AnalyzerDiagnostic) GetMessage() string {
 	if m != nil {
-		return m.Reason
+		return m.Message
 	}
 	return ""
+}
+
+func (m *AnalyzerDiagnostic) GetSeverity() string {
+	if m != nil {
+		return m.Severity
+	}
+	return ""
+}
+
+func (m *AnalyzerDiagnostic) GetCategory() string {
+	if m != nil {
+		return m.Category
+	}
+	return ""
+}
+
+func (m *AnalyzerDiagnostic) GetConfidence() float32 {
+	if m != nil {
+		return m.Confidence
+	}
+	return 0
 }
 
 func init() {
 	proto.RegisterType((*AnalyzeRequest)(nil), "pulumirpc.AnalyzeRequest")
+	proto.RegisterType((*AnalyzeStackRequest)(nil), "pulumirpc.AnalyzeStackRequest")
 	proto.RegisterType((*AnalyzeResponse)(nil), "pulumirpc.AnalyzeResponse")
-	proto.RegisterType((*AnalyzeFailure)(nil), "pulumirpc.AnalyzeFailure")
+	proto.RegisterType((*AnalyzerDiagnostic)(nil), "pulumirpc.AnalyzerDiagnostic")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -174,6 +245,8 @@ const _ = grpc.SupportPackageIsVersion4
 type AnalyzerClient interface {
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	Analyze(ctx context.Context, in *AnalyzeRequest, opts ...grpc.CallOption) (*AnalyzeResponse, error)
+	// AnalyzeStack analyzes an entire stack of resources, and returns any errors that it finds.
+	AnalyzeStack(ctx context.Context, in *AnalyzeStackRequest, opts ...grpc.CallOption) (*AnalyzeResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 }
@@ -195,6 +268,15 @@ func (c *analyzerClient) Analyze(ctx context.Context, in *AnalyzeRequest, opts .
 	return out, nil
 }
 
+func (c *analyzerClient) AnalyzeStack(ctx context.Context, in *AnalyzeStackRequest, opts ...grpc.CallOption) (*AnalyzeResponse, error) {
+	out := new(AnalyzeResponse)
+	err := grpc.Invoke(ctx, "/pulumirpc.Analyzer/AnalyzeStack", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *analyzerClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
 	out := new(PluginInfo)
 	err := grpc.Invoke(ctx, "/pulumirpc.Analyzer/GetPluginInfo", in, out, c.cc, opts...)
@@ -209,6 +291,8 @@ func (c *analyzerClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opt
 type AnalyzerServer interface {
 	// Analyze analyzes a single resource object, and returns any errors that it finds.
 	Analyze(context.Context, *AnalyzeRequest) (*AnalyzeResponse, error)
+	// AnalyzeStack analyzes an entire stack of resources, and returns any errors that it finds.
+	AnalyzeStack(context.Context, *AnalyzeStackRequest) (*AnalyzeResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
 }
@@ -231,6 +315,24 @@ func _Analyzer_Analyze_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AnalyzerServer).Analyze(ctx, req.(*AnalyzeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Analyzer_AnalyzeStack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AnalyzeStackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AnalyzerServer).AnalyzeStack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.Analyzer/AnalyzeStack",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AnalyzerServer).AnalyzeStack(ctx, req.(*AnalyzeStackRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -262,6 +364,10 @@ var _Analyzer_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Analyzer_Analyze_Handler,
 		},
 		{
+			MethodName: "AnalyzeStack",
+			Handler:    _Analyzer_AnalyzeStack_Handler,
+		},
+		{
 			MethodName: "GetPluginInfo",
 			Handler:    _Analyzer_GetPluginInfo_Handler,
 		},
@@ -270,26 +376,32 @@ var _Analyzer_serviceDesc = grpc.ServiceDesc{
 	Metadata: "analyzer.proto",
 }
 
-func init() { proto.RegisterFile("analyzer.proto", fileDescriptor_analyzer_4d94ca02b59f2385) }
+func init() { proto.RegisterFile("analyzer.proto", fileDescriptor_analyzer_5412e4a0ad9c40c6) }
 
-var fileDescriptor_analyzer_4d94ca02b59f2385 = []byte{
-	// 285 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x91, 0x4f, 0x4b, 0xc3, 0x40,
-	0x10, 0xc5, 0x1b, 0x95, 0x9a, 0x8c, 0x5a, 0x61, 0xc0, 0x5a, 0x57, 0x0f, 0x25, 0x27, 0x4f, 0x5b,
-	0xa8, 0x88, 0x57, 0x15, 0xff, 0xde, 0x24, 0x9e, 0x3d, 0xa4, 0x65, 0x12, 0x02, 0x69, 0x76, 0xdd,
-	0x3f, 0x87, 0xf8, 0x29, 0xfc, 0xc8, 0xc6, 0xdd, 0x35, 0x16, 0xed, 0x6d, 0x86, 0xf7, 0xf8, 0xcd,
-	0x9b, 0x19, 0x18, 0xe5, 0x4d, 0x5e, 0xb7, 0x1f, 0xa4, 0xb8, 0x54, 0xc2, 0x08, 0x4c, 0xa4, 0xad,
-	0xed, 0xaa, 0x52, 0x72, 0xc9, 0xf6, 0x65, 0x6d, 0xcb, 0xaa, 0xf1, 0x02, 0x3b, 0x2d, 0x85, 0x28,
-	0x6b, 0x9a, 0xb9, 0x6e, 0x61, 0x8b, 0x19, 0xad, 0xa4, 0x69, 0x83, 0x78, 0xf6, 0x57, 0xd4, 0x46,
-	0xd9, 0xa5, 0xf1, 0x6a, 0xfa, 0x06, 0xa3, 0x1b, 0x3f, 0x25, 0xa3, 0x77, 0x4b, 0xda, 0x20, 0xc2,
-	0x8e, 0x69, 0x25, 0x4d, 0xa2, 0x69, 0x74, 0x9e, 0x64, 0xae, 0xc6, 0x2b, 0x80, 0xce, 0x2e, 0x49,
-	0x99, 0x8a, 0xf4, 0x64, 0xab, 0x53, 0xf6, 0xe6, 0xc7, 0xdc, 0x83, 0xf9, 0x0f, 0x98, 0xbf, 0x3a,
-	0x70, 0xb6, 0x66, 0x4d, 0x9f, 0xe0, 0xb0, 0xc7, 0x6b, 0x29, 0x1a, 0x4d, 0x78, 0x09, 0x71, 0x91,
-	0x57, 0xb5, 0x55, 0x1d, 0x29, 0x9a, 0x6e, 0x77, 0xa4, 0x13, 0xde, 0x2f, 0xc6, 0x83, 0xfb, 0xc1,
-	0x3b, 0xb2, 0xde, 0x9a, 0xde, 0xf5, 0x41, 0x83, 0x86, 0x0c, 0xe2, 0x30, 0xa9, 0x0d, 0x61, 0xfb,
-	0x1e, 0xc7, 0x30, 0x54, 0x94, 0x6b, 0xd1, 0xb8, 0xb0, 0x49, 0x16, 0xba, 0xf9, 0x67, 0x04, 0x71,
-	0xc0, 0x28, 0xbc, 0x85, 0xdd, 0x50, 0xe3, 0x86, 0x08, 0xe1, 0x1e, 0x8c, 0x6d, 0x92, 0xfc, 0x2e,
-	0xe9, 0x00, 0xaf, 0xe1, 0xe0, 0x91, 0xcc, 0x8b, 0xfb, 0xc6, 0x73, 0x53, 0x08, 0x1c, 0xff, 0x3b,
-	0xcb, 0xfd, 0xf7, 0x33, 0xd8, 0xd1, 0x1a, 0xe6, 0xd7, 0x9e, 0x0e, 0x16, 0x43, 0x67, 0xbc, 0xf8,
-	0x0a, 0x00, 0x00, 0xff, 0xff, 0xff, 0x6d, 0x9c, 0x46, 0xee, 0x01, 0x00, 0x00,
+var fileDescriptor_analyzer_5412e4a0ad9c40c6 = []byte{
+	// 383 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x52, 0xdb, 0x6e, 0xd3, 0x40,
+	0x10, 0x8d, 0x13, 0x20, 0xf1, 0x24, 0x04, 0xb4, 0x08, 0x30, 0x06, 0xa2, 0xc8, 0x4f, 0x3c, 0x39,
+	0x52, 0x78, 0xc8, 0x23, 0x17, 0x81, 0x10, 0x52, 0x55, 0x55, 0x9b, 0x2f, 0x70, 0x36, 0x13, 0x6b,
+	0x15, 0x67, 0xd7, 0xdd, 0x4b, 0x25, 0xf7, 0x43, 0xfa, 0x79, 0xfd, 0x96, 0x3a, 0xbe, 0xc5, 0xad,
+	0x5b, 0xf5, 0x6d, 0x66, 0xce, 0xd9, 0x73, 0x76, 0xcf, 0x0e, 0x4c, 0x23, 0x11, 0x25, 0xd9, 0x35,
+	0xaa, 0x30, 0x55, 0xd2, 0x48, 0xe2, 0xa6, 0x36, 0xb1, 0x07, 0xae, 0x52, 0xe6, 0x4f, 0xd2, 0xc4,
+	0xc6, 0x5c, 0x94, 0x80, 0xff, 0x39, 0x96, 0x32, 0x4e, 0x70, 0x51, 0x74, 0x1b, 0xbb, 0x5b, 0xe0,
+	0x21, 0x35, 0x59, 0x05, 0x7e, 0x79, 0x08, 0x6a, 0xa3, 0x2c, 0x33, 0x25, 0x1a, 0xec, 0x61, 0xfa,
+	0xab, 0x74, 0xa1, 0x78, 0x69, 0x51, 0x1b, 0xf2, 0x16, 0x06, 0x56, 0x09, 0xcf, 0x99, 0x3b, 0xdf,
+	0x5c, 0x7a, 0x2c, 0xc9, 0x14, 0xfa, 0x7c, 0xeb, 0xf5, 0x8b, 0x41, 0x5e, 0x91, 0x15, 0x40, 0x7e,
+	0x38, 0x45, 0x65, 0x38, 0x6a, 0x6f, 0x90, 0xcf, 0xc7, 0xcb, 0x8f, 0x61, 0x69, 0x13, 0xd6, 0x36,
+	0xe1, 0xba, 0xb0, 0xa1, 0x2d, 0x6a, 0x70, 0x0e, 0xef, 0x2a, 0xb3, 0xb5, 0x89, 0xd8, 0xbe, 0x76,
+	0x5c, 0x81, 0xab, 0x50, 0x4b, 0xab, 0x58, 0x2e, 0xe7, 0xcc, 0x07, 0xb9, 0xdc, 0xa7, 0xb0, 0x79,
+	0x6b, 0x78, 0xff, 0x7e, 0xf4, 0xc4, 0x0d, 0x28, 0xbc, 0x69, 0x40, 0x9d, 0x4a, 0xa1, 0x91, 0xfc,
+	0x80, 0xf1, 0x96, 0x47, 0xb1, 0x90, 0xda, 0x70, 0x56, 0xab, 0x7d, 0xed, 0xaa, 0xa9, 0x3f, 0x0d,
+	0x8b, 0xb6, 0x4f, 0x04, 0x37, 0x0e, 0x90, 0x2e, 0xa7, 0xca, 0xc0, 0x69, 0x32, 0xf0, 0x60, 0x78,
+	0x40, 0xad, 0xa3, 0x18, 0xab, 0x60, 0xea, 0x96, 0xf8, 0x30, 0xd2, 0x78, 0x85, 0x8a, 0x9b, 0xac,
+	0xc8, 0xc6, 0xa5, 0x4d, 0x7f, 0xc4, 0x58, 0x64, 0x30, 0x96, 0x2a, 0xf3, 0x5e, 0x94, 0x58, 0xdd,
+	0x93, 0x19, 0x00, 0x93, 0x62, 0xc7, 0xb7, 0x28, 0x18, 0x7a, 0x2f, 0x73, 0xb4, 0x4f, 0x5b, 0x93,
+	0xe5, 0xad, 0x03, 0xa3, 0xfa, 0x62, 0xe4, 0x37, 0x0c, 0xab, 0x9a, 0x3c, 0x1d, 0x95, 0xef, 0x3f,
+	0x06, 0x95, 0x41, 0x05, 0x3d, 0x72, 0x06, 0x93, 0xf6, 0x6f, 0x90, 0x59, 0x97, 0xdd, 0xfe, 0xa6,
+	0x67, 0xd4, 0x7e, 0xc2, 0xeb, 0x7f, 0x68, 0x2e, 0x8a, 0xb5, 0xfc, 0x2f, 0x76, 0x92, 0x7c, 0xe8,
+	0x6c, 0xc4, 0xdf, 0xe3, 0x56, 0xfa, 0xef, 0x5b, 0x32, 0x27, 0x7a, 0xd0, 0xdb, 0xbc, 0x2a, 0x88,
+	0xdf, 0xef, 0x02, 0x00, 0x00, 0xff, 0xff, 0x45, 0xbd, 0x8a, 0x1e, 0xf7, 0x02, 0x00, 0x00,
 }

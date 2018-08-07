@@ -21,7 +21,8 @@ import { excessiveDebugOutput, isDryRun } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-export type OutputResolvers = Record<string, (value: any, isStable: boolean) => void>;
+export type OutputResolver = (value: any, isStable: boolean) => void;
+export type OutputResolvers = Record<string, OutputResolver>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all

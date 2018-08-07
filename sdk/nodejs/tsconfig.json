@@ -23,6 +23,8 @@
         "resource.ts",
         "version.ts",
 
+        "analyzer/index.ts",
+
         "asset/index.ts",
         "asset/asset.ts",
         "asset/archive.ts",

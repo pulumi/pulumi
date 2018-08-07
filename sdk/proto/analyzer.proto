@@ -25,20 +25,30 @@ package pulumirpc;
 service Analyzer {
     // Analyze analyzes a single resource object, and returns any errors that it finds.
     rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
+    // AnalyzeStack analyzes an entire stack of resources, and returns any errors that it finds.
+    rpc AnalyzeStack(AnalyzeStackRequest) returns (AnalyzeResponse) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 }
 
 message AnalyzeRequest {
-    string type = 1;                       // the type token of the resource.
-    google.protobuf.Struct properties = 2; // the full properties to use for validation.
+    string urn = 1;                        // the URN for this resource.
+    string id = 2;                         // the ID for this resource, if known.
+    google.protobuf.Struct properties = 3; // the full properties to use for validation.
+}
+
+message AnalyzeStackRequest {
+    repeated AnalyzeRequest resources = 1; // the full set of resources to analyze within this stack.
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeFailure failures = 1; // the failures (or empty if none).
+    repeated AnalyzerDiagnostic diagnostics = 1; // any diagnostics/errors that occurred (or empty if none).
 }
 
-message AnalyzeFailure {
-    string property = 1; // the property that the analyzer rejected (or "" if general).
-    string reason = 2;   // the reason that the analyzer rejected the request.
+message AnalyzerDiagnostic {
+    string id = 1;        // an optional string ID unique to this message.
+    string message = 2;   // a freeform message describing the issue discovered by the analyzer.
+    string severity = 3;  // the severity of this diagnostic, indicating how seriously it is to be taken.
+    string category = 4;  // a category classifying this diagnostic for purposes of aggregation.
+    float confidence = 5; // a score from 0.0 to 1.0 indicating how confident the analyzer is about this issue.
 }

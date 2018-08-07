@@ -79,7 +79,7 @@ export abstract class Resource {
                 throw new RunError("Cannot read an existing resource unless it has a custom provider");
             }
             readResource(this, t, name, props, opts);
-        } else {
+        } else if (!opts.skipRegistration) {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
@@ -117,6 +117,12 @@ export interface ResourceOptions {
      * ComponentResource.
      */
     provider?: ProviderResource;
+    /*
+     * When set to true, the runtime registration for this resource object will not take place. This is generally
+     * not useful for most programs, because they are creating resources for Pulumi to manage. It can be used to
+     * create runtime abstractions that implement the Resource abstraction in different ways, however.
+     */
+    skipRegistration?: boolean;
 }
 
 /**
@@ -431,3 +437,55 @@ export type Input<T> = T | Promise<T> | Output<T>;
  * property value.
  */
 export type Inputs = Record<string, Input<any>>;
+
+/**
+ * parseUrn extracts the component parts of a Pulumi URN. This includes the stack and project to which it belongs, the
+ * primary and ancestor types, if any, and the logical name assigned by the program.
+ */
+export function parseUrn(urn: URN): [string, string, string, string[], string] {
+    const prefix = "urn:pulumi:";
+    const prefixIndex = urn.indexOf(prefix);
+    if (prefixIndex !== 0) {
+        throw new Error(`Illegal URN; does not start with expected prefix of '${prefix}'`);
+    }
+
+    const parts = urn.split("::");
+    if (parts.length < 1) {
+        throw new Error("Malformed URN; missing stack name with :: delimiter");
+    } else if (parts.length < 2) {
+        throw new Error("Malformed URN; missing project name with :: delimiter");
+    } else if (parts.length < 3) {
+        throw new Error("Malformed URN; missing project name with :: delimiter");
+    } else if (parts.length < 4) {
+        throw new Error("Malformed URN; missing resource name name with :: delimiter");
+    }
+
+    const types = parts[2].split("$");
+    if (types.length === 0) {
+        throw new Error("Malformed URN; missing resource type name");
+    }
+
+    return [ parts[0], parts[1], types[0], types.slice(1), parts[3] ];
+}
+
+/**
+ * parseType extracts the resource type components from a Pulumi resource type. This includes the type's
+ * package, an array of its module parts, and its type name.
+ */
+export function parseType(t: string): [string, string[], string] {
+    const parts = t.split(":");
+    if (parts.length < 1) {
+        throw new Error("Malformed resource type; missing package name with : delimiter");
+    } else if (parts.length < 2) {
+        throw new Error("Malformed resource type; missing module name with : delimiter");
+    } else if (parts.length < 3) {
+        throw new Error("Malformed resource type; missing type name with : delimiter");
+    }
+
+    const mods = parts[1].split("/");
+    if (mods.length === 0) {
+        throw new Error("Malformed resource type; missing module name");
+    }
+
+    return [ parts[0], mods, parts[2] ];
+}
