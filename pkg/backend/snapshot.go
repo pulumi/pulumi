@@ -155,7 +155,7 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	case deploy.OpDelete, deploy.OpDeleteReplaced:
 		return &deleteSnapshotMutation{sm}, nil
 	case deploy.OpReplace:
-		return &replaceSnapshotMutation{}, nil
+		return &replaceSnapshotMutation{sm}, nil
 	case deploy.OpRead, deploy.OpReadReplacement:
 		return &readSnapshotMutation{sm}, nil
 	}
@@ -241,9 +241,16 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 	})
 }
 
-type replaceSnapshotMutation struct{}
+type replaceSnapshotMutation struct {
+	manager *SnapshotManager
+}
 
-func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }
+func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
+	// There's no explicit mutation that replace makes to the snapshot, but it does need
+	// to write out a snapshot to the backing store so that it's no longer invalid.
+	logging.V(9).Infof("SnapshotManager: replaceSnapshotMutation.End(..., %v)", successful)
+	return rsm.manager.refresh()
+}
 
 type readSnapshotMutation struct {
 	manager *SnapshotManager
