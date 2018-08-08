@@ -19,6 +19,11 @@ import { ProviderResource } from "./resource";
  */
 export interface InvokeOptions {
     /**
+     * An optional parent to use for default options for this invoke (e.g. the default provider to use).
+     */
+    parent?: ComponentResource;
+
+    /**
      * An optional provider to use for this invocation. If no provider is supplied, the default provider for the
      * invoked function's package will be used.
      */
