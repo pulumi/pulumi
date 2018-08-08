@@ -4779,7 +4779,7 @@ return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); 
 
 function __f0() {
   return (function() {
-    with({ typescript: require("./node_modules/typescript/lib/typescript.js") }) {
+    with({ typescript: require("typescript/lib/typescript.js") }) {
 
 return function () { typescript.parseCommandLine([""]); };
 
