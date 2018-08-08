@@ -772,6 +772,8 @@ func printAssetDiff(
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent int, summary bool, debug bool) {
 
+	contract.Assertf(oldAsset.Hash != newAsset.Hash, "Should not call printAssetDiff on unchanged assets")
+
 	op := deploy.OpUpdate
 
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
