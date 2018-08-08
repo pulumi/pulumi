@@ -109,15 +109,19 @@ PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
 
+dist::
+	$(call STEP_MESSAGE)
+	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
+
 # If there are sub projects, our default, all, and ensure targets will
 # recurse into them.
 ifneq ($(SUB_PROJECTS),)
-dist:: $(SUB_PROJECTS:%=%_dist)
 only_build:: $(SUB_PROJECTS:%=%_only_build)
 only_test:: $(SUB_PROJECTS:%=%_only_test)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
+dist:: $(SUB_PROJECTS:%=%_dist)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -157,10 +161,6 @@ install::
 	$(call STEP_MESSAGE)
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
-
-dist::
-	$(call STEP_MESSAGE)
-	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
 
 test_all:: test_fast
 	$(call STEP_MESSAGE)
