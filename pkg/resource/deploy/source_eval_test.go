@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -170,7 +171,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(Options{}, &testProviderSource{})
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed := 0
@@ -246,7 +247,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(Options{}, &testProviderSource{})
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -356,7 +357,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(program)
 	assert.NoError(t, err)
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(Options{}, providerSource)
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	reads := 0
@@ -428,7 +429,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(Options{}, providerSource)
+	iter, err := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	reads, registers := 0, 0

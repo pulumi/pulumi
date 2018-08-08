@@ -372,3 +372,26 @@ func TestFailedDelete(t *testing.T) {
 	assert.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
 }
+
+// Tests that a Replace at the end of a plan doesn't leave the snapshot invalid.
+func TestReplaceAtEndOfPlan(t *testing.T) {
+	resourceA := NewResource("a")
+	snap := NewSnapshot([]*resource.State{
+		resourceA,
+	})
+
+	newResourceA := NewResource("a")
+
+	manager, sp := MockSetup(t, snap)
+	replace := deploy.NewReplaceStep(nil, resourceA, newResourceA, nil, false)
+	mutation, err := manager.BeginMutation(replace)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	assert.False(t, sp.Valid)
+	err = mutation.End(replace, true /* successful */)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	assert.True(t, sp.Valid)
+}
