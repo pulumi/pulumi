@@ -1,0 +1,3 @@
+name: config_capture_e2e
+runtime: nodejs
+description: Validates the interaction between config and capturing

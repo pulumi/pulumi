@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as minimist from "minimist";
 import { RunError } from "../errors";
 import { Resource } from "../resource";
-import { ensureConfig } from "./config";
 import { debuggablePromise } from "./debuggable";
 
 const grpc = require("grpc");
@@ -42,40 +40,27 @@ export interface Options {
 /**
  * _options are the current deployment options being used for this entire session.
  */
-let _options: Options | undefined;
-
-/**
- * options fetches the current configured options and, if required, lazily initializes them.
- */
-function options(): Options {
-    if (!_options) {
-        // See if the options are available in memory.  This would happen if we load the pulumi SDK multiple
-        // times into the same heap.  In this case, the entry point would have configured one copy of the library,
-        // which has an independent set of statics.  But it left behind the configured state in environment variables.
-        _options = loadOptions();
-    }
-    return _options;
-}
+const options = loadOptions();
 
 /**
  * Returns true if we're currently performing a dry-run, or false if this is a true update.
  */
 export function isDryRun(): boolean {
-    return options().dryRun === true;
+    return options.dryRun === true;
 }
 
 /**
  * Get the project being run by the current update.
  */
 export function getProject(): string | undefined {
-    return options().project;
+    return options.project;
 }
 
 /**
  * Get the stack being targeted by the current update.
  */
 export function getStack(): string | undefined {
-    return options().stack;
+    return options.stack;
 }
 
 /**
@@ -87,7 +72,7 @@ let monitor: any | undefined;
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
-    return !!monitor && !!options().monitorAddr;
+    return !!monitor && !!options.monitorAddr;
 }
 
 /**
@@ -95,7 +80,7 @@ export function hasMonitor(): boolean {
  */
 export function getMonitor(): Object {
     if (!monitor) {
-        const addr = options().monitorAddr;
+        const addr = options.monitorAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
             monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure());
@@ -118,7 +103,7 @@ let engine: any | undefined;
  */
 export function getEngine(): Object | undefined {
     if (!engine) {
-        const addr = options().engineAddr;
+        const addr = options.engineAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the engine.
             engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure());
@@ -131,51 +116,15 @@ export function getEngine(): Object | undefined {
  * serialize returns true if resource operations should be serialized.
  */
 export function serialize(): boolean {
-    const p = options().parallel;
+    const p = options.parallel;
     return !p || p <= 1;
 }
 
 /**
- * setOptions initializes the current runtime with information about whether we are performing a "dry
- * run" (preview), versus a real deployment, RPC addresses, and so on.   It may only be called once.
- */
-export function setOptions(opts: Options): void {
-    if (_options) {
-        throw new Error("Cannot configure runtime settings more than once");
-    }
-
-    // Set environment variables so other copies of the library can do the right thing.
-    if (opts.project !== undefined) {
-        process.env["PULUMI_NODEJS_PROJECT"] = opts.project;
-    }
-    if (opts.stack !== undefined) {
-        process.env["PULUMI_NODEJS_STACK"] = opts.stack;
-    }
-    if (opts.dryRun !== undefined) {
-        process.env["PULUMI_NODEJS_DRY_RUN"] = opts.dryRun.toString();
-    }
-    if (opts.parallel !== undefined) {
-        process.env["PULUMI_NODEJS_PARALLEL"] = opts.parallel.toString();
-    }
-    if (opts.monitorAddr !== undefined) {
-        process.env["PULUMI_NODEJS_MONITOR"] = opts.monitorAddr;
-    }
-    if (opts.engineAddr !== undefined) {
-        process.env["PULUMI_NODEJS_ENGINE"] = opts.engineAddr;
-    }
-
-    // Now, save the in-memory static state.  All RPC connections will be created lazily as required.
-    _options = opts;
-}
-
-/**
- * loadOptions recovers previously configured options in the case that a copy of the runtime SDK library
- * is loaded without going through the entry point shim, as happens when multiple copies are loaded.
+ * loadOptions recovers the options from the environment, which is set before we begin executing. This ensures
+ * that even when multiple copies of this module are loaded, they all get the same values.
  */
 function loadOptions(): Options {
-    // Load the config from the environment.
-    ensureConfig();
-
     // The only option that needs parsing is the parallelism flag.  Ignore any failures.
     let parallel: number | undefined;
     const parallelOpt = process.env["PULUMI_NODEJS_PARALLEL"];

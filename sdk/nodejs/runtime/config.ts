@@ -17,13 +17,12 @@
  */
 const configEnvKey = "PULUMI_CONFIG";
 
-const config: {[key: string]: string} = {};
+const config: {[key: string]: string} = parseConfig();
 
 /**
  * allConfig returns a copy of the full config map.
  */
 export function allConfig(): {[key: string]: string} {
-    ensureConfig();
     return Object.assign({}, config);
 }
 
@@ -31,7 +30,6 @@ export function allConfig(): {[key: string]: string} {
  * setConfig sets a configuration variable.
  */
 export function setConfig(k: string, v: string): void {
-    ensureConfig();
     config[cleanKey(k)] = v;
 }
 
@@ -39,29 +37,20 @@ export function setConfig(k: string, v: string): void {
  * getConfig returns a configuration variable's value or undefined if it is unset.
  */
 export function getConfig(k: string): string | undefined {
-    ensureConfig();
     return config[k];
 }
 
-/**
- * loaded is set to true if and when we've attempted to load config from the environment.
- */
-let loaded: boolean = false;
-
-/**
- * ensureConfig populates the runtime.config object based on configuration set in the environment.
- */
-export function ensureConfig() {
-    if (!loaded) {
-        const envConfig = process.env.PULUMI_CONFIG;
-        if (envConfig) {
-            const envObject: {[key: string]: string} = JSON.parse(envConfig);
-            for (const k of Object.keys(envObject)) {
-                config[cleanKey(k)] = envObject[k];
-            }
+function parseConfig() {
+    const parsedConfig: {[key: string]: string} = {};
+    const envConfig = process.env[configEnvKey];
+    if (envConfig) {
+        const envObject: {[key: string]: string} = JSON.parse(envConfig);
+        for (const k of Object.keys(envObject)) {
+            parsedConfig[cleanKey(k)] = envObject[k];
         }
-        loaded = true;
     }
+
+    return parsedConfig;
 }
 
 /**
