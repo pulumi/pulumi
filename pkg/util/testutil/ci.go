@@ -18,67 +18,73 @@ import (
 	"os"
 )
 
-// Forked from https://github.com/watson/ci-info/blob/master/index.js
-// If a suitable go package for this can be found, it would be great to move to that.
+// Environment variaibles and their values from https://github.com/watson/ci-info/blob/master/index.js
 
-type vendor struct {
-	name                    string
-	requiredEnvNames        []string
-	requiredEnvNameAndValue map[string]string
+type ciSystemDetector interface {
+	IsCI() bool
 }
 
-func makeVendor(name string, requiredEnvNames []string, requiredEnvNameAndValue map[string]string) vendor {
-	return vendor{name: name, requiredEnvNames: requiredEnvNames, requiredEnvNameAndValue: requiredEnvNameAndValue}
+// envVarDetector is a detector that uses the existence of a set of environment variables to determine if the system
+// is a CI system.  All variaibles must be present.
+type envVarDetector struct {
+	envVar []string
 }
 
-var vendors = []vendor{
-	// Constant, Name, Envs
-	makeVendor("Travis CI", []string{"TRAVIS"}, nil),
-	makeVendor("CircleCI", []string{"CIRCLECI"}, nil),
-	makeVendor("GitLab CI", []string{"GITLAB_CI"}, nil),
-	makeVendor("AppVeyor", []string{"APPVEYOR"}, nil),
-	makeVendor("CODESHIP", []string{"Codeship"}, map[string]string{"CI_NAME": "codeship"}),
-	makeVendor("Drone", []string{"DRONE"}, nil),
-	makeVendor("Magnum CI", []string{"MAGNUM"}, nil),
-	makeVendor("Semaphore", []string{"SEMAPHORE"}, nil),
-	makeVendor("Jenkins", []string{"JENKINS_URL", "BUILD_ID"}, nil),
-	makeVendor("Bamboo", []string{"bamboo_planKey"}, nil),
-	makeVendor("Team Foundation Server", []string{"TF_BUILD"}, nil),
-	makeVendor("TeamCity", []string{"TEAMCITY_VERSION"}, nil),
-	makeVendor("Buildkite", []string{"BUILDKITE"}, nil),
-	makeVendor("Hudson", []string{"HUDSON_URL"}, nil),
-	makeVendor("TaskCluster", []string{"TASK_ID", "RUN_ID"}, nil),
-	makeVendor("GoCD", []string{"GO_PIPELINE_LABEL"}, nil),
-	makeVendor("Bitbucket Pipelines", []string{"BITBUCKET_COMMIT"}, nil),
-	makeVendor("AWS CodeBuild", []string{"CODEBUILD_BUILD_ARN"}, nil),
+func (c envVarDetector) IsCI() bool {
+	for _, e := range c.envVar {
+		if os.Getenv(e) == "" {
+			return false
+		}
+	}
+
+	return true
 }
 
+// envValueDetector is a detector that uses the existence of a set of environment variables to determine if the system
+// is a CI system.  All variaibles must be present and their values must match expected data.
+type envValueDetector struct {
+	envMap map[string]string
+}
+
+func (c envValueDetector) IsCI() bool {
+	for k, v := range c.envMap {
+		if os.Getenv(k) != v {
+			return false
+		}
+	}
+
+	return true
+}
+
+var detectors = map[string]ciSystemDetector{
+	"Travis CI":              envVarDetector{envVar: []string{"TRAVIS"}},
+	"CircleCI":               envVarDetector{envVar: []string{"CIRCLECI"}},
+	"GitLab CI":              envVarDetector{envVar: []string{"GITLAB_CI"}},
+	"AppVeyor":               envVarDetector{envVar: []string{"APPVEYOR"}},
+	"Drone":                  envVarDetector{envVar: []string{"DRONE"}},
+	"Magnum CI":              envVarDetector{envVar: []string{"MAGNUM"}},
+	"Semaphore":              envVarDetector{envVar: []string{"SEMAPHORE"}},
+	"Jenkins":                envVarDetector{envVar: []string{"JENKINS_URL", "BUILD_ID"}},
+	"Bamboo":                 envVarDetector{envVar: []string{"bamboo_planKey"}},
+	"Team Foundation Server": envVarDetector{envVar: []string{"TF_BUILD"}},
+	"TeamCity":               envVarDetector{envVar: []string{"TEAMCITY_VERSION"}},
+	"Buildkite":              envVarDetector{envVar: []string{"BUILDKITE"}},
+	"Hudson":                 envVarDetector{envVar: []string{"HUDSON_URL"}},
+	"TaskCluster":            envVarDetector{envVar: []string{"TASK_ID", "RUN_ID"}},
+	"GoCD":                   envVarDetector{envVar: []string{"GO_PIPELINE_LABEL"}},
+	"Bitbucket Pipelines":    envVarDetector{envVar: []string{"BITBUCKET_COMMIT"}},
+	"AWS CodeBuild":          envVarDetector{envVar: []string{"CODEBUILD_BUILD_ARN"}},
+	"CODESHIP":               envValueDetector{envMap: map[string]string{"CI_NAME": "codeship"}},
+}
+
+// IsCI returns true when the current system looks like a CI system. Detection is based on environment variables
+// that CI vendors we know about set.
 func IsCI() bool {
-	for _, v := range vendors {
-		if v.isCI() {
+	for _, v := range detectors {
+		if v.IsCI() {
 			return true
 		}
 	}
 
 	return false
-}
-
-func (vendor vendor) isCI() bool {
-	for _, n := range vendor.requiredEnvNames {
-		e := os.Getenv(n)
-		if e == "" {
-			return false
-		}
-	}
-
-	if vendor.requiredEnvNameAndValue != nil {
-		for k, v := range vendor.requiredEnvNameAndValue {
-			e := os.Getenv(k)
-			if e == "" || e != v {
-				return false
-			}
-		}
-	}
-
-	return true
 }
