@@ -69,8 +69,8 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
 
-        if (opts.parent && !Resource.isInstance(opts.parent)) {
-            throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
+        if (opts.parent && (!Resource.isInstance(opts.parent) || CustomResource.isInstance(opts.parent)) {
+            throw new RunError(`Resource parent is not a valid ComponentResource: ${opts.parent}`);
         }
 
         if (opts.id) {
@@ -102,7 +102,7 @@ export interface ResourceOptions {
     /**
      * An optional parent resource to which this resource belongs.
      */
-    parent?: Resource;
+    parent?: ComponentResource;
     /**
      * An optional additional explicit dependencies on other resources.
      */
