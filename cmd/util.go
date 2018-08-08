@@ -435,7 +435,13 @@ func addCIMetadataToEnvironment(env map[string]string) {
 	if os.Getenv("TRAVIS") == "true" {
 		env[backend.CISystem] = "travis-ci"
 
-		// Pass pull request-specific vales as needed.
+		// Pass build-related information.
+		env[backend.CIBuildID] = os.Getenv("TRAVIS_JOB_ID")
+		env[backend.CIBuildType] = os.Getenv("TRAVIS_EVENT_TYPE")
+		// Travis doesn't set a build URL in its environment, see:
+		// https://github.com/travis-ci/travis-ci/issues/8935
+
+		// Pass pull request-specific vales as appropriate.
 		if sha := os.Getenv("TRAVIS_PULL_REQUEST_SHA"); sha != "" {
 			env[backend.CIPRHeadSHA] = sha
 		}
