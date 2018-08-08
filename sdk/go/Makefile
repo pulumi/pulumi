@@ -22,3 +22,6 @@ lint::
 
 test_fast::
 	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+
+dist::
+	go install -ldflags "-X github.com/pulumi/pulumi/pkg/version.Version=${VERSION}" ${LANGHOST_PKG}

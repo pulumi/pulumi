@@ -112,6 +112,7 @@ default::
 # If there are sub projects, our default, all, and ensure targets will
 # recurse into them.
 ifneq ($(SUB_PROJECTS),)
+dist:: $(SUB_PROJECTS:%=%_dist)
 only_build:: $(SUB_PROJECTS:%=%_only_build)
 only_test:: $(SUB_PROJECTS:%=%_only_test)
 default:: $(SUB_PROJECTS:%=%_default)
@@ -157,6 +158,9 @@ install::
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
 
+dist::
+	$(call STEP_MESSAGE)
+
 test_all:: test_fast
 	$(call STEP_MESSAGE)
 
@@ -199,6 +203,8 @@ $(SUB_PROJECTS:%=%_only_build):
 	@$(MAKE) -C ./$(@:%_only_build=%) only_build
 $(SUB_PROJECTS:%=%_only_test):
 	@$(MAKE) -C ./$(@:%_only_test=%) only_test
+$(SUB_PROJECTS:%=%_dist):
+	@$(MAKE) -C ./$(@:%_dist=%) dist
 endif
 
 # As a convinece, we provide a format target that folks can build to
