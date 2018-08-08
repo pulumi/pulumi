@@ -77,6 +77,12 @@ const (
 
 	// CISystem is the name of the CI system running the pulumi operation.
 	CISystem = "ci.system"
+	// CIBuildID is an opaque ID of the build in the CI system.
+	CIBuildID = "ci.build.id"
+	// CIBuildType is the type of build of the CI system, e.g. "push", "pull_request", "test_only".
+	CIBuildType = "ci.build.type"
+	// CIBuildURL is a URL to get more information about the particular CI build.
+	CIBuildURL = "ci.build.url"
 
 	// CIPRHeadSHA is the SHA of the HEAD commit of a pull request running on CI. This is needed since the CI
 	// server will run at a different, merge commit. (headSHA merged into the target branch.)
