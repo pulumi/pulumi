@@ -41,7 +41,7 @@ const (
 	// a project directory.
 	pulumiTemplateManifestFile = ".pulumi.template.yaml"
 
-	// pulumiLocalTemplatePathEnvVar is a path to the folder where template are stored.
+	// pulumiLocalTemplatePathEnvVar is a path to the folder where templates are stored.
 	// It is used in sandboxed environments where the classic template folder may not be writable.
 	pulumiLocalTemplatePathEnvVar = "PULUMI_TEMPLATE_PATH"
 )
@@ -214,10 +214,10 @@ func (template Template) CopyTemplateFiles(
 
 // GetTemplateDir returns the directory in which templates on the current machine are stored.
 func GetTemplateDir(name string) (string, error) {
-	// Allow the folder we use to store template to be overridden
+	// Allow the folder we use to store templates to be overridden.
 	dir := os.Getenv(pulumiLocalTemplatePathEnvVar)
 
-	// Use the classic template directory if there is no override
+	// Use the classic template directory if there is no override.
 	if dir == "" {
 		u, err := user.Current()
 		if u == nil || err != nil {
