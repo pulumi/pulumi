@@ -593,9 +593,6 @@ func printArchiveDiff(
 	oldArchive *resource.Archive, newArchive *resource.Archive,
 	planning bool, indent int, summary bool, debug bool) {
 
-	// TODO: this could be called recursively from itself.  In the recursive case, we might have an
-	// archive that actually hasn't changed.  Check for that, and terminate the diff printing.
-
 	op := deploy.OpUpdate
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
@@ -684,18 +681,31 @@ func printAssetsDiff(
 					printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, top, tprefix)
 				}
 
-				oldAsset := oldAssets[oldName]
-				newAsset := newAssets[newName]
+				old := oldAssets[oldName]
+				new := newAssets[newName]
 
-				switch t := oldAsset.(type) {
+				// If the assets/archvies haven't changed, then don't bother printing them out.
+				// This happens routinely when we have an archive that has changed because some
+				// asset it in it changed.  We want *that* asset to be printed, but not all the
+				// unchanged assets.
+
+				switch t := old.(type) {
 				case *resource.Archive:
-					printArchiveDiff(
-						b, titleFunc, t, newAsset.(*resource.Archive),
-						planning, indent, summary, debug)
+					newArchive := new.(*resource.Archive)
+
+					if t.Hash != newArchive.Hash {
+						printArchiveDiff(
+							b, titleFunc, t, newArchive,
+							planning, indent, summary, debug)
+					}
 				case *resource.Asset:
-					printAssetDiff(
-						b, titleFunc, t, newAsset.(*resource.Asset),
-						planning, indent, summary, debug)
+					newAsset := new.(*resource.Asset)
+
+					if t.Hash != newAsset.Hash {
+						printAssetDiff(
+							b, titleFunc, t, newAsset,
+							planning, indent, summary, debug)
+					}
 				}
 
 				i++
@@ -739,43 +749,16 @@ func printAssetsDiff(
 	}
 }
 
-func makeAssetHeader(asset *resource.Asset) string {
-	var assetType string
-	var contents string
-
-	if path, has := asset.GetPath(); has {
-		assetType = "file"
-		contents = path
-	} else if uri, has := asset.GetURI(); has {
-		assetType = "uri"
-		contents = uri
-	} else {
-		assetType = "text"
-		contents = "..."
-	}
-
-	return fmt.Sprintf("asset(%s:%s) { %s }\n", assetType, shortHash(asset.Hash), contents)
-}
-
 func printAssetDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
 	oldAsset *resource.Asset, newAsset *resource.Asset,
 	planning bool, indent int, summary bool, debug bool) {
 
+	contract.Assertf(oldAsset.Hash != newAsset.Hash, "Should not call printAssetDiff on unchanged assets")
+
 	op := deploy.OpUpdate
 
-	// If the assets aren't changed, just print out: = assetName: type(hash)
-	if oldAsset.Hash == newAsset.Hash {
-		if !summary {
-			op = deploy.OpSame
-			titleFunc(op, false)
-			write(b, op, makeAssetHeader(oldAsset))
-		}
-		return
-	}
-
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
-
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
 	if oldAsset.IsText() {
