@@ -160,6 +160,7 @@ install::
 
 dist::
 	$(call STEP_MESSAGE)
+	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; fi
 
 test_all:: test_fast
 	$(call STEP_MESSAGE)
