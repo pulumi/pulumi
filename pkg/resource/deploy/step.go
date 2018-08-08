@@ -35,7 +35,7 @@ type Step interface {
 	// a function to call to signal that this step has fully completed, and an error, if one occurred while applying
 	// the step.
 	//
-	// The returned StepCompleteFunc, if not null, must be called after committing the results of this step into
+	// The returned StepCompleteFunc, if not nil, must be called after committing the results of this step into
 	// the state of the deployment.
 	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
