@@ -749,24 +749,6 @@ func printAssetsDiff(
 	}
 }
 
-func makeAssetHeader(asset *resource.Asset) string {
-	var assetType string
-	var contents string
-
-	if path, has := asset.GetPath(); has {
-		assetType = "file"
-		contents = path
-	} else if uri, has := asset.GetURI(); has {
-		assetType = "uri"
-		contents = uri
-	} else {
-		assetType = "text"
-		contents = "..."
-	}
-
-	return fmt.Sprintf("asset(%s:%s) { %s }\n", assetType, shortHash(asset.Hash), contents)
-}
-
 func printAssetDiff(
 	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
 	oldAsset *resource.Asset, newAsset *resource.Asset,
