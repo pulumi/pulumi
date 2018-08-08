@@ -764,13 +764,10 @@ func printAssetDiff(
 
 	op := deploy.OpUpdate
 
-	// If the assets aren't changed, just print out: = assetName: type(hash)
+	// If the assets aren't changed, then don't bother printing them out.  This happens routinely
+	// when we have an archive that has changed because some asset it in it changed.  We want *that*
+	// asset to be printed, but not all the unchanged assets.
 	if oldAsset.Hash == newAsset.Hash {
-		if !summary {
-			op = deploy.OpSame
-			titleFunc(op, false)
-			write(b, op, makeAssetHeader(oldAsset))
-		}
 		return
 	}
 
