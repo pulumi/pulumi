@@ -1075,7 +1075,8 @@ function getOrCreateEntry(
 
     function captureModule(moduleName: string) {
         const nodeModulesPrefix = "./node_modules/";
-        const isLocalModule = moduleName.startsWith(".") && !moduleName.startsWith(nodeModulesPrefix);
+        const isInNodeModules = moduleName.startsWith(nodeModulesPrefix);
+        const isLocalModule = moduleName.startsWith(".") && !isInNodeModules;
 
         if (obj.deploymentOnlyModule || isLocalModule) {
             // Try to serialize deployment-time and local-modules by-value.
@@ -1105,7 +1106,7 @@ function getOrCreateEntry(
             // will help ensure that lookup of those modules will work on the cloud-side even if the
             // module isn't in a relative node_modules directory.  For example, this happens with
             // aws-sdk.  It ends up actually being in /var/runtime/node_modules inside aws lambda.
-            entry.module = moduleName.startsWith(nodeModulesPrefix)
+            entry.module = isInNodeModules
                 ? moduleName.substring(nodeModulesPrefix.length)
                 : moduleName;
         }
