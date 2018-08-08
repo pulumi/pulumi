@@ -39,6 +39,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/hashicorp/go-multierror"
+
+	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/resource/config"
@@ -141,12 +144,12 @@ func newLanguageHost(nodePath, runPath, engineAddress, tracing string, typescrip
 func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	// To get the plugins required by a program, find all node_modules/ packages that contain { "pulumi": true }
-	// inside of their packacge.json files.  We begin this search in the same directory that contains the project.
+	// inside of their package.json files.  We begin this search in the same directory that contains the project.
 	// It's possible that a developer would do a `require("../../elsewhere")` and that we'd miss this as a
 	// dependency, however the solution for that is simple: install the package in the project root.
 	plugins, err := getPluginsFromDir(req.GetProgram(), false)
 	if err != nil {
-		return nil, err
+		glog.V(3).Infof("one or more errors while discovering plugins: %s", err)
 	}
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,
@@ -161,6 +164,7 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 	}
 
 	var plugins []*pulumirpc.PluginDependency
+	var allErrors *multierror.Error
 	for _, file := range files {
 		name := file.Name()
 		curr := filepath.Join(dir, name)
@@ -168,24 +172,27 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 		// Re-stat the directory, in case it is a symlink.
 		file, err = os.Stat(curr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "re-statting file %s", curr)
+			allErrors = multierror.Append(allErrors, err)
+			continue
 		}
 		if file.IsDir() {
 			// if a directory, recurse.
 			more, err := getPluginsFromDir(curr, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
-				return nil, err
+				allErrors = multierror.Append(allErrors, err)
+				continue
 			}
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
 			b, err := ioutil.ReadFile(curr)
 			if err != nil {
-				return nil, errors.Wrapf(err, "reading package.json %s", curr)
+				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "reading package.json %s", curr))
+				continue
 			}
 			ok, name, version, err := getPackageInfo(b)
 			if err != nil {
-				return nil, errors.Wrapf(err, "unmarshaling package.json %s", curr)
+				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
 			} else if ok {
 				plugins = append(plugins, &pulumirpc.PluginDependency{
 					Name:    name,
@@ -195,7 +202,7 @@ func getPluginsFromDir(dir string, inNodeModules bool) ([]*pulumirpc.PluginDepen
 			}
 		}
 	}
-	return plugins, nil
+	return plugins, allErrors.ErrorOrNil()
 }
 
 // packageJSON is the minimal amount of package.json information we care about.
