@@ -130,11 +130,9 @@ func newNewCmd() *cobra.Command {
 			} else if len(templates) == 1 {
 				template = templates[0]
 			} else {
-				if !cmdutil.Interactive() {
-					return errors.New("no template specified; please use `pulumi new` to choose one")
+				if template, err = chooseTemplate(templates, displayOpts); err != nil {
+					return err
 				}
-
-				template = chooseTemplate(templates, displayOpts)
 			}
 
 			// Do a dry run, if we're not forcing files to be overwritten.
@@ -379,7 +377,12 @@ func installDependencies() error {
 }
 
 // chooseTemplate will prompt the user to choose amongst the available templates.
-func chooseTemplate(templates []workspace.Template, opts backend.DisplayOptions) workspace.Template {
+func chooseTemplate(templates []workspace.Template, opts backend.DisplayOptions) (workspace.Template, error) {
+	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
+	if !cmdutil.Interactive() {
+		return workspace.Template{}, errors.New(chooseTemplateErr)
+	}
+
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
@@ -390,14 +393,15 @@ func chooseTemplate(templates []workspace.Template, opts backend.DisplayOptions)
 	options, optionToTemplateMap := templateArrayToStringArrayAndMap(templates)
 
 	var option string
-	err := survey.AskOne(&survey.Select{
+	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
 		PageSize: len(options),
-	}, &option, nil)
-	contract.IgnoreError(err)
+	}, &option, nil); err != nil {
+		return workspace.Template{}, errors.New(chooseTemplateErr)
+	}
 
-	return optionToTemplateMap[option]
+	return optionToTemplateMap[option], nil
 }
 
 // parseConfig parses the config values passed via command line flags.
