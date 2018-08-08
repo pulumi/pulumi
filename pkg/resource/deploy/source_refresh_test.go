@@ -114,10 +114,7 @@ func TestRefresh(t *testing.T) {
 	target.Snapshot = &Snapshot{Resources: olds}
 
 	// Create and iterate a source.
-	iter, err := NewRefreshSource(nil, proj, target, false).Iterate(Options{
-		// Context used for cancellation.
-		Context: context.Background(),
-	}, providerSource)
+	iter, err := NewRefreshSource(nil, proj, target, false).Iterate(context.Background(), Options{}, providerSource)
 	assert.NoError(t, err)
 
 	processed := 0

@@ -195,12 +195,11 @@ func (res *planResult) Chdir() (func(), error) {
 func (res *planResult) Walk(cancelCtx *Context, events deploy.Events, preview bool) (deploy.PlanSummary, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	opts := deploy.Options{
-		Context:  ctx,
 		Events:   events,
 		Parallel: res.Options.Parallel,
 	}
 
-	src, err := res.Plan.Source().Iterate(opts, res.Plan)
+	src, err := res.Plan.Source().Iterate(ctx, opts, res.Plan)
 	if err != nil {
 		cancelFunc()
 		return nil, err

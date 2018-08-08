@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"context"
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/resource"
@@ -42,7 +43,7 @@ type Source interface {
 	IsRefresh() bool
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate(opts Options, providers ProviderSource) (SourceIterator, error)
+	Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.

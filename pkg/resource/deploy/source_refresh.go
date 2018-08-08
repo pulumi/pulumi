@@ -52,15 +52,15 @@ func (src *refreshSource) Project() tokens.PackageName { return src.proj.Name }
 func (src *refreshSource) Info() interface{}           { return nil }
 func (src *refreshSource) IsRefresh() bool             { return true }
 
-func (src *refreshSource) Iterate(opts Options, provs ProviderSource) (SourceIterator, error) {
-	contract.Require(opts.Context != nil, "opts.Context != nil")
+func (src *refreshSource) Iterate(ctx context.Context, opts Options, provs ProviderSource) (SourceIterator, error) {
+	contract.Require(ctx != nil, "opts.Context != nil")
 	var states []*resource.State
 	if snap := src.target.Snapshot; snap != nil {
 		states = snap.Resources
 	}
 
 	return &refreshSourceIterator{
-		ctx:       opts.Context,
+		ctx:       ctx,
 		plugctx:   src.plugctx,
 		target:    src.target,
 		providers: provs,

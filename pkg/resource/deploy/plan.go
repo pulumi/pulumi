@@ -15,8 +15,6 @@
 package deploy
 
 import (
-	"context"
-
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -32,9 +30,8 @@ import (
 
 // Options controls the planning and deployment process.
 type Options struct {
-	Context  context.Context // context for this plan/deployment.
-	Events   Events          // an optional events callback interface.
-	Parallel int             // the degree of parallelism for resource operations (<=1 for serial).
+	Events   Events // an optional events callback interface.
+	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

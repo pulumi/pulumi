@@ -84,7 +84,9 @@ func (src *evalSource) Info() interface{} { return src.runinfo }
 func (src *evalSource) IsRefresh() bool   { return false }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(opts Options, providers ProviderSource) (SourceIterator, error) {
+func (src *evalSource) Iterate(ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, error) {
+	contract.Ignore(ctx) // TODO[pulumi/pulumi#1714]
+
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
