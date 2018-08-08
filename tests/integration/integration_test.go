@@ -457,3 +457,12 @@ func TestExplicitProvider(t *testing.T) {
 		},
 	})
 }
+
+// Tests that reads of unknown IDs do not fail.
+func TestGetCreated(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "get_created",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
