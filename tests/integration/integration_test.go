@@ -371,6 +371,17 @@ func TestConfigBasicNodeJS(t *testing.T) {
 	})
 }
 
+func TestConfigCaptureNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"value": "it works",
+		},
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
