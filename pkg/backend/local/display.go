@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -311,6 +312,11 @@ func shouldShow(step engine.StepEventMetadata, opts backend.DisplayOptions) bool
 			return true
 		}
 		return opts.ShowSameResources
+	}
+
+	// If this step refers to a default provider resource, we do not display any changes.
+	if providers.IsProviderType(step.URN.Type()) && step.URN.Name() == "default" {
+		return false
 	}
 
 	return true
