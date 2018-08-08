@@ -390,7 +390,7 @@ func chooseTemplate(templates []workspace.Template, opts backend.DisplayOptions)
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.BrightWhite + message + colors.Reset)
 
-	options, optionToTemplateMap := templateArrayToStringArrayAndMap(templates)
+	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
@@ -550,14 +550,27 @@ func promptForValue(
 	}
 }
 
-// templateArrayToStringArrayAndMap returns an array of template names and map of names to templates
-// from an array of templates.
-func templateArrayToStringArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
+// templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
+// Each option string is made up of the template name and description with some padding in between.
+func templatesToOptionArrayAndMap(templates []workspace.Template) ([]string, map[string]workspace.Template) {
+	// Find the longest name length. Used to add padding between the name and description.
+	maxNameLength := 0
+	for _, template := range templates {
+		if len(template.Name) > maxNameLength {
+			maxNameLength = len(template.Name)
+		}
+	}
+
+	// Build the array and map.
 	var options []string
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
-		options = append(options, template.Name)
-		nameToTemplateMap[template.Name] = template
+		// Create the option string that combines the name, padding, and description.
+		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
+
+		// Add it to the array and map.
+		options = append(options, option)
+		nameToTemplateMap[option] = template
 	}
 	sort.Strings(options)
 
