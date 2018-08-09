@@ -67,9 +67,6 @@ func newStackCmd() *cobra.Command {
 			if isCloud {
 				if cs, ok := s.(cloud.Stack); ok {
 					fmt.Printf("    Owner: %s\n", cs.OrgName())
-					if !cs.RunLocally() {
-						fmt.Printf("    PPC: %s\n", cs.CloudName())
-					}
 				}
 			}
 

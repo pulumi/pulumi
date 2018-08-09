@@ -82,7 +82,6 @@ func newStackLsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			showPPCColumn, maxPPC := hasAnyPPCStacks(bs)
 			_, showURLColumn := b.(cloud.Backend)
 
 			for _, stack := range bs {
@@ -115,10 +114,6 @@ func newStackLsCmd() *cobra.Command {
 			formatDirective := "%-" + strconv.Itoa(maxname) + "s %-24s %-18s"
 			headers := []interface{}{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
 
-			if showPPCColumn {
-				formatDirective += " %-" + strconv.Itoa(maxPPC) + "s"
-				headers = append(headers, "PPC")
-			}
 			if showURLColumn {
 				formatDirective += " %s"
 				headers = append(headers, "URL")
@@ -149,16 +144,6 @@ func newStackLsCmd() *cobra.Command {
 				}
 
 				values := []interface{}{name, lastUpdate, resourceCount}
-				if showPPCColumn {
-					// Print out the PPC name.
-					var cloudInfo string
-					if cs, ok := stack.(cloud.Stack); ok && !cs.RunLocally() {
-						cloudInfo = cs.CloudName()
-					} else {
-						cloudInfo = none
-					}
-					values = append(values, cloudInfo)
-				}
 				if showURLColumn {
 					var url string
 					if cs, ok := stack.(cloud.Stack); ok {
@@ -182,18 +167,4 @@ func newStackLsCmd() *cobra.Command {
 		&allStacks, "all", "a", false, "List all stacks instead of just stacks for the current project")
 
 	return cmd
-}
-
-func hasAnyPPCStacks(stacks []backend.Stack) (bool, int) {
-	res, maxLen := false, 0
-	for _, s := range stacks {
-		if cs, ok := s.(cloud.Stack); ok {
-			if !cs.RunLocally() {
-				res = true
-				maxLen = len(cs.CloudName())
-			}
-		}
-	}
-
-	return res, maxLen
 }

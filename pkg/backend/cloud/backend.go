@@ -525,11 +525,7 @@ func (b *cloudBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(apistack, b)
-	fmt.Printf("Created stack '%s'", stack.Name())
-	if !stack.RunLocally() {
-		fmt.Printf(" in PPC %s", stack.CloudName())
-	}
-	fmt.Println(".")
+	fmt.Printf("Created stack '%s'.\n", stack.Name())
 
 	return stack, nil
 }
@@ -716,10 +712,8 @@ func confirmBeforeUpdating(updateKind client.UpdateKind, stack backend.Stack,
 
 		choices := []string{string(yes), string(no)}
 
-		// if this is a managed stack, then we can get the details for the operation, as we will
-		// have been able to collect the details while the preview ran.  For ppc stacks, we don't
-		// have that information since all the PPC does is forward stdout events to us.
-		if stack.(Stack).RunLocally() && !opts.SkipPreview {
+		// For non-previews, we can also offer a detailed summary.
+		if !opts.SkipPreview {
 			choices = append(choices, string(details))
 		}
 
@@ -764,12 +758,6 @@ func (b *cloudBackend) PreviewThenPromptThenExecute(
 	stack, err := getStack(ctx, b, stackRef)
 	if err != nil {
 		return nil, err
-	}
-
-	if !stack.(Stack).RunLocally() &&
-		(updateKind == client.UpdateKindDestroy || updateKind == client.UpdateKindRefresh) {
-		// The service does not support previews for PPC stacks, other than for updates.  So skip the preview.
-		opts.SkipPreview = true
 	}
 
 	// Preview the operation to the user and ask them if they want to proceed.
@@ -888,7 +876,7 @@ func (b *cloudBackend) updateStack(
 	var version int
 	var token string
 	var err error
-	if !stack.(Stack).RunLocally() || persist {
+	if persist {
 		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
 
 		// Print a URL at the end of the update pointing to the Pulumi Service.
@@ -911,22 +899,9 @@ func (b *cloudBackend) updateStack(
 		return nil, err
 	}
 
-	// If we are targeting a stack that uses local operations, run the appropriate engine action locally.
-	if stack.(Stack).RunLocally() {
-		return b.runEngineAction(
-			ctx, action, stack.Name(), pkg, root, opts, update, token, callerEventsOpt,
-			dryRun, persist, scopes)
-	}
-
-	// Otherwise, wait for the update to complete while rendering its events to stdout/stderr.
-	status, err := b.waitForUpdate(ctx, actionLabel, update, opts.Display)
-	if err != nil {
-		return nil, errors.Wrapf(err, "waiting for %s", action)
-	} else if status != apitype.StatusSucceeded {
-		return nil, errors.Errorf("%s unsuccessful: status %v", action, status)
-	}
-
-	return nil, nil
+	return b.runEngineAction(
+		ctx, action, stack.Name(), pkg, root, opts, update, token, callerEventsOpt,
+		dryRun, persist, scopes)
 }
 
 // uploadArchive archives the current Pulumi program and uploads it to a signed URL. "current"
@@ -1144,22 +1119,11 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stackRef backend.StackRefere
 		return nil, errors.New("stack not found")
 	}
 
-	// If we're dealing with a stack that runs its operations locally, get the stack's target and fetch the logs
-	// directly
-	if stack.(Stack).RunLocally() {
-		target, targetErr := b.getTarget(ctx, stackRef)
-		if targetErr != nil {
-			return nil, targetErr
-		}
-		return local.GetLogsForTarget(target, logQuery)
+	target, targetErr := b.getTarget(ctx, stackRef)
+	if targetErr != nil {
+		return nil, targetErr
 	}
-
-	// Otherwise, fetch the logs from the service.
-	stackID, err := b.getCloudStackIdentifier(stackRef)
-	if err != nil {
-		return nil, err
-	}
-	return b.client.GetStackLogs(ctx, stackID, logQuery)
+	return local.GetLogsForTarget(target, logQuery)
 }
 
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
