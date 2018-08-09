@@ -136,8 +136,13 @@ all::
 	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
 endif
 
+ifneq ($(NO_LINT),)
+default:: build install test_fast
+all:: build install test_all
+else
 default:: build install lint test_fast
 all:: build install lint test_all
+endif
 
 ensure::
 	$(call STEP_MESSAGE)
