@@ -71,13 +71,13 @@ func (src *refreshSource) Iterate(ctx context.Context, opts Options, provs Provi
 
 // refreshSourceIterator returns state from an existing snapshot, augmented by consulting the resource provider.
 type refreshSourceIterator struct {
-	ctx       context.Context // cancellation context for this source.
-	plugctx   *plugin.Context
-	target    *Target
-	providers ProviderSource
-	states    []*resource.State
-	current   int
-	lastEvent SourceEvent // the last event that we emitted, or nil if no such event exists.
+	ctx           context.Context // cancellation context for this source.
+	plugctx       *plugin.Context
+	target        *Target
+	providers     ProviderSource
+	states        []*resource.State
+	current       int
+	lastEventDone chan struct{} // completion channel for the last event that we sent, or nil if we haven't emitted any
 }
 
 func (iter *refreshSourceIterator) Close() error {
@@ -94,21 +94,11 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 		// The simplest way to guarantee this property is to serialize every event such that the next event isn't
 		// sent until the previous event retires. This isn't fast, but it works. We should come up with a more
 		// performant method at some point.
-		if iter.lastEvent != nil {
+		if iter.lastEventDone != nil {
 			logging.V(7).Infof("refreshSourceIterator.Next(): waiting for previous event to retire")
 
-			var done chan struct{}
-			switch e := iter.lastEvent.(type) {
-			case *refreshSourceEvent:
-				done = e.done
-			case *refreshReadEvent:
-				done = e.done
-			default:
-				contract.Failf("unknown type emitted by refreshSourceIterator")
-			}
-
 			select {
-			case <-done:
+			case <-iter.lastEventDone:
 			case <-iter.ctx.Done():
 				logging.V(7).Infof("refreshSourceIterator.Next(): cancelled, exiting")
 				return nil, nil
@@ -124,7 +114,7 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 
 		current := iter.states[iter.current]
 		if current.External {
-			iter.lastEvent = &refreshReadEvent{
+			event := &refreshReadEvent{
 				id:           current.ID,
 				name:         current.URN.Name(),
 				baseType:     current.Type,
@@ -134,15 +124,17 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 				dependencies: current.Dependencies,
 				done:         make(chan struct{}),
 			}
-			return iter.lastEvent, nil
+			iter.lastEventDone = event.done
+			return event, nil
 		}
 		goal, err := iter.newRefreshGoal(current)
 		if err != nil {
 			logging.V(7).Infof("refreshSourceIterator.Next(): error: %s", err.Error())
 			return nil, err
 		} else if goal != nil {
-			iter.lastEvent = &refreshSourceEvent{goal: goal, done: make(chan struct{})}
-			return iter.lastEvent, nil
+			event := &refreshSourceEvent{goal: goal, done: make(chan struct{})}
+			iter.lastEventDone = event.done
+			return event, nil
 		}
 		// If the goal was nil, it means the resource was deleted, and we should keep going.
 	}

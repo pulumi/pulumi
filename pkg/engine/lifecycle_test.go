@@ -1007,11 +1007,7 @@ func TestExternalRefresh(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, program, loaders...)
 	p := &TestPlan{
 		Options: UpdateOptions{host: host},
-		Steps: []TestStep{
-			{
-				Op: Update,
-			},
-		},
+		Steps:   []TestStep{{Op: Update}},
 	}
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
@@ -1023,11 +1019,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	p = &TestPlan{
 		Options: UpdateOptions{host: host},
-		Steps: []TestStep{
-			{
-				Op: Refresh,
-			},
-		},
+		Steps:   []TestStep{{Op: Refresh}},
 	}
 
 	snap = p.Run(t, snap)
