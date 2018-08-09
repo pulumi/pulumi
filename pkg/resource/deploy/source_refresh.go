@@ -77,7 +77,7 @@ type refreshSourceIterator struct {
 	providers ProviderSource
 	states    []*resource.State
 	current   int
-	lastEvent *refreshSourceEvent // the last event that we emitted, or nil if no such event exists.
+	lastEvent SourceEvent // the last event that we emitted, or nil if no such event exists.
 }
 
 func (iter *refreshSourceIterator) Close() error {
@@ -96,8 +96,19 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 		// performant method at some point.
 		if iter.lastEvent != nil {
 			logging.V(7).Infof("refreshSourceIterator.Next(): waiting for previous event to retire")
+
+			var done chan struct{}
+			switch e := iter.lastEvent.(type) {
+			case *refreshSourceEvent:
+				done = e.done
+			case *refreshReadEvent:
+				done = e.done
+			default:
+				contract.Failf("unknown type emitted by refreshSourceIterator")
+			}
+
 			select {
-			case <-iter.lastEvent.done:
+			case <-done:
 			case <-iter.ctx.Done():
 				logging.V(7).Infof("refreshSourceIterator.Next(): cancelled, exiting")
 				return nil, nil
@@ -110,7 +121,22 @@ func (iter *refreshSourceIterator) Next() (SourceEvent, error) {
 			logging.V(7).Infof("refreshSourceIterator.Next(): no more goal states")
 			return nil, nil
 		}
-		goal, err := iter.newRefreshGoal(iter.states[iter.current])
+
+		current := iter.states[iter.current]
+		if current.External {
+			iter.lastEvent = &refreshReadEvent{
+				id:           current.ID,
+				name:         current.URN.Name(),
+				baseType:     current.Type,
+				provider:     current.Provider,
+				parent:       current.Parent,
+				props:        current.Inputs,
+				dependencies: current.Dependencies,
+				done:         make(chan struct{}),
+			}
+			return iter.lastEvent, nil
+		}
+		goal, err := iter.newRefreshGoal(current)
 		if err != nil {
 			logging.V(7).Infof("refreshSourceIterator.Next(): error: %s", err.Error())
 			return nil, err
@@ -159,4 +185,29 @@ func (rse *refreshSourceEvent) event()               {}
 func (rse *refreshSourceEvent) Goal() *resource.Goal { return rse.goal }
 func (rse *refreshSourceEvent) Done(result *RegisterResult) {
 	rse.done <- struct{}{}
+}
+
+type refreshReadEvent struct {
+	id           resource.ID
+	name         tokens.QName
+	baseType     tokens.Type
+	provider     string
+	parent       resource.URN
+	props        resource.PropertyMap
+	dependencies []resource.URN
+	done         chan struct{}
+}
+
+var _ ReadResourceEvent = (*refreshReadEvent)(nil)
+
+func (g *refreshReadEvent) event()                           {}
+func (g *refreshReadEvent) ID() resource.ID                  { return g.id }
+func (g *refreshReadEvent) Name() tokens.QName               { return g.name }
+func (g *refreshReadEvent) Type() tokens.Type                { return g.baseType }
+func (g *refreshReadEvent) Provider() string                 { return g.provider }
+func (g *refreshReadEvent) Parent() resource.URN             { return g.parent }
+func (g *refreshReadEvent) Properties() resource.PropertyMap { return g.props }
+func (g *refreshReadEvent) Dependencies() []resource.URN     { return g.dependencies }
+func (g *refreshReadEvent) Done(_ *ReadResult) {
+	g.done <- struct{}{}
 }
