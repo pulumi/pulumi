@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/diag/colors"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/tokens"
 	"github.com/pulumi/pulumi/pkg/util/contract"
@@ -281,6 +282,11 @@ func (acts *planActions) OnResourceStepPre(step deploy.Step) (interface{}, error
 	acts.MapLock.Unlock()
 	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
 
+	// Check for a default provider step and skip reporting if necessary.
+	if !acts.Opts.reportDefaultProviderSteps && isDefaultProviderStep(step) {
+		return nil, nil
+	}
+
 	// Warn the user if they're not updating a resource whose initialization failed.
 	if step.Op() == deploy.OpSame && len(step.Old().InitErrors) > 0 {
 		indent := "         "
@@ -305,9 +311,19 @@ func (acts *planActions) OnResourceStepPost(ctx interface{},
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
 
+	reportStep := acts.Opts.reportDefaultProviderSteps || !isDefaultProviderStep(step)
+
 	if err != nil {
-		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(step.URN()), err)
-	} else {
+		// We always want to report a failure. If we intend to elide this step overall, though, we report it as a
+		// global message.
+		reportedURN := resource.URN("")
+		if reportStep {
+			reportedURN = step.URN()
+		}
+
+		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
+	} else if reportStep {
+
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if step.Logical() {
 			acts.MapLock.Lock()
@@ -325,6 +341,12 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
+
+	// Check for a default provider step and skip reporting if necessary.
+	if !acts.Opts.reportDefaultProviderSteps && isDefaultProviderStep(step) {
+		return nil
+	}
+
 	// Print the resource outputs separately, unless this is a refresh in which case they are already printed.
 	if !acts.Opts.SkipOutputs {
 		acts.Opts.Events.resourceOutputsEvent(step, true /*planning*/, acts.Opts.Debug)
@@ -336,4 +358,9 @@ func (acts *planActions) OnResourceOutputs(step deploy.Step) error {
 func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 	_, has := seen[step.URN()]
 	contract.Assertf(has, "URN '%v' had not been marked as seen", step.URN())
+}
+
+func isDefaultProviderStep(step deploy.Step) bool {
+	urn := step.URN()
+	return providers.IsProviderType(urn.Type()) && urn.Name() == "default"
 }

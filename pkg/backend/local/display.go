@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/engine"
 	"github.com/pulumi/pulumi/pkg/resource"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
@@ -305,11 +304,6 @@ func isRootURN(urn resource.URN) bool {
 
 // shouldShow returns true if a step should show in the output.
 func shouldShow(step engine.StepEventMetadata, opts backend.DisplayOptions) bool {
-	// If this step refers to a default provider resource, we do not display any changes.
-	if providers.IsProviderType(step.URN.Type()) && step.URN.Name() == "default" {
-		return false
-	}
-
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op == deploy.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
