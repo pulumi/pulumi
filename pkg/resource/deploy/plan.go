@@ -88,7 +88,7 @@ func (ire InvalidResourceError) Error() string {
 	fmt.Fprintf(writer, "\n")
 	fmt.Fprintf(writer, "Once you have confirmed the status of the interrupted operations, you can repair your stack\n")
 	fmt.Fprintf(writer, "using `pulumi stack export` to export your stack to a file. For each operation that succeeded,\n")
-	fmt.Fprintf(writer, "remove the `status` field. Once this is complete, use `pulumi stack export` to import the\n")
+	fmt.Fprintf(writer, "remove the `status` field. Once this is complete, use `pulumi stack import` to import the\n")
 	fmt.Fprintf(writer, "repaired stack.")
 	contract.IgnoreError(writer.Flush())
 	return buf.String()
