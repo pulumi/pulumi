@@ -119,6 +119,11 @@ func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 			dones[e.Step.Old()] = true
 		case deploy.OpReplace:
 			// do nothing.
+		case deploy.OpRead, deploy.OpReadReplacement:
+			resources = append(resources, e.Step.New())
+			if e.Step.Old() != nil {
+				dones[e.Step.Old()] = true
+			}
 		}
 	}
 
@@ -981,4 +986,46 @@ func TestParallelRefresh(t *testing.T) {
 	assert.Equal(t, string(snap.Resources[2].URN.Name()), "resB")
 	assert.Equal(t, string(snap.Resources[3].URN.Name()), "resC")
 	assert.Equal(t, string(snap.Resources[4].URN.Name()), "resD")
+}
+
+func TestExternalRefresh(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Our program reads a resource and exits.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "")
+		if !assert.NoError(t, err) {
+			t.FailNow()
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   []TestStep{{Op: Update}},
+	}
+
+	// The read should place "resA" in the snapshot with the "External" bit set.
+	snap := p.Run(t, nil)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.True(t, snap.Resources[1].External)
+
+	p = &TestPlan{
+		Options: UpdateOptions{host: host},
+		Steps:   []TestStep{{Op: Refresh}},
+	}
+
+	snap = p.Run(t, snap)
+	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, string(snap.Resources[0].URN.Name()), "default") // provider
+	assert.Equal(t, string(snap.Resources[1].URN.Name()), "resA")
+	assert.True(t, snap.Resources[1].External)
 }
