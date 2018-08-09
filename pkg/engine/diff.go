@@ -157,7 +157,13 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 			}
 			writeVerbatim(&b, deploy.OpUpdate, "]\n")
 		} else {
-			writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[provider=%s]\n", step.Provider)
+			prov, err := providers.ParseReference(step.Provider)
+			contract.Assert(err == nil)
+
+			// Elide references to default providers.
+			if prov.URN().Name() != "default" {
+				writeWithIndentNoPrefix(&b, indent+1, simplePropOp, "[provider=%s]\n", step.Provider)
+			}
 		}
 	}
 
