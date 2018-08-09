@@ -39,7 +39,8 @@ interface RunCase {
     invoke?: (ctx: any, tok: string, args: any) => { failures: any, ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any) => {
         urn: URN | undefined, props: any | undefined };
-    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[]) => {
+    registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                        custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
         urn: URN | undefined, id: ID | undefined, props: any | undefined };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
@@ -378,6 +379,57 @@ describe("rpc", () => {
             program: path.join(base, "016.promise_leak"),
             expectError: "Program exited with non-zero exit code: 1",
         },
+        // A test of parent default behaviors.
+        "parent_defaults": {
+            program: path.join(base, "017.parent_defaults"),
+            expectResourceCount: 197,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
+
+                if (custom && !t.startsWith("pulumi:providers:")) {
+                    let expectProtect = false;
+                    let expectProviderName = "";
+
+                    const rpath = name.split("/");
+                    for (let i = 1; i < rpath.length; i++) {
+                        switch (rpath[i]) {
+                        case "c0":
+                        case "r0":
+                            // Pass through parent values
+                            break;
+                        case "c1":
+                        case "r1":
+                            // Force protect to false
+                            expectProtect = false;
+                            break;
+                        case "c2":
+                        case "r2":
+                            // Force protect to true
+                            expectProtect = true;
+                            break;
+                        case "c3":
+                            // Force provider to empty
+                            expectProviderName = "";
+                            break;
+                        case "c4":
+                        case "r3":
+                            // Force provider
+                            expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
+                            break;
+                        default:
+                            assert.fail(`unexpected path element in name: ${rpath[i]}`);
+                        }
+                    }
+
+                    const providerName = provider!.split("::").reduce((_, v) => v);
+
+                    assert.strictEqual(protect!, expectProtect);
+                    assert.strictEqual(providerName, expectProviderName);
+                }
+
+                return { urn: makeUrn(t, name), id: name, props: {} };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -432,7 +484,12 @@ describe("rpc", () => {
                                 const name = req.getName();
                                 const res: any = req.getObject().toJavaScript();
                                 const deps: string[] = req.getDependenciesList();
-                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps);
+                                const custom: boolean = req.getCustom();
+                                const protect: boolean = req.getProtect();
+                                const parent: string = req.getParent();
+                                const provider: string = req.getProvider();
+                                const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
+                                    custom, protect, parent, provider);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));

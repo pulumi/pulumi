@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { RunError } from "../errors";
-import { Resource } from "../resource";
+import { ComponentResource } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 const grpc = require("grpc");
@@ -209,20 +209,20 @@ export function rpcKeepAlive(): () => void {
     return done!;
 }
 
-let rootResource: Resource | undefined;
+let rootResource: ComponentResource | undefined;
 
 /**
  * getRootResource returns a root resource that will automatically become the default parent of all resources.  This
  * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
  */
-export function getRootResource(): Resource | undefined {
+export function getRootResource(): ComponentResource | undefined {
     return rootResource;
 }
 
 /**
  * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
  */
-export function setRootResource(res: Resource | undefined): void {
+export function setRootResource(res: ComponentResource | undefined): void {
     if (rootResource && res) {
         throw new Error("Cannot set multiple root resources");
     }

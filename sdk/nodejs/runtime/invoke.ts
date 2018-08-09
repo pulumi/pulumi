@@ -18,7 +18,7 @@ import * as log from "../log";
 import { Inputs } from "../resource";
 import { debuggablePromise } from "./debuggable";
 import { deserializeProperties, serializeProperties, unknownValue } from "./rpc";
-import { excessiveDebugOutput, getMonitor, rpcKeepAlive, serialize } from "./settings";
+import { excessiveDebugOutput, getMonitor, getRootResource, rpcKeepAlive, serialize } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -32,6 +32,14 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
     log.debug(`Invoking function: tok=${tok}` +
         excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``);
 
+    opts = opts || {};
+    if (!opts.parent) {
+        opts.parent = getRootResource();
+    }
+    if (opts.parent && opts.provider === undefined) {
+        opts.provider = opts.parent.getProvider(tok);
+    }
+
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
     try {
@@ -43,7 +51,7 @@ export async function invoke(tok: string, props: Inputs, opts?: InvokeOptions): 
         const monitor: any = getMonitor();
 
         let providerRef: string | undefined;
-        if (opts && opts.provider !== undefined) {
+        if (opts.provider !== undefined) {
             const providerURN = await opts.provider.urn.promise();
             const providerID = await opts.provider.id.promise() || unknownValue;
             providerRef = `${providerURN}::${providerID}`;
