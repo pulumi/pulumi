@@ -112,7 +112,7 @@ type OperationV1 struct {
 	// Resource is the state that the engine used to initiate this operation.
 	Resource ResourceV2 `json:"resource" yaml:"resource"`
 	// Status is a string representation of the operation that the engine is performing.
-	Type OperationType `json:"type" yaml:"status"`
+	Type OperationType `json:"type" yaml:"type"`
 }
 
 // UntypedDeployment contains an inner, untyped deployment structure.
