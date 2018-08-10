@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ComponentResource, ProviderResource } from "./resource";
+import { Resource, ProviderResource } from "./resource";
 
 /*
  * InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.
@@ -21,7 +21,7 @@ export interface InvokeOptions {
     /**
      * An optional parent to use for default options for this invoke (e.g. the default provider to use).
      */
-    parent?: ComponentResource;
+    parent?: Resource;
 
     /**
      * An optional provider to use for this invocation. If no provider is supplied, the default provider for the
