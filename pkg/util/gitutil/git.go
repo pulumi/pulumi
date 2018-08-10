@@ -120,13 +120,19 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 }
 
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
-func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string) error {
+func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	// For shallow clones, use a depth of 1.
+	depth := 0
+	if shallow {
+		depth = 1
+	}
+
 	// Attempt to clone the repo.
 	_, cloneErr := git.PlainClone(path, false, &git.CloneOptions{
 		URL:           url,
 		ReferenceName: referenceName,
 		SingleBranch:  true,
-		Depth:         1,
+		Depth:         depth,
 		Tags:          git.NoTags,
 	})
 	if cloneErr != nil {
@@ -145,7 +151,6 @@ func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 			if err = w.Pull(&git.PullOptions{
 				ReferenceName: referenceName,
 				SingleBranch:  true,
-				Depth:         1,
 				Force:         true,
 			}); err != nil && err != git.NoErrAlreadyUpToDate {
 				return err

@@ -205,12 +205,13 @@ func retrievePulumiTemplates(templateName string, offline bool) (TemplateReposit
 
 	if !offline {
 		// Clone or update the pulumi/templates repo.
-		if err := gitutil.GitCloneOrPull(pulumiTemplateGitRepository, plumbing.HEAD, templateDir); err != nil {
+		err := gitutil.GitCloneOrPull(pulumiTemplateGitRepository, plumbing.HEAD, templateDir, false /*shallow*/)
+		if err != nil {
 			return TemplateRepository{}, err
 		}
 	}
 
-	subDir := filepath.Join(templateDir, "templates")
+	subDir := templateDir
 	if templateName != "" {
 		subDir = filepath.Join(subDir, templateName)
 	}
@@ -235,7 +236,7 @@ func RetrieveTemplate(rawurl string, path string) (string, error) {
 	}
 
 	if ref != "" {
-		if cloneErr := gitutil.GitCloneOrPull(url, ref, path); cloneErr != nil {
+		if cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/); cloneErr != nil {
 			return "", cloneErr
 		}
 	} else {
