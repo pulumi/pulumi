@@ -180,16 +180,8 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 
-			// Get the crypter if needed.
-			var crypter config.Crypter
-			if stackConfig != nil && stackConfig.HasSecureValue() {
-				if crypter, err = backend.GetStackCrypter(s); err != nil {
-					return err
-				}
-			}
-
 			// Prompt for config as needed.
-			c, err = promptForConfig(template.Config, commandLineConfig, stackConfig, crypter, yes, opts.Display)
+			c, err = promptForConfig(s, template.Config, commandLineConfig, stackConfig, yes, opts.Display)
 			if err != nil {
 				return err
 			}

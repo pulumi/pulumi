@@ -213,7 +213,7 @@ func newNewCmd() *cobra.Command {
 				}
 
 				// Prompt for config as needed.
-				c, err := promptForConfig(template.Config, commandLineConfig, nil, nil, yes, displayOpts)
+				c, err := promptForConfig(stack, template.Config, commandLineConfig, nil, yes, displayOpts)
 				if err != nil {
 					return err
 				}
@@ -459,10 +459,10 @@ func parseConfig(configArray []string) (config.Map, error) {
 // If stackConfig is non-nil and a config value exists in stackConfig, it will be used as the default
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
+	stack backend.Stack,
 	templateConfig map[config.Key]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
 	stackConfig config.Map,
-	crypter config.Crypter,
 	yes bool,
 	opts backend.DisplayOptions) (config.Map, error) {
 
@@ -472,67 +472,83 @@ func promptForConfig(
 	for k := range templateConfig {
 		keys = append(keys, k)
 	}
+	sort.Sort(keys)
 
-	if len(keys) > 0 {
-		sort.Sort(keys)
+	var err error
+	var crypter config.Crypter
 
-		for _, k := range keys {
-			// If it was passed as a command line flag, use it without prompting.
-			if val, ok := commandLineConfig[k]; ok {
-				c[k] = val
-				continue
-			}
+	for _, k := range keys {
+		// If it was passed as a command line flag, use it without prompting.
+		if val, ok := commandLineConfig[k]; ok {
+			c[k] = val
+			continue
+		}
 
-			templateConfigValue := templateConfig[k]
+		templateConfigValue := templateConfig[k]
 
-			// Prepare a default value.
-			var defaultValue string
-			var secret bool
-			if stackConfig != nil {
-				// Use the stack's existing value as the default.
-				if val, ok := stackConfig[k]; ok {
-					value, err := val.Value(crypter)
-					if err != nil {
+		// Prepare a default value.
+		var defaultValue string
+		var secret bool
+		if stackConfig != nil {
+			// Use the stack's existing value as the default.
+			if val, ok := stackConfig[k]; ok {
+				secret = val.Secure()
+
+				// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
+				if secret && crypter == nil {
+					if crypter, err = backend.GetStackCrypter(stack); err != nil {
 						return nil, err
 					}
-					defaultValue = value
-					secret = val.Secure()
 				}
-			}
-			if defaultValue == "" {
-				defaultValue = templateConfigValue.Default
-			}
-			if !secret {
-				secret = templateConfigValue.Secret
-			}
 
-			// Prepare the prompt.
-			prompt := k.String()
-			if templateConfigValue.Description != "" {
-				prompt = prompt + ": " + templateConfigValue.Description
-			}
-
-			// Prompt.
-			value, err := promptForValue(yes, prompt, defaultValue, secret, nil, opts)
-			if err != nil {
-				return nil, err
-			}
-
-			// Encrypt the value if needed.
-			var v config.Value
-			if secret {
-				enc, err := crypter.EncryptValue(value)
+				// It's OK to pass a nil or non-nil crypter for non-secret values.
+				value, err := val.Value(crypter)
 				if err != nil {
 					return nil, err
 				}
-				v = config.NewSecureValue(enc)
-			} else {
-				v = config.NewValue(value)
+				defaultValue = value
+			}
+		}
+		if defaultValue == "" {
+			defaultValue = templateConfigValue.Default
+		}
+		if !secret {
+			secret = templateConfigValue.Secret
+		}
+
+		// Prepare the prompt.
+		prompt := k.String()
+		if templateConfigValue.Description != "" {
+			prompt = prompt + ": " + templateConfigValue.Description
+		}
+
+		// Prompt.
+		value, err := promptForValue(yes, prompt, defaultValue, secret, nil, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		// Encrypt the value if needed.
+		var v config.Value
+		if secret {
+			// Lazily get the crypter, only if needed, to avoid prompting for a password with the local backend.
+			if crypter == nil {
+				if crypter, err = backend.GetStackCrypter(stack); err != nil {
+					return nil, err
+				}
 			}
 
-			// Save it.
-			c[k] = v
+			enc, err := crypter.EncryptValue(value)
+			if err != nil {
+				return nil, err
+			}
+			v = config.NewSecureValue(enc)
+		} else {
+			v = config.NewValue(value)
 		}
+
+		// Save it.
+		c[k] = v
 	}
 
 	// Add any other config values from the command line.
