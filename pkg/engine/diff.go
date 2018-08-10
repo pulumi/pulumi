@@ -508,8 +508,7 @@ func printPropertyValueDiff(
 
 		if shouldPrintOld && shouldPrintNew {
 			if diff.Old.IsArchive() &&
-				diff.New.IsArchive() &&
-				!causedReplace {
+				diff.New.IsArchive() {
 
 				printArchiveDiff(
 					b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(),
