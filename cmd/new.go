@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi/pkg/util/contract"
+	"github.com/pulumi/pulumi/pkg/util/logging"
 	"github.com/spf13/cobra"
 
 	survey "gopkg.in/AlecAivazis/survey.v1"
@@ -283,6 +284,37 @@ func newNewCmd() *cobra.Command {
 			return nil
 		}),
 	}
+
+	// Add additional help that includes a list of available templates.
+	defaultHelp := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		// Show default help.
+		defaultHelp(cmd, args)
+
+		// Attempt to retrieve available templates.
+		repo, err := workspace.RetrieveTemplates("", false /*offline*/)
+		if err != nil {
+			logging.Warningf("could not retrieve templates: %v", err)
+			return
+		}
+
+		// Get the list of templates.
+		templates, err := repo.Templates()
+		if err != nil {
+			logging.Warningf("could not list templates: %v", err)
+			return
+		}
+
+		// If we have any templates, show them.
+		if len(templates) > 0 {
+			available, _ := templatesToOptionArrayAndMap(templates)
+			fmt.Println("")
+			fmt.Println("Available Templates:")
+			for _, t := range available {
+				fmt.Printf("  %s\n", t)
+			}
+		}
+	})
 
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
