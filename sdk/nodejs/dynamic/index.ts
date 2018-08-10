@@ -174,7 +174,7 @@ export abstract class Resource extends resource.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(provider: ResourceProvider, name: string, props: resource.Inputs,
-                opts?: resource.ResourceOptions) {
+                opts?: resource.CustomResourceOptions) {
         const providerKey: string = "__provider";
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");
