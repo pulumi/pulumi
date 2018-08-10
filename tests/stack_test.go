@@ -228,7 +228,7 @@ func TestStackCommands(t *testing.T) {
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
 		// invalid resources in the snapshot.
 		res := snap.Resources[len(snap.Resources)-1]
-		snap.InFlightOperations = append(snap.InFlightOperations, resource.Operation{
+		snap.PendingOperations = append(snap.PendingOperations, resource.Operation{
 			Resource:  res,
 			Operation: resource.OperationStateDeleting,
 		})
@@ -247,7 +247,7 @@ func TestStackCommands(t *testing.T) {
 			t.FailNow()
 		}
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
-		assert.Contains(t, stderr, fmt.Sprintf("removing in-flight operation 'deleting' on '%s'", res.URN))
+		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
 		// The engine should be happy now that there are no invalid resources.
 		e.RunCommand("pulumi", "update", "--non-interactive", "--skip-preview", "--yes")
 		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")

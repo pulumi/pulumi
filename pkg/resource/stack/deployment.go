@@ -76,14 +76,14 @@ func SerializeDeployment(snap *deploy.Snapshot) *apitype.DeploymentV2 {
 	}
 
 	var operations []apitype.OperationV1
-	for _, op := range snap.InFlightOperations {
+	for _, op := range snap.PendingOperations {
 		operations = append(operations, SerializeOperation(op))
 	}
 
 	return &apitype.DeploymentV2{
-		Manifest:           manifest,
-		Resources:          resources,
-		InFlightOperations: operations,
+		Manifest:          manifest,
+		Resources:         resources,
+		PendingOperations: operations,
 	}
 }
 
@@ -154,7 +154,7 @@ func DeserializeDeploymentV2(deployment apitype.DeploymentV2) (*deploy.Snapshot,
 	}
 
 	var ops []resource.Operation
-	for _, op := range deployment.InFlightOperations {
+	for _, op := range deployment.PendingOperations {
 		desop, err := DeserializeOperation(op)
 		if err != nil {
 			return nil, err

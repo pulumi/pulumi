@@ -111,14 +111,14 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			// Explicitly clear-out any pending operations.
-			if snapshot.InFlightOperations != nil {
-				for _, op := range snapshot.InFlightOperations {
+			if snapshot.PendingOperations != nil {
+				for _, op := range snapshot.PendingOperations {
 					msg := fmt.Sprintf(
-						"removing in-flight operation '%s' on '%s' from snapshot", op.Operation, op.Resource.URN)
+						"removing pending operation '%s' on '%s' from snapshot", op.Operation, op.Resource.URN)
 					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
 				}
 
-				snapshot.InFlightOperations = nil
+				snapshot.PendingOperations = nil
 			}
 			bytes, err := json.Marshal(stack.SerializeDeployment(snapshot))
 			if err != nil {

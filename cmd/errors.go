@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/diag"
 	"github.com/pulumi/pulumi/pkg/resource/deploy"
@@ -30,24 +31,30 @@ func PrintEngineError(err error) error {
 func printPendingOperationsError(e deploy.PlanPendingOperationsError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
-	fmt.Fprintf(writer,
+	fprintf(writer,
 		"the current deployment has %d resource(s) with pending operations:\n", len(e.Operations))
 
 	for _, op := range e.Operations {
-		fmt.Fprintf(writer, "  * %s, interrupted while %s\n", op.Resource.URN, op.Operation)
+		fprintf(writer, "  * %s, interrupted while %s\n", op.Resource.URN, op.Operation)
 	}
 
-	fmt.Fprintf(writer, "\n")
-	fmt.Fprintf(writer, "These resources are in an unknown state because the Pulumi CLI was interrupted while\n")
-	fmt.Fprintf(writer, "waiting for changes to these resources to complete. You should confirm whether or not the\n")
-	fmt.Fprintf(writer, "operations listed completed successfully by checking the state of the appropriate provider.\n")
-	fmt.Fprintf(writer, "For example, if you are using AWS, you can confirm using the AWS Console.\n")
-	fmt.Fprintf(writer, "\n")
-	fmt.Fprintf(writer, "Once you have confirmed the status of the interrupted operations, you can repair your stack\n")
-	fmt.Fprintf(writer, "using `pulumi stack export` to export your stack to a file. For each operation that succeeded,\n")
-	fmt.Fprintf(writer, "remove the `status` field. Once this is complete, use `pulumi stack import` to import the\n")
-	fmt.Fprintf(writer, "repaired stack.")
+	fprintf(writer, `
+These resources are in an unknown state because the Pulumi CLI was interrupted while
+waiting for changes to these resources to complete. You should confirm whether or not the
+operations listed completed successfully by checking the state of the appropriate provider.
+For example, if you are using AWS, you can confirm using the AWS Console.
+
+Once you have confirmed the status of the interrupted operations, you can repair your stack
+using 'pulumi stack export' to export your stack to a file. For each operation that succeeded,
+remove that operation from the "pending_operations" section of the file. Once this is complete,
+use 'pulumi stack import' to import the repaired stack.`)
 	contract.IgnoreError(writer.Flush())
 
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
+}
+
+// Quick and dirty utility function for printing to writers that we know will never fail.
+func fprintf(writer io.Writer, msg string, args ...interface{}) {
+	_, err := fmt.Fprintf(writer, msg, args...)
+	contract.IgnoreError(err)
 }

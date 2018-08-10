@@ -187,8 +187,8 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	// Produce a map of all old resources for fast resources.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
-		if prev.InFlightOperations != nil {
-			return nil, PlanPendingOperationsError{prev.InFlightOperations}
+		if prev.PendingOperations != nil {
+			return nil, PlanPendingOperationsError{prev.PendingOperations}
 		}
 		oldResources = prev.Resources
 

@@ -86,8 +86,8 @@ type DeploymentV2 struct {
 	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
 	Resources []ResourceV2 `json:"resources,omitempty" yaml:"resources,omitempty"`
-	// InFlightOperations are all operations that were known by the engine to be currently executing.
-	InFlightOperations []OperationV1 `json:"in_flight_operations,omitempty" yaml:"in_flight_operations,omitempty"`
+	// PendingOperations are all operations that were known by the engine to be currently executing.
+	PendingOperations []OperationV1 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 }
 
 // OperationV1 represents an operation that the engine is performing. It consists of a Resource, which is the state
