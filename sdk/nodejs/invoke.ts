@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Resource, ProviderResource } from "./resource";
+import { ProviderResource, Resource } from "./resource";
 
 /*
  * InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.

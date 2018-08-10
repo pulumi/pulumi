@@ -420,7 +420,7 @@ describe("rpc", () => {
                     }
 
                     // r3 explicitly overrides its provider.
-                    if (rpath[rpath.length-1] == "r3") {
+                    if (rpath[rpath.length-1] === "r3") {
                         expectProviderName = `${rpath.slice(0, rpath.length-1).join("/")}-p`;
                     }
 
