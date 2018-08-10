@@ -154,6 +154,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	if err != nil {
 		return nil, err
 	}
+
 	return &planResult{
 		Ctx:     info,
 		Plugctx: plugctx,

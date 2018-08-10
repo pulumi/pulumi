@@ -15,6 +15,10 @@
 package deploy
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -58,6 +62,36 @@ type PlanSummary interface {
 	Replaces() map[resource.URN]bool
 	Deletes() map[resource.URN]bool
 	Sames() map[resource.URN]bool
+}
+
+// InvalidResourceError is returned by deploy.NewPlan when the engine observes
+// that one or more resources are in an invalid state. The engine populates `InvalidResources`
+// with the URNs of every resource that was invalid.
+type InvalidResourceError struct {
+	InvalidResources []*resource.State
+}
+
+func (ire InvalidResourceError) Error() string {
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	fmt.Fprintf(writer,
+		"error: the current deployment has %d resource(s) whose statuses are unknown:\n", len(ire.InvalidResources))
+
+	for _, res := range ire.InvalidResources {
+		fmt.Fprintf(writer, "  * %s, interrupted while %s\n", res.URN, res.Status)
+	}
+
+	fmt.Fprintf(writer, "\n")
+	fmt.Fprintf(writer, "These resources have unknown statuses because the Pulumi CLI was interrupted before it\n")
+	fmt.Fprintf(writer, "had the opportunity to see if an operation that it initiated was successful. You should\n")
+	fmt.Fprintf(writer, "confirm whether or not the above operations completed successfully with your cloud provider.\n")
+	fmt.Fprintf(writer, "\n")
+	fmt.Fprintf(writer, "Once you have confirmed the status of the interrupted operations, you can repair your stack\n")
+	fmt.Fprintf(writer, "using `pulumi stack export` to export your stack to a file. For each operation that succeeded,\n")
+	fmt.Fprintf(writer, "remove the `status` field. Once this is complete, use `pulumi stack import` to import the\n")
+	fmt.Fprintf(writer, "repaired stack.")
+	contract.IgnoreError(writer.Flush())
+	return buf.String()
 }
 
 // Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
@@ -172,7 +206,7 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 
 	var depGraph *graph.DependencyGraph
 	var oldResources []*resource.State
-
+	var invalidResources []*resource.State
 	// Produce a map of all old resources for fast resources.
 	olds := make(map[resource.URN]*resource.State)
 	if prev != nil {
@@ -181,6 +215,11 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 		for _, oldres := range oldResources {
 			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
 			if oldres.Delete {
+				continue
+			}
+
+			if oldres.Status != resource.OperationStatusEmpty {
+				invalidResources = append(invalidResources, oldres)
 				continue
 			}
 
@@ -198,6 +237,10 @@ func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
 	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview)
 	if err != nil {
 		return nil, err
+	}
+
+	if invalidResources != nil {
+		return nil, InvalidResourceError{invalidResources}
 	}
 
 	return &Plan{
