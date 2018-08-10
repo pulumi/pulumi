@@ -871,14 +871,19 @@ func (b *cloudBackend) updateStack(
 		opts.Display.Color.Colorize(colors.BrightMagenta+"%s stack '%s'"+colors.Reset+"\n"),
 		actionLabel, stack.Name())
 
-	// Create an update object (except if this won't yield an update; i.e., doing a local preview).
+	// Create an update object if we will persist the results, e.g. when not doing a local preview.
 	var update client.UpdateIdentifier
 	var version int
 	var token string
 	var err error
 	if persist {
 		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
+	}
+	if err != nil {
+		return nil, err
+	}
 
+	if persist {
 		// Print a URL at the end of the update pointing to the Pulumi Service.
 		var link string
 		base := b.cloudConsoleStackPath(update.StackIdentifier)
@@ -894,9 +899,6 @@ func (b *cloudBackend) updateStack(
 						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
 			}()
 		}
-	}
-	if err != nil {
-		return nil, err
 	}
 
 	return b.runEngineAction(
