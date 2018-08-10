@@ -880,19 +880,21 @@ func (b *cloudBackend) updateStack(
 		update, version, token, err = b.createAndStartUpdate(ctx, action, stack.Name(), pkg, root, m, opts, dryRun)
 
 		// Print a URL at the end of the update pointing to the Pulumi Service.
-		var link string
-		base := b.cloudConsoleStackPath(update.StackIdentifier)
-		if !dryRun {
-			link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
-		} else {
-			link = b.CloudConsoleURL(base, "previews", update.UpdateID)
-		}
-		if link != "" {
-			defer func() {
-				fmt.Printf(
-					opts.Display.Color.Colorize(
-						colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
-			}()
+		if err != nil {
+			var link string
+			base := b.cloudConsoleStackPath(update.StackIdentifier)
+			if !dryRun {
+				link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
+			} else {
+				link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+			}
+			if link != "" {
+				defer func() {
+					fmt.Printf(
+						opts.Display.Color.Colorize(
+							colors.BrightMagenta+"Permalink: %s"+colors.Reset+"\n"), link)
+				}()
+			}
 		}
 	}
 	if err != nil {
