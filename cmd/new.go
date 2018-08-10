@@ -230,7 +230,7 @@ func newNewCmd() *cobra.Command {
 
 			// Install dependencies.
 			if !generateOnly {
-				err = installDependencies()
+				err = installDependencies("Installing dependencies...")
 				if err != nil {
 					return err
 				}
@@ -370,7 +370,7 @@ func saveConfig(stackName tokens.QName, c config.Map) error {
 
 // installDependencies will install dependencies for the project, e.g. by running
 // `npm install` for nodejs projects or `pip install` for python projects.
-func installDependencies() error {
+func installDependencies(message string) error {
 	proj, _, err := readProject()
 	if err != nil {
 		return err
@@ -389,7 +389,9 @@ func installDependencies() error {
 		return nil
 	}
 
-	fmt.Println("Installing dependencies...")
+	if message != "" {
+		fmt.Println(message)
+	}
 
 	// Run the command.
 	if out, err := c.CombinedOutput(); err != nil {
