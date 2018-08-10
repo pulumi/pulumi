@@ -36,8 +36,8 @@ func TestPendingOperationsPlan(t *testing.T) {
 		resourceA,
 	}, []resource.Operation{
 		{
-			Operation: resource.OperationStateCreating,
-			Resource:  resourceB,
+			Type:     resource.OperationTypeCreating,
+			Resource: resourceB,
 		},
 	})
 
@@ -53,5 +53,5 @@ func TestPendingOperationsPlan(t *testing.T) {
 
 	assert.Len(t, invalidErr.Operations, 1)
 	assert.Equal(t, resourceB.URN, invalidErr.Operations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateCreating, invalidErr.Operations[0].Operation)
+	assert.Equal(t, resource.OperationTypeCreating, invalidErr.Operations[0].Type)
 }

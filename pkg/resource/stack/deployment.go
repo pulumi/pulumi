@@ -201,7 +201,7 @@ func SerializeOperation(op resource.Operation) apitype.OperationV1 {
 	res := SerializeResource(op.Resource)
 	return apitype.OperationV1{
 		Resource: res,
-		Status:   string(op.Operation),
+		Type:     apitype.OperationType(op.Type),
 	}
 }
 
@@ -272,7 +272,7 @@ func DeserializeOperation(op apitype.OperationV1) (resource.Operation, error) {
 	if err != nil {
 		return resource.Operation{}, err
 	}
-	return resource.NewOperation(res, resource.OperationState(op.Status)), nil
+	return resource.NewOperation(res, resource.OperationType(op.Type)), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

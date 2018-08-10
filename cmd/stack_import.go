@@ -114,7 +114,7 @@ func newStackImportCmd() *cobra.Command {
 			if snapshot.PendingOperations != nil {
 				for _, op := range snapshot.PendingOperations {
 					msg := fmt.Sprintf(
-						"removing pending operation '%s' on '%s' from snapshot", op.Operation, op.Resource.URN)
+						"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
 					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
 				}
 

@@ -90,6 +90,21 @@ type DeploymentV2 struct {
 	PendingOperations []OperationV1 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 }
 
+// OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
+// that the engine initiated.
+type OperationType string
+
+const (
+	// OperationTypeCreating is the state of resources that are being created.
+	OperationTypeCreating OperationType = "creating"
+	// OperationTypeUpdating is the state of resources that are being updated.
+	OperationTypeUpdating OperationType = "updating"
+	// OperationTypeDeleting is the state of resources that are being deleted.
+	OperationTypeDeleting OperationType = "deleting"
+	// OperationTypeReading is the state of resources that are being read.
+	OperationTypeReading OperationType = "reading"
+)
+
 // OperationV1 represents an operation that the engine is performing. It consists of a Resource, which is the state
 // that the engine used to initiate the operation, and a Status, which is a string representation of the operation
 // that the engine initiated.
@@ -97,7 +112,7 @@ type OperationV1 struct {
 	// Resource is the state that the engine used to initiate this operation.
 	Resource ResourceV2 `json:"resource" yaml:"resource"`
 	// Status is a string representation of the operation that the engine is performing.
-	Status string `json:"status" yaml:"status"`
+	Type OperationType `json:"type" yaml:"status"`
 }
 
 // UntypedDeployment contains an inner, untyped deployment structure.

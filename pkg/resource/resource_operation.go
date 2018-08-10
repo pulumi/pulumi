@@ -14,28 +14,28 @@
 
 package resource
 
-// OperationState is the state of operations issued by the engine.
-type OperationState string
+// OperationType is the type of operations issued by the engine.
+type OperationType string
 
 const (
-	// OperationStateCreating is the state of resources that are being created.
-	OperationStateCreating OperationState = "creating"
-	// OperationStateUpdating is the state of resources that are being updated.
-	OperationStateUpdating OperationState = "updating"
-	// OperationStateDeleting is the state of resources that are being deleted.
-	OperationStateDeleting OperationState = "deleting"
-	// OperationStateReading is the state of resources that are being read.
-	OperationStateReading OperationState = "reading"
+	// OperationTypeCreating is the state of resources that are being created.
+	OperationTypeCreating OperationType = "creating"
+	// OperationTypeUpdating is the state of resources that are being updated.
+	OperationTypeUpdating OperationType = "updating"
+	// OperationTypeDeleting is the state of resources that are being deleted.
+	OperationTypeDeleting OperationType = "deleting"
+	// OperationTypeReading is the state of resources that are being read.
+	OperationTypeReading OperationType = "reading"
 )
 
 // Operation represents an operation that the engine has initiated but has not yet completed. It is
 // essentially just a tuple of a resource and a string identifying the operation.
 type Operation struct {
-	Resource  *State
-	Operation OperationState
+	Resource *State
+	Type     OperationType
 }
 
 // NewOperation constructs a new Operation from a state and an operation name.
-func NewOperation(state *State, op OperationState) Operation {
+func NewOperation(state *State, op OperationType) Operation {
 	return Operation{state, op}
 }

@@ -35,7 +35,7 @@ func printPendingOperationsError(e deploy.PlanPendingOperationsError) {
 		"the current deployment has %d resource(s) with pending operations:\n", len(e.Operations))
 
 	for _, op := range e.Operations {
-		fprintf(writer, "  * %s, interrupted while %s\n", op.Resource.URN, op.Operation)
+		fprintf(writer, "  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
 	fprintf(writer, `

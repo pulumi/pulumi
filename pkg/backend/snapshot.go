@@ -182,7 +182,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
 	err := sm.mutate(func() {
-		sm.markOperationPending(step.New(), resource.OperationStateCreating)
+		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
 	})
 	if err != nil {
 		return nil, err
@@ -218,7 +218,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Info("SnapshotManager.doUpdate(%s)", step.URN())
 	err := sm.mutate(func() {
-		sm.markOperationPending(step.New(), resource.OperationStateUpdating)
+		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
 	})
 	if err != nil {
 		return nil, err
@@ -246,7 +246,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
 	err := sm.mutate(func() {
-		sm.markOperationPending(step.Old(), resource.OperationStateDeleting)
+		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
 	})
 	if err != nil {
 		return nil, err
@@ -285,7 +285,7 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
 	err := sm.mutate(func() {
-		sm.markOperationPending(step.New(), resource.OperationStateReading)
+		sm.markOperationPending(step.New(), resource.OperationTypeReading)
 	})
 	if err != nil {
 		return nil, err
@@ -339,7 +339,7 @@ func (sm *SnapshotManager) markNew(state *resource.State) {
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
-func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationState) {
+func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
 	contract.Assert(state != nil)
 	sm.operations = append(sm.operations, resource.NewOperation(state, op))
 	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))

@@ -378,7 +378,7 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateCreating, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
 
 	err = mutation.End(step, true /* successful */)
 	if !assert.NoError(t, err) {
@@ -409,7 +409,7 @@ func TestRecordingCreateFailure(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateCreating, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeCreating, snap.PendingOperations[0].Type)
 
 	err = mutation.End(step, false /* successful */)
 	if !assert.NoError(t, err) {
@@ -445,7 +445,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	assert.Len(t, snap.Resources, 1)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateUpdating, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
 	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, true /* successful */)
@@ -484,7 +484,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	assert.Len(t, snap.Resources, 1)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateUpdating, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeUpdating, snap.PendingOperations[0].Type)
 	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 
 	err = mutation.End(step, false /* successful */)
@@ -518,7 +518,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 	assert.Len(t, snap.Resources, 1)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateDeleting, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	err = mutation.End(step, true /* successful */)
 	if !assert.NoError(t, err) {
@@ -548,7 +548,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 	assert.Len(t, snap.Resources, 1)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateDeleting, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeDeleting, snap.PendingOperations[0].Type)
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	err = mutation.End(step, false /* successful */)
 	if !assert.NoError(t, err) {
@@ -579,7 +579,7 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateReading, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	err = mutation.End(step, true /* successful */)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -618,7 +618,7 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	assert.Len(t, snap.Resources, 1)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateReading, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
@@ -652,7 +652,7 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateReading, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	err = mutation.End(step, false /* successful */)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -690,7 +690,7 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	assert.Len(t, snap.Resources, 1)
 	assert.Len(t, snap.PendingOperations, 1)
 	assert.Equal(t, resourceA.URN, snap.PendingOperations[0].Resource.URN)
-	assert.Equal(t, resource.OperationStateReading, snap.PendingOperations[0].Operation)
+	assert.Equal(t, resource.OperationTypeReading, snap.PendingOperations[0].Type)
 	assert.Equal(t, resource.NewStringProperty("new"), snap.PendingOperations[0].Resource.Inputs["key"])
 	assert.Equal(t, resourceA.URN, snap.Resources[0].URN)
 	assert.Equal(t, resource.NewStringProperty("old"), snap.Resources[0].Inputs["key"])
