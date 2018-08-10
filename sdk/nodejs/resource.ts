@@ -43,12 +43,14 @@ export abstract class Resource {
     /**
      * When set to true, protect ensures this resource cannot be deleted.
      */
-    private readonly protect: boolean;
+     // tslint:disable-next-line:variable-name
+    /* @internal */ private readonly __protect: boolean;
 
     /**
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      */
-    private readonly providers: Record<string, ProviderResource>;
+     // tslint:disable-next-line:variable-name
+    /* @internal */ private readonly __providers: Record<string, ProviderResource>;
 
     public static isInstance(obj: any): obj is Resource {
         return obj && obj.__pulumiResource;
@@ -62,7 +64,7 @@ export abstract class Resource {
         }
 
         const pkg = memComponents[0];
-        return this.providers[pkg];
+        return this.__providers[pkg];
     }
 
     /**
@@ -90,24 +92,30 @@ export abstract class Resource {
             opts.parent = getRootResource();
         }
         // Check the parent type and fill in any default options.
-        this.providers = {};
+        this.__providers = {};
         if (opts.parent) {
-            if (!Resource.isInstance(opts.parent) || CustomResource.isInstance(opts.parent)) {
-                throw new RunError(`Resource parent is not a valid ComponentResource: ${opts.parent}`);
+            if (!Resource.isInstance(opts.parent)) {
+                throw new RunError(`Resource parent is not a valid Resource: ${opts.parent}`);
             }
 
             if (opts.protect === undefined) {
-                opts.protect = opts.parent.protect;
+                opts.protect = opts.parent.__protect;
             }
+
+            this.__providers = opts.parent.__providers;
             if (custom) {
-                if (opts.provider === undefined) {
-                    opts.provider = opts.parent.getProvider(t);
+                const provider = (<CustomResourceOptions>opts).provider;
+                if (provider === undefined) {
+                    (<CustomResourceOptions>opts).provider = opts.parent.getProvider(t);
                 }
             } else {
-                this.providers = (<ComponentResourceOptions>opts).providers || opts.parent.providers;
+                const providers = (<ComponentResourceOptions>opts).providers;
+                if (providers) {
+                    this.__providers = { ...this.__providers, ...providers };
+                }
             }
         }
-        this.protect = !!opts.protect;
+        this.__protect = !!opts.protect;
 
         if (opts.id) {
             // If this resource already exists, read its state rather than registering it anew.
@@ -138,7 +146,7 @@ export interface ResourceOptions {
     /**
      * An optional parent resource to which this resource belongs.
      */
-    parent?: ComponentResource;
+    parent?: Resource;
     /**
      * An optional additional explicit dependencies on other resources.
      */
@@ -147,9 +155,16 @@ export interface ResourceOptions {
      * When set to true, protect ensures this resource cannot be deleted.
      */
     protect?: boolean;
+}
+
+/**
+ * CustomResourceOptions is a bag of optional settings that control a custom resource's behavior.
+ */
+export interface CustomResourceOptions extends ResourceOptions {
     /**
      * An optional provider to use for this resource's CRUD operations. If no provider is supplied, the default
-     * provider for the resource's package will be used.
+     * provider for the resource's package will be used. The default provider is pulled from the parent's
+     * provider bag (see also ComponentResourceOptions.providers).
      */
     provider?: ProviderResource;
 }
@@ -204,7 +219,7 @@ export abstract class CustomResource extends Resource {
      * @param props The arguments to use to populate the new resource.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(t: string, name: string, props?: Inputs, opts?: ResourceOptions) {
+    constructor(t: string, name: string, props?: Inputs, opts?: CustomResourceOptions) {
         super(t, name, true, props, opts);
     }
 }
@@ -225,7 +240,7 @@ export abstract class ProviderResource extends CustomResource {
      * @param opts A bag of options that control this provider's behavior.
      */
     constructor(pkg: string, name: string, props?: Inputs, opts?: ResourceOptions) {
-        if (opts && opts.provider !== undefined) {
+        if (opts && (<any>opts).provider !== undefined) {
             throw new RunError("Explicit providers may not be used with provider resources");
         }
 
@@ -252,7 +267,7 @@ export class ComponentResource extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(t: string, name: string, props?: Inputs, opts?: ComponentResourceOptions) {
-        if (opts && opts.provider !== undefined) {
+        if (opts && (<any>opts).provider !== undefined) {
             throw new RunError("Explicit providers may not be used with component resources");
         }
 

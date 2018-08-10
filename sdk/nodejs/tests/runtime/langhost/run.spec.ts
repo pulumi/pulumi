@@ -382,7 +382,7 @@ describe("rpc", () => {
         // A test of parent default behaviors.
         "parent_defaults": {
             program: path.join(base, "017.parent_defaults"),
-            expectResourceCount: 197,
+            expectResourceCount: 240,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string) => {
 
@@ -408,17 +408,20 @@ describe("rpc", () => {
                             expectProtect = true;
                             break;
                         case "c3":
-                            // Force provider to empty
-                            expectProviderName = "";
-                            break;
-                        case "c4":
-                        case "r3":
                             // Force provider
                             expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
+                            break;
+                        case "r3":
+                            // Do nothing.
                             break;
                         default:
                             assert.fail(`unexpected path element in name: ${rpath[i]}`);
                         }
+                    }
+
+                    // r3 explicitly overrides its provider.
+                    if (rpath[rpath.length-1] == "r3") {
+                        expectProviderName = `${rpath.slice(0, rpath.length-1).join("/")}-p`;
                     }
 
                     const providerName = provider!.split("::").reduce((_, v) => v);

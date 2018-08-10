@@ -12,8 +12,12 @@ class Provider extends pulumi.ProviderResource {
 }
 
 class Resource extends pulumi.CustomResource {
-	constructor(name, props, opts) {
-		super("test:index:Resource", name, props, opts)
+	constructor(name, createChildren, opts) {
+		super("test:index:Resource", name, {}, opts)
+
+		if (createChildren) {
+			createChildren(name, this);
+		}
 	}
 }
 
@@ -25,16 +29,16 @@ class Component extends pulumi.ComponentResource {
 	}
 }
 
-function createResources(name, parent) {
+function createResources(name, createChildren, parent) {
 	// Use all parent defaults
-	new Resource(`${name}/r0`, {}, { parent: parent });
+	new Resource(`${name}/r0`, createChildren, { parent: parent });
 
 	// Override protect
-	new Resource(`${name}/r1`, {}, { parent: parent, protect: false });
-	new Resource(`${name}/r2`, {}, { parent: parent, protect: true });
+	new Resource(`${name}/r1`, createChildren, { parent: parent, protect: false });
+	new Resource(`${name}/r2`, createChildren, { parent: parent, protect: true });
 
 	// Override provider
-	new Resource(`${name}/r3`, {}, { parent: parent, provider: new Provider(`${name}-p`, { parent: parent }) });
+	new Resource(`${name}/r3`, createChildren, { parent: parent, provider: new Provider(`${name}-p`, { parent: parent }) });
 }
 
 function createComponents(name, createChildren, parent) {
@@ -46,8 +50,7 @@ function createComponents(name, createChildren, parent) {
 	new Component(`${name}/c2`, createChildren, { parent: parent, protect: true });
 
 	// Override providers.
-	new Component(`${name}/c3`, createChildren, { parent: parent, providers: {} });
-	new Component(`${name}/c4`, createChildren, {
+	new Component(`${name}/c3`, createChildren, {
 		parent: parent,
 		providers: { "test": new Provider(`${name}-p`, { parent: parent }) },
 	});
@@ -57,9 +60,20 @@ function createComponents(name, createChildren, parent) {
 createResources("unparented");
 
 // Create singly-nested resources
-createComponents("single-nest", createResources);
+createComponents("single-nest", (name, parent) => {
+	createResources(name, undefined, parent);
+});
 
 // Create doubly-nested resources
 createComponents("double-nest", (name, parent) => {
-	createComponents(name, createResources, parent);
+	createComponents(name, (name, parent) => {
+		createResources(name, undefined, parent);
+	}, parent);
+});
+
+// Create doubly-nested resources parented to other resources
+createComponents("double-nest-2", (name, parent) => {
+	createResources(name, (name, parent) => {
+		createResources(name, undefined, parent);
+	}, parent);
 });
