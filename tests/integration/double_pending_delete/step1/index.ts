@@ -16,7 +16,7 @@ import { Resource } from "./resource";
 
 // Setup: Resources A and B are created successfully.
 const a = new Resource("a", { fail: 0 });
-const b = new Resource("b", { fail: 0 });
+const b = new Resource("b", { fail: 0 }, { dependsOn: a });
 // The snapshot now contains:
 //  A: Created
 //  B: Created
